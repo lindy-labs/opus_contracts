@@ -1,2 +1,2 @@
-# aura_cairo-contracts
-Aura's Cairo Contracts
+# Aura's Cairo Monorepo
+Cairo implementation of Aura's architecture.
