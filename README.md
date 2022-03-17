@@ -1,2 +1,2 @@
-# Aura's Cairo Monorepo
-Cairo implementation of Aura's architecture.
+# Aura's Monorepo
+Implementation of Aura's architecture.
