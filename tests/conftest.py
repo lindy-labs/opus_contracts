@@ -1,7 +1,7 @@
 import asyncio
 import os
 
-from utils import str_to_felt, to_uint
+from utils import Signer
 
 import pytest
 from starkware.starknet.services.api.contract_definition import ContractDefinition
@@ -38,7 +38,43 @@ async def starknet() -> Starknet:
     return starknet
 
 
+@pytest.fixture(scope="session")
+def users(starknet):
+    """
+    A factory fixture that creates users.
+
+    The returned factory function takes a single string as an argument,
+    which it uses as an identifier of the user and also to generates their
+    private key. The fixture is session-scoped and has an internal cache,
+    so the same argument (user name) will return the same result.
+
+    The return value is a tuple of (signer: Signer, contract: StarknetContract)
+    useful for sending signed transactions, assigning ownership, etc.
+    """
+    account_contract = compile_contract("lib/openzeppelin/account/Account.cairo")
+    cache = {}
+
+    async def get_or_create_user(name):
+        hit = cache.get(name)
+        if hit:
+            return hit
+
+        signer = Signer(abs(hash(name)))
+        account = await starknet.deploy(
+            contract_def=account_contract, constructor_calldata=[signer.public_key]
+        )
+
+        user = (signer, account)
+        cache[name] = user
+        return user
+
+    return get_or_create_user
+
+
 @pytest.fixture
-async def usda(starknet) -> StarknetContract:
+async def usda(starknet, users) -> StarknetContract:
     contract = compile_contract("USDa/USDa.cairo")
-    return await starknet.deploy(contract_def=contract, constructor_calldata=[1])
+    _, owner = await users("owner")
+    return await starknet.deploy(
+        contract_def=contract, constructor_calldata=[owner.contract_address]
+    )
