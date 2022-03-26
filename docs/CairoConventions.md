@@ -1,0 +1,45 @@
+# Cairo conventions
+
+Cairo is a young language, tooling, best pracitces and conventions are still evolving. As is true for all blockchain programming (with the possible exception of [Solana](https://twitter.com/KyleSamani/status/1418661490274439169)) writing secure, correct smart contrats is of highest importance. Yet code is read much more often than it is written, hence it should be written in an easy to understand and comprehend fashion. Conventions like the following lead to better security, less cognitive load on the reader and improve collaboration.
+
+Please open a PR if you have anything that you'd like to add to this list.
+
+## Use the official formatter
+
+cairo-lang comes with the official formatter tool, `cairo-format`. Use it. We shouldn't be bike shedding about a contract's formatting, but rather spend our energy elsewhere. If you're using VSCode, every cairo-lang release contains a .vsix file. Install it and use it.
+
+## Use felt over Uint256 whenever possible
+
+The usage of `felt` for holding numerical values is preferrable to `Uint256`. Felts are cheaper and (subjectively) easier to use. There are exceptions to this rule - to conform with ERC standards or if the potential value of a variable doesn't fit a `felt`, use `Uint256`.
+
+## Imports
+
+Use fully qualified path when importing. The top-level module is always `contracts`:
+
+```
+from contracts.module.submodule.file_name import function
+```
+
+This prevents any issues when compiling contracts.
+
+## Getters
+
+`@view` functions that retrieve a `@storage_var` (essentailly getters) should be named `get_FOO`:
+
+```
+@storage_var
+func amount() -> (amount : felt):
+end
+
+@view
+func get_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (amount : felt):
+    let (amount_ : felt) = amount.read()
+    return (amount_)
+end
+```
+
+## Events
+
+Use Capitalized names (`Mint` 👍 / `mint` 👎) for [Events](https://www.cairo-lang.org/docs/hello_starknet/events.html) (note that the linked page doesn't follow this convention).
+
+Only emit events from `@external`, `@l1_handler` or `@constructor` functions, never from `@view` or private functions.
