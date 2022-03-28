@@ -1,4 +1,5 @@
 import asyncio
+from collections import namedtuple
 import os
 
 from utils import Signer
@@ -7,6 +8,15 @@ import pytest
 from starkware.starknet.services.api.contract_definition import ContractDefinition
 from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
+
+
+MRACParameters = namedtuple(
+    "MRACParameters", ["u", "r", "y", "theta", "theta_underline", "theta_bar", "gamma", "T"]
+)
+
+SCALE = 10 ** 18
+
+DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
 
 
 def here() -> str:
@@ -77,4 +87,12 @@ async def usda(starknet, users) -> StarknetContract:
     _, owner = await users("owner")
     return await starknet.deploy(
         contract_def=contract, constructor_calldata=[owner.contract_address]
+    )
+
+
+@pytest.fixture
+async def mrac_controller(starknet) -> StarknetContract:
+    contract = compile_contract("MRAC/controller.cairo")
+    return await starknet.deploy(
+        contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS]
     )
