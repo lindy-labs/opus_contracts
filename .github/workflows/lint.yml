@@ -1,0 +1,30 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Python setup
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.8'
+          cache: pip
+          cache-dependency-path: '**/requirements-dev.txt'
+
+      - name: Env setup
+        run: pip install -r requirements-dev.txt
+
+      # excluding openzeppelin libs from lint check to make
+      # updating (copy-paste) in the future easier to review
+      - name: Lint Cairo code
+        run: find contracts -not \( -path '*lib/openzeppelin*' \) -type f -name '*.cairo' | xargs cairo-format -c
