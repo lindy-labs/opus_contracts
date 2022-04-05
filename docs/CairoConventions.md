@@ -43,3 +43,17 @@ end
 Use Capitalized names (`Mint` 👍 / `mint` 👎) for [Events](https://www.cairo-lang.org/docs/hello_starknet/events.html) (note that the linked page doesn't follow this convention).
 
 Only emit events from `@external`, `@l1_handler` or `@constructor` functions, never from `@view` or private functions.
+
+## Revoked implicit arguments
+
+In order to avoid revoked references to [implicit arguments](https://www.cairo-lang.org/docs/how_cairo_works/builtins.html) like `syscall_ptr` `pedersen_ptr` etc, it is best to rebind the references at the end of each if-else branch or jump with a `tempvar` temporary variable:
+
+```
+func bar{hash_ptr : HashBuiltin*}(x):
+    if x == 0:
+        hash2(1, 2)
+        tempvar hash_ptr = hash_ptr
+    else:
+        tempvar hash_ptr = hash_ptr
+    end
+```   
