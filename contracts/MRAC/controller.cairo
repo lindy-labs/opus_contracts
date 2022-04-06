@@ -53,7 +53,8 @@ end
 # TODO: ownable or some kind of auth, apply the check to the contract
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        params : Parameters):
+    params : Parameters
+):
     # params must be scaled by SCALE
     # TODO: do a check for it? how?
     parameters.write(params)
@@ -64,15 +65,16 @@ end
 
 @view
 func get_parameters{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-        parameters : Parameters):
+    parameters : Parameters
+):
     let (params) = parameters.read()
     return (params)
 end
 
 @external
 func adjust_parameters{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        new_r : felt, new_theta_underline : felt, new_theta_bar : felt, new_gamma : felt,
-        new_T : felt):
+    new_r : felt, new_theta_underline : felt, new_theta_bar : felt, new_gamma : felt, new_T : felt
+):
     # TODO: check if the new_params are already scaled?
     let (params) = parameters.read()
     let new_params = Parameters(
@@ -83,7 +85,8 @@ func adjust_parameters{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         theta_underline=Int125.Int(new_theta_underline),
         theta_bar=Int125.Int(new_theta_bar),
         gamma=Int125.Int(new_gamma),
-        T=Int125.Int(new_T))
+        T=Int125.Int(new_T),
+    )
 
     parameters.write(new_params)
     Parameters_changed.emit(new_params)
@@ -95,7 +98,8 @@ end
 # u(k) = theta(k)
 # theta(k+1) = theta(k) + T * gamma * (theta(k) - theta_underline(k)) * (theta_bar(k) - theta(k)) * (r(k) - y(k))
 func calculate_new_parameters{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        params : Parameters, new_util_rate : felt) -> (params : Parameters):
+    params : Parameters, new_util_rate : felt
+) -> (params : Parameters):
     let new_y = Int125.Int(new_util_rate * SCALE)
 
     let (Tg) = Int125_mul_scaled(params.T, params.gamma)
@@ -117,7 +121,8 @@ func calculate_new_parameters{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, 
         theta_underline=params.theta_underline,
         theta_bar=params.theta_bar,
         gamma=params.gamma,
-        T=params.T)
+        T=params.T,
+    )
 
     return (new_params)
 end

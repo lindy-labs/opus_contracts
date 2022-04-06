@@ -7,7 +7,13 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin
 
 # https://github.com/starkware-libs/cairo-lang/blob/master/src/starkware/cairo/common/math.cairo
 from starkware.cairo.common.math import (
-    assert_le, assert_nn_le, assert_not_zero, assert_in_range, assert_not_equal, assert_nn)
+    assert_le,
+    assert_nn_le,
+    assert_not_zero,
+    assert_in_range,
+    assert_not_equal,
+    assert_nn,
+)
 # https://github.com/starkware-libs/cairo-lang/blob/master/src/starkware/cairo/common/math_cmp.cairo
 from starkware.cairo.common.math_cmp import is_nn, is_le, is_in_range
 # https://github.com/starkware-libs/cairo-lang/blob/master/src/starkware/cairo/common/pow.cairo
