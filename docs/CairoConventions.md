@@ -16,7 +16,7 @@ The usage of `felt` for holding numerical values is preferrable to `Uint256`. Fe
 
 Use fully qualified path when importing. The top-level module is always `contracts`:
 
-```
+```cairo
 from contracts.module.submodule.file_name import function
 ```
 
@@ -26,7 +26,7 @@ This prevents any issues when compiling contracts.
 
 `@view` functions that retrieve a `@storage_var` (essentailly getters) should be named `get_FOO`:
 
-```
+```cairo
 @storage_var
 func amount() -> (amount : felt):
 end
@@ -43,3 +43,13 @@ end
 Use Capitalized names (`Mint` 👍 / `mint` 👎) for [Events](https://www.cairo-lang.org/docs/hello_starknet/events.html) (note that the linked page doesn't follow this convention).
 
 Only emit events from `@external`, `@l1_handler` or `@constructor` functions, never from `@view` or private functions.
+
+## Use module names in error messages
+
+When using the `with_attr error_message()` pattern to do a check and raise an error if it fails, prepend the error message itself with the module name. It makes it easier for debugging, etc. An example from the `direct_deposit` module:
+
+```cairo
+with_attr error_message("direct_deposit: transferFrom failed":
+    assert was_transfered = TRUE
+end
+```
