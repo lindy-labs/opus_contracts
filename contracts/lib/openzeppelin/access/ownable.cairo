@@ -4,6 +4,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 @storage_var
@@ -13,6 +14,9 @@ end
 func Ownable_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner : felt
 ):
+    with_attr error_message("Ownable: owner cannot be zero"):
+        assert_not_zero(owner)
+    end
     Ownable_owner.write(owner)
     return ()
 end
@@ -34,6 +38,9 @@ end
 func Ownable_transfer_ownership{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_owner : felt
 ) -> (new_owner : felt):
+    with_attr error_message("Ownable: owner cannot be zero"):
+        assert_not_zero(new_owner)
+    end
     Ownable_only_owner()
     Ownable_owner.write(new_owner)
     return (new_owner=new_owner)
