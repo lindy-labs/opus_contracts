@@ -8,25 +8,19 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from openzeppelin.utils.constants import TRUE, FALSE
 
 @storage_var
-func _initialized() -> (res: felt):
+func _initialized() -> (res : felt):
 end
 
 @external
-func initialized{ 
-        syscall_ptr : felt*, 
-        pedersen_ptr : HashBuiltin*,
-        range_check_ptr
-    }() -> (res: felt):
+func initialized{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    res : felt
+):
     let (res) = _initialized.read()
     return (res=res)
 end
 
 @external
-func initialize{
-        syscall_ptr : felt*, 
-        pedersen_ptr : HashBuiltin*,
-        range_check_ptr
-    }():
+func initialize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let (initialized) = _initialized.read()
     assert initialized = FALSE
     _initialized.write(TRUE)

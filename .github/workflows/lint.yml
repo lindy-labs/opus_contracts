@@ -24,7 +24,5 @@ jobs:
       - name: Env setup
         run: pip install -r requirements-dev.txt
 
-      # excluding openzeppelin libs from lint check to make
-      # updating (copy-paste) in the future easier to review
       - name: Lint Cairo code
-        run: find contracts -not \( -path '*lib/openzeppelin*' \) -type f -name '*.cairo' | xargs cairo-format -c
+        run: find contracts -type f -name '*.cairo' | xargs cairo-format -c
