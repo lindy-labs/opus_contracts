@@ -1,6 +1,5 @@
 import asyncio
 from collections import namedtuple
-from functools import cache
 from typing import Callable, Tuple
 
 from account import Account
@@ -44,10 +43,19 @@ def users(starknet: Starknet) -> Callable[[str], Account]:
     useful for sending signed transactions, assigning ownership, etc.
     """
 
-    @cache
+    # can't use functools.cache because it doesn't
+    # play well with async
+    cache = {}
+
     async def get_or_create_user(name):
+        hit = cache.get(name)
+        if hit:
+            return hit
+
         account = Account(name)
         await account.deploy(starknet)
+        cache[name] = account
+
         return account
 
     return get_or_create_user

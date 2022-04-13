@@ -2,12 +2,13 @@
 
 from functools import cache
 import os
+from typing import Union
 
 from starkware.starknet.public.abi import get_selector_from_name
-from starkware.starkware_utils.error_handling import StarkException
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.services.api.contract_definition import ContractDefinition
+from starkware.starknet.testing.starknet import StarknetContract
 
 
 MAX_UINT256 = (2 ** 128 - 1, 2 ** 128 - 1)
@@ -17,8 +18,15 @@ FALSE = 0
 
 
 Uint256 = tuple[int, int]
+Addressable = Union[int, StarknetContract]
 Calldata = list[int]  # payload arguments sent with a function call
-Call = tuple[int, str, Calldata]  # receiver address, selector (still as string) and payload
+Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
+
+
+def as_address(value: Addressable) -> int:
+    if isinstance(value, StarknetContract):
+        return value.contract_address
+    return value
 
 
 def str_to_felt(text: str) -> int:

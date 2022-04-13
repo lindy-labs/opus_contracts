@@ -1,4 +1,4 @@
-from utils import compile_contract, str_to_felt, Calldata, Call
+from utils import compile_contract, as_address, str_to_felt, Addressable, Calldata, Call
 from starkware.cairo.common.hash_state import compute_hash_on_elements
 from starkware.crypto.signature.signature import private_to_stark_key, sign
 from starkware.starknet.public.abi import get_selector_from_name
@@ -37,11 +37,15 @@ class Account:
             contract_def=Account.compiled_acconut_contract, constructor_calldata=[self.public_key]
         )
 
-    async def send_tx(self, to: int, selector: str, calldata: Calldata, max_fee=0):
-        self.send_txs([to, selector, calldata], max_fee)
+    async def send_tx(self, to: Addressable, selector: str, calldata: Calldata, max_fee=0):
+        call_payload: Call = (to, selector, calldata)
+        return await self.send_txs([call_payload], max_fee)
 
     async def send_txs(self, calls: list[Call], max_fee=0):
-        calls_with_selector = [(c[0], get_selector_from_name(c[1]), c[2]) for c in calls]
+        calls_with_selector = [
+            (as_address(call[0]), get_selector_from_name(call[1]), call[2])
+            for call in calls
+        ]
         call_array, calldata = from_call_to_call_array(calls)
 
         nonce = self.nonce
@@ -60,7 +64,7 @@ def from_call_to_call_array(calls):
     calldata = []
     for call in calls:
         assert len(call) == 3, "Invalid call parameters"
-        entry = (call[0], get_selector_from_name(call[1]), len(calldata), len(call[2]))
+        entry = (as_address(call[0]), get_selector_from_name(call[1]), len(calldata), len(call[2]))
         call_array.append(entry)
         calldata.extend(call[2])
     return (call_array, calldata)
