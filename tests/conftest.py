@@ -1,12 +1,12 @@
 import asyncio
 from collections import namedtuple
-import os
+from functools import cache
+from typing import Callable, Tuple
 
-from utils import Signer
+from account import Account
+from utils import compile_contract, str_to_felt, Uint256
 
 import pytest
-from starkware.starknet.services.api.contract_definition import ContractDefinition
-from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 
@@ -17,24 +17,6 @@ MRACParameters = namedtuple(
 SCALE = 10 ** 18
 
 DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
-
-
-def here() -> str:
-    return os.path.abspath(os.path.dirname(__file__))
-
-
-def contract_path(rel_contract_path: str) -> str:
-    return os.path.join(here(), "..", "contracts", rel_contract_path)
-
-
-def compile_contract(rel_contract_path: str) -> ContractDefinition:
-    contract_src = contract_path(rel_contract_path)
-    return compile_starknet_files(
-        [contract_src],
-        debug_info=True,
-        disable_hint_validation=True,
-        cairo_path=[os.path.join(here(), "..", "contracts", "lib")],
-    )
 
 
 @pytest.fixture(scope="session")
@@ -49,7 +31,7 @@ async def starknet() -> Starknet:
 
 
 @pytest.fixture(scope="session")
-def users(starknet):
+def users(starknet: Starknet) -> Callable[[str], Account]:
     """
     A factory fixture that creates users.
 
@@ -61,38 +43,26 @@ def users(starknet):
     The return value is a tuple of (signer: Signer, contract: StarknetContract)
     useful for sending signed transactions, assigning ownership, etc.
     """
-    account_contract = compile_contract("lib/openzeppelin/account/Account.cairo")
-    cache = {}
 
+    @cache
     async def get_or_create_user(name):
-        hit = cache.get(name)
-        if hit:
-            return hit
-
-        signer = Signer(abs(hash(name)))
-        account = await starknet.deploy(
-            contract_def=account_contract, constructor_calldata=[signer.public_key]
-        )
-
-        user = (signer, account)
-        cache[name] = user
-        return user
+        account = Account(name)
+        await account.deploy(starknet)
+        return account
 
     return get_or_create_user
 
 
 @pytest.fixture
 async def usda(starknet, users) -> StarknetContract:
-    contract = compile_contract("USDa/USDa.cairo")
-    _, owner = await users("owner")
-    return await starknet.deploy(
-        contract_def=contract, constructor_calldata=[owner.contract_address]
-    )
+    contract = compile_contract("contracts/USDa/USDa.cairo")
+    owner = await users("usda owner")
+    return await starknet.deploy(contract_def=contract, constructor_calldata=[owner.address])
 
 
 @pytest.fixture
 async def mrac_controller(starknet) -> StarknetContract:
-    contract = compile_contract("MRAC/controller.cairo")
+    contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(
         contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS]
     )
