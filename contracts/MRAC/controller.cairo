@@ -16,6 +16,7 @@ struct Parameters:
     member u : Int125.Int
     # reference rate
     member r : Int125.Int
+    # TODO: this isn't the collat ratio anymore, is it? verify w/ Marleen
     # collaterization ratio
     member y : Int125.Int
 

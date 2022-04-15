@@ -60,9 +60,33 @@ def users(starknet: Starknet) -> Callable[[str], Account]:
 
 
 @pytest.fixture
+def tokens(starknet: Starknet) -> Callable[[str, str, int, Uint256, int], StarknetContract]:
+    """
+    A factory fixture that creates a mock ERC20 token.
+
+    The returned factory function requires 5 input arguments to deploy
+    a new token: name (str), symbol (str), decimals (int),
+    initial supply (Uint256) and recipient (int). It returns an instance
+    of StarknetContract.
+    """
+    contract = compile_contract("tests/mocks/ERC20.cairo")
+
+    async def create_token(name: str, symbol: str, decimals: int, initial_supply: Tuple[int, int], recipient: int):
+        name = str_to_felt(name)
+        symbol = str_to_felt(symbol)
+        token = await starknet.deploy(
+            contract_def=contract,
+            constructor_calldata=[name, symbol, decimals, *initial_supply, recipient],
+        )
+        return token
+
+    return create_token
+
+
+@pytest.fixture
 async def usda(starknet, users) -> StarknetContract:
-    contract = compile_contract("contracts/USDa/USDa.cairo")
     owner = await users("usda owner")
+    contract = compile_contract("contracts/USDa/USDa.cairo")
     return await starknet.deploy(contract_def=contract, constructor_calldata=[owner.address])
 
 
