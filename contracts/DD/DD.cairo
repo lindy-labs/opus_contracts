@@ -1,25 +1,12 @@
 # TODO:
-# * maybe have this module under USDa/
-# * allow direct deposit on L1 but mint to L2
-# * should this be a 4626?
-#   no, because it's not a token, but it very much resembles 4626 API; is there benefit
-#   in still following it? this contract could be a facade-like for USDa maybe?
-# * events (also for setters)
 # * document
 #   functions
 # * from the WP "stablecoins deposited this way are lent out to trusted money market protocols in order to generate yield, driving the global collateralization ratio up"
 #   as @CrisBRM said in Slack, these should be deposited to Aave and Sandclock, once they are available on StarkNet (Sandclock has priority, but Aave will prob launch sooner)
-# * allow to change where the stablecoin is being deposited to (see above)
 # * we should have deploy scripts; there are interdependencies between various modules, take that into account
 # * is there a good way to assure that amount that's passed to deposit/withdraw is already scaled? do we need to check for it even?
 # * internal functions could go to library.cairo, but then how to deal w/ @storage_vars (because internals need to r/w to them)?
 #   explore a pattern where storage would be in a separate file and namespace maybe? with dedicated getters and setters for each @storage_var
-# * should there be one deployed instance of the DD module per stablecoin or should we have a single DD contract with a list of allowed stables?
-#   currently, I'm leaning slightly towards the latter, but that brings more complexity
-# * what values should be configurable?
-#   see setters for those that are, but what about:
-#     the stability fee distribution (it's 50/50 between treasury and reserve now)
-#     the threshold of the target collat ratio (25% in WP)
 
 %lang starknet
 
@@ -46,10 +33,27 @@ from contracts.lib.openzeppelin.access.ownable import (
 )
 
 # Direct Deposit Stablecoin contract
-# allows to mint USDa via depositing a whitelisted stablecoin (DAI, USDC)
+# allows to mint USDa via depositing a stablecoin (DAI, USDC),
+# there's one instance of this contract deployed per stablecoin
 
 # 100% in basis points
 const HUNDRED_PERCENT_BPS = 10000
+
+#
+# Events
+#
+
+@event
+func ReserveAddressChange(old_value : felt, new_value : felt):
+end
+
+@event
+func StabilityFeeChange(old_value : felt, new_value : felt):
+end
+
+@event
+func TreasuryAddressChange(old_value : felt, new_value : felt):
+end
 
 #
 # Storage
@@ -81,7 +85,7 @@ func usda_address() -> (addr : felt):
 end
 
 #
-# Storage getters
+# Getters
 #
 
 @view
@@ -132,13 +136,13 @@ func get_usda_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 end
 
 #
-# Storage setters
+# Setters
 #
-# TODO: emit an event in every setter
 
 @external
 func set_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(addr : felt):
-    # this function does only owner and zero address checks internally
+    # this function already does only owner and zero address checks internally
+    # and also emits an event
     Ownable_transfer_ownership(addr)
     return ()
 end
@@ -151,7 +155,12 @@ func set_reserve_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(addr)
     end
+
+    let (old) = reserve_address.read()
     reserve_address.write(addr)
+
+    ReserveAddressChange.emit(old, addr)
+
     return ()
 end
 
@@ -163,7 +172,12 @@ func set_stability_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     with_attr error_message("DD: invalid stability fee"):
         assert_le(fee, HUNDRED_PERCENT_BPS)
     end
+
+    let (old) = stability_fee.read()
     stability_fee.write(fee)
+
+    StabilityFeeChange.emit(old, fee)
+
     return ()
 end
 
@@ -175,7 +189,12 @@ func set_treasury_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
     with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(addr)
     end
+
+    let (old) = treasury_address.read()
     treasury_address.write(addr)
+
+    TreasuryAddressChange.emit(old, addr)
+
     return ()
 end
 
@@ -185,13 +204,13 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner : felt, stablecoin_addr : felt, usda_addr : felt
+    owner : felt, stablecoin_addr : felt, usda_addr : felt, reserve_addr : felt, treasury_addr : felt,
+    stability_fee : felt
 ):
     # TODO: assert not zeroes, assert conforming to ERC20s?
     #       use initializable from OZ lib?
-    #       maybe the constructor should already take in addrs of reserve and treasury?
     Ownable_initializer(owner)
-    DDS_initializer(stablecoin_addr, usda_addr)
+    DDS_initializer(stablecoin_addr, usda_addr, reserve_addr, treasury_addr, stability_fee)
     return ()
 end
 
@@ -219,6 +238,14 @@ func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     # let (collateralization_ratio : felt) = IUSDa.get_collateralization_ratio(
     #     contract_address=usda_addr
     # )
+
+    # from the WP:
+    # "using the Direct Deposit method is reserved for periods where capital is not being
+    # utilized efficiently, when USDa’s collateralization ratio is equal or greater than 25%
+    # of the target collateralization ratio"
+    # the 25% value should be configurable
+    # the value is the threshold *above* the ideal rate of 150%, as such, it should fall into
+    # a range, of 10-50; talk to Cris for details
 
     # rounding down here is ok
     # let (min_direct_mint_ratio : felt, _) = unsigned_div_rem(
@@ -309,17 +336,29 @@ end
 #
 
 func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    stablecoin_addr : felt, usda_addr : felt
+    stablecoin_addr : felt, usda_addr : felt, reserve_addr : felt, treasury_addr : felt,
+    _stability_fee : felt
 ):
-    with_attr error_message("direct_deposit: ERC20 address cannot be zero"):
+    with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(stablecoin_addr)
         assert_not_zero(usda_addr)
+        assert_not_zero(reserve_addr)
+        assert_not_zero(treasury_addr)
+    end
+
+    with_attr error_message("DD: invalid stability fee"):
+        assert_le(_stability_fee, HUNDRED_PERCENT_BPS)
     end
 
     # these two variables are only ever set once, here,
     # during the deployment of the contract
     stablecoin_address.write(stablecoin_addr)
     usda_address.write(usda_addr)
+
+    # the rest is configurable via setters
+    reserve_address.write(reserve_addr)
+    treasury_address.write(treasury_addr)
+    stability_fee.write(_stability_fee)
 
     return ()
 end

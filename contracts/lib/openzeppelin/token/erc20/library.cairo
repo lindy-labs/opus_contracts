@@ -257,3 +257,4 @@ func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     Transfer.emit(sender, recipient, amount)
     return ()
 end
+

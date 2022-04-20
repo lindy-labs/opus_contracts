@@ -49,15 +49,21 @@ def from_uint(uint: Uint256) -> int:
     return uint[0] + (uint[1] << 128)
 
 
-def assert_event_emitted(tx_exec_info, from_address, name, data):
-    assert (
-        Event(
-            from_address=from_address,
-            keys=[get_selector_from_name(name)],
-            data=data,
+def assert_event_emitted(tx_exec_info, from_address, name, data=None):
+    if data is not None:
+        assert (
+            Event(
+                from_address=from_address,
+                keys=[get_selector_from_name(name)],
+                data=data,
+            )
+            in tx_exec_info.raw_events
         )
-        in tx_exec_info.raw_events
-    )
+    else:
+        key = get_selector_from_name(name)
+        assert any(
+            [e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys]
+        )
 
 
 def here() -> str:
