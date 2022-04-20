@@ -204,8 +204,12 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner : felt, stablecoin_addr : felt, usda_addr : felt, reserve_addr : felt, treasury_addr : felt,
-    stability_fee : felt
+    owner : felt,
+    stablecoin_addr : felt,
+    usda_addr : felt,
+    reserve_addr : felt,
+    treasury_addr : felt,
+    stability_fee : felt,
 ):
     # TODO: assert not zeroes, assert conforming to ERC20s?
     #       use initializable from OZ lib?
@@ -336,8 +340,11 @@ end
 #
 
 func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    stablecoin_addr : felt, usda_addr : felt, reserve_addr : felt, treasury_addr : felt,
-    _stability_fee : felt
+    stablecoin_addr : felt,
+    usda_addr : felt,
+    reserve_addr : felt,
+    treasury_addr : felt,
+    _stability_fee : felt,
 ):
     with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(stablecoin_addr)
