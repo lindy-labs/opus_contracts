@@ -25,7 +25,7 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Install Amarna
-        run: git clone git@github.com:trailofbits/amarna.git && cd amarna && pip install -e .
+        run: git clone https://github.com/crytic/amarna.git && cd amarna && pip install -e .
 
       - name: Run Amarna Static Analysis
         run: amarna contracts/ -o out.sarif
