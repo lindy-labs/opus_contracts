@@ -7,6 +7,7 @@
 # * is there a good way to assure that amount that's passed to deposit/withdraw is already scaled? do we need to check for it even?
 # * internal functions could go to library.cairo, but then how to deal w/ @storage_vars (because internals need to r/w to them)?
 #   explore a pattern where storage would be in a separate file and namespace maybe? with dedicated getters and setters for each @storage_var
+# * USDC uses 6 decimals, DAI 18, USDa 18 - how to deal with this when depositing / withdrawing?
 
 %lang starknet
 

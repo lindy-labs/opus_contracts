@@ -1,5 +1,4 @@
 # TODO:
-# * add a func for ownership transfer?
 # * no allowance checks and changes if allowance is max(uint256)
 # * use access roles instead of ownable for mint and burn
 
@@ -140,7 +139,7 @@ end
 func burn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner : felt, amount : Uint256
 ) -> (success : felt):
-    Ownable_only_owner()
+    # Ownable_only_owner()
     ERC20_burn(owner, amount)
     return (TRUE)
 end

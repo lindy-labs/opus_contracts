@@ -1,6 +1,10 @@
 import asyncio
 from collections import namedtuple
+<<<<<<< HEAD
 from typing import Callable
+=======
+from typing import Awaitable, Callable, Tuple
+>>>>>>> dcb0344 (test(DD): withdraw)
 
 from account import Account
 from utils import compile_contract
@@ -28,7 +32,7 @@ async def starknet() -> Starknet:
 
 
 @pytest.fixture(scope="session")
-def users(starknet: Starknet) -> Callable[[str], Account]:
+def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     """
     A factory fixture that creates users.
 
@@ -60,7 +64,9 @@ def users(starknet: Starknet) -> Callable[[str], Account]:
 
 
 @pytest.fixture
-def tokens(starknet: Starknet) -> Callable[[str, str, int, Uint256, int], StarknetContract]:
+def tokens(
+    starknet: Starknet,
+) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
     """
     A factory fixture that creates a mock ERC20 token.
 
@@ -93,4 +99,35 @@ async def usda(starknet, users) -> StarknetContract:
 @pytest.fixture
 async def mrac_controller(starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
-    return await starknet.deploy(contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
+    return await starknet.deploy(
+        contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS]
+    )
+
+
+@pytest.fixture
+async def direct_deposit(
+    starknet, usda, users, tokens
+) -> tuple[StarknetContract, StarknetContract]:
+    # TODO: figure out a good way how not to use magic string constants for common users
+    dd_owner = await users("dd owner")
+    stbl_owner = await users("stbl owner")
+    stablecoin = await tokens("Stable", "STBL", 18, (0, 0), stbl_owner.address)
+
+    # these magic constants are furhter used in the test_DD file
+    reserve_address = 1
+    treasury_address = 2
+    stability_fee = 200
+
+    contract = compile_contract("contracts/DD/DD.cairo")
+    dd = await starknet.deploy(
+        contract_def=contract,
+        constructor_calldata=[
+            dd_owner.address,
+            stablecoin.contract_address,
+            usda.contract_address,
+            reserve_address,
+            treasury_address,
+            stability_fee,
+        ],
+    )
+    return dd, stablecoin
