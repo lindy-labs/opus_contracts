@@ -8,12 +8,14 @@
 # * internal functions could go to library.cairo, but then how to deal w/ @storage_vars (because internals need to r/w to them)?
 #   explore a pattern where storage would be in a separate file and namespace maybe? with dedicated getters and setters for each @storage_var
 # * USDC uses 6 decimals, DAI 18, USDa 18 - how to deal with this when depositing / withdrawing?
+# * use Safemath
 
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem
+from starkware.cairo.common.math import assert_not_zero, assert_le
+from starkware.cairo.common.pow import pow
 from starkware.cairo.common.uint256 import (
     Uint256,
     uint256_eq,
@@ -73,6 +75,11 @@ end
 # address of underlying stablecoin that can be directly deposited to get USDa
 @storage_var
 func stablecoin_address() -> (addr : felt):
+end
+
+# multiplier between stablecoin and USDa amounts
+@storage_var
+func scale_factor() -> (decimals : Uint256):
 end
 
 # address of Aura treasury
@@ -266,7 +273,8 @@ func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     # TODO: should there be a check to see what would be the result of this mint
     #       and if it the delta is too big, revert?
 
-    return (Uint256(low=100000, high=0))
+    let ten_thousand = 10000000000000000000000 # 10_000 * 10**18
+    return (Uint256(low=ten_thousand, high=0))
 end
 
 #
@@ -274,9 +282,12 @@ end
 #
 
 # stablecoin -> USDa
-# amount, should be scaled by 18 (USDa decimals)
+# amount of stablecoin that's being deposited, should be scaled by stablecoin decimals
+# e.g. 1 DAI == 10**18, 1 USDC == 10**6
 @external
-func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount : Uint256):
+func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    stablecoin_amount : Uint256
+):
     alloc_locals
     # TODO: inline comments
 
@@ -288,7 +299,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (max_mint : Uint256) = get_max_mint_amount()
     with_attr error_message("DD: deposit amount exceeds mint limit"):
-        let (is_in_limit) = uint256_le(amount, max_mint)
+        let (is_in_limit) = uint256_le(stablecoin_amount, max_mint)
         assert is_in_limit = 1
     end
 
@@ -297,17 +308,19 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (stablecoin : felt) = stablecoin_address.read()
 
     let (transfer_did_succeed : felt) = IERC20.transferFrom(
-        contract_address=stablecoin, sender=caller, recipient=recipient, amount=amount
+        contract_address=stablecoin, sender=caller, recipient=recipient, amount=stablecoin_amount
     )
     with_attr error_message("DD: transferFrom failed"):
         assert transfer_did_succeed = TRUE
     end
 
+    let (scale : Uint256) = scale_factor.read()
+    let (mint_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale)
     let (usda : felt) = usda_address.read()
     let (reserve : felt) = reserve_address.read()
     let (treasury : felt) = treasury_address.read()
     let (caller_amount : Uint256, reserve_amount : Uint256,
-        treasury_amount : Uint256) = calculate_mint_distribution(amount)
+        treasury_amount : Uint256) = calculate_mint_distribution(mint_amount)
 
     IERC20Mintable.mint(contract_address=usda, recipient=caller, amount=caller_amount)
     IERC20Mintable.mint(contract_address=usda, recipient=reserve, amount=reserve_amount)
@@ -319,17 +332,22 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 # USDa -> stablecoin
-# amount, should be scaled by 18 (USDa decimals)
+# amount of stablecoin that's being withdrawn, should be scaled by stablecoin decimals
+# e.g. 1 DAI == 10**18, 1 USDC == 10**6
 @external
-func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount : Uint256):
+func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    stablecoin_amount : Uint256
+):
     alloc_locals
 
+    let (scale : Uint256) = scale_factor.read()
+    let (burn_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale)
     let (caller : felt) = get_caller_address()
     let (usda : felt) = usda_address.read()
     let (stablecoin : felt) = stablecoin_address.read()
 
-    IERC20Burnable.burn(contract_address=usda, owner=caller, amount=amount)
-    IERC20.transfer(contract_address=stablecoin, recipient=caller, amount=amount)
+    IERC20Burnable.burn(contract_address=usda, owner=caller, amount=burn_amount)
+    IERC20.transfer(contract_address=stablecoin, recipient=caller, amount=stablecoin_amount)
 
     # TODO: emit an event
 
@@ -347,6 +365,8 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     treasury_addr : felt,
     _stability_fee : felt,
 ):
+    alloc_locals
+
     with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(stablecoin_addr)
         assert_not_zero(usda_addr)
@@ -358,8 +378,16 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
         assert_le(_stability_fee, HUNDRED_PERCENT_BPS)
     end
 
-    # these two variables are only ever set once, here,
+    let (stablecoin_decimals : felt) = IERC20.decimals(contract_address=stablecoin_addr)
+    let (usda_decimals : felt) = IERC20.decimals(contract_address=usda_addr)
+    with_attr error_message("DD: incompatible stablecoin"):
+        assert_le(stablecoin_decimals, usda_decimals)
+    end
+
+    let (power) = pow(10, usda_decimals - stablecoin_decimals)
+    # these three variables are only ever set once, here,
     # during the deployment of the contract
+    scale_factor.write(Uint256(low=power, high=0))
     stablecoin_address.write(stablecoin_addr)
     usda_address.write(usda_addr)
 
@@ -377,7 +405,7 @@ func calculate_mint_distribution{syscall_ptr : felt*, pedersen_ptr : HashBuiltin
     alloc_locals
 
     let (stability_fee_ : felt) = stability_fee.read()
-    let depositor_gets_bps : Uint256 = felt_to_uint(HUNDRED_PERCENT_BPS - stability_fee_)
+    let (depositor_gets_bps : Uint256) = felt_to_uint(HUNDRED_PERCENT_BPS - stability_fee_)
     let (depositor_amount_mul : Uint256, carry : Uint256) = uint256_mul(
         mint_amount, depositor_gets_bps
     )

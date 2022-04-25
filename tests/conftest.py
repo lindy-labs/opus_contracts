@@ -1,14 +1,12 @@
 import asyncio
 from collections import namedtuple
-<<<<<<< HEAD
-from typing import Callable
-=======
-from typing import Awaitable, Callable, Tuple
->>>>>>> dcb0344 (test(DD): withdraw)
+import decimal
+from typing import Awaitable, Callable
 
 from account import Account
-from utils import compile_contract
+from utils import Uint256, compile_contract, str_to_felt
 
+from cache import AsyncLRU
 import pytest
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
@@ -18,6 +16,11 @@ MRACParameters = namedtuple("MRACParameters", ["u", "r", "y", "theta", "theta_un
 SCALE = 10**18
 
 DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
+
+
+@pytest.fixture(autouse=True, scope="session")
+def setup():
+    decimal.getcontext().prec = 18
 
 
 @pytest.fixture(scope="session")
@@ -31,6 +34,7 @@ async def starknet() -> Starknet:
     return starknet
 
 
+# TODO: figure out a good way how not to use magic string constants for common users
 @pytest.fixture(scope="session")
 def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     """
@@ -45,25 +49,16 @@ def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     useful for sending signed transactions, assigning ownership, etc.
     """
 
-    # can't use functools.cache because it doesn't
-    # play well with async
-    cache = {}
-
-    async def get_or_create_user(name):
-        hit = cache.get(name)
-        if hit:
-            return hit
-
+    @AsyncLRU()
+    async def create_user(name):
         account = Account(name)
         await account.deploy(starknet)
-        cache[name] = account
-
         return account
 
-    return get_or_create_user
+    return create_user
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def tokens(
     starknet: Starknet,
 ) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
@@ -77,7 +72,7 @@ def tokens(
     """
     contract = compile_contract("tests/mocks/ERC20.cairo")
 
-    async def create_token(name: str, symbol: str, decimals: int, initial_supply: Tuple[int, int], recipient: int):
+    async def create_token(name: str, symbol: str, decimals: int, initial_supply: tuple[int, int], recipient: int):
         name = str_to_felt(name)
         symbol = str_to_felt(symbol)
         token = await starknet.deploy(
@@ -99,35 +94,4 @@ async def usda(starknet, users) -> StarknetContract:
 @pytest.fixture
 async def mrac_controller(starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
-    return await starknet.deploy(
-        contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS]
-    )
-
-
-@pytest.fixture
-async def direct_deposit(
-    starknet, usda, users, tokens
-) -> tuple[StarknetContract, StarknetContract]:
-    # TODO: figure out a good way how not to use magic string constants for common users
-    dd_owner = await users("dd owner")
-    stbl_owner = await users("stbl owner")
-    stablecoin = await tokens("Stable", "STBL", 18, (0, 0), stbl_owner.address)
-
-    # these magic constants are furhter used in the test_DD file
-    reserve_address = 1
-    treasury_address = 2
-    stability_fee = 200
-
-    contract = compile_contract("contracts/DD/DD.cairo")
-    dd = await starknet.deploy(
-        contract_def=contract,
-        constructor_calldata=[
-            dd_owner.address,
-            stablecoin.contract_address,
-            usda.contract_address,
-            reserve_address,
-            treasury_address,
-            stability_fee,
-        ],
-    )
-    return dd, stablecoin
+    return await starknet.deploy(contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])

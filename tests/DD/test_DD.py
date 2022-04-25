@@ -1,36 +1,97 @@
 # TODO:
-# * test withdraw
 # * test for when deposit can't go through (e.g. max_mint == 0)
 
+from decimal import Decimal
 from math import floor
 
 import pytest
 from starkware.starkware_utils.error_handling import StarkException
+from starkware.starknet.testing.starknet import StarknetContract
 
-from utils import MAX_UINT256, to_uint, from_uint, assert_event_emitted, Uint256
+
+from utils import (
+    MAX_UINT256,
+    compile_contract,
+    to_uint,
+    from_uint,
+    assert_event_emitted,
+    felt_to_str,
+    Uint256,
+)
+
+HUNDRED_PERCENT_BPS = 10_000
+
+#
+# fixtures
+#
+
+# parametrized fixture used to emulate stablecoins allowed
+# in the direct deposit contract
+@pytest.fixture(params=[("DAI", 18), ("USDC", 6)], ids=["DAI", "USDC"])
+async def dd_stablecoin(request, tokens, users) -> StarknetContract:
+    ten_billy = 10 ** 10
+    token, decimals = request.param
+    owner = await users(f"{token.lower()} owner")
+    return await tokens(f"Test {token}", f"t{token}", decimals, (ten_billy, 0), owner.address)
+
+
+@pytest.fixture
+async def direct_deposit(
+    starknet, usda, dd_stablecoin, users
+) -> tuple[StarknetContract, StarknetContract]:
+
+    # these magic constants are furhter used in the test_DD file
+    reserve_address = 1
+    treasury_address = 2
+    stability_fee = 200
+    dd_owner = await users("dd owner")
+    dd_contract = compile_contract("contracts/DD/DD.cairo")
+
+    dd = await starknet.deploy(
+        contract_def=dd_contract,
+        constructor_calldata=[
+            dd_owner.address,
+            dd_stablecoin.contract_address,
+            usda.contract_address,
+            reserve_address,
+            treasury_address,
+            stability_fee,
+        ],
+    )
+
+    return dd, dd_stablecoin
+
+
+#
+# tests
+#
 
 
 @pytest.mark.asyncio
 async def test_deposit(direct_deposit, usda, users):
     dd, stablecoin = direct_deposit
+    stable_symbol = felt_to_str((await stablecoin.symbol().invoke()).result.symbol)
     dd_owner = await users("dd owner")
-    depositor = await users("depositor")
+    depositor = await users(f"{stable_symbol} depositor")
+
+    usda_decimals = (await usda.decimals().invoke()).result.decimals
+    stable_decimals = (await stablecoin.decimals().invoke()).result.decimals
 
     reserve_address = 42 ** 2
     treasury_address = 42 ** 3
-    deposit_amount = 3983
     stability_fee = 40  # 40 bps = 0.4%
+    deposit_amount = 3983 * 10 ** stable_decimals
 
     await dd_owner.send_txs(
         [
             (dd, "set_reserve_address", [reserve_address]),
             (dd, "set_treasury_address", [treasury_address]),
-            (dd, "set_stability_fee", [stability_fee]),  # 40 bps == 0.4%
+            (dd, "set_stability_fee", [stability_fee]),
         ]
     )
 
     # give some stablecoin to the actor
-    await stablecoin.mint(depositor.address, to_uint(10000)).invoke()
+    await stablecoin.mint(depositor.address, to_uint(10000 * 10 ** stable_decimals)).invoke()
 
     # allow Aura to take stable
     await depositor.send_tx(
@@ -45,11 +106,16 @@ async def test_deposit(direct_deposit, usda, users):
     assert tx.result.balance == to_uint(deposit_amount)
 
     # depositor should hold the requested amount minus stability fee
-    expected_depositor_balance = floor(deposit_amount * ((10_000 - stability_fee) / 10_000))
+    # scaled to USDa decimals
+    usda_scaled_deposit = deposit_amount * 10 ** (usda_decimals - stable_decimals)
+    expected_depositor_balance = int(
+        Decimal(usda_scaled_deposit * (HUNDRED_PERCENT_BPS - stability_fee)) / HUNDRED_PERCENT_BPS
+    )
+
     tx = await usda.balanceOf(depositor.address).invoke()
     assert tx.result.balance == to_uint(expected_depositor_balance)
 
-    rest = deposit_amount - expected_depositor_balance
+    rest = usda_scaled_deposit - expected_depositor_balance
     # reserve should hold half of the rest, rounded down
     expected_reserve_amount = floor(rest / 2)
     tx = await usda.balanceOf(reserve_address).invoke()
@@ -64,8 +130,13 @@ async def test_deposit(direct_deposit, usda, users):
 @pytest.mark.asyncio
 async def test_withdraw(direct_deposit, usda, users):
     dd, stablecoin = direct_deposit
-    ape = await users("ape")
-    amount = 5000
+    stable_symbol = felt_to_str((await stablecoin.symbol().invoke()).result.symbol)
+    ape = await users(f"{stable_symbol} ape")
+
+    usda_decimals = (await usda.decimals().invoke()).result.decimals
+    stable_decimals = (await stablecoin.decimals().invoke()).result.decimals
+
+    amount = 5000 * 10 ** stable_decimals
 
     # give some stables to ape
     await stablecoin.mint(ape.address, to_uint(amount)).invoke()
@@ -74,15 +145,21 @@ async def test_withdraw(direct_deposit, usda, users):
     await ape.send_tx(stablecoin.contract_address, "approve", [dd.contract_address, *MAX_UINT256])
     await ape.send_tx(dd.contract_address, "deposit", [*to_uint(amount)])
     tx = await usda.balanceOf(ape.address).invoke()
-    # check if, indeed, we got some USDa and no more stables
+    # check if, indeed, we got some USDa and have no more stables
     ape_usda_balance: Uint256 = tx.result.balance
     assert from_uint(ape_usda_balance) > 0
     assert (await stablecoin.balanceOf(ape.address).invoke()).result.balance == to_uint(0)
 
     # now withdraw all of it back and check result
-    await ape.send_tx(dd.contract_address, "withdraw", [*ape_usda_balance])
+    # amount has to be in the scale of stablecoin
+    withdraw_amount = int(
+        Decimal(from_uint(ape_usda_balance)) / 10 ** (usda_decimals - stable_decimals)
+    )
+    await ape.send_tx(dd.contract_address, "withdraw", [*to_uint(withdraw_amount)])
     assert (await usda.balanceOf(ape.address).invoke()).result.balance == to_uint(0)
-    assert (await stablecoin.balanceOf(ape.address).invoke()).result.balance == ape_usda_balance
+    assert (await stablecoin.balanceOf(ape.address).invoke()).result.balance == to_uint(
+        withdraw_amount
+    )
 
 
 @pytest.mark.asyncio
