@@ -7,7 +7,6 @@
 # * is there a good way to assure that amount that's passed to deposit/withdraw is already scaled? do we need to check for it even?
 # * internal functions could go to library.cairo, but then how to deal w/ @storage_vars (because internals need to r/w to them)?
 #   explore a pattern where storage would be in a separate file and namespace maybe? with dedicated getters and setters for each @storage_var
-# * USDC uses 6 decimals, DAI 18, USDa 18 - how to deal with this when depositing / withdrawing?
 # * use Safemath
 
 %lang starknet
@@ -56,6 +55,14 @@ end
 
 @event
 func TreasuryAddressChange(old_value : felt, new_value : felt):
+end
+
+@event
+func Deposit(amount : Uint256):
+end
+
+@event
+func Withdrawal(amount : Uint256):
 end
 
 #
@@ -273,7 +280,7 @@ func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     # TODO: should there be a check to see what would be the result of this mint
     #       and if it the delta is too big, revert?
 
-    let ten_thousand = 10000000000000000000000 # 10_000 * 10**18
+    let ten_thousand = 10000000000000000000000  # 10_000 * 10**18
     return (Uint256(low=ten_thousand, high=0))
 end
 
@@ -290,8 +297,6 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
     # TODO: inline comments
-
-    # TODO: assert inputs
 
     # check if can mint:
     # max_mint_amount
@@ -326,7 +331,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     IERC20Mintable.mint(contract_address=usda, recipient=reserve, amount=reserve_amount)
     IERC20Mintable.mint(contract_address=usda, recipient=treasury, amount=treasury_amount)
 
-    # TODO: emit an event
+    Deposit.emit(stablecoin_amount)
 
     return ()
 end
@@ -349,7 +354,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     IERC20Burnable.burn(contract_address=usda, owner=caller, amount=burn_amount)
     IERC20.transfer(contract_address=stablecoin, recipient=caller, amount=stablecoin_amount)
 
-    # TODO: emit an event
+    Withdrawal.emit(stablecoin_amount)
 
     return ()
 end

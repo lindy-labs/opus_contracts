@@ -99,7 +99,8 @@ async def test_deposit(direct_deposit, usda, users):
     )
 
     # deposit stables into Aura
-    await depositor.send_tx(dd.contract_address, "deposit", [*to_uint(deposit_amount)])
+    tx = await depositor.send_tx(dd.contract_address, "deposit", [*to_uint(deposit_amount)])
+    assert_event_emitted(tx, dd.contract_address, "Deposit", [*to_uint(deposit_amount)])
 
     # DD module should hold the requested amount of stablecoin
     tx = await stablecoin.balanceOf(dd.contract_address).invoke()
@@ -155,7 +156,8 @@ async def test_withdraw(direct_deposit, usda, users):
     withdraw_amount = int(
         Decimal(from_uint(ape_usda_balance)) / 10 ** (usda_decimals - stable_decimals)
     )
-    await ape.send_tx(dd.contract_address, "withdraw", [*to_uint(withdraw_amount)])
+    tx = await ape.send_tx(dd.contract_address, "withdraw", [*to_uint(withdraw_amount)])
+    assert_event_emitted(tx, dd.contract_address, "Withdrawal", [*to_uint(withdraw_amount)])
     assert (await usda.balanceOf(ape.address).invoke()).result.balance == to_uint(0)
     assert (await stablecoin.balanceOf(ape.address).invoke()).result.balance == to_uint(
         withdraw_amount
