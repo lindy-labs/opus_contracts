@@ -1,13 +1,18 @@
 # TODO:
-# * document
-#   functions
+# * write documentation
+#   functions, inline comments
 # * from the WP "stablecoins deposited this way are lent out to trusted money market protocols in order to generate yield, driving the global collateralization ratio up"
 #   as @CrisBRM said in Slack, these should be deposited to Aave and Sandclock, once they are available on StarkNet (Sandclock has priority, but Aave will prob launch sooner)
 # * we should have deploy scripts; there are interdependencies between various modules, take that into account
 # * is there a good way to assure that amount that's passed to deposit/withdraw is already scaled? do we need to check for it even?
-# * internal functions could go to library.cairo, but then how to deal w/ @storage_vars (because internals need to r/w to them)?
-#   explore a pattern where storage would be in a separate file and namespace maybe? with dedicated getters and setters for each @storage_var
 # * use Safemath
+# * should Deposit and Withdrawal events have addresses?
+
+#
+# Direct Deposit of an approved stablecoin
+# allows to mint USDa via depositing a stablecoin (DAI, USDC),
+# there's one instance of this contract deployed per stablecoin
+#
 
 %lang starknet
 
@@ -33,10 +38,6 @@ from contracts.lib.openzeppelin.access.ownable import (
     Ownable_only_owner,
     Ownable_transfer_ownership,
 )
-
-# Direct Deposit Stablecoin contract
-# allows to mint USDa via depositing a stablecoin (DAI, USDC),
-# there's one instance of this contract deployed per stablecoin
 
 # 100% in basis points
 const HUNDRED_PERCENT_BPS = 10000
@@ -226,8 +227,6 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     treasury_addr : felt,
     stability_fee : felt,
 ):
-    # TODO: assert not zeroes, assert conforming to ERC20s?
-    #       use initializable from OZ lib?
     Ownable_initializer(owner)
     DDS_initializer(stablecoin_addr, usda_addr, reserve_addr, treasury_addr, stability_fee)
     return ()
@@ -296,12 +295,10 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     stablecoin_amount : Uint256
 ):
     alloc_locals
-    # TODO: inline comments
 
-    # check if can mint:
-    # max_mint_amount
-    # collat ratio
-
+    # TODO: check if can mint:
+    #   max_mint_amount
+    #   collat ratio
     let (max_mint : Uint256) = get_max_mint_amount()
     with_attr error_message("DD: deposit amount exceeds mint limit"):
         let (is_in_limit) = uint256_le(stablecoin_amount, max_mint)
