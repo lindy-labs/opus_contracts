@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,3 +26,9 @@ jobs:
 
       - name: Lint Cairo code
         run: find contracts -type f -name '*.cairo' | xargs cairo-format -c
+
+      - name: Run black
+        run: black --check .
+
+      - name: Run flake8
+        run: flake8

@@ -17,9 +17,7 @@ class Account:
     to simplify sending TXs in tests.
     """
 
-    compiled_acconut_contract: ContractDefinition = compile_contract(
-        "contracts/lib/openzeppelin/account/Account.cairo"
-    )
+    compiled_acconut_contract: ContractDefinition = compile_contract("contracts/lib/openzeppelin/account/Account.cairo")
 
     def __init__(self, name):
         self.private_key = abs(hash(name))
@@ -42,10 +40,7 @@ class Account:
         return await self.send_txs([call_payload], max_fee)
 
     async def send_txs(self, calls: list[Call], max_fee=0):
-        calls_with_selector = [
-            (as_address(call[0]), get_selector_from_name(call[1]), call[2])
-            for call in calls
-        ]
+        calls_with_selector = [(as_address(call[0]), get_selector_from_name(call[1]), call[2]) for call in calls]
         call_array, calldata = from_call_to_call_array(calls)
 
         nonce = self.nonce
@@ -54,9 +49,7 @@ class Account:
         message_hash = hash_multicall(self.address, calls_with_selector, nonce, max_fee)
         sig_r, sig_s = sign(message_hash, self.private_key)
 
-        return await self.contract.__execute__(call_array, calldata, nonce).invoke(
-            signature=[sig_r, sig_s]
-        )
+        return await self.contract.__execute__(call_array, calldata, nonce).invoke(signature=[sig_r, sig_s])
 
 
 def from_call_to_call_array(calls):
@@ -77,7 +70,7 @@ def hash_multicall(sender, calls, nonce, max_fee):
         hash_array.append(compute_hash_on_elements(call_elements))
 
     message = [
-        str_to_felt('StarkNet Transaction'),
+        str_to_felt("StarkNet Transaction"),
         sender,
         compute_hash_on_elements(hash_array),
         nonce,
