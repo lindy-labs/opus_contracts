@@ -1,5 +1,5 @@
 black==22.*
-cairo-lang
+cairo-lang==0.8.1
 ecdsa==0.17.0
 fastecdsa==2.2.1
 flake8==4
