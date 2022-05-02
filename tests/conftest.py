@@ -45,8 +45,8 @@ def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     private key. The fixture is session-scoped and has an internal cache,
     so the same argument (user name) will return the same result.
 
-    The return value is a tuple of (signer: Signer, contract: StarknetContract)
-    useful for sending signed transactions, assigning ownership, etc.
+    The return value is an instance of Account, useful for sending
+    signed transactions, assigning ownership, etc.
     """
 
     @AsyncLRU()
