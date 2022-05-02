@@ -22,11 +22,7 @@ repos:
   hooks:
   - id: flake8
 
-- repo: local
+- repo: https://github.com/franalgaba/pre-commit-cairo
+  rev: main
   hooks:
-  - id: lint-cairo
-    name: Lint Cairo
-    description: Runs Cairo formatter and updates conflicting in place
-    files: \.(cairo)$
-    entry: cairo-format -i
-    language: system
+  - id: cairo-format
