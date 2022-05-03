@@ -1,19 +1,17 @@
 import asyncio
 from collections import namedtuple
-from typing import Callable, Tuple
+from typing import Callable
 
 from account import Account
-from utils import compile_contract, str_to_felt, Uint256
+from utils import compile_contract
 
 import pytest
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 
-MRACParameters = namedtuple(
-    "MRACParameters", ["u", "r", "y", "theta", "theta_underline", "theta_bar", "gamma", "T"]
-)
+MRACParameters = namedtuple("MRACParameters", ["u", "r", "y", "theta", "theta_underline", "theta_bar", "gamma", "T"])
 
-SCALE = 10 ** 18
+SCALE = 10**18
 
 DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
 
@@ -71,6 +69,4 @@ async def usda(starknet, users) -> StarknetContract:
 @pytest.fixture
 async def mrac_controller(starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
-    return await starknet.deploy(
-        contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS]
-    )
+    return await starknet.deploy(contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])

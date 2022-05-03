@@ -11,7 +11,7 @@ from starkware.starknet.services.api.contract_definition import ContractDefiniti
 from starkware.starknet.testing.starknet import StarknetContract
 
 
-MAX_UINT256 = (2 ** 128 - 1, 2 ** 128 - 1)
+MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0
 TRUE = 1
 FALSE = 0
