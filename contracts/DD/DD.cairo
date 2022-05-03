@@ -72,32 +72,32 @@ end
 
 # address of Aura reserve
 @storage_var
-func reserve_address() -> (addr : felt):
+func DD_reserve_address_storage() -> (addr : felt):
 end
 
 # stability fee in basis points
 @storage_var
-func stability_fee() -> (fee : felt):
+func DD_stability_fee_storage() -> (fee : felt):
 end
 
 # address of underlying stablecoin that can be directly deposited to get USDa
 @storage_var
-func stablecoin_address() -> (addr : felt):
+func DD_stablecoin_address_storage() -> (addr : felt):
 end
 
 # multiplier between stablecoin and USDa amounts
 @storage_var
-func scale_factor() -> (decimals : Uint256):
+func DD_scale_factor_storage() -> (decimals : Uint256):
 end
 
 # address of Aura treasury
 @storage_var
-func treasury_address() -> (addr : felt):
+func DD_treasury_address_storage() -> (addr : felt):
 end
 
 # address of the USDa token contract
 @storage_var
-func usda_address() -> (addr : felt):
+func DD_usda_address_storage() -> (addr : felt):
 end
 
 #
@@ -116,7 +116,7 @@ end
 func get_reserve_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     addr : felt
 ):
-    let (addr) = reserve_address.read()
+    let (addr) = DD_reserve_address_storage.read()
     return (addr)
 end
 
@@ -124,14 +124,14 @@ end
 func get_stability_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     fee : felt
 ):
-    let (fee) = stability_fee.read()
+    let (fee) = DD_stability_fee_storage.read()
     return (fee)
 end
 
 @view
 func get_stablecoin_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ) -> (addr : felt):
-    let (addr) = stablecoin_address.read()
+    let (addr) = DD_stablecoin_address_storage.read()
     return (addr)
 end
 
@@ -139,7 +139,7 @@ end
 func get_treasury_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     addr : felt
 ):
-    let (addr) = treasury_address.read()
+    let (addr) = DD_treasury_address_storage.read()
     return (addr)
 end
 
@@ -147,7 +147,7 @@ end
 func get_usda_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     addr : felt
 ):
-    let (addr) = usda_address.read()
+    let (addr) = DD_usda_address_storage.read()
     return (addr)
 end
 
@@ -172,8 +172,8 @@ func set_reserve_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
         assert_not_zero(addr)
     end
 
-    let (old) = reserve_address.read()
-    reserve_address.write(addr)
+    let (old) = DD_reserve_address_storage.read()
+    DD_reserve_address_storage.write(addr)
 
     ReserveAddressChange.emit(old, addr)
 
@@ -189,8 +189,8 @@ func set_stability_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         assert_le(fee, HUNDRED_PERCENT_BPS)
     end
 
-    let (old) = stability_fee.read()
-    stability_fee.write(fee)
+    let (old) = DD_stability_fee_storage.read()
+    DD_stability_fee_storage.write(fee)
 
     StabilityFeeChange.emit(old, fee)
 
@@ -206,8 +206,8 @@ func set_treasury_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
         assert_not_zero(addr)
     end
 
-    let (old) = treasury_address.read()
-    treasury_address.write(addr)
+    let (old) = DD_treasury_address_storage.read()
+    DD_treasury_address_storage.write(addr)
 
     TreasuryAddressChange.emit(old, addr)
 
@@ -243,7 +243,7 @@ func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     # formula (11) in the whitepaper:
     # maxDirectMintAmount(t) = (collateralPool(t) / minDirectMintRatio) - totalUSDa(t)
 
-    # let (usda_addr : felt) = usda_address.read()
+    # let (usda_addr : felt) = DD_usda_address_storage.read()
 
     # TODO: getting the total collateral of USDa is done here via a call
     #       to the USDa contract, but it's just a placeholder and could (maybe even should)
@@ -307,7 +307,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (caller : felt) = get_caller_address()
     let (recipient : felt) = get_contract_address()
-    let (stablecoin : felt) = stablecoin_address.read()
+    let (stablecoin : felt) = DD_stablecoin_address_storage.read()
 
     let (transfer_did_succeed : felt) = IERC20.transferFrom(
         contract_address=stablecoin, sender=caller, recipient=recipient, amount=stablecoin_amount
@@ -316,11 +316,11 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert transfer_did_succeed = TRUE
     end
 
-    let (scale : Uint256) = scale_factor.read()
-    let (mint_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale)
-    let (usda : felt) = usda_address.read()
-    let (reserve : felt) = reserve_address.read()
-    let (treasury : felt) = treasury_address.read()
+    let (scale_factor : Uint256) = DD_scale_factor_storage.read()
+    let (mint_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
+    let (usda : felt) = DD_usda_address_storage.read()
+    let (reserve : felt) = DD_reserve_address_storage.read()
+    let (treasury : felt) = DD_treasury_address_storage.read()
     let (caller_amount : Uint256, reserve_amount : Uint256,
         treasury_amount : Uint256) = calculate_mint_distribution(mint_amount)
 
@@ -342,11 +342,11 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ):
     alloc_locals
 
-    let (scale : Uint256) = scale_factor.read()
-    let (burn_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale)
+    let (scale_factor : Uint256) = DD_scale_factor_storage.read()
+    let (burn_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
     let (caller : felt) = get_caller_address()
-    let (usda : felt) = usda_address.read()
-    let (stablecoin : felt) = stablecoin_address.read()
+    let (usda : felt) = DD_usda_address_storage.read()
+    let (stablecoin : felt) = DD_stablecoin_address_storage.read()
 
     IERC20Burnable.burn(contract_address=usda, owner=caller, amount=burn_amount)
     IERC20.transfer(contract_address=stablecoin, recipient=caller, amount=stablecoin_amount)
@@ -365,7 +365,7 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     usda_addr : felt,
     reserve_addr : felt,
     treasury_addr : felt,
-    _stability_fee : felt,
+    stability_fee : felt,
 ):
     alloc_locals
 
@@ -377,7 +377,7 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     end
 
     with_attr error_message("DD: invalid stability fee"):
-        assert_le(_stability_fee, HUNDRED_PERCENT_BPS)
+        assert_le(stability_fee, HUNDRED_PERCENT_BPS)
     end
 
     let (stablecoin_decimals : felt) = IERC20.decimals(contract_address=stablecoin_addr)
@@ -389,14 +389,14 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     let (power) = pow(10, usda_decimals - stablecoin_decimals)
     # these three variables are only ever set once, here,
     # during the deployment of the contract
-    scale_factor.write(Uint256(low=power, high=0))
-    stablecoin_address.write(stablecoin_addr)
-    usda_address.write(usda_addr)
+    DD_scale_factor_storage.write(Uint256(low=power, high=0))
+    DD_stablecoin_address_storage.write(stablecoin_addr)
+    DD_usda_address_storage.write(usda_addr)
 
     # the rest is configurable via setters
-    reserve_address.write(reserve_addr)
-    treasury_address.write(treasury_addr)
-    stability_fee.write(_stability_fee)
+    DD_reserve_address_storage.write(reserve_addr)
+    DD_treasury_address_storage.write(treasury_addr)
+    DD_stability_fee_storage.write(stability_fee)
 
     return ()
 end
@@ -406,8 +406,8 @@ func calculate_mint_distribution{syscall_ptr : felt*, pedersen_ptr : HashBuiltin
 ) -> (to_depositor : Uint256, to_reserve : Uint256, to_treasury : Uint256):
     alloc_locals
 
-    let (stability_fee_ : felt) = stability_fee.read()
-    let (depositor_gets_bps : Uint256) = felt_to_uint(HUNDRED_PERCENT_BPS - stability_fee_)
+    let (stability_fee : felt) = DD_stability_fee_storage.read()
+    let (depositor_gets_bps : Uint256) = felt_to_uint(HUNDRED_PERCENT_BPS - stability_fee)
     let (depositor_amount_mul : Uint256, carry : Uint256) = uint256_mul(
         mint_amount, depositor_gets_bps
     )
