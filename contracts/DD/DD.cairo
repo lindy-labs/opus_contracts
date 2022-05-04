@@ -18,7 +18,12 @@
 
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, assert_le
+from starkware.cairo.common.math import (
+    assert_not_zero,
+    assert_le,
+    assert_in_range,
+    unsigned_div_rem,
+)
 from starkware.cairo.common.pow import pow
 from starkware.cairo.common.uint256 import (
     Uint256,
@@ -47,6 +52,10 @@ const HUNDRED_PERCENT_BPS = 10000
 #
 
 @event
+func CollateralizationCoefficientChange(old_value : felt, new_value : felt):
+end
+
+@event
 func ReserveAddressChange(old_value : felt, new_value : felt):
 end
 
@@ -69,6 +78,13 @@ end
 #
 # Storage
 #
+
+# value in basis points that the target collateralization ratio is
+# multiplied by to get minimal ratio when direct minting is enabled
+# the value has to be between 10% and 50%
+@storage_var
+func DD_collateralization_coefficient_storage() -> (coefficient : felt):
+end
 
 # address of Aura reserve
 @storage_var
@@ -103,6 +119,14 @@ end
 #
 # Getters
 #
+
+@view
+func get_collateralization_coefficient{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}() -> (coefficient : felt):
+    let (coefficient) = DD_collateralization_coefficient_storage.read()
+    return (coefficient)
+end
 
 @view
 func get_owner_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
@@ -154,6 +178,24 @@ end
 #
 # Setters
 #
+
+@external
+func set_collateralization_coefficient{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
+}(value : felt):
+    Ownable_only_owner()
+    with_attr error_message("DD: value {value} out of bounds"):
+        # value is in basis points, has to be between 10% and 50% (inclusive)
+        assert_in_range(value, 1000, 5001)
+    end
+
+    let (old) = DD_collateralization_coefficient_storage.read()
+    DD_collateralization_coefficient_storage.write(value)
+
+    CollateralizationCoefficientChange.emit(old, value)
+
+    return ()
+end
 
 @external
 func set_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(addr : felt):
@@ -226,9 +268,17 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     reserve_addr : felt,
     treasury_addr : felt,
     stability_fee : felt,
+    collateralization_coefficient : felt,
 ):
     Ownable_initializer(owner)
-    DDS_initializer(stablecoin_addr, usda_addr, reserve_addr, treasury_addr, stability_fee)
+    DDS_initializer(
+        stablecoin_addr,
+        usda_addr,
+        reserve_addr,
+        treasury_addr,
+        stability_fee,
+        collateralization_coefficient,
+    )
     return ()
 end
 
@@ -240,45 +290,35 @@ end
 func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     amount : Uint256
 ):
-    # formula (11) in the whitepaper:
-    # maxDirectMintAmount(t) = (collateralPool(t) / minDirectMintRatio) - totalUSDa(t)
+    # let (usda_address : felt) = DD_usda_address_storage.read()
 
-    # let (usda_addr : felt) = DD_usda_address_storage.read()
+    # # TODO: getting the total collateral of USDa is done here via a call
+    # #       to the USDa contract, but it's just a placeholder and could (maybe even should)
+    # #       be changed; I just used it as a temporary solution during dev, don't
+    # #       be afraid to make it better -- milan
+    # let (total_collateral : felt) = IUSDa.get_total_collateral(contract_address=usda_address)
 
-    # TODO: getting the total collateral of USDa is done here via a call
-    #       to the USDa contract, but it's just a placeholder and could (maybe even should)
-    #       be changed; I just used it as a temporary solution during dev, don't
-    #       be afraid to make it better -- milan
-    # let (total_collateral : felt) = IUSDa.get_total_collateral(contract_address=usda_addr)
-
-    # TODO: what unit is this in? based on that, do the +25% calculation below
-    # correctly; currently assuming basis points
-    # let (collateralization_ratio : felt) = IUSDa.get_collateralization_ratio(
-    #     contract_address=usda_addr
+    # # TODO: what unit is this in? based on that, do the +25% calculation below
+    # # correctly; currently assuming basis points
+    # let (target_collateralization_ratio : felt) = IUSDa.get_target_collateralization_ratio(
+    #     contract_address=usda_address
     # )
 
-    # from the WP:
-    # "using the Direct Deposit method is reserved for periods where capital is not being
-    # utilized efficiently, when USDa’s collateralization ratio is equal or greater than 25%
-    # of the target collateralization ratio"
-    # the 25% value should be configurable
-    # the value is the threshold *above* the ideal rate of 150%, as such, it should fall into
-    # a range, of 10-50; talk to Cris for details
-
-    # rounding down here is ok
-    # let (min_direct_mint_ratio : felt, _) = unsigned_div_rem(
-    #     collateralization_ratio * (HUNDRED_PERCENT_BPS + 2500), HUNDRED_PERCENT_BPS
-    # )
-
+    # let (collateralization_coefficient : felt) = DD_collateralization_coefficient_storage.read()
     # let (usda_balance_uint : Uint256) = IERC20.totalSupply(contract_address=usda_addr)
     # let (usda_balance : felt) = uint_to_felt_unchecked(usda_balance_uint)
 
-    # TODO: finish this calc, return a Uint256
-    # let (max_mint : felt) = (collateralization_ratio * min_direct_mint_ratio) - usda_balance
+    # let (amount : felt) = calculate_max_mint_amount(
+    #     total_collateral,
+    #     target_collateralization_ratio,
+    #     collateralization_coefficient,
+    #     usda_balance,
+    # )
+    # let (amount_uint : Uint256) = uint_to_felt_unchecked(amount)
+    # return (amount_uint)
 
-    # TODO: should there be a check to see what would be the result of this mint
-    #       and if it the delta is too big, revert?
-
+    # temporary during dev only, once the above TODOs
+    # are resolved, do it properly
     let ten_thousand = 10000000000000000000000  # 10_000 * 10**18
     return (Uint256(low=ten_thousand, high=0))
 end
@@ -299,18 +339,24 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # TODO: check if can mint:
     #   max_mint_amount
     #   collat ratio
+    #   should there be a check to see what would be the result of this mint
+    #   and if it the delta is too big, revert?
+
     let (max_mint : Uint256) = get_max_mint_amount()
     with_attr error_message("DD: deposit amount exceeds mint limit"):
         let (is_in_limit) = uint256_le(stablecoin_amount, max_mint)
-        assert is_in_limit = 1
+        assert is_in_limit = TRUE
     end
 
-    let (caller : felt) = get_caller_address()
-    let (recipient : felt) = get_contract_address()
-    let (stablecoin : felt) = DD_stablecoin_address_storage.read()
+    let (caller_address : felt) = get_caller_address()
+    let (recipient_address : felt) = get_contract_address()
+    let (stablecoin_address : felt) = DD_stablecoin_address_storage.read()
 
     let (transfer_did_succeed : felt) = IERC20.transferFrom(
-        contract_address=stablecoin, sender=caller, recipient=recipient, amount=stablecoin_amount
+        contract_address=stablecoin_address,
+        sender=caller_address,
+        recipient=recipient_address,
+        amount=stablecoin_amount,
     )
     with_attr error_message("DD: transferFrom failed"):
         assert transfer_did_succeed = TRUE
@@ -318,15 +364,21 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (scale_factor : Uint256) = DD_scale_factor_storage.read()
     let (mint_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
-    let (usda : felt) = DD_usda_address_storage.read()
-    let (reserve : felt) = DD_reserve_address_storage.read()
-    let (treasury : felt) = DD_treasury_address_storage.read()
+    let (usda_address : felt) = DD_usda_address_storage.read()
+    let (reserve_address : felt) = DD_reserve_address_storage.read()
+    let (treasury_address : felt) = DD_treasury_address_storage.read()
     let (caller_amount : Uint256, reserve_amount : Uint256,
         treasury_amount : Uint256) = calculate_mint_distribution(mint_amount)
 
-    IERC20Mintable.mint(contract_address=usda, recipient=caller, amount=caller_amount)
-    IERC20Mintable.mint(contract_address=usda, recipient=reserve, amount=reserve_amount)
-    IERC20Mintable.mint(contract_address=usda, recipient=treasury, amount=treasury_amount)
+    IERC20Mintable.mint(
+        contract_address=usda_address, recipient=caller_address, amount=caller_amount
+    )
+    IERC20Mintable.mint(
+        contract_address=usda_address, recipient=reserve_address, amount=reserve_amount
+    )
+    IERC20Mintable.mint(
+        contract_address=usda_address, recipient=treasury_address, amount=treasury_amount
+    )
 
     Deposit.emit(stablecoin_amount)
 
@@ -344,12 +396,14 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (scale_factor : Uint256) = DD_scale_factor_storage.read()
     let (burn_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
-    let (caller : felt) = get_caller_address()
-    let (usda : felt) = DD_usda_address_storage.read()
-    let (stablecoin : felt) = DD_stablecoin_address_storage.read()
+    let (caller_address : felt) = get_caller_address()
+    let (usda_address : felt) = DD_usda_address_storage.read()
+    let (stablecoin_address : felt) = DD_stablecoin_address_storage.read()
 
-    IERC20Burnable.burn(contract_address=usda, owner=caller, amount=burn_amount)
-    IERC20.transfer(contract_address=stablecoin, recipient=caller, amount=stablecoin_amount)
+    IERC20Burnable.burn(contract_address=usda_address, owner=caller_address, amount=burn_amount)
+    IERC20.transfer(
+        contract_address=stablecoin_address, recipient=caller_address, amount=stablecoin_amount
+    )
 
     Withdrawal.emit(stablecoin_amount)
 
@@ -361,27 +415,33 @@ end
 #
 
 func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    stablecoin_addr : felt,
-    usda_addr : felt,
-    reserve_addr : felt,
-    treasury_addr : felt,
+    stablecoin_address : felt,
+    usda_address : felt,
+    reserve_address : felt,
+    treasury_address : felt,
     stability_fee : felt,
+    collateralization_coefficient : felt,
 ):
     alloc_locals
 
     with_attr error_message("DD: address cannot be zero"):
-        assert_not_zero(stablecoin_addr)
-        assert_not_zero(usda_addr)
-        assert_not_zero(reserve_addr)
-        assert_not_zero(treasury_addr)
+        assert_not_zero(stablecoin_address)
+        assert_not_zero(usda_address)
+        assert_not_zero(reserve_address)
+        assert_not_zero(treasury_address)
     end
 
     with_attr error_message("DD: invalid stability fee"):
         assert_le(stability_fee, HUNDRED_PERCENT_BPS)
     end
 
-    let (stablecoin_decimals : felt) = IERC20.decimals(contract_address=stablecoin_addr)
-    let (usda_decimals : felt) = IERC20.decimals(contract_address=usda_addr)
+    with_attr error_message("DD: collateralization coefficient is out of bounds"):
+        # value is in basis points, has to be between 10% and 50% (inclusive)
+        assert_in_range(collateralization_coefficient, 1000, 5001)
+    end
+
+    let (stablecoin_decimals : felt) = IERC20.decimals(contract_address=stablecoin_address)
+    let (usda_decimals : felt) = IERC20.decimals(contract_address=usda_address)
     with_attr error_message("DD: incompatible stablecoin"):
         assert_le(stablecoin_decimals, usda_decimals)
     end
@@ -390,15 +450,38 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     # these three variables are only ever set once, here,
     # during the deployment of the contract
     DD_scale_factor_storage.write(Uint256(low=power, high=0))
-    DD_stablecoin_address_storage.write(stablecoin_addr)
-    DD_usda_address_storage.write(usda_addr)
+    DD_stablecoin_address_storage.write(stablecoin_address)
+    DD_usda_address_storage.write(usda_address)
 
     # the rest is configurable via setters
-    DD_reserve_address_storage.write(reserve_addr)
-    DD_treasury_address_storage.write(treasury_addr)
+    DD_reserve_address_storage.write(reserve_address)
+    DD_treasury_address_storage.write(treasury_address)
     DD_stability_fee_storage.write(stability_fee)
+    DD_collateralization_coefficient_storage.write(collateralization_coefficient)
 
     return ()
+end
+
+func calculate_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    total_collateral : felt,
+    target_collateralization_ratio : felt,
+    collateralization_coefficient : felt,
+    usda_balance : felt,
+) -> (amount : felt):
+    alloc_locals
+
+    # formula (11) in the whitepaper:
+    # maxDirectMintAmount(t) = (collateralPool(t) / minDirectMintRatio) - totalUSDa(t)
+    # where minDirectMintRatio is a function of the target ratio and collateralization factor
+
+    # rounding down here is ok
+    let (min_direct_mint_ratio : felt, _) = unsigned_div_rem(
+        target_collateralization_ratio * (HUNDRED_PERCENT_BPS + collateralization_coefficient),
+        HUNDRED_PERCENT_BPS,
+    )
+
+    let max_mint_amount : felt = (total_collateral * min_direct_mint_ratio) - usda_balance
+    return (max_mint_amount)
 end
 
 func calculate_mint_distribution{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(

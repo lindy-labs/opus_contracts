@@ -6,6 +6,6 @@ func felt_to_uint{range_check_ptr}(value : felt) -> (value : Uint256):
     return (Uint256(low=low, high=high))
 end
 
-func uint_to_felt_unchecked{range_check_ptr}(value : Uint256) -> (value : felt):
+func uint_to_felt_unchecked(value : Uint256) -> (value : felt):
     return (value.low + value.high * 2 ** 128)
 end
