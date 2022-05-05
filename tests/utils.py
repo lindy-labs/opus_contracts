@@ -63,9 +63,7 @@ def assert_event_emitted(tx_exec_info, from_address, name, data=None):
         )
     else:
         key = get_selector_from_name(name)
-        assert any(
-            [e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys]
-        )
+        assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
 
 def here() -> str:
