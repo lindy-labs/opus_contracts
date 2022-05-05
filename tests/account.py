@@ -51,7 +51,7 @@ class Account:
 
         try:
             return await self.contract.__execute__(call_array, calldata, nonce).invoke(signature=[sig_r, sig_s])
-        except:
+        except:  # noqa: E722
             # when a TX throws, it's not accepted hence the
             # nonce doesn't get incremented in the account
             # contract so we have to decrease it here as well
