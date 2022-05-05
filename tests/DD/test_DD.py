@@ -22,7 +22,7 @@ from utils import (
 RESERVE_ADDR = 1
 TREASURY_ADDR = 2
 STABILITY_FEE = 100
-COLLATERALIZATION_COEF = 2000  # 20%
+THRESHOLD_BUFFER = 2000  # 20%
 HUNDRED_PERCENT_BPS = 10_000
 
 #
@@ -57,7 +57,7 @@ async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[Starknet
             RESERVE_ADDR,
             TREASURY_ADDR,
             STABILITY_FEE,
-            COLLATERALIZATION_COEF,
+            THRESHOLD_BUFFER,
         ],
     )
 
@@ -155,27 +155,29 @@ async def test_getters_setters(direct_deposit, usda, users):
     new_reserve_address = 42**2
     new_treasury_address = 42**3
     new_stability_fee = 40
-    new_collateralization_coef = 4500
+    new_threshold_buffer = 4500
 
-    # test getting and setting collateralization coefficient
-    assert (await dd.get_collateralization_coefficient().invoke()).result.coefficient == COLLATERALIZATION_COEF
-    tx = await dd_owner.send_tx(dd, "set_collateralization_coefficient", [new_collateralization_coef])
+    # test getting and setting threshold buffer
+    assert (await dd.get_threshold_buffer().invoke()).result.value == THRESHOLD_BUFFER
+    tx = await dd_owner.send_tx(dd, "set_threshold_buffer", [new_threshold_buffer])
     assert_event_emitted(
         tx,
         dd.contract_address,
-        "CollateralizationCoefficientChange",
-        [COLLATERALIZATION_COEF, new_collateralization_coef],
+        "ThresholdBufferChange",
+        [THRESHOLD_BUFFER, new_threshold_buffer],
     )
-    assert (await dd.get_collateralization_coefficient().invoke()).result.coefficient == new_collateralization_coef
+    assert (await dd.get_threshold_buffer().invoke()).result.value == new_threshold_buffer
     # test setting the limits
-    min_c_coef = 1000
-    max_c_coef = 5000
-    await dd_owner.send_tx(dd, "set_collateralization_coefficient", [min_c_coef])
-    await dd_owner.send_tx(dd, "set_collateralization_coefficient", [max_c_coef])
+    min_threshold_buffer = 1000
+    max_threshold_buffer = 5000
+    await dd_owner.send_tx(dd, "set_threshold_buffer", [min_threshold_buffer])
+    await dd_owner.send_tx(dd, "set_threshold_buffer", [max_threshold_buffer])
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_collateralization_coefficient", [10])
+        await dd_owner.send_tx(dd, "set_threshold_buffer", [10])
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_collateralization_coefficient", [5001])
+        await dd_owner.send_tx(dd, "set_threshold_buffer", [5001])
+    with pytest.raises(StarkException):
+        await rektooor.send_tx(dd, "set_threshold_buffer", [THRESHOLD_BUFFER])
 
     # tests getting and setting reserve address
     assert (await dd.get_reserve_address().invoke()).result.addr == RESERVE_ADDR
