@@ -22,7 +22,7 @@ from utils import (
 RESERVE_ADDR = 1
 TREASURY_ADDR = 2
 STABILITY_FEE = 100
-COLLATERALIZATION_COEF = 2500  # 25%
+COLLATERALIZATION_COEF = 2000  # 20%
 HUNDRED_PERCENT_BPS = 10_000
 
 #
@@ -73,7 +73,6 @@ async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[Starknet
 async def test_deposit(direct_deposit, usda, users):
     dd, stablecoin = direct_deposit
     stable_symbol = felt_to_str((await stablecoin.symbol().invoke()).result.symbol)
-    dd_owner = await users("dd owner")
     depositor = await users(f"{stable_symbol} depositor")
 
     usda_decimals = (await usda.decimals().invoke()).result.decimals
@@ -168,6 +167,11 @@ async def test_getters_setters(direct_deposit, usda, users):
         [COLLATERALIZATION_COEF, new_collateralization_coef],
     )
     assert (await dd.get_collateralization_coefficient().invoke()).result.coefficient == new_collateralization_coef
+    # test setting the limits
+    min_c_coef = 1000
+    max_c_coef = 5000
+    await dd_owner.send_tx(dd, "set_collateralization_coefficient", [min_c_coef])
+    await dd_owner.send_tx(dd, "set_collateralization_coefficient", [max_c_coef])
     with pytest.raises(StarkException):
         await dd_owner.send_tx(dd, "set_collateralization_coefficient", [10])
     with pytest.raises(StarkException):
