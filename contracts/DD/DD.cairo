@@ -52,7 +52,7 @@ const HUNDRED_PERCENT_BPS = 10000
 #
 
 @event
-func CollateralizationCoefficientChange(old_value : felt, new_value : felt):
+func ThresholdBufferChange(old_value : felt, new_value : felt):
 end
 
 @event
@@ -83,7 +83,7 @@ end
 # multiplied by to get minimal ratio when direct minting is enabled
 # the value has to be between 10% and 50%
 @storage_var
-func DD_collateralization_coefficient_storage() -> (coefficient : felt):
+func DD_threshold_buffer_storage() -> (value : felt):
 end
 
 # address of Aura reserve
@@ -121,11 +121,11 @@ end
 #
 
 @view
-func get_collateralization_coefficient{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-}() -> (coefficient : felt):
-    let (coefficient) = DD_collateralization_coefficient_storage.read()
-    return (coefficient)
+func get_threshold_buffer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    value : felt
+):
+    let (value) = DD_threshold_buffer_storage.read()
+    return (value)
 end
 
 @view
@@ -180,19 +180,19 @@ end
 #
 
 @external
-func set_collateralization_coefficient{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-}(value : felt):
+func set_threshold_buffer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    value : felt
+):
     Ownable_only_owner()
     with_attr error_message("DD: value {value} out of bounds"):
         # value is in basis points, has to be between 10% and 50% (inclusive)
         assert_in_range(value, 1000, 5001)
     end
 
-    let (old) = DD_collateralization_coefficient_storage.read()
-    DD_collateralization_coefficient_storage.write(value)
+    let (old) = DD_threshold_buffer_storage.read()
+    DD_threshold_buffer_storage.write(value)
 
-    CollateralizationCoefficientChange.emit(old, value)
+    ThresholdBufferChange.emit(old, value)
 
     return ()
 end
@@ -268,16 +268,11 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     reserve_addr : felt,
     treasury_addr : felt,
     stability_fee : felt,
-    collateralization_coefficient : felt,
+    threshold_buffer : felt,
 ):
     Ownable_initializer(owner)
     DDS_initializer(
-        stablecoin_addr,
-        usda_addr,
-        reserve_addr,
-        treasury_addr,
-        stability_fee,
-        collateralization_coefficient,
+        stablecoin_addr, usda_addr, reserve_addr, treasury_addr, stability_fee, threshold_buffer
     )
     return ()
 end
@@ -304,14 +299,14 @@ func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     #     contract_address=usda_address
     # )
 
-    # let (collateralization_coefficient : felt) = DD_collateralization_coefficient_storage.read()
+    # let (threshold_buffer : felt) = DD_threshold_buffer_storage.read()
     # let (usda_balance_uint : Uint256) = IERC20.totalSupply(contract_address=usda_addr)
     # let (usda_balance : felt) = uint_to_felt_unchecked(usda_balance_uint)
 
     # let (amount : felt) = calculate_max_mint_amount(
     #     total_collateral,
     #     target_collateralization_ratio,
-    #     collateralization_coefficient,
+    #     threshold_buffer,
     #     usda_balance,
     # )
     # let (amount_uint : Uint256) = uint_to_felt_unchecked(amount)
@@ -420,7 +415,7 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     reserve_address : felt,
     treasury_address : felt,
     stability_fee : felt,
-    collateralization_coefficient : felt,
+    threshold_buffer : felt,
 ):
     alloc_locals
 
@@ -435,9 +430,9 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
         assert_le(stability_fee, HUNDRED_PERCENT_BPS)
     end
 
-    with_attr error_message("DD: collateralization coefficient is out of bounds"):
+    with_attr error_message("DD: threshold buffer is out of bounds"):
         # value is in basis points, has to be between 10% and 50% (inclusive)
-        assert_in_range(collateralization_coefficient, 1000, 5001)
+        assert_in_range(threshold_buffer, 1000, 5001)
     end
 
     let (stablecoin_decimals : felt) = IERC20.decimals(contract_address=stablecoin_address)
@@ -457,7 +452,7 @@ func DDS_initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     DD_reserve_address_storage.write(reserve_address)
     DD_treasury_address_storage.write(treasury_address)
     DD_stability_fee_storage.write(stability_fee)
-    DD_collateralization_coefficient_storage.write(collateralization_coefficient)
+    DD_threshold_buffer_storage.write(threshold_buffer)
 
     return ()
 end
@@ -465,7 +460,7 @@ end
 func calculate_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     total_collateral : felt,
     target_collateralization_ratio : felt,
-    collateralization_coefficient : felt,
+    threshold_buffer : felt,
     usda_balance : felt,
 ) -> (amount : felt):
     alloc_locals
@@ -476,7 +471,7 @@ func calculate_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 
     # rounding down here is ok
     let (min_direct_mint_ratio : felt, _) = unsigned_div_rem(
-        target_collateralization_ratio * (HUNDRED_PERCENT_BPS + collateralization_coefficient),
+        target_collateralization_ratio * (HUNDRED_PERCENT_BPS + threshold_buffer),
         HUNDRED_PERCENT_BPS,
     )
 
