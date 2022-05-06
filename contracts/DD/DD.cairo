@@ -360,11 +360,13 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (scale_factor : Uint256) = DD_scale_factor_storage.read()
     let (mint_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
+    let (stability_fee : felt) = DD_stability_fee_storage.read()
+    let (caller_amount : Uint256, reserve_amount : Uint256,
+        treasury_amount : Uint256) = calculate_mint_distribution(stability_fee, mint_amount)
+
     let (usda_address : felt) = DD_usda_address_storage.read()
     let (reserve_address : felt) = DD_reserve_address_storage.read()
     let (treasury_address : felt) = DD_treasury_address_storage.read()
-    let (caller_amount : Uint256, reserve_amount : Uint256,
-        treasury_amount : Uint256) = calculate_mint_distribution(mint_amount)
 
     IERC20Mintable.mint(
         contract_address=usda_address, recipient=caller_address, amount=caller_amount
@@ -473,11 +475,10 @@ func calculate_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 end
 
 func calculate_mint_distribution{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    mint_amount : Uint256
+    stability_fee : felt, mint_amount : Uint256
 ) -> (to_depositor : Uint256, to_reserve : Uint256, to_treasury : Uint256):
     alloc_locals
 
-    let (stability_fee : felt) = DD_stability_fee_storage.read()
     let (depositor_gets_bps : Uint256) = felt_to_uint(HUNDRED_PERCENT_BPS - stability_fee)
     let (depositor_amount_mul : Uint256, carry : Uint256) = uint256_mul(
         mint_amount, depositor_gets_bps
