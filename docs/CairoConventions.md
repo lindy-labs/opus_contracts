@@ -65,3 +65,8 @@ with_attr error_message("direct_deposit: transferFrom failed":
     assert was_transfered = TRUE
 end
 ```
+
+## Address Variables
+Add the `_address` suffix to any variable holding an address. Unlike Solidity, Cairo doesn't yet have an address type, and so adding this suffix makes it clearer to the reader what the variable is and does. 
+
+`const usdc = 0x...` becomes `const usdc_address = 0x...` and so on. 
