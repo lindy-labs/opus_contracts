@@ -168,14 +168,14 @@ async def test_getters_setters(direct_deposit, usda, users):
     )
     assert (await dd.get_threshold_buffer().invoke()).result.value == new_threshold_buffer
     # test setting the limits
-    min_threshold_buffer = 1000
-    max_threshold_buffer = 5000
+    min_threshold_buffer = 500
+    max_threshold_buffer = 10_000
     await dd_owner.send_tx(dd, "set_threshold_buffer", [min_threshold_buffer])
     await dd_owner.send_tx(dd, "set_threshold_buffer", [max_threshold_buffer])
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_threshold_buffer", [10])
+        await dd_owner.send_tx(dd, "set_threshold_buffer", [min_threshold_buffer - 1])
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_threshold_buffer", [5001])
+        await dd_owner.send_tx(dd, "set_threshold_buffer", [max_threshold_buffer + 1])
     with pytest.raises(StarkException):
         await rektooor.send_tx(dd, "set_threshold_buffer", [THRESHOLD_BUFFER])
 

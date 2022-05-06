@@ -44,8 +44,11 @@ from contracts.lib.openzeppelin.access.ownable import (
     Ownable_transfer_ownership,
 )
 
-# 100% in basis points
-const HUNDRED_PERCENT_BPS = 10000
+const HUNDRED_PERCENT_BPS = 10000  # 100%
+# bounds used to check the allowed value of the
+# threshold when direct deposit minting is permitted
+const THRESHOLD_BUFFER_LOWER_BOUND = 500  # 5%
+const THRESHOLD_BUFFER_UPPER_BOUND = 10000  # 100%
 
 #
 # Events
@@ -81,7 +84,7 @@ end
 
 # value in basis points that the target collateralization ratio is
 # multiplied by to get minimal ratio when direct minting is enabled
-# the value has to be between 10% and 50%
+# the value has to be in allowed range
 @storage_var
 func DD_threshold_buffer_storage() -> (value : felt):
 end
@@ -185,8 +188,9 @@ func set_threshold_buffer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
 ):
     Ownable_only_owner()
     with_attr error_message("DD: value {value} out of bounds"):
-        # value is in basis points, has to be between 10% and 50% (inclusive)
-        assert_in_range(value, 1000, 5001)
+        # value is in basis points, has to be between lower and
+        # upper bound (inclusive, that's why the +1)
+        assert_in_range(value, THRESHOLD_BUFFER_LOWER_BOUND, THRESHOLD_BUFFER_UPPER_BOUND + 1)
     end
 
     let (old) = DD_threshold_buffer_storage.read()
@@ -304,10 +308,7 @@ func get_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     # let (usda_balance : felt) = uint_to_felt_unchecked(usda_balance_uint)
 
     # let (amount : felt) = calculate_max_mint_amount(
-    #     total_collateral,
-    #     target_collateralization_ratio,
-    #     threshold_buffer,
-    #     usda_balance,
+    #     total_collateral, target_collateralization_ratio, threshold_buffer, usda_balance
     # )
     # let (amount_uint : Uint256) = uint_to_felt_unchecked(amount)
     # return (amount_uint)
@@ -387,8 +388,6 @@ end
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     stablecoin_amount : Uint256
 ):
-    alloc_locals
-
     let (scale_factor : Uint256) = DD_scale_factor_storage.read()
     let (burn_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
     let (caller_address : felt) = get_caller_address()
@@ -463,19 +462,13 @@ func calculate_max_mint_amount{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     threshold_buffer : felt,
     usda_balance : felt,
 ) -> (amount : felt):
-    alloc_locals
-
     # formula (11) in the whitepaper:
     # maxDirectMintAmount(t) = (collateralPool(t) / minDirectMintRatio) - totalUSDa(t)
-    # where minDirectMintRatio is a function of the target ratio and collateralization factor
+    # where minDirectMintRatio is a function of the target c-ratio and a buffer
 
-    # rounding down here is ok
-    let (min_direct_mint_ratio : felt, _) = unsigned_div_rem(
-        target_collateralization_ratio * (HUNDRED_PERCENT_BPS + threshold_buffer),
-        HUNDRED_PERCENT_BPS,
-    )
-
+    let min_direct_mint_ratio : felt = target_collateralization_ratio + threshold_buffer
     let max_mint_amount : felt = (total_collateral * min_direct_mint_ratio) - usda_balance
+
     return (max_mint_amount)
 end
 
