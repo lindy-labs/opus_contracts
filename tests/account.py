@@ -49,7 +49,14 @@ class Account:
         message_hash = hash_multicall(self.address, calls_with_selector, nonce, max_fee)
         sig_r, sig_s = sign(message_hash, self.private_key)
 
-        return await self.contract.__execute__(call_array, calldata, nonce).invoke(signature=[sig_r, sig_s])
+        try:
+            return await self.contract.__execute__(call_array, calldata, nonce).invoke(signature=[sig_r, sig_s])
+        except:  # noqa: E722
+            # when a TX throws, it's not accepted hence the
+            # nonce doesn't get incremented in the account
+            # contract so we have to decrease it here as well
+            self.nonce -= 1
+            raise
 
 
 def from_call_to_call_array(calls):

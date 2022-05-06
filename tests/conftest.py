@@ -1,10 +1,12 @@
 import asyncio
 from collections import namedtuple
-from typing import Callable
+import decimal
+from typing import Awaitable, Callable
 
 from account import Account
-from utils import compile_contract
+from utils import Uint256, compile_contract, str_to_felt
 
+from cache import AsyncLRU
 import pytest
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
@@ -14,6 +16,11 @@ MRACParameters = namedtuple("MRACParameters", ["u", "r", "y", "theta", "theta_un
 SCALE = 10**18
 
 DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
+
+
+@pytest.fixture(autouse=True, scope="session")
+def setup():
+    decimal.getcontext().prec = 18
 
 
 @pytest.fixture(scope="session")
@@ -27,8 +34,9 @@ async def starknet() -> Starknet:
     return starknet
 
 
+# TODO: figure out a good way how not to use magic string constants for common users
 @pytest.fixture(scope="session")
-def users(starknet: Starknet) -> Callable[[str], Account]:
+def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     """
     A factory fixture that creates users.
 
@@ -37,32 +45,49 @@ def users(starknet: Starknet) -> Callable[[str], Account]:
     private key. The fixture is session-scoped and has an internal cache,
     so the same argument (user name) will return the same result.
 
-    The return value is a tuple of (signer: Signer, contract: StarknetContract)
-    useful for sending signed transactions, assigning ownership, etc.
+    The return value is an instance of Account, useful for sending
+    signed transactions, assigning ownership, etc.
     """
 
-    # can't use functools.cache because it doesn't
-    # play well with async
-    cache = {}
-
-    async def get_or_create_user(name):
-        hit = cache.get(name)
-        if hit:
-            return hit
-
+    @AsyncLRU()
+    async def create_user(name):
         account = Account(name)
         await account.deploy(starknet)
-        cache[name] = account
-
         return account
 
-    return get_or_create_user
+    return create_user
+
+
+@pytest.fixture(scope="session")
+def tokens(
+    starknet: Starknet,
+) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
+    """
+    A factory fixture that creates a mock ERC20 token.
+
+    The returned factory function requires 5 input arguments to deploy
+    a new token: name (str), symbol (str), decimals (int),
+    initial supply (Uint256) and recipient (int). It returns an instance
+    of StarknetContract.
+    """
+    contract = compile_contract("tests/mocks/ERC20.cairo")
+
+    async def create_token(name: str, symbol: str, decimals: int, initial_supply: tuple[int, int], recipient: int):
+        name = str_to_felt(name)
+        symbol = str_to_felt(symbol)
+        token = await starknet.deploy(
+            contract_def=contract,
+            constructor_calldata=[name, symbol, decimals, *initial_supply, recipient],
+        )
+        return token
+
+    return create_token
 
 
 @pytest.fixture
 async def usda(starknet, users) -> StarknetContract:
-    contract = compile_contract("contracts/USDa/USDa.cairo")
     owner = await users("usda owner")
+    contract = compile_contract("contracts/USDa/USDa.cairo")
     return await starknet.deploy(contract_def=contract, constructor_calldata=[owner.address])
 
 

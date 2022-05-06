@@ -1,6 +1,5 @@
-# TODO:
-# * no allowance checks and changes if allowance is max(uint256)
-# * use access roles instead of ownable for mint and burn
+# a mock ERC20 StarkNet contract only for testing purposes
+# some functions are intentionally unsafe (e.g. anyone can mint)
 
 %lang starknet
 
@@ -21,16 +20,15 @@ from contracts.lib.openzeppelin.token.erc20.library import (
     ERC20_decreaseAllowance,
     ERC20_transfer,
     ERC20_transferFrom,
-    ERC20_mint,
-    ERC20_burn,
+    ERC20_mint
 )
 
-from contracts.lib.openzeppelin.access.ownable import Ownable_initializer, Ownable_only_owner
-
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(owner : felt):
-    ERC20_initializer('USDa', 'USDa', 18)
-    Ownable_initializer(owner)
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    name : felt, symbol : felt, decimals : felt, initial_supply : Uint256, recipient : felt
+):
+    ERC20_initializer(name, symbol, decimals)
+    ERC20_mint(recipient, initial_supply)
     return ()
 end
 
@@ -128,18 +126,8 @@ end
 
 @external
 func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    to : felt, amount : Uint256
-) -> (success : felt):
-    # Ownable_only_owner()
-    ERC20_mint(to, amount)
-    return (TRUE)
-end
-
-@external
-func burn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner : felt, amount : Uint256
-) -> (success : felt):
-    # Ownable_only_owner()
-    ERC20_burn(owner, amount)
-    return (TRUE)
+    recipient : felt, amount : Uint256
+):
+    ERC20_mint(recipient, amount)
+    return ()
 end

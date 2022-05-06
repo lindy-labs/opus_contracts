@@ -7,6 +7,10 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
+@event
+func OwnerChange(old_value : felt, new_value : felt):
+end
+
 @storage_var
 func Ownable_owner() -> (owner : felt):
 end
@@ -42,6 +46,11 @@ func Ownable_transfer_ownership{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
         assert_not_zero(new_owner)
     end
     Ownable_only_owner()
+
+    let (old_owner) = Ownable_owner.read()
     Ownable_owner.write(new_owner)
+
+    OwnerChange.emit(old_owner, new_owner)
+
     return (new_owner=new_owner)
 end

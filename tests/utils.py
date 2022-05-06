@@ -1,5 +1,6 @@
 """Utilities for testing Cairo contracts."""
 
+from collections import namedtuple
 from functools import cache
 import os
 from typing import Union
@@ -17,7 +18,8 @@ TRUE = 1
 FALSE = 0
 
 
-Uint256 = tuple[int, int]
+Uint256 = namedtuple("Uint256", "low high")
+Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]
 Calldata = list[int]  # payload arguments sent with a function call
 Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
@@ -40,24 +42,28 @@ def felt_to_str(felt: int) -> str:
 
 
 def to_uint(a: int) -> Uint256:
-    """Takes in value, returns uint256-ish tuple."""
-    return (a & ((1 << 128) - 1), a >> 128)
+    """Takes in value, returns Uint256 tuple."""
+    return Uint256(low=(a & ((1 << 128) - 1)), high=(a >> 128))
 
 
-def from_uint(uint: Uint256) -> int:
+def from_uint(uint: Uint256like) -> int:
     """Takes in uint256-ish tuple, returns value."""
     return uint[0] + (uint[1] << 128)
 
 
-def assert_event_emitted(tx_exec_info, from_address, name, data):
-    assert (
-        Event(
-            from_address=from_address,
-            keys=[get_selector_from_name(name)],
-            data=data,
+def assert_event_emitted(tx_exec_info, from_address, name, data=None):
+    if data is not None:
+        assert (
+            Event(
+                from_address=from_address,
+                keys=[get_selector_from_name(name)],
+                data=data,
+            )
+            in tx_exec_info.raw_events
         )
-        in tx_exec_info.raw_events
-    )
+    else:
+        key = get_selector_from_name(name)
+        assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
 
 def here() -> str:
