@@ -22,7 +22,10 @@ repos:
   hooks:
   - id: flake8
 
-- repo: https://github.com/franalgaba/pre-commit-cairo
-  rev: main
+- repo: local
   hooks:
   - id: cairo-format
+    name: cairo-format
+    language: system
+    entry: cairo-format -i
+    files: \.cairo$
