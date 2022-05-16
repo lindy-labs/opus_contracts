@@ -361,8 +361,9 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (scale_factor : Uint256) = DD_scale_factor_storage.read()
     let (mint_amount : Uint256, _) = uint256_mul(stablecoin_amount, scale_factor)
     let (stability_fee : felt) = DD_stability_fee_storage.read()
-    let (caller_amount : Uint256, reserve_amount : Uint256,
-        treasury_amount : Uint256) = calculate_mint_distribution(stability_fee, mint_amount)
+    let (
+        caller_amount : Uint256, reserve_amount : Uint256, treasury_amount : Uint256
+    ) = calculate_mint_distribution(stability_fee, mint_amount)
 
     let (usda_address : felt) = DD_usda_address_storage.read()
     let (reserve_address : felt) = DD_reserve_address_storage.read()
