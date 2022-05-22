@@ -23,7 +23,7 @@ pre-commit install
 
 ### Pull requests and code reviews
 
-Most contributions should happen via a pull request. Unless it's trivial change,
+Most contributions should happen via a pull request. Unless it's a trivial change,
 opening a PR is always preferrable - besides the obvious benefits, it is a
 chance for all involved parties to learn something.
 
@@ -47,7 +47,7 @@ Commit messages should follow the [conventional commits](https://www.conventiona
 
 As of yet, Cairo doesn't have a good way how to install libraries into a project.
 They way we solved it is just to simply copy over the whole library we want to
-use into a its own directory under `contracts/lib`. The reasoning behind this
+use into its own directory under `contracts/lib`. The reasoning behind this
 approach is that we all always work on the same codebase, the repo is ready to
 be used just with a single `git clone`, and we can easily incorporate our own
 changes into the libraries themselves.
