@@ -353,3 +353,21 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     return ()
 end
+
+# Liquidate a Trove by transferring the debt and gage to the appropriate module
+# Checks should be performed beforehand by the module calling this function
+func liquidate_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt
+):
+    assert_auth()
+
+    # Update Trove information
+    let (old_trove_info) = get_troves(user_address, trove_id)
+    let new_trove_info = Trove(last=old_trove_info.last, debt=0)
+
+    # TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
+
+    # TODO Iterate over gages and transfer balance to the appropriate module
+
+    return ()
+end
