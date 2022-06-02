@@ -4,60 +4,54 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.shared.types import (
-    Trove, 
-    Gage, 
-    Point
-)
+from contracts.shared.types import Trove, Gage, Point
 #
 # Constants
 #
 
 #
 # Events
-# 
-
-@event 
-func Authorized( address : felt ):
-end 
-
-@event 
-func Revoked( address : felt ):
-end
-
-@event 
-func GageUpdated( gage_id : felt, updated_gage : Gage ):
-end
-
-@event 
-func NumGagesUpdated( new : felt ):
-end
-
-@event 
-func TroveUpdated( address : felt, trove_id : felt, updated_trove : Trove ):
-end 
+#
 
 @event
-func DepositUpdated( address : felt, trove_id : felt, new_amount : felt ):
+func Authorized(address : felt):
 end
 
-@event 
-func SeriesIncremented( gage_id : felt, new_len : felt, new_point : Point ):
+@event
+func Revoked(address : felt):
 end
 
-@event 
-func CeilingUpdated( new : felt ):
-end 
+@event
+func GageUpdated(gage_id : felt, updated_gage : Gage):
+end
 
-@event 
-func TaxUpdated( new : felt ):
-end 
+@event
+func NumGagesUpdated(num : felt):
+end
 
-@event 
+@event
+func TroveUpdated(address : felt, trove_id : felt, updated_trove : Trove):
+end
+
+@event
+func DepositUpdated(address : felt, trove_id : felt, new_amount : felt):
+end
+
+@event
+func SeriesIncremented(gage_id : felt, new_len : felt, new_point : Point):
+end
+
+@event
+func CeilingUpdated(ceiling : felt):
+end
+
+@event
+func TaxUpdated(tax : felt):
+end
+
+@event
 func Killed():
 end
-
-
 
 #
 # Auth
@@ -69,29 +63,24 @@ end
 
 # Similar to onlyOwner
 func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-	let (c) = get_caller_address()
-	let (is_authed) = auth.read(c)
-	assert is_authed = TRUE
+    let (c) = get_caller_address()
+    let (is_authed) = auth.read(c)
+    assert is_authed = TRUE
+    return ()
 end
 
 func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt):
-	assert_auth()
-	auth.write(address, TRUE)
+    assert_auth()
+    auth.write(address, TRUE)
     Authorized.emit(address)
+    return ()
 end
 
-func revoke(address : felt):
-	assert_auth()
-	auth.write(address, FALSE)
+func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt):
+    assert_auth()
+    auth.write(address, FALSE)
     Revoked.emit(address)
-end
-
-@event
-func Authorized(address : felt):
-end
-
-@event
-func Revoked(address : felt):
+    return ()
 end
 
 #
@@ -114,11 +103,11 @@ end
 
 # Keeps track of how much of each gage has been deposited into each Trove
 @storage_var
-func deposits(address : felt, trove_id : felt, gage_id : felt) -> (amount : felt):
+func deposited(address : felt, trove_id : felt, gage_id : felt) -> (amount : felt):
 end
 
 # Keeps track of the price history of each Gage
-@storage_var 
+@storage_var
 func series(gage_id : felt, index : felt) -> (point : Point):
 end
 
@@ -128,90 +117,111 @@ end
 
 # Total debt ceiling
 @storage_var
-func ceiling () -> (ceiling : felt):
+func ceiling() -> (ceiling : felt):
 end
 
 # Fee on yield
 @storage_var
-func tax () -> (admin_fee : felt):
+func tax() -> (admin_fee : felt):
 end
 
 @storage_var
 func is_live() -> (is_live : felt):
 end
 
-
 #
 # Getters
 #
 
-func get_troves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address: felt, trove_id : felt) -> (trove : Trove):
-	return troves.read(address, trove_id)
+func get_troves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    address : felt, trove_id : felt
+) -> (trove : Trove):
+    return troves.read(address, trove_id)
 end
 
-func get_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id : felt) -> (gage : Gage):
-	return gages.read(gage_id)
+func get_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt
+) -> (gage : Gage):
+    return gages.read(gage_id)
 end
 
-func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (num : felt):
-	return num_gages.read()
+func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    num : felt
+):
+    return num_gages.read()
 end
 
-func get_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt, trove_id : felt, gage_id : felt) -> (amount : felt):
+func get_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    address : felt, trove_id : felt, gage_id : felt
+) -> (amount : felt):
     return deposited.read(address, trove_id, gage_id)
 end
 
-
-
-func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id, index) -> (point : Point):
-	return series.read(gage_id, index)
+func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id, index
+) -> (point : Point):
+    return series.read(gage_id, index)
 end
 
-func get_series_len{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id : felt) -> (len : felt):
-	return series_len.read(gage_id)
+func get_series_len{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt
+) -> (len : felt):
+    return series_len.read(gage_id)
 end
 
-func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ceiling : felt):
-	return ceiling.read()
+func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    ceiling : felt
+):
+    return ceiling.read()
 end
 
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax : felt):
-	return tax.read()
+    return tax.read()
 end
 
-func get_is_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (is_live : felt):
-	return is_live.read()
+func get_is_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    is_live : felt
+):
+    return is_live.read()
 end
 
 #
 # Setters - Basic setters with no additional logic besides an auth-check and event emission
 #
 
-func set_gages{syscall : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id : felt, gage : Gage):
+func set_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, gage : Gage
+):
     assert_auth()
 
     gages.write(gage_id, gage)
+    return ()
 end
 
-func set_num_gages{syscall : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(num : felt):
+func set_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(num : felt):
     assert_auth()
 
     num_gages.write(num)
     NumGagesUpdated.emit(num)
+    return ()
 end
 
-func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_ceiling : felt):
-	assert_auth()
+func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    new_ceiling : felt
+):
+    assert_auth()
 
-	ceiling.write(new_ceiling)
+    ceiling.write(new_ceiling)
     CeilingUpdated.emit(new_ceiling)
+    return ()
 end
 
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax : felt):
-	assert_auth()
+    assert_auth()
 
-	tax.write(new_tax)
+    tax.write(new_tax)
     TaxUpdated.emit(new_tax)
+    return ()
 end
 
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
@@ -219,32 +229,31 @@ func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
 
     is_live.write(FALSE)
     Killed.emit()
+    return ()
 end
 
-
-
-
 # Constructor
-@constructor 
+@constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-
     let (c) = get_caller_address()
 
     auth.write(c, TRUE)
     is_live.write(TRUE)
+    return ()
 end
-
 
 #
 # Core functions
 #
 
-
 # Appends a new point to the Series of the specified Gage
-func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id : felt, point : Point):
+func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, point : Point
+):
     assert_auth()
 
     let (current_len) = series_len.read(gage_id)
     series.write(gage_id, current_len, point)
-    series_len.write(current_len + 1)
+    series_len.write(gage_id, current_len + 1)
+    return ()
 end
