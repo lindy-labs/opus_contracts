@@ -24,8 +24,12 @@ end
 func Revoked(address : felt):
 end
 
-@event
-func GageUpdated(gage_id : felt, updated_gage : Gage):
+@event 
+func GageTotalUpdated(gage_id : felt, new_total : felt):
+end 
+
+@event 
+func GageSafetyUpdated(gage_id : felt, new_safety : felt):
 end
 
 @event
@@ -45,7 +49,7 @@ func TroveUpdated(address : felt, trove_id : felt, updated_trove : Trove):
 end
 
 @event
-func DepositUpdated(address : felt, trove_id : felt, new_amount : felt):
+func DepositUpdated(address : felt, trove_id : felt, gage_id : felt, new_amount : felt):
 end
 
 @event
@@ -282,6 +286,8 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_len) = series_len.read(gage_id)
     series.write(gage_id, current_len, point)
     series_len.write(gage_id, current_len + 1)
+
+    SeriesIncremented.emit(gage_id, current_len + 1, point)
     return ()
 end
 
@@ -297,15 +303,18 @@ func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 ):
     assert_auth()
 
-    # Get gage balance of source trove
+    # Update gage balance of source trove
     let (src_gage_balance) = deposited.read(src_address, src_trove_id, gage_id)
     let (new_src_balance) = WadRay.sub_unsigned(src_gage_balance, gage_amount)
     deposited.write(src_address, src_trove_id, gage_id, new_src_balance)
 
-    # Get gage balance of destination trove
+    # Update gage balance of destination trove
     let (dst_gage_balance) = deposited.read(dst_address, dst_trove_id, gage_id)
     let (new_dst_balance) = WadRay.add_unsigned(dst_gage_balance, gage_amount)
     deposited.write(dst_address, dst_trove_id, gage_id, new_dst_balance)
+
+    DepositUpdated.emit(src_address, src_trove_id, gage_id, new_src_balance)
+    DepositUpdated.emit(dst_address, dst_trove_id, gage_id, new_dst_balance)
 
     return ()
 end
@@ -328,6 +337,9 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     let (new_trove_balance) = WadRay.add(trove_gage_balance, gage_amount)
     deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
+    GageTotalUpdated.emit(gage_id, new_total)
+    DepositUpdated.emit(user_address, trove_id, gage_id, new_trove_balance)
+
     return ()
 end
 
@@ -349,6 +361,8 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     let (new_trove_balance) = WadRay.sub(trove_gage_balance, gage_amount)
     deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
+    GageTotalUpdated.emit(gage_id, new_total)
+    DepositUpdated.emit(user_address, trove_id, gage_id, new_trove_balance)
     return ()
 end
 
@@ -377,7 +391,7 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 ):
     assert_auth()
 
-    # Get current Trove information
+    # Update trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
     let (new_debt) = WadRay.sub(old_trove_info.debt, repay_amount)
     let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
