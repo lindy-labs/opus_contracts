@@ -235,10 +235,10 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_multiplier : felt):
-	assert_auth()
+    assert_auth()
 
 	multiplier.write(new_multiplier)
-    TaxUpdated.emit(new_multiplier)
+    MultiplierUpdated.emit(new_multiplier)
 end
 
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax : felt):
