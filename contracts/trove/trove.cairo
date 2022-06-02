@@ -319,3 +319,37 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     return ()
 end
+
+# Draw a specified amount of synthetic for a Trove
+# Checks should be performed beforehand by the module calling this function
+func draw_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, draw_amount : felt
+):
+    assert_auth()
+
+    # Get current Trove information
+    let (old_trove_info) = get_troves(user_address, trove_id)
+    let new_trove_info = Trove(last=old_trove_info.last, debt=old_trove_info.debt + draw_amount)
+    troves.write(user_address, trove_id, new_trove_info)
+
+    # TODO Transfer the synthetic to the user address
+
+    return ()
+end
+
+# Repay a specified amount of synthetic for a Trove
+# Checks should be performed beforehand by the module calling this function
+func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, repay_amount : felt
+):
+    assert_auth()
+
+    # Get current Trove information
+    let (old_trove_info) = get_troves(user_address, trove_id)
+    let new_trove_info = Trove(last=old_trove_info.last, debt=old_trove_info.debt - repay_amount)
+    troves.write(user_address, trove_id, new_trove_info)
+
+    # TODO Transfer the synthetic from the user address
+
+    return ()
+end
