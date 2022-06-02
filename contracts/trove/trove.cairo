@@ -30,6 +30,14 @@ end
 func NumGagesUpdated(num : felt):
 end
 
+@event 
+func MultiplierUpdated( new : felt ):
+end 
+
+@event 
+func TaxUpdated( new : felt ):
+end 
+
 @event
 func TroveUpdated(address : felt, trove_id : felt, updated_trove : Trove):
 end
@@ -121,6 +129,11 @@ end
 func ceiling() -> (ceiling : felt):
 end
 
+# Global interest rate multiplier
+@storage_var 
+func multiplier () -> (rate : felt):
+end
+
 # Fee on yield
 @storage_var
 func tax() -> (admin_fee : felt):
@@ -176,6 +189,10 @@ func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ceiling.read()
 end
 
+func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (multiplier : felt):
+	return multiplier.read()
+end
+
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax : felt):
     return tax.read()
 end
@@ -215,6 +232,13 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     ceiling.write(new_ceiling)
     CeilingUpdated.emit(new_ceiling)
     return ()
+end
+
+func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_multiplier : felt):
+	assert_auth()
+
+	multiplier.write(new_multiplier)
+    TaxUpdated.emit(new_multiplier)
 end
 
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax : felt):
@@ -371,3 +395,4 @@ func liquidate_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     return ()
 end
+
