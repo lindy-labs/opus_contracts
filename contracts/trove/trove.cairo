@@ -2,6 +2,7 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.shared.types import Trove, Gage, Point
@@ -255,5 +256,66 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_len) = series_len.read(gage_id)
     series.write(gage_id, current_len, point)
     series_len.write(gage_id, current_len + 1)
+    return ()
+end
+
+# Move Gage between two Troves
+# Checks should be performed beforehand by the module calling this function
+func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt,
+    gage_amount : felt,
+    src_address : felt,
+    src_trove_id : felt,
+    dst_address : felt,
+    dst_trove_id : felt,
+):
+    assert_auth()
+
+    # Get gage balance of source trove
+    let (src_gage_balance) = deposited.read(src_address, src_trove_id, gage_id)
+    deposited.write(src_address, src_trove_id, gage_id, src_gage_balance - gage_amount)
+
+    # Get gage balance of destination trove
+    let (dst_gage_balance) = deposited.read(dst_address, dst_trove_id, gage_id)
+    deposited.write(dst_address, dst_trove_id, gage_id, dst_gage_balance + gage_amount)
+
+    return ()
+end
+
+# Deposit a specified amount of a Gage into a Trove
+# Checks should be performed beforehand by the module calling this function
+func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
+):
+    assert_auth()
+
+    # Update gage balance of system
+    let (old_gage_info) = get_gages(gage_id)
+    let new_gage_info = Gage(total=old_gage_info.total + gage_amount, safety=old_gage_info.safety)
+    gages.write(gage_id, new_gage_info)
+
+    # Update gage balance of trove
+    let (trove_gage_balance) = deposited.read(user_address, trove_id, gage_id)
+    deposited.write(user_address, trove_id, gage_id, trove_gage_balance + gage_amount)
+
+    return ()
+end
+
+# Withdraw a specified amount of a Gage from a Trove
+# Checks should be performed beforehand by the module calling this function
+func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
+):
+    assert_auth()
+
+    # Update gage balance of system
+    let (old_gage_info) = get_gages(gage_id)
+    let new_gage_info = Gage(total=old_gage_info.total - gage_amount, safety=old_gage_info.safety)
+    gages.write(gage_id, new_gage_info)
+
+    # Update gage balance of trove
+    let (trove_gage_balance) = deposited.read(user_address, trove_id, gage_id)
+    deposited.write(user_address, trove_id, gage_id, trove_gage_balance - gage_amount)
+
     return ()
 end
