@@ -6,6 +6,8 @@ from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.shared.types import Trove, Gage, Point
+from contracts.shared.wad_ray import WadRay
+
 #
 # Constants
 #
@@ -110,12 +112,12 @@ end
 func num_gages() -> (num : felt):
 end
 
-# Keeps track of how much of each gage has been deposited into each Trove
+# Keeps track of how much of each gage has been deposited into each Trove - wad
 @storage_var
 func deposited(address : felt, trove_id : felt, gage_id : felt) -> (amount : felt):
 end
 
-# Keeps track of the price history of each Gage
+# Keeps track of the price history of each Gage - ray
 @storage_var
 func series(gage_id : felt, index : felt) -> (point : Point):
 end
@@ -124,17 +126,17 @@ end
 func series_len(gage_id : felt) -> (len : felt):
 end
 
-# Total debt ceiling
+# Total debt ceiling - wad
 @storage_var
 func ceiling() -> (ceiling : felt):
 end
 
-# Global interest rate multiplier
+# Global interest rate multiplier - ray
 @storage_var 
 func multiplier () -> (rate : felt):
 end
 
-# Fee on yield
+# Fee on yield - ray
 @storage_var
 func tax() -> (admin_fee : felt):
 end
@@ -297,11 +299,13 @@ func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Get gage balance of source trove
     let (src_gage_balance) = deposited.read(src_address, src_trove_id, gage_id)
-    deposited.write(src_address, src_trove_id, gage_id, src_gage_balance - gage_amount)
+    let (new_src_balance) = WadRay.sub_unsigned(src_gage_balance, gage_amount)
+    deposited.write(src_address, src_trove_id, gage_id, new_src_balance)
 
     # Get gage balance of destination trove
     let (dst_gage_balance) = deposited.read(dst_address, dst_trove_id, gage_id)
-    deposited.write(dst_address, dst_trove_id, gage_id, dst_gage_balance + gage_amount)
+    let (new_dst_balance) = WadRay.add_unsigned(dst_gage_balance, gage_amount)
+    deposited.write(dst_address, dst_trove_id, gage_id, new_dst_balance)
 
     return ()
 end
@@ -315,12 +319,14 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
-    let new_gage_info = Gage(total=old_gage_info.total + gage_amount, safety=old_gage_info.safety)
+    let (new_total) = WadRay.add(old_gage_info.total, gage_amount)
+    let new_gage_info = Gage(total=new_total, safety=old_gage_info.safety)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
     let (trove_gage_balance) = deposited.read(user_address, trove_id, gage_id)
-    deposited.write(user_address, trove_id, gage_id, trove_gage_balance + gage_amount)
+    let (new_trove_balance) = WadRay.add(trove_gage_balance, gage_amount)
+    deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
     return ()
 end
@@ -334,26 +340,29 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
-    let new_gage_info = Gage(total=old_gage_info.total - gage_amount, safety=old_gage_info.safety)
+    let (new_total) = WadRay.sub(old_gage_info.total, gage_amount)
+    let new_gage_info = Gage(total=new_total, safety=old_gage_info.safety)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
     let (trove_gage_balance) = deposited.read(user_address, trove_id, gage_id)
-    deposited.write(user_address, trove_id, gage_id, trove_gage_balance - gage_amount)
+    let (new_trove_balance) = WadRay.sub(trove_gage_balance, gage_amount)
+    deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
     return ()
 end
 
-# Draw a specified amount of synthetic for a Trove
+# Mint a specified amount of synthetic for a Trove
 # Checks should be performed beforehand by the module calling this function
-func draw_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, draw_amount : felt
+func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, mint_amount : felt
 ):
     assert_auth()
 
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
-    let new_trove_info = Trove(last=old_trove_info.last, debt=old_trove_info.debt + draw_amount)
+    let (new_debt) = WadRay.add(old_trove_info.debt, mint_amount)
+    let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
 
     # TODO Transfer the synthetic to the user address
@@ -370,7 +379,8 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
-    let new_trove_info = Trove(last=old_trove_info.last, debt=old_trove_info.debt - repay_amount)
+    let (new_debt) = WadRay.sub(old_trove_info.debt, repay_amount)
+    let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
 
     # TODO Transfer the synthetic from the user address

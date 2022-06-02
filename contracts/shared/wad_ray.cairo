@@ -19,12 +19,13 @@ namespace WadRay:
     const RAY_ONE = RAY_SCALE
     const WAD_ONE = WAD_SCALE
 
-    func assert_wad(n):
+    # Reverts if `n` overflows or underflows
+    func assert_valid(n):
         assert_le(n, BOUND)
         assert_le(-BOUND, n)
     end
 
-    func assert_wad_unsigned(n):
+    func assert_valid_unsigned(n):
         assert_le(n, BOUND)
         assert_le(0, n)
     end
@@ -32,45 +33,39 @@ namespace WadRay:
     func floor {range_check_ptr} (n) -> (res):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
         let floored = n - mod_val
-        assert_wad(floored)
+        assert_valid(floored)
         return (res = floored)
     end
 
     func ceil {range_check_ptr} (n) -> (res):
         let (int_val, mod_val) = signed_div_rem(x, WAD_ONE, BOUND)
         let ceiled = (int_val + 1) * WAD_ONE
-        assert_wad(ceiled)
+        assert_valid(ceiled)
         return (res = ceiled)
     end
 
     func add {range_check_ptr} (a, b) -> (res):
         let sum = a + b
-        assert_wad(sum)
-        return (res = sum)
-    end
-
-    func add_unsigned {range_check_ptr} (a, b) -> (res):
-        let sum = a + b
-        assert_wad_unsigned(sum)
+        assert_valid(sum)
         return (res = sum)
     end
 
     func sub {range_check_ptr} (a, b) -> (res):
         let diff = a - b
-        assert_wad(diff)
+        assert_valid(diff)
         return (res = diff)
     end
 
     func sub_unsigned {range_check_ptr} (a, b) -> (res):
         let diff = a - b
-        assert_wad_unsigned(diff)
+        assert_valid_unsigned(diff)
         return (res = diff)
     end
 
     func wmul {range_check_ptr} (a, b) -> (res):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, SCALE, BOUND)
-        assert_wad(scaled_prod)
+        assert_valid(scaled_prod)
         return (res = scaled_prod)
     end
 
@@ -86,7 +81,7 @@ namespace WadRay:
         let (div_sign) = sign(b)
         tempvar prod = a * SCALE
         let (res_u, _) = signed_div_rem(prod, div, BOUND)
-        assert_wad_unsigned(res_u)
+        assert_valid_unsigned(res_u)
         return (res = res_u * div_sign)
     end
 
@@ -105,7 +100,7 @@ namespace WadRay:
     func unsigned_div {range_check_ptr} (a, b) -> (res):
         tempvar product = a * SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
-        assert_wad(q)
+        assert_valid(q)
         return (res = q)
     end
 
@@ -130,14 +125,14 @@ namespace WadRay:
 
     func from_uint {range_check_ptr} (n: Uint256) -> (res):
         assert n.high = 0
-        assert_wad(n.low)
+        assert_valid(n.low)
 
         return (res = n.low)
     end
 
     func to_wad(n) -> (res):
         let n_wad = n * SCALE
-        assert_wad(n_wad)
+        assert_valid(n_wad)
         return (res = n_wad)
     end 
 
