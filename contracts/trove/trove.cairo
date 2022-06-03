@@ -24,11 +24,11 @@ end
 func Revoked(address : felt):
 end
 
-@event 
+@event
 func GageTotalUpdated(gage_id : felt, new_total : felt):
-end 
+end
 
-@event 
+@event
 func GageSafetyUpdated(gage_id : felt, new_safety : felt):
 end
 
@@ -36,13 +36,13 @@ end
 func NumGagesUpdated(num : felt):
 end
 
-@event 
-func MultiplierUpdated( new : felt ):
-end 
+@event
+func MultiplierUpdated(new_multiplier : felt):
+end
 
-@event 
-func TaxUpdated( new : felt ):
-end 
+@event
+func TaxUpdated(new_tax : felt):
+end
 
 @event
 func TroveUpdated(address : felt, trove_id : felt, updated_trove : Trove):
@@ -58,10 +58,6 @@ end
 
 @event
 func CeilingUpdated(ceiling : felt):
-end
-
-@event
-func TaxUpdated(tax : felt):
 end
 
 @event
@@ -136,8 +132,8 @@ func ceiling() -> (ceiling : felt):
 end
 
 # Global interest rate multiplier - ray
-@storage_var 
-func multiplier () -> (rate : felt):
+@storage_var
+func multiplier() -> (rate : felt):
 end
 
 # Fee on yield - ray
@@ -195,8 +191,10 @@ func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ceiling.read()
 end
 
-func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (multiplier : felt):
-	return multiplier.read()
+func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    multiplier : felt
+):
+    return multiplier.read()
 end
 
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax : felt):
@@ -240,11 +238,14 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
-func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_multiplier : felt):
+func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    new_multiplier : felt
+):
     assert_auth()
 
-	multiplier.write(new_multiplier)
+    multiplier.write(new_multiplier)
     MultiplierUpdated.emit(new_multiplier)
+    return ()
 end
 
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax : felt):
@@ -419,4 +420,3 @@ func liquidate_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     return ()
 end
-
