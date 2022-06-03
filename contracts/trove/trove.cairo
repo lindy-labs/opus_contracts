@@ -327,6 +327,12 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 ):
     assert_auth()
 
+    # Check system is live
+    let (live) = is_live.read()
+    with_attr error_message("Trove: System is not live"):
+        assert live = TRUE
+    end
+
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, gage_amount)
@@ -351,6 +357,12 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 ):
     assert_auth()
 
+    # Check system is live
+    let (live) = is_live.read()
+    with_attr error_message("Trove: System is not live"):
+        assert live = TRUE
+    end
+
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.sub(old_gage_info.total, gage_amount)
@@ -374,6 +386,12 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 ):
     assert_auth()
 
+    # Check system is live
+    let (live) = is_live.read()
+    with_attr error_message("Trove: System is not live"):
+        assert live = TRUE
+    end
+
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
     let (new_debt) = WadRay.add(old_trove_info.debt, mint_amount)
@@ -392,6 +410,12 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 ):
     assert_auth()
 
+    # Check system is live
+    let (live) = is_live.read()
+    with_attr error_message("Trove: System is not live"):
+        assert live = TRUE
+    end
+
     # Update trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
     let (new_debt) = WadRay.sub(old_trove_info.debt, repay_amount)
@@ -403,9 +427,9 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     return ()
 end
 
-# Liquidate a Trove by transferring the debt and gage to the appropriate module
+# Seize a Trove for liquidation by transferring the debt and gage to the appropriate module
 # Checks should be performed beforehand by the module calling this function
-func liquidate_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func seize_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ):
     assert_auth()
