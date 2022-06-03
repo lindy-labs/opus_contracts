@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_not_zero, assert_le
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.shared.types import Trove, Gage, Point
@@ -30,6 +30,10 @@ end
 
 @event
 func GageSafetyUpdated(gage_id : felt, new_safety : felt):
+end
+
+@event
+func SyntheticTotalUpdated(new_total : felt):
 end
 
 @event
@@ -117,6 +121,11 @@ end
 func deposited(address : felt, trove_id : felt, gage_id : felt) -> (amount : felt):
 end
 
+# Total amount of synthetic minted
+@storage_var
+func synthetic() -> (total : felt):
+end
+
 # Keeps track of the price history of each Gage - ray
 @storage_var
 func series(gage_id : felt, index : felt) -> (point : Point):
@@ -171,6 +180,12 @@ func get_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     address : felt, trove_id : felt, gage_id : felt
 ) -> (amount : felt):
     return deposited.read(address, trove_id, gage_id)
+end
+
+func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    amount : felt
+):
+    return synthetic.read()
 end
 
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -393,6 +408,18 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         assert live = TRUE
     end
 
+    # Check that debt ceiling has not been reached
+    let (current_system_debt) = synthetic.read()
+    let new_system_debt = current_system_debt + mint_amount
+    let (debt_ceiling) = ceiling.read()
+
+    with_attr error_message("Trove: Debt ceiling reached"):
+        assert_le(new_system_debt, debt_ceiling)
+    end
+
+    # Update system debt
+    synthetic.write(new_system_debt)
+
     # TODO Check for safety of Trove
     # Calculate the sum of (Gage balance * Gage safety price) for all Gages
     # Assert that new debt is lower than this sum
@@ -405,10 +432,16 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     # TODO Transfer the synthetic to the user address
 
+    # Events
+
+    SyntheticTotalUpdated.emit(new_system_debt)
+    TroveUpdated.emit(user_address, trove_id, new_trove_info)
+
     return ()
 end
 
 # Repay a specified amount of synthetic for a Trove
+# The module calling this function should check that `repay_amount` does not exceed Trove's debt.
 func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, repay_amount : felt
 ):
@@ -420,6 +453,11 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
         assert live = TRUE
     end
 
+    # Update system debt
+    let (current_system_debt) = synthetic.read()
+    let new_system_debt = current_system_debt - repay_amount
+    synthetic.write(new_system_debt)
+
     # Update trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
     let (new_debt) = WadRay.sub(old_trove_info.debt, repay_amount)
@@ -427,6 +465,11 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     troves.write(user_address, trove_id, new_trove_info)
 
     # TODO Transfer the synthetic from the user address
+
+    # Events
+
+    SyntheticTotalUpdated.emit(new_system_debt)
+    TroveUpdated.emit(user_address, trove_id, new_trove_info)
 
     return ()
 end
