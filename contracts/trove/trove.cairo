@@ -321,7 +321,6 @@ func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 # Deposit a specified amount of a Gage into a Trove
-# Checks should be performed beforehand by the module calling this function
 func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
 ):
@@ -351,7 +350,6 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 end
 
 # Withdraw a specified amount of a Gage from a Trove
-# Checks should be performed beforehand by the module calling this function
 func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
 ):
@@ -362,6 +360,10 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     with_attr error_message("Trove: System is not live"):
         assert live = TRUE
     end
+
+    # TODO Check for safety of Trove
+    # Calculate the updated sum of (Gage balance * Gage safety price) for all Gages
+    # Assert that debt is lower than this sum
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
@@ -380,7 +382,6 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 end
 
 # Mint a specified amount of synthetic for a Trove
-# Checks should be performed beforehand by the module calling this function
 func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, mint_amount : felt
 ):
@@ -391,6 +392,10 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     with_attr error_message("Trove: System is not live"):
         assert live = TRUE
     end
+
+    # TODO Check for safety of Trove
+    # Calculate the sum of (Gage balance * Gage safety price) for all Gages
+    # Assert that new debt is lower than this sum
 
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
@@ -404,7 +409,6 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 # Repay a specified amount of synthetic for a Trove
-# Checks should be performed beforehand by the module calling this function
 func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, repay_amount : felt
 ):
