@@ -368,6 +368,8 @@ end
 func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
 ):
+    alloc_locals
+
     assert_auth()
 
     # Check system is live
@@ -375,10 +377,6 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     with_attr error_message("Trove: System is not live"):
         assert live = TRUE
     end
-
-    # TODO Check for safety of Trove
-    # Calculate the updated sum of (Gage balance * Gage safety price) for all Gages
-    # Assert that debt is lower than this sum
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
@@ -391,6 +389,18 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     let (new_trove_balance) = WadRay.sub(trove_gage_balance, gage_amount)
     deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
+    # Check for safety of Trove
+    # Calculate the updated sum of (Gage balance * Gage safety price) for all Gages
+    # Assert that debt is lower than this sum
+    let (gage_count) = num_gages.read()
+    let (trove_safety_val) = calculate_trove_value(user_address, trove_id, gage_count, 0)
+    let (current_trove) = troves.read(user_address, trove_id)
+    let current_debt = current_trove.debt
+
+    with_attr error_message("Trove: Trove is at risk after gage withdrawal"):
+        assert_le(current_debt, trove_safety_val)
+    end
+
     GageTotalUpdated.emit(gage_id, new_total)
     DepositUpdated.emit(user_address, trove_id, gage_id, new_trove_balance)
     return ()
@@ -400,6 +410,8 @@ end
 func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, mint_amount : felt
 ):
+    alloc_locals
+
     assert_auth()
 
     # Check system is live
@@ -420,15 +432,21 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # Update system debt
     synthetic.write(new_system_debt)
 
-    # TODO Check for safety of Trove
-    # Calculate the sum of (Gage balance * Gage safety price) for all Gages
-    # Assert that new debt is lower than this sum
-
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
     let (new_debt) = WadRay.add(old_trove_info.debt, mint_amount)
     let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
+
+    # Check for safety of Trove
+    # Calculate the sum of (Gage balance * Gage safety price) for all Gages
+    # Assert that updated debt is lower than this sum
+    let (gage_count) = num_gages.read()
+    let (trove_safety_val) = calculate_trove_value(user_address, trove_id, gage_count, 0)
+
+    with_attr error_message("Trove: Trove is at risk after minting synthetic"):
+        assert_le(new_debt, trove_safety_val)
+    end
 
     # TODO Transfer the synthetic to the user address
 
@@ -492,4 +510,39 @@ func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # TODO Events?
 
     return ()
+end
+
+#
+# Internal
+#
+
+func calculate_trove_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
+) -> (new_cumulative : felt):
+    # Calculate a trove's value based on the sum of (Gage balance * Gage safety price) for all Gages
+    # in descending order of Gage ID starting from total number of gages.
+
+    # Terminate when Gage ID reaches 0
+    if gage_id == 0:
+        return (cumulative)
+    end
+
+    # Calculate current gage value
+    let (current_gage_balance) = deposited.read(user_address, trove_id, gage_id)
+    let (current_gage) = gages.read(gage_id)
+    let current_gage_safety_price = current_gage.safety
+    let (current_gage_value) = WadRay.wmul_unchecked(
+        current_gage_balance, current_gage_safety_price
+    )
+
+    # Update cumulative value
+    let (updated_cumulative) = WadRay.add_unsigned(cumulative, current_gage_value)
+
+    # Recursive call
+    return calculate_trove_value(
+        user_address=user_address,
+        trove_id=trove_id,
+        gage_id=gage_id - 1,
+        cumulative=updated_cumulative,
+    )
 end
