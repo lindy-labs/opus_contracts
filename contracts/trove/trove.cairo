@@ -342,10 +342,7 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     assert_auth()
 
     # Check system is live
-    let (live) = is_live.read()
-    with_attr error_message("Trove: System is not live"):
-        assert live = TRUE
-    end
+    assert_system_live()
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
@@ -373,10 +370,7 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     assert_auth()
 
     # Check system is live
-    let (live) = is_live.read()
-    with_attr error_message("Trove: System is not live"):
-        assert live = TRUE
-    end
+    assert_system_live()
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
@@ -415,10 +409,7 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     assert_auth()
 
     # Check system is live
-    let (live) = is_live.read()
-    with_attr error_message("Trove: System is not live"):
-        assert live = TRUE
-    end
+    assert_system_live()
 
     # Check that debt ceiling has not been reached
     let (current_system_debt) = synthetic.read()
@@ -466,10 +457,7 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     assert_auth()
 
     # Check system is live
-    let (live) = is_live.read()
-    with_attr error_message("Trove: System is not live"):
-        assert live = TRUE
-    end
+    assert_system_live()
 
     # Update system debt
     let (current_system_debt) = synthetic.read()
@@ -515,6 +503,15 @@ end
 #
 # Internal
 #
+
+func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    # Check system is live
+    let (live) = is_live.read()
+    with_attr error_message("Trove: System is not live"):
+        assert live = TRUE
+    end
+    return ()
+end
 
 func calculate_trove_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
