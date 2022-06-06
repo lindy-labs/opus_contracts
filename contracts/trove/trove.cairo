@@ -476,7 +476,7 @@ end
 
 # Seize a Trove for liquidation by transferring the debt and gage to the appropriate module
 # Checks should be performed beforehand by the module calling this function
-func seize_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ):
     assert_auth()
@@ -488,6 +488,8 @@ func seize_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     # TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
 
     # TODO Iterate over gages and transfer balance to the appropriate module
+
+    # TODO Events?
 
     return ()
 end
