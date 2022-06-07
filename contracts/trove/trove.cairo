@@ -559,10 +559,10 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # Calculate current gage value
     let (balance) = deposited.read(user_address, trove_id, gage_id)
     let (len) = series_len.read(gage_id) # Getting the most recent price in the gage's series
-    let (safety_price) = series.read(gage_id, len - 1)
+    let (point) = series.read(gage_id, len - 1)
 
     let (value) = WadRay.wmul_unchecked(
-        current_gage_balance, safety_price
+        balance, point.price
     )
 
     # Update cumulative value

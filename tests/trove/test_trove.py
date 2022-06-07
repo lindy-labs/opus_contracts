@@ -62,7 +62,7 @@ async def trove(starknet, users) -> StarknetContract:
 
     return trove 
 
-# Same as above but also comes with ready-to-use gages and price history
+# Same as above but also comes with ready-to-use gages and price feeds
 @pytest.fixture 
 async def trove_setup(users, trove) -> StarknetContract:
 
@@ -85,7 +85,7 @@ async def trove_setup(users, trove) -> StarknetContract:
         trove_owner.send_tx(trove.contract_address, "advance", [1, feed1[i], i*30*SECONDS_PER_MINUTE])
         trove_owner.send_tx(trove.contract_address, "advance", [2, feed2[i], i*30*SECONDS_PER_MINUTE])
     
-    return trove 
+    return trove
 
 #
 # Tests
@@ -122,7 +122,13 @@ async def test_auth(trove, users):
     with pytest.raises(StarkException):
         await c.send_tx(trove.contract_address, "revoke", [b.address])
 
-#@pytest.mark.asyncio 
-#async def test_
+@pytest.mark.asyncio 
+async def test_trove(trove_setup, users):
+    trove = trove_setup
+
+    
+
+
+
 
 
