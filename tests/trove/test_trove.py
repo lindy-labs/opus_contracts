@@ -39,7 +39,7 @@ def create_feed(starting_price : float, length : int, max_change : float) -> lis
         change = uniform(-max_change, max_change) # Returns the % change in price (in decimal form, meaning 1% = 0.01)
         feed.append(feed[i-1]*(1 + change))
     
-    return list(map(lambda x: int(SCALE*x),  feed)) #Scaling the feed before returning so it's ready to use in contracts
+    return list(map(to_wad, feed)) #Scaling the feed before returning so it's ready to use in contracts
 
 
 #
@@ -69,9 +69,9 @@ async def trove_setup(users, trove) -> StarknetContract:
     trove_owner = await users("trove owner")
 
     # Creating the gages
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [10_000 * SCALE]) 
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [50_000 * SCALE]) 
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [10_000_000 * SCALE]) 
+    await trove_owner.send_tx(trove.contract_address, "add_gage", [to_wad(10_000)]) 
+    await trove_owner.send_tx(trove.contract_address, "add_gage", [to_wad(50_000)]) 
+    await trove_owner.send_tx(trove.contract_address, "add_gage", [to_wad(10_000_000)]) 
 
     feed_len = 20
     # Creating the price feeds
