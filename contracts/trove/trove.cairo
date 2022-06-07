@@ -100,6 +100,11 @@ func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a
     return ()
 end
 
+@view 
+func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address :felt) -> (is_auth : felt):
+    return auth.read(address)
+end
+
 #
 # Storage
 #

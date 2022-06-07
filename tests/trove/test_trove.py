@@ -13,6 +13,14 @@ from utils import (
 )
 
 #
+# Consts
+#
+
+TRUE = 1
+FALSE = 0
+
+
+#
 # Fixtures
 #
 
@@ -41,6 +49,28 @@ async def trove(starknet, users) -> StarknetContract:
 async def test_trove(trove, users):
 
     trove_owner = await users("trove owner")
-    second_owner = await users("2nd owner")
+    b = await users("2nd owner")
+    c = await users("3rd owner")
 
-    await trove_owner.send_tx(trove.contract_address, "authorize", [second_owner.address])
+    # Authorizing an address and testing that it can use authorized functions
+    await trove_owner.send_tx(trove.contract_address, "authorize", [b.address])
+    b_authorized = (await trove.get_auth(b.address).invoke()).result.is_auth
+    assert b_authorized == TRUE
+
+    await b.send_tx(trove.contract_address, "authorize", [c.address])
+    c_authorized = (await trove.get_auth(c.address).invoke()).result.is_auth
+    assert c_authorized == TRUE
+
+    #Revoking an address
+    await b.send_tx(trove.contract_address, "revoke", [c.address])
+    c_authorized = (await trove.get_auth(c.address).invoke()).result.is_auth
+    assert c_authorized == FALSE
+
+    # Calling an authorized function with an unauthorized address - should fail
+    with pytest.raises(StarkException):
+        await c.send_tx(trove.contract_address, "revoke", [b.address])
+
+
+    
+
+
