@@ -387,7 +387,7 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     # Calculate the updated sum of (Gage balance * Gage safety price) for all Gages
     # Assert that debt is lower than this sum
     let (gage_count) = num_gages.read()
-    let (trove_safety_val) = calculate_trove_value(user_address, trove_id, gage_count, 0)
+    let (trove_safety_val) = appraise(user_address, trove_id, gage_count - 1, 0)
     let (current_trove) = troves.read(user_address, trove_id)
     let current_debt = current_trove.debt
 
@@ -433,7 +433,7 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # Calculate the sum of (Gage balance * Gage safety price) for all Gages
     # Assert that updated debt is lower than this sum
     let (gage_count) = num_gages.read()
-    let (trove_safety_val) = calculate_trove_value(user_address, trove_id, gage_count, 0)
+    let (trove_safety_val) = appraise(user_address, trove_id, gage_count - 1, 0)
 
     with_attr error_message("Trove: Trove is at risk after minting synthetic"):
         assert_le(new_debt, trove_safety_val)
@@ -535,7 +535,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         return (updated_cumulative)
     else:
         # Recursive call
-        return calculate_trove_value(
+        return appraise(
             user_address=user_address,
             trove_id=trove_id,
             gage_id=gage_id - 1,
