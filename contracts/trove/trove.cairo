@@ -383,8 +383,7 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     # Check for safety of Trove
     # Calculate the updated sum of (Gage balance * Gage safety price) for all Gages
     # Assert that debt is lower than this sum
-    let (gage_count) = num_gages.read()
-    let (trove_safety_val) = appraise(user_address, trove_id, gage_count - 1, 0)
+    let (trove_safety_val) = appraise(user_address, trove_id)
     let (current_trove) = troves.read(user_address, trove_id)
     let current_debt = current_trove.debt
 
@@ -429,8 +428,7 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # Check for safety of Trove
     # Calculate the sum of (Gage balance * Gage safety price) for all Gages
     # Assert that updated debt is lower than this sum
-    let (gage_count) = num_gages.read()
-    let (trove_safety_val) = appraise(user_address, trove_id, gage_count - 1, 0)
+    let (trove_safety_val) = appraise(user_address, trove_id)
 
     with_attr error_message("Trove: Trove is at risk after minting synthetic"):
         assert_le(new_debt, trove_safety_val)
@@ -507,9 +505,21 @@ func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return ()
 end
 
-# Calculate a trove's value based on the sum of (Gage balance * Gage safety price) for all Gages
-# in descending order of Gage ID starting from `num_gages - 1`
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt
+) -> (value : felt):
+    let (num_gages) = num_gages.read()
+    return appraise_inner(
+        user_address, 
+        trove_id, 
+        num_gages - 1, 
+        0
+    )
+end
+
+# Calculate a trove's safety value based on the sum of (Gage balance * Gage safety price) for all Gages
+# in descending order of Gage ID starting from `num_gages - 1`
+func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
 ) -> (new_cumulative : felt):
 
@@ -529,7 +539,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         return (updated_cumulative)
     else:
         # Recursive call
-        return appraise(
+        return appraise_inner(
             user_address=user_address,
             trove_id=trove_id,
             gage_id=gage_id - 1,
