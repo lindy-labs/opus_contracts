@@ -508,7 +508,7 @@ end
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ) -> (value : felt):
-    let (num_gages) = num_gages.read()
+    let (gage_count) = num_gages.read()
     return appraise_inner(
         user_address, 
         trove_id, 
