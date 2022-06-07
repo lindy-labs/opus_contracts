@@ -84,6 +84,7 @@ func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
+@external
 func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt):
     assert_auth()
     auth.write(address, TRUE)
@@ -91,6 +92,7 @@ func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return ()
 end
 
+@external
 func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt):
     assert_auth()
     auth.write(address, FALSE)
@@ -298,10 +300,8 @@ end
 
 # Constructor
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    let (c) = get_caller_address()
-
-    auth.write(c, TRUE)
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed : felt):
+    auth.write(authed, TRUE)
     is_live.write(TRUE)
     return ()
 end
@@ -529,6 +529,8 @@ func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return ()
 end
 
+
+# Wrapper function for the recursive `appraise_inner` function
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ) -> (value : felt):
@@ -565,3 +567,16 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         )
     end
 end
+
+
+# Calculate a trove's accumulated interest since the last time its accumulated interest was calculated
+# Additional check should be done by calling contract to ensure the starting `price_history_index` is correct
+#func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+#    user_address : felt, trove_id : felt, price_history_index : felt, cumulative : felt 
+#) -> (new_cumulative : felt):
+#
+#
+#end
+
+
+
