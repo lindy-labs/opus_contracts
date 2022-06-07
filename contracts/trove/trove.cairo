@@ -158,64 +158,75 @@ end
 # Getters
 #
 
+@view
 func get_troves{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address : felt, trove_id : felt
 ) -> (trove : Trove):
     return troves.read(address, trove_id)
 end
 
+@view
 func get_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt
 ) -> (gage : Gage):
     return gages.read(gage_id)
 end
 
+@view
 func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     num : felt
 ):
     return num_gages.read()
 end
 
+@view
 func get_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address : felt, trove_id : felt, gage_id : felt
 ) -> (amount : felt):
     return deposited.read(address, trove_id, gage_id)
 end
 
+@view
 func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     amount : felt
 ):
     return synthetic.read()
 end
 
+@view
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id, index
 ) -> (point : Point):
     return series.read(gage_id, index)
 end
 
+@view
 func get_series_len{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt
 ) -> (len : felt):
     return series_len.read(gage_id)
 end
 
+@view
 func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     ceiling : felt
 ):
     return ceiling.read()
 end
 
+@view
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     multiplier : felt
 ):
     return multiplier.read()
 end
 
+@view
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax : felt):
     return tax.read()
 end
 
+@view
 func get_is_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     is_live : felt
 ):
@@ -226,6 +237,7 @@ end
 # Setters - Basic setters with no additional logic besides an auth-check and event emission
 #
 
+@external
 func set_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, gage : Gage
 ):
@@ -235,6 +247,7 @@ func set_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return ()
 end
 
+@external
 func set_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(num : felt):
     assert_auth()
 
@@ -243,6 +256,7 @@ func set_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     return ()
 end
 
+@external
 func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_ceiling : felt
 ):
@@ -253,6 +267,7 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
+@external
 func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_multiplier : felt
 ):
@@ -263,6 +278,7 @@ func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     return ()
 end
 
+@external
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax : felt):
     assert_auth()
 
@@ -271,6 +287,7 @@ func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return ()
 end
 
+@external
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     assert_auth()
 
@@ -294,6 +311,7 @@ end
 #
 
 # Appends a new point to the Series of the specified Gage
+@external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, point : Point
 ):
@@ -309,9 +327,10 @@ end
 
 # Move Gage between two Troves
 # Checks should be performed beforehand by the module calling this function
+@external
 func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt,
-    gage_amount : felt,
+    amount : felt,
     src_address : felt,
     src_trove_id : felt,
     dst_address : felt,
@@ -321,12 +340,12 @@ func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Update gage balance of source trove
     let (src_gage_balance) = deposited.read(src_address, src_trove_id, gage_id)
-    let (new_src_balance) = WadRay.sub_unsigned(src_gage_balance, gage_amount)
+    let (new_src_balance) = WadRay.sub_unsigned(src_gage_balance, amount)
     deposited.write(src_address, src_trove_id, gage_id, new_src_balance)
 
     # Update gage balance of destination trove
     let (dst_gage_balance) = deposited.read(dst_address, dst_trove_id, gage_id)
-    let (new_dst_balance) = WadRay.add_unsigned(dst_gage_balance, gage_amount)
+    let (new_dst_balance) = WadRay.add_unsigned(dst_gage_balance, amount)
     deposited.write(dst_address, dst_trove_id, gage_id, new_dst_balance)
 
     DepositUpdated.emit(src_address, src_trove_id, gage_id, new_src_balance)
@@ -336,8 +355,9 @@ func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 # Deposit a specified amount of a Gage into a Trove
-func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
+@external
+func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, amount : felt, user_address : felt, trove_id : felt
 ):
     assert_auth()
 
@@ -346,13 +366,13 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
-    let (new_total) = WadRay.add(old_gage_info.total, gage_amount)
+    let (new_total) = WadRay.add(old_gage_info.total, amount)
     let new_gage_info = Gage(total=new_total, safety=old_gage_info.safety)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
     let (trove_gage_balance) = deposited.read(user_address, trove_id, gage_id)
-    let (new_trove_balance) = WadRay.add(trove_gage_balance, gage_amount)
+    let (new_trove_balance) = WadRay.add(trove_gage_balance, amount)
     deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
     GageTotalUpdated.emit(gage_id, new_total)
@@ -362,8 +382,9 @@ func deposit_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 end
 
 # Withdraw a specified amount of a Gage from a Trove
-func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, gage_amount : felt, user_address : felt, trove_id : felt
+@external
+func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, amount : felt, user_address : felt, trove_id : felt
 ):
     alloc_locals
 
@@ -371,13 +392,13 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
-    let (new_total) = WadRay.sub(old_gage_info.total, gage_amount)
+    let (new_total) = WadRay.sub(old_gage_info.total, amount)
     let new_gage_info = Gage(total=new_total, safety=old_gage_info.safety)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
     let (trove_gage_balance) = deposited.read(user_address, trove_id, gage_id)
-    let (new_trove_balance) = WadRay.sub(trove_gage_balance, gage_amount)
+    let (new_trove_balance) = WadRay.sub(trove_gage_balance, amount)
     deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
     # Check for safety of Trove
@@ -397,8 +418,9 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 end
 
 # Mint a specified amount of synthetic for a Trove
-func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, mint_amount : felt
+@external
+func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, amount : felt
 ):
     alloc_locals
 
@@ -409,7 +431,7 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     # Check that debt ceiling has not been reached
     let (current_system_debt) = synthetic.read()
-    let new_system_debt = current_system_debt + mint_amount
+    let new_system_debt = current_system_debt + amount
     let (debt_ceiling) = ceiling.read()
 
     with_attr error_message("Trove: Debt ceiling reached"):
@@ -421,7 +443,7 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
-    let (new_debt) = WadRay.add(old_trove_info.debt, mint_amount)
+    let (new_debt) = WadRay.add(old_trove_info.debt, amount)
     let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
 
@@ -445,20 +467,21 @@ func mint_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 # Repay a specified amount of synthetic for a Trove
-# The module calling this function should check that `repay_amount` does not exceed Trove's debt.
-func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, repay_amount : felt
+# The module calling this function should check that `amount` does not exceed Trove's debt.
+@external
+func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, amount : felt
 ):
     assert_auth()
 
     # Update system debt
     let (current_system_debt) = synthetic.read()
-    let new_system_debt = current_system_debt - repay_amount
+    let new_system_debt = current_system_debt - amount
     synthetic.write(new_system_debt)
 
     # Update trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
-    let (new_debt) = WadRay.sub(old_trove_info.debt, repay_amount)
+    let (new_debt) = WadRay.sub(old_trove_info.debt, amount)
     let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
 
@@ -474,6 +497,7 @@ end
 
 # Seize a Trove for liquidation by transferring the debt and gage to the appropriate module
 # Checks should be performed beforehand by the module calling this function
+@external
 func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ):
