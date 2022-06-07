@@ -369,9 +369,6 @@ func withdraw_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     assert_auth()
 
-    # Check system is live
-    assert_system_live()
-
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.sub(old_gage_info.total, gage_amount)
@@ -455,9 +452,6 @@ func repay_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     user_address : felt, trove_id : felt, repay_amount : felt
 ):
     assert_auth()
-
-    # Check system is live
-    assert_system_live()
 
     # Update system debt
     let (current_system_debt) = synthetic.read()
