@@ -28,6 +28,10 @@ end
 func GageTotalUpdated(gage_id : felt, new_total : felt):
 end
 
+@event 
+func GageMaxUpdated(gage_id : felt, new_max : felt):
+end
+
 @event
 func GageSafetyUpdated(gage_id : felt, new_safety : felt):
 end
@@ -241,25 +245,40 @@ func get_is_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 #
-# Setters - Basic setters with no additional logic besides an auth-check and event emission
+# Setters
 #
 
 @external
-func set_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, gage : Gage
+func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    max : felt
 ):
     assert_auth()
 
-    gages.write(gage_id, gage)
+    let (gage_count : felt) = num_gages.read()
+    gages.write(gage_count, Gage(0, max, 0))
+    num_gages.write(gage_count + 1)
     return ()
 end
 
 @external
-func set_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(num : felt):
+func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, new_max : felt
+):
     assert_auth()
 
-    num_gages.write(num)
-    NumGagesUpdated.emit(num)
+    let (gage : Gage) = gages.read(gage_id)
+    gages.write(gage_id, Gage(gage.total, new_max, gage.safety))
+    return ()
+end
+
+@external
+func update_gage_safety{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, new_safety : felt
+):
+    assert_auth()
+
+    let (gage : Gage) = gages.read(gage_id)
+    gages.write(gage_id, Gage(gage.total, gage.max, new_safety))
     return ()
 end
 
@@ -372,7 +391,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
-    let new_gage_info = Gage(total=new_total, safety=old_gage_info.safety)
+    let new_gage_info = Gage(total=new_total, max=old_gage_info.max, safety=old_gage_info.safety)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
@@ -398,7 +417,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.sub(old_gage_info.total, amount)
-    let new_gage_info = Gage(total=new_total, safety=old_gage_info.safety)
+    let new_gage_info = Gage(total=new_total, max=old_gage_info.max, safety=old_gage_info.safety)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
