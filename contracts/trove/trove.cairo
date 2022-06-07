@@ -513,11 +513,11 @@ func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return ()
 end
 
-func calculate_trove_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+# Calculate a trove's value based on the sum of (Gage balance * Gage safety price) for all Gages
+# in descending order of Gage ID starting from `num_gages - 1`
+func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
 ) -> (new_cumulative : felt):
-    # Calculate a trove's value based on the sum of (Gage balance * Gage safety price) for all Gages
-    # in descending order of Gage ID starting from total number of gages.
 
     # Calculate current gage value
     let (current_gage_balance) = deposited.read(user_address, trove_id, gage_id)
@@ -532,7 +532,7 @@ func calculate_trove_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 
     # Terminate when Gage ID reaches 0
     if gage_id == 0:
-        return (cumulative)
+        return (updated_cumulative)
     else:
         # Recursive call
         return calculate_trove_value(
@@ -542,6 +542,4 @@ func calculate_trove_value{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
             cumulative=updated_cumulative,
         )
     end
-
-    
 end
