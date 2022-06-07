@@ -533,12 +533,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     user_address : felt, trove_id : felt
 ) -> (value : felt):
     let (gage_count) = num_gages.read()
-    return appraise_inner(
-        user_address, 
-        trove_id, 
-        gage_count - 1, 
-        0
-    )
+    return appraise_inner(user_address, trove_id, gage_count - 1, 0)
 end
 
 # Calculate a trove's safety value based on the sum of (Gage balance * Gage safety price) for all Gages
@@ -546,7 +541,6 @@ end
 func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
 ) -> (new_cumulative : felt):
-
     # Calculate current gage value
     let (current_gage_balance) = deposited.read(user_address, trove_id, gage_id)
     let (current_gage) = gages.read(gage_id)
