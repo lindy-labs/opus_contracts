@@ -255,7 +255,7 @@ func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     assert_auth()
 
     let (gage_count : felt) = num_gages.read()
-    gages.write(gage_count, Gage(0, max, 0))
+    gages.write(gage_count, Gage(0, max))
     num_gages.write(gage_count + 1)
     return ()
 end
@@ -267,18 +267,7 @@ func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     assert_auth()
 
     let (gage : Gage) = gages.read(gage_id)
-    gages.write(gage_id, Gage(gage.total, new_max, gage.safety))
-    return ()
-end
-
-@external
-func update_gage_safety{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, new_safety : felt
-):
-    assert_auth()
-
-    let (gage : Gage) = gages.read(gage_id)
-    gages.write(gage_id, Gage(gage.total, gage.max, new_safety))
+    gages.write(gage_id, Gage(gage.total, new_max))
     return ()
 end
 
@@ -391,7 +380,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
-    let new_gage_info = Gage(total=new_total, max=old_gage_info.max, safety=old_gage_info.safety)
+    let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
@@ -417,7 +406,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.sub(old_gage_info.total, amount)
-    let new_gage_info = Gage(total=new_total, max=old_gage_info.max, safety=old_gage_info.safety)
+    let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     gages.write(gage_id, new_gage_info)
 
     # Update gage balance of trove
@@ -568,15 +557,16 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
 ) -> (new_cumulative : felt):
     # Calculate current gage value
-    let (current_gage_balance) = deposited.read(user_address, trove_id, gage_id)
-    let (current_gage) = gages.read(gage_id)
-    let current_gage_safety_price = current_gage.safety
-    let (current_gage_value) = WadRay.wmul_unchecked(
-        current_gage_balance, current_gage_safety_price
+    let (balance) = deposited.read(user_address, trove_id, gage_id)
+    let (len) = series_len.read(gage_id) # Getting the most recent price in the gage's series
+    let (safety_price) = series.read(gage_id, len - 1)
+
+    let (value) = WadRay.wmul_unchecked(
+        current_gage_balance, safety_price
     )
 
     # Update cumulative value
-    let (updated_cumulative) = WadRay.add_unsigned(cumulative, current_gage_value)
+    let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
 
     # Terminate when Gage ID reaches 0
     if gage_id == 0:
