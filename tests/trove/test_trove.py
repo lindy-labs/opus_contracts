@@ -177,8 +177,7 @@ async def test_trove_setup(trove_setup):
     assert gage0_null_point == Point(0, 0)
 
     gage0_series_len = (await trove.get_series_len(0).invoke()).result.len
-    assert gage0_series_len == 20
-
+    assert gage0_series_len == FEED_LEN
 
 
 @pytest.mark.asyncio

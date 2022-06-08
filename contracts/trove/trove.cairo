@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le
-from starkware.cairo.common.math_cmp import is_in_range
+from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.shared.types import Trove, Gage, Point
@@ -13,7 +13,7 @@ from contracts.shared.wad_ray import WadRay
 # Constants
 #
 
-const MAX_THRESHOLD = 100 * 10 ** 18
+const MAX_THRESHOLD = WadRay.WAD_ONE
 
 #
 # Events
@@ -312,8 +312,10 @@ func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     return ()
 end
 
-# Threshold value should be scaled by wad (10 ** 18)
-# Example: 75% = 75 * 10 ** 18
+# Threshold value should be a wad between 0 and 1
+# Example: 75% = 75 * 10 ** 16
+# Example 2: 1% = 1 * 10 ** 16
+# Example 3: 1.5% = 15 * 10 ** 15
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_threshold : felt
@@ -594,15 +596,15 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 # Calculate a Trove's health
-# Total gage value * threshold >= Total debt
+@view
 func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
-) -> (value : felt):
+) -> (healthy : felt):
     alloc_locals
 
-    # Get scaled value of trove's debt
-    let (current_trove) = troves.read(user_address, trove_id)
-    let debt = current_trove.debt
+    # Get value of the trove's debt
+    let (trove) = troves.read(user_address, trove_id)
+    let debt = trove.debt
 
     # Early termination if no debt
     if debt == 0:
@@ -612,15 +614,11 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     # Get threshold
     let (t) = threshold.read()
 
-    # Get adjusted scaled total value of trove's gages
-    let (trove_val) = appraise(user_address, trove_id)
-    let (trove_safety_val_scaled) = WadRay.wmul(trove_val, t)
+    # value * liquidation threshold = amount of debt the trove can have without being at risk of liquidation. 
+    let (value) = appraise(user_address, trove_id)
+    let (trove_threshold) = WadRay.wmul(value, t) # if the amount of debt the trove has is greater than this, the trove is not healthy. 
 
-    # Get scaled value of trove's debt
-    let (debt_scaled) = WadRay.wmul(debt, WadRay.WAD_SCALE)
-
-    # Check health
-    let (healthy) = is_in_range(debt_scaled, 0, trove_safety_val_scaled)
+    let (healthy) = is_le(debt, trove_threshold)
 
     return (healthy)
 end
