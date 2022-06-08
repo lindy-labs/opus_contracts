@@ -600,6 +600,15 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 ) -> (value : felt):
     alloc_locals
 
+    # Get scaled value of trove's debt
+    let (current_trove) = troves.read(user_address, trove_id)
+    let debt = current_trove.debt
+
+    # Early termination if no debt
+    if debt == 0:
+        return (TRUE)
+    end
+
     # Get threshold
     let (t) = threshold.read()
 
@@ -608,8 +617,6 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (trove_safety_val_scaled) = WadRay.wmul(trove_val, t)
 
     # Get scaled value of trove's debt
-    let (current_trove) = troves.read(user_address, trove_id)
-    let debt = current_trove.debt
     let (debt_scaled) = WadRay.wmul(debt, WadRay.WAD_SCALE)
 
     # Check health
