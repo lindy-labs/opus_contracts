@@ -618,9 +618,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (value) = appraise(user_address, trove_id)
     let (trove_threshold) = WadRay.wmul(value, t) # if the amount of debt the trove has is greater than this, the trove is not healthy. 
 
-    let (healthy) = is_le(debt, trove_threshold)
-
-    return (healthy)
+    return is_le(debt, trove_threshold)
 end
 
 # Wrapper function for the recursive `appraise_inner` function
