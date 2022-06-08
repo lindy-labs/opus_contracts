@@ -122,7 +122,7 @@ async def trove_deposit(users, trove_setup) -> StarknetTransactionExecutionInfo:
     trove_user = await users("trove user")
 
     deposit = await trove_owner.send_tx(trove.contract_address, "deposit", [0, 10, trove_user.address, 0])
-    yield deposit
+    return deposit
 
 
 #
