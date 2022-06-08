@@ -32,6 +32,10 @@ SECONDS_PER_MINUTE = 60
 
 LIQUIDATION_THRESHOLD = 80
 
+GAGE0_MAX = 10_000 * SCALE
+GAGE1_MAX = 100_000 * SCALE
+GAGE2_MAX = 10_000_000 * SCALE
+
 #
 # Structs
 #
@@ -85,9 +89,9 @@ async def trove_setup(users, trove) -> StarknetContract:
     await trove_owner.send_tx(trove.contract_address, "set_threshold", [to_wad(LIQUIDATION_THRESHOLD)])
 
     # Creating the gages
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [to_wad(10_000)])
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [to_wad(50_000)])
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [to_wad(10_000_000)])
+    await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE0_MAX])
+    await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE1_MAX])
+    await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE2_MAX])
 
     # Creating the price feeds
     feed0 = create_feed(GAGE0_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
@@ -154,10 +158,10 @@ async def test_trove_setup(trove_setup):
 
     # Check gages
     gage0 = (await trove.get_gages(0).invoke()).result.gage
-    assert gage0 == Gage(0, to_wad(10_000))
+    assert gage0 == Gage(0, GAGE0_MAX)
 
     gage1 = (await trove.get_gages(1).invoke()).result.gage
-    assert gage1 == Gage(0, to_wad(50_000))
+    assert gage1 == Gage(0, GAGE1_MAX)
 
     gage2 = (await trove.get_gages(2).invoke()).result.gage
     assert gage2 == Gage(0, to_wad(10_000_000))
@@ -174,6 +178,7 @@ async def test_trove_setup(trove_setup):
 
     gage0_series_len = (await trove.get_series_len(0).invoke()).result.len
     assert gage0_series_len == 20
+
 
 
 @pytest.mark.asyncio
