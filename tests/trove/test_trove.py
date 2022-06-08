@@ -121,7 +121,7 @@ async def trove_deposit(users, trove_setup) -> StarknetTransactionExecutionInfo:
     trove_owner = await users("trove owner")
     trove_user = await users("trove user")
 
-    deposit = await trove_owner.send_tx(trove.contract_address, "deposit", [0, 10, trove_user.address, 0])
+    deposit = await trove_owner.send_tx(trove.contract_address, "deposit", [0, to_wad(10), trove_user.address, 0])
     return deposit
 
 
@@ -207,11 +207,17 @@ async def test_trove_deposit(trove_setup, users, trove_deposit):
         trove_deposit,
         trove.contract_address,
         "GageTotalUpdated",
-        [0, 10],
+        [0, to_wad(10)],
     )
     assert_event_emitted(
         trove_deposit,
         trove.contract_address,
         "DepositUpdated",
-        [trove_user.address, 0, 0, 10],
+        [trove_user.address, 0, 0, to_wad(10)],
     )
+
+    gage = (await trove.get_gages(0).invoke()).result.gage
+    assert gage.total == to_wad(10)
+
+    amt = (await trove.get_deposits(trove_user.address, 0, 0).invoke()).result.amount
+    assert amt == to_wad(10)
