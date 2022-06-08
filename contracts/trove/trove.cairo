@@ -3,6 +3,7 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le
+from starkware.cairo.common.math_cmp import is_in_range
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.shared.types import Trove, Gage, Point
@@ -11,6 +12,8 @@ from contracts.shared.wad_ray import WadRay
 #
 # Constants
 #
+
+const MAX_THRESHOLD = 100 * 10 ** 18
 
 #
 # Events
@@ -28,7 +31,7 @@ end
 func GageTotalUpdated(gage_id : felt, new_total : felt):
 end
 
-@event 
+@event
 func GageMaxUpdated(gage_id : felt, new_max : felt):
 end
 
@@ -46,6 +49,10 @@ end
 
 @event
 func MultiplierUpdated(new_multiplier : felt):
+end
+
+@event
+func ThresholdUpdated(new_threshold : felt):
 end
 
 @event
@@ -104,8 +111,10 @@ func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a
     return ()
 end
 
-@view 
-func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address :felt) -> (is_auth : felt):
+@view
+func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    address : felt
+) -> (is_auth : felt):
     return auth.read(address)
 end
 
@@ -154,6 +163,11 @@ end
 # Global interest rate multiplier - ray
 @storage_var
 func multiplier() -> (rate : felt):
+end
+
+# Liquidation threshold (or max LTV) - wad
+@storage_var
+func threshold() -> (threshold : felt):
 end
 
 # Fee on yield - ray
@@ -233,6 +247,13 @@ func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 @view
+func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    threshold : felt
+):
+    return threshold.read()
+end
+
+@view
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax : felt):
     return tax.read()
 end
@@ -249,9 +270,7 @@ end
 #
 
 @external
-func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    max : felt
-):
+func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(max : felt):
     assert_auth()
 
     let (gage_count : felt) = num_gages.read()
@@ -290,6 +309,24 @@ func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     multiplier.write(new_multiplier)
     MultiplierUpdated.emit(new_multiplier)
+    return ()
+end
+
+# Threshold value should be scaled by wad (10 ** 18)
+# Example: 75% = 75 * 10 ** 18
+@external
+func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    new_threshold : felt
+):
+    assert_auth()
+
+    # Check that threshold value is not greater than max threshold
+    with_attr error_message("Trove: Threshold exceeds 100%"):
+        assert_le(new_threshold, MAX_THRESHOLD)
+    end
+
+    threshold.write(new_threshold)
+    ThresholdUpdated.emit(new_threshold)
     return ()
 end
 
@@ -414,15 +451,11 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (new_trove_balance) = WadRay.sub(trove_gage_balance, amount)
     deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
-    # Check for safety of Trove
-    # Calculate the updated sum of (Gage balance * Gage safety price) for all Gages
-    # Assert that debt is lower than this sum
-    let (trove_safety_val) = appraise(user_address, trove_id)
-    let (current_trove) = troves.read(user_address, trove_id)
-    let current_debt = current_trove.debt
+    # Check if Trove is healthy
+    let (healthy) = is_healthy(user_address, trove_id)
 
     with_attr error_message("Trove: Trove is at risk after gage withdrawal"):
-        assert_le(current_debt, trove_safety_val)
+        assert healthy = TRUE
     end
 
     GageTotalUpdated.emit(gage_id, new_total)
@@ -460,13 +493,11 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
 
-    # Check for safety of Trove
-    # Calculate the sum of (Gage balance * Gage safety price) for all Gages
-    # Assert that updated debt is lower than this sum
-    let (trove_safety_val) = appraise(user_address, trove_id)
+    # Check if Trove is healthy
+    let (healthy) = is_healthy(user_address, trove_id)
 
-    with_attr error_message("Trove: Trove is at risk after minting synthetic"):
-        assert_le(new_debt, trove_safety_val)
+    with_attr error_message("Trove: Trove is at risk after gage withdrawal"):
+        assert healthy = TRUE
     end
 
     # TODO Transfer the synthetic to the user address
@@ -542,6 +573,50 @@ func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return ()
 end
 
+# Calculate a Trove's loan-to-value ratio, scaled by one wad (10 ** 18).
+func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt
+) -> (value : felt):
+    # Get scaled total value of trove's gages
+    let (trove_val) = appraise(user_address, trove_id)
+    let (trove_val_scaled) = WadRay.wmul(trove_val, WadRay.WAD_SCALE)
+
+    # Get scaled value of trove's debt
+    let (current_trove) = troves.read(user_address, trove_id)
+    let debt = current_trove.debt
+    let (debt_scaled) = WadRay.wmul(debt, WadRay.WAD_SCALE)
+
+    # Calculate loan-to-value ratio
+    let (ratio) = WadRay.unsigned_div(debt_scaled, trove_val_scaled)
+
+    # Return ratio scaled by wad (10 ** 18)
+    return (ratio)
+end
+
+# Calculate a Trove's health
+# Total gage value * threshold >= Total debt
+func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt
+) -> (value : felt):
+    alloc_locals
+
+    # Get threshold
+    let (t) = threshold.read()
+
+    # Get adjusted scaled total value of trove's gages
+    let (trove_val) = appraise(user_address, trove_id)
+    let (trove_safety_val_scaled) = WadRay.wmul(trove_val, t)
+
+    # Get scaled value of trove's debt
+    let (current_trove) = troves.read(user_address, trove_id)
+    let debt = current_trove.debt
+    let (debt_scaled) = WadRay.wmul(debt, WadRay.WAD_SCALE)
+
+    # Check health
+    let (healthy) = is_in_range(debt_scaled, 0, trove_safety_val_scaled)
+
+    return (healthy)
+end
 
 # Wrapper function for the recursive `appraise_inner` function
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -551,19 +626,17 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     return appraise_inner(user_address, trove_id, gage_count - 1, 0)
 end
 
-# Calculate a trove's safety value based on the sum of (Gage balance * Gage safety price) for all Gages
+# Calculate a trove's gage value based on the sum of (Gage balance * Gage safety price) for all Gages
 # in descending order of Gage ID starting from `num_gages - 1`
 func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
 ) -> (new_cumulative : felt):
     # Calculate current gage value
     let (balance) = deposited.read(user_address, trove_id, gage_id)
-    let (len) = series_len.read(gage_id) # Getting the most recent price in the gage's series
+    let (len) = series_len.read(gage_id)  # Getting the most recent price in the gage's series
     let (point) = series.read(gage_id, len - 1)
 
-    let (value) = WadRay.wmul_unchecked(
-        balance, point.price
-    )
+    let (value) = WadRay.wmul_unchecked(balance, point.price)
 
     # Update cumulative value
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
@@ -582,15 +655,11 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     end
 end
 
-
 # Calculate a trove's accumulated interest since the last time its accumulated interest was calculated
 # Additional check should be done by calling contract to ensure the starting `price_history_index` is correct
-#func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-#    user_address : felt, trove_id : felt, price_history_index : felt, cumulative : felt 
-#) -> (new_cumulative : felt):
+# func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+#    user_address : felt, trove_id : felt, price_history_index : felt, cumulative : felt
+# ) -> (new_cumulative : felt):
 #
 #
-#end
-
-
-
+# end
