@@ -4,8 +4,10 @@ from collections import namedtuple
 
 from starkware.starkware_utils.error_handling import StarkException
 from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
 from utils import (
+    assert_event_emitted,
     compile_contract,
 )
 
@@ -53,7 +55,8 @@ def create_feed(starting_price: float, length: int, max_change: float) -> list[i
         change = uniform(-max_change, max_change)  # Returns the % change in price (in decimal form, meaning 1% = 0.01)
         feed.append(feed[i - 1] * (1 + change))
 
-    return list(map(to_wad, feed))  # Scaling the feed before returning so it's ready to use in contracts
+    # Scaling the feed before returning so it's ready to use in contracts
+    return list(map(to_wad, feed))
 
 
 #
@@ -112,13 +115,23 @@ async def trove_setup(users, trove) -> StarknetContract:
     return trove
 
 
+@pytest.fixture
+async def trove_deposit(users, trove_setup) -> StarknetTransactionExecutionInfo:
+    trove = trove_setup
+    trove_owner = await users("trove owner")
+    trove_user = await users("trove user")
+
+    deposit = await trove_owner.send_tx(trove.contract_address, "deposit", [0, 10, trove_user.address, 0])
+    yield deposit
+
+
 #
 # Tests
 #
 
 
 @pytest.mark.asyncio
-async def test_trove(trove_setup):
+async def test_trove_setup(trove_setup):
     trove = trove_setup
 
     # Check threshold
@@ -182,3 +195,23 @@ async def test_auth(trove, users):
     # Calling an authorized function with an unauthorized address - should fail
     with pytest.raises(StarkException):
         await c.send_tx(trove.contract_address, "revoke", [b.address])
+
+
+@pytest.mark.asyncio
+async def test_trove_deposit(trove_setup, users, trove_deposit):
+    trove = trove_setup
+
+    trove_user = await users("trove user")
+
+    assert_event_emitted(
+        trove_deposit,
+        trove.contract_address,
+        "GageTotalUpdated",
+        [0, 10],
+    )
+    assert_event_emitted(
+        trove_deposit,
+        trove.contract_address,
+        "DepositUpdated",
+        [trove_user.address, 0, 0, 10],
+    )
