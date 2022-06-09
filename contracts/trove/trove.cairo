@@ -48,7 +48,7 @@ func NumGagesUpdated(num : felt):
 end
 
 @event
-func MultiplierUpdated(new_multiplier : felt):
+func MultiplierUpdated(new_multiplier : felt, new_len : felt):
 end
 
 @event
@@ -162,7 +162,11 @@ end
 
 # Global interest rate multiplier - ray
 @storage_var
-func multiplier() -> (rate : felt):
+func multiplier(i : felt) -> (rate : felt):
+end
+
+@storage_var 
+func multiplier_len()) -> (len : felt):
 end
 
 # Liquidation threshold (or max LTV) - wad
@@ -243,7 +247,8 @@ end
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     multiplier : felt
 ):
-    return multiplier.read()
+    let (len) = multiplier_len.read()
+    return multiplier.read(len - 1)
 end
 
 @view
@@ -302,13 +307,16 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @external
-func set_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_multiplier : felt
 ):
     assert_auth()
 
-    multiplier.write(new_multiplier)
-    MultiplierUpdated.emit(new_multiplier)
+    let (len) = multiplier_len.read()
+
+    multiplier.write(len, new_multiplier)
+    multiplier_len.write(len + 1)
+    MultiplierUpdated.emit(new_multiplier, len + 1)
     return ()
 end
 
@@ -682,11 +690,15 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     end
 end
 
+
 # Calculate a trove's accumulated interest since the last time its accumulated interest was calculated
 # Additional check should be done by calling contract to ensure the starting `price_history_index` is correct
-# func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-#    user_address : felt, trove_id : felt, price_history_index : felt, cumulative : felt
-# ) -> (new_cumulative : felt):
+#func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+#    user_address : felt, 
+#    trove_id : felt, 
+#    price_history_index : felt, 
+#    cumulative : felt, 
+#) -> (new_cumulative : felt):
 #
 #
-# end
+#end
