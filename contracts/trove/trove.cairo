@@ -16,6 +16,9 @@ from contracts.shared.wad_ray import WadRay
 const MAX_THRESHOLD = WadRay.WAD_ONE
 
 const SECONDS_PER_MINUTE = 60
+const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60
+const SECONDS_PER_DAY = SECONDS_PER_HOUR  * 24
+const SECONDS_PER_YEAR = SECONDS_PER_DAY * 365
 
 const TIME_ID_INTERVAL = 30 * SECONDS_PER_MINUTE
 
@@ -685,10 +688,7 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 ) -> (new_cumulative : felt):
     # Calculate current gage value
     let (balance) = deposited.read(user_address, trove_id, gage_id)
-
-    # Getting the most recent price in the gage's series
-    let (price) = gage_last_price(gage_id)
-
+    let (price) = gage_last_price(gage_id) # Getting the most recent price in the gage's series
     let (value) = WadRay.wmul_unchecked(balance, price)
 
     # Update cumulative value
@@ -727,37 +727,82 @@ end
 #
 #end
 
-func get_latest_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (latest_time_id : felt):
+func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, 
+    trove_id : felt, 
+    current_time_id : felt, 
+    last_time_id : felt,
+    current_cumulative : felt, 
+    trove_debt : felt
+) -> (new_cumulative : felt):
 
-    let (gage_count : felt) = num_gages.read()
-    let (latest_time_id : felt) = get_latest_time_id_inner(gage_count - 1, 0)
-    let (multiplier_time_id : felt) = multiplier_last_time_id.read()
-    
-    let (m_is_later : felt) = is_le(latest_time_id, multiplier_time_id)
-    if m_is_later == TRUE:
-        return (multiplier_time_id)
+end
+
+# Gets the value a trove at a given time_id
+# Reverts if any of the series return a 0 for the given time_id
+func appraise_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, 
+    trove_id : felt, 
+    gage_id : felt, 
+    time_id : felt
+    cumulative : felt
+) -> (new_cumulative : felt):
+    # Calculate current gage value
+    let (balance) = deposited.read(user_address, trove_id, gage_id)
+    let (price) = series.read(gage_id, time_id)
+    assert_not_zero(price) # Reverts if price is zero
+    let (value) = WadRay.wmul_unchecked(balance, price)
+
+    # Update cumulative value
+    let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
+
+    # Terminate when Gage ID reaches 0
+    if gage_id == 0:
+        return (updated_cumulative)
     else:
-        return (latest_time_id)
+        # Recursive call
+        return appraise_inner(
+            user_address=user_address,
+            trove_id=trove_id,
+            gage_id=gage_id - 1,
+            time_id=time_id,
+            cumulative=updated_cumulative,
+        )
     end
 end
 
-# Gets the latest time_id across the series of all the gages - may not be necessary under certain assumptions
-func get_latest_time_id_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+# Gets the smallest latest time_id across the series of all gages AND the multiplier
+func get_least_last_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (least_last_time_id : felt):
+
+    let (gage_count : felt) = num_gages.read()
+    let (least_last_time_id : felt) = get_least_last_time_id_inner(gage_count - 1, 0)
+    let (multiplier_time_id : felt) = multiplier_last_time_id.read()
+    
+    let (m_is_earlier : felt) = is_le(multiplier_time_id, least_last_time_id)
+    if m_is_earlier == TRUE:
+        return (multiplier_time_id)
+    else:
+        return (least_last_time_id)
+    end
+end
+
+# Gets the smallest latest time_id across the series of all the gages 
+func get_least_last_time_id_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, 
-    latest_time_id : felt
-) -> (latest_time_id : felt):
+    least_last_time_id : felt
+) -> (least_latest_time_id : felt):
 
     let (time_id : felt) = series_last_time_id.read(gage_id)
 
     # Checking the time_id of `gage_id` is more recent than the previous latest_time_id
-    let (is_later : felt) = is_le(latest_time_id, time_id)
-    if is_later == TRUE:
-        let latest_time_id = time_id
+    let (is_earlier : felt) = is_le(time_id, least_last_time_id)
+    if is_earlier == TRUE:
+        let least_last_time_id = time_id
     end
 
     if current_gage_id != 0:
-        return get_latest_time_id_inner(gage_id - 1, latest_time_id)
+        return get_least_last_time_id_inner(gage_id - 1, least_last_time_id)
     else:
-        return (latest_time_id)
+        return (least_last_time_id)
     end
 end

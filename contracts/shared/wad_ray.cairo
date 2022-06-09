@@ -113,6 +113,20 @@ namespace WadRay:
         return (res=q)
     end
 
+    # Operations with rays
+    func rmul{range_check_ptr}(a, b) -> (res):
+        tempvar prod = a * b
+        let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
+        assert_valid(scaled_prod)
+        return (res=scaled_prod)
+    end
+
+    func rmul_unchecked{range_check_ptr}(a, b) -> (res):
+        tempvar prod = a * b
+        let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
+        return (res=scaled_prod)
+    end
+
     #
     # Conversions
     #
