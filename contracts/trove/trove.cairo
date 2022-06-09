@@ -726,3 +726,38 @@ end
 #
 #
 #end
+
+func get_latest_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (latest_time_id : felt):
+
+    let (gage_count : felt) = num_gages.read()
+    let (latest_time_id : felt) = get_latest_time_id_inner(gage_count - 1, 0)
+    let (multiplier_time_id : felt) = multiplier_last_time_id.read()
+    
+    let (m_is_later : felt) = is_le(latest_time_id, multiplier_time_id)
+    if m_is_later == TRUE:
+        return (multiplier_time_id)
+    else:
+        return (latest_time_id)
+    end
+end
+
+# Gets the latest time_id across the series of all the gages - may not be necessary under certain assumptions
+func get_latest_time_id_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt, 
+    latest_time_id : felt
+) -> (latest_time_id : felt):
+
+    let (time_id : felt) = series_last_time_id.read(gage_id)
+
+    # Checking the time_id of `gage_id` is more recent than the previous latest_time_id
+    let (is_later : felt) = is_le(latest_time_id, time_id)
+    if is_later == TRUE:
+        let latest_time_id = time_id
+    end
+
+    if current_gage_id != 0:
+        return get_latest_time_id_inner(gage_id - 1, latest_time_id)
+    else:
+        return (latest_time_id)
+    end
+end
