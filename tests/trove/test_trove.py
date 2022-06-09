@@ -1,6 +1,7 @@
 import pytest
 
 from collections import namedtuple
+from decimal import Decimal
 
 from starkware.starkware_utils.error_handling import StarkException
 from starkware.starknet.testing.starknet import StarknetContract
@@ -30,6 +31,7 @@ FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
 SECONDS_PER_MINUTE = 60
 
+DEBT_CEILING = 10_000 * SCALE
 LIQUIDATION_THRESHOLD = 8 * 10**17
 
 GAGE0_MAX = 10_000 * SCALE
@@ -88,6 +90,9 @@ async def trove_setup(users, trove) -> StarknetContract:
     # Set liquidation threshold
     await trove_owner.send_tx(trove.contract_address, "set_threshold", [LIQUIDATION_THRESHOLD])
 
+    # Set debt ceiling
+    await trove_owner.send_tx(trove.contract_address, "set_ceiling", [DEBT_CEILING])
+
     # Creating the gages
     await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE0_MAX])
     await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE1_MAX])
@@ -130,6 +135,16 @@ async def trove_deposit(users, trove_setup) -> StarknetTransactionExecutionInfo:
 
 
 @pytest.fixture
+async def trove_forge(users, trove_setup, trove_deposit) -> StarknetTransactionExecutionInfo:
+    trove = trove_setup
+    trove_owner = await users("trove owner")
+    trove_user = await users("trove user")
+
+    forge = await trove_owner.send_tx(trove.contract_address, "forge", [trove_user.address, 0, to_wad(5000)])
+    return forge
+
+
+@pytest.fixture
 async def trove_withdrawal(users, trove_setup, trove_deposit) -> StarknetTransactionExecutionInfo:
     trove = trove_setup
     trove_owner = await users("trove owner")
@@ -148,9 +163,17 @@ async def trove_withdrawal(users, trove_setup, trove_deposit) -> StarknetTransac
 async def test_trove_setup(trove_setup):
     trove = trove_setup
 
+    # Check system is live
+    live = (await trove.get_is_live().invoke()).result.is_live
+    assert live == 1
+
     # Check threshold
     threshold = (await trove.get_threshold().invoke()).result.threshold
     assert threshold == LIQUIDATION_THRESHOLD
+
+    # Check debt ceiling
+    ceiling = (await trove.get_ceiling().invoke()).result.ceiling
+    assert ceiling == DEBT_CEILING
 
     # Check gage count
     gage_count = (await trove.get_num_gages().invoke()).result.num
@@ -267,3 +290,37 @@ async def test_trove_withdrawal_pass(trove_setup, users, trove_withdrawal):
 
     is_healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
     assert is_healthy == 1
+
+
+@pytest.mark.asyncio
+async def test_trove_forge_pass(trove_setup, users, trove_forge):
+    trove = trove_setup
+
+    trove_user = await users("trove user")
+
+    assert_event_emitted(
+        trove_forge,
+        trove.contract_address,
+        "SyntheticTotalUpdated",
+        [to_wad(5000)],
+    )
+    assert_event_emitted(
+        trove_forge,
+        trove.contract_address,
+        "TroveUpdated",
+        [trove_user.address, 0, 0, to_wad(5000)],
+    )
+
+    system_debt = (await trove.get_synthetic().invoke()).result.amount
+    assert system_debt == to_wad(5000)
+
+    user_trove = (await trove.get_troves(trove_user.address, 0).invoke()).result.trove
+    assert user_trove.debt == to_wad(5000)
+
+    gage0_price = (await trove.gage_last_price(0).invoke()).result.price
+    trove_ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
+    expected_ltv = (Decimal(to_wad(5000)) / (Decimal(to_wad(10)) * gage0_price)) * (SCALE * SCALE)
+    assert trove_ltv == expected_ltv
+
+    healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
+    assert healthy == 1
