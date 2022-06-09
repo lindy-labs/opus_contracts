@@ -576,16 +576,26 @@ func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 end
 
 # Calculate a Trove's loan-to-value ratio, scaled by one wad (10 ** 18).
+@view
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
-) -> (value : felt):
+) -> (ratio : felt):
+    alloc_locals
+
+    # Get value of the trove's debt
+    let (trove) = troves.read(user_address, trove_id)
+    let debt = trove.debt
+
+    # Early termination if no debt
+    if debt == 0:
+        return (0)
+    end
+
     # Get scaled total value of trove's gages
     let (trove_val) = appraise(user_address, trove_id)
     let (trove_val_scaled) = WadRay.wmul(trove_val, WadRay.WAD_SCALE)
 
     # Get scaled value of trove's debt
-    let (current_trove) = troves.read(user_address, trove_id)
-    let debt = current_trove.debt
     let (debt_scaled) = WadRay.wmul(debt, WadRay.WAD_SCALE)
 
     # Calculate loan-to-value ratio
@@ -614,11 +624,14 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     # Get threshold
     let (t) = threshold.read()
 
-    # value * liquidation threshold = amount of debt the trove can have without being at risk of liquidation. 
+    # value * liquidation threshold = amount of debt the trove can have without being at risk of liquidation.
     let (value) = appraise(user_address, trove_id)
-    let (trove_threshold) = WadRay.wmul(value, t) # if the amount of debt the trove has is greater than this, the trove is not healthy. 
 
-    return is_le(debt, trove_threshold)
+    # if the amount of debt the trove has is greater than this, the trove is not healthy.
+    let (trove_threshold) = WadRay.wmul(value, t)
+
+    let (healthy) = is_le(debt, trove_threshold)
+    return (healthy)
 end
 
 # Wrapper function for the recursive `appraise_inner` function

@@ -30,7 +30,7 @@ FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
 SECONDS_PER_MINUTE = 60
 
-LIQUIDATION_THRESHOLD = 80
+LIQUIDATION_THRESHOLD = 8 * 10**17
 
 GAGE0_MAX = 10_000 * SCALE
 GAGE1_MAX = 100_000 * SCALE
@@ -86,7 +86,7 @@ async def trove_setup(users, trove) -> StarknetContract:
     trove_owner = await users("trove owner")
 
     # Set liquidation threshold
-    await trove_owner.send_tx(trove.contract_address, "set_threshold", [to_wad(LIQUIDATION_THRESHOLD)])
+    await trove_owner.send_tx(trove.contract_address, "set_threshold", [LIQUIDATION_THRESHOLD])
 
     # Creating the gages
     await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE0_MAX])
@@ -150,7 +150,7 @@ async def test_trove_setup(trove_setup):
 
     # Check threshold
     threshold = (await trove.get_threshold().invoke()).result.threshold
-    assert threshold == to_wad(LIQUIDATION_THRESHOLD)
+    assert threshold == LIQUIDATION_THRESHOLD
 
     # Check gage count
     gage_count = (await trove.get_num_gages().invoke()).result.num
@@ -261,3 +261,9 @@ async def test_trove_withdrawal_pass(trove_setup, users, trove_withdrawal):
 
     amt = (await trove.get_deposits(trove_user.address, 0, 0).invoke()).result.amount
     assert amt == 0
+
+    ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
+    assert ltv == 0
+
+    is_healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
+    assert is_healthy == 1
