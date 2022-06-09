@@ -145,6 +145,16 @@ async def trove_forge(users, trove_setup, trove_deposit) -> StarknetTransactionE
 
 
 @pytest.fixture
+async def trove_melt(users, trove_setup, trove_forge) -> StarknetTransactionExecutionInfo:
+    trove = trove_setup
+    trove_owner = await users("trove owner")
+    trove_user = await users("trove user")
+
+    melt = await trove_owner.send_tx(trove.contract_address, "melt", [trove_user.address, 0, to_wad(5000)])
+    return melt
+
+
+@pytest.fixture
 async def trove_withdrawal(users, trove_setup, trove_deposit) -> StarknetTransactionExecutionInfo:
     trove = trove_setup
     trove_owner = await users("trove owner")
@@ -321,6 +331,38 @@ async def test_trove_forge_pass(trove_setup, users, trove_forge):
     trove_ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
     expected_ltv = (Decimal(to_wad(5000)) / (Decimal(to_wad(10)) * gage0_price)) * (SCALE * SCALE)
     assert trove_ltv == expected_ltv
+
+    healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
+    assert healthy == 1
+
+
+@pytest.mark.asyncio
+async def test_trove_melt_pass(trove_setup, users, trove_melt):
+    trove = trove_setup
+
+    trove_user = await users("trove user")
+
+    assert_event_emitted(
+        trove_melt,
+        trove.contract_address,
+        "SyntheticTotalUpdated",
+        [0],
+    )
+    assert_event_emitted(
+        trove_melt,
+        trove.contract_address,
+        "TroveUpdated",
+        [trove_user.address, 0, 0, 0],
+    )
+
+    system_debt = (await trove.get_synthetic().invoke()).result.amount
+    assert system_debt == 0
+
+    user_trove = (await trove.get_troves(trove_user.address, 0).invoke()).result.trove
+    assert user_trove.debt == 0
+
+    trove_ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
+    assert trove_ltv == 0
 
     healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
     assert healthy == 1
