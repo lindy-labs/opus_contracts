@@ -575,6 +575,16 @@ func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return ()
 end
 
+# Get the last updated price for a Gage
+@view
+func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id : felt
+) -> (price : felt):
+    let (p_index) = get_series_len(gage_id)
+    let (p) = get_series(gage_id, p_index - 1)
+    return (p.price)
+end
+
 # Calculate a Trove's loan-to-value ratio, scaled by one wad (10 ** 18).
 @view
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -649,10 +659,11 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 ) -> (new_cumulative : felt):
     # Calculate current gage value
     let (balance) = deposited.read(user_address, trove_id, gage_id)
-    let (len) = series_len.read(gage_id)  # Getting the most recent price in the gage's series
-    let (point) = series.read(gage_id, len - 1)
 
-    let (value) = WadRay.wmul_unchecked(balance, point.price)
+    # Getting the most recent price in the gage's series
+    let (price) = gage_last_price(gage_id)
+
+    let (value) = WadRay.wmul_unchecked(balance, price)
 
     # Update cumulative value
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
