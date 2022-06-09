@@ -6,6 +6,7 @@ from decimal import Decimal
 from starkware.starkware_utils.error_handling import StarkException
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
+from starkware.starknet.business_logic.state.state import BlockInfo
 
 from utils import (
     assert_event_emitted,
@@ -29,6 +30,7 @@ GAGE2_STARTING_PRICE = 1.25
 
 FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
+
 SECONDS_PER_MINUTE = 60
 
 DEBT_CEILING = 10_000 * SCALE
@@ -64,6 +66,10 @@ def create_feed(starting_price: float, length: int, max_change: float) -> list[i
     # Scaling the feed before returning so it's ready to use in contracts
     return list(map(to_wad, feed))
 
+def set_block_timestamp(self, block_timestamp):
+    self.state.block_info = BlockInfo(
+        self.state.block_info.block_number, block_timestamp, self.state.block_info.gas_price
+    )
 
 #
 # Fixtures
@@ -71,20 +77,20 @@ def create_feed(starting_price: float, length: int, max_change: float) -> list[i
 
 # Returns the deployed trove module
 @pytest.fixture
-async def trove(starknet, users) -> StarknetContract:
+async def trove_deploy(starknet, users) -> StarknetContract:
 
     trove_owner = await users("trove owner")
     trove_contract = compile_contract("contracts/trove/trove.cairo")
 
     trove = await starknet.deploy(contract_def=trove_contract, constructor_calldata=[trove_owner.address])
 
-    return trove
+    return trove, starknet
 
 
 # Same as above but also comes with ready-to-use gages and price feeds
 @pytest.fixture
-async def trove_setup(users, trove) -> StarknetContract:
-
+async def trove_setup(users, trove_deploy) -> StarknetContract:
+    trove, starknet = trove_deploy
     trove_owner = await users("trove owner")
 
     # Set liquidation threshold
@@ -104,22 +110,28 @@ async def trove_setup(users, trove) -> StarknetContract:
     feed2 = create_feed(GAGE2_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
 
     # Putting the price feeds in the `series` storage variable
+
     for i in range(FEED_LEN):
+        set_block_timestamp(starknet.state, i*30*SECONDS_PER_MINUTE)
         await trove_owner.send_tx(
             trove.contract_address,
             "advance",
-            [0, feed0[i], i * 30 * SECONDS_PER_MINUTE],
+            [0, feed0[i]],
         )
         await trove_owner.send_tx(
             trove.contract_address,
             "advance",
-            [1, feed1[i], i * 30 * SECONDS_PER_MINUTE],
+            [1, feed1[i]],
         )
         await trove_owner.send_tx(
             trove.contract_address,
             "advance",
-            [2, feed2[i], i * 30 * SECONDS_PER_MINUTE],
+            [2, feed2[i]],
         )
+
+        
+
+
 
     return trove
 
@@ -200,22 +212,16 @@ async def test_trove_setup(trove_setup):
     assert gage2 == Gage(0, to_wad(10_000_000))
 
     # Check price feeds
-    gage0_first_point = (await trove.get_series(0, 0).invoke()).result.point
-    assert gage0_first_point == Point(to_wad(GAGE0_STARTING_PRICE), 0)
+    gage0_first_point = (await trove.get_series(0, 0).invoke()).result.price
+    assert gage0_first_point == to_wad(GAGE0_STARTING_PRICE)
 
-    gage0_last_point = (await trove.get_series(0, FEED_LEN - 1).invoke()).result.point
-    assert gage0_last_point.time == (FEED_LEN - 1) * 30 * SECONDS_PER_MINUTE
-
-    gage0_null_point = (await trove.get_series(0, FEED_LEN).invoke()).result.point
-    assert gage0_null_point == Point(0, 0)
-
-    gage0_series_len = (await trove.get_series_len(0).invoke()).result.len
-    assert gage0_series_len == FEED_LEN
+    gage0_last_time_id = (await trove.get_series_last_time_id(0).invoke()).result.time_id
+    assert gage0_last_time_id == FEED_LEN - 1
 
 
 @pytest.mark.asyncio
-async def test_auth(trove, users):
-
+async def test_auth(trove_deploy, users):
+    trove, _ = trove_deploy
     trove_owner = await users("trove owner")
 
     #
@@ -366,3 +372,5 @@ async def test_trove_melt_pass(trove_setup, users, trove_melt):
 
     healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
     assert healthy == 1
+
+

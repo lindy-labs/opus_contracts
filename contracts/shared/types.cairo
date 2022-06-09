@@ -2,7 +2,7 @@
 
 
 struct Trove:
-    member last : felt # Timestamp of last accumulated interest calculation
+    member last : felt # Time ID (timestamp rounded to nearest 30 mins) of last accumulated interest calculation
     member debt : felt # Normalized debt
 end
 
@@ -12,6 +12,6 @@ struct Gage:
 end 
 
 struct Point:
-    member price : felt 
+    member val : felt 
     member time : felt # timestamp of the price
 end

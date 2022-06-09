@@ -2,9 +2,9 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, assert_le
+from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_caller_address
+from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
 
 from contracts.shared.types import Trove, Gage, Point
 from contracts.shared.wad_ray import WadRay
@@ -14,6 +14,10 @@ from contracts.shared.wad_ray import WadRay
 #
 
 const MAX_THRESHOLD = WadRay.WAD_ONE
+
+const SECONDS_PER_MINUTE = 60
+
+const TIME_ID_INTERVAL = 30 * SECONDS_PER_MINUTE
 
 #
 # Events
@@ -48,7 +52,7 @@ func NumGagesUpdated(num : felt):
 end
 
 @event
-func MultiplierUpdated(new_multiplier : felt, new_len : felt):
+func MultiplierUpdated(new_multiplier : felt, time_id : felt):
 end
 
 @event
@@ -68,7 +72,7 @@ func DepositUpdated(address : felt, trove_id : felt, gage_id : felt, new_amount 
 end
 
 @event
-func SeriesIncremented(gage_id : felt, new_len : felt, new_point : Point):
+func SeriesIncremented(gage_id : felt, time_id : felt, price : felt):
 end
 
 @event
@@ -146,13 +150,14 @@ end
 func synthetic() -> (total : felt):
 end
 
-# Keeps track of the price history of each Gage - ray
+# Keeps track of the price history of each Gage - wad
+# time_id: timestamp of the price integer-divided by TIME_ID_INTERVAL. 
 @storage_var
-func series(gage_id : felt, index : felt) -> (point : Point):
+func series(gage_id : felt, time_id : felt) -> (price : felt):
 end
 
 @storage_var
-func series_len(gage_id : felt) -> (len : felt):
+func series_last_time_id(gage_id : felt) -> (time_id : felt):
 end
 
 # Total debt ceiling - wad
@@ -162,11 +167,11 @@ end
 
 # Global interest rate multiplier - ray
 @storage_var
-func multiplier(i : felt) -> (rate : felt):
+func multiplier(time_id : felt) -> (rate : felt):
 end
 
 @storage_var 
-func multiplier_len()) -> (len : felt):
+func multiplier_last_time_id() -> (time_id : felt):
 end
 
 # Liquidation threshold (or max LTV) - wad
@@ -224,16 +229,16 @@ end
 
 @view
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, index
-) -> (point : Point):
-    return series.read(gage_id, index)
+    gage_id : felt, time_id : felt
+) -> (price : felt):
+    return series.read(gage_id, time_id)
 end
 
 @view
-func get_series_len{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func get_series_last_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt
-) -> (len : felt):
-    return series_len.read(gage_id)
+) -> (time_id : felt):
+    return series_last_time_id.read(gage_id)
 end
 
 @view
@@ -244,11 +249,13 @@ func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    multiplier : felt
-):
-    let (len) = multiplier_len.read()
-    return multiplier.read(len - 1)
+func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(time_id : felt) -> (multiplier : felt):
+    return multiplier.read(time_id)
+end
+
+@view
+func get_multiplier_last_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (time_id : felt):
+    return multiplier_last_time_id.read()
 end
 
 @view
@@ -312,11 +319,11 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 ):
     assert_auth()
 
-    let (len) = multiplier_len.read()
+    let (time_id) = get_block_time_id()
 
-    multiplier.write(len, new_multiplier)
-    multiplier_len.write(len + 1)
-    MultiplierUpdated.emit(new_multiplier, len + 1)
+    multiplier.write(time_id, new_multiplier)
+    multiplier_last_time_id.write(time_id)
+    MultiplierUpdated.emit(new_multiplier, time_id)
     return ()
 end
 
@@ -373,15 +380,17 @@ end
 # Appends a new point to the Series of the specified Gage
 @external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, point : Point
+    gage_id : felt, price : felt
 ):
     assert_auth()
 
-    let (current_len) = series_len.read(gage_id)
-    series.write(gage_id, current_len, point)
-    series_len.write(gage_id, current_len + 1)
+    let (time_id) = get_block_time_id()
+    series.write(gage_id, time_id, price)
 
-    SeriesIncremented.emit(gage_id, current_len + 1, point)
+    # TO DO: check if gas-optimization can be made here by checking if the current time_id is the same as the last one before writing.
+    series_last_time_id.write(gage_id, time_id)
+
+    SeriesIncremented.emit(gage_id, time_id, price)
     return ()
 end
 
@@ -588,9 +597,18 @@ end
 func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt
 ) -> (price : felt):
-    let (p_index) = get_series_len(gage_id)
-    let (p) = get_series(gage_id, p_index - 1)
-    return (p.price)
+    let (time_id) = series_last_time_id.read(gage_id)
+    let (p) = series.read(gage_id, time_id)
+    return (p)
+end
+
+# Gets last updated multiplier value
+@view
+func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    multiplier : felt
+):
+    let (time_id) = multiplier_last_time_id.read()
+    return multiplier.read(time_id)
 end
 
 # Calculate a Trove's loan-to-value ratio, scaled by one wad (10 ** 18).
@@ -688,6 +706,12 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
             cumulative=updated_cumulative,
         )
     end
+end
+
+func get_block_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (time_id : felt):
+    let (time) = get_block_timestamp()
+    let (time_id, _) = unsigned_div_rem(time, TIME_ID_INTERVAL)
+    return (time_id)
 end
 
 
