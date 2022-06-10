@@ -98,7 +98,7 @@ namespace WadRay:
     end
 
     # Assumes both a and b are positive integers
-    func unsigned_div{range_check_ptr}(a, b) -> (res):
+    func wunsigned_div{range_check_ptr}(a, b) -> (res):
         tempvar product = a * WAD_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
         assert_valid(q)
@@ -107,7 +107,7 @@ namespace WadRay:
 
     # Assumes both a and b are unsigned
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func unsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+    func wunsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
         tempvar product = a * WAD_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
         return (res=q)
@@ -127,6 +127,41 @@ namespace WadRay:
         return (res=scaled_prod)
     end
 
+    func rsigned_div{range_check_ptr}(a, b) -> (res):
+        alloc_locals
+        let (div) = abs_value(b)
+        let (div_sign) = sign(b)
+        tempvar prod = a * RAY_SCALE
+        let (res_u, _) = signed_div_rem(prod, div, BOUND)
+        assert_valid_unsigned(res_u)
+        return (res=res_u * div_sign)
+    end
+
+    # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
+    func rsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+        alloc_locals
+        let (div) = abs_value(b)
+        let (div_sign) = sign(b)
+        tempvar prod = a * RAY_SCALE
+        let (res_u, _) = signed_div_rem(prod, div, BOUND)
+        return (res=res_u * div_sign)
+    end
+
+    # Assumes both a and b are positive integers
+    func runsigned_div{range_check_ptr}(a, b) -> (res):
+        tempvar product = a * RAY_SCALE
+        let (q, _) = signed_div_rem(product, b, BOUND)
+        assert_valid(q)
+        return (res=q)
+    end
+
+    # Assumes both a and b are unsigned
+    # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
+    func runsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+        tempvar product = a * RAY_SCALE
+        let (q, _) = signed_div_rem(product, b, BOUND)
+        return (res=q)
+    end
     #
     # Conversions
     #
@@ -150,8 +185,19 @@ namespace WadRay:
     end
 
     # Truncates fractional component
-    func to_felt(n) -> (res : felt):
+    func to_felt(n) -> (res):
         let (res, _) = signed_div_rem(n, WAD_SCALE, BOUND)  # 2**127 is the maximum possible value of the bound parameter.
         return (res)
     end
+
+    func wad_to_ray(n) -> (res):
+        let (res) = n * DIFF 
+        assert_valid(res)
+        return (res)
+    end
+
+    func wad_to_ray_unchecked(n) -> (res):
+        return (res = n * DIFF)
+    end
+
 end

@@ -22,6 +22,21 @@ const SECONDS_PER_YEAR = SECONDS_PER_DAY * 365
 
 const TIME_ID_INTERVAL = 30 * SECONDS_PER_MINUTE
 
+# Interest rate piece-wise function parameters - all rays
+const RATE_M1 = 2 * 10**25 # 0.02
+const RATE_B1 = 0
+const RATE_M2 = 1 * 10**26 # 0.1
+const RATE_B2 = -4 * 10**25 # -0.04
+const RATE_M3 = 10**27 # 1
+const RATE_B3 = -715 * 10**23 # -0.715
+const RATE_M4 = 3101908 * 10**21 # 3.101908
+const RATE_B4 = -2651908222 * 10**18 # -2.651908222
+
+# Interest rate piece-wise range bounds (Bound 0 is implicitly zero) - all rays
+const RATE_BOUND1 = 5 * 10**26 # 0.5
+const RATE_BOUND2 = 75 * 10**25 # 0.75
+const RATE_BOUND3 = 9215 * 10**23 # 0.9215 
+
 #
 # Events
 #
@@ -632,13 +647,9 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 
     # Get scaled total value of trove's gages
     let (trove_val) = appraise(user_address, trove_id)
-    let (trove_val_scaled) = WadRay.wmul(trove_val, WadRay.WAD_SCALE)
-
-    # Get scaled value of trove's debt
-    let (debt_scaled) = WadRay.wmul(debt, WadRay.WAD_SCALE)
 
     # Calculate loan-to-value ratio
-    let (ratio) = WadRay.unsigned_div(debt_scaled, trove_val_scaled)
+    let (ratio) = WadRay.wunsigned_div(debt_scaled, trove_val_scaled)
 
     # Return ratio scaled by wad (10 ** 18)
     return (ratio)
@@ -737,6 +748,74 @@ func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBui
 ) -> (new_cumulative : felt):
 
 end
+
+# base rate function:
+#
+#
+#           { 0.02*LTV                   if 0 <= LTV <= 0.5 
+#           { 0.1*LTV - 0.04             if 0.5 < LTV <= 0.75
+#  r(LTV) = { LTV - 0.715                if 0.75 < LTV <= 0.9215
+#           { 3.101908*LTV - 2.65190822  if 0.9215 < LTV < \infinity
+#
+#
+
+func rate{range_check_ptr}(ratio : felt) -> (rate : felt):
+    alloc_locals
+
+    let (is_in_first_range) = is_le(ratio, RATE_BOUND1)
+    if is_in_first_range == TRUE:
+        let (rate) = linear(ratio, RATE_M1, RATE_B1)
+        return (rate)
+    else: 
+        let (is_in_second_range) = is_le(ratio, RATE_BOUND2)
+        if is_in_second_range == TRUE:
+            let (rate) = linear(ratio, RATE_M2, RATE_B2)
+            return (rate)
+        else:
+            let (is_in_third_range) = is_le(ratio, RATE_BOUND3)
+            if is_in_third_range == TRUE:
+                let (rate) = linear(ratio, RATE_M3, RATE_B3)
+                return (rate)
+            else:
+                let (rate) = linear(ratio, RATE_M4, RATE_B3)
+                return (rate)
+            end
+        end
+    end
+end
+
+# y = m*x + b
+# m, x, b, and y are all wads
+func linear{range_check_ptr}(x : felt, m : felt, b : felt) -> (y : felt):
+    let (m_x) = WadRay.rmul(m, x)
+    let (y) = WadRay.add(m_x, b)
+    return (y)
+end
+
+# Calculates the trove's LTV at the given time_id. Returns as a ray. 
+func trove_ratio_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, 
+    trove_id : felt,
+    time_id : felt, 
+) -> (ratio : felt):
+
+    let (trove : Trove) = troves.read(user_address, trove_id)
+    let debt = trove.debt 
+
+    let (gage_count : felt) = num_gages.read()
+    let (value : felt) = appraise_past(
+        user_address, 
+        trove_id, 
+        gage_count - 1, 
+        time_id, 
+        0
+    )
+
+    let (ratio : felt) = WadRay.wunsigned_div(debt, value)
+    let (ratio_ray : felt) = WadRay.wad_to_ray_unchecked(ratio) # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
+    return (ratio_ray)
+end
+
 
 # Gets the value a trove at a given time_id
 # Reverts if any of the series return a 0 for the given time_id
