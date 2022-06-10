@@ -2,7 +2,7 @@
 
 
 struct Trove:
-    member last : felt # Time ID (timestamp rounded to nearest 30 mins) of last accumulated interest calculation
+    member last : felt # Time ID (timestamp // TIME_ID_INTERVAL) of last accumulated interest calculation
     member debt : felt # Normalized debt
 end
 
