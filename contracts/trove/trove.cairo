@@ -663,39 +663,13 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     return (healthy)
 end
 
-# Wrapper function for the recursive `appraise_inner` function
+# Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ) -> (value : felt):
     let (gage_count) = num_gages.read()
-    return appraise_inner(user_address, trove_id, gage_count - 1, 0)
-end
-
-# Calculate a trove's gage value based on the sum of (Gage balance * Gage safety price) for all Gages
-# in descending order of Gage ID starting from `num_gages - 1`
-func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, gage_id : felt, cumulative : felt
-) -> (new_cumulative : felt):
-    # Calculate current gage value
-    let (balance) = deposited.read(user_address, trove_id, gage_id)
-    let (price) = gage_last_price(gage_id) # Getting the most recent price in the gage's series
-    let (value) = WadRay.wmul_unchecked(balance, price)
-
-    # Update cumulative value
-    let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
-
-    # Terminate when Gage ID reaches 0
-    if gage_id == 0:
-        return (updated_cumulative)
-    else:
-        # Recursive call
-        return appraise_inner(
-            user_address=user_address,
-            trove_id=trove_id,
-            gage_id=gage_id - 1,
-            cumulative=updated_cumulative,
-        )
-    end
+    let (time_id) = get_block_timestamp()
+    return appraise_inner(user_address, trove_id, gage_count - 1, time_id, 0)
 end
 
 func get_block_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (time_id : felt):
@@ -704,6 +678,7 @@ func get_block_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     return (time_id)
 end
 
+# Wrapper for `calc_accumulated_interest_inner`
 func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
     trove_id : felt, 
@@ -714,24 +689,22 @@ func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     return calc_accumulated_interest_inner(
         user_address, 
         trove_id, 
-        trove.debt, 
         trove.last, 
         final_time_id, 
-        0
+        trove.debt
     )
 end
 
 
 # Inner function for calculating accumulated interest. 
-# Recursively iterates over time intervals from `current_time_id` to `final_time_id` and sums up the interest owed over all of them
+# Recursively iterates over time intervals from `current_time_id` to `final_time_id` and compounds the interest owed over all of them
 # Assumes current_time_id <= final_time_id
 func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
     trove_id : felt, 
-    debt : felt
     current_time_id : felt, 
     final_time_id : felt,
-    current_cumulative : felt, 
+    debt : felt
     
 ) -> (new_cumulative : felt):
 
@@ -744,19 +717,18 @@ func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBui
     let (percent_owed : felt) = WadRay.rmul_unchecked(real_rate, TIME_ID_DIV_YEAR)
 
     let (amount_owed : felt) = WadRay.rmul(debt, percent_owed) # Returns a wad 
-    let (new_cumulative : felt) = WadRay.add(current_cumulative, amount_owed)
+    let (new_debt : felt) = WadRay.add(debt, amount_owed)
 
     if current_time_id != final_time_id:
         return calc_accumulated_interest_inner(
             user_address,
             trove_id, 
-            debt, 
             current_time_id + 1, 
             final_time_id, 
-            new_cumulative
+            new_debt
         )
     else:
-        return(new_cumulative)
+        return(new_debt)
     end
 
 end
@@ -773,6 +745,7 @@ end
 #
 #
 
+# `ratio` is expected to be a felt
 func base_rate{range_check_ptr}(ratio : felt) -> (rate : felt):
     alloc_locals
 
@@ -780,21 +753,6 @@ func base_rate{range_check_ptr}(ratio : felt) -> (rate : felt):
     if is_in_first_range == TRUE:
         let (rate) = linear(ratio, RATE_M1, RATE_B1)
         return (rate)
-    else: 
-        let (is_in_second_range) = is_le(ratio, RATE_BOUND2)
-        if is_in_second_range == TRUE:
-            let (rate) = linear(ratio, RATE_M2, RATE_B2)
-            return (rate)
-        else:
-            let (is_in_third_range) = is_le(ratio, RATE_BOUND3)
-            if is_in_third_range == TRUE:
-                let (rate) = linear(ratio, RATE_M3, RATE_B3)
-                return (rate)
-            else:
-                let (rate) = linear(ratio, RATE_M4, RATE_B4)
-                return (rate)
-            end
-        end
     end
 
     let (is_in_second_range) = is_le(ratio, RATE_BOUND2)
@@ -824,7 +782,8 @@ func linear{range_check_ptr}(x : felt, m : felt, b : felt) -> (y : felt):
     return (y)
 end
 
-# Calculates the trove's LTV at the given time_id, and given the . 
+# Calculates the trove's LTV at the given time_id. 
+# See comments `appraise_inner` for the underlying assumption about the 'correctness' of the result. 
 # Returns a ray. 
 func trove_ratio_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
@@ -834,7 +793,7 @@ func trove_ratio_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 ) -> (ratio : felt):
 
     let (gage_count : felt) = num_gages.read()
-    let (value : felt) = appraise_past(
+    let (value : felt) = appraise_inner(
         user_address, 
         trove_id, 
         gage_count - 1, 
@@ -850,7 +809,10 @@ end
 
 # Gets the value of a trove at the gage prices at time_id
 # For any series that returns 0 for the given time_id, it uses the most recent available price before that time_id
-func appraise_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+#
+# This function uses historical prices but the currently deposited gage amounts to calculate value... 
+# The underlying assumption is that the amount of each gage deposited at `time_id` is the same as the amount currently deposited.
+func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
     trove_id : felt, 
     gage_id : felt, 
