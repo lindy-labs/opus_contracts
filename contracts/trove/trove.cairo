@@ -172,11 +172,7 @@ end
 # Keeps track of the price history of each Gage - wad
 # time_id: timestamp of the price integer-divided by TIME_ID_INTERVAL. 
 @storage_var
-func series(gage_id : felt, time_id : felt) -> (price : felt):
-end
-
-@storage_var
-func series_last_time_id(gage_id : felt) -> (time_id : felt):
+func series(gage_id : felt, timetamp : felt) -> (price : felt):
 end
 
 # Total debt ceiling - wad
@@ -187,10 +183,6 @@ end
 # Global interest rate multiplier - ray
 @storage_var
 func multiplier(time_id : felt) -> (rate : felt):
-end
-
-@storage_var 
-func multiplier_last_time_id() -> (time_id : felt):
 end
 
 # Liquidation threshold (or max LTV) - wad
@@ -254,13 +246,6 @@ func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 end
 
 @view
-func get_series_last_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt
-) -> (time_id : felt):
-    return series_last_time_id.read(gage_id)
-end
-
-@view
 func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     ceiling : felt
 ):
@@ -270,11 +255,6 @@ end
 @view
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(time_id : felt) -> (multiplier : felt):
     return multiplier.read(time_id)
-end
-
-@view
-func get_multiplier_last_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (time_id : felt):
-    return multiplier_last_time_id.read()
 end
 
 @view
@@ -334,14 +314,13 @@ end
 
 @external
 func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_multiplier : felt
+    new_multiplier : felt, timestamp : felt
 ):
     assert_auth()
 
-    let (time_id) = get_block_time_id()
+    let (time_id, _) = unsigned_div_rem(timestamp, TIME_ID_INTERVAL)
 
     multiplier.write(time_id, new_multiplier)
-    multiplier_last_time_id.write(time_id)
     MultiplierUpdated.emit(new_multiplier, time_id)
     return ()
 end
@@ -396,18 +375,15 @@ end
 # Core functions
 #
 
-# Appends a new point to the Series of the specified Gage
+# Appends a new price to the Series of the specified Gage
 @external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, price : felt
+    gage_id : felt, price : felt, timestamp : felt
 ):
     assert_auth()
 
-    let (time_id) = get_block_time_id()
+    let (time_id, _) = unsigned_div_rem(timestamp, TIME_ID_INTERVAL)
     series.write(gage_id, time_id, price)
-
-    # TO DO: check if gas-optimization can be made here by checking if the current time_id is the same as the last one before writing.
-    series_last_time_id.write(gage_id, time_id)
 
     SeriesIncremented.emit(gage_id, time_id, price)
     return ()
@@ -616,8 +592,9 @@ end
 func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt
 ) -> (price : felt):
-    let (time_id) = series_last_time_id.read(gage_id)
-    let (p) = series.read(gage_id, time_id)
+
+    let (time_id) = get_block_time_id() # Get current time_id
+    let (p) = get_recent_price_from(gage_id, time_id)
     return (p)
 end
 
@@ -626,8 +603,9 @@ end
 func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     multiplier : felt
 ):
-    let (time_id) = multiplier_last_time_id.read()
-    return multiplier.read(time_id)
+    let (time_id) = get_block_time_id()
+    let (m) = get_recent_multiplier_from(time_id)
+    return (m)
 end
 
 # Calculate a Trove's loan-to-value ratio, scaled by one wad (10 ** 18).
@@ -732,7 +710,7 @@ func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 ) -> (owed : felt):
     let (trove : Trove) = troves.read(user_address, trove_id)
 
-    let (final_time_id : felt) = get_least_last_time_id()
+    let (final_time_id : felt) = get_block_time_id()
     return calc_accumulated_interest_inner(
         user_address, 
         trove_id, 
@@ -813,11 +791,29 @@ func base_rate{range_check_ptr}(ratio : felt) -> (rate : felt):
                 let (rate) = linear(ratio, RATE_M3, RATE_B3)
                 return (rate)
             else:
-                let (rate) = linear(ratio, RATE_M4, RATE_B3)
+                let (rate) = linear(ratio, RATE_M4, RATE_B4)
                 return (rate)
             end
         end
     end
+
+    let (is_in_second_range) = is_le(ratio, RATE_BOUND2)
+    if is_in_second_range == TRUE:
+        let (rate) = linear(ratio, RATE_M2, RATE_B2)
+        return (rate)
+    end
+
+    let (is_in_third_range) = is_le(ratio, RATE_BOUND3)
+    if is_in_third_range == TRUE:
+        let (rate) = linear(ratio, RATE_M3, RATE_B3)
+        return (rate)
+    else:
+        let (rate) = linear(ratio, RATE_M4, RATE_B4)
+            return (rate)
+    end
+
+
+
 end
 
 # y = m*x + b
@@ -858,7 +854,7 @@ func appraise_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     user_address : felt, 
     trove_id : felt, 
     gage_id : felt, 
-    time_id : felt
+    time_id : felt,
     cumulative : felt
 ) -> (new_cumulative : felt):
     # Calculate current gage value
@@ -875,7 +871,7 @@ func appraise_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
         return (updated_cumulative)
     else:
         # Recursive call
-        return appraise_inner(
+        return appraise_past(
             user_address=user_address,
             trove_id=trove_id,
             gage_id=gage_id - 1,
@@ -885,6 +881,8 @@ func appraise_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     end
 end
 
+# Returns the most recent available price, with `time_id` being the latest possible price that will be returned. In other words, 
+# If the price at `time_id` is non-zero, return that price. Otherwise, check `time_id` - 1, and so on. 
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, 
     time_id : felt
@@ -898,6 +896,8 @@ func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     end
 end
 
+# Returns the most recent available multiplier, with the one at `time_id` being the latest possible multiplier that will be returned.
+# In other words, If the multiplier at `time_id` is non-zero, return that multiplier. Otherwise, check `time_id` - 1, and so on. 
 func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     time_id : felt 
 ) -> (m : felt):
@@ -907,41 +907,5 @@ func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
         return (m)
     else:
         return get_recent_multiplier_from(time_id - 1)
-    end
-end
-
-# Gets the smallest latest time_id across the series of all gages AND the multiplier
-func get_least_last_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (least_last_time_id : felt):
-
-    let (gage_count : felt) = num_gages.read()
-    let (least_last_time_id : felt) = get_least_last_time_id_inner(gage_count - 1, 0)
-    let (multiplier_time_id : felt) = multiplier_last_time_id.read()
-    
-    let (m_is_earlier : felt) = is_le(multiplier_time_id, least_last_time_id)
-    if m_is_earlier == TRUE:
-        return (multiplier_time_id)
-    else:
-        return (least_last_time_id)
-    end
-end
-
-# Gets the smallest latest time_id across the series of all the gages 
-func get_least_last_time_id_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, 
-    least_last_time_id : felt
-) -> (least_latest_time_id : felt):
-
-    let (time_id : felt) = series_last_time_id.read(gage_id)
-
-    # Checking the time_id of `gage_id` is more recent than the previous latest_time_id
-    let (is_earlier : felt) = is_le(time_id, least_last_time_id)
-    if is_earlier == TRUE:
-        let least_last_time_id = time_id
-    end
-
-    if current_gage_id != 0:
-        return get_least_last_time_id_inner(gage_id - 1, least_last_time_id)
-    else:
-        return (least_last_time_id)
     end
 end
