@@ -8,7 +8,7 @@ from typing import Union
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.compiler.compile import compile_starknet_files
-from starkware.starknet.services.api.contract_definition import ContractDefinition
+from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import StarknetContract
 
 
@@ -75,7 +75,7 @@ def contract_path(rel_contract_path: str) -> str:
 
 
 @cache
-def compile_contract(rel_contract_path: str) -> ContractDefinition:
+def compile_contract(rel_contract_path: str) -> ContractClass:
     contract_src = contract_path(rel_contract_path)
     tld = os.path.join(here(), "..")
     return compile_starknet_files(
