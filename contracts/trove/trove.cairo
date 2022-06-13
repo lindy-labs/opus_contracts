@@ -608,30 +608,16 @@ func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
     return (m)
 end
 
-# Calculate a Trove's loan-to-value ratio, scaled by one wad (10 ** 18).
+# Calculate a Trove's current loan-to-value ratio
+# returns a wad
 @view
-func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ) -> (ratio : felt):
     alloc_locals
-
-    # Get value of the trove's debt
-    let (trove) = troves.read(user_address, trove_id)
-    let debt = trove.debt
-
-    # Early termination if no debt
-    if debt == 0:
-        return (0)
-    end
-
-    # Get scaled total value of trove's gages
-    let (trove_val) = appraise(user_address, trove_id)
-
-    # Calculate loan-to-value ratio
-    let (ratio) = WadRay.wunsigned_div(debt_scaled, trove_val_scaled)
-
-    # Return ratio scaled by wad (10 ** 18)
-    return (ratio)
+    let (trove : Trove) = troves.read(user_address, trove_id)
+    let (time_id) = get_block_time_id()
+    return trove_ratio(user_address, trove_id, time_id, trove.debt)
 end
 
 # Calculate a Trove's health
@@ -707,14 +693,14 @@ func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBui
     debt : felt
     
 ) -> (new_cumulative : felt):
-
-    let (ratio : felt) = trove_ratio_past(user_address, trove_id, current_time_id, debt)
+    alloc_locals
+    let (ratio : felt) = trove_ratio(user_address, trove_id, current_time_id, debt)
     
     let (rate : felt) = base_rate(ratio) 
     let (m : felt) = get_recent_multiplier_from(current_time_id)
     let (real_rate : felt) = WadRay.rmul_unchecked(rate, m)
 
-    let (percent_owed : felt) = WadRay.rmul_unchecked(real_rate, TIME_ID_DIV_YEAR)
+    let (percent_owed : felt) = WadRay.rmul_unchecked(real_rate, TIME_ID_INTERVAL_DIV_YEAR)
 
     let (amount_owed : felt) = WadRay.rmul(debt, percent_owed) # Returns a wad 
     let (new_debt : felt) = WadRay.add(debt, amount_owed)
@@ -769,9 +755,6 @@ func base_rate{range_check_ptr}(ratio : felt) -> (rate : felt):
         let (rate) = linear(ratio, RATE_M4, RATE_B4)
             return (rate)
     end
-
-
-
 end
 
 # y = m*x + b
@@ -783,14 +766,20 @@ func linear{range_check_ptr}(x : felt, m : felt, b : felt) -> (y : felt):
 end
 
 # Calculates the trove's LTV at the given time_id. 
-# See comments `appraise_inner` for the underlying assumption about the 'correctness' of the result. 
+# See comments above `appraise_inner` for the underlying assumption on which the correctness of the result depends. 
+# Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 # Returns a ray. 
-func trove_ratio_past{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
     trove_id : felt,
     time_id : felt, 
     debt : felt
 ) -> (ratio : felt):
+
+    # Early termination if no debt
+    if debt == 0:
+        return (0)
+    end
 
     let (gage_count : felt) = num_gages.read()
     let (value : felt) = appraise_inner(
@@ -819,6 +808,7 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     time_id : felt,
     cumulative : felt
 ) -> (new_cumulative : felt):
+    alloc_locals
     # Calculate current gage value
     let (balance) = deposited.read(user_address, trove_id, gage_id)
     let (price) = get_recent_price_from(gage_id, time_id)
@@ -833,7 +823,7 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
         return (updated_cumulative)
     else:
         # Recursive call
-        return appraise_past(
+        return appraise_inner(
             user_address=user_address,
             trove_id=trove_id,
             gage_id=gage_id - 1,
