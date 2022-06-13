@@ -664,28 +664,36 @@ func get_block_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     return (time_id)
 end
 
-# Wrapper for `calc_accumulated_interest_inner`
-func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+# Adds the accumulated interest as debt to the trove
+# TODO: Should this be an external function that anyone can call for any account? Is there a clear need for this? 
+func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
-    trove_id : felt, 
-) -> (owed : felt):
+    trove_id : felt
+) -> (new_debt : felt):
+    alloc_locals
     let (trove : Trove) = troves.read(user_address, trove_id)
-
-    let (final_time_id : felt) = get_block_time_id()
-    return calc_accumulated_interest_inner(
+    let (current_time_id : felt) = get_block_time_id()
+    let (new_debt : felt) = calc_accumulated_interest(
         user_address, 
         trove_id, 
         trove.last, 
-        final_time_id, 
+        current_time_id, 
         trove.debt
     )
+
+    let updated_trove : Trove = Trove(last=current_time_id, debt=new_debt)
+
+    troves.write(user_address, trove_id, updated_trove)
+    TroveUpdated.emit(user_address, trove_id, updated_trove)
+    return (new_debt)
 end
+
 
 
 # Inner function for calculating accumulated interest. 
 # Recursively iterates over time intervals from `current_time_id` to `final_time_id` and compounds the interest owed over all of them
 # Assumes current_time_id <= final_time_id
-func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, 
     trove_id : felt, 
     current_time_id : felt, 
@@ -705,8 +713,9 @@ func calc_accumulated_interest_inner{syscall_ptr : felt*, pedersen_ptr : HashBui
     let (amount_owed : felt) = WadRay.rmul(debt, percent_owed) # Returns a wad 
     let (new_debt : felt) = WadRay.add(debt, amount_owed)
 
+    # Recursive call
     if current_time_id != final_time_id:
-        return calc_accumulated_interest_inner(
+        return calc_accumulated_interest(
             user_address,
             trove_id, 
             current_time_id + 1, 
