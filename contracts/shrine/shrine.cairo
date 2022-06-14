@@ -296,6 +296,7 @@ func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     num_gages.write(gage_count + 1)
     NumGagesUpdated.emit(gage_count + 1)
+
     return ()
 end
 
@@ -307,6 +308,8 @@ func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     let (gage : Gage) = gages.read(gage_id)
     gages.write(gage_id, Gage(gage.total, new_max))
+    GageMaxUpdated.emit(gage_id, new_max)
+
     return ()
 end
 
