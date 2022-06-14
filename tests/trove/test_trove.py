@@ -166,6 +166,26 @@ async def trove_withdrawal(users, trove_setup, trove_deposit) -> StarknetTransac
     return withdrawal
 
 
+@pytest.fixture
+async def update_feeds(users, trove_setup, trove_deposit) -> None:
+    """
+    Additional price feeds for gage 0
+    """
+    trove = trove_setup
+    trove_owner = await users("trove owner")
+
+    gage0_feed = create_feed(GAGES[0]["start_price"], FEED_LEN, MAX_PRICE_CHANGE)
+
+    for i in range(FEED_LEN):
+        # Add offset for initial feeds in `trove_setup`
+        timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
+
+        await trove_owner.send_tx(trove.contract_address, "advance", [0, gage0_feed[i], timestamp])
+        await trove_owner.send_tx(trove.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
+
+    return
+
+
 #
 # Tests
 #
@@ -363,3 +383,15 @@ async def test_trove_melt_pass(trove_setup, users, trove_melt):
 
     healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
     assert healthy == 1
+
+
+@pytest.mark.asyncio
+async def test_charge(trove_setup, users, trove_forge, update_feeds):
+    trove = trove_setup
+
+    trove_user = await users("trove user")
+
+    trove = (await trove.get_troves(trove_user.address, 0).invoke()).result.trove
+    assert trove.last == 19
+
+    # TODO Call `charge`, and assert updated debt is correct
