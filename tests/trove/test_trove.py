@@ -22,7 +22,8 @@ from random import uniform
 TRUE = 1
 FALSE = 0
 
-SCALE = 10**18
+WAD_SCALE = 10**18
+RAY_SCALE = 10**27
 
 GAGE_COUNT = 3
 GAGE0_STARTING_PRICE = 2000
@@ -34,12 +35,12 @@ MAX_PRICE_CHANGE = 0.025
 
 SECONDS_PER_MINUTE = 60
 
-DEBT_CEILING = 10_000 * SCALE
+DEBT_CEILING = 10_000 * WAD_SCALE
 LIQUIDATION_THRESHOLD = 8 * 10**17
 
-GAGE0_MAX = 10_000 * SCALE
-GAGE1_MAX = 100_000 * SCALE
-GAGE2_MAX = 10_000_000 * SCALE
+GAGE0_MAX = 10_000 * WAD_SCALE
+GAGE1_MAX = 100_000 * WAD_SCALE
+GAGE2_MAX = 10_000_000 * WAD_SCALE
 
 #
 # Structs
@@ -51,7 +52,7 @@ Gage = namedtuple("Gage", ["total", "max"])
 
 
 def to_wad(n: float):
-    return int(n * SCALE)
+    return int(n * WAD_SCALE)
 
 
 # Returns a price feed
@@ -323,7 +324,7 @@ async def test_trove_forge_pass(trove_setup, users, trove_forge):
 
     gage0_price = (await trove.gage_last_price(0).invoke()).result.price
     trove_ltv = (await trove.trove_ratio_current(trove_user.address, 0).invoke()).result.ratio
-    expected_ltv = (Decimal(to_wad(5000)) / (Decimal(to_wad(10)) * gage0_price)) * (SCALE * SCALE)
+    expected_ltv = (Decimal(5000) / Decimal(10 * gage0_price)) * (WAD_SCALE * RAY_SCALE)
     assert trove_ltv == expected_ltv
 
     healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
