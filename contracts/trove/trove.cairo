@@ -20,8 +20,8 @@ const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60
 const SECONDS_PER_DAY = SECONDS_PER_HOUR * 24
 const SECONDS_PER_YEAR = SECONDS_PER_DAY * 365
 
-const TIME_ID_INTERVAL = 30 * SECONDS_PER_MINUTE
-const TIME_ID_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 * 24 * 365) = 0.00005707762557077625 (ray)
+const TIME_INTERVAL = 30 * SECONDS_PER_MINUTE
+const TIME_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 * 24 * 365) = 0.00005707762557077625 (ray)
 
 # Interest rate piece-wise function parameters - all rays
 const RATE_M1 = 2 * 10 ** 25  # 0.02
@@ -71,7 +71,7 @@ func NumGagesUpdated(num : felt):
 end
 
 @event
-func MultiplierUpdated(new_multiplier : felt, time_id : felt):
+func MultiplierUpdated(new_multiplier : felt, interval : felt):
 end
 
 @event
@@ -91,7 +91,7 @@ func DepositUpdated(address : felt, trove_id : felt, gage_id : felt, new_amount 
 end
 
 @event
-func SeriesIncremented(gage_id : felt, time_id : felt, price : felt):
+func SeriesIncremented(gage_id : felt, interval : felt, price : felt):
 end
 
 @event
@@ -170,9 +170,9 @@ func synthetic() -> (total : felt):
 end
 
 # Keeps track of the price history of each Gage - wad
-# time_id: timestamp of the price integer-divided by TIME_ID_INTERVAL.
+# interval: timestamp-divided by TIME_INTERVAL.
 @storage_var
-func series(gage_id : felt, timetamp : felt) -> (price : felt):
+func series(gage_id : felt, interval : felt) -> (price : felt):
 end
 
 # Total debt ceiling - wad
@@ -182,7 +182,7 @@ end
 
 # Global interest rate multiplier - ray
 @storage_var
-func multiplier(time_id : felt) -> (rate : felt):
+func multiplier(interval : felt) -> (rate : felt):
 end
 
 # Liquidation threshold (or max LTV) - wad
@@ -240,9 +240,9 @@ end
 
 @view
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, time_id : felt
+    gage_id : felt, interval : felt
 ) -> (price : felt):
-    return series.read(gage_id, time_id)
+    return series.read(gage_id, interval)
 end
 
 @view
@@ -254,9 +254,9 @@ end
 
 @view
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    time_id : felt
+    interval : felt
 ) -> (multiplier : felt):
-    return multiplier.read(time_id)
+    return multiplier.read(interval)
 end
 
 @view
@@ -320,10 +320,10 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 ):
     assert_auth()
 
-    let (time_id, _) = unsigned_div_rem(timestamp, TIME_ID_INTERVAL)
+    let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
 
-    multiplier.write(time_id, new_multiplier)
-    MultiplierUpdated.emit(new_multiplier, time_id)
+    multiplier.write(interval, new_multiplier)
+    MultiplierUpdated.emit(new_multiplier, interval)
     return ()
 end
 
@@ -384,10 +384,10 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     assert_auth()
 
-    let (time_id, _) = unsigned_div_rem(timestamp, TIME_ID_INTERVAL)
-    series.write(gage_id, time_id, price)
+    let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
+    series.write(gage_id, interval, price)
 
-    SeriesIncremented.emit(gage_id, time_id, price)
+    SeriesIncremented.emit(gage_id, interval, price)
     return ()
 end
 
@@ -594,8 +594,8 @@ end
 func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt
 ) -> (price : felt):
-    let (time_id) = get_block_time_id()  # Get current time_id
-    let (p) = get_recent_price_from(gage_id, time_id)
+    let (interval) = now()  # Get current interval
+    let (p) = get_recent_price_from(gage_id, interval)
     return (p)
 end
 
@@ -604,8 +604,8 @@ end
 func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     multiplier : felt
 ):
-    let (time_id) = get_block_time_id()
-    let (m) = get_recent_multiplier_from(time_id)
+    let (interval) = now()
+    let (m) = get_recent_multiplier_from(interval)
     return (m)
 end
 
@@ -617,8 +617,8 @@ func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
 ) -> (ratio : felt):
     alloc_locals
     let (trove : Trove) = troves.read(user_address, trove_id)
-    let (time_id) = get_block_time_id()
-    return trove_ratio(user_address, trove_id, time_id, trove.debt)
+    let (interval) = now()
+    return trove_ratio(user_address, trove_id, interval, trove.debt)
 end
 
 # Calculate a Trove's health
@@ -655,16 +655,14 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     user_address : felt, trove_id : felt
 ) -> (value : felt):
     let (gage_count) = num_gages.read()
-    let (time_id) = get_block_timestamp()
-    return appraise_inner(user_address, trove_id, gage_count - 1, time_id, 0)
+    let (interval) = now()
+    return appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
 end
 
-func get_block_time_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    time_id : felt
-):
+func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (interval : felt):
     let (time) = get_block_timestamp()
-    let (time_id, _) = unsigned_div_rem(time, TIME_ID_INTERVAL)
-    return (time_id)
+    let (interval, _) = unsigned_div_rem(time, TIME_INTERVAL)
+    return (interval)
 end
 
 # Adds the accumulated interest as debt to the trove
@@ -674,12 +672,12 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (new_debt : felt):
     alloc_locals
     let (trove : Trove) = troves.read(user_address, trove_id)
-    let (current_time_id : felt) = get_block_time_id()
+    let (current_interval : felt) = now()
     let (new_debt : felt) = calc_accumulated_interest(
-        user_address, trove_id, trove.last, current_time_id, trove.debt
+        user_address, trove_id, trove.last, current_interval, trove.debt
     )
 
-    let updated_trove : Trove = Trove(last=current_time_id, debt=new_debt)
+    let updated_trove : Trove = Trove(last=current_interval, debt=new_debt)
 
     troves.write(user_address, trove_id, updated_trove)
     TroveUpdated.emit(user_address, trove_id, updated_trove)
@@ -687,32 +685,36 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 # Inner function for calculating accumulated interest.
-# Recursively iterates over time intervals from `current_time_id` to `final_time_id` and compounds the interest owed over all of them
-# Assumes current_time_id <= final_time_id
+# Recursively iterates over time intervals from `current_interval` to `final_interval` and compounds the interest owed over all of them
+# Assumes current_interval <= final_interval
 func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, current_time_id : felt, final_time_id : felt, debt : felt
+    user_address : felt,
+    trove_id : felt,
+    current_interval : felt,
+    final_interval : felt,
+    debt : felt,
 ) -> (new_cumulative : felt):
     alloc_locals
 
     # Terminate
-    if current_time_id == final_time_id:
+    if current_interval == final_interval:
         return (debt)
     end
 
     # Get LTV for Trove at the given time ID
-    let (ratio : felt) = trove_ratio(user_address, trove_id, current_time_id, debt)
+    let (ratio : felt) = trove_ratio(user_address, trove_id, current_interval, debt)
 
     # Get base rate using LTV
     let (rate : felt) = base_rate(ratio)
 
     # Get multiplier at the given time ID
-    let (m : felt) = get_recent_multiplier_from(current_time_id)
+    let (m : felt) = get_recent_multiplier_from(current_interval)
 
     # Derive the interest rate
     let (real_rate : felt) = WadRay.rmul_unchecked(rate, m)
 
     # Derive the real interest rate to be charged
-    let (percent_owed : felt) = WadRay.rmul_unchecked(real_rate, TIME_ID_INTERVAL_DIV_YEAR)
+    let (percent_owed : felt) = WadRay.rmul_unchecked(real_rate, TIME_INTERVAL_DIV_YEAR)
 
     # Compound the debt
     let (amount_owed : felt) = WadRay.rmul(debt, percent_owed)  # Returns a wad
@@ -720,7 +722,7 @@ func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 
     # Recursive call
     return calc_accumulated_interest(
-        user_address, trove_id, current_time_id + 1, final_time_id, new_debt
+        user_address, trove_id, current_interval + 1, final_interval, new_debt
     )
 end
 
@@ -768,12 +770,12 @@ func linear{range_check_ptr}(x : felt, m : felt, b : felt) -> (y : felt):
     return (y)
 end
 
-# Calculates the trove's LTV at the given time_id.
+# Calculates the trove's LTV at the given interval.
 # See comments above `appraise_inner` for the underlying assumption on which the correctness of the result depends.
 # Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 # Returns a ray.
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, time_id : felt, debt : felt
+    user_address : felt, trove_id : felt, interval : felt, debt : felt
 ) -> (ratio : felt):
     # Early termination if no debt
     if debt == 0:
@@ -781,25 +783,25 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     end
 
     let (gage_count : felt) = num_gages.read()
-    let (value : felt) = appraise_inner(user_address, trove_id, gage_count - 1, time_id, 0)
+    let (value : felt) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
 
     let (ratio : felt) = WadRay.wunsigned_div(debt, value)
     let (ratio_ray : felt) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
     return (ratio_ray)
 end
 
-# Gets the value of a trove at the gage prices at time_id
-# For any series that returns 0 for the given time_id, it uses the most recent available price before that time_id
+# Gets the value of a trove at the gage prices at the given interval.
+# For any series that returns 0 for the given interval, it uses the most recent available price before that interval.
 #
 # This function uses historical prices but the currently deposited gage amounts to calculate value...
-# The underlying assumption is that the amount of each gage deposited at `time_id` is the same as the amount currently deposited.
+# The underlying assumption is that the amount of each gage deposited at the interval is the same as the amount currently deposited.
 func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, gage_id : felt, time_id : felt, cumulative : felt
+    user_address : felt, trove_id : felt, gage_id : felt, interval : felt, cumulative : felt
 ) -> (new_cumulative : felt):
     alloc_locals
     # Calculate current gage value
     let (balance) = deposited.read(user_address, trove_id, gage_id)
-    let (price) = get_recent_price_from(gage_id, time_id)
+    let (price) = get_recent_price_from(gage_id, interval)
     assert_not_zero(price)  # Reverts if price is zero
     let (value) = WadRay.wmul_unchecked(balance, price)
 
@@ -815,36 +817,36 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
             user_address=user_address,
             trove_id=trove_id,
             gage_id=gage_id - 1,
-            time_id=time_id,
+            interval=interval,
             cumulative=updated_cumulative,
         )
     end
 end
 
-# Returns the price for `gage_id` at `time_id` if it is non-zero.
-# Otherwise, check `time_id` - 1 recursively for the last available price.
+# Returns the price for `gage_id` at `interval` if it is non-zero.
+# Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, time_id : felt
+    gage_id : felt, interval : felt
 ) -> (price : felt):
-    let (price) = series.read(gage_id, time_id)
+    let (price) = series.read(gage_id, interval)
 
     if price != 0:
         return (price)
     end
 
-    return get_recent_price_from(gage_id, time_id - 1)
+    return get_recent_price_from(gage_id, interval - 1)
 end
 
-# Returns the multiplier at `time_id` if it is non-zero.
-# Otherwise, check `time_id` - 1 recursively for the last available value.
+# Returns the multiplier at `interval` if it is non-zero.
+# Otherwise, check `interval` - 1 recursively for the last available value.
 func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    time_id : felt
+    interval : felt
 ) -> (m : felt):
-    let (m) = multiplier.read(time_id)
+    let (m) = multiplier.read(interval)
 
     if m != 0:
         return (m)
     end
 
-    return get_recent_multiplier_from(time_id - 1)
+    return get_recent_multiplier_from(interval - 1)
 end
