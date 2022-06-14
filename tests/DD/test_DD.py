@@ -49,7 +49,7 @@ async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[Starknet
     dd_contract = compile_contract("contracts/DD/DD.cairo")
 
     dd = await starknet.deploy(
-        contract_def=dd_contract,
+        contract_class=dd_contract,
         constructor_calldata=[
             dd_owner.address,
             dd_stablecoin.contract_address,

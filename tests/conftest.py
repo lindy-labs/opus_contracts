@@ -73,7 +73,7 @@ def tokens(
         name = str_to_felt(name)
         symbol = str_to_felt(symbol)
         token = await starknet.deploy(
-            contract_def=contract,
+            contract_class=contract,
             constructor_calldata=[name, symbol, decimals, *initial_supply, recipient],
         )
         return token
@@ -85,10 +85,10 @@ def tokens(
 async def usda(starknet, users) -> StarknetContract:
     owner = await users("usda owner")
     contract = compile_contract("contracts/USDa/USDa.cairo")
-    return await starknet.deploy(contract_def=contract, constructor_calldata=[owner.address])
+    return await starknet.deploy(contract_class=contract, constructor_calldata=[owner.address])
 
 
 @pytest.fixture
 async def mrac_controller(starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
-    return await starknet.deploy(contract_def=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
+    return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])

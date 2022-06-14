@@ -2,7 +2,7 @@ from utils import compile_contract, as_address, str_to_felt, Addressable, Callda
 from starkware.cairo.common.hash_state import compute_hash_on_elements
 from starkware.crypto.signature.signature import private_to_stark_key, sign
 from starkware.starknet.public.abi import get_selector_from_name
-from starkware.starknet.services.api.contract_definition import ContractDefinition
+from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import Starknet
 
 # IDEA:
@@ -17,7 +17,7 @@ class Account:
     to simplify sending TXs in tests.
     """
 
-    compiled_acconut_contract: ContractDefinition = compile_contract("contracts/lib/openzeppelin/account/Account.cairo")
+    compiled_acconut_contract: ContractClass = compile_contract("contracts/lib/openzeppelin/account/Account.cairo")
 
     def __init__(self, name):
         self.private_key = abs(hash(name))
@@ -32,7 +32,7 @@ class Account:
 
     async def deploy(self, starknet: Starknet):
         self.contract = await starknet.deploy(
-            contract_def=Account.compiled_acconut_contract, constructor_calldata=[self.public_key]
+            contract_class=Account.compiled_acconut_contract, constructor_calldata=[self.public_key]
         )
 
     async def send_tx(self, to: Addressable, selector: str, calldata: Calldata, max_fee=0):
