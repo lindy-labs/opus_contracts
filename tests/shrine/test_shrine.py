@@ -310,7 +310,7 @@ async def test_shrine_withdrawal_pass(shrine_setup, users, shrine_withdrawal):
     amt = (await shrine.get_deposits(shrine_user.address, 0, 0).invoke()).result.amount
     assert amt == 0
 
-    ltv = (await shrine.shrine_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     assert ltv == 0
 
     is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
@@ -329,21 +329,24 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
         "SyntheticTotalUpdated",
         [to_wad(5000)],
     )
+
+    #TODO: Failing due to incorrect time interval/ID
+    
     assert_event_emitted(
         shrine_forge,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, 0, to_wad(5000)],
+        [shrine_user.address, 0, FEED_LEN - 1, to_wad(5000)],
     )
-
+    
     system_debt = (await shrine.get_synthetic().invoke()).result.total
     assert system_debt == to_wad(5000)
 
-    user_shrine = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.shrine
-    assert user_shrine.debt == to_wad(5000)
+    user_trove = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.trove
+    assert user_trove.debt == to_wad(5000)
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
-    shrine_ltv = (await shrine.shrine_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     expected_ltv = (Decimal(5000) / Decimal(10 * gage0_price)) * (WAD_SCALE * RAY_SCALE)
     assert shrine_ltv == expected_ltv
 
@@ -373,10 +376,10 @@ async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
     system_debt = (await shrine.get_synthetic().invoke()).result.total
     assert system_debt == 0
 
-    user_shrine = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.shrine
-    assert user_shrine.debt == 0
+    user_trove = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.trove
+    assert user_trove.debt == 0
 
-    shrine_ltv = (await shrine.shrine_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     assert shrine_ltv == 0
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
@@ -389,7 +392,7 @@ async def test_charge(shrine_setup, users, shrine_forge, update_feeds):
 
     shrine_user = await users("shrine user")
 
-    shrine = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.shrine
-    assert shrine.last == 19
+    trove = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.trove
+    assert trove.last == 19
 
     # TODO Call `charge`, and assert updated debt is correct
