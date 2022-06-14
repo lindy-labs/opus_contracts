@@ -194,7 +194,7 @@ async def test_shrine_setup(shrine_setup):
     shrine = shrine_setup
 
     # Check system is live
-    live = (await shrine.get_is_live().invoke()).result.is_live
+    live = (await shrine.get_live().invoke()).result.live
     assert live == 1
 
     # Check threshold
@@ -210,13 +210,13 @@ async def test_shrine_setup(shrine_setup):
     assert gage_count == 3
 
     # Check gages
-    gage0 = (await shrine.get_gages(0).invoke()).result.gage
+    gage0 = (await shrine.get_gage(0).invoke()).result.gage
     assert gage0 == Gage(0, GAGES[0]["ceiling"])
 
-    gage1 = (await shrine.get_gages(1).invoke()).result.gage
+    gage1 = (await shrine.get_gage(1).invoke()).result.gage
     assert gage1 == Gage(0, GAGES[1]["ceiling"])
 
-    gage2 = (await shrine.get_gages(2).invoke()).result.gage
+    gage2 = (await shrine.get_gage(2).invoke()).result.gage
     assert gage2 == Gage(0, GAGES[2]["ceiling"])
 
     # Check price feeds
@@ -278,10 +278,10 @@ async def test_shrine_deposit(shrine_setup, users, shrine_deposit):
         [shrine_user.address, 0, 0, to_wad(10)],
     )
 
-    gage = (await shrine.get_gages(0).invoke()).result.gage
+    gage = (await shrine.get_gage(0).invoke()).result.gage
     assert gage.total == to_wad(10)
 
-    amt = (await shrine.get_deposits(shrine_user.address, 0, 0).invoke()).result.amount
+    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
     assert amt == to_wad(10)
 
 
@@ -304,10 +304,10 @@ async def test_shrine_withdrawal_pass(shrine_setup, users, shrine_withdrawal):
         [shrine_user.address, 0, 0, 0],
     )
 
-    gage = (await shrine.get_gages(0).invoke()).result.gage
+    gage = (await shrine.get_gage(0).invoke()).result.gage
     assert gage.total == 0
 
-    amt = (await shrine.get_deposits(shrine_user.address, 0, 0).invoke()).result.amount
+    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
     assert amt == 0
 
     ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
@@ -342,7 +342,7 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
     system_debt = (await shrine.get_synthetic().invoke()).result.total
     assert system_debt == to_wad(5000)
 
-    user_trove = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.trove
+    user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == to_wad(5000)
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
@@ -376,7 +376,7 @@ async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
     system_debt = (await shrine.get_synthetic().invoke()).result.total
     assert system_debt == 0
 
-    user_trove = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.trove
+    user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == 0
 
     shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
@@ -392,7 +392,7 @@ async def test_charge(shrine_setup, users, shrine_forge, update_feeds):
 
     shrine_user = await users("shrine user")
 
-    trove = (await shrine.get_troves(shrine_user.address, 0).invoke()).result.trove
+    trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert trove.last == 19
 
     # TODO Call `charge`, and assert updated debt is correct
