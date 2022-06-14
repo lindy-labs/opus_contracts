@@ -137,7 +137,7 @@ end
 @view
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address : felt
-) -> (is_auth : felt):
+) -> (authorized : felt):
     return auth.read(address)
 end
 
@@ -192,7 +192,7 @@ end
 
 # Fee on yield - ray
 @storage_var
-func tax() -> (admin_fee : felt):
+func tax() -> (tax : felt):
 end
 
 @storage_var
@@ -233,7 +233,7 @@ end
 
 @view
 func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    amount : felt
+    total : felt
 ):
     return synthetic.read()
 end
@@ -255,7 +255,7 @@ end
 @view
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     interval : felt
-) -> (multiplier : felt):
+) -> (rate : felt):
     return multiplier.read(interval)
 end
 
@@ -654,9 +654,12 @@ end
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ) -> (value : felt):
+    alloc_locals
+
     let (gage_count) = num_gages.read()
     let (interval) = now()
-    return appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    let (value) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    return (value)
 end
 
 func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (interval : felt):
