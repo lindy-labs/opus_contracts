@@ -25,22 +25,26 @@ FALSE = 0
 WAD_SCALE = 10**18
 RAY_SCALE = 10**27
 
-GAGE_COUNT = 3
-GAGE0_STARTING_PRICE = 2000
-GAGE1_STARTING_PRICE = 500
-GAGE2_STARTING_PRICE = 1.25
+GAGES = [
+    {
+        "start_price": 2000,
+        "ceiling": 10_000 * WAD_SCALE,
+    },
+    {
+        "start_price": 500,
+        "ceiling": 100_000 * WAD_SCALE,
+    },
+    {"start_price": 1.25, "ceiling": 10_000_000 * WAD_SCALE},
+]
 
 FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
+MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
 
 SECONDS_PER_MINUTE = 60
 
 DEBT_CEILING = 10_000 * WAD_SCALE
 LIQUIDATION_THRESHOLD = 8 * 10**17
-
-GAGE0_MAX = 10_000 * WAD_SCALE
-GAGE1_MAX = 100_000 * WAD_SCALE
-GAGE2_MAX = 10_000_000 * WAD_SCALE
 
 #
 # Structs
@@ -56,10 +60,10 @@ def to_wad(n: float):
 
 
 # Returns a price feed
-def create_feed(starting_price: float, length: int, max_change: float) -> list[int]:
+def create_feed(start_price: float, length: int, max_change: float) -> list[int]:
     feed = []
 
-    feed.append(starting_price)
+    feed.append(start_price)
     for i in range(1, length):
         change = uniform(-max_change, max_change)  # Returns the % change in price (in decimal form, meaning 1% = 0.01)
         feed.append(feed[i - 1] * (1 + change))
@@ -103,27 +107,21 @@ async def trove_setup(users, trove_deploy) -> StarknetContract:
     await trove_owner.send_tx(trove.contract_address, "set_ceiling", [DEBT_CEILING])
 
     # Creating the gages
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE0_MAX])
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE1_MAX])
-    await trove_owner.send_tx(trove.contract_address, "add_gage", [GAGE2_MAX])
+    for g in GAGES:
+        await trove_owner.send_tx(trove.contract_address, "add_gage", [g["ceiling"]])
 
     # Creating the price feeds
-    feed0 = create_feed(GAGE0_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
-    feed1 = create_feed(GAGE1_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
-    feed2 = create_feed(GAGE2_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
-    feeds = [feed0, feed1, feed2]
+    feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in GAGES]
 
     # Putting the price feeds in the `series` storage variable
 
     for i in range(FEED_LEN):
         timestamp = i * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
-        for j in range(GAGE_COUNT):
-            await trove_owner.send_tx(
-                trove.contract_address,
-                "advance",
-                [j, feeds[j][i], timestamp],
-            )
+        for j in range(len(GAGES)):
+            await trove_owner.send_tx(trove.contract_address, "advance", [j, feeds[j][i], timestamp])
+
+        await trove_owner.send_tx(trove.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
 
     return trove
 
@@ -195,17 +193,21 @@ async def test_trove_setup(trove_setup):
 
     # Check gages
     gage0 = (await trove.get_gages(0).invoke()).result.gage
-    assert gage0 == Gage(0, GAGE0_MAX)
+    assert gage0 == Gage(0, GAGES[0]["ceiling"])
 
     gage1 = (await trove.get_gages(1).invoke()).result.gage
-    assert gage1 == Gage(0, GAGE1_MAX)
+    assert gage1 == Gage(0, GAGES[1]["ceiling"])
 
     gage2 = (await trove.get_gages(2).invoke()).result.gage
-    assert gage2 == Gage(0, to_wad(10_000_000))
+    assert gage2 == Gage(0, GAGES[2]["ceiling"])
 
     # Check price feeds
     gage0_first_point = (await trove.get_series(0, 0).invoke()).result.price
-    assert gage0_first_point == to_wad(GAGE0_STARTING_PRICE)
+    assert gage0_first_point == to_wad(GAGES[0]["start_price"])
+
+    # Check multiplier feed
+    multiplier_first_point = (await trove.get_multiplier(0).invoke()).result.rate
+    assert multiplier_first_point == RAY_SCALE
 
 
 @pytest.mark.asyncio
@@ -347,7 +349,7 @@ async def test_trove_melt_pass(trove_setup, users, trove_melt):
         trove_melt,
         trove.contract_address,
         "TroveUpdated",
-        [trove_user.address, 0, 0, 0],
+        [trove_user.address, 0, FEED_LEN - 1, 0],
     )
 
     system_debt = (await trove.get_synthetic().invoke()).result.total
