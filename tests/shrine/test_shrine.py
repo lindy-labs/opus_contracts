@@ -394,3 +394,22 @@ async def test_charge(shrine_setup, users, shrine_forge, update_feeds):
     assert trove.last == 19
 
     # TODO Call `charge`, and assert updated debt is correct
+
+
+@pytest.mark.asyncio
+async def test_add_gage(shrine_setup, users):
+    shrine_owner = await users("shrine owner")
+    shrine = shrine_setup
+
+    g_count = len(GAGES)
+    assert (await shrine.get_num_gages().invoke()).result.num == g_count
+
+    new_gage_max = 42_000 * WAD_SCALE
+    tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [new_gage_max])
+    assert (await shrine.get_num_gages().invoke()).result.num == g_count + 1
+    assert_event_emitted(tx, shrine.contract_address, "GageAdded", [g_count, new_gage_max])
+    assert_event_emitted(tx, shrine.contract_address, "NumGagesUpdated", [g_count + 1])
+
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "add_gage", [1])

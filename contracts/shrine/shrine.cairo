@@ -51,6 +51,10 @@ func Revoked(address : felt):
 end
 
 @event
+func GageAdded(gage_id : felt, max : felt):
+end
+
+@event
 func GageTotalUpdated(gage_id : felt, new_total : felt):
 end
 
@@ -288,7 +292,10 @@ func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (gage_count : felt) = num_gages.read()
     gages.write(gage_count, Gage(0, max))
+    GageAdded.emit(gage_count, max)
+
     num_gages.write(gage_count + 1)
+    NumGagesUpdated.emit(gage_count + 1)
     return ()
 end
 
