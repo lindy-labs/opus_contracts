@@ -66,10 +66,12 @@ def create_feed(starting_price: float, length: int, max_change: float) -> list[i
     # Scaling the feed before returning so it's ready to use in contracts
     return list(map(to_wad, feed))
 
+
 def set_block_timestamp(self, block_timestamp):
     self.state.block_info = BlockInfo(
         self.state.block_info.block_number, block_timestamp, self.state.block_info.gas_price
     )
+
 
 #
 # Fixtures
@@ -82,7 +84,7 @@ async def trove_deploy(starknet, users) -> StarknetContract:
     trove_owner = await users("trove owner")
     trove_contract = compile_contract("contracts/trove/trove.cairo")
 
-    trove = await starknet.deploy(contract_def=trove_contract, constructor_calldata=[trove_owner.address])
+    trove = await starknet.deploy(contract_class=trove_contract, constructor_calldata=[trove_owner.address])
 
     return trove, starknet
 
@@ -112,7 +114,7 @@ async def trove_setup(users, trove_deploy) -> StarknetContract:
     # Putting the price feeds in the `series` storage variable
 
     for i in range(FEED_LEN):
-        set_block_timestamp(starknet.state, i*30*SECONDS_PER_MINUTE)
+        set_block_timestamp(starknet.state, i * 30 * SECONDS_PER_MINUTE)
         await trove_owner.send_tx(
             trove.contract_address,
             "advance",
@@ -128,10 +130,6 @@ async def trove_setup(users, trove_deploy) -> StarknetContract:
             "advance",
             [2, feed2[i]],
         )
-
-        
-
-
 
     return trove
 
@@ -372,5 +370,3 @@ async def test_trove_melt_pass(trove_setup, users, trove_melt):
 
     healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
     assert healthy == 1
-
-
