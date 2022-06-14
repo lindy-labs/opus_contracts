@@ -24,6 +24,7 @@ FALSE = 0
 
 SCALE = 10**18
 
+GAGE_COUNT = 3
 GAGE0_STARTING_PRICE = 2000
 GAGE1_STARTING_PRICE = 500
 GAGE2_STARTING_PRICE = 1.25
@@ -45,7 +46,6 @@ GAGE2_MAX = 10_000_000 * SCALE
 #
 
 Gage = namedtuple("Gage", ["total", "max"])
-Point = namedtuple("Point", ["price", "time"])
 
 # Utility functions
 
@@ -67,9 +67,9 @@ def create_feed(starting_price: float, length: int, max_change: float) -> list[i
     return list(map(to_wad, feed))
 
 
-def set_block_timestamp(self, block_timestamp):
-    self.state.block_info = BlockInfo(
-        self.state.block_info.block_number, block_timestamp, self.state.block_info.gas_price
+def set_block_timestamp(sn, block_timestamp):
+    sn.state.block_info = BlockInfo(
+        sn.state.block_info.block_number, block_timestamp, sn.state.block_info.gas_price, sequencer_address=None
     )
 
 
@@ -110,26 +110,19 @@ async def trove_setup(users, trove_deploy) -> StarknetContract:
     feed0 = create_feed(GAGE0_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
     feed1 = create_feed(GAGE1_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
     feed2 = create_feed(GAGE2_STARTING_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
+    feeds = [feed0, feed1, feed2]
 
     # Putting the price feeds in the `series` storage variable
 
     for i in range(FEED_LEN):
-        set_block_timestamp(starknet.state, i * 30 * SECONDS_PER_MINUTE)
-        await trove_owner.send_tx(
-            trove.contract_address,
-            "advance",
-            [0, feed0[i]],
-        )
-        await trove_owner.send_tx(
-            trove.contract_address,
-            "advance",
-            [1, feed1[i]],
-        )
-        await trove_owner.send_tx(
-            trove.contract_address,
-            "advance",
-            [2, feed2[i]],
-        )
+        timestamp = i * 30 * SECONDS_PER_MINUTE
+        set_block_timestamp(starknet.state, timestamp)
+        for j in range(GAGE_COUNT):
+            await trove_owner.send_tx(
+                trove.contract_address,
+                "advance",
+                [j, feeds[j][i], timestamp],
+            )
 
     return trove
 
@@ -213,9 +206,6 @@ async def test_trove_setup(trove_setup):
     gage0_first_point = (await trove.get_series(0, 0).invoke()).result.price
     assert gage0_first_point == to_wad(GAGE0_STARTING_PRICE)
 
-    gage0_last_time_id = (await trove.get_series_last_time_id(0).invoke()).result.time_id
-    assert gage0_last_time_id == FEED_LEN - 1
-
 
 @pytest.mark.asyncio
 async def test_auth(trove_deploy, users):
@@ -231,16 +221,16 @@ async def test_auth(trove_deploy, users):
 
     # Authorizing an address and testing that it can use authorized functions
     await trove_owner.send_tx(trove.contract_address, "authorize", [b.address])
-    b_authorized = (await trove.get_auth(b.address).invoke()).result.is_auth
+    b_authorized = (await trove.get_auth(b.address).invoke()).result.authorized
     assert b_authorized == TRUE
 
     await b.send_tx(trove.contract_address, "authorize", [c.address])
-    c_authorized = (await trove.get_auth(c.address).invoke()).result.is_auth
+    c_authorized = (await trove.get_auth(c.address).invoke()).result.authorized
     assert c_authorized == TRUE
 
     # Revoking an address
     await b.send_tx(trove.contract_address, "revoke", [c.address])
-    c_authorized = (await trove.get_auth(c.address).invoke()).result.is_auth
+    c_authorized = (await trove.get_auth(c.address).invoke()).result.authorized
     assert c_authorized == FALSE
 
     # Calling an authorized function with an unauthorized address - should fail
@@ -299,7 +289,7 @@ async def test_trove_withdrawal_pass(trove_setup, users, trove_withdrawal):
     amt = (await trove.get_deposits(trove_user.address, 0, 0).invoke()).result.amount
     assert amt == 0
 
-    ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
+    ltv = (await trove.trove_ratio_current(trove_user.address, 0).invoke()).result.ratio
     assert ltv == 0
 
     is_healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
@@ -325,14 +315,14 @@ async def test_trove_forge_pass(trove_setup, users, trove_forge):
         [trove_user.address, 0, 0, to_wad(5000)],
     )
 
-    system_debt = (await trove.get_synthetic().invoke()).result.amount
+    system_debt = (await trove.get_synthetic().invoke()).result.total
     assert system_debt == to_wad(5000)
 
     user_trove = (await trove.get_troves(trove_user.address, 0).invoke()).result.trove
     assert user_trove.debt == to_wad(5000)
 
     gage0_price = (await trove.gage_last_price(0).invoke()).result.price
-    trove_ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
+    trove_ltv = (await trove.trove_ratio_current(trove_user.address, 0).invoke()).result.ratio
     expected_ltv = (Decimal(to_wad(5000)) / (Decimal(to_wad(10)) * gage0_price)) * (SCALE * SCALE)
     assert trove_ltv == expected_ltv
 
@@ -359,13 +349,13 @@ async def test_trove_melt_pass(trove_setup, users, trove_melt):
         [trove_user.address, 0, 0, 0],
     )
 
-    system_debt = (await trove.get_synthetic().invoke()).result.amount
+    system_debt = (await trove.get_synthetic().invoke()).result.total
     assert system_debt == 0
 
     user_trove = (await trove.get_troves(trove_user.address, 0).invoke()).result.trove
     assert user_trove.debt == 0
 
-    trove_ltv = (await trove.trove_ratio(trove_user.address, 0).invoke()).result.ratio
+    trove_ltv = (await trove.trove_ratio_current(trove_user.address, 0).invoke()).result.ratio
     assert trove_ltv == 0
 
     healthy = (await trove.is_healthy(trove_user.address, 0).invoke()).result.healthy
