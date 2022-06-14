@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_le
+from starkware.cairo.common.math_cmp import is_le, is_nn
 from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
 
 from contracts.shared.types import Trove, Gage
@@ -425,16 +425,21 @@ end
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id : felt, amount : felt, user_address : felt, trove_id : felt
 ):
+    alloc_locals
+
     assert_auth()
 
     # Check system is live
     assert_system_live()
 
+    # Get trove
+    let (current_trove) = troves.read(user_address, trove_id)
+
     # Charge interest
     charge(user_address, trove_id)
 
     # Update gage balance of system
-    let (old_gage_info) = get_gages(gage_id)
+    let (old_gage_info) = gages.read(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
     let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     gages.write(gage_id, new_gage_info)
@@ -691,6 +696,11 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Get old debt amount
     let old_debt = trove.debt
+
+    # Early termination if no debt
+    if old_debt == 0:
+        return ()
+    end
 
     # Get new debt amount
     let (current_interval : felt) = now()
