@@ -430,6 +430,9 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check system is live
     assert_system_live()
 
+    # Charge interest
+    charge(user_address, trove_id)
+
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
@@ -455,6 +458,9 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     assert_auth()
+
+    # Charge interest
+    charge(user_address, trove_id)
 
     # Update gage balance of system
     let (old_gage_info) = get_gages(gage_id)
@@ -490,6 +496,9 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Check system is live
     assert_system_live()
+
+    # Charge interest
+    charge(user_address, trove_id)
 
     # Check that debt ceiling has not been reached
     let (current_system_debt) = synthetic.read()
@@ -533,6 +542,9 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, amount : felt
 ):
     assert_auth()
+
+    # Charge interest
+    charge(user_address, trove_id)
 
     # Update system debt
     let (current_system_debt) = synthetic.read()
@@ -669,28 +681,47 @@ func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() ->
 end
 
 # Adds the accumulated interest as debt to the trove
-# TODO: Should this be an external function that anyone can call for any account? Is there a clear need for this?
+@external
 func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
-) -> (new_debt : felt):
+):
     alloc_locals
+
     let (trove : Trove) = troves.read(user_address, trove_id)
+
+    # Get old debt amount
+    let old_debt = trove.debt
+
+    # Get new debt amount
     let (current_interval : felt) = now()
-    let (new_debt : felt) = calc_accumulated_interest(
+    let (new_debt : felt) = compound(
         user_address, trove_id, trove.last, current_interval, trove.debt
     )
 
+    # Update Trove
     let updated_trove : Trove = Trove(last=current_interval, debt=new_debt)
-
     troves.write(user_address, trove_id, updated_trove)
+
+    # Get old system debt amount
+    let (old_system_debt : felt) = synthetic.read()
+
+    # Get interest charged
+    let (diff : felt) = WadRay.sub_unsigned(new_debt, old_debt)
+
+    # Get new system debt
+    let new_system_debt = old_system_debt + diff
+    synthetic.write(new_system_debt)
+
+    SyntheticTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, updated_trove)
-    return (new_debt)
+
+    return ()
 end
 
 # Inner function for calculating accumulated interest.
 # Recursively iterates over time intervals from `current_interval` to `final_interval` and compounds the interest owed over all of them
 # Assumes current_interval <= final_interval
-func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt,
     trove_id : felt,
     current_interval : felt,
@@ -724,9 +755,7 @@ func calc_accumulated_interest{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     let (new_debt : felt) = WadRay.add(debt, amount_owed)
 
     # Recursive call
-    return calc_accumulated_interest(
-        user_address, trove_id, current_interval + 1, final_interval, new_debt
-    )
+    return compound(user_address, trove_id, current_interval + 1, final_interval, new_debt)
 end
 
 # base rate function:
