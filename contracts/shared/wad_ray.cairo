@@ -191,13 +191,12 @@ namespace WadRay:
     end
 
     func wad_to_ray(n) -> (res):
-        let (res) = n * DIFF 
+        let (res) = n * DIFF
         assert_valid(res)
         return (res)
     end
 
     func wad_to_ray_unchecked(n) -> (res):
-        return (res = n * DIFF)
+        return (res=n * DIFF)
     end
-
 end
