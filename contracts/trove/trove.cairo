@@ -519,8 +519,18 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Get current Trove information
     let (old_trove_info) = get_troves(user_address, trove_id)
+    let old_trove_debt = old_trove_info.debt
+
+    # Initialise `last` to current interval if old debt was 0
+    let (current_interval) = now()
+    if old_trove_debt == 0:
+        tempvar new_last = current_interval
+    else:
+        tempvar new_last = old_trove_info.last
+    end
+
     let (new_debt) = WadRay.add(old_trove_info.debt, amount)
-    let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
+    let new_trove_info = Trove(last=new_last, debt=new_debt)
     troves.write(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
