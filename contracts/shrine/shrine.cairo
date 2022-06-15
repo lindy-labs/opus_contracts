@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_le, is_nn
+from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
 
 from contracts.shared.types import Trove, Gage
@@ -723,8 +723,16 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         return ()
     end
 
-    # Get new debt amount
+    # Early termination if last interval is current
     let (current_interval : felt) = now()
+    let last_updated = trove.last
+    let (is_updated) = is_le(current_interval, last_updated)
+    if is_updated == TRUE:
+        return ()
+    end
+
+    # Get new debt amount
+
     let (new_debt : felt) = compound(
         user_address, trove_id, trove.last, current_interval, trove.debt
     )
@@ -762,7 +770,8 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     # Terminate
-    if current_interval == final_interval:
+    let (unfinished) = is_le(current_interval, final_interval)
+    if unfinished == FALSE:
         return (debt)
     end
 
