@@ -594,6 +594,7 @@ async def test_update_gage_max(shrine_setup, users):
 
     gage_id = 0
     orig_gage_max = GAGES[0]["ceiling"]
+
     async def update_and_assert(new_gage_max):
         orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
@@ -631,3 +632,19 @@ async def test_update_gage_max(shrine_setup, users):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [0, 2**251])
+
+
+@pytest.mark.asyncio
+async def test_set_ceiling(shrine_setup, users):
+    shrine_owner = await users("shrine owner")
+    shrine = shrine_setup
+
+    new_ceiling = 20_000_000 * WAD_SCALE
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
+    assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
+    assert (await shrine.get_ceiling().invoke()).result.ceiling == new_ceiling
+
+    # test calling func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "add_gage", [1])
