@@ -452,6 +452,9 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update gage balance of system
     let (old_gage_info) = shrine_gages.read(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
+
+    assert_le(new_total, old_gage_info.max) # Asserting that the deposit does not cause the total amount of gage deposited to exceed the max. 
+
     let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     shrine_gages.write(gage_id, new_gage_info)
 
@@ -725,14 +728,8 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Early termination if last interval is current
     let (current_interval : felt) = now()
-    let last_updated = trove.last
-    let (is_updated) = is_le(current_interval, last_updated)
-    if is_updated == TRUE:
-        return ()
-    end
 
     # Get new debt amount
-
     let (new_debt : felt) = compound(
         user_address, trove_id, trove.last, current_interval, trove.debt
     )
@@ -793,7 +790,7 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Compound the debt
     let (amount_owed : felt) = WadRay.rmul(debt, percent_owed)  # Returns a wad
     let (new_debt : felt) = WadRay.add(debt, amount_owed)
-
+    
     # Recursive call
     return compound(user_address, trove_id, current_interval + 1, final_interval, new_debt)
 end

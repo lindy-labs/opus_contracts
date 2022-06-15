@@ -579,6 +579,7 @@ async def test_add_gage(shrine_setup, users):
     assert_event_emitted(tx, shrine.contract_address, "GageAdded", [g_count, new_gage_max])
     assert_event_emitted(tx, shrine.contract_address, "NumGagesUpdated", [g_count + 1])
 
+    # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "add_gage", [1])
@@ -587,12 +588,14 @@ async def test_add_gage(shrine_setup, users):
 @pytest.mark.asyncio
 async def test_update_gage_max(shrine_setup, users):
     shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
     shrine = shrine_setup
 
     gage_id = 0
-    orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
-
+    orig_gage_max = GAGES[0]["ceiling"]
     async def update_and_assert(new_gage_max):
+        orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
         assert_event_emitted(tx, shrine.contract_address, "GageMaxUpdated", [gage_id, new_gage_max])
 
@@ -601,17 +604,24 @@ async def test_update_gage_max(shrine_setup, users):
         assert updated_gage.max == new_gage_max
 
     # test increasing the max
-    new_gage_max = orig_gage.max * 2
+    new_gage_max = orig_gage_max * 2
     await update_and_assert(new_gage_max)
 
     # test decreasing the max
-    new_gage_max = orig_gage.max - 1
+    new_gage_max = orig_gage_max - 1
     await update_and_assert(new_gage_max)
 
     # test decreasing the max below gage.total
-    # to do so, we first need to deposit into it (TODO)
-    # TODO: also try to deposit after the max change, should fail
+    deposit_amt = to_wad(100)
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]) # Deposit 20 gage tokens
 
+    new_gage_max = deposit_amt - to_wad(1)
+    await update_and_assert(new_gage_max) # update gage_max to a value smaller than the total amount currently deposited
+
+    # This should fail, since gage.total exceeds gage.max
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]) 
+    
     # test calling with a non-existing gage_id
     # faux_gage_id = 7890
     # with pytest.raises(StarkException):
