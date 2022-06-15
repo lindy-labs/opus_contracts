@@ -17,13 +17,16 @@ SCALE = 10**18
 
 DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
 
+
 @pytest.fixture(autouse=True, scope="session")
 def setup():
     decimal.getcontext().prec = 18
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     return asyncio.new_event_loop()
+
 
 @pytest.fixture(scope="session")
 async def starknet() -> Starknet:

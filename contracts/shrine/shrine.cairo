@@ -51,6 +51,10 @@ func Revoked(address : felt):
 end
 
 @event
+func GageAdded(gage_id : felt, max : felt):
+end
+
+@event
 func GageTotalUpdated(gage_id : felt, new_total : felt):
 end
 
@@ -272,9 +276,7 @@ func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 @view
-func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    live : felt
-):
+func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live : felt):
     return shrine_live.read()
 end
 
@@ -288,7 +290,11 @@ func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (gage_count : felt) = shrine_num_gages.read()
     shrine_gages.write(gage_count, Gage(0, max))
+    GageAdded.emit(gage_count, max)
+
     shrine_num_gages.write(gage_count + 1)
+    NumGagesUpdated.emit(gage_count + 1)
+
     return ()
 end
 
@@ -300,6 +306,11 @@ func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     let (gage : Gage) = shrine_gages.read(gage_id)
     shrine_gages.write(gage_id, Gage(gage.total, new_max))
+    GageMaxUpdated.emit(gage_id, new_max)
+
+    let (gage : Gage) = shrine_gages.read(gage_id)
+    shrine_gages.write(gage_id, Gage(gage.total, new_max))
+
     return ()
 end
 

@@ -91,13 +91,13 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
 
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[shrine_owner.address])
 
-    return shrine, starknet
+    return shrine
 
 
 # Same as above but also comes with ready-to-use gages and price feeds
 @pytest.fixture
-async def shrine_setup(users, shrine_deploy) -> StarknetContract:
-    shrine, starknet = shrine_deploy
+async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
+    shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
     # Set liquidation threshold
@@ -123,6 +123,7 @@ async def shrine_setup(users, shrine_deploy) -> StarknetContract:
         await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
 
     return shrine
+
 
 @pytest.fixture
 async def shrine_deposit(users, shrine_setup) -> StarknetTransactionExecutionInfo:
@@ -160,7 +161,9 @@ async def shrine_withdrawal(users, shrine_setup, shrine_deposit) -> StarknetTran
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    withdrawal = await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(10), shrine_user.address, 0])
+    withdrawal = await shrine_owner.send_tx(
+        shrine.contract_address, "withdraw", [0, to_wad(10), shrine_user.address, 0]
+    )
     return withdrawal
 
 
@@ -210,14 +213,10 @@ async def test_shrine_setup(shrine_setup):
     assert gage_count == 3
 
     # Check gages
-    gage0 = (await shrine.get_gage(0).invoke()).result.gage
-    assert gage0 == Gage(0, GAGES[0]["ceiling"])
 
-    gage1 = (await shrine.get_gage(1).invoke()).result.gage
-    assert gage1 == Gage(0, GAGES[1]["ceiling"])
-
-    gage2 = (await shrine.get_gage(2).invoke()).result.gage
-    assert gage2 == Gage(0, GAGES[2]["ceiling"])
+    for idx, g in enumerate(GAGES):
+        result_gage = (await shrine.get_gage(idx).invoke()).result.gage
+        assert result_gage == Gage(0, g["ceiling"])
 
     # Check price feeds
     gage0_first_point = (await shrine.get_series(0, 0).invoke()).result.price
@@ -230,7 +229,7 @@ async def test_shrine_setup(shrine_setup):
 
 @pytest.mark.asyncio
 async def test_auth(shrine_deploy, users):
-    shrine, _ = shrine_deploy
+    shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
     #
@@ -330,15 +329,15 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
         [to_wad(5000)],
     )
 
-    #TODO: Failing due to incorrect time interval/ID
-    
+    # TODO: Failing due to incorrect time interval/ID
+
     assert_event_emitted(
         shrine_forge,
         shrine.contract_address,
         "TroveUpdated",
         [shrine_user.address, 0, FEED_LEN - 1, to_wad(5000)],
     )
-    
+
     system_debt = (await shrine.get_synthetic().invoke()).result.total
     assert system_debt == to_wad(5000)
 
@@ -347,7 +346,7 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
     shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
-    expected_ltv = (Decimal(5000) / Decimal(10 * gage0_price)) * (WAD_SCALE * RAY_SCALE)
+    expected_ltv = (Decimal(5000 * WAD_SCALE) / Decimal(10 * gage0_price)) * RAY_SCALE
     assert shrine_ltv == expected_ltv
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
@@ -396,3 +395,61 @@ async def test_charge(shrine_setup, users, shrine_forge, update_feeds):
     assert trove.last == 19
 
     # TODO Call `charge`, and assert updated debt is correct
+
+
+@pytest.mark.asyncio
+async def test_add_gage(shrine_setup, users):
+    shrine_owner = await users("shrine owner")
+    shrine = shrine_setup
+
+    g_count = len(GAGES)
+    assert (await shrine.get_num_gages().invoke()).result.num == g_count
+
+    new_gage_max = 42_000 * WAD_SCALE
+    tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [new_gage_max])
+    assert (await shrine.get_num_gages().invoke()).result.num == g_count + 1
+    assert_event_emitted(tx, shrine.contract_address, "GageAdded", [g_count, new_gage_max])
+    assert_event_emitted(tx, shrine.contract_address, "NumGagesUpdated", [g_count + 1])
+
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "add_gage", [1])
+
+
+@pytest.mark.asyncio
+async def test_update_gage_max(shrine_setup, users):
+    shrine_owner = await users("shrine owner")
+    shrine = shrine_setup
+
+    gage_id = 0
+    orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
+
+    async def update_and_assert(new_gage_max):
+        tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
+        assert_event_emitted(tx, shrine.contract_address, "GageMaxUpdated", [gage_id, new_gage_max])
+
+        updated_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
+        assert updated_gage.total == orig_gage.total
+        assert updated_gage.max == new_gage_max
+
+    # test increasing the max
+    new_gage_max = orig_gage.max * 2
+    await update_and_assert(new_gage_max)
+
+    # test decreasing the max
+    new_gage_max = orig_gage.max - 1
+    await update_and_assert(new_gage_max)
+
+    # test decreasing the max below gage.total
+    # to do so, we first need to deposit into it (TODO)
+    # TODO: also try to deposit after the max change, should fail
+
+    # test calling with a non-existing gage_id
+    # faux_gage_id = 7890
+    # with pytest.raises(StarkException):
+    #     await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [faux_gage_id, new_gage_max])
+
+    # test calling the func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [0, 2**251])
