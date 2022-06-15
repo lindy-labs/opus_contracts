@@ -1,7 +1,8 @@
 import pytest
 
 from collections import namedtuple
-from decimal import Decimal
+from decimal import Decimal, localcontext
+from typing import List
 
 from starkware.starkware_utils.error_handling import StarkException
 from starkware.starknet.testing.starknet import StarknetContract
@@ -46,6 +47,27 @@ SECONDS_PER_MINUTE = 60
 DEBT_CEILING = 10_000 * WAD_SCALE
 LIQUIDATION_THRESHOLD = 8 * 10**17
 
+# Interest rate piece-wise function parameters
+RATE_M1 = Decimal("0.02")
+RATE_B1 = Decimal("0")
+RATE_M2 = Decimal("0.1")
+RATE_B2 = Decimal("-0.04")
+RATE_M3 = Decimal("1")
+RATE_B3 = Decimal("-0.715")
+RATE_M4 = Decimal("3.101908")
+RATE_B4 = Decimal("-2.651908222")
+
+# Interest rate piece-wise range bounds
+RATE_BOUND1 = Decimal("0.5")
+RATE_BOUND2 = Decimal("0.75")
+RATE_BOUND3 = Decimal("0.9215")
+
+# 1 / Number of intervals in a year
+TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
+
+# Acceptable error margin for interest rate calculation
+ERROR_MARGIN = Decimal("0.000000001")
+
 #
 # Structs
 #
@@ -57,6 +79,14 @@ Gage = namedtuple("Gage", ["total", "max"])
 
 def to_wad(n: float):
     return int(n * WAD_SCALE)
+
+
+def from_wad(n: int):
+    return Decimal(n) / WAD_SCALE
+
+
+def from_ray(n: int):
+    return Decimal(n) / RAY_SCALE
 
 
 # Returns a price feed
@@ -76,6 +106,114 @@ def set_block_timestamp(sn, block_timestamp):
     sn.state.block_info = BlockInfo(
         sn.state.block_info.block_number, block_timestamp, sn.state.block_info.gas_price, sequencer_address=None
     )
+
+
+def linear(x: Decimal, m: Decimal, b: Decimal):
+    """
+    Helper function for y = m*x + b
+
+    Arguments
+    ---------
+    x : Decimal
+        Value of x.
+    m : Decimal
+        Value of m.
+    b : Decimal
+        Value of b.
+
+    Returns
+    -------
+    Value of the given equation in Decimal.
+    """
+    return (m * x) + b
+
+
+def base_rate(ltv: Decimal) -> Decimal:
+    """
+    Helper function to calculate base rate given loan-to-value ratio.
+
+    Arguments
+    ---------
+    ltv : Decimal
+        Loan-to-value ratio in Decimal
+
+    Returns
+    -------
+    Value of the base rate in Decimal.
+    """
+    if ltv <= RATE_BOUND1:
+        return linear(ltv, RATE_M1, RATE_B1)
+    elif ltv <= RATE_BOUND2:
+        return linear(ltv, RATE_M2, RATE_B2)
+    elif ltv <= RATE_BOUND3:
+        return linear(ltv, RATE_M3, RATE_B3)
+    return linear(ltv, RATE_M4, RATE_B4)
+
+
+def compound(
+    gages_amt: List[Decimal],
+    gages_price: [List[List[Decimal]]],
+    multiplier: List[Decimal],
+    debt: Decimal,
+) -> Decimal:
+    """
+    Helper function to calculate the compounded debt.
+
+    Arguments
+    ---------
+    gages_amt : List[Decimal]
+        Ordered list of the amount of each Gage
+    gages_price: List[List[Decimal]]
+        For each Gage in `gages_amt` in the same order, an ordered list of prices
+        beginning from the start interval to the end interval.
+    multiplier: List[Decimal]
+        List of multiplier values from the start interval to the end interval
+    debt : Decimal
+        Amount of debt at the start interval
+
+    Returns
+    -------
+    Value of the compounded debt from start interval to end interval in
+    Decimal with ray precision of 27 decimals.
+    """
+    # Sanity check on input data
+    assert len(gages_amt) == len(gages_price)
+    for i in range(len(gages_amt)):
+        assert len(gages_price[i]) == len(multiplier)
+
+    # Get number of iterations
+    total_intervals = len(gages_price[0])
+
+    # Loop through each interval
+    for i in range(total_intervals):
+        total_gage_val = 0
+
+        # Loop through each gage
+        for j in range(len(gages_amt)):
+            total_gage_val += gages_amt[j] * gages_price[j][i]
+
+            # Override decimal context using ray precision of 27 decimals
+            with localcontext() as ctx:
+                ctx.prec = 27
+                # Calculate LTV
+                ltv = Decimal(debt) / Decimal(total_gage_val)
+
+                # Calculate base rate
+                b = base_rate(ltv)
+
+                # Calculate interest rate
+                ir = b * multiplier[i]
+
+                # Account for interval length
+                real_ir = ir * TIME_INTERVAL_DIV_YEAR
+
+                # Get chargeable interest
+                charge = real_ir * debt
+
+                # Add to debt
+                debt += charge
+
+    return debt
 
 
 #
@@ -168,9 +306,9 @@ async def shrine_withdrawal(users, shrine_setup, shrine_deposit) -> StarknetTran
 
 
 @pytest.fixture
-async def update_feeds(users, shrine_setup, shrine_deposit) -> None:
+async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> None:
     """
-    Additional price feeds for gage 0
+    Additional price feeds for gage 0 after `shrine_forge`
     """
     shrine = shrine_setup
     shrine_owner = await users("shrine owner")
@@ -180,11 +318,11 @@ async def update_feeds(users, shrine_setup, shrine_deposit) -> None:
     for i in range(FEED_LEN):
         # Add offset for initial feeds in `shrine_setup`
         timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
-
+        set_block_timestamp(starknet.state, timestamp)
         await shrine_owner.send_tx(shrine.contract_address, "advance", [0, gage0_feed[i], timestamp])
         await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
 
-    return
+    return list(map(from_wad, gage0_feed))
 
 
 #
@@ -345,9 +483,10 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
     assert user_trove.debt == to_wad(5000)
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
-    shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
-    expected_ltv = (Decimal(5000 * WAD_SCALE) / Decimal(10 * gage0_price)) * RAY_SCALE
-    assert shrine_ltv == expected_ltv
+    trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
+    expected_ltv = Decimal(5000 * WAD_SCALE) / Decimal(10 * gage0_price)
+    assert abs(adjusted_trove_ltv - expected_ltv) <= ERROR_MARGIN
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
     assert healthy == 1
@@ -386,7 +525,7 @@ async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
 
 
 @pytest.mark.asyncio
-async def test_charge(shrine_setup, users, shrine_forge, update_feeds):
+async def test_charge(shrine_setup, users, update_feeds):
     shrine = shrine_setup
 
     shrine_user = await users("shrine user")
@@ -394,7 +533,36 @@ async def test_charge(shrine_setup, users, shrine_forge, update_feeds):
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert trove.last == 19
 
-    # TODO Call `charge`, and assert updated debt is correct
+    last_updated = (await shrine.get_series(0, 39).invoke()).result.price
+    assert last_updated != 0
+
+    tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+
+    # Get price and multiplier at interval 19, time of deposit
+    gage0_first_price = (await shrine.get_series(0, 19).invoke()).result.price
+    first_multiplier = (await shrine.get_multiplier(19).invoke()).result.rate
+
+    updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
+    expected_debt = compound(
+        [Decimal("10")],
+        [[from_wad(gage0_first_price)] + update_feeds],
+        [from_ray(first_multiplier)] + [Decimal("1")] * 20,
+        Decimal("5000"),
+    )
+    adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
+    assert abs(adjusted_trove_debt - expected_debt) <= ERROR_MARGIN
+    assert updated_trove.last == 39
+
+    assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
+    assert_event_emitted(
+        tx, shrine.contract_address, "TroveUpdated", [shrine_user.address, 0, updated_trove.last, updated_trove.debt]
+    )
+
+    # `charge` should not have any effect if `Trove.last` is current interval
+    redundant_tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+    redundant_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
+    assert updated_trove == redundant_trove
+    assert len(redundant_tx.raw_events) == 0
 
 
 @pytest.mark.asyncio
