@@ -215,7 +215,7 @@ async def test_shrine_setup(shrine_setup):
     # Check gages
 
     for idx, g in enumerate(GAGES):
-        result_gage = (await shrine.get_gages(idx).invoke()).result.gage
+        result_gage = (await shrine.get_gage(idx).invoke()).result.gage
         assert result_gage == Gage(0, g["ceiling"])
 
     # Check price feeds
@@ -346,7 +346,7 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
     shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
-    expected_ltv = (Decimal(5000) / Decimal(10 * gage0_price)) * (WAD_SCALE * RAY_SCALE)
+    expected_ltv = (Decimal(5000 * WAD_SCALE) / Decimal(10 * gage0_price)) * RAY_SCALE
     assert shrine_ltv == expected_ltv
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
@@ -422,13 +422,13 @@ async def test_update_gage_max(shrine_setup, users):
     shrine = shrine_setup
 
     gage_id = 0
-    orig_gage = (await shrine.get_gages(gage_id).invoke()).result.gage
+    orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
 
     async def update_and_assert(new_gage_max):
         tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
         assert_event_emitted(tx, shrine.contract_address, "GageMaxUpdated", [gage_id, new_gage_max])
 
-        updated_gage = (await shrine.get_gages(gage_id).invoke()).result.gage
+        updated_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         assert updated_gage.total == orig_gage.total
         assert updated_gage.max == new_gage_max
 
