@@ -208,7 +208,6 @@ async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> List[Deci
 # Tests
 #
 
-
 @pytest.mark.asyncio
 async def test_shrine_setup(shrine_setup):
     shrine = shrine_setup
@@ -227,7 +226,7 @@ async def test_shrine_setup(shrine_setup):
 
     # Check gage count
     gage_count = (await shrine.get_num_gages().invoke()).result.num
-    assert gage_count == 3
+    assert gage_count == len(GAGES)
 
     # Check gages
 
@@ -411,7 +410,7 @@ async def test_charge(shrine_setup, users, update_feeds):
     shrine_user = await users("shrine user")
 
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    assert trove.last == 19
+    assert trove.last == FEED_LEN - 1
 
     last_updated = (await shrine.get_series(0, 39).invoke()).result.price
     assert last_updated != 0
@@ -423,13 +422,13 @@ async def test_charge(shrine_setup, users, update_feeds):
     expected_debt = compound(
         [Decimal("10")],
         [update_feeds],
-        [Decimal("1")] * 20,
+        [Decimal("1")] * FEED_LEN,
         Decimal("5000"),
     )
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == 38
+    assert updated_trove.last == 2*(FEED_LEN - 1)
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(

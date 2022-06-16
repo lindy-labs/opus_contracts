@@ -143,9 +143,9 @@ def set_block_timestamp(sn, block_timestamp):
 # Gas estimation
 #
 
-# Estimates gas, not including storage updates
+# Estimates gas, not including storage variable updates
 def estimate_gas(tx_info: StarknetTransactionExecutionInfo):
-    order = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
+    names = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
     weights = {
         "step": 0.05,
         "ecdsa_builtin": 25.6,
@@ -157,4 +157,4 @@ def estimate_gas(tx_info: StarknetTransactionExecutionInfo):
     steps = tx_info.call_info.execution_resources.n_steps
     builtins = tx_info.call_info.execution_resources.builtin_instance_counter
 
-    return sum([weights[name] * builtins[name] for name in order]) + steps * weights["step"]
+    return sum([weights[name] * builtins[name] for name in names]) + steps * weights["step"]
