@@ -453,7 +453,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (old_gage_info) = shrine_gages.read(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
 
-    assert_le(new_total, old_gage_info.max) # Asserting that the deposit does not cause the total amount of gage deposited to exceed the max. 
+    assert_le(new_total, old_gage_info.max)  # Asserting that the deposit does not cause the total amount of gage deposited to exceed the max.
 
     let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     shrine_gages.write(gage_id, new_gage_info)
@@ -726,16 +726,14 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         return ()
     end
 
-    # Early termination if last interval is current
-    let (current_interval : felt) = now()
-
     # Get new debt amount
+    let (current_interval : felt) = now()
     let (new_debt : felt) = compound(
-        user_address, trove_id, trove.last, current_interval, trove.debt
+        user_address, trove_id, trove.last + 1, current_interval, trove.debt
     )
 
     # Update Trove
-    let updated_trove : Trove = Trove(last=current_interval, debt=new_debt)
+    let updated_trove : Trove = Trove(last=current_interval - 1, debt=new_debt)
     shrine_troves.write(user_address, trove_id, updated_trove)
 
     # Get old system debt amount
@@ -767,8 +765,8 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     # Terminate
-    let (unfinished) = is_le(current_interval, final_interval)
-    if unfinished == FALSE:
+    let (finished) = is_le(final_interval, current_interval)
+    if finished == TRUE:
         return (debt)
     end
 
@@ -790,7 +788,7 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Compound the debt
     let (amount_owed : felt) = WadRay.rmul(debt, percent_owed)  # Returns a wad
     let (new_debt : felt) = WadRay.add(debt, amount_owed)
-    
+
     # Recursive call
     return compound(user_address, trove_id, current_interval + 1, final_interval, new_debt)
 end

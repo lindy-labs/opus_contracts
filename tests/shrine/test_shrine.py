@@ -104,7 +104,10 @@ def create_feed(start_price: float, length: int, max_change: float) -> list[int]
 
 def set_block_timestamp(sn, block_timestamp):
     sn.state.block_info = BlockInfo(
-        sn.state.block_info.block_number, block_timestamp, sn.state.block_info.gas_price, sequencer_address=None
+        sn.state.block_info.block_number,
+        block_timestamp,
+        sn.state.block_info.gas_price,
+        sequencer_address=None,
     )
 
 
@@ -258,7 +261,11 @@ async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
         for j in range(len(GAGES)):
             await shrine_owner.send_tx(shrine.contract_address, "advance", [j, feeds[j][i], timestamp])
 
-        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_multiplier",
+            [MULTIPLIER_FEED[i], timestamp],
+        )
 
     return shrine
 
@@ -320,7 +327,11 @@ async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> None:
         timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
         await shrine_owner.send_tx(shrine.contract_address, "advance", [0, gage0_feed[i], timestamp])
-        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_multiplier",
+            [MULTIPLIER_FEED[i], timestamp],
+        )
 
     return list(map(from_wad, gage0_feed))
 
@@ -508,7 +519,7 @@ async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
         shrine_melt,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, FEED_LEN - 1, 0],
+        [shrine_user.address, 0, FEED_LEN - 2, 0],
     )
 
     system_debt = (await shrine.get_synthetic().invoke()).result.total
@@ -555,7 +566,10 @@ async def test_charge(shrine_setup, users, update_feeds):
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
-        tx, shrine.contract_address, "TroveUpdated", [shrine_user.address, 0, updated_trove.last, updated_trove.debt]
+        tx,
+        shrine.contract_address,
+        "TroveUpdated",
+        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
     )
 
     # `charge` should not have any effect if `Trove.last` is current interval
@@ -614,15 +628,19 @@ async def test_update_gage_max(shrine_setup, users):
 
     # test decreasing the max below gage.total
     deposit_amt = to_wad(100)
-    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]) # Deposit 20 gage tokens
+    await shrine_owner.send_tx(
+        shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]
+    )  # Deposit 20 gage tokens
 
     new_gage_max = deposit_amt - to_wad(1)
-    await update_and_assert(new_gage_max) # update gage_max to a value smaller than the total amount currently deposited
+    await update_and_assert(
+        new_gage_max
+    )  # update gage_max to a value smaller than the total amount currently deposited
 
     # This should fail, since gage.total exceeds gage.max
     with pytest.raises(StarkException):
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]) 
-    
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0])
+
     # test calling with a non-existing gage_id
     # faux_gage_id = 7890
     # with pytest.raises(StarkException):
