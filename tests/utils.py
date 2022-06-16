@@ -93,6 +93,7 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
     )
 
+
 # 
 # General helper functions
 #
@@ -110,7 +111,6 @@ def from_ray(n: int):
 
 def assert_equalish(a : Decimal, b : Decimal):
     assert abs(a-b) <= ERROR_MARGIN
-
 
 
 #
