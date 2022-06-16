@@ -349,7 +349,7 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     assert_auth()
 
     # Check that threshold value is not greater than max threshold
-    with_attr error_message("Trove: Threshold exceeds 100%"):
+    with_attr error_message("Shrine: Threshold exceeds 100%"):
         assert_le(new_threshold, MAX_THRESHOLD)
     end
 
@@ -495,7 +495,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Check if Trove is healthy
     let (healthy) = is_healthy(user_address, trove_id)
 
-    with_attr error_message("Trove: Trove is at risk after gage withdrawal"):
+    with_attr error_message("Shrine: Trove is at risk after gage withdrawal"):
         assert healthy = TRUE
     end
 
@@ -524,7 +524,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let new_system_debt = current_system_debt + amount
     let (debt_ceiling) = shrine_ceiling.read()
 
-    with_attr error_message("Trove: Debt ceiling reached"):
+    with_attr error_message("Shrine: Debt ceiling reached"):
         assert_le(new_system_debt, debt_ceiling)
     end
 
@@ -550,7 +550,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check if Trove is healthy
     let (healthy) = is_healthy(user_address, trove_id)
 
-    with_attr error_message("Trove: Trove is at risk after gage withdrawal"):
+    with_attr error_message("Shrine: Trove is at risk after gage withdrawal"):
         assert healthy = TRUE
     end
 
@@ -624,7 +624,7 @@ end
 func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     # Check system is live
     let (live) = shrine_live.read()
-    with_attr error_message("Trove: System is not live"):
+    with_attr error_message("Shrine: System is not live"):
         assert live = TRUE
     end
     return ()
