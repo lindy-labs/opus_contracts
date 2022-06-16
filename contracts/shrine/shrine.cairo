@@ -726,13 +726,25 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         return ()
     end
 
-    # Get new debt amount
+    # Early termination if last interval is current.
+    # Although compound will return `trove.debt` as is, we need to perform this
+    # check to determine if `trove.last` should be updated to `current_interval - 1`
+    # or remain as `trove.last` (if `charge` is called right after initial forge),
+    # and in which case we can simply perform an early return.
+
     let (current_interval : felt) = now()
+    let (is_updated) = is_le(current_interval, trove.last + 1)
+    if is_updated == TRUE:
+        return ()
+    end
+
+    # Get new debt amount
     let (new_debt : felt) = compound(
         user_address, trove_id, trove.last + 1, current_interval, trove.debt
     )
 
     # Update Trove
+
     let updated_trove : Trove = Trove(last=current_interval - 1, debt=new_debt)
     shrine_troves.write(user_address, trove_id, updated_trove)
 

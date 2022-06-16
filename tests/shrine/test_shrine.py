@@ -185,7 +185,7 @@ def compound(
         assert len(gages_price[i]) == len(multiplier)
 
     # Get number of iterations
-    total_intervals = len(gages_price[0])
+    total_intervals = len(gages_price[0]) - 1
 
     # Loop through each interval
     for i in range(total_intervals):
@@ -519,7 +519,7 @@ async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
         shrine_melt,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, FEED_LEN - 2, 0],
+        [shrine_user.address, 0, FEED_LEN - 1, 0],
     )
 
     system_debt = (await shrine.get_synthetic().invoke()).result.total
@@ -549,20 +549,16 @@ async def test_charge(shrine_setup, users, update_feeds):
 
     tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
 
-    # Get price and multiplier at interval 19, time of deposit
-    gage0_first_price = (await shrine.get_series(0, 19).invoke()).result.price
-    first_multiplier = (await shrine.get_multiplier(19).invoke()).result.rate
-
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     expected_debt = compound(
         [Decimal("10")],
-        [[from_wad(gage0_first_price)] + update_feeds],
-        [from_ray(first_multiplier)] + [Decimal("1")] * 20,
+        [update_feeds],
+        [Decimal("1")] * 20,
         Decimal("5000"),
     )
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
+    assert updated_trove.last == 38
     assert abs(adjusted_trove_debt - expected_debt) <= ERROR_MARGIN
-    assert updated_trove.last == 39
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
