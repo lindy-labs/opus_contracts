@@ -21,6 +21,7 @@ repos:
   rev: 4.0.1
   hooks:
   - id: flake8
+    args: ["--per-file-ignores=tests/shrine/test_shrine.py:F405"]
 
 - repo: local
   hooks:

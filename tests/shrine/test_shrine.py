@@ -1,11 +1,10 @@
-import pytest
-
 from collections import namedtuple
 from decimal import Decimal, localcontext
 from typing import List
 
+import pytest
+
 from starkware.starkware_utils.error_handling import StarkException
-from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
 from utils import (
@@ -15,14 +14,13 @@ from utils import (
     to_wad,
     assert_equalish,
     from_wad,
-    from_ray,
     WAD_SCALE,
     RAY_SCALE,
     TRUE,
     FALSE,
 )
 
-from constants import *
+from constants import *  # noqa: F403
 
 #
 # Structs
@@ -187,7 +185,7 @@ async def shrine_withdrawal(users, shrine_setup, shrine_deposit) -> StarknetTran
 
 
 @pytest.fixture
-async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> None:
+async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> List[Decimal]:
     """
     Additional price feeds for gage 0 after `shrine_forge`
     """
@@ -419,10 +417,6 @@ async def test_charge(shrine_setup, users, update_feeds):
     assert last_updated != 0
 
     tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
-
-    # Get price and multiplier at interval 19, time of deposit
-    gage0_first_price = (await shrine.get_series(0, 19).invoke()).result.price
-    first_multiplier = (await shrine.get_multiplier(19).invoke()).result.rate
 
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 

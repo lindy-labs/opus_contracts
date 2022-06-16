@@ -33,6 +33,7 @@ Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as
 # Acceptable error margin for fixed point calculations
 ERROR_MARGIN = Decimal("0.000000001")
 
+
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
         return value.contract_address
@@ -94,23 +95,25 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
     )
 
 
-# 
+#
 # General helper functions
 #
 
-def to_wad(n: float):
+
+def to_wad(n: float) -> int:
     return int(n * WAD_SCALE)
 
 
-def from_wad(n: int):
+def from_wad(n: int) -> Decimal:
     return Decimal(n) / WAD_SCALE
 
 
-def from_ray(n: int):
+def from_ray(n: int) -> Decimal:
     return Decimal(n) / RAY_SCALE
 
-def assert_equalish(a : Decimal, b : Decimal):
-    assert abs(a-b) <= ERROR_MARGIN
+
+def assert_equalish(a: Decimal, b: Decimal):
+    assert abs(a - b) <= ERROR_MARGIN
 
 
 #
@@ -141,20 +144,17 @@ def set_block_timestamp(sn, block_timestamp):
 #
 
 # Estimates gas, not including storage updates
-def estimate_gas(tx_info : StarknetTransactionExecutionInfo):
+def estimate_gas(tx_info: StarknetTransactionExecutionInfo):
     order = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
     weights = {
-        "step" : 0.05,
-        "ecdsa_builtin" : 25.6,
-        "range_check_builtin" : 0.4,
-        "bitwise_builtin" : 12.8,
-        "pedersen_builtin" : 0.4,
+        "step": 0.05,
+        "ecdsa_builtin": 25.6,
+        "range_check_builtin": 0.4,
+        "bitwise_builtin": 12.8,
+        "pedersen_builtin": 0.4,
     }
-
-    
 
     steps = tx_info.call_info.execution_resources.n_steps
     builtins = tx_info.call_info.execution_resources.builtin_instance_counter
-    
-    return sum([weights[name]*builtins[name] for name in order]) + steps*weights["step"]
 
+    return sum([weights[name] * builtins[name] for name in order]) + steps * weights["step"]
