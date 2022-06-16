@@ -4,18 +4,23 @@ from collections import namedtuple
 from functools import cache
 import os
 from typing import Union
+from random import uniform
+from decimal import Decimal
 
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import StarknetContract
-
+from starkware.starknet.business_logic.state.state import BlockInfo
 
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0
 TRUE = 1
 FALSE = 0
+
+WAD_SCALE = 10**18
+RAY_SCALE = 10**27
 
 
 Uint256 = namedtuple("Uint256", "low high")
@@ -24,6 +29,8 @@ Addressable = Union[int, StarknetContract]
 Calldata = list[int]  # payload arguments sent with a function call
 Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
 
+# Acceptable error margin for fixed point calculations
+ERROR_MARGIN = Decimal("0.000000001")
 
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
@@ -84,3 +91,46 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
         disable_hint_validation=True,
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
     )
+
+# 
+# General helper functions
+#
+
+def to_wad(n: float):
+    return int(n * WAD_SCALE)
+
+
+def from_wad(n: int):
+    return Decimal(n) / WAD_SCALE
+
+
+def from_ray(n: int):
+    return Decimal(n) / RAY_SCALE
+
+def assert_equalish(a : Decimal, b : Decimal):
+    assert abs(a-b) <= ERROR_MARGIN
+
+
+
+#
+# Shrine helper functions
+#
+
+# Returns a price feed
+def create_feed(start_price: float, length: int, max_change: float) -> list[int]:
+    feed = []
+
+    feed.append(start_price)
+    for i in range(1, length):
+        change = uniform(-max_change, max_change)  # Returns the % change in price (in decimal form, meaning 1% = 0.01)
+        feed.append(feed[i - 1] * (1 + change))
+
+    # Scaling the feed before returning so it's ready to use in contracts
+    return list(map(to_wad, feed))
+
+
+def set_block_timestamp(sn, block_timestamp):
+    sn.state.block_info = BlockInfo(
+        sn.state.block_info.block_number, block_timestamp, sn.state.block_info.gas_price, sequencer_address=None
+    )
+
