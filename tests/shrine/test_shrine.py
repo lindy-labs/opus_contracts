@@ -580,6 +580,43 @@ async def test_charge(shrine_setup, users, update_feeds):
 
 
 @pytest.mark.asyncio
+async def test_shrine_withdrawal_unsafe_fail(shrine_setup, shrine_forge, update_feeds, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(7), shrine_user.address, 0])
+
+
+@pytest.mark.asyncio
+async def test_shrine_forge_unsafe_fail(shrine_setup, shrine_forge, update_feeds, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(12_000)])
+
+
+@pytest.mark.asyncio
+async def test_shrine_forge_ceiling_fail(shrine_setup, shrine_forge, update_feeds, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
+    updated_deposit = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    assert updated_deposit == to_wad(20)
+
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(15_000)])
+
+
+@pytest.mark.asyncio
 async def test_add_gage(shrine_setup, users):
     shrine_owner = await users("shrine owner")
     shrine = shrine_setup
