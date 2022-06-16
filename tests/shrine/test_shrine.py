@@ -12,15 +12,14 @@ from utils import (
     assert_event_emitted,
     create_feed,
     set_block_timestamp,
-    to_wad, 
+    to_wad,
     assert_equalish,
     from_wad,
     from_ray,
-
     WAD_SCALE,
     RAY_SCALE,
     TRUE,
-    FALSE
+    FALSE,
 )
 
 from constants import *
@@ -143,6 +142,7 @@ def compound(
 #
 # Fixtures
 #
+
 
 @pytest.fixture
 async def shrine_deposit(users, shrine_setup) -> StarknetTransactionExecutionInfo:
@@ -478,6 +478,7 @@ async def test_update_gage_max(shrine_setup, users):
 
     gage_id = 0
     orig_gage_max = GAGES[0]["ceiling"]
+
     async def update_and_assert(new_gage_max):
         orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
@@ -497,15 +498,19 @@ async def test_update_gage_max(shrine_setup, users):
 
     # test decreasing the max below gage.total
     deposit_amt = to_wad(100)
-    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]) # Deposit 20 gage tokens
+    await shrine_owner.send_tx(
+        shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]
+    )  # Deposit 20 gage tokens
 
     new_gage_max = deposit_amt - to_wad(1)
-    await update_and_assert(new_gage_max) # update gage_max to a value smaller than the total amount currently deposited
+    await update_and_assert(
+        new_gage_max
+    )  # update gage_max to a value smaller than the total amount currently deposited
 
     # This should fail, since gage.total exceeds gage.max
     with pytest.raises(StarkException):
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]) 
-    
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0])
+
     # test calling with a non-existing gage_id
     # faux_gage_id = 7890
     # with pytest.raises(StarkException):
@@ -515,3 +520,30 @@ async def test_update_gage_max(shrine_setup, users):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [0, 2**251])
+
+
+@pytest.mark.asyncio
+async def test_set_threshold(shrine_setup, users):
+    shrine_owner = await users("shrine owner")
+    shrine = shrine_setup
+
+    # test setting to normal value
+    value = 9 * 10**17
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [value])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [value])
+    assert (await shrine.get_threshold().invoke()).result.threshold == value
+
+    # test setting to max value
+    max = WAD_SCALE
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [max])
+    assert (await shrine.get_threshold().invoke()).result.threshold == max
+
+    # test setting over the limit
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max + 1])
+
+    # test calling the func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [value])
