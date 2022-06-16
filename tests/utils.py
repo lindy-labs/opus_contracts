@@ -13,6 +13,7 @@ from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starknet.business_logic.state.state import BlockInfo
+from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0
@@ -133,4 +134,27 @@ def set_block_timestamp(sn, block_timestamp):
     sn.state.block_info = BlockInfo(
         sn.state.block_info.block_number, block_timestamp, sn.state.block_info.gas_price, sequencer_address=None
     )
+
+
+#
+# Gas estimation
+#
+
+# Estimates gas, not including storage updates
+def estimate_gas(tx_info : StarknetTransactionExecutionInfo):
+    order = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
+    weights = {
+        "step" : 0.05,
+        "ecdsa_builtin" : 25.6,
+        "range_check_builtin" : 0.4,
+        "bitwise_builtin" : 12.8,
+        "pedersen_builtin" : 0.4,
+    }
+
+    
+
+    steps = tx_info.call_info.execution_resources.n_steps
+    builtins = tx_info.call_info.execution_resources.builtin_instance_counter
+    
+    return sum([weights[name]*builtins[name] for name in order]) + steps*weights["step"]
 
