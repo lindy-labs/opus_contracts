@@ -609,3 +609,28 @@ async def test_set_threshold(shrine_setup, users):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_threshold", [value])
+
+
+@pytest.mark.asyncio
+async def test_kill(shrine_setup, users, update_feeds):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    tx = await shrine_owner.send_tx(shrine.contract_address, "kill", [])
+    assert_event_emitted(tx, shrine.contract_address, "Killed")
+
+    # Check deposit fails
+    with pytest.raises(StarkException, match="Shrine: System is not live"):
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
+
+    # Check forge fails
+    with pytest.raises(StarkException, match="Shrine: System is not live"):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(100)])
+
+    # Test withdraw pass
+    await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(1), shrine_user.address, 0])
+
+    # Test melt pass
+    await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, to_wad(100)])
