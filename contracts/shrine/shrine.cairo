@@ -2,11 +2,11 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem
+from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, split_felt
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
 
-from contracts.shared.types import Trove, Gage
+from contracts.shared.types import Trove, Gage, pack_felt
 from contracts.shared.wad_ray import WadRay
 
 #
@@ -151,7 +151,7 @@ end
 
 # Also known as CDPs, sub-accounts, etc. Each user has multiple shrine_troves that they can deposit collateral into and mint synthetic against.
 @storage_var
-func shrine_troves(address : felt, trove_id : felt) -> (trove : Trove):
+func shrine_troves(address : felt, trove_id : felt) -> (trove : felt):
 end
 
 # Stores information about each gage (see Gage struct)
@@ -211,7 +211,10 @@ end
 func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address : felt, trove_id : felt
 ) -> (trove : Trove):
-    return shrine_troves.read(address, trove_id)
+    let (trove_packed : felt) = shrine_troves.read(address, trove_id)
+    let (last : felt, debt : felt) = split_felt(trove_packed)
+    let trove : Trove = Trove(last=last, debt=debt)
+    return (trove)
 end
 
 @view
@@ -376,6 +379,12 @@ func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     return ()
 end
 
+func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user_address : felt, trove_id : felt, trove : Trove):
+    let (packed_trove : felt) = pack_felt(trove.debt, trove.last)
+    shrine_troves.write(user_address, trove_id, packed_trove)
+    return()
+end
+
 # Constructor
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed : felt):
@@ -444,7 +453,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_system_live()
 
     # Get trove
-    let (current_trove) = shrine_troves.read(user_address, trove_id)
+    let (current_trove) = get_trove(user_address, trove_id)
 
     # Charge interest
     charge(user_address, trove_id)
@@ -532,7 +541,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_synthetic.write(new_system_debt)
 
     # Get current Trove information
-    let (old_trove_info) = shrine_troves.read(user_address, trove_id)
+    let (old_trove_info) = get_trove(user_address, trove_id)
     let old_trove_debt = old_trove_info.debt
 
     # Initialise `last` to current interval if old debt was 0
@@ -545,7 +554,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (new_debt) = WadRay.add(old_trove_info.debt, amount)
     let new_trove_info = Trove(last=new_last, debt=new_debt)
-    shrine_troves.write(user_address, trove_id, new_trove_info)
+    set_trove(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
     let (healthy) = is_healthy(user_address, trove_id)
@@ -581,10 +590,10 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_synthetic.write(new_system_debt)
 
     # Update trove information
-    let (old_trove_info) = shrine_troves.read(user_address, trove_id)
+    let (old_trove_info) = get_trove(user_address, trove_id)
     let (new_debt) = WadRay.sub(old_trove_info.debt, amount)
     let new_trove_info = Trove(last=old_trove_info.last, debt=new_debt)
-    shrine_troves.write(user_address, trove_id, new_trove_info)
+    set_trove(user_address, trove_id, new_trove_info)
 
     # TODO Transfer the synthetic from the user address
 
@@ -605,7 +614,7 @@ func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_auth()
 
     # Update Trove information
-    let (old_trove_info) = shrine_troves.read(user_address, trove_id)
+    let (old_trove_info) = get_trove(user_address, trove_id)
     let new_trove_info = Trove(last=old_trove_info.last, debt=0)
 
     # TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
@@ -657,7 +666,7 @@ func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     user_address : felt, trove_id : felt
 ) -> (ratio : felt):
     alloc_locals
-    let (trove : Trove) = shrine_troves.read(user_address, trove_id)
+    let (trove : Trove) = get_trove(user_address, trove_id)
     let (interval) = now()
     return trove_ratio(user_address, trove_id, interval, trove.debt)
 end
@@ -670,7 +679,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     alloc_locals
 
     # Get value of the trove's debt
-    let (trove) = shrine_troves.read(user_address, trove_id)
+    let (trove) = get_trove(user_address, trove_id)
     let debt = trove.debt
 
     # Early termination if no debt
@@ -716,7 +725,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    let (trove : Trove) = shrine_troves.read(user_address, trove_id)
+    let (trove : Trove) = get_trove(user_address, trove_id)
 
     # Get old debt amount
     let old_debt = trove.debt
@@ -746,7 +755,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update Trove
 
     let updated_trove : Trove = Trove(last=current_interval - 1, debt=new_debt)
-    shrine_troves.write(user_address, trove_id, updated_trove)
+    set_trove(user_address, trove_id, updated_trove)
 
     # Get old system debt amount
     let (old_system_debt : felt) = shrine_synthetic.read()
