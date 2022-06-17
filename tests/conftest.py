@@ -1,18 +1,16 @@
 import asyncio
 from collections import namedtuple
-from decimal import Decimal, getcontext
+from decimal import getcontext
 from typing import Awaitable, Callable
 
 from account import Account
 from utils import (
-    Uint256, 
-    compile_contract, 
+    Uint256,
+    compile_contract,
     str_to_felt,
-    create_feed, 
+    create_feed,
     set_block_timestamp,
-
     WAD_SCALE,
-    RAY_SCALE
 )
 
 from cache import AsyncLRU
@@ -22,15 +20,18 @@ from starkware.starknet.testing.starknet import Starknet, StarknetContract
 from shrine.constants import (
     GAGES,
     FEED_LEN,
-    MAX_PRICE_CHANGE, 
-    MULTIPLIER_FEED, 
-    SECONDS_PER_MINUTE, 
-    DEBT_CEILING, 
-    LIQUIDATION_THRESHOLD
+    MAX_PRICE_CHANGE,
+    MULTIPLIER_FEED,
+    SECONDS_PER_MINUTE,
+    DEBT_CEILING,
+    LIQUIDATION_THRESHOLD,
 )
 
 
-MRACParameters = namedtuple("MRACParameters", ["u", "r", "y", "theta", "theta_underline", "theta_bar", "gamma", "T"])
+MRACParameters = namedtuple(
+    "MRACParameters",
+    ["u", "r", "y", "theta", "theta_underline", "theta_bar", "gamma", "T"],
+)
 
 
 DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * WAD_SCALE) for i in (0, 1.5, 0, 0, 0, 2, 0.1, 1)])
@@ -38,6 +39,7 @@ DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * WAD_SCALE) for i in (0, 1.5, 
 #
 # General fixtures
 #
+
 
 @pytest.fixture(autouse=True, scope="session")
 def setup():
@@ -93,7 +95,13 @@ def tokens(
     """
     contract = compile_contract("tests/mocks/ERC20.cairo")
 
-    async def create_token(name: str, symbol: str, decimals: int, initial_supply: tuple[int, int], recipient: int):
+    async def create_token(
+        name: str,
+        symbol: str,
+        decimals: int,
+        initial_supply: tuple[int, int],
+        recipient: int,
+    ):
         name = str_to_felt(name)
         symbol = str_to_felt(symbol)
         token = await starknet.deploy(
@@ -136,7 +144,7 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
 
 # Same as above but also comes with ready-to-use gages and price feeds
 @pytest.fixture
-async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
+async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
@@ -160,6 +168,10 @@ async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
         for j in range(len(GAGES)):
             await shrine_owner.send_tx(shrine.contract_address, "advance", [j, feeds[j][i], timestamp])
 
-        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_multiplier",
+            [MULTIPLIER_FEED[i], timestamp],
+        )
 
     return shrine
