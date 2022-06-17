@@ -143,8 +143,7 @@ def compound(
 
 
 @pytest.fixture
-async def shrine_deposit(users, shrine_setup) -> StarknetTransactionExecutionInfo:
-    shrine = shrine_setup
+async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -153,8 +152,7 @@ async def shrine_deposit(users, shrine_setup) -> StarknetTransactionExecutionInf
 
 
 @pytest.fixture
-async def shrine_forge(users, shrine_setup, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    shrine = shrine_setup
+async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -163,8 +161,7 @@ async def shrine_forge(users, shrine_setup, shrine_deposit) -> StarknetTransacti
 
 
 @pytest.fixture
-async def shrine_melt(users, shrine_setup, shrine_forge) -> StarknetTransactionExecutionInfo:
-    shrine = shrine_setup
+async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -173,8 +170,7 @@ async def shrine_melt(users, shrine_setup, shrine_forge) -> StarknetTransactionE
 
 
 @pytest.fixture
-async def shrine_withdrawal(users, shrine_setup, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    shrine = shrine_setup
+async def shrine_withdrawal(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -185,17 +181,16 @@ async def shrine_withdrawal(users, shrine_setup, shrine_deposit) -> StarknetTran
 
 
 @pytest.fixture
-async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> List[Decimal]:
+async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
     """
     Additional price feeds for gage 0 after `shrine_forge`
     """
-    shrine = shrine_setup
     shrine_owner = await users("shrine owner")
 
     gage0_feed = create_feed(GAGES[0]["start_price"], FEED_LEN, MAX_PRICE_CHANGE)
 
     for i in range(FEED_LEN):
-        # Add offset for initial feeds in `shrine_setup`
+        # Add offset for initial feeds in `shrine`
         timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
         await shrine_owner.send_tx(shrine.contract_address, "advance", [0, gage0_feed[i], timestamp])
@@ -214,9 +209,7 @@ async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> List[Deci
 
 
 @pytest.mark.asyncio
-async def test_shrine_setup(shrine_setup):
-    shrine = shrine_setup
-
+async def test_shrine_setup(shrine):
     # Check system is live
     live = (await shrine.get_live().invoke()).result.live
     assert live == 1
@@ -249,7 +242,7 @@ async def test_shrine_setup(shrine_setup):
 
 
 @pytest.mark.asyncio
-async def test_auth(shrine_deploy, users):
+async def test_auth(users, shrine_deploy):
     shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
@@ -280,9 +273,7 @@ async def test_auth(shrine_deploy, users):
 
 
 @pytest.mark.asyncio
-async def test_shrine_deposit(shrine_setup, users, shrine_deposit):
-    shrine = shrine_setup
-
+async def test_shrine_deposit(users, shrine, shrine_deposit):
     shrine_user = await users("shrine user")
 
     assert_event_emitted(
@@ -306,9 +297,7 @@ async def test_shrine_deposit(shrine_setup, users, shrine_deposit):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdrawal_pass(shrine_setup, users, shrine_withdrawal):
-    shrine = shrine_setup
-
+async def test_shrine_withdrawal_pass(users, shrine, shrine_withdrawal):
     shrine_user = await users("shrine user")
 
     assert_event_emitted(
@@ -338,9 +327,7 @@ async def test_shrine_withdrawal_pass(shrine_setup, users, shrine_withdrawal):
 
 
 @pytest.mark.asyncio
-async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
-    shrine = shrine_setup
-
+async def test_shrine_forge_pass(users, shrine, shrine_forge):
     shrine_user = await users("shrine user")
 
     assert_event_emitted(
@@ -368,7 +355,7 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
     trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
-    expected_ltv = Decimal(5000 * WAD_SCALE) / Decimal(10 * gage0_price)
+    expected_ltv = Decimal(to_wad(5000)) / Decimal(10 * gage0_price)
     assert_equalish(adjusted_trove_ltv, expected_ltv)
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
@@ -376,9 +363,7 @@ async def test_shrine_forge_pass(shrine_setup, users, shrine_forge):
 
 
 @pytest.mark.asyncio
-async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
-    shrine = shrine_setup
-
+async def test_shrine_melt_pass(users, shrine, shrine_melt):
     shrine_user = await users("shrine user")
 
     assert_event_emitted(
@@ -409,9 +394,7 @@ async def test_shrine_melt_pass(shrine_setup, users, shrine_melt):
 
 
 @pytest.mark.asyncio
-async def test_charge(shrine_setup, users, update_feeds):
-    shrine = shrine_setup
-
+async def test_charge(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
@@ -451,9 +434,7 @@ async def test_charge(shrine_setup, users, update_feeds):
 
 
 @pytest.mark.asyncio
-async def test_move_gage_pass(shrine_setup, shrine_forge, users):
-    shrine = shrine_setup
-
+async def test_move_gage_pass(users, shrine, shrine_forge):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -512,9 +493,7 @@ async def test_move_gage_pass(shrine_setup, shrine_forge, users):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdrawal_unsafe_fail(shrine_setup, update_feeds, users):
-    shrine = shrine_setup
-
+async def test_shrine_withdrawal_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -523,9 +502,7 @@ async def test_shrine_withdrawal_unsafe_fail(shrine_setup, update_feeds, users):
 
 
 @pytest.mark.asyncio
-async def test_shrine_forge_unsafe_fail(shrine_setup, update_feeds, users):
-    shrine = shrine_setup
-
+async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -538,9 +515,7 @@ async def test_shrine_forge_unsafe_fail(shrine_setup, update_feeds, users):
 
 
 @pytest.mark.asyncio
-async def test_shrine_forge_ceiling_fail(shrine_setup, update_feeds, users):
-    shrine = shrine_setup
-
+async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -554,14 +529,13 @@ async def test_shrine_forge_ceiling_fail(shrine_setup, update_feeds, users):
 
 
 @pytest.mark.asyncio
-async def test_add_gage(shrine_setup, users):
+async def test_add_gage(users, shrine):
     shrine_owner = await users("shrine owner")
-    shrine = shrine_setup
 
     g_count = len(GAGES)
     assert (await shrine.get_num_gages().invoke()).result.num == g_count
 
-    new_gage_max = 42_000 * WAD_SCALE
+    new_gage_max = to_wad(42_000)
     tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [new_gage_max])
     assert (await shrine.get_num_gages().invoke()).result.num == g_count + 1
     assert_event_emitted(tx, shrine.contract_address, "GageAdded", [g_count, new_gage_max])
@@ -574,11 +548,9 @@ async def test_add_gage(shrine_setup, users):
 
 
 @pytest.mark.asyncio
-async def test_update_gage_max(shrine_setup, users):
+async def test_update_gage_max(users, shrine):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
-
-    shrine = shrine_setup
 
     gage_id = 0
     orig_gage_max = GAGES[0]["ceiling"]
@@ -627,9 +599,8 @@ async def test_update_gage_max(shrine_setup, users):
 
 
 @pytest.mark.asyncio
-async def test_set_threshold(shrine_setup, users):
+async def test_set_threshold(users, shrine):
     shrine_owner = await users("shrine owner")
-    shrine = shrine_setup
 
     # test setting to normal value
     value = 9 * 10**17
@@ -654,9 +625,7 @@ async def test_set_threshold(shrine_setup, users):
 
 
 @pytest.mark.asyncio
-async def test_kill(shrine_setup, users, update_feeds):
-    shrine = shrine_setup
-
+async def test_kill(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
@@ -679,11 +648,10 @@ async def test_kill(shrine_setup, users, update_feeds):
 
 
 @pytest.mark.asyncio
-async def test_set_ceiling(shrine_setup, users):
+async def test_set_ceiling(users, shrine):
     shrine_owner = await users("shrine owner")
-    shrine = shrine_setup
 
-    new_ceiling = 20_000_000 * WAD_SCALE
+    new_ceiling = to_wad(20_000_000)
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
     assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
     assert (await shrine.get_ceiling().invoke()).result.ceiling == new_ceiling
