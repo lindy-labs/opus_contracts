@@ -199,7 +199,11 @@ async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> List[Deci
         timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
         await shrine_owner.send_tx(shrine.contract_address, "advance", [0, gage0_feed[i], timestamp])
-        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i], timestamp])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_multiplier",
+            [MULTIPLIER_FEED[i], timestamp],
+        )
 
     return list(map(from_wad, gage0_feed))
 
@@ -207,6 +211,7 @@ async def update_feeds(starknet, users, shrine_setup, shrine_forge) -> List[Deci
 #
 # Tests
 #
+
 
 @pytest.mark.asyncio
 async def test_shrine_setup(shrine_setup):
@@ -428,11 +433,14 @@ async def test_charge(shrine_setup, users, update_feeds):
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == 2*(FEED_LEN - 1)
+    assert updated_trove.last == 2 * (FEED_LEN - 1)
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
-        tx, shrine.contract_address, "TroveUpdated", [shrine_user.address, 0, updated_trove.last, updated_trove.debt]
+        tx,
+        shrine.contract_address,
+        "TroveUpdated",
+        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
     )
 
     # `charge` should not have any effect if `Trove.last` is current interval
@@ -440,6 +448,67 @@ async def test_charge(shrine_setup, users, update_feeds):
     redundant_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert updated_trove == redundant_trove
     assert len(redundant_tx.raw_events) == 0
+
+
+@pytest.mark.asyncio
+async def test_move_gage_pass(shrine_setup, shrine_forge, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Move gage between two troves of the same user
+    intra_user_tx = await shrine_owner.send_tx(
+        shrine.contract_address,
+        "move_gage",
+        [0, to_wad(1), shrine_user.address, 0, shrine_user.address, 1],
+    )
+
+    assert_event_emitted(
+        intra_user_tx,
+        shrine.contract_address,
+        "DepositUpdated",
+        [shrine_user.address, 0, 0, to_wad(9)],
+    )
+    assert_event_emitted(
+        intra_user_tx,
+        shrine.contract_address,
+        "DepositUpdated",
+        [shrine_user.address, 1, 0, to_wad(1)],
+    )
+
+    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    assert src_amt == to_wad(9)
+
+    dst_amt = (await shrine.get_deposit(shrine_user.address, 1, 0).invoke()).result.amount
+    assert dst_amt == to_wad(1)
+
+    # Move gage between two different users
+    shrine_guest = await users("shrine guest")
+    intra_user_tx = await shrine_owner.send_tx(
+        shrine.contract_address,
+        "move_gage",
+        [0, to_wad(1), shrine_user.address, 0, shrine_guest.address, 0],
+    )
+
+    assert_event_emitted(
+        intra_user_tx,
+        shrine.contract_address,
+        "DepositUpdated",
+        [shrine_user.address, 0, 0, to_wad(8)],
+    )
+    assert_event_emitted(
+        intra_user_tx,
+        shrine.contract_address,
+        "DepositUpdated",
+        [shrine_guest.address, 0, 0, to_wad(1)],
+    )
+
+    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    assert src_amt == to_wad(8)
+
+    dst_amt = (await shrine.get_deposit(shrine_guest.address, 0, 0).invoke()).result.amount
+    assert dst_amt == to_wad(1)
 
 
 @pytest.mark.asyncio
