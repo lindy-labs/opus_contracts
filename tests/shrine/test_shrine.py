@@ -512,6 +512,48 @@ async def test_move_gage_pass(shrine_setup, shrine_forge, users):
 
 
 @pytest.mark.asyncio
+async def test_shrine_withdrawal_unsafe_fail(shrine_setup, update_feeds, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk after gage withdrawal"):
+        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(7), shrine_user.address, 0])
+
+
+@pytest.mark.asyncio
+async def test_shrine_forge_unsafe_fail(shrine_setup, update_feeds, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Increase debt ceiling
+    new_ceiling = to_wad(100_000)
+    await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
+
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(12_000)])
+
+
+@pytest.mark.asyncio
+async def test_shrine_forge_ceiling_fail(shrine_setup, update_feeds, users):
+    shrine = shrine_setup
+
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Deposit more gage
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
+    updated_deposit = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    assert updated_deposit == to_wad(20)
+
+    with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(15_000)])
+
+
+@pytest.mark.asyncio
 async def test_add_gage(shrine_setup, users):
     shrine_owner = await users("shrine owner")
     shrine = shrine_setup
@@ -602,7 +644,7 @@ async def test_set_threshold(shrine_setup, users):
     assert (await shrine.get_threshold().invoke()).result.threshold == max
 
     # test setting over the limit
-    with pytest.raises(StarkException):
+    with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
         await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max + 1])
 
     # test calling the func unauthorized
@@ -634,3 +676,19 @@ async def test_kill(shrine_setup, users, update_feeds):
 
     # Test melt pass
     await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, to_wad(100)])
+
+
+@pytest.mark.asyncio
+async def test_set_ceiling(shrine_setup, users):
+    shrine_owner = await users("shrine owner")
+    shrine = shrine_setup
+
+    new_ceiling = 20_000_000 * WAD_SCALE
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
+    assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
+    assert (await shrine.get_ceiling().invoke()).result.ceiling == new_ceiling
+
+    # test calling func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "add_gage", [1])
