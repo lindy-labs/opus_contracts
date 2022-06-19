@@ -14,6 +14,8 @@ from utils import (
 )
 
 from cache import AsyncLRU
+from functools import cache
+
 import pytest
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
@@ -131,6 +133,7 @@ async def mrac_controller(starknet) -> StarknetContract:
 #
 
 # Returns the deployed shrine module
+@cache
 @pytest.fixture
 async def shrine_deploy(starknet, users) -> StarknetContract:
 
@@ -143,6 +146,7 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
 
 
 # Same as above but also comes with ready-to-use gages and price feeds
+@cache
 @pytest.fixture
 async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
