@@ -1,6 +1,7 @@
 from collections import namedtuple
 from decimal import Decimal, localcontext
 from typing import List
+from functools import cache
 
 import pytest
 
@@ -141,8 +142,6 @@ def compound(
 #
 # Fixtures
 #
-
-
 @pytest.fixture
 async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
@@ -151,7 +150,7 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     deposit = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
     return deposit
 
-
+@cache
 @pytest.fixture
 async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
@@ -171,7 +170,6 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
 
     return melt
 
-
 @pytest.fixture
 async def shrine_withdrawal(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
@@ -182,7 +180,7 @@ async def shrine_withdrawal(users, shrine, shrine_deposit) -> StarknetTransactio
     )
     return withdrawal
 
-
+@cache
 @pytest.fixture
 async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
     """

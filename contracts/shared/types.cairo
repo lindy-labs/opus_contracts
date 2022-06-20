@@ -15,7 +15,7 @@ struct Gage:
     member max : felt  # Maximum amount of the Gage that can be deposited
 end
 
-# Packs a into the first 128 bits, packs b into the last 123 bits
+# Packs `a` into the first 128 bits, packs `b` into the last 123 bits
 # Requires that 0 <= a < 2**128 and 0 <= b < 2**123
 func pack_felt{range_check_ptr}(a : felt, b : felt) -> (packed : felt):
     [range_check_ptr] = a 

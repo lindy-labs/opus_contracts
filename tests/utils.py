@@ -4,7 +4,7 @@ from collections import namedtuple
 from functools import cache
 import os
 from typing import Union
-from random import uniform
+from random import uniform, seed
 from decimal import Decimal
 
 from starkware.starknet.public.abi import get_selector_from_name
@@ -33,6 +33,7 @@ Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as
 # Acceptable error margin for fixed point calculations
 ERROR_MARGIN = Decimal("0.000000001")
 
+seed(420)
 
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
