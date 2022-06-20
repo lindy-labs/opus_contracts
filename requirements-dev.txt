@@ -9,4 +9,4 @@ marshmallow-dataclass==8.5.3
 pytest==7
 pytest-asyncio==0.15.1
 sympy==1.8
-toml==0.10
+toml==0.10.2
