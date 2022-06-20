@@ -406,7 +406,7 @@ async def test_charge(users, shrine, update_feeds):
     last_updated = (await shrine.get_series(0, 39).invoke()).result.price
     assert last_updated != 0
 
-    # Get gage price and multipler value at `trove.last`
+    # Get gage price and multiplier value at `trove.last`
     start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
     start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
 
@@ -449,6 +449,61 @@ async def test_charge(users, shrine, update_feeds):
         "TroveUpdated",
         [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("idx", [0, 1, FEED_LEN - 2, FEED_LEN - 1])
+async def test_intermittent_charge(users, shrine, update_feeds, idx):
+    """
+    Test for `charge` with "missed" price and multiplier updates at the given index.
+
+    The "idx" input is with reference to the second set of feeds (intervals 20 to 39).
+    Therefore, writes to the contract takes in an additional offset of 20 for the initial
+    set of feeds in `shrine` fixture.
+    """
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Update price and multiplier to 0 to simulate missed update
+    timestamp = (idx + FEED_LEN) * 30 * SECONDS_PER_MINUTE
+    await shrine_owner.send_tx(shrine.contract_address, "advance", [0, 0, timestamp])
+    await shrine_owner.send_tx(
+        shrine.contract_address,
+        "update_multiplier",
+        [0, timestamp],
+    )
+
+    # Assert that value has been set to 0
+    assert (await shrine.get_series(0, idx + FEED_LEN).invoke()).result.price == 0
+    assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.rate == 0
+
+    # Get gage price and multiplier value at `trove.last`
+    trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
+    start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
+    start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
+
+    # Modify feeds
+    gage0_price_feed = [from_wad(start_price)] + update_feeds
+    multiplier_feed = [from_ray(start_multiplier)] + [Decimal("1")] * FEED_LEN
+
+    # Add offset of 1 to account for last price of first set of feeds being appended as first value
+    gage0_price_feed[idx + 1] = gage0_price_feed[idx]
+    multiplier_feed[idx + 1] = multiplier_feed[idx]
+
+    # Calculate
+    await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+    updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
+
+    expected_debt = compound(
+        [Decimal("10")],
+        [gage0_price_feed],
+        multiplier_feed,
+        Decimal("5000"),
+    )
+
+    adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
+    assert_equalish(adjusted_trove_debt, expected_debt)
+    assert updated_trove.last == FEED_LEN * 2
 
 
 @pytest.mark.asyncio
