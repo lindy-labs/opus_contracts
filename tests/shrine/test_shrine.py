@@ -13,6 +13,7 @@ from utils import (
     set_block_timestamp,
     to_wad,
     assert_equalish,
+    from_ray,
     from_wad,
     WAD_SCALE,
     RAY_SCALE,
@@ -103,7 +104,7 @@ def compound(
         assert len(gages_price[i]) == len(multiplier)
 
     # Get number of iterations
-    total_intervals = len(gages_price[0]) - 1
+    total_intervals = len(gages_price[0])
 
     # Loop through each interval
     for i in range(total_intervals):
@@ -165,7 +166,9 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, to_wad(5000)])
+    estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.amount
+    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, estimated_debt])
+
     return melt
 
 
@@ -377,7 +380,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
         shrine_melt,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, FEED_LEN - 1, 0],
+        [shrine_user.address, 0, FEED_LEN, 0],
     )
 
     system_debt = (await shrine.get_synthetic().invoke()).result.total
@@ -403,20 +406,24 @@ async def test_charge(users, shrine, update_feeds):
     last_updated = (await shrine.get_series(0, 39).invoke()).result.price
     assert last_updated != 0
 
+    # Get gage price and multipler value at `trove.last`
+    start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
+    start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
+
     tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
 
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
     expected_debt = compound(
         [Decimal("10")],
-        [update_feeds],
-        [Decimal("1")] * FEED_LEN,
+        [[from_wad(start_price)] + update_feeds],
+        [from_ray(start_multiplier)] + [Decimal("1")] * FEED_LEN,
         Decimal("5000"),
     )
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == 2 * (FEED_LEN - 1)
+    assert updated_trove.last == FEED_LEN * 2
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
@@ -426,11 +433,22 @@ async def test_charge(users, shrine, update_feeds):
         [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
     )
 
-    # `charge` should not have any effect if `Trove.last` is current interval
+    # `charge` should not have any effect if `Trove.last` is current interval + 1
     redundant_tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
     redundant_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert updated_trove == redundant_trove
-    assert len(redundant_tx.raw_events) == 0
+    assert_event_emitted(
+        redundant_tx,
+        shrine.contract_address,
+        "SyntheticTotalUpdated",
+        [updated_trove.debt],
+    )
+    assert_event_emitted(
+        redundant_tx,
+        shrine.contract_address,
+        "TroveUpdated",
+        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
+    )
 
 
 @pytest.mark.asyncio

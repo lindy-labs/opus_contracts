@@ -379,10 +379,12 @@ func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     return ()
 end
 
-func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user_address : felt, trove_id : felt, trove : Trove):
+func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, trove : Trove
+):
     let (packed_trove : felt) = pack_felt(trove.debt, trove.last)
     shrine_troves.write(user_address, trove_id, packed_trove)
-    return()
+    return ()
 end
 
 # Constructor
@@ -725,36 +727,16 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    let (trove : Trove) = get_trove(user_address, trove_id)
+    # Get new debt amount
+    let (new_debt) = estimate(user_address, trove_id)
 
     # Get old debt amount
+    let (trove : Trove) = get_trove(user_address, trove_id)
     let old_debt = trove.debt
 
-    # Early termination if no debt
-    if old_debt == 0:
-        return ()
-    end
-
-    # Early termination if last interval is current.
-    # Although compound will return `trove.debt` as is, we need to perform this
-    # check to determine if `trove.last` should be updated to `current_interval - 1`
-    # or remain as `trove.last` (if `charge` is called right after initial forge),
-    # and in which case we can simply perform an early return.
-
-    let (current_interval : felt) = now()
-    let (is_updated) = is_le(current_interval, trove.last + 1)
-    if is_updated == TRUE:
-        return ()
-    end
-
-    # Get new debt amount
-    let (new_debt : felt) = compound(
-        user_address, trove_id, trove.last + 1, current_interval, trove.debt
-    )
-
     # Update Trove
-
-    let updated_trove : Trove = Trove(last=current_interval - 1, debt=new_debt)
+    let (current_interval : felt) = now()
+    let updated_trove : Trove = Trove(last=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, updated_trove)
 
     # Get old system debt amount
@@ -771,6 +753,38 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     TroveUpdated.emit(user_address, trove_id, updated_trove)
 
     return ()
+end
+
+@view
+func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt
+) -> (amount : felt):
+    alloc_locals
+
+    let (trove : Trove) = get_trove(user_address, trove_id)
+
+    # Get old debt amount
+    let old_debt = trove.debt
+
+    # Early termination if no debt
+    if old_debt == 0:
+        return (old_debt)
+    end
+
+    # Early termination if last updated interval is next interval of current,
+    # meaning interest has been charged up to current interval.
+
+    let (current_interval : felt) = now()
+    let (is_updated) = is_le(current_interval + 1, trove.last)
+    if is_updated == TRUE:
+        return (old_debt)
+    end
+
+    # Get new debt amount
+    let (new_debt : felt) = compound(
+        user_address, trove_id, trove.last, current_interval + 1, trove.debt
+    )
+    return (new_debt)
 end
 
 # Inner function for calculating accumulated interest.
