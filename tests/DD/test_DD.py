@@ -5,11 +5,10 @@ from decimal import Decimal
 from math import floor
 
 import pytest
-
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from utils import MAX_UINT256, Uint256, assert_event_emitted, compile_contract, felt_to_str, from_uint, to_uint
+from tests.utils import MAX_UINT256, Uint256, assert_event_emitted, compile_contract, felt_to_str, from_uint, to_uint
 
 RESERVE_ADDR = 1
 TREASURY_ADDR = 2

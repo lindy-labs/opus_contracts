@@ -1,6 +1,5 @@
 """Utilities for testing Cairo contracts."""
 import os
-
 from collections import namedtuple
 from functools import cache
 from typing import Union

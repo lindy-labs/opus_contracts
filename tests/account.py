@@ -4,7 +4,7 @@ from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import Starknet
 
-from utils import Addressable, Call, Calldata, as_address, compile_contract, str_to_felt
+from tests.utils import Addressable, Call, Calldata, as_address, compile_contract, str_to_felt
 
 # IDEA:
 # create a context manager out of the account

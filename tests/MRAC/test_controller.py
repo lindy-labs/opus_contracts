@@ -2,7 +2,7 @@ from typing import List, NamedTuple
 
 import pytest
 
-from conftest import DEFAULT_MRAC_PARAMETERS, SCALE, MRACParameters
+from tests.conftest import DEFAULT_MRAC_PARAMETERS, SCALE, MRACParameters
 
 Int125 = NamedTuple("Int125", [("value", int)])
 
