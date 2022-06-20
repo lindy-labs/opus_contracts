@@ -397,7 +397,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
 
 
 @pytest.mark.asyncio
-async def test_charge(users, shrine, update_feeds):
+async def test_estimate_and_charge(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
@@ -410,16 +410,21 @@ async def test_charge(users, shrine, update_feeds):
     start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
     start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
 
-    tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
-
-    updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-
     expected_debt = compound(
         [Decimal("10")],
         [[from_wad(start_price)] + update_feeds],
         [from_ray(start_multiplier)] + [Decimal("1")] * FEED_LEN,
         Decimal("5000"),
     )
+
+    # Test `estimate`
+    estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.amount
+    adjusted_estimated_debt = Decimal(estimated_debt) / WAD_SCALE
+    assert_equalish(adjusted_estimated_debt, expected_debt)
+
+    # Test `charge`
+    tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+    updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
