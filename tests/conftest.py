@@ -1,15 +1,14 @@
 import asyncio
-from collections import namedtuple
 import decimal
+from collections import namedtuple
 from typing import Awaitable, Callable
 
-from account import Account
-from utils import Uint256, compile_contract, str_to_felt
-
-from cache import AsyncLRU
 import pytest
+from cache import AsyncLRU
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
+from tests.account import Account
+from tests.utils import Uint256, compile_contract, str_to_felt
 
 MRACParameters = namedtuple("MRACParameters", ["u", "r", "y", "theta", "theta_underline", "theta_bar", "gamma", "T"])
 

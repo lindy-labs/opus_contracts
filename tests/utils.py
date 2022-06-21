@@ -1,16 +1,14 @@
 """Utilities for testing Cairo contracts."""
-
+import os
 from collections import namedtuple
 from functools import cache
-import os
 from typing import Union
 
-from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.compiler.compile import compile_starknet_files
+from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import StarknetContract
-
 
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0

@@ -32,3 +32,6 @@ jobs:
 
       - name: Run flake8
         run: flake8
+
+      - name: Run isort
+        run: isort --check-only --diff tests/

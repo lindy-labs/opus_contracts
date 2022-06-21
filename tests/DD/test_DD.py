@@ -1,23 +1,14 @@
 # TODO:
 # * test for when deposit can't go through (e.g. max_mint == 0)
 # * test calculate_max_mint_amount
-
 from decimal import Decimal
 from math import floor
 
 import pytest
-from starkware.starkware_utils.error_handling import StarkException
 from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starkware_utils.error_handling import StarkException
 
-from utils import (
-    MAX_UINT256,
-    Uint256,
-    compile_contract,
-    to_uint,
-    from_uint,
-    assert_event_emitted,
-    felt_to_str,
-)
+from tests.utils import MAX_UINT256, Uint256, assert_event_emitted, compile_contract, felt_to_str, from_uint, to_uint
 
 RESERVE_ADDR = 1
 TREASURY_ADDR = 2
