@@ -6,7 +6,7 @@ const A_UPPER_BOUND = 2 ** 128
 const B_UPPER_BOUND = 2 ** 123
 
 struct Trove:
-    member last : felt  # Time ID (timestamp // TIME_ID_INTERVAL) of last accumulated interest calculation
+    member charge_from : felt  # Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     member debt : felt  # Normalized debt
 end
 

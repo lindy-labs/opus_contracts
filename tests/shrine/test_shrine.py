@@ -355,7 +355,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == to_wad(5000)
-    assert user_trove.last == FEED_LEN - 1
+    assert user_trove.charge_from == FEED_LEN - 1
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
     trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
@@ -390,7 +390,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == 0
-    assert user_trove.last == FEED_LEN
+    assert user_trove.charge_from == FEED_LEN
 
     shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     assert shrine_ltv == 0
@@ -405,14 +405,14 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    assert trove.last == FEED_LEN - 1
+    assert trove.charge_from == FEED_LEN - 1
 
     last_updated = (await shrine.get_series(0, 39).invoke()).result.price
     assert last_updated != 0
 
-    # Get gage price and multiplier value at `trove.last`
-    start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
+    # Get gage price and multiplier value at `trove.charge_from`
+    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
 
     expected_debt = compound(
         [Decimal("10")],
@@ -432,17 +432,17 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == FEED_LEN * 2
+    assert updated_trove.charge_from == FEED_LEN * 2
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
+        [shrine_user.address, 0, updated_trove.charge_from, updated_trove.debt],
     )
 
-    # `charge` should not have any effect if `Trove.last` is current interval + 1
+    # `charge` should not have any effect if `Trove.charge_from` is current interval + 1
     redundant_tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, 0, shrine_user.address, 0])
     redundant_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert updated_trove == redundant_trove
@@ -456,7 +456,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
         redundant_tx,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
+        [shrine_user.address, 0, updated_trove.charge_from, updated_trove.debt],
     )
 
 
@@ -486,10 +486,10 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     assert (await shrine.get_series(0, idx + FEED_LEN).invoke()).result.price == 0
     assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.rate == 0
 
-    # Get gage price and multiplier value at `trove.last`
+    # Get gage price and multiplier value at `trove.charge_from`
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
+    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
 
     # Modify feeds
     gage0_price_feed = [from_wad(start_price)] + update_feeds
@@ -512,7 +512,7 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == FEED_LEN * 2
+    assert updated_trove.charge_from == FEED_LEN * 2
 
 
 @pytest.mark.asyncio

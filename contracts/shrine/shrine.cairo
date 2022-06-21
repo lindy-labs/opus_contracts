@@ -212,8 +212,8 @@ func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     address : felt, trove_id : felt
 ) -> (trove : Trove):
     let (trove_packed : felt) = shrine_troves.read(address, trove_id)
-    let (last : felt, debt : felt) = split_felt(trove_packed)
-    let trove : Trove = Trove(last=last, debt=debt)
+    let (charge_from : felt, debt : felt) = split_felt(trove_packed)
+    let trove : Trove = Trove(charge_from=charge_from, debt=debt)
     return (trove)
 end
 
@@ -382,7 +382,7 @@ end
 func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, trove : Trove
 ):
-    let (packed_trove : felt) = pack_felt(trove.debt, trove.last)
+    let (packed_trove : felt) = pack_felt(trove.debt, trove.charge_from)
     shrine_troves.write(user_address, trove_id, packed_trove)
     return ()
 end
@@ -546,19 +546,19 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update system debt
     shrine_synthetic.write(new_system_debt)
 
-    # Initialise `Trove.last` to current interval if old debt was 0.
-    # Otherwise, set `Trove.last` to current interval + 1 because interest has been
+    # Initialise `Trove.charge_from` to current interval if old debt was 0.
+    # Otherwise, set `Trove.charge_from` to current interval + 1 because interest has been
     # charged up to current interval.
     let (current_interval) = now()
     if old_trove_debt == 0:
-        tempvar new_last = current_interval
+        tempvar new_charge_from = current_interval
     else:
-        tempvar new_last = current_interval + 1
+        tempvar new_charge_from = current_interval + 1
     end
 
     # Update trove information
     let (new_debt) = WadRay.add(old_trove_debt_compounded, amount)
-    let new_trove_info = Trove(last=new_last, debt=new_debt)
+    let new_trove_info = Trove(charge_from=new_charge_from, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
@@ -605,7 +605,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (new_debt) = WadRay.sub(old_trove_debt_compounded, amount)
     let (current_interval) = now()
-    let new_trove_info = Trove(last=current_interval + 1, debt=new_debt)
+    let new_trove_info = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
     # Events
@@ -626,7 +626,7 @@ func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update Trove information
     let (old_trove_info) = get_trove(user_address, trove_id)
-    let new_trove_info = Trove(last=old_trove_info.last, debt=0)
+    let new_trove_info = Trove(charge_from=old_trove_info.charge_from, debt=0)
 
     # TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
 
@@ -744,7 +744,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update Trove
     let (current_interval : felt) = now()
-    let updated_trove : Trove = Trove(last=current_interval + 1, debt=new_debt)
+    let updated_trove : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, updated_trove)
 
     # Get old system debt amount
@@ -779,18 +779,18 @@ func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         return (old_debt)
     end
 
-    # Early termination if last updated interval is next interval of current,
+    # Early termination if `charge_from` is next interval of current,
     # meaning interest has been charged up to current interval.
 
     let (current_interval : felt) = now()
-    let (is_updated) = is_le(current_interval + 1, trove.last)
+    let (is_updated) = is_le(current_interval + 1, trove.charge_from)
     if is_updated == TRUE:
         return (old_debt)
     end
 
     # Get new debt amount
     let (new_debt : felt) = compound(
-        user_address, trove_id, trove.last, current_interval + 1, trove.debt
+        user_address, trove_id, trove.charge_from, current_interval + 1, trove.debt
     )
     return (new_debt)
 end
