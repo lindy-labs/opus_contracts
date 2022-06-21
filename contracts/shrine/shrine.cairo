@@ -454,9 +454,6 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check system is live
     assert_system_live()
 
-    # Get trove
-    let (current_trove) = get_trove(user_address, trove_id)
-
     # Charge interest
     charge(user_address, trove_id)
 
