@@ -54,7 +54,7 @@ end
 
 Use Capitalized names (`Mint` 👍 / `mint` 👎) for [Events](https://www.cairo-lang.org/docs/hello_starknet/events.html) (note that the linked page doesn't follow this convention).
 
-Prefer emitting events from `@external`, `@l1_handler` or `@constructor` functions, i.e. public functions that presumably change the state. It's ok to emit from internal helper functions as well. Never emit from `@view` functions.
+Prefer emitting events from `@external`, `@l1_handler` or `@constructor` functions, i.e. public functions that presumably change the state. It's ok to emit from internal helper functions as well if they change the state. Never emit from `@view` functions.
 
 ## Use module names in error messages
 
