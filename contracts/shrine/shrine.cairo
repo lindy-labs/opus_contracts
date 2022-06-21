@@ -549,7 +549,9 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update system debt
     shrine_synthetic.write(new_system_debt)
 
-    # Initialise `last` to current interval if old debt was 0
+    # Initialise `Trove.last` to current interval if old debt was 0.
+    # Otherwise, set `Trove.last` to current interval + 1 because interest has been
+    # charged up to current interval.
     let (current_interval) = now()
     if old_trove_debt == 0:
         tempvar new_last = current_interval
