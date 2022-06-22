@@ -1,9 +1,10 @@
-from utils import compile_contract, as_address, str_to_felt, Addressable, Calldata, Call
 from starkware.cairo.common.hash_state import compute_hash_on_elements
 from starkware.crypto.signature.signature import private_to_stark_key, sign
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import Starknet
+
+from tests.utils import Addressable, Call, Calldata, as_address, compile_contract, str_to_felt
 
 # IDEA:
 # create a context manager out of the account

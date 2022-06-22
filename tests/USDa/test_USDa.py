@@ -1,6 +1,6 @@
 import pytest
 
-from utils import str_to_felt, to_uint
+from tests.utils import str_to_felt, to_uint
 
 
 @pytest.mark.asyncio

@@ -1,28 +1,26 @@
 from collections import namedtuple
 from decimal import Decimal, localcontext
-from typing import List
 from functools import cache
+from typing import List
 
 import pytest
-
-from starkware.starkware_utils.error_handling import StarkException
+from constants import *  # noqa: F403
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
+from starkware.starkware_utils.error_handling import StarkException
 
-from utils import (
-    assert_event_emitted,
-    create_feed,
-    set_block_timestamp,
-    to_wad,
-    assert_equalish,
-    from_ray,
-    from_wad,
-    WAD_SCALE,
+from tests.utils import (
+    FALSE,
     RAY_SCALE,
     TRUE,
-    FALSE,
+    WAD_SCALE,
+    assert_equalish,
+    assert_event_emitted,
+    create_feed,
+    from_ray,
+    from_wad,
+    set_block_timestamp,
+    to_wad,
 )
-
-from constants import *  # noqa: F403
 
 #
 # Structs

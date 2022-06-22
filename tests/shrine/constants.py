@@ -1,6 +1,6 @@
-from utils import WAD_SCALE, RAY_SCALE
-
 from decimal import Decimal
+
+from tests.utils import RAY_SCALE, WAD_SCALE
 
 # Shrine setup constants
 GAGES = [

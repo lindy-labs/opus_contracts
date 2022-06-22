@@ -1,34 +1,24 @@
 import asyncio
 from collections import namedtuple
 from decimal import getcontext
+from functools import cache
 from typing import Awaitable, Callable
 
-from account import Account
-from utils import (
-    Uint256,
-    compile_contract,
-    str_to_felt,
-    create_feed,
-    set_block_timestamp,
-    WAD_SCALE,
-)
-
-from cache import AsyncLRU
-from functools import cache
-
 import pytest
+from cache import AsyncLRU
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
-from shrine.constants import (
-    GAGES,
+from tests.account import Account
+from tests.shrine.constants import (
+    DEBT_CEILING,
     FEED_LEN,
+    GAGES,
+    LIQUIDATION_THRESHOLD,
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
     SECONDS_PER_MINUTE,
-    DEBT_CEILING,
-    LIQUIDATION_THRESHOLD,
 )
-
+from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt
 
 MRACParameters = namedtuple(
     "MRACParameters",

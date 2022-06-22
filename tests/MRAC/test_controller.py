@@ -1,11 +1,9 @@
-from typing import NamedTuple, List
+from typing import List, NamedTuple
 
 import pytest
 
-from conftest import DEFAULT_MRAC_PARAMETERS, MRACParameters
-
-from utils import to_wad
-
+from tests.conftest import DEFAULT_MRAC_PARAMETERS, MRACParameters
+from tests.utils import to_wad
 
 Int125 = NamedTuple("Int125", [("value", int)])
 
