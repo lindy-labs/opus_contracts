@@ -301,6 +301,16 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
 
 
 @pytest.mark.asyncio
+async def test_shrine_deposit_invalid_gage_fail(users, shrine):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Invalid gage ID that has not been added
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [789, to_wad(1), shrine_user.address, 0])
+
+
+@pytest.mark.asyncio
 async def test_shrine_withdrawal_pass(users, shrine, shrine_withdrawal):
     shrine_user = await users("shrine user")
 
@@ -668,11 +678,6 @@ async def test_update_gage_max(users, shrine):
     # This should fail, since gage.total exceeds gage.max
     with pytest.raises(StarkException):
         await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0])
-
-    # test calling with a non-existing gage_id
-    # faux_gage_id = 7890
-    # with pytest.raises(StarkException):
-    #     await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [faux_gage_id, new_gage_max])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
