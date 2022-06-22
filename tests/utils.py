@@ -35,6 +35,7 @@ ERROR_MARGIN = Decimal("0.000000001")
 
 seed(420)
 
+
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
         return value.contract_address
@@ -136,7 +137,10 @@ def create_feed(start_price: float, length: int, max_change: float) -> list[int]
 
 def set_block_timestamp(sn, block_timestamp):
     sn.state.block_info = BlockInfo(
-        sn.state.block_info.block_number, block_timestamp, sn.state.block_info.gas_price, sequencer_address=None
+        sn.state.block_info.block_number,
+        block_timestamp,
+        sn.state.block_info.gas_price,
+        sequencer_address=None,
     )
 
 
@@ -146,7 +150,12 @@ def set_block_timestamp(sn, block_timestamp):
 
 # Estimates gas, not including storage variable updates
 def estimate_gas(tx_info: StarknetTransactionExecutionInfo):
-    names = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
+    names = [
+        "ecdsa_builtin",
+        "range_check_builtin",
+        "bitwise_builtin",
+        "pedersen_builtin",
+    ]
     weights = {
         "step": 0.05,
         "ecdsa_builtin": 25.6,

@@ -1,7 +1,4 @@
-from utils import (
-    WAD_SCALE,
-    RAY_SCALE
-)
+from utils import WAD_SCALE, RAY_SCALE
 
 from decimal import Decimal
 

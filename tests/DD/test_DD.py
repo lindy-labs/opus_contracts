@@ -182,7 +182,12 @@ async def test_getters_setters(direct_deposit, usda, users):
     # tests getting and setting reserve address
     assert (await dd.get_reserve_address().invoke()).result.addr == RESERVE_ADDR
     tx = await dd_owner.send_tx(dd, "set_reserve_address", [new_reserve_address])
-    assert_event_emitted(tx, dd.contract_address, "ReserveAddressChange", [RESERVE_ADDR, new_reserve_address])
+    assert_event_emitted(
+        tx,
+        dd.contract_address,
+        "ReserveAddressChange",
+        [RESERVE_ADDR, new_reserve_address],
+    )
     assert (await dd.get_reserve_address().invoke()).result.addr == new_reserve_address
     with pytest.raises(StarkException):
         await rektooor.send_tx(dd, "set_reserve_address", [rektooor.address])
@@ -207,7 +212,12 @@ async def test_getters_setters(direct_deposit, usda, users):
     # test getting and setting stability fee
     assert (await dd.get_stability_fee().invoke()).result.fee == STABILITY_FEE
     tx = await dd_owner.send_tx(dd, "set_stability_fee", [new_stability_fee])
-    assert_event_emitted(tx, dd.contract_address, "StabilityFeeChange", [STABILITY_FEE, new_stability_fee])
+    assert_event_emitted(
+        tx,
+        dd.contract_address,
+        "StabilityFeeChange",
+        [STABILITY_FEE, new_stability_fee],
+    )
     assert (await dd.get_stability_fee().invoke()).result.fee == new_stability_fee
     with pytest.raises(StarkException):
         await rektooor.send_tx(dd, "set_stability_fee", [1200])

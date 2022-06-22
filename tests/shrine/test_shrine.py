@@ -150,6 +150,7 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     deposit = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
     return deposit
 
+
 @cache
 @pytest.fixture
 async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
@@ -170,6 +171,7 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
 
     return melt
 
+
 @pytest.fixture
 async def shrine_withdrawal(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
@@ -179,6 +181,7 @@ async def shrine_withdrawal(users, shrine, shrine_deposit) -> StarknetTransactio
         shrine.contract_address, "withdraw", [0, to_wad(10), shrine_user.address, 0]
     )
     return withdrawal
+
 
 @cache
 @pytest.fixture
@@ -352,6 +355,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == to_wad(5000)
+    assert user_trove.charge_from == FEED_LEN - 1
 
     gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
     trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
@@ -386,6 +390,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == 0
+    assert user_trove.charge_from == FEED_LEN
 
     shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     assert shrine_ltv == 0
@@ -396,17 +401,18 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
 
 @pytest.mark.asyncio
 async def test_estimate_and_charge(users, shrine, update_feeds):
+    shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    assert trove.last == FEED_LEN - 1
+    assert trove.charge_from == FEED_LEN - 1
 
     last_updated = (await shrine.get_series(0, 39).invoke()).result.price
     assert last_updated != 0
 
-    # Get gage price and multiplier value at `trove.last`
-    start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
+    # Get gage price and multiplier value at `trove.charge_from`
+    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
 
     expected_debt = compound(
         [Decimal("10")],
@@ -420,24 +426,24 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     adjusted_estimated_debt = Decimal(estimated_debt) / WAD_SCALE
     assert_equalish(adjusted_estimated_debt, expected_debt)
 
-    # Test `charge`
-    tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+    # Test `charge` by calling deposit without any value
+    tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, 0, shrine_user.address, 0])
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == FEED_LEN * 2
+    assert updated_trove.charge_from == FEED_LEN * 2
 
     assert_event_emitted(tx, shrine.contract_address, "SyntheticTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
+        [shrine_user.address, 0, updated_trove.charge_from, updated_trove.debt],
     )
 
-    # `charge` should not have any effect if `Trove.last` is current interval + 1
-    redundant_tx = await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+    # `charge` should not have any effect if `Trove.charge_from` is current interval + 1
+    redundant_tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, 0, shrine_user.address, 0])
     redundant_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert updated_trove == redundant_trove
     assert_event_emitted(
@@ -450,7 +456,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
         redundant_tx,
         shrine.contract_address,
         "TroveUpdated",
-        [shrine_user.address, 0, updated_trove.last, updated_trove.debt],
+        [shrine_user.address, 0, updated_trove.charge_from, updated_trove.debt],
     )
 
 
@@ -480,10 +486,10 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     assert (await shrine.get_series(0, idx + FEED_LEN).invoke()).result.price == 0
     assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.rate == 0
 
-    # Get gage price and multiplier value at `trove.last`
+    # Get gage price and multiplier value at `trove.charge_from`
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    start_price = (await shrine.get_series(0, trove.last).invoke()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.last).invoke()).result.rate
+    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
 
     # Modify feeds
     gage0_price_feed = [from_wad(start_price)] + update_feeds
@@ -493,8 +499,8 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     gage0_price_feed[idx + 1] = gage0_price_feed[idx]
     multiplier_feed[idx + 1] = multiplier_feed[idx]
 
-    # Calculate
-    await shrine_user.send_tx(shrine.contract_address, "charge", [shrine_user.address, 0])
+    # Test 'charge' by calling deposit without any value
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
     expected_debt = compound(
@@ -506,7 +512,7 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove.last == FEED_LEN * 2
+    assert updated_trove.charge_from == FEED_LEN * 2
 
 
 @pytest.mark.asyncio
@@ -587,7 +593,7 @@ async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
 
     with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(12_000)])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(14_000)])
 
 
 @pytest.mark.asyncio
