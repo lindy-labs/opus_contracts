@@ -461,7 +461,8 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (old_gage_info) = shrine_gages.read(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
 
-    assert_le(new_total, old_gage_info.max)  # Asserting that the deposit does not cause the total amount of gage deposited to exceed the max.
+    # Asserting that the deposit does not cause the total amount of gage deposited to exceed the max.
+    assert_le(new_total, old_gage_info.max)
 
     let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     shrine_gages.write(gage_id, new_gage_info)
@@ -486,11 +487,16 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     assert_auth()
 
+    # Retrieve gage info
+    let (old_gage_info) = shrine_gages.read(gage_id)
+
+    # Asserting that gage is valid to align with `deposit` and prevent accounting errors.
+    assert_not_zero(old_gage_info.max)
+
     # Charge interest
     charge(user_address, trove_id)
 
     # Update gage balance of system
-    let (old_gage_info) = shrine_gages.read(gage_id)
     let (new_total) = WadRay.sub(old_gage_info.total, amount)
     let new_gage_info = Gage(total=new_total, max=old_gage_info.max)
     shrine_gages.write(gage_id, new_gage_info)

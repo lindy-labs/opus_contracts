@@ -573,6 +573,26 @@ async def test_move_gage_pass(users, shrine, shrine_forge):
 
 
 @pytest.mark.asyncio
+async def test_shrine_deposit_invalid_gage_fail(users, shrine):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Invalid gage ID that has not been added
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [789, to_wad(1), shrine_user.address, 0])
+
+
+@pytest.mark.asyncio
+async def test_shrine_withdraw_invalid_gage_fail(users, shrine):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Invalid gage ID that has not been added
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [789, to_wad(1), shrine_user.address, 0])
+
+
+@pytest.mark.asyncio
 async def test_shrine_withdrawal_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
