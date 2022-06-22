@@ -21,7 +21,7 @@ const SECONDS_PER_DAY = SECONDS_PER_HOUR * 24
 const SECONDS_PER_YEAR = SECONDS_PER_DAY * 365
 
 const TIME_INTERVAL = 30 * SECONDS_PER_MINUTE
-const TIME_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 * 24 * 365) = 0.00005707762557077625 (ray)
+const TIME_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 : felt* 24 : felt* 365) = 0.00005707762557077625 (ray)
 
 # Interest rate piece-wise function parameters - all rays
 const RATE_M1 = 2 * 10 ** 25  # 0.02
@@ -43,63 +43,63 @@ const RATE_BOUND3 = 9215 * 10 ** 23  # 0.9215
 #
 
 @event
-func Authorized(address : felt):
+func Authorized(address):
 end
 
 @event
-func Revoked(address : felt):
+func Revoked(address):
 end
 
 @event
-func GageAdded(gage_id : felt, max : felt):
+func GageAdded(gage_id, max):
 end
 
 @event
-func GageTotalUpdated(gage_id : felt, new_total : felt):
+func GageTotalUpdated(gage_id, new_total):
 end
 
 @event
-func GageMaxUpdated(gage_id : felt, new_max : felt):
+func GageMaxUpdated(gage_id, new_max):
 end
 
 @event
-func GageSafetyUpdated(gage_id : felt, new_safety : felt):
+func GageSafetyUpdated(gage_id, new_safety):
 end
 
 @event
-func SyntheticTotalUpdated(new_total : felt):
+func SyntheticTotalUpdated(new_total):
 end
 
 @event
-func NumGagesUpdated(num : felt):
+func NumGagesUpdated(num):
 end
 
 @event
-func MultiplierUpdated(new_multiplier : felt, interval : felt):
+func MultiplierUpdated(new_multiplier, interval):
 end
 
 @event
-func ThresholdUpdated(new_threshold : felt):
+func ThresholdUpdated(new_threshold):
 end
 
 @event
-func TaxUpdated(new_tax : felt):
+func TaxUpdated(new_tax):
 end
 
 @event
-func TroveUpdated(address : felt, trove_id : felt, updated_trove : Trove):
+func TroveUpdated(address, trove_id, updated_trove : Trove):
 end
 
 @event
-func DepositUpdated(address : felt, trove_id : felt, gage_id : felt, new_amount : felt):
+func DepositUpdated(address, trove_id, gage_id, new_amount):
 end
 
 @event
-func SeriesIncremented(gage_id : felt, interval : felt, price : felt):
+func SeriesIncremented(gage_id, interval, price):
 end
 
 @event
-func CeilingUpdated(ceiling : felt):
+func CeilingUpdated(ceiling):
 end
 
 @event
@@ -111,7 +111,7 @@ end
 #
 
 @storage_var
-func shrine_auth(address : felt) -> (authorized : felt):
+func shrine_auth(address) -> (authorized):
 end
 
 # Similar to onlyOwner
@@ -123,7 +123,7 @@ func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @external
-func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt):
+func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
     assert_auth()
     shrine_auth.write(address, TRUE)
     Authorized.emit(address)
@@ -131,7 +131,7 @@ func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @external
-func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address : felt):
+func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
     assert_auth()
     shrine_auth.write(address, FALSE)
     Revoked.emit(address)
@@ -139,9 +139,9 @@ func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a
 end
 
 @view
-func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    address : felt
-) -> (authorized : felt):
+func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
+    authorized
+):
     return shrine_auth.read(address)
 end
 
@@ -151,56 +151,56 @@ end
 
 # Also known as CDPs, sub-accounts, etc. Each user has multiple shrine_troves that they can deposit collateral into and mint synthetic against.
 @storage_var
-func shrine_troves(address : felt, trove_id : felt) -> (trove : felt):
+func shrine_troves(address, trove_id) -> (trove):
 end
 
 # Stores information about each gage (see Gage struct)
 @storage_var
-func shrine_gages(gage_id : felt) -> (gage : Gage):
+func shrine_gages(gage_id) -> (gage : Gage):
 end
 
 @storage_var
-func shrine_num_gages() -> (num : felt):
+func shrine_num_gages() -> (num):
 end
 
 # Keeps track of how much of each gage has been deposited into each Trove - wad
 @storage_var
-func shrine_deposited(address : felt, trove_id : felt, gage_id : felt) -> (amount : felt):
+func shrine_deposited(address, trove_id, gage_id) -> (amount):
 end
 
 # Total amount of synthetic minted
 @storage_var
-func shrine_synthetic() -> (total : felt):
+func shrine_synthetic() -> (total):
 end
 
 # Keeps track of the price history of each Gage - wad
 # interval: timestamp-divided by TIME_INTERVAL.
 @storage_var
-func shrine_series(gage_id : felt, interval : felt) -> (price : felt):
+func shrine_series(gage_id, interval) -> (price):
 end
 
 # Total debt ceiling - wad
 @storage_var
-func shrine_ceiling() -> (ceiling : felt):
+func shrine_ceiling() -> (ceiling):
 end
 
 # Global interest rate multiplier - ray
 @storage_var
-func shrine_multiplier(interval : felt) -> (rate : felt):
+func shrine_multiplier(interval) -> (rate):
 end
 
 # Liquidation threshold (or max LTV) - wad
 @storage_var
-func shrine_threshold() -> (threshold : felt):
+func shrine_threshold() -> (threshold):
 end
 
 # Fee on yield - ray
 @storage_var
-func shrine_tax() -> (tax : felt):
+func shrine_tax() -> (tax):
 end
 
 @storage_var
-func shrine_live() -> (live : felt):
+func shrine_live() -> (live):
 end
 
 #
@@ -209,7 +209,7 @@ end
 
 @view
 func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    address : felt, trove_id : felt
+    address, trove_id
 ) -> (trove : Trove):
     let (trove_packed) = shrine_troves.read(address, trove_id)
     let (charge_from, debt) = split_felt(trove_packed)
@@ -218,68 +218,62 @@ func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @view
-func get_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt
-) -> (gage : Gage):
+func get_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id) -> (
+    gage : Gage
+):
     return shrine_gages.read(gage_id)
 end
 
 @view
-func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    num : felt
-):
+func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (num):
     return shrine_num_gages.read()
 end
 
 @view
 func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    address : felt, trove_id : felt, gage_id : felt
-) -> (amount : felt):
+    address, trove_id, gage_id
+) -> (amount):
     return shrine_deposited.read(address, trove_id, gage_id)
 end
 
 @view
-func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    total : felt
-):
+func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (total):
     return shrine_synthetic.read()
 end
 
 @view
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, interval : felt
-) -> (price : felt):
+    gage_id, interval
+) -> (price):
     return shrine_series.read(gage_id, interval)
 end
 
 @view
-func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    ceiling : felt
-):
+func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ceiling):
     return shrine_ceiling.read()
 end
 
 @view
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    interval : felt
-) -> (rate : felt):
+    interval
+) -> (rate):
     return shrine_multiplier.read(interval)
 end
 
 @view
 func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    threshold : felt
+    threshold
 ):
     return shrine_threshold.read()
 end
 
 @view
-func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax : felt):
+func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax):
     return shrine_tax.read()
 end
 
 @view
-func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live : felt):
+func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live):
     return shrine_live.read()
 end
 
@@ -288,7 +282,7 @@ end
 #
 
 @external
-func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(max : felt):
+func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(max):
     assert_auth()
 
     let (gage_count) = shrine_num_gages.read()
@@ -303,7 +297,7 @@ end
 
 @external
 func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, new_max : felt
+    gage_id, new_max
 ):
     assert_auth()
 
@@ -318,9 +312,7 @@ func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 end
 
 @external
-func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_ceiling : felt
-):
+func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_ceiling):
     assert_auth()
 
     shrine_ceiling.write(new_ceiling)
@@ -330,7 +322,7 @@ end
 
 @external
 func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_multiplier : felt, timestamp : felt
+    new_multiplier, timestamp
 ):
     assert_auth()
 
@@ -342,12 +334,12 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 end
 
 # Threshold value should be a wad between 0 and 1
-# Example: 75% = 75 * 10 ** 16
-# Example 2: 1% = 1 * 10 ** 16
-# Example 3: 1.5% = 15 * 10 ** 15
+# Example: 75% = 75 : felt* 10 : felt** 16
+# Example 2: 1% = 1 : felt* 10 : felt** 16
+# Example 3: 1.5% = 15 : felt* 10 : felt** 15
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_threshold : felt
+    new_threshold
 ):
     assert_auth()
 
@@ -362,7 +354,7 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 end
 
 @external
-func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax : felt):
+func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax):
     assert_auth()
 
     shrine_tax.write(new_tax)
@@ -380,7 +372,7 @@ func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
 end
 
 func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, trove : Trove
+    user_address, trove_id, trove : Trove
 ):
     let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
     shrine_troves.write(user_address, trove_id, packed_trove)
@@ -389,7 +381,7 @@ end
 
 # Constructor
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed : felt):
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
     shrine_auth.write(authed, TRUE)
     shrine_live.write(TRUE)
     return ()
@@ -402,7 +394,7 @@ end
 # Appends a new price to the Series of the specified Gage
 @external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, price : felt, timestamp : felt
+    gage_id, price, timestamp
 ):
     assert_auth()
 
@@ -417,12 +409,7 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt,
-    amount : felt,
-    src_address : felt,
-    src_trove_id : felt,
-    dst_address : felt,
-    dst_trove_id : felt,
+    gage_id, amount, src_address, src_trove_id, dst_address, dst_trove_id
 ):
     assert_auth()
 
@@ -445,7 +432,7 @@ end
 # Deposit a specified amount of a Gage into a Trove
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, amount : felt, user_address : felt, trove_id : felt
+    gage_id, amount, user_address, trove_id
 ):
     alloc_locals
 
@@ -481,7 +468,7 @@ end
 # Withdraw a specified amount of a Gage from a Trove
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, amount : felt, user_address : felt, trove_id : felt
+    gage_id, amount, user_address, trove_id
 ):
     alloc_locals
 
@@ -521,7 +508,7 @@ end
 # Mint a specified amount of synthetic for a Trove
 @external
 func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, amount : felt
+    user_address, trove_id, amount
 ):
     alloc_locals
 
@@ -586,7 +573,7 @@ end
 # The module calling this function should check that `amount` does not exceed Trove's debt.
 @external
 func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, amount : felt
+    user_address, trove_id, amount
 ):
     alloc_locals
 
@@ -626,7 +613,7 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt
+    user_address, trove_id
 ):
     assert_auth()
 
@@ -659,8 +646,8 @@ end
 # Get the last updated price for a Gage
 @view
 func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt
-) -> (price : felt):
+    gage_id
+) -> (price):
     let (interval) = now()  # Get current interval
     let (p) = get_recent_price_from(gage_id, interval)
     return (p)
@@ -669,7 +656,7 @@ end
 # Gets last updated multiplier value
 @view
 func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    multiplier : felt
+    multiplier
 ):
     let (interval) = now()
     let (m) = get_recent_multiplier_from(interval)
@@ -680,8 +667,8 @@ end
 # returns a wad
 @view
 func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt
-) -> (ratio : felt):
+    user_address, trove_id
+) -> (ratio):
     alloc_locals
     let (trove : Trove) = get_trove(user_address, trove_id)
     let (interval) = now()
@@ -691,8 +678,8 @@ end
 # Calculate a Trove's health
 @view
 func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt
-) -> (healthy : felt):
+    user_address, trove_id
+) -> (healthy):
     alloc_locals
 
     # Get value of the trove's debt
@@ -707,7 +694,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     # Get threshold
     let (t) = shrine_threshold.read()
 
-    # value * liquidation threshold = amount of debt the trove can have without being at risk of liquidation.
+    # value : felt* liquidation threshold = amount of debt the trove can have without being at risk of liquidation.
     let (value) = appraise(user_address, trove_id)
 
     # if the amount of debt the trove has is greater than this, the trove is not healthy.
@@ -719,8 +706,8 @@ end
 
 # Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt
-) -> (value : felt):
+    user_address, trove_id
+) -> (value):
     alloc_locals
 
     let (gage_count) = shrine_num_gages.read()
@@ -729,7 +716,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     return (value)
 end
 
-func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (interval : felt):
+func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (interval):
     let (time) = get_block_timestamp()
     let (interval, _) = unsigned_div_rem(time, TIME_INTERVAL)
     return (interval)
@@ -737,7 +724,7 @@ end
 
 # Adds the accumulated interest as debt to the trove
 func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt
+    user_address, trove_id
 ):
     alloc_locals
 
@@ -771,8 +758,8 @@ end
 
 @view
 func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt
-) -> (amount : felt):
+    user_address, trove_id
+) -> (amount):
     alloc_locals
 
     let (trove : Trove) = get_trove(user_address, trove_id)
@@ -805,12 +792,8 @@ end
 # Recursively iterates over time intervals from `current_interval` to `final_interval` and compounds the interest owed over all of them
 # Assumes current_interval <= final_interval
 func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt,
-    trove_id : felt,
-    current_interval : felt,
-    final_interval : felt,
-    debt : felt,
-) -> (new_cumulative : felt):
+    user_address, trove_id, current_interval, final_interval, debt
+) -> (new_cumulative):
     alloc_locals
 
     # Terminate
@@ -853,7 +836,7 @@ end
 #
 
 # `ratio` is expected to be a felt
-func base_rate{range_check_ptr}(ratio : felt) -> (rate : felt):
+func base_rate{range_check_ptr}(ratio) -> (rate):
     alloc_locals
 
     let (is_in_first_range) = is_le(ratio, RATE_BOUND1)
@@ -880,7 +863,7 @@ end
 
 # y = m*x + b
 # m, x, b, and y are all wads
-func linear{range_check_ptr}(x : felt, m : felt, b : felt) -> (y : felt):
+func linear{range_check_ptr}(x, m, b) -> (y):
     let (m_x) = WadRay.rmul(m, x)
     let (y) = WadRay.add(m_x, b)
     return (y)
@@ -891,8 +874,8 @@ end
 # Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 # Returns a ray.
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, interval : felt, debt : felt
-) -> (ratio : felt):
+    user_address, trove_id, interval, debt
+) -> (ratio):
     # Early termination if no debt
     if debt == 0:
         return (0)
@@ -912,8 +895,8 @@ end
 # This function uses historical prices but the currently deposited gage amounts to calculate value...
 # The underlying assumption is that the amount of each gage deposited at the interval is the same as the amount currently deposited.
 func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address : felt, trove_id : felt, gage_id : felt, interval : felt, cumulative : felt
-) -> (new_cumulative : felt):
+    user_address, trove_id, gage_id, interval, cumulative
+) -> (new_cumulative):
     alloc_locals
     # Calculate current gage value
     let (balance) = shrine_deposited.read(user_address, trove_id, gage_id)
@@ -942,8 +925,8 @@ end
 # Returns the price for `gage_id` at `interval` if it is non-zero.
 # Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id : felt, interval : felt
-) -> (price : felt):
+    gage_id, interval
+) -> (price):
     let (price) = shrine_series.read(gage_id, interval)
 
     if price != 0:
@@ -956,8 +939,8 @@ end
 # Returns the multiplier at `interval` if it is non-zero.
 # Otherwise, check `interval` - 1 recursively for the last available value.
 func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    interval : felt
-) -> (m : felt):
+    interval
+) -> (m):
     let (m) = shrine_multiplier.read(interval)
 
     if m != 0:
