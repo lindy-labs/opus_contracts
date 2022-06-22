@@ -211,8 +211,8 @@ end
 func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address : felt, trove_id : felt
 ) -> (trove : Trove):
-    let (trove_packed : felt) = shrine_troves.read(address, trove_id)
-    let (charge_from : felt, debt : felt) = split_felt(trove_packed)
+    let (trove_packed) = shrine_troves.read(address, trove_id)
+    let (charge_from, debt) = split_felt(trove_packed)
     let trove : Trove = Trove(charge_from=charge_from, debt=debt)
     return (trove)
 end
@@ -291,7 +291,7 @@ end
 func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(max : felt):
     assert_auth()
 
-    let (gage_count : felt) = shrine_num_gages.read()
+    let (gage_count) = shrine_num_gages.read()
     shrine_gages.write(gage_count, Gage(0, max))
     GageAdded.emit(gage_count, max)
 
@@ -382,7 +382,7 @@ end
 func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt, trove : Trove
 ):
-    let (packed_trove : felt) = pack_felt(trove.debt, trove.charge_from)
+    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
     shrine_troves.write(user_address, trove_id, packed_trove)
     return ()
 end
@@ -532,7 +532,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let old_trove_debt = old_trove_info.debt
 
     # Get interest charged
-    let (diff : felt) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_debt)
+    let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_debt)
 
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_synthetic.read()
@@ -594,7 +594,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let old_trove_debt = old_trove_info.debt
 
     # Get interest charged
-    let (diff : felt) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_debt)
+    let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_debt)
 
     # Update system debt
     let (current_system_debt) = shrine_synthetic.read()
@@ -743,15 +743,15 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let old_debt = trove.debt
 
     # Update Trove
-    let (current_interval : felt) = now()
+    let (current_interval) = now()
     let updated_trove : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, updated_trove)
 
     # Get old system debt amount
-    let (old_system_debt : felt) = shrine_synthetic.read()
+    let (old_system_debt) = shrine_synthetic.read()
 
     # Get interest charged
-    let (diff : felt) = WadRay.sub_unsigned(new_debt, old_debt)
+    let (diff) = WadRay.sub_unsigned(new_debt, old_debt)
 
     # Get new system debt
     let new_system_debt = old_system_debt + diff
@@ -782,14 +782,14 @@ func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Early termination if `charge_from` is next interval of current,
     # meaning interest has been charged up to current interval.
 
-    let (current_interval : felt) = now()
+    let (current_interval) = now()
     let (is_updated) = is_le(current_interval + 1, trove.charge_from)
     if is_updated == TRUE:
         return (old_debt)
     end
 
     # Get new debt amount
-    let (new_debt : felt) = compound(
+    let (new_debt) = compound(
         user_address, trove_id, trove.charge_from, current_interval + 1, trove.debt
     )
     return (new_debt)
@@ -814,23 +814,23 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     end
 
     # Get LTV for Trove at the given time ID
-    let (ratio : felt) = trove_ratio(user_address, trove_id, current_interval, debt)
+    let (ratio) = trove_ratio(user_address, trove_id, current_interval, debt)
 
     # Get base rate using LTV
-    let (rate : felt) = base_rate(ratio)
+    let (rate) = base_rate(ratio)
 
     # Get multiplier at the given time ID
-    let (m : felt) = get_recent_multiplier_from(current_interval)
+    let (m) = get_recent_multiplier_from(current_interval)
 
     # Derive the interest rate
-    let (real_rate : felt) = WadRay.rmul_unchecked(rate, m)
+    let (real_rate) = WadRay.rmul_unchecked(rate, m)
 
     # Derive the real interest rate to be charged
-    let (percent_owed : felt) = WadRay.rmul_unchecked(real_rate, TIME_INTERVAL_DIV_YEAR)
+    let (percent_owed) = WadRay.rmul_unchecked(real_rate, TIME_INTERVAL_DIV_YEAR)
 
     # Compound the debt
-    let (amount_owed : felt) = WadRay.rmul(debt, percent_owed)  # Returns a wad
-    let (new_debt : felt) = WadRay.add(debt, amount_owed)
+    let (amount_owed) = WadRay.rmul(debt, percent_owed)  # Returns a wad
+    let (new_debt) = WadRay.add(debt, amount_owed)
 
     # Recursive call
     return compound(user_address, trove_id, current_interval + 1, final_interval, new_debt)
@@ -892,11 +892,11 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         return (0)
     end
 
-    let (gage_count : felt) = shrine_num_gages.read()
-    let (value : felt) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    let (gage_count) = shrine_num_gages.read()
+    let (value) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
 
-    let (ratio : felt) = WadRay.wunsigned_div(debt, value)
-    let (ratio_ray : felt) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
+    let (ratio) = WadRay.wunsigned_div(debt, value)
+    let (ratio_ray) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
     return (ratio_ray)
 end
 
