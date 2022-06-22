@@ -189,9 +189,9 @@ end
 func shrine_multiplier(interval) -> (rate):
 end
 
-# Liquidation threshold (or max LTV) - wad
+# Liquidation threshold (or max LTV) per gage - ray
 @storage_var
-func shrine_threshold() -> (threshold):
+func shrine_thresholds(gage_id) -> (threshold):
 end
 
 # Fee on yield - ray
@@ -948,4 +948,45 @@ func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     end
 
     return get_recent_multiplier_from(interval - 1)
+end
+
+
+# Gets the custom max LTV (threshold) of a trove
+# `threshold` is a ray
+func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id
+) -> (threshold):
+    let (gage_count) = shrine_num_gages.read()
+    return get_trove_threshold_inner(user_address, trove_id, 0, gage_count - 1, 0, 0)
+end
+
+func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id, current_gage_id, max_gage_id, cumulative_weighted_threshold, cumulative_trove_value
+) -> (threshold):
+
+    let (gage_threshold) = shrine_thresholds.read(current_gage_id)
+    let (deposited) = shrine_deposited.read(user_address, trove_id, current_gage_id)
+
+    let (current_time_id) = now()
+    let (gage_price) = get_recent_price_from(current_gage_id, current_time_id)
+
+    let (deposited_value) = WadRay.wmul(gage_price, deposited)
+    let (weighted_threshold) = WadRay.wmul(gage_threshold, deposited_value)
+
+    let cumulative_weighted_threshold = cumulative_weighted_average + weighted_threshold # Can be unchecked since all threshold values are less than 1
+    let cumulative_trove_value = cumulative_trove_value + deposited_value 
+
+    if current_gage_id == max_gage_id:
+        let (threshold) = WadRay.wunsigned_div(cumulative_weighted_threshold, cumulative_trove_value)
+        return (threshold)
+    else:
+        return get_trove_threshold_inner(
+            user_address, 
+            trove_id, 
+            current_gage_id + 1, 
+            max_gage_id, 
+            cumulative_weighted_threshold, 
+            cumulative_trove_value
+        )
+    end
 end
