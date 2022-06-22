@@ -534,7 +534,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (old_trove_debt_compounded) = estimate(user_address, trove_id)
 
     # Get current Trove information
-    let (old_trove_info) = get_trove(user_address, trove_id)
+    let (old_trove_info : Trove) = get_trove(user_address, trove_id)
     let old_trove_debt = old_trove_info.debt
 
     # Get interest charged
@@ -564,7 +564,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update trove information
     let (new_debt) = WadRay.add(old_trove_debt_compounded, amount)
-    let new_trove_info = Trove(charge_from=new_charge_from, debt=new_debt)
+    let new_trove_info : Trove = Trove(charge_from=new_charge_from, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
@@ -596,7 +596,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (old_trove_debt_compounded) = estimate(user_address, trove_id)
 
     # Get current Trove information
-    let (old_trove_info) = get_trove(user_address, trove_id)
+    let (old_trove_info : Trove) = get_trove(user_address, trove_id)
     let old_trove_debt = old_trove_info.debt
 
     # Get interest charged
@@ -611,7 +611,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (new_debt) = WadRay.sub(old_trove_debt_compounded, amount)
     let (current_interval) = now()
-    let new_trove_info = Trove(charge_from=current_interval + 1, debt=new_debt)
+    let new_trove_info : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
     # Events
@@ -631,8 +631,8 @@ func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_auth()
 
     # Update Trove information
-    let (old_trove_info) = get_trove(user_address, trove_id)
-    let new_trove_info = Trove(charge_from=old_trove_info.charge_from, debt=0)
+    let (old_trove_info : Trove) = get_trove(user_address, trove_id)
+    let new_trove_info : Trove = Trove(charge_from=old_trove_info.charge_from, debt=0)
 
     # TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
 
@@ -696,7 +696,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     alloc_locals
 
     # Get value of the trove's debt
-    let (trove) = get_trove(user_address, trove_id)
+    let (trove : Trove) = get_trove(user_address, trove_id)
     let debt = trove.debt
 
     # Early termination if no debt
