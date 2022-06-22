@@ -341,8 +341,6 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
         [to_wad(5000)],
     )
 
-    # TODO: Failing due to incorrect time interval/ID
-
     assert_event_emitted(
         shrine_forge,
         shrine.contract_address,
@@ -668,7 +666,7 @@ async def test_update_gage_max(users, shrine):
     deposit_amt = to_wad(100)
     await shrine_owner.send_tx(
         shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]
-    )  # Deposit 20 gage tokens
+    )  # Deposit 100 gage tokens
 
     new_gage_max = deposit_amt - to_wad(1)
     await update_and_assert(
