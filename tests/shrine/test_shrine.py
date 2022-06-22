@@ -584,6 +584,16 @@ async def test_shrine_withdrawal_unsafe_fail(users, shrine, update_feeds):
 
 
 @pytest.mark.asyncio
+async def test_shrine_forge_zero_deposit_fail(users, shrine):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Forge without any gages deposited
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(1_000)])
+
+
+@pytest.mark.asyncio
 async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
