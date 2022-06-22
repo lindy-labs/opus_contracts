@@ -509,7 +509,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Check if Trove is healthy
     let (healthy) = is_healthy(user_address, trove_id)
 
-    with_attr error_message("Shrine: Trove is at risk after gage withdrawal"):
+    with_attr error_message("Shrine: Trove is at risk after withdrawing gage"):
         assert healthy = TRUE
     end
 

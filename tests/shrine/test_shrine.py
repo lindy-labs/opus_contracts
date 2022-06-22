@@ -173,14 +173,12 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
 
 
 @pytest.fixture
-async def shrine_withdrawal(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
+async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    withdrawal = await shrine_owner.send_tx(
-        shrine.contract_address, "withdraw", [0, to_wad(10), shrine_user.address, 0]
-    )
-    return withdrawal
+    withdraw = await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(10), shrine_user.address, 0])
+    return withdraw
 
 
 @cache
@@ -301,17 +299,17 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdrawal_pass(users, shrine, shrine_withdrawal):
+async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
     shrine_user = await users("shrine user")
 
     assert_event_emitted(
-        shrine_withdrawal,
+        shrine_withdraw,
         shrine.contract_address,
         "GageTotalUpdated",
         [0, 0],
     )
     assert_event_emitted(
-        shrine_withdrawal,
+        shrine_withdraw,
         shrine.contract_address,
         "DepositUpdated",
         [shrine_user.address, 0, 0, 0],
@@ -593,11 +591,11 @@ async def test_shrine_withdraw_invalid_gage_fail(users, shrine):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdrawal_unsafe_fail(users, shrine, update_feeds):
+async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after gage withdrawal"):
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk after withdrawing gage"):
         await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(7), shrine_user.address, 0])
 
 
