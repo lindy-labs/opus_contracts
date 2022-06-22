@@ -530,12 +530,17 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check system is live
     assert_system_live()
 
-    # Get updated debt amount with interest
-    let (old_trove_debt_compounded) = estimate(user_address, trove_id)
-
     # Get current Trove information
     let (old_trove_info) = get_trove(user_address, trove_id)
     let old_trove_debt = old_trove_info.debt
+
+    # Get current interval
+    let (current_interval) = now()
+
+    # Get updated debt amount with interest
+    let (old_trove_debt_compounded) = estimate_inner(
+        user_address, trove_id, old_trove_debt, old_trove_info.charge_from, current_interval
+    )
 
     # Get interest charged
     let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_debt)
@@ -555,7 +560,6 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Initialise `Trove.charge_from` to current interval if old debt was 0.
     # Otherwise, set `Trove.charge_from` to current interval + 1 because interest has been
     # charged up to current interval.
-    let (current_interval) = now()
     if old_trove_debt == 0:
         tempvar new_charge_from = current_interval
     else:
@@ -592,12 +596,17 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     assert_auth()
 
-    # Get updated debt amount with interest
-    let (old_trove_debt_compounded) = estimate(user_address, trove_id)
-
     # Get current Trove information
     let (old_trove_info) = get_trove(user_address, trove_id)
     let old_trove_debt = old_trove_info.debt
+
+    # Get current interval
+    let (current_interval) = now()
+
+    # Get updated debt amount with interest
+    let (old_trove_debt_compounded) = estimate_inner(
+        user_address, trove_id, old_trove_debt, old_trove_info.charge_from, current_interval
+    )
 
     # Get interest charged
     let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_debt)
@@ -608,10 +617,8 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_synthetic.write(new_system_debt)
 
     # Update trove information
-
     let (new_debt) = WadRay.sub(old_trove_debt_compounded, amount)
-    let (current_interval) = now()
-    let new_trove_info = Trove(charge_from=current_interval + 1, debt=new_debt)
+    let new_trove_info : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
     # Events
@@ -741,15 +748,18 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    # Get new debt amount
-    let (new_debt) = estimate(user_address, trove_id)
-
-    # Get old debt amount
+    # Get trove info
     let (trove : Trove) = get_trove(user_address, trove_id)
-    let old_debt = trove.debt
+
+    # Get current interval
+    let (current_interval) = now()
+
+    # Get new debt amount
+    let (new_debt) = estimate_inner(
+        user_address, trove_id, trove.debt, trove.charge_from, current_interval
+    )
 
     # Update Trove
-    let (current_interval) = now()
     let updated_trove : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, updated_trove)
 
@@ -757,7 +767,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (old_system_debt) = shrine_synthetic.read()
 
     # Get interest charged
-    let (diff) = WadRay.sub_unsigned(new_debt, old_debt)
+    let (diff) = WadRay.sub_unsigned(new_debt, trove.debt)
 
     # Get new system debt
     let new_system_debt = old_system_debt + diff
@@ -773,31 +783,30 @@ end
 func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address : felt, trove_id : felt
 ) -> (amount : felt):
+    let (trove : Trove) = get_trove(user_address, trove_id)
+    let (current_interval) = now()
+    return estimate_inner(user_address, trove_id, trove.debt, trove.charge_from, current_interval)
+end
+
+func estimate_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address : felt, trove_id : felt, debt : felt, start : felt, current : felt
+) -> (amount : felt):
     alloc_locals
 
-    let (trove : Trove) = get_trove(user_address, trove_id)
-
-    # Get old debt amount
-    let old_debt = trove.debt
-
     # Early termination if no debt
-    if old_debt == 0:
-        return (old_debt)
+    if debt == 0:
+        return (debt)
     end
 
-    # Early termination if `charge_from` is next interval of current,
+    # Early termination if `start` is next interval of `current`,
     # meaning interest has been charged up to current interval.
-
-    let (current_interval) = now()
-    let (is_updated) = is_le(current_interval + 1, trove.charge_from)
+    let (is_updated) = is_le(current + 1, start)
     if is_updated == TRUE:
-        return (old_debt)
+        return (debt)
     end
 
     # Get new debt amount
-    let (new_debt) = compound(
-        user_address, trove_id, trove.charge_from, current_interval + 1, trove.debt
-    )
+    let (new_debt) = compound(user_address, trove_id, start, current + 1, debt)
     return (new_debt)
 end
 
