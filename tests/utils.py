@@ -12,6 +12,7 @@ from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
+from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
 from starkware.starknet.testing.starknet import StarknetContract
 
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -22,6 +23,21 @@ FALSE = 0
 WAD_SCALE = 10**18
 RAY_SCALE = 10**27
 
+# Gas estimation constants
+NAMES = [
+    "ecdsa_builtin",
+    "range_check_builtin",
+    "bitwise_builtin",
+    "pedersen_builtin",
+]
+WEIGHTS = {
+    "storage" : 512,
+    "step": 0.05,
+    "ecdsa_builtin": 25.6,
+    "range_check_builtin": 0.4,
+    "bitwise_builtin": 12.8,
+    "pedersen_builtin": 0.4,
+}
 
 Uint256 = namedtuple("Uint256", "low high")
 Uint256like = Union[Uint256, tuple[int, int]]
@@ -147,23 +163,19 @@ def set_block_timestamp(sn, block_timestamp):
 # Gas estimation
 #
 
-# Estimates gas, not including storage variable updates
-def estimate_gas(tx_info: StarknetTransactionExecutionInfo):
-    names = [
-        "ecdsa_builtin",
-        "range_check_builtin",
-        "bitwise_builtin",
-        "pedersen_builtin",
-    ]
-    weights = {
-        "step": 0.05,
-        "ecdsa_builtin": 25.6,
-        "range_check_builtin": 0.4,
-        "bitwise_builtin": 12.8,
-        "pedersen_builtin": 0.4,
-    }
+def estimate_gas(tx_info: StarknetTransactionExecutionInfo, num_storage_keys : int = 0, num_contracts : int = 0):
+    gas_no_storage = estimate_gas_inner(tx_info.call_info)
+    return gas_no_storage + (2 * num_storage_keys + 2 * num_contracts) * WEIGHTS["storage"]
 
-    steps = tx_info.call_info.execution_resources.n_steps
-    builtins = tx_info.call_info.execution_resources.builtin_instance_counter
 
-    return sum([weights[name] * builtins[name] for name in names]) + steps * weights["step"]
+def estimate_gas_inner(call_info : FunctionInvocation):
+    steps = call_info.execution_resources.n_steps
+    builtins = call_info.execution_resources.builtin_instance_counter
+
+    # Sum of all gas consumed across both the call and its internal calls
+    sum_gas = sum(WEIGHTS[name] * builtins[name] for name in NAMES) + steps * WEIGHTS["step"]
+    print(f"Num internal calls: {len(call_info.internal_calls)}")
+    for call in call_info.internal_calls:
+        sum_gas += estimate_gas_inner(call)
+
+    return sum_gas
