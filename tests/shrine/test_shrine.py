@@ -593,8 +593,17 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
+    # Get latest price
+    price = (await shrine.get_series(0, 39).invoke()).result.price
+    assert price != 0
+
+    unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
+    withdraw_amt = Decimal("10") - unsafe_amt
+
     with pytest.raises(StarkException, match="Shrine: Trove is at risk after withdrawing gage"):
-        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(7), shrine_user.address, 0])
+        await shrine_owner.send_tx(
+            shrine.contract_address, "withdraw", [0, to_wad(withdraw_amt), shrine_user.address, 0]
+        )
 
 
 @pytest.mark.asyncio

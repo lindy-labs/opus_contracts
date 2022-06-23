@@ -11,8 +11,8 @@ from starkware.starknet.business_logic.state.state import BlockInfo
 from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
-from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
+from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
 
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -31,7 +31,7 @@ NAMES = [
     "pedersen_builtin",
 ]
 WEIGHTS = {
-    "storage" : 512,
+    "storage": 512,
     "step": 0.05,
     "ecdsa_builtin": 25.6,
     "range_check_builtin": 0.4,
@@ -117,7 +117,7 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
 #
 
 
-def to_wad(n: float) -> int:
+def to_wad(n: Union[float, Decimal]) -> int:
     return int(n * WAD_SCALE)
 
 
@@ -163,12 +163,13 @@ def set_block_timestamp(sn, block_timestamp):
 # Gas estimation
 #
 
-def estimate_gas(tx_info: StarknetTransactionExecutionInfo, num_storage_keys : int = 0, num_contracts : int = 0):
+
+def estimate_gas(tx_info: StarknetTransactionExecutionInfo, num_storage_keys: int = 0, num_contracts: int = 0):
     gas_no_storage = estimate_gas_inner(tx_info.call_info)
     return gas_no_storage + (2 * num_storage_keys + 2 * num_contracts) * WEIGHTS["storage"]
 
 
-def estimate_gas_inner(call_info : FunctionInvocation):
+def estimate_gas_inner(call_info: FunctionInvocation):
     steps = call_info.execution_resources.n_steps
     builtins = call_info.execution_resources.builtin_instance_counter
 
