@@ -973,8 +973,8 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     let (deposited_value) = WadRay.wmul(gage_price, deposited)
     let (weighted_threshold) = WadRay.wmul(gage_threshold, deposited_value)
 
-    let cumulative_weighted_threshold = cumulative_weighted_average + weighted_threshold # Can be unchecked since all threshold values are less than 1
-    let cumulative_trove_value = cumulative_trove_value + deposited_value 
+    let (cumulative_weighted_threshold) = WadRay.add(cumulative_weighted_threshold, weighted_threshold) # Can be unchecked since all threshold values are less than 1
+    let (cumulative_trove_value) = WadRay.add(cumulative_trove_value, deposited_value)
 
     if current_gage_id == max_gage_id:
         let (threshold) = WadRay.wunsigned_div(cumulative_weighted_threshold, cumulative_trove_value)
