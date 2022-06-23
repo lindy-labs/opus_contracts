@@ -70,3 +70,39 @@ end
 Add the `_address` suffix to any variable holding an address. Unlike Solidity, Cairo doesn't yet have an address type, and so adding this suffix makes it clearer to the reader what the variable is and does.
 
 `const usdc = 0x...` becomes `const usdc_address = 0x...` and so on.
+
+
+# Specifying variable and function argument types
+If a variable or function type is a felt, don't specify its type with the `: felt` prefix. 
+
+If a variable is any type but a felt, always specify its type. 
+
+Examples of what to do:
+
+```
+func some_func(a) -> (b):
+    return (y)
+end
+```
+
+```
+let (output) = some_func(5)
+```
+
+```
+func some_second_func(a : SomeStruct) -> (b : SomeStruct):
+    return (a)
+end
+```
+
+```
+let (output : SomeStruct) = some_second_func(SomeStruct(4,5))
+```
+
+Example of what NOT to do:
+
+```
+let (output) = some_second_func(SomeStruct(4,5)) # <-- The type of output isn't specified
+```
+
+
