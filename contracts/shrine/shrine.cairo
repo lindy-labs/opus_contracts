@@ -51,7 +51,7 @@ func Revoked(address):
 end
 
 @event
-func GageAdded(gage_id, max):
+func GageAdded(gage_address, gage_id, max):
 end
 
 @event
@@ -154,6 +154,11 @@ end
 func shrine_troves(address, trove_id) -> (trove):
 end
 
+# Mapping from gage token address to gage ID
+@storage_var
+func shrine_gage_id(gage_address) -> (gage_id):
+end
+
 # Stores information about each gage (see Gage struct)
 @storage_var
 func shrine_gages(gage_id) -> (gage : Gage):
@@ -215,6 +220,13 @@ func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let (charge_from, debt) = split_felt(trove_packed)
     let trove : Trove = Trove(charge_from=charge_from, debt=debt)
     return (trove)
+end
+
+@view
+func get_gage_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_address
+) -> (gage_id):
+    return shrine_gage_id.read(gage_address)
 end
 
 @view
@@ -282,12 +294,13 @@ end
 #
 
 @external
-func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(max):
+func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_address, max):
     assert_auth()
 
     let (gage_count) = shrine_num_gages.read()
     shrine_gages.write(gage_count, Gage(0, max))
-    GageAdded.emit(gage_count, max)
+    shrine_gage_id.write(gage_address, gage_count)
+    GageAdded.emit(gage_address, gage_count, max)
 
     shrine_num_gages.write(gage_count + 1)
     NumGagesUpdated.emit(gage_count + 1)
