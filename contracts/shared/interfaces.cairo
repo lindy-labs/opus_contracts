@@ -44,6 +44,15 @@ namespace IERC20Burnable:
     end
 end
 
+@contract_interface
+namespace IShrine:
+    func deposit(gage_id : felt, amount : felt, user_address : felt, trove_id : felt):
+    end
+
+    func withdraw(gage_id : felt, amount : felt, user_address : felt, trove_id : felt):
+    end
+end
+
 # TODO: not even sure if these methods should be on USDa
 @contract_interface
 namespace IUSDa:
