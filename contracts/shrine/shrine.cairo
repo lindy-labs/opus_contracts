@@ -298,9 +298,9 @@ func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     assert_auth()
 
     let (gage_count) = shrine_num_gages.read()
-    shrine_gages.write(gage_count, Gage(0, max))
-    shrine_gage_id.write(gage_address, gage_count)
-    GageAdded.emit(gage_address, gage_count, max)
+    shrine_gages.write(gage_count + 1, Gage(0, max))
+    shrine_gage_id.write(gage_address, gage_count + 1)
+    GageAdded.emit(gage_address, gage_count + 1, max)
 
     shrine_num_gages.write(gage_count + 1)
     NumGagesUpdated.emit(gage_count + 1)
@@ -726,7 +726,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (gage_count) = shrine_num_gages.read()
     let (interval) = now()
-    let (value) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    let (value) = appraise_inner(user_address, trove_id, gage_count, interval, 0)
     return (value)
 end
 
@@ -896,7 +896,7 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     end
 
     let (gage_count) = shrine_num_gages.read()
-    let (value) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    let (value) = appraise_inner(user_address, trove_id, gage_count, interval, 0)
 
     let (ratio) = WadRay.wunsigned_div(debt, value)
     let (ratio_ray) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
@@ -912,6 +912,12 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     user_address, trove_id, gage_id, interval, cumulative
 ) -> (new_cumulative):
     alloc_locals
+
+    # Terminate when Gage ID reaches 0
+    if gage_id == 0:
+        return (cumulative)
+    end
+
     # Calculate current gage value
     let (balance) = shrine_deposited.read(user_address, trove_id, gage_id)
     let (price) = get_recent_price_from(gage_id, interval)
@@ -921,19 +927,14 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # Update cumulative value
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
 
-    # Terminate when Gage ID reaches 0
-    if gage_id == 0:
-        return (updated_cumulative)
-    else:
-        # Recursive call
-        return appraise_inner(
-            user_address=user_address,
-            trove_id=trove_id,
-            gage_id=gage_id - 1,
-            interval=interval,
-            cumulative=updated_cumulative,
-        )
-    end
+    # Recursive call
+    return appraise_inner(
+        user_address=user_address,
+        trove_id=trove_id,
+        gage_id=gage_id - 1,
+        interval=interval,
+        cumulative=updated_cumulative,
+    )
 end
 
 # Returns the price for `gage_id` at `interval` if it is non-zero.
