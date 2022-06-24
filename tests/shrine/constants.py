@@ -5,14 +5,16 @@ from tests.utils import RAY_SCALE, WAD_SCALE
 # Shrine setup constants
 GAGES = [
     {
+        "address": 123,
         "start_price": 2000,
         "ceiling": 10_000 * WAD_SCALE,
     },
     {
+        "address": 456,
         "start_price": 500,
         "ceiling": 100_000 * WAD_SCALE,
     },
-    {"start_price": 1.25, "ceiling": 10_000_000 * WAD_SCALE},
+    {"address": 789, "start_price": 1.25, "ceiling": 10_000_000 * WAD_SCALE},
 ]
 
 FEED_LEN = 20

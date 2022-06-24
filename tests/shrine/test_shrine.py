@@ -145,7 +145,7 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    deposit = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
+    deposit = await shrine_owner.send_tx(shrine.contract_address, "deposit", [1, to_wad(10), shrine_user.address, 0])
     return deposit
 
 
@@ -175,7 +175,7 @@ async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionE
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    withdraw = await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(10), shrine_user.address, 0])
+    withdraw = await shrine_owner.send_tx(shrine.contract_address, "withdraw", [1, to_wad(10), shrine_user.address, 0])
     return withdraw
 
 
@@ -193,7 +193,7 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
         # Add offset for initial feeds in `shrine`
         timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
-        await shrine_owner.send_tx(shrine.contract_address, "advance", [0, gage0_feed[i], timestamp])
+        await shrine_owner.send_tx(shrine.contract_address, "advance", [1, gage0_feed[i], timestamp])
         await shrine_owner.send_tx(
             shrine.contract_address,
             "update_multiplier",
@@ -229,11 +229,14 @@ async def test_shrine_setup(shrine):
     # Check gages
 
     for idx, g in enumerate(GAGES):
-        result_gage = (await shrine.get_gage(idx).invoke()).result.gage
+        result_gage = (await shrine.get_gage(idx + 1).invoke()).result.gage
         assert result_gage == Gage(0, g["ceiling"])
 
+        gage_id = (await shrine.get_gage_id(g["address"]).invoke()).result.gage_id
+        assert gage_id == idx + 1
+
     # Check price feeds
-    gage0_first_point = (await shrine.get_series(0, 0).invoke()).result.price
+    gage0_first_point = (await shrine.get_series(1, 0).invoke()).result.price
     assert gage0_first_point == to_wad(GAGES[0]["start_price"])
 
     # Check multiplier feed
@@ -280,19 +283,19 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
         shrine_deposit,
         shrine.contract_address,
         "GageTotalUpdated",
-        [0, to_wad(10)],
+        [1, to_wad(10)],
     )
     assert_event_emitted(
         shrine_deposit,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 0, 0, to_wad(10)],
+        [shrine_user.address, 0, 1, to_wad(10)],
     )
 
-    gage = (await shrine.get_gage(0).invoke()).result.gage
+    gage = (await shrine.get_gage(1).invoke()).result.gage
     assert gage.total == to_wad(10)
 
-    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    amt = (await shrine.get_deposit(shrine_user.address, 0, 1).invoke()).result.amount
     assert amt == to_wad(10)
 
 
@@ -304,19 +307,19 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
         shrine_withdraw,
         shrine.contract_address,
         "GageTotalUpdated",
-        [0, 0],
+        [1, 0],
     )
     assert_event_emitted(
         shrine_withdraw,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 0, 0, 0],
+        [shrine_user.address, 0, 1, 0],
     )
 
-    gage = (await shrine.get_gage(0).invoke()).result.gage
+    gage = (await shrine.get_gage(1).invoke()).result.gage
     assert gage.total == 0
 
-    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    amt = (await shrine.get_deposit(shrine_user.address, 0, 1).invoke()).result.amount
     assert amt == 0
 
     ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
@@ -351,7 +354,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
     assert user_trove.debt == to_wad(5000)
     assert user_trove.charge_from == FEED_LEN - 1
 
-    gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
+    gage0_price = (await shrine.gage_last_price(1).invoke()).result.price
     trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
     expected_ltv = Decimal(to_wad(5000)) / Decimal(10 * gage0_price)
@@ -401,11 +404,11 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert trove.charge_from == FEED_LEN - 1
 
-    last_updated = (await shrine.get_series(0, 39).invoke()).result.price
+    last_updated = (await shrine.get_series(1, 39).invoke()).result.price
     assert last_updated != 0
 
     # Get gage price and multiplier value at `trove.charge_from`
-    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
+    start_price = (await shrine.get_series(1, trove.charge_from).invoke()).result.price
     start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
 
     expected_debt = compound(
@@ -421,7 +424,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     assert_equalish(adjusted_estimated_debt, expected_debt)
 
     # Test `charge` by calling deposit without any value
-    tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, 0, shrine_user.address, 0])
+    tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [1, 0, shrine_user.address, 0])
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
@@ -437,7 +440,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     )
 
     # `charge` should not have any effect if `Trove.charge_from` is current interval + 1
-    redundant_tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, 0, shrine_user.address, 0])
+    redundant_tx = await shrine_owner.send_tx(shrine.contract_address, "deposit", [1, 0, shrine_user.address, 0])
     redundant_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert updated_trove == redundant_trove
     assert_event_emitted(
@@ -469,7 +472,7 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
 
     # Update price and multiplier to 0 to simulate missed update
     timestamp = (idx + FEED_LEN) * 30 * SECONDS_PER_MINUTE
-    await shrine_owner.send_tx(shrine.contract_address, "advance", [0, 0, timestamp])
+    await shrine_owner.send_tx(shrine.contract_address, "advance", [1, 0, timestamp])
     await shrine_owner.send_tx(
         shrine.contract_address,
         "update_multiplier",
@@ -477,12 +480,12 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     )
 
     # Assert that value has been set to 0
-    assert (await shrine.get_series(0, idx + FEED_LEN).invoke()).result.price == 0
+    assert (await shrine.get_series(1, idx + FEED_LEN).invoke()).result.price == 0
     assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.rate == 0
 
     # Get gage price and multiplier value at `trove.charge_from`
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
+    start_price = (await shrine.get_series(1, trove.charge_from).invoke()).result.price
     start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
 
     # Modify feeds
@@ -494,7 +497,7 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     multiplier_feed[idx + 1] = multiplier_feed[idx]
 
     # Test 'charge' by calling deposit without any value
-    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [1, 0, shrine_user.address, 0])
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
     expected_debt = compound(
@@ -518,26 +521,26 @@ async def test_move_gage_pass(users, shrine, shrine_forge):
     intra_user_tx = await shrine_owner.send_tx(
         shrine.contract_address,
         "move_gage",
-        [0, to_wad(1), shrine_user.address, 0, shrine_user.address, 1],
+        [1, to_wad(1), shrine_user.address, 0, shrine_user.address, 1],
     )
 
     assert_event_emitted(
         intra_user_tx,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 0, 0, to_wad(9)],
+        [shrine_user.address, 0, 1, to_wad(9)],
     )
     assert_event_emitted(
         intra_user_tx,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 1, 0, to_wad(1)],
+        [shrine_user.address, 1, 1, to_wad(1)],
     )
 
-    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 1).invoke()).result.amount
     assert src_amt == to_wad(9)
 
-    dst_amt = (await shrine.get_deposit(shrine_user.address, 1, 0).invoke()).result.amount
+    dst_amt = (await shrine.get_deposit(shrine_user.address, 1, 1).invoke()).result.amount
     assert dst_amt == to_wad(1)
 
     # Move gage between two different users
@@ -545,26 +548,26 @@ async def test_move_gage_pass(users, shrine, shrine_forge):
     intra_user_tx = await shrine_owner.send_tx(
         shrine.contract_address,
         "move_gage",
-        [0, to_wad(1), shrine_user.address, 0, shrine_guest.address, 0],
+        [1, to_wad(1), shrine_user.address, 0, shrine_guest.address, 0],
     )
 
     assert_event_emitted(
         intra_user_tx,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 0, 0, to_wad(8)],
+        [shrine_user.address, 0, 1, to_wad(8)],
     )
     assert_event_emitted(
         intra_user_tx,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_guest.address, 0, 0, to_wad(1)],
+        [shrine_guest.address, 0, 1, to_wad(1)],
     )
 
-    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 1).invoke()).result.amount
     assert src_amt == to_wad(8)
 
-    dst_amt = (await shrine.get_deposit(shrine_guest.address, 0, 0).invoke()).result.amount
+    dst_amt = (await shrine.get_deposit(shrine_guest.address, 0, 1).invoke()).result.amount
     assert dst_amt == to_wad(1)
 
 
@@ -585,7 +588,11 @@ async def test_shrine_withdraw_invalid_gage_fail(users, shrine):
 
     # Invalid gage ID that has not been added
     with pytest.raises(StarkException):
-        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [789, to_wad(1), shrine_user.address, 0])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "withdraw",
+            [789, to_wad(1), shrine_user.address, 0],
+        )
 
 
 @pytest.mark.asyncio
@@ -594,7 +601,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     # Get latest price
-    price = (await shrine.get_series(0, 39).invoke()).result.price
+    price = (await shrine.get_series(1, 39).invoke()).result.price
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
@@ -602,7 +609,9 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
 
     with pytest.raises(StarkException, match="Shrine: Trove is at risk after withdrawing gage"):
         await shrine_owner.send_tx(
-            shrine.contract_address, "withdraw", [0, to_wad(withdraw_amt), shrine_user.address, 0]
+            shrine.contract_address,
+            "withdraw",
+            [1, to_wad(withdraw_amt), shrine_user.address, 0],
         )
 
 
@@ -635,8 +644,8 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     # Deposit more gage
-    await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
-    updated_deposit = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [1, to_wad(10), shrine_user.address, 0])
+    updated_deposit = (await shrine.get_deposit(shrine_user.address, 0, 1).invoke()).result.amount
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
@@ -651,15 +660,15 @@ async def test_add_gage(users, shrine):
     assert (await shrine.get_num_gages().invoke()).result.num == g_count
 
     new_gage_max = to_wad(42_000)
-    tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [new_gage_max])
+    tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [1234, new_gage_max])
     assert (await shrine.get_num_gages().invoke()).result.num == g_count + 1
-    assert_event_emitted(tx, shrine.contract_address, "GageAdded", [g_count, new_gage_max])
+    assert_event_emitted(tx, shrine.contract_address, "GageAdded", [1234, g_count + 1, new_gage_max])
     assert_event_emitted(tx, shrine.contract_address, "NumGagesUpdated", [g_count + 1])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "add_gage", [1])
+        await bad_guy.send_tx(shrine.contract_address, "add_gage", [2345, 1])
 
 
 @pytest.mark.asyncio
@@ -667,7 +676,7 @@ async def test_update_gage_max(users, shrine):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    gage_id = 0
+    gage_id = 1
     orig_gage_max = GAGES[0]["ceiling"]
 
     async def update_and_assert(new_gage_max):
@@ -690,7 +699,9 @@ async def test_update_gage_max(users, shrine):
     # test decreasing the max below gage.total
     deposit_amt = to_wad(100)
     await shrine_owner.send_tx(
-        shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0]
+        shrine.contract_address,
+        "deposit",
+        [gage_id, deposit_amt, shrine_user.address, 0],
     )  # Deposit 100 gage tokens
 
     new_gage_max = deposit_amt - to_wad(1)
@@ -700,7 +711,11 @@ async def test_update_gage_max(users, shrine):
 
     # This should fail, since gage.total exceeds gage.max
     with pytest.raises(StarkException):
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, deposit_amt, shrine_user.address, 0])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "deposit",
+            [gage_id, deposit_amt, shrine_user.address, 0],
+        )
 
     # test calling with a non-existing gage_id
     # faux_gage_id = 7890
@@ -710,7 +725,7 @@ async def test_update_gage_max(users, shrine):
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [0, 2**251])
+        await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [gage_id, 2**251])
 
 
 @pytest.mark.asyncio
@@ -749,14 +764,14 @@ async def test_kill(users, shrine, update_feeds):
 
     # Check deposit fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [1, to_wad(10), shrine_user.address, 0])
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(100)])
 
     # Test withdraw pass
-    await shrine_owner.send_tx(shrine.contract_address, "withdraw", [0, to_wad(1), shrine_user.address, 0])
+    await shrine_owner.send_tx(shrine.contract_address, "withdraw", [1, to_wad(1), shrine_user.address, 0])
 
     # Test melt pass
     await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, to_wad(100)])

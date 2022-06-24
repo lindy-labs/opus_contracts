@@ -150,7 +150,7 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
 
     # Creating the gages
     for g in GAGES:
-        await shrine_owner.send_tx(shrine.contract_address, "add_gage", [g["ceiling"]])
+        await shrine_owner.send_tx(shrine.contract_address, "add_gage", [g["address"], g["ceiling"]])
 
     # Creating the price feeds
     feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in GAGES]
@@ -160,7 +160,7 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
         timestamp = i * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
         for j in range(len(GAGES)):
-            await shrine_owner.send_tx(shrine.contract_address, "advance", [j, feeds[j][i], timestamp])
+            await shrine_owner.send_tx(shrine.contract_address, "advance", [j + 1, feeds[j][i], timestamp])
 
         await shrine_owner.send_tx(
             shrine.contract_address,
