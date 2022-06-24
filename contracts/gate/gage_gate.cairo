@@ -2,10 +2,12 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.common.uint256 import Uint256, uint256_lt, uint256_sub
 from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.shared.interfaces import IERC20, IShrine
+from contracts.shared.convert import uint_to_felt_unchecked
 
 #
 # Events
@@ -17,6 +19,14 @@ end
 
 @event
 func Revoked(address):
+end
+
+@event
+func Pledged(user_address, trove_id, amt):
+end
+
+@event
+func Recouped(user_address, trove_id, amt):
 end
 
 #
@@ -113,19 +123,26 @@ func pledge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert after = expected
     end
 
-    # TODO Convert amount from uint256 to felt
+    # Convert amount from Uint256 to felt
+    let amt_felt = uint_to_felt_unchecked(amt)
 
-    # TODO Gage ID or address?
+    # Read `shrine` address
+    let shrine = gate_shrine.read()
+
+    # Get gage ID
+    let gage_id = IShrine.get_gage_id(contract_address=shrine, gage_address=gage_address)
+    assert_not_zero(gage_id)
 
     # Call `shrine.deposit`
-    let shrine = gate_shrine.read()
     IShrine.deposit(
         contract_address=shrine,
         gage_id=gage_id,
-        amount=amt,
+        amount=amt_felt,
         user_address=user_address,
         trove_id=trove_id,
     )
+
+    Pledged.emit(user_address, trove_id, amt_felt)
 end
 
 @external

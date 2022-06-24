@@ -46,6 +46,9 @@ end
 
 @contract_interface
 namespace IShrine:
+    func get_gage_id(gage_address : felt) -> (gage_id : felt):
+    end
+
     func deposit(gage_id : felt, amount : felt, user_address : felt, trove_id : felt):
     end
 
