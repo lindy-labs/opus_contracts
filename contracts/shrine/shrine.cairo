@@ -305,9 +305,6 @@ func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     shrine_gages.write(gage_id, Gage(gage.total, new_max))
     GageMaxUpdated.emit(gage_id, new_max)
 
-    let (gage : Gage) = shrine_gages.read(gage_id)
-    shrine_gages.write(gage_id, Gage(gage.total, new_max))
-
     return ()
 end
 
@@ -689,10 +686,9 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     # Get value of the trove's debt
     let (trove : Trove) = get_trove(user_address, trove_id)
-    let debt = trove.debt
 
     # Early termination if no debt
-    if debt == 0:
+    if trove.debt == 0:
         return (TRUE)
     end
 
@@ -705,7 +701,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     # if the amount of debt the trove has is greater than this, the trove is not healthy.
     let (trove_threshold) = WadRay.wmul(value, t)
 
-    let (healthy) = is_le(debt, trove_threshold)
+    let (healthy) = is_le(trove.debt, trove_threshold)
     return (healthy)
 end
 
