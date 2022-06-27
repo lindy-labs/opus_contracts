@@ -164,7 +164,7 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.amount
+    estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.wad
     melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, estimated_debt])
 
     return melt
@@ -211,19 +211,19 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 @pytest.mark.asyncio
 async def test_shrine_setup(shrine):
     # Check system is live
-    live = (await shrine.get_live().invoke()).result.live
+    live = (await shrine.get_live().invoke()).result.bool
     assert live == 1
 
     # Check threshold
-    threshold = (await shrine.get_threshold().invoke()).result.threshold
+    threshold = (await shrine.get_threshold().invoke()).result.wad
     assert threshold == LIQUIDATION_THRESHOLD
 
     # Check debt ceiling
-    ceiling = (await shrine.get_ceiling().invoke()).result.ceiling
+    ceiling = (await shrine.get_ceiling().invoke()).result.wad
     assert ceiling == DEBT_CEILING
 
     # Check gage count
-    gage_count = (await shrine.get_num_gages().invoke()).result.num
+    gage_count = (await shrine.get_num_gages().invoke()).result.ufelt
     assert gage_count == len(GAGES)
 
     # Check gages
@@ -233,11 +233,11 @@ async def test_shrine_setup(shrine):
         assert result_gage == Gage(0, g["ceiling"])
 
     # Check price feeds
-    gage0_first_point = (await shrine.get_series(0, 0).invoke()).result.price
+    gage0_first_point = (await shrine.get_series(0, 0).invoke()).result.wad
     assert gage0_first_point == to_wad(GAGES[0]["start_price"])
 
     # Check multiplier feed
-    multiplier_first_point = (await shrine.get_multiplier(0).invoke()).result.rate
+    multiplier_first_point = (await shrine.get_multiplier(0).invoke()).result.ray
     assert multiplier_first_point == RAY_SCALE
 
 
@@ -255,16 +255,16 @@ async def test_auth(users, shrine_deploy):
 
     # Authorizing an address and testing that it can use authorized functions
     await shrine_owner.send_tx(shrine.contract_address, "authorize", [b.address])
-    b_authorized = (await shrine.get_auth(b.address).invoke()).result.authorized
+    b_authorized = (await shrine.get_auth(b.address).invoke()).result.bool
     assert b_authorized == TRUE
 
     await b.send_tx(shrine.contract_address, "authorize", [c.address])
-    c_authorized = (await shrine.get_auth(c.address).invoke()).result.authorized
+    c_authorized = (await shrine.get_auth(c.address).invoke()).result.bool
     assert c_authorized == TRUE
 
     # Revoking an address
     await b.send_tx(shrine.contract_address, "revoke", [c.address])
-    c_authorized = (await shrine.get_auth(c.address).invoke()).result.authorized
+    c_authorized = (await shrine.get_auth(c.address).invoke()).result.bool
     assert c_authorized == FALSE
 
     # Calling an authorized function with an unauthorized address - should fail
@@ -292,7 +292,7 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
     gage = (await shrine.get_gage(0).invoke()).result.gage
     assert gage.total == to_wad(10)
 
-    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.wad
     assert amt == to_wad(10)
 
 
@@ -316,13 +316,13 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
     gage = (await shrine.get_gage(0).invoke()).result.gage
     assert gage.total == 0
 
-    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.wad
     assert amt == 0
 
-    ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ray
     assert ltv == 0
 
-    is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
+    is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
     assert is_healthy == 1
 
 
@@ -344,20 +344,20 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
         [shrine_user.address, 0, FEED_LEN - 1, to_wad(5000)],
     )
 
-    system_debt = (await shrine.get_synthetic().invoke()).result.total
+    system_debt = (await shrine.get_synthetic().invoke()).result.wad
     assert system_debt == to_wad(5000)
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == to_wad(5000)
     assert user_trove.charge_from == FEED_LEN - 1
 
-    gage0_price = (await shrine.gage_last_price(0).invoke()).result.price
-    trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    gage0_price = (await shrine.gage_last_price(0).invoke()).result.wad
+    trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ray
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
     expected_ltv = Decimal(to_wad(5000)) / Decimal(10 * gage0_price)
     assert_equalish(adjusted_trove_ltv, expected_ltv)
 
-    healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
+    healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
     assert healthy == 1
 
 
@@ -379,17 +379,17 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
         [shrine_user.address, 0, FEED_LEN, 0],
     )
 
-    system_debt = (await shrine.get_synthetic().invoke()).result.total
+    system_debt = (await shrine.get_synthetic().invoke()).result.wad
     assert system_debt == 0
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert user_trove.debt == 0
     assert user_trove.charge_from == FEED_LEN
 
-    shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ratio
+    shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ray
     assert shrine_ltv == 0
 
-    healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.healthy
+    healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
     assert healthy == 1
 
 
@@ -401,12 +401,12 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
     assert trove.charge_from == FEED_LEN - 1
 
-    last_updated = (await shrine.get_series(0, 39).invoke()).result.price
+    last_updated = (await shrine.get_series(0, 39).invoke()).result.wad
     assert last_updated != 0
 
     # Get gage price and multiplier value at `trove.charge_from`
-    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
+    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.wad
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.ray
 
     expected_debt = compound(
         [Decimal("10")],
@@ -416,7 +416,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     )
 
     # Test `estimate`
-    estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.amount
+    estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.wad
     adjusted_estimated_debt = Decimal(estimated_debt) / WAD_SCALE
     assert_equalish(adjusted_estimated_debt, expected_debt)
 
@@ -477,13 +477,13 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     )
 
     # Assert that value has been set to 0
-    assert (await shrine.get_series(0, idx + FEED_LEN).invoke()).result.price == 0
-    assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.rate == 0
+    assert (await shrine.get_series(0, idx + FEED_LEN).invoke()).result.wad == 0
+    assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.ray == 0
 
     # Get gage price and multiplier value at `trove.charge_from`
     trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
-    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.rate
+    start_price = (await shrine.get_series(0, trove.charge_from).invoke()).result.wad
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.ray
 
     # Modify feeds
     gage0_price_feed = [from_wad(start_price)] + update_feeds
@@ -534,10 +534,10 @@ async def test_move_gage_pass(users, shrine, shrine_forge):
         [shrine_user.address, 1, 0, to_wad(1)],
     )
 
-    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.wad
     assert src_amt == to_wad(9)
 
-    dst_amt = (await shrine.get_deposit(shrine_user.address, 1, 0).invoke()).result.amount
+    dst_amt = (await shrine.get_deposit(shrine_user.address, 1, 0).invoke()).result.wad
     assert dst_amt == to_wad(1)
 
     # Move gage between two different users
@@ -561,10 +561,10 @@ async def test_move_gage_pass(users, shrine, shrine_forge):
         [shrine_guest.address, 0, 0, to_wad(1)],
     )
 
-    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    src_amt = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.wad
     assert src_amt == to_wad(8)
 
-    dst_amt = (await shrine.get_deposit(shrine_guest.address, 0, 0).invoke()).result.amount
+    dst_amt = (await shrine.get_deposit(shrine_guest.address, 0, 0).invoke()).result.wad
     assert dst_amt == to_wad(1)
 
 
@@ -594,7 +594,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     # Get latest price
-    price = (await shrine.get_series(0, 39).invoke()).result.price
+    price = (await shrine.get_series(0, 39).invoke()).result.wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
@@ -636,7 +636,7 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
 
     # Deposit more gage
     await shrine_owner.send_tx(shrine.contract_address, "deposit", [0, to_wad(10), shrine_user.address, 0])
-    updated_deposit = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.amount
+    updated_deposit = (await shrine.get_deposit(shrine_user.address, 0, 0).invoke()).result.wad
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
@@ -648,11 +648,11 @@ async def test_add_gage(users, shrine):
     shrine_owner = await users("shrine owner")
 
     g_count = len(GAGES)
-    assert (await shrine.get_num_gages().invoke()).result.num == g_count
+    assert (await shrine.get_num_gages().invoke()).result.ufelt == g_count
 
     new_gage_max = to_wad(42_000)
     tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [new_gage_max])
-    assert (await shrine.get_num_gages().invoke()).result.num == g_count + 1
+    assert (await shrine.get_num_gages().invoke()).result.ufelt == g_count + 1
     assert_event_emitted(tx, shrine.contract_address, "GageAdded", [g_count, new_gage_max])
     assert_event_emitted(tx, shrine.contract_address, "NumGagesUpdated", [g_count + 1])
 
@@ -769,7 +769,7 @@ async def test_set_ceiling(users, shrine):
     new_ceiling = to_wad(20_000_000)
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
     assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
-    assert (await shrine.get_ceiling().invoke()).result.ceiling == new_ceiling
+    assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
 
     # test calling func unauthorized
     bad_guy = await users("bad guy")

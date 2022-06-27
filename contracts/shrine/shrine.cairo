@@ -111,7 +111,7 @@ end
 #
 
 @storage_var
-func shrine_auth(address) -> (authorized):
+func shrine_auth(address) -> (bool):
 end
 
 # Similar to onlyOwner
@@ -140,7 +140,7 @@ end
 
 @view
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
-    authorized
+    bool
 ):
     return shrine_auth.read(address)
 end
@@ -150,8 +150,11 @@ end
 #
 
 # Also known as CDPs, sub-accounts, etc. Each user has multiple shrine_troves that they can deposit collateral into and mint synthetic against.
+# This mapping maps a trove to a bitmap containing its information. 
+# The first 128 bits contain the amount of debt in the trove. 
+# The last 123 bits contain the time interval of start of the next interest accumulation period
 @storage_var
-func shrine_troves(address, trove_id) -> (trove):
+func shrine_troves(address, trove_id) -> (bitmap):
 end
 
 # Stores information about each gage (see Gage struct)
@@ -160,47 +163,49 @@ func shrine_gages(gage_id) -> (gage : Gage):
 end
 
 @storage_var
-func shrine_num_gages() -> (num):
+func shrine_num_gages() -> (ufelt):
 end
 
 # Keeps track of how much of each gage has been deposited into each Trove - wad
 @storage_var
-func shrine_deposited(address, trove_id, gage_id) -> (amount):
+func shrine_deposited(address, trove_id, gage_id) -> (wad):
 end
 
 # Total amount of synthetic minted
 @storage_var
-func shrine_synthetic() -> (total):
+func shrine_synthetic() -> (wad):
 end
 
 # Keeps track of the price history of each Gage - wad
 # interval: timestamp-divided by TIME_INTERVAL.
+# TODO: Maybe this should be a ray? 
 @storage_var
-func shrine_series(gage_id, interval) -> (price):
+func shrine_series(gage_id, interval) -> (wad):
 end
 
 # Total debt ceiling - wad
 @storage_var
-func shrine_ceiling() -> (ceiling):
+func shrine_ceiling() -> (wad):
 end
 
 # Global interest rate multiplier - ray
 @storage_var
-func shrine_multiplier(interval) -> (rate):
+func shrine_multiplier(interval) -> (ray):
 end
 
-# Liquidation threshold (or max LTV) - wad
+# Liquidation threshold (or max LTV) - wad 
+# TODO: Maybe this should be a ray? 
 @storage_var
-func shrine_threshold() -> (threshold):
+func shrine_threshold() -> (wad):
 end
 
 # Fee on yield - ray
 @storage_var
-func shrine_tax() -> (tax):
+func shrine_tax() -> (ray):
 end
 
 @storage_var
-func shrine_live() -> (live):
+func shrine_live() -> (bool):
 end
 
 #
@@ -225,55 +230,55 @@ func get_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 end
 
 @view
-func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (num):
+func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
     return shrine_num_gages.read()
 end
 
 @view
 func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     address, trove_id, gage_id
-) -> (amount):
+) -> (wad):
     return shrine_deposited.read(address, trove_id, gage_id)
 end
 
 @view
-func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (total):
+func get_synthetic{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
     return shrine_synthetic.read()
 end
 
 @view
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id, interval
-) -> (price):
+) -> (wad):
     return shrine_series.read(gage_id, interval)
 end
 
 @view
-func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ceiling):
+func get_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
     return shrine_ceiling.read()
 end
 
 @view
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     interval
-) -> (rate):
+) -> (ray):
     return shrine_multiplier.read(interval)
 end
 
 @view
 func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    threshold
+    wad
 ):
     return shrine_threshold.read()
 end
 
 @view
-func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax):
+func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
     return shrine_tax.read()
 end
 
 @view
-func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live):
+func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool):
     return shrine_live.read()
 end
 
@@ -649,16 +654,15 @@ end
 @view
 func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id
-) -> (price):
+) -> (wad):
     let (interval) = now()  # Get current interval
-    let (p) = get_recent_price_from(gage_id, interval)
-    return (p)
+    return get_recent_price_from(gage_id, interval)
 end
 
 # Gets last updated multiplier value
 @view
 func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    multiplier
+    ray
 ):
     let (interval) = now()
     let (m) = get_recent_multiplier_from(interval)
@@ -666,11 +670,11 @@ func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 end
 
 # Calculate a Trove's current loan-to-value ratio
-# returns a wad
+# returns a ray
 @view
 func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
-) -> (ratio):
+) -> (ray):
     alloc_locals
     let (trove : Trove) = get_trove(user_address, trove_id)
     let (interval) = now()
@@ -681,7 +685,7 @@ end
 @view
 func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
-) -> (healthy):
+) -> (bool):
     alloc_locals
 
     # Get value of the trove's debt
@@ -702,13 +706,13 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (trove_threshold) = WadRay.wmul(value, t)
 
     let (healthy) = is_le(trove.debt, trove_threshold)
-    return (healthy)
+    return (bool=healthy)
 end
 
 # Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
-) -> (value):
+) -> (wad):
     alloc_locals
 
     let (gage_count) = shrine_num_gages.read()
@@ -717,7 +721,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     return (value)
 end
 
-func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (interval):
+func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
     let (time) = get_block_timestamp()
     let (interval, _) = unsigned_div_rem(time, TIME_INTERVAL)
     return (interval)
@@ -758,10 +762,11 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return ()
 end
 
+# Returns the debt a trove owes, including any interest that hasn't yet been accumulated. 
 @view
 func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
-) -> (amount):
+) -> (wad):
     let (trove : Trove) = get_trove(user_address, trove_id)
     let (current_interval) = now()
     return estimate_inner(user_address, trove_id, trove, current_interval)
@@ -769,7 +774,7 @@ end
 
 func estimate_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, trove : Trove, current
-) -> (amount):
+) -> (wad):
     alloc_locals
 
     # Early termination if no debt
@@ -785,8 +790,7 @@ func estimate_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     end
 
     # Get new debt amount
-    let (new_debt) = compound(user_address, trove_id, trove.charge_from, current + 1, trove.debt)
-    return (new_debt)
+    return compound(user_address, trove_id, trove.charge_from, current + 1, trove.debt)
 end
 
 # Inner function for calculating accumulated interest.
@@ -794,7 +798,7 @@ end
 # Assumes current_interval <= final_interval
 func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, current_interval, final_interval, debt
-) -> (new_cumulative):
+) -> (wad):
     alloc_locals
 
     # Terminate
@@ -837,7 +841,7 @@ end
 #
 
 # `ratio` is expected to be a felt
-func base_rate{range_check_ptr}(ratio) -> (rate):
+func base_rate{range_check_ptr}(ratio) -> (ray):
     alloc_locals
 
     let (is_in_first_range) = is_le(ratio, RATE_BOUND1)
@@ -863,8 +867,8 @@ func base_rate{range_check_ptr}(ratio) -> (rate):
 end
 
 # y = m*x + b
-# m, x, b, and y are all wads
-func linear{range_check_ptr}(x, m, b) -> (y):
+# m, x, b, and y are all rays
+func linear{range_check_ptr}(x, m, b) -> (ray):
     let (m_x) = WadRay.rmul(m, x)
     let (y) = WadRay.add(m_x, b)
     return (y)
@@ -876,7 +880,7 @@ end
 # Returns a ray.
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, interval, debt
-) -> (ratio):
+) -> (ray):
     # Early termination if no debt
     if debt == 0:
         return (0)
@@ -897,7 +901,7 @@ end
 # The underlying assumption is that the amount of each gage deposited at the interval is the same as the amount currently deposited.
 func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, gage_id, interval, cumulative
-) -> (new_cumulative):
+) -> (wad):
     alloc_locals
     # Calculate current gage value
     let (balance) = shrine_deposited.read(user_address, trove_id, gage_id)
@@ -927,7 +931,7 @@ end
 # Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id, interval
-) -> (price):
+) -> (wad):
     let (price) = shrine_series.read(gage_id, interval)
 
     if price != 0:
@@ -941,11 +945,11 @@ end
 # Otherwise, check `interval` - 1 recursively for the last available value.
 func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     interval
-) -> (m):
+) -> (ray):
     let (m) = shrine_multiplier.read(interval)
 
     if m != 0:
-        return (m)
+        return (ray=m)
     end
 
     return get_recent_multiplier_from(interval - 1)
