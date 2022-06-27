@@ -494,12 +494,9 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     shrine_deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
     # Check if Trove is healthy
-    let (healthy) = is_healthy(user_address, trove_id)
+    assert_healthy(user_address, trove_id)
 
-    with_attr error_message("Shrine: Trove is at risk after withdrawing gage"):
-        assert healthy = TRUE
-    end
-
+    # Events
     GageTotalUpdated.emit(gage_id, new_total)
     DepositUpdated.emit(user_address, trove_id, gage_id, new_trove_balance)
     return ()
@@ -555,14 +552,9 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     set_trove(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
-    let (healthy) = is_healthy(user_address, trove_id)
-
-    with_attr error_message("Shrine: Trove is at risk after forge"):
-        assert healthy = TRUE
-    end
+    assert_healthy(user_address, trove_id)
 
     # Events
-
     SyntheticTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, new_trove_info)
 
@@ -673,35 +665,6 @@ func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     let (trove : Trove) = get_trove(user_address, trove_id)
     let (interval) = now()
     return trove_ratio(user_address, trove_id, interval, trove.debt)
-end
-
-# Calculate a Trove's health
-@view
-func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id
-) -> (healthy):
-    alloc_locals
-
-    # Get value of the trove's debt
-    let (trove : Trove) = get_trove(user_address, trove_id)
-    let debt = trove.debt
-
-    # Early termination if no debt
-    if debt == 0:
-        return (TRUE)
-    end
-
-    # Get threshold
-    let (t) = shrine_threshold.read()
-
-    # value : felt* liquidation threshold = amount of debt the trove can have without being at risk of liquidation.
-    let (value) = appraise(user_address, trove_id)
-
-    # if the amount of debt the trove has is greater than this, the trove is not healthy.
-    let (trove_threshold) = WadRay.wmul(value, t)
-
-    let (healthy) = is_le(debt, trove_threshold)
-    return (healthy)
 end
 
 # Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
@@ -950,19 +913,45 @@ func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     return get_recent_multiplier_from(interval - 1)
 end
 
+func assert_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id 
+):
+    let (healthy) = is_healthy(user_address, trove_id)
+
+    with_attr error_message("Shrine: Trove is at risk of liquidation"):
+        assert healthy = TRUE
+    end
+
+
+end
+
+# Returns a bool indicating whether the given trove is healthy or not
+@view
+func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id 
+) -> (bool):
+    let (threshold, value) = get_trove_threshold(user_address, trove_id)
+    let (trove : Trove) = get_trove(user_address, trove_id) 
+
+    let (ltv) = WadRay.wunsigned_div(trove.debt, value)
+
+    let (bool) = is_le(ltv, threshold)
+    return (bool)
+end
 
 # Gets the custom max LTV (threshold) of a trove
-# `threshold` is a ray
+# Returns the total trove value
+# `threshold` is a wad
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
-) -> (threshold):
+) -> (threshold_wad, value_wad):
     let (gage_count) = shrine_num_gages.read()
     return get_trove_threshold_inner(user_address, trove_id, 0, gage_count - 1, 0, 0)
 end
 
 func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, current_gage_id, max_gage_id, cumulative_weighted_threshold, cumulative_trove_value
-) -> (threshold):
+) -> (threshold_wad, value_wad):
 
     let (gage_threshold) = shrine_thresholds.read(current_gage_id)
     let (deposited) = shrine_deposited.read(user_address, trove_id, current_gage_id)
@@ -978,7 +967,7 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 
     if current_gage_id == max_gage_id:
         let (threshold) = WadRay.wunsigned_div(cumulative_weighted_threshold, cumulative_trove_value)
-        return (threshold)
+        return (threshold_wad=threshold, value_wad=cumulative_trove_value)
     else:
         return get_trove_threshold_inner(
             user_address, 
