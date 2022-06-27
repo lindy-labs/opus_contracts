@@ -441,6 +441,8 @@ end
 func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
 
+    # TODO Look into repeated calls to asset and contract address
+
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
 
@@ -482,6 +484,7 @@ end
 
 # Helper function to update the underlying balance after a user action
 func update_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    # TODO Look into repeated calls to asset and contract address
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
     let (balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
