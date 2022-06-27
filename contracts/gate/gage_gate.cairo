@@ -3,29 +3,11 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_sub
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
-from contracts.lib.erc4626.library import (
-    ERC4626_initializer,
-    ERC4626_asset,
-    ERC4626_asset_addr,
-    ERC4626_totalAssets,
-    ERC4626_convertToShares,
-    ERC4626_convertToAssets,
-    ERC4626_maxDeposit,
-    ERC4626_previewDeposit,
-    ERC4626_deposit,
-    ERC4626_maxMint,
-    ERC4626_previewMint,
-    ERC4626_mint,
-    ERC4626_maxWithdraw,
-    ERC4626_previewWithdraw,
-    ERC4626_withdraw,
-    ERC4626_maxRedeem,
-    ERC4626_previewRedeem,
-    ERC4626_redeem,
-)
+from contracts.lib.erc4626.library import ERC4626
 
 from contracts.lib.openzeppelin.token.erc20.library import (
     ERC20_name,
@@ -55,14 +37,6 @@ end
 func Killed():
 end
 
-@event
-func Pledged(user_address, trove_id, amt):
-end
-
-@event
-func Recouped(user_address, trove_id, amt):
-end
-
 #
 # Storage
 #
@@ -80,9 +54,14 @@ end
 func gate_shrine_address() -> (address):
 end
 
-# Address of gage
+# Admin fee charged on yield from underlying - ray
 @storage_var
-func gate_gage_address() -> (address):
+func gate_tax() -> (tax):
+end
+
+# Address to send admin fees to
+@storage_var
+func gate_taxman_address() -> (address):
 end
 
 # Exchange rate of Gate share to underlying (wad)
@@ -90,13 +69,15 @@ end
 func gate_exchange_rate() -> (rate):
 end
 
+# Last updated total balance of underlying
+# Used to detect changes in total balance due to rebasing
+@storage_var
+func gate_underlying_balance() -> (balance):
+end
+
 # Total number of gage tokens held by contract (wad)
 @storage_var
 func gate_gage_total() -> (total):
-end
-
-@storage_var
-func gate_gage_pledged(user_address, trove_id) -> (amount):
 end
 
 # Timestamp of the last update of yield from underlying gage
@@ -109,13 +90,46 @@ end
 #
 
 @view
-func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (name : felt):
+func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
+    authorized
+):
+    return gate_auth.read(address)
+end
+
+@view
+func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live):
+    return gate_live.read()
+end
+
+@view
+func get_shrine{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
+    return gate_shrine_address.read()
+end
+
+@view
+func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax):
+    return gate_tax.read()
+end
+
+@view
+func get_taxman_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    address
+):
+    return gate_taxman_address.read()
+end
+
+#
+# Getters - ERC20
+#
+
+@view
+func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (name):
     let (name) = ERC20_name()
     return (name)
 end
 
 @view
-func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (symbol : felt):
+func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (symbol):
     let (symbol) = ERC20_symbol()
     return (symbol)
 end
@@ -129,17 +143,15 @@ func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    decimals : felt
-):
+func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (decimals):
     let (decimals) = ERC20_decimals()
     return (decimals)
 end
 
 @view
-func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    account : felt
-) -> (balance : Uint256):
+func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
+    balance : Uint256
+):
     let (balance : Uint256) = ERC20_balanceOf(account)
     return (balance)
 end
@@ -147,7 +159,7 @@ end
 # Non-transferable
 @view
 func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner : felt, spender : felt
+    owner, spender
 ) -> (remaining : Uint256):
     return (Uint256(0, 0))
 end
@@ -158,13 +170,14 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, shrine_address, name, symbol, gage_address
+    authed, shrine_address, name, symbol, asset_address, tax, taxman_address
 ):
-    ERC4626_initializer(name, symbol, gage_address)
+    ERC4626.initializer(name, symbol, asset_address)
     gate_auth.write(authed, TRUE)
     gate_live.write(TRUE)
     gate_shrine_address.write(shrine_address)
-    gate_gage_address.write(gage_address)
+    gate_tax.write(tax)
+    gate_taxman_address.write(taxman_address)
     return ()
 end
 
@@ -203,22 +216,22 @@ end
 
 @external
 func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    recipient : felt, amount : Uint256
-) -> (success : felt):
+    recipient, amount : Uint256
+) -> (success):
     return (FALSE)
 end
 
 @external
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    sender : felt, recipient : felt, amount : Uint256
-) -> (success : felt):
+    sender, recipient, amount : Uint256
+) -> (success):
     return (FALSE)
 end
 
 @external
 func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    spender : felt, amount : Uint256
-) -> (success : felt):
+    spender, amount : Uint256
+) -> (success):
     return (FALSE)
 end
 
@@ -228,9 +241,9 @@ end
 
 @view
 func asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    assetTokenAddress : felt
+    assetTokenAddress
 ):
-    let (asset : felt) = ERC4626_asset()
+    let (asset) = ERC4626.asset()
     return (asset)
 end
 
@@ -238,7 +251,7 @@ end
 func totalAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     totalManagedAssets : Uint256
 ):
-    let (total : Uint256) = ERC4626_totalAssets()
+    let (total : Uint256) = ERC4626.totalAssets()
     return (total)
 end
 
@@ -246,7 +259,7 @@ end
 func convertToShares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256
 ) -> (shares : Uint256):
-    let (shares : Uint256) = ERC4626_convertToShares(assets)
+    let (shares : Uint256) = ERC4626.convertToShares(assets)
     return (shares)
 end
 
@@ -254,15 +267,15 @@ end
 func convertToAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256
 ) -> (assets : Uint256):
-    let (assets : Uint256) = ERC4626_convertToAssets(shares)
+    let (assets : Uint256) = ERC4626.convertToAssets(shares)
     return (assets)
 end
 
 @view
-func maxDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    receiver : felt
-) -> (maxAssets : Uint256):
-    let (maxAssets : Uint256) = ERC4626_maxDeposit(receiver)
+func maxDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(receiver) -> (
+    maxAssets : Uint256
+):
+    let (maxAssets : Uint256) = ERC4626.maxDeposit(receiver)
     return (maxAssets)
 end
 
@@ -270,15 +283,41 @@ end
 func previewDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256
 ) -> (shares : Uint256):
-    let (shares) = ERC4626_previewDeposit(assets)
+    let (shares : Uint256) = ERC4626.previewDeposit(assets)
     return (shares)
 end
 
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets : Uint256, receiver : felt
+    assets : Uint256, receiver
 ) -> (shares : Uint256):
-    let (shares) = ERC4626_deposit(assets, receiver)
+    # Assert live
+    let (live) = gate_live.read()
+    with_attr error_message("Gate: Gate is not live"):
+        assert live = TRUE
+    end
+    let (shares : Uint256) = ERC4626.deposit(assets, receiver)
+
+    # Read `shrine` address
+    # let (shrine) = gate_shrine_address.read()
+
+    # Convert amount from Uint256 to felt
+    # let (shares_felt) = uint_to_felt_unchecked(shares)
+
+    # Get gage ID
+    # let (gage_address) = ERC4626.asset_addr.read()
+    # let (gage_id) = IShrine.get_gage_id(contract_address=shrine, gage_address=gage_address)
+    # assert_not_zero(gage_id)
+
+    # Call `shrine.deposit`
+    # IShrine.deposit(
+    #    contract_address=shrine,
+    #    gage_id=gage_id,
+    #    amount=shares_felt,
+    #    user_address=receiver,
+    #    trove_id=trove_id,
+    # )
+
     return (shares)
 end
 
@@ -286,7 +325,7 @@ end
 func maxMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     receiver : felt
 ) -> (maxShares : Uint256):
-    let (maxShares : Uint256) = ERC4626_maxMint(receiver)
+    let (maxShares : Uint256) = ERC4626.maxMint(receiver)
     return (maxShares)
 end
 
@@ -294,7 +333,7 @@ end
 func previewMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256
 ) -> (assets : Uint256):
-    let (assets) = ERC4626_previewMint(shares)
+    let (assets : Uint256) = ERC4626.previewMint(shares)
     return (assets)
 end
 
@@ -302,7 +341,13 @@ end
 func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256, receiver : felt
 ) -> (assets : Uint256):
-    let (assets : Uint256) = ERC4626_mint(shares, receiver)
+    # Assert live
+    let (live) = gate_live.read()
+    with_attr error_message("Gate: Gate is not live"):
+        assert live = TRUE
+    end
+
+    let (assets : Uint256) = ERC4626.mint(shares, receiver)
     return (assets)
 end
 
@@ -310,7 +355,7 @@ end
 func maxWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner : felt
 ) -> (maxAssets : Uint256):
-    let (maxWithdraw : Uint256) = ERC4626_maxWithdraw(owner)
+    let (maxWithdraw : Uint256) = ERC4626.maxWithdraw(owner)
     return (maxWithdraw)
 end
 
@@ -318,7 +363,7 @@ end
 func previewWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256
 ) -> (shares : Uint256):
-    let (shares : Uint256) = ERC4626_previewWithdraw(assets)
+    let (shares : Uint256) = ERC4626.previewWithdraw(assets)
     return (shares)
 end
 
@@ -326,7 +371,7 @@ end
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256, receiver : felt, owner : felt
 ) -> (shares : Uint256):
-    let (shares : Uint256) = ERC4626_withdraw(assets, receiver, owner)
+    let (shares : Uint256) = ERC4626.withdraw(assets, receiver, owner)
     return (shares)
 end
 
@@ -334,7 +379,7 @@ end
 func maxRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(owner : felt) -> (
     maxShares : Uint256
 ):
-    let (maxShares : Uint256) = ERC4626_maxRedeem(owner)
+    let (maxShares : Uint256) = ERC4626.maxRedeem(owner)
     return (maxShares)
 end
 
@@ -342,7 +387,7 @@ end
 func previewRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256
 ) -> (assets : Uint256):
-    let (assets : Uint256) = ERC4626_previewRedeem(shares)
+    let (assets : Uint256) = ERC4626.previewRedeem(shares)
     return (assets)
 end
 
@@ -350,112 +395,13 @@ end
 func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256, receiver : felt, owner : felt
 ) -> (assets : Uint256):
-    let (assets : Uint256) = ERC4626_redeem(shares, receiver, owner)
+    let (assets : Uint256) = ERC4626.redeem(shares, receiver, owner)
     return (assets)
 end
 
 #
 # External - Others
 #
-
-@external
-func pledge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, amt : Uint256
-):
-    alloc_locals
-
-    # Assert live
-    let (live) = gate_live.read()
-    with_attr error_message("Gate: Gate is not live"):
-        assert live = TRUE
-    end
-
-    # Check balance
-    let (gage_address) = gate_gage_address.read()
-    let before : Uint256 = IERC20.balanceOf(contract_address=gage_address, account=user_address)
-    let (sufficient) = uint256_le(amt, before)
-    with_attr error_message("Gate: Insufficient balance"):
-        assert sufficient = TRUE
-    end
-
-    # Check allowance
-    let (dst) = get_contract_address()
-    let allowed : Uint256 = IERC20.allowance(
-        contract_address=gage_address, owner=user_address, spender=dst
-    )
-    let (approved) = uint256_le(amt, allowed)
-    with_attr error_message("Gate: Insufficient allowance"):
-        assert approved = TRUE
-    end
-
-    # Transfer ERC20
-    IERC20.transferFrom(
-        contract_address=gage_address, sender=user_address, recipient=dst, amount=amt
-    )
-
-    # Assert successful transfer
-    let after : Uint256 = IERC20.balanceOf(contract_address=gage_address, account=user_address)
-    let (expected) = uint256_sub(before, amt)
-    with_attr error_message("Gate: Unsuccessful transfer"):
-        assert after = expected
-    end
-
-    # Convert amount from Uint256 to felt
-    let (amt_felt) = uint_to_felt_unchecked(amt)
-
-    # Add to Gate's system total
-    let (current_total) = gate_gage_total.read()
-    let new_total = current_total + amt_felt
-    gate_gage_total.write(new_total)
-
-    # Calculate amount of shares to mint
-    let (exchange_rate) = gate_exchange_rate.read()
-    let (shares) = WadRay.wunsigned_div(amt_felt, exchange_rate)
-    let (existing_shares) = gate_gage_pledged.read(user_address, trove_id)
-    let (new_shares) = WadRay.add_unsigned(shares, existing_shares)
-    gate_gage_pledged.write(user_address, trove_id, new_shares)
-
-    # Read `shrine` address
-    let (shrine) = gate_shrine_address.read()
-
-    # Get gage ID
-    let (gage_id) = IShrine.get_gage_id(contract_address=shrine, gage_address=gage_address)
-    assert_not_zero(gage_id)
-
-    # Call `shrine.deposit`
-    IShrine.deposit(
-        contract_address=shrine,
-        gage_id=gage_id,
-        amount=amt_felt,
-        user_address=user_address,
-        trove_id=trove_id,
-    )
-
-    Pledged.emit(user_address, trove_id, amt_felt)
-
-    return ()
-end
-
-@external
-func recoup{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_address, amt):
-    # Call `shrine.withdraw`
-
-    # Get underlying amount
-
-    # Update total
-
-    # Decrement shares
-
-    # Transfer ERC20
-
-    return ()
-end
-
-# Update exchange rate of shares to underlying
-@external
-func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    return ()
-end
 
 #
 # Internal
