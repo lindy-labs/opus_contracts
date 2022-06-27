@@ -79,7 +79,7 @@ func MultiplierUpdated(new_multiplier, interval):
 end
 
 @event
-func ThresholdUpdated(new_threshold):
+func ThresholdUpdated(gage_id, new_threshold):
 end
 
 @event
@@ -261,10 +261,10 @@ func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 @view
-func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id) -> (
     threshold
 ):
-    return shrine_threshold.read()
+    return shrine_thresholds.read(gage_id)
 end
 
 @view
@@ -339,7 +339,7 @@ end
 # Example 3: 1.5% = 15 : felt* 10 : felt** 15
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_threshold
+    gage_id, new_threshold
 ):
     assert_auth()
 
@@ -348,8 +348,8 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
         assert_le(new_threshold, MAX_THRESHOLD)
     end
 
-    shrine_threshold.write(new_threshold)
-    ThresholdUpdated.emit(new_threshold)
+    shrine_thresholds.write(gage_id, new_threshold)
+    ThresholdUpdated.emit(gage_id, new_threshold)
     return ()
 end
 
@@ -916,13 +916,14 @@ end
 func assert_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id 
 ):
+    alloc_locals
     let (healthy) = is_healthy(user_address, trove_id)
 
     with_attr error_message("Shrine: Trove is at risk of liquidation"):
         assert healthy = TRUE
     end
 
-
+    return()
 end
 
 # Returns a bool indicating whether the given trove is healthy or not
@@ -930,6 +931,7 @@ end
 func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id 
 ) -> (bool):
+    alloc_locals
     let (threshold, value) = get_trove_threshold(user_address, trove_id)
     let (trove : Trove) = get_trove(user_address, trove_id) 
 
@@ -945,6 +947,7 @@ end
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ) -> (threshold_wad, value_wad):
+    alloc_locals
     let (gage_count) = shrine_num_gages.read()
     return get_trove_threshold_inner(user_address, trove_id, 0, gage_count - 1, 0, 0)
 end
@@ -952,7 +955,7 @@ end
 func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, current_gage_id, max_gage_id, cumulative_weighted_threshold, cumulative_trove_value
 ) -> (threshold_wad, value_wad):
-
+    alloc_locals
     let (gage_threshold) = shrine_thresholds.read(current_gage_id)
     let (deposited) = shrine_deposited.read(user_address, trove_id, current_gage_id)
 
