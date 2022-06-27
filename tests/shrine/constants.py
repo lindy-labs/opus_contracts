@@ -2,17 +2,25 @@ from decimal import Decimal
 
 from tests.utils import RAY_SCALE, WAD_SCALE
 
+LIQUIDATION_THRESHOLD = 8 * 10**17
+
 # Shrine setup constants
 GAGES = [
     {
         "start_price": 2000,
         "ceiling": 10_000 * WAD_SCALE,
+        "threshold": LIQUIDATION_THRESHOLD,
     },
     {
         "start_price": 500,
         "ceiling": 100_000 * WAD_SCALE,
+        "threshold": LIQUIDATION_THRESHOLD,
     },
-    {"start_price": 1.25, "ceiling": 10_000_000 * WAD_SCALE},
+    {
+        "start_price": 1.25, 
+        "ceiling": 10_000_000 * WAD_SCALE,
+        "threshold": LIQUIDATION_THRESHOLD,
+    },
 ]
 
 FEED_LEN = 20
@@ -22,7 +30,6 @@ MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
 SECONDS_PER_MINUTE = 60
 
 DEBT_CEILING = 10_000 * WAD_SCALE
-LIQUIDATION_THRESHOLD = 8 * 10**17
 
 # Interest rate piece-wise function parameters
 RATE_M1 = Decimal("0.02")

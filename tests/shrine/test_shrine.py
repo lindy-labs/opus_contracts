@@ -215,8 +215,9 @@ async def test_shrine_setup(shrine):
     assert live == 1
 
     # Check threshold
-    threshold = (await shrine.get_threshold().invoke()).result.wad
-    assert threshold == LIQUIDATION_THRESHOLD
+    for i in range(len(GAGES)):
+        threshold = (await shrine.get_threshold(i).invoke()).result.wad
+        assert threshold == GAGES[i]["threshold"]
 
     # Check debt ceiling
     ceiling = (await shrine.get_ceiling().invoke()).result.wad
@@ -719,24 +720,24 @@ async def test_set_threshold(users, shrine):
 
     # test setting to normal value
     value = 9 * 10**17
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [value])
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [value])
-    assert (await shrine.get_threshold().invoke()).result.wad == value
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [0, value])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [0, value])
+    assert (await shrine.get_threshold(0).invoke()).result.wad == value
 
     # test setting to max value
     max = WAD_SCALE
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max])
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [max])
-    assert (await shrine.get_threshold().invoke()).result.wad == max
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [0, max])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [0, max])
+    assert (await shrine.get_threshold(0).invoke()).result.wad == max
 
     # test setting over the limit
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
-        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max + 1])
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [0, max + 1])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [value])
+        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [0, value])
 
 
 @pytest.mark.asyncio

@@ -937,8 +937,14 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     user_address, trove_id 
 ) -> (bool):
     alloc_locals
-    let (threshold, value) = get_trove_threshold(user_address, trove_id)
+
     let (trove : Trove) = get_trove(user_address, trove_id) 
+
+    # Early termination if trove has no debt
+    if trove.debt == 0:
+        return (bool=1)
+    end
+    let (threshold, value) = get_trove_threshold(user_address, trove_id)
 
     let (ltv) = WadRay.wunsigned_div(trove.debt, value)
 
@@ -970,18 +976,21 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     let (deposited_value) = WadRay.wmul(gage_price, deposited)
     let (weighted_threshold) = WadRay.wmul(gage_threshold, deposited_value)
 
-    let (cumulative_weighted_threshold) = WadRay.add(cumulative_weighted_threshold, weighted_threshold) # Can be unchecked since all threshold values are less than 1
+    let (cumulative_weighted_threshold) = WadRay.add(cumulative_weighted_threshold, weighted_threshold)
     let (cumulative_trove_value) = WadRay.add(cumulative_trove_value, deposited_value)
 
     if current_gage_id == 0:
-        let (threshold) = WadRay.wunsigned_div(cumulative_weighted_threshold, cumulative_trove_value)
-        return (threshold_wad=threshold, value_wad=cumulative_trove_value)
+        if cumulative_trove_value != 0:
+            let (threshold) = WadRay.wunsigned_div(cumulative_weighted_threshold, cumulative_trove_value)
+            return (threshold_wad=threshold, value_wad=cumulative_trove_value)
+        else:
+            return (threshold_wad=MAX_THRESHOLD, value_wad=0)
+        end
     else:
         return get_trove_threshold_inner(
             user_address, 
             trove_id, 
             current_gage_id - 1, 
-            max_gage_id, 
             cumulative_weighted_threshold, 
             cumulative_trove_value
         )

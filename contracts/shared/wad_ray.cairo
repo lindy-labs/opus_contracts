@@ -100,7 +100,7 @@ namespace WadRay:
     # Assumes both a and b are positive integers
     func wunsigned_div{range_check_ptr}(a, b) -> (res):
         tempvar product = a * WAD_SCALE
-        let (q, _) = signed_div_rem(product, b, BOUND)
+        let (q, _) = unsigned_div_rem(product, b)
         assert_valid(q)
         return (res=q)
     end
