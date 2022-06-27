@@ -942,13 +942,13 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     # Early termination if trove has no debt
     if trove.debt == 0:
-        return (bool=1)
+        return (bool=TRUE)
     end
-    let (threshold, value) = get_trove_threshold(user_address, trove_id)
 
-    let (ltv) = WadRay.wunsigned_div(trove.debt, value)
+    let (threshold, value) = get_trove_threshold(user_address, trove_id) # Getting the trove's custom threshold and total collateral value
+    let (max_debt) = WadRay.wmul(threshold, value) # Calculating the maximum amount of debt the trove can have
+    let (bool) = is_le(trove.debt, max_debt)
 
-    let (bool) = is_le(ltv, threshold)
     return (bool)
 end
 

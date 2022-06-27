@@ -601,7 +601,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
     withdraw_amt = Decimal("10") - unsafe_amt
 
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after withdrawing gage"):
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk of liquidation"):
         await shrine_owner.send_tx(
             shrine.contract_address, "withdraw", [0, to_wad(withdraw_amt), shrine_user.address, 0]
         )
@@ -613,7 +613,7 @@ async def test_shrine_forge_zero_deposit_fail(users, shrine):
     shrine_user = await users("shrine user")
 
     # Forge without any gages deposited
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk of liquidation"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(1_000)])
 
 
@@ -626,7 +626,7 @@ async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     new_ceiling = to_wad(100_000)
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
 
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk of liquidation"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(14_000)])
 
 
