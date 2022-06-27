@@ -954,11 +954,11 @@ func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
 ) -> (threshold_wad, value_wad):
     alloc_locals
     let (gage_count) = shrine_num_gages.read()
-    return get_trove_threshold_inner(user_address, trove_id, 0, gage_count - 1, 0, 0)
+    return get_trove_threshold_inner(user_address, trove_id, gage_count - 1, 0, 0)
 end
 
 func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, current_gage_id, max_gage_id, cumulative_weighted_threshold, cumulative_trove_value
+    user_address, trove_id, current_gage_id, cumulative_weighted_threshold, cumulative_trove_value
 ) -> (threshold_wad, value_wad):
     alloc_locals
     let (gage_threshold) = shrine_thresholds.read(current_gage_id)
@@ -973,14 +973,14 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     let (cumulative_weighted_threshold) = WadRay.add(cumulative_weighted_threshold, weighted_threshold) # Can be unchecked since all threshold values are less than 1
     let (cumulative_trove_value) = WadRay.add(cumulative_trove_value, deposited_value)
 
-    if current_gage_id == max_gage_id:
+    if current_gage_id == 0:
         let (threshold) = WadRay.wunsigned_div(cumulative_weighted_threshold, cumulative_trove_value)
         return (threshold_wad=threshold, value_wad=cumulative_trove_value)
     else:
         return get_trove_threshold_inner(
             user_address, 
             trove_id, 
-            current_gage_id + 1, 
+            current_gage_id - 1, 
             max_gage_id, 
             cumulative_weighted_threshold, 
             cumulative_trove_value
