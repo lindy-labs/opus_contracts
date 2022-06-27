@@ -83,10 +83,6 @@ func ThresholdUpdated(new_threshold):
 end
 
 @event
-func TaxUpdated(new_tax):
-end
-
-@event
 func TroveUpdated(address, trove_id, updated_trove : Trove):
 end
 
@@ -139,9 +135,7 @@ func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a
 end
 
 @view
-func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
-    bool
-):
+func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
     return shrine_auth.read(address)
 end
 
@@ -150,8 +144,8 @@ end
 #
 
 # Also known as CDPs, sub-accounts, etc. Each user has multiple shrine_troves that they can deposit collateral into and mint synthetic against.
-# This mapping maps a trove to a bitmap containing its information. 
-# The first 128 bits contain the amount of debt in the trove. 
+# This mapping maps a trove to a bitmap containing its information.
+# The first 128 bits contain the amount of debt in the trove.
 # The last 123 bits contain the time interval of start of the next interest accumulation period
 @storage_var
 func shrine_troves(address, trove_id) -> (bitmap):
@@ -178,7 +172,7 @@ end
 
 # Keeps track of the price history of each Gage - wad
 # interval: timestamp-divided by TIME_INTERVAL.
-# TODO: Maybe this should be a ray? 
+# TODO: Maybe this should be a ray?
 @storage_var
 func shrine_series(gage_id, interval) -> (wad):
 end
@@ -193,15 +187,10 @@ end
 func shrine_multiplier(interval) -> (ray):
 end
 
-# Liquidation threshold (or max LTV) - wad 
-# TODO: Maybe this should be a ray? 
+# Liquidation threshold (or max LTV) - wad
+# TODO: Maybe this should be a ray?
 @storage_var
 func shrine_threshold() -> (wad):
-end
-
-# Fee on yield - ray
-@storage_var
-func shrine_tax() -> (ray):
 end
 
 @storage_var
@@ -266,15 +255,8 @@ func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 @view
-func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    wad
-):
+func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
     return shrine_threshold.read()
-end
-
-@view
-func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
-    return shrine_tax.read()
 end
 
 @view
@@ -352,15 +334,6 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     shrine_threshold.write(new_threshold)
     ThresholdUpdated.emit(new_threshold)
-    return ()
-end
-
-@external
-func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_tax):
-    assert_auth()
-
-    shrine_tax.write(new_tax)
-    TaxUpdated.emit(new_tax)
     return ()
 end
 
@@ -762,7 +735,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return ()
 end
 
-# Returns the debt a trove owes, including any interest that hasn't yet been accumulated. 
+# Returns the debt a trove owes, including any interest that hasn't yet been accumulated.
 @view
 func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
