@@ -721,13 +721,13 @@ async def test_set_threshold(users, shrine):
     value = 9 * 10**17
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [value])
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [value])
-    assert (await shrine.get_threshold().invoke()).result.threshold == value
+    assert (await shrine.get_threshold().invoke()).result.wad == value
 
     # test setting to max value
     max = WAD_SCALE
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max])
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [max])
-    assert (await shrine.get_threshold().invoke()).result.threshold == max
+    assert (await shrine.get_threshold().invoke()).result.wad == max
 
     # test setting over the limit
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
