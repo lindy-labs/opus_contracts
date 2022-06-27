@@ -134,7 +134,7 @@ func ERC4626_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 
     let (shares : Uint256) = ERC4626_previewDeposit(assets)
     let (shares_is_zero : felt) = uint256_is_zero(shares)
-    with_attr error_message("zero shares"):
+    with_attr error_message("ERC4626: Zero shares"):
         assert shares_is_zero = FALSE
     end
 
@@ -145,7 +145,7 @@ func ERC4626_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     let (success : felt) = IERC20.transferFrom(
         contract_address=asset, sender=caller, recipient=vault, amount=assets
     )
-    with_attr error_message("transfer failed"):
+    with_attr error_message("ERC4626: Transfer failed"):
         assert success = TRUE
     end
 
@@ -199,7 +199,7 @@ func ERC4626_mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     let (success : felt) = IERC20.transferFrom(
         contract_address=asset, sender=caller, recipient=vault, amount=assets
     )
-    with_attr error_message("transfer failed"):
+    with_attr error_message("ERC4626: Transfer failed"):
         assert success = TRUE
     end
 
@@ -249,16 +249,17 @@ func ERC4626_withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 
     let (caller : felt) = get_caller_address()
 
-    if caller != owner:
-        decrease_allowance_by_amount(owner, caller, shares)
-        tempvar syscall_ptr = syscall_ptr
-        tempvar pedersen_ptr = pedersen_ptr
-        tempvar range_check_ptr = range_check_ptr
-    else:
-        tempvar syscall_ptr = syscall_ptr
-        tempvar pedersen_ptr = pedersen_ptr
-        tempvar range_check_ptr = range_check_ptr
-    end
+    # Skip allowance modification since vault share is non-transferrable
+    # if caller != owner:
+    #    decrease_allowance_by_amount(owner, caller, shares)
+    #    tempvar syscall_ptr = syscall_ptr
+    #    tempvar pedersen_ptr = pedersen_ptr
+    #    tempvar range_check_ptr = range_check_ptr
+    # else:
+    #    tempvar syscall_ptr = syscall_ptr
+    #    tempvar pedersen_ptr = pedersen_ptr
+    #    tempvar range_check_ptr = range_check_ptr
+    # end
 
     ERC20_burn(owner, shares)
 
@@ -266,7 +267,7 @@ func ERC4626_withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     let (success : felt) = IERC20.transfer(
         contract_address=asset, recipient=receiver, amount=assets
     )
-    with_attr error_message("transfer failed"):
+    with_attr error_message("ERC4626: Transfer failed"):
         assert success = TRUE
     end
 
@@ -300,20 +301,21 @@ func ERC4626_redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 
     let (caller : felt) = get_caller_address()
 
-    if caller != owner:
-        decrease_allowance_by_amount(owner, caller, shares)
-        tempvar syscall_ptr = syscall_ptr
-        tempvar pedersen_ptr = pedersen_ptr
-        tempvar range_check_ptr = range_check_ptr
-    else:
-        tempvar syscall_ptr = syscall_ptr
-        tempvar pedersen_ptr = pedersen_ptr
-        tempvar range_check_ptr = range_check_ptr
-    end
+    # Skip allowance modification since vault share is non-transferrable
+    # if caller != owner:
+    #    decrease_allowance_by_amount(owner, caller, shares)
+    #    tempvar syscall_ptr = syscall_ptr
+    #    tempvar pedersen_ptr = pedersen_ptr
+    #    tempvar range_check_ptr = range_check_ptr
+    # else:
+    #    tempvar syscall_ptr = syscall_ptr
+    #    tempvar pedersen_ptr = pedersen_ptr
+    #    tempvar range_check_ptr = range_check_ptr
+    # end
 
     let (assets : Uint256) = ERC4626_previewRedeem(shares)
     let (is_zero_assets : felt) = uint256_is_zero(assets)
-    with_attr error_message("zero assets"):
+    with_attr error_message("ERC4626: Zero assets"):
         assert is_zero_assets = FALSE
     end
 
@@ -323,7 +325,7 @@ func ERC4626_redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     let (success : felt) = IERC20.transfer(
         contract_address=asset, recipient=receiver, amount=assets
     )
-    with_attr error_message("transfer failed"):
+    with_attr error_message("ERC4626: Transfer failed"):
         assert success = TRUE
     end
 
@@ -349,7 +351,7 @@ func decrease_allowance_by_amount{
         return ()
     end
 
-    with_attr error_message("insufficient allowance"):
+    with_attr error_message("ERC4626: Insufficient allowance"):
         # amount <= spender_allowance
         let (is_spender_allowance_sufficient) = uint256_le(amount, spender_allowance)
         assert is_spender_allowance_sufficient = 1
@@ -379,7 +381,7 @@ func uint256_mul_checked{range_check_ptr}(a : Uint256, b : Uint256) -> (product 
 
     let (product, carry) = uint256_mul(a, b)
     let (in_range) = uint256_is_zero(carry)
-    with_attr error_message("number too big"):
+    with_attr error_message("ERC4626: Number too big"):
         assert in_range = TRUE
     end
     return (product)
@@ -395,7 +397,7 @@ func uint256_unsigned_div_rem_up{range_check_ptr}(a : Uint256, b : Uint256) -> (
         return (q)
     else:
         let (rounded_up, oof) = uint256_add(q, Uint256(low=1, high=0))
-        with_attr error_message("rounding overflow"):
+        with_attr error_message("ERC4626: Rounding overflow"):
             assert oof = 0
         end
         return (rounded_up)
