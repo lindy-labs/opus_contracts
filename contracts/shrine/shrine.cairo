@@ -195,7 +195,7 @@ end
 
 # Liquidation threshold (or max LTV) per gage - ray
 @storage_var
-func shrine_thresholds(gage_id) -> (threshold):
+func shrine_thresholds(gage_id) -> (wad):
 end
 
 # Fee on yield - ray
