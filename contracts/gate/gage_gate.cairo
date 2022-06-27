@@ -18,7 +18,7 @@ from contracts.lib.openzeppelin.token.erc20.library import (
     ERC20_allowance,
 )
 from contracts.shared.interfaces import IERC20, IERC4626, IShrine
-from contracts.shared.convert import uint_to_felt_unchecked
+from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
 from contracts.shared.wad_ray import WadRay
 
 #
@@ -291,32 +291,21 @@ end
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256, receiver
 ) -> (shares : Uint256):
+    alloc_locals
+
     # Assert live
     let (live) = gate_live.read()
     with_attr error_message("Gate: Gate is not live"):
         assert live = TRUE
     end
+
+    # Sync
+    sync_inner()
+
     let (shares : Uint256) = ERC4626.deposit(assets, receiver)
 
-    # Read `shrine` address
-    # let (shrine) = gate_shrine_address.read()
-
-    # Convert amount from Uint256 to felt
-    # let (shares_felt) = uint_to_felt_unchecked(shares)
-
-    # Get gage ID
-    # let (gage_address) = ERC4626.asset_addr.read()
-    # let (gage_id) = IShrine.get_gage_id(contract_address=shrine, gage_address=gage_address)
-    # assert_not_zero(gage_id)
-
-    # Call `shrine.deposit`
-    # IShrine.deposit(
-    #    contract_address=shrine,
-    #    gage_id=gage_id,
-    #    amount=shares_felt,
-    #    user_address=receiver,
-    #    trove_id=trove_id,
-    # )
+    # Update
+    update_underlying_balance()
 
     return (shares)
 end
@@ -341,13 +330,22 @@ end
 func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256, receiver : felt
 ) -> (assets : Uint256):
+    alloc_locals
+
     # Assert live
     let (live) = gate_live.read()
     with_attr error_message("Gate: Gate is not live"):
         assert live = TRUE
     end
 
+    # Sync
+    sync_inner()
+
     let (assets : Uint256) = ERC4626.mint(shares, receiver)
+
+    # Update
+    update_underlying_balance()
+
     return (assets)
 end
 
@@ -371,7 +369,16 @@ end
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256, receiver : felt, owner : felt
 ) -> (shares : Uint256):
+    alloc_locals
+
+    # Sync
+    sync_inner()
+
     let (shares : Uint256) = ERC4626.withdraw(assets, receiver, owner)
+
+    # Update
+    update_underlying_balance()
+
     return (shares)
 end
 
@@ -395,7 +402,16 @@ end
 func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256, receiver : felt, owner : felt
 ) -> (assets : Uint256):
+    alloc_locals
+
+    # Sync
+    sync_inner()
+
     let (assets : Uint256) = ERC4626.redeem(shares, receiver, owner)
+
+    # Update
+    update_underlying_balance()
+
     return (assets)
 end
 
@@ -412,5 +428,64 @@ func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (c) = get_caller_address()
     let (is_authed) = gate_auth.read(c)
     assert is_authed = TRUE
+    return ()
+end
+
+@external
+func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    sync_inner()
+    return ()
+end
+
+# Helper function to check for balance updates for rebasing tokens, and charge the admin fee.
+func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    alloc_locals
+
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+
+    # Check last balance of underlying asset against latest balance
+    let (last_updated) = gate_underlying_balance.read()
+    let (latest) = IERC20.balanceOf(contract_address=asset, account=vault)
+    let (latest_felt) = uint_to_felt_unchecked(latest)
+    let (unincremented) = is_le(latest_felt, last_updated)
+    if unincremented == FALSE:
+        # Get difference in shares
+        let difference = latest_felt - last_updated
+
+        # Calculate amount of underlying chargeable
+        let (difference_ray) = WadRay.wad_to_ray_unchecked(difference)
+        let (tax_rate) = gate_tax.read()
+        let (chargeable) = WadRay.rmul_unchecked(difference_ray, tax_rate)
+        let (chargeable_wad) = WadRay.to_wad(chargeable)
+        let (chargeable_uint256 : Uint256) = felt_to_uint(chargeable_wad)
+
+        # Transfer fees
+        let (taxman) = gate_taxman_address.read()
+        IERC20.transfer(contract_address=asset, recipient=taxman, amount=chargeable_uint256)
+
+        let (updated_balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
+        let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
+        gate_underlying_balance.write(updated_balance_felt)
+
+        tempvar syscall_ptr = syscall_ptr
+        tempvar pedersen_ptr = pedersen_ptr
+        tempvar range_check_ptr = range_check_ptr
+    else:
+        tempvar syscall_ptr = syscall_ptr
+        tempvar pedersen_ptr = pedersen_ptr
+        tempvar range_check_ptr = range_check_ptr
+    end
+
+    return ()
+end
+
+# Helper function to update the underlying balance after a user action
+func update_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+    let (balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
+    let (balance_felt) = uint_to_felt_unchecked(balance)
+    gate_underlying_balance.write(balance_felt)
     return ()
 end
