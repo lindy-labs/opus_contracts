@@ -158,7 +158,7 @@ end
 
 # Mapping from gage ID to gage address
 @storage_var
-func shrine_gage_ids(gage_id) -> (gage_address):
+func shrine_gage_ids(gage_id) -> (address):
 end
 
 # Keeps track of how much of each gage has been deposited into each Trove - wad
