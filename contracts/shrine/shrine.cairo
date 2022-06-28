@@ -14,6 +14,7 @@ from contracts.shared.wad_ray import WadRay
 #
 
 const MAX_THRESHOLD = WadRay.WAD_ONE
+const MAX_LIMIT = WadRay.WAD_ONE 
 
 const SECONDS_PER_MINUTE = 60
 const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60
@@ -80,6 +81,10 @@ end
 
 @event
 func ThresholdUpdated(gage_id, new_threshold):
+end
+
+@event 
+func LimitUpdated(gage_id, new_limit):
 end
 
 @event
@@ -193,9 +198,14 @@ end
 func shrine_multiplier(interval) -> (ray):
 end
 
-# Liquidation threshold (or max LTV) per gage - ray
+# Liquidation threshold per gage (as LTV) - wad
 @storage_var
 func shrine_thresholds(gage_id) -> (wad):
+end
+
+# LTV limit gage when minting synthetic or withdrawing a gage
+@storage_var 
+func shrine_limits(gage_id) -> (wad):
 end
 
 # Fee on yield - ray
@@ -269,6 +279,13 @@ func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     wad
 ):
     return shrine_thresholds.read(gage_id)
+end
+
+@view 
+func get_limit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id) -> (
+    wad 
+):
+    return shrine_limits.read(gage_id)
 end
 
 @view
@@ -351,6 +368,23 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     shrine_thresholds.write(gage_id, new_threshold)
     ThresholdUpdated.emit(gage_id, new_threshold)
+    return ()
+end
+
+# TODO: Should a check be added to ensure that `new_limit` is below the gage's threshold? 
+@external
+func set_limit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_id, new_limit
+):
+    assert_auth()
+
+    # Check that threshold value is not greater than max threshold
+    with_attr error_message("Shrine: Limit exceeds 100%"):
+        assert_le(new_limit, MAX_LIMIT)
+    end
+
+    shrine_limits.write(gage_id, new_limit)
+    LimitUpdated.emit(gage_id, new_limit)
     return ()
 end
 
@@ -495,7 +529,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     shrine_deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
     # Check if Trove is healthy
-    assert_healthy(user_address, trove_id)
+    assert_within_limits(user_address, trove_id)
 
     # Events
     GageTotalUpdated.emit(gage_id, new_total)
@@ -556,7 +590,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     set_trove(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
-    assert_healthy(user_address, trove_id)
+    assert_within_limits(user_address, trove_id)
 
     # Events
     SyntheticTotalUpdated.emit(new_system_debt)
@@ -952,13 +986,45 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     return (bool)
 end
 
+func assert_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id
+):
+    alloc_locals
+    let (within_limits) = is_within_limits(user_address, trove_id)
+
+    with_attr error_message("Shrine: Trove LTV is too high"):
+        assert within_limits = TRUE
+    end 
+
+    return ()
+end
+
+@view 
+func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id 
+) -> (bool):
+    alloc_locals
+
+    let (trove : Trove) = get_trove(user_address, trove_id)
+
+    # Early terminating if trove has no debt 
+    if trove.debt == 0:
+        return (bool=TRUE)
+    end 
+
+    let (limit, value) = get_trove_limit(user_address, trove_id) 
+    let (max_debt) = WadRay.wmul(limit, value)
+    let (bool) = is_le(trove.debt, max_debt)
+
+    return (bool)
+end
+
 # Gets the custom max LTV (threshold) of a trove
 # Returns the total trove value
 # `threshold` is a wad
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ) -> (threshold_wad, value_wad):
-    alloc_locals
     let (gage_count) = shrine_num_gages.read()
     return get_trove_threshold_inner(user_address, trove_id, gage_count - 1, 0, 0)
 end
@@ -967,6 +1033,7 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     user_address, trove_id, current_gage_id, cumulative_weighted_threshold, cumulative_trove_value
 ) -> (threshold_wad, value_wad):
     alloc_locals
+
     let (gage_threshold) = shrine_thresholds.read(current_gage_id)
     let (deposited) = shrine_deposited.read(user_address, trove_id, current_gage_id)
 
@@ -992,6 +1059,49 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
             trove_id, 
             current_gage_id - 1, 
             cumulative_weighted_threshold, 
+            cumulative_trove_value
+        )
+    end
+end
+
+# Equivalent functions for the trove minting and withdrawing LTV limit
+func get_trove_limit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id 
+) -> (limit_wad, value_wad):
+    let (gage_count) = shrine_num_gages.read()
+    return get_trove_limit_inner(user_address, trove_id, gage_count - 1, 0, 0)
+end
+
+func get_trove_limit_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id, current_gage_id, cumulative_weighted_limit, cumulative_trove_value
+) -> (limit_wad, value_wad):
+    alloc_locals
+
+    let (gage_limit) = shrine_limits.read(current_gage_id)
+    let (deposited) = shrine_deposited.read(user_address, trove_id, current_gage_id)
+
+    let (current_time_id) = now()
+    let (gage_price) = get_recent_price_from(current_gage_id, current_time_id)
+
+    let (deposited_value) = WadRay.wmul(gage_price, deposited)
+    let (weighted_limit) = WadRay.wmul(gage_limit, deposited_value)
+
+    let (cumulative_weighted_limit) = WadRay.add(cumulative_weighted_limit, weighted_limit)
+    let (cumulative_trove_value) = WadRay.add(cumulative_trove_value, deposited_value)
+
+    if current_gage_id == 0:
+        if cumulative_trove_value != 0:
+            let (limit) = WadRay.wunsigned_div(cumulative_weighted_limit, cumulative_trove_value)
+            return (limit_wad=limit, value_wad=cumulative_trove_value)
+        else:
+            return (limit_wad=MAX_LIMIT, value_wad=0)
+        end
+    else:
+        return get_trove_limit_inner(
+            user_address, 
+            trove_id, 
+            current_gage_id - 1, 
+            cumulative_weighted_limit, 
             cumulative_trove_value
         )
     end
