@@ -9,12 +9,12 @@ GAGES = [
     {
         "start_price": 2000,
         "ceiling": 10_000 * WAD_SCALE,
-        "threshold": LIQUIDATION_THRESHOLD,
+        "threshold": 8 * 10**17,
     },
     {
         "start_price": 500,
         "ceiling": 100_000 * WAD_SCALE,
-        "threshold": LIQUIDATION_THRESHOLD,
+        "threshold": 5 * 10**17,
     },
     {
         "start_price": 1.25, 

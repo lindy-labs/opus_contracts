@@ -150,6 +150,7 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
     for i in range(len(GAGES)):
         await shrine_owner.send_tx(shrine.contract_address, "add_gage", [GAGES[i]["ceiling"]]) # Add gage
         await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [i, GAGES[i]["threshold"]]) # Adding the gage's threshold
+        
 
     # Creating the price feeds
     feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in GAGES]
