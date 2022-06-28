@@ -51,19 +51,15 @@ func Revoked(address):
 end
 
 @event
-func GageAdded(gage_id, max):
+func GageAdded(gage_address, gage_id, max):
 end
 
 @event
-func GageTotalUpdated(gage_id, new_total):
+func GageTotalUpdated(gage_address, new_total):
 end
 
 @event
-func GageMaxUpdated(gage_id, new_max):
-end
-
-@event
-func GageSafetyUpdated(gage_id, new_safety):
+func GageMaxUpdated(gage_address, new_max):
 end
 
 @event
@@ -87,11 +83,11 @@ func TroveUpdated(address, trove_id, updated_trove : Trove):
 end
 
 @event
-func DepositUpdated(address, trove_id, gage_id, new_amount):
+func DepositUpdated(address, trove_id, gage_address, new_amount):
 end
 
 @event
-func SeriesIncremented(gage_id, interval, price):
+func SeriesIncremented(gage_address, interval, price):
 end
 
 @event
@@ -160,6 +156,11 @@ end
 func shrine_num_gages() -> (ufelt):
 end
 
+# Mapping from gage address to gage ID
+@storage_var
+func shrine_gage_id(gage_address) -> (ufelt):
+end
+
 # Keeps track of how much of each gage has been deposited into each Trove - wad
 @storage_var
 func shrine_deposited(address, trove_id, gage_id) -> (wad):
@@ -212,9 +213,10 @@ func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @view
-func get_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_id) -> (
+func get_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_address) -> (
     gage : Gage
 ):
+    let (gage_id) = shrine_gage_id.read(gage_address)
     return shrine_gages.read(gage_id)
 end
 
@@ -225,8 +227,9 @@ end
 
 @view
 func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    address, trove_id, gage_id
+    address, trove_id, gage_address
 ) -> (wad):
+    let (gage_id) = shrine_gage_id.read(gage_address)
     return shrine_deposited.read(address, trove_id, gage_id)
 end
 
@@ -237,8 +240,9 @@ end
 
 @view
 func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, interval
+    gage_address, interval
 ) -> (wad):
+    let (gage_id) = shrine_gage_id.read(gage_address)
     return shrine_series.read(gage_id, interval)
 end
 
@@ -269,12 +273,13 @@ end
 #
 
 @external
-func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(max):
+func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_address, max):
     assert_auth()
 
     let (gage_count) = shrine_num_gages.read()
-    shrine_gages.write(gage_count, Gage(0, max))
-    GageAdded.emit(gage_count, max)
+    shrine_gage_id.write(gage_address, gage_count + 1)
+    shrine_gages.write(gage_count + 1, Gage(0, max))
+    GageAdded.emit(gage_address, gage_count + 1, max)
 
     shrine_num_gages.write(gage_count + 1)
     NumGagesUpdated.emit(gage_count + 1)
@@ -284,13 +289,14 @@ end
 
 @external
 func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, new_max
+    gage_address, new_max
 ):
     assert_auth()
 
+    let (gage_id) = shrine_gage_id.read(gage_address)
     let (gage : Gage) = shrine_gages.read(gage_id)
     shrine_gages.write(gage_id, Gage(gage.total, new_max))
-    GageMaxUpdated.emit(gage_id, new_max)
+    GageMaxUpdated.emit(gage_address, new_max)
 
     return ()
 end
@@ -369,14 +375,14 @@ end
 # Appends a new price to the Series of the specified Gage
 @external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, price, timestamp
+    gage_address, price, timestamp
 ):
     assert_auth()
-
+    let (gage_id) = shrine_gage_id.read(gage_address)
     let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
     shrine_series.write(gage_id, interval, price)
 
-    SeriesIncremented.emit(gage_id, interval, price)
+    SeriesIncremented.emit(gage_address, interval, price)
     return ()
 end
 
@@ -384,9 +390,11 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, amount, src_address, src_trove_id, dst_address, dst_trove_id
+    gage_address, amount, src_address, src_trove_id, dst_address, dst_trove_id
 ):
     assert_auth()
+
+    let (gage_id) = shrine_gage_id.read(gage_address)
 
     # Update gage balance of source trove
     let (src_gage_balance) = shrine_deposited.read(src_address, src_trove_id, gage_id)
@@ -398,8 +406,8 @@ func move_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let (new_dst_balance) = WadRay.add_unsigned(dst_gage_balance, amount)
     shrine_deposited.write(dst_address, dst_trove_id, gage_id, new_dst_balance)
 
-    DepositUpdated.emit(src_address, src_trove_id, gage_id, new_src_balance)
-    DepositUpdated.emit(dst_address, dst_trove_id, gage_id, new_dst_balance)
+    DepositUpdated.emit(src_address, src_trove_id, gage_address, new_src_balance)
+    DepositUpdated.emit(dst_address, dst_trove_id, gage_address, new_dst_balance)
 
     return ()
 end
@@ -407,7 +415,7 @@ end
 # Deposit a specified amount of a Gage into a Trove
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, amount, user_address, trove_id
+    gage_address, amount, user_address, trove_id
 ):
     alloc_locals
 
@@ -420,6 +428,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     charge(user_address, trove_id)
 
     # Update gage balance of system
+    let (gage_id) = shrine_gage_id.read(gage_address)
     let (old_gage_info) = shrine_gages.read(gage_id)
     let (new_total) = WadRay.add(old_gage_info.total, amount)
 
@@ -434,8 +443,8 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (new_trove_balance) = WadRay.add(trove_gage_balance, amount)
     shrine_deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
-    GageTotalUpdated.emit(gage_id, new_total)
-    DepositUpdated.emit(user_address, trove_id, gage_id, new_trove_balance)
+    GageTotalUpdated.emit(gage_address, new_total)
+    DepositUpdated.emit(user_address, trove_id, gage_address, new_trove_balance)
 
     return ()
 end
@@ -443,13 +452,14 @@ end
 # Withdraw a specified amount of a Gage from a Trove
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id, amount, user_address, trove_id
+    gage_address, amount, user_address, trove_id
 ):
     alloc_locals
 
     assert_auth()
 
     # Retrieve gage info
+    let (gage_id) = shrine_gage_id.read(gage_address)
     let (old_gage_info) = shrine_gages.read(gage_id)
 
     # Asserting that gage is valid to align with `deposit` and prevent accounting errors.
@@ -475,8 +485,8 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert healthy = TRUE
     end
 
-    GageTotalUpdated.emit(gage_id, new_total)
-    DepositUpdated.emit(user_address, trove_id, gage_id, new_trove_balance)
+    GageTotalUpdated.emit(gage_address, new_total)
+    DepositUpdated.emit(user_address, trove_id, gage_address, new_trove_balance)
     return ()
 end
 
@@ -626,8 +636,11 @@ end
 # Get the last updated price for a Gage
 @view
 func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_id
+    gage_address
 ) -> (wad):
+    alloc_locals
+
+    let (gage_id) = shrine_gage_id.read(gage_address)
     let (interval) = now()  # Get current interval
     return get_recent_price_from(gage_id, interval)
 end
@@ -690,7 +703,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (gage_count) = shrine_num_gages.read()
     let (interval) = now()
-    let (value) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    let (value) = appraise_inner(user_address, trove_id, gage_count, interval, 0)
     return (value)
 end
 
@@ -860,7 +873,7 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     end
 
     let (gage_count) = shrine_num_gages.read()
-    let (value) = appraise_inner(user_address, trove_id, gage_count - 1, interval, 0)
+    let (value) = appraise_inner(user_address, trove_id, gage_count, interval, 0)
 
     let (ratio) = WadRay.wunsigned_div(debt, value)
     let (ratio_ray) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
@@ -876,6 +889,12 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     user_address, trove_id, gage_id, interval, cumulative
 ) -> (wad):
     alloc_locals
+
+    # Terminate when Gage ID reaches 0
+    if gage_id == 0:
+        return (cumulative)
+    end
+
     # Calculate current gage value
     let (balance) = shrine_deposited.read(user_address, trove_id, gage_id)
     let (price) = get_recent_price_from(gage_id, interval)
@@ -885,22 +904,17 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     # Update cumulative value
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
 
-    # Terminate when Gage ID reaches 0
-    if gage_id == 0:
-        return (updated_cumulative)
-    else:
-        # Recursive call
-        return appraise_inner(
-            user_address=user_address,
-            trove_id=trove_id,
-            gage_id=gage_id - 1,
-            interval=interval,
-            cumulative=updated_cumulative,
-        )
-    end
+    # Recursive call
+    return appraise_inner(
+        user_address=user_address,
+        trove_id=trove_id,
+        gage_id=gage_id - 1,
+        interval=interval,
+        cumulative=updated_cumulative,
+    )
 end
 
-# Returns the price for `gage_id` at `interval` if it is non-zero.
+# Returns the price for `gage_address` at `interval` if it is non-zero.
 # Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id, interval
