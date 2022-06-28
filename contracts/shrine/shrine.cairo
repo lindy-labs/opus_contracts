@@ -156,7 +156,7 @@ end
 func shrine_num_gages() -> (ufelt):
 end
 
-# Mapping from gage ID to gage address
+# Mapping from gage address to gage ID
 @storage_var
 func shrine_gage_id(gage_address) -> (ufelt):
 end
