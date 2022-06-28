@@ -707,7 +707,7 @@ async def test_add_gage(users, shrine):
         tx,
         shrine.contract_address,
         "GageAdded",
-        [new_gage_address, g_count, new_gage_max],
+        [new_gage_address, g_count + 1, new_gage_max],
     )
     assert_event_emitted(tx, shrine.contract_address, "NumGagesUpdated", [g_count + 1])
 
@@ -722,15 +722,15 @@ async def test_update_gage_max(users, shrine):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    gage_address = GAGES[0]["address"]
+    gage_id = 0
     orig_gage_max = GAGES[0]["ceiling"]
 
     async def update_and_assert(new_gage_max):
-        orig_gage = (await shrine.get_gage(gage_address).invoke()).result.gage
-        tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_address, new_gage_max])
-        assert_event_emitted(tx, shrine.contract_address, "GageMaxUpdated", [gage_address, new_gage_max])
+        orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
+        tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
+        assert_event_emitted(tx, shrine.contract_address, "GageMaxUpdated", [gage_id, new_gage_max])
 
-        updated_gage = (await shrine.get_gage(gage_address).invoke()).result.gage
+        updated_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         assert updated_gage.total == orig_gage.total
         assert updated_gage.max == new_gage_max
 
@@ -747,7 +747,7 @@ async def test_update_gage_max(users, shrine):
     await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [GAGES[0]["address"], deposit_amt, shrine_user.address, 0],
+        [gage_id, deposit_amt, shrine_user.address, 0],
     )  # Deposit 100 gage tokens
 
     new_gage_max = deposit_amt - to_wad(1)
@@ -760,7 +760,7 @@ async def test_update_gage_max(users, shrine):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "deposit",
-            [GAGES[0]["address"], deposit_amt, shrine_user.address, 0],
+            [gage_id, deposit_amt, shrine_user.address, 0],
         )
 
     # test calling with a non-existing gage_id
@@ -771,7 +771,7 @@ async def test_update_gage_max(users, shrine):
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [GAGES[0]["address"], 2**251])
+        await bad_guy.send_tx(shrine.contract_address, "update_gage_max", [gage_id, 2**251])
 
 
 @pytest.mark.asyncio
