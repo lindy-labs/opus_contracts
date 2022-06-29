@@ -457,7 +457,7 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         let (difference_ray) = WadRay.wad_to_ray_unchecked(difference)
         let (tax_rate) = gate_tax.read()
         let (chargeable) = WadRay.rmul_unchecked(difference_ray, tax_rate)
-        let (chargeable_wad) = WadRay.to_wad(chargeable)
+        let (chargeable_wad) = WadRay.ray_to_wad(chargeable)
         let (chargeable_uint256 : Uint256) = felt_to_uint(chargeable_wad)
 
         # Transfer fees

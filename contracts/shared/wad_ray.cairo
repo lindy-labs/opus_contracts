@@ -258,4 +258,9 @@ namespace WadRay:
     func wad_to_ray_unchecked(n) -> (ray):
         return (ray=n * DIFF)
     end
+
+    func ray_to_wad{range_check_ptr}(n) -> (wad):
+        let (res, _) = signed_div_rem(n, DIFF, BOUND)
+        return (res)
+    end
 end
