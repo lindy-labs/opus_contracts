@@ -26,177 +26,177 @@ namespace WadRay:
         return ()
     end
 
-    func floor{range_check_ptr}(n) -> (res):
+    func floor{range_check_ptr}(n) -> (wad):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
         let floored = n - mod_val
         assert_valid(floored)
-        return (res=floored)
+        return (wad=floored)
     end
 
-    func ceil{range_check_ptr}(n) -> (res):
+    func ceil{range_check_ptr}(n) -> (wad):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
         let ceiled = (int_val + 1) * WAD_ONE
         assert_valid(ceiled)
-        return (res=ceiled)
+        return (wad=ceiled)
     end
 
-    func add{range_check_ptr}(a, b) -> (res):
+    func add{range_check_ptr}(a, b) -> (wad):
         let sum = a + b
         assert_valid(sum)
-        return (res=sum)
+        return (wad=sum)
     end
 
-    func add_unsigned{range_check_ptr}(a, b) -> (res):
+    func add_unsigned{range_check_ptr}(a, b) -> (wad):
         let sum = a + b
         assert_valid_unsigned(sum)
-        return (res=sum)
+        return (wad=sum)
     end
 
-    func sub{range_check_ptr}(a, b) -> (res):
+    func sub{range_check_ptr}(a, b) -> (wad):
         let diff = a - b
         assert_valid(diff)
-        return (res=diff)
+        return (wad=diff)
     end
 
-    func sub_unsigned{range_check_ptr}(a, b) -> (res):
+    func sub_unsigned{range_check_ptr}(a, b) -> (wad):
         let diff = a - b
         assert_valid_unsigned(diff)
-        return (res=diff)
+        return (wad=diff)
     end
 
-    func wmul{range_check_ptr}(a, b) -> (res):
+    func wmul{range_check_ptr}(a, b) -> (wad):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, WAD_SCALE, BOUND)
         assert_valid(scaled_prod)
-        return (res=scaled_prod)
+        return (wad=scaled_prod)
     end
 
-    func wmul_unchecked{range_check_ptr}(a, b) -> (res):
+    func wmul_unchecked{range_check_ptr}(a, b) -> (wad):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, WAD_SCALE, BOUND)
-        return (res=scaled_prod)
+        return (wad=scaled_prod)
     end
 
-    func wsigned_div{range_check_ptr}(a, b) -> (res):
+    func wsigned_div{range_check_ptr}(a, b) -> (wad):
         alloc_locals
         let (div) = abs_value(b)
         let (div_sign) = sign(b)
         tempvar prod = a * WAD_SCALE
-        let (res_u, _) = signed_div_rem(prod, div, BOUND)
-        assert_valid_unsigned(res_u)
-        return (res=res_u * div_sign)
+        let (wad_u, _) = signed_div_rem(prod, div, BOUND)
+        assert_valid_unsigned(wad_u)
+        return (wad=wad_u * div_sign)
     end
 
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func wsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+    func wsigned_div_unchecked{range_check_ptr}(a, b) -> (wad):
         alloc_locals
         let (div) = abs_value(b)
         let (div_sign) = sign(b)
         tempvar prod = a * WAD_SCALE
-        let (res_u, _) = signed_div_rem(prod, div, BOUND)
-        return (res=res_u * div_sign)
+        let (wad_u, _) = signed_div_rem(prod, div, BOUND)
+        return (wad=wad_u * div_sign)
     end
 
     # Assumes both a and b are positive integers
-    func wunsigned_div{range_check_ptr}(a, b) -> (res):
+    func wunsigned_div{range_check_ptr}(a, b) -> (wad):
         tempvar product = a * WAD_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
         assert_valid(q)
-        return (res=q)
+        return (wad=q)
     end
 
     # Assumes both a and b are unsigned
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func wunsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+    func wunsigned_div_unchecked{range_check_ptr}(a, b) -> (wad):
         tempvar product = a * WAD_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
-        return (res=q)
+        return (wad=q)
     end
 
     # Operations with rays
-    func rmul{range_check_ptr}(a, b) -> (res):
+    func rmul{range_check_ptr}(a, b) -> (ray):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
         assert_valid(scaled_prod)
-        return (res=scaled_prod)
+        return (ray=scaled_prod)
     end
 
-    func rmul_unchecked{range_check_ptr}(a, b) -> (res):
+    func rmul_unchecked{range_check_ptr}(a, b) -> (ray):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
-        return (res=scaled_prod)
+        return (ray=scaled_prod)
     end
 
-    func rsigned_div{range_check_ptr}(a, b) -> (res):
+    func rsigned_div{range_check_ptr}(a, b) -> (ray):
         alloc_locals
         let (div) = abs_value(b)
         let (div_sign) = sign(b)
         tempvar prod = a * RAY_SCALE
-        let (res_u, _) = signed_div_rem(prod, div, BOUND)
-        assert_valid_unsigned(res_u)
-        return (res=res_u * div_sign)
+        let (ray_u, _) = signed_div_rem(prod, div, BOUND)
+        assert_valid_unsigned(ray_u)
+        return (ray=ray_u * div_sign)
     end
 
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func rsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+    func rsigned_div_unchecked{range_check_ptr}(a, b) -> (ray):
         alloc_locals
         let (div) = abs_value(b)
         let (div_sign) = sign(b)
         tempvar prod = a * RAY_SCALE
-        let (res_u, _) = signed_div_rem(prod, div, BOUND)
-        return (res=res_u * div_sign)
+        let (ray_u, _) = signed_div_rem(prod, div, BOUND)
+        return (ray=ray_u * div_sign)
     end
 
     # Assumes both a and b are positive integers
-    func runsigned_div{range_check_ptr}(a, b) -> (res):
+    func runsigned_div{range_check_ptr}(a, b) -> (ray):
         tempvar product = a * RAY_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
         assert_valid(q)
-        return (res=q)
+        return (ray=q)
     end
 
     # Assumes both a and b are unsigned
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func runsigned_div_unchecked{range_check_ptr}(a, b) -> (res):
+    func runsigned_div_unchecked{range_check_ptr}(a, b) -> (ray):
         tempvar product = a * RAY_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
-        return (res=q)
+        return (ray=q)
     end
     #
     # Conversions
     #
 
-    func to_uint(n) -> (res : Uint256):
-        let res = Uint256(low=n, high=0)
-        return (res)
+    func to_uint(n) -> (uint : Uint256):
+        let uint = Uint256(low=n, high=0)
+        return (uint)
     end
 
-    func from_uint{range_check_ptr}(n : Uint256) -> (res):
+    func from_uint{range_check_ptr}(n : Uint256) -> (wad):
         assert n.high = 0
         assert_valid(n.low)
 
-        return (res=n.low)
+        return (wad=n.low)
     end
 
-    func to_wad(n) -> (res):
+    func to_wad{range_check_ptr}(n) -> (wad):
         let n_wad = n * WAD_SCALE
         assert_valid(n_wad)
-        return (res=n_wad)
+        return (wad=n_wad)
     end
 
     # Truncates fractional component
-    func to_felt(n) -> (res):
-        let (res, _) = signed_div_rem(n, WAD_SCALE, BOUND)  # 2**127 is the maximum possible value of the bound parameter.
-        return (res)
+    func to_felt{range_check_ptr}(n) -> (wad):
+        let (wad, _) = signed_div_rem(n, WAD_SCALE, BOUND)  # 2**127 is the maximum possible value of the bound parameter.
+        return (wad)
     end
 
-    func wad_to_ray(n) -> (res):
-        let (res) = n * DIFF
-        assert_valid(res)
-        return (res)
+    func wad_to_ray{range_check_ptr}(n) -> (ray):
+        let ray = n * DIFF
+        assert_valid(ray)
+        return (ray)
     end
 
-    func wad_to_ray_unchecked(n) -> (res):
-        return (res=n * DIFF)
+    func wad_to_ray_unchecked(n) -> (ray):
+        return (ray=n * DIFF)
     end
 end
