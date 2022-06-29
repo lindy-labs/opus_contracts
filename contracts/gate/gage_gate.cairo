@@ -17,7 +17,7 @@ from contracts.lib.openzeppelin.token.erc20.library import (
     ERC20_balanceOf,
     ERC20_allowance,
 )
-from contracts.shared.interfaces import IERC20, IERC4626, IShrine
+from contracts.shared.interfaces import IERC20, IERC4626
 from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
 from contracts.shared.wad_ray import WadRay
 
@@ -47,11 +47,6 @@ end
 
 @storage_var
 func gate_live() -> (live):
-end
-
-# Address of Shrine instance for given synthetic
-@storage_var
-func gate_shrine_address() -> (address):
 end
 
 # Admin fee charged on yield from underlying - ray
@@ -102,12 +97,16 @@ func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 end
 
 @view
+<<<<<<< HEAD
 func get_shrine{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
     return gate_shrine_address.read()
 end
 
 @view
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax):
+=======
+func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
+>>>>>>> 81db9f5 (remove shrine interface)
     return gate_tax.read()
 end
 
@@ -170,12 +169,11 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, shrine_address, name, symbol, asset_address, tax, taxman_address
+    authed, name, symbol, asset_address, tax, taxman_address
 ):
     ERC4626.initializer(name, symbol, asset_address)
     gate_auth.write(authed, TRUE)
     gate_live.write(TRUE)
-    gate_shrine_address.write(shrine_address)
     gate_tax.write(tax)
     gate_taxman_address.write(taxman_address)
     return ()
