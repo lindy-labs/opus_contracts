@@ -225,7 +225,7 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 async def test_shrine_setup(shrine):
     # Check system is live
     live = (await shrine.get_live().invoke()).result.bool
-    assert live == 1
+    assert live == TRUE
 
     # Check threshold
     threshold = (await shrine.get_threshold().invoke()).result.wad
@@ -336,7 +336,7 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
     assert ltv == 0
 
     is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
-    assert is_healthy == 1
+    assert is_healthy == TRUE
 
 
 @pytest.mark.asyncio
@@ -371,7 +371,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
     assert_equalish(adjusted_trove_ltv, expected_ltv)
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
-    assert healthy == 1
+    assert healthy == TRUE
 
 
 @pytest.mark.asyncio
@@ -403,7 +403,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
     assert shrine_ltv == 0
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
-    assert healthy == 1
+    assert healthy == TRUE
 
 
 @pytest.mark.asyncio
@@ -690,6 +690,28 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(15_000)])
+
+
+@pytest.mark.asyncio
+async def test_shrine_unhealthy(starknet, users, shrine, shrine_forge):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Calculate unsafe gage price
+    gage_balance = from_wad((await shrine.get_deposit(shrine_user.address, 0, GAGES[0]["address"]).invoke()).result.wad)
+    debt = from_wad((await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove.debt)
+    unsafe_price = debt / Decimal("0.85") / gage_balance
+
+    # Update gage price to unsafe level
+    timestamp = starknet.state.state.block_info.block_timestamp
+    await shrine_owner.send_tx(
+        shrine.contract_address,
+        "advance",
+        [GAGES[0]["address"], to_wad(unsafe_price), timestamp],
+    )
+
+    is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
+    assert is_healthy == FALSE
 
 
 @pytest.mark.asyncio
