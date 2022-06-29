@@ -37,6 +37,10 @@ end
 func Killed():
 end
 
+@event
+func Sync(prev_balance, new_balance, tax):
+end
+
 #
 # Storage
 #
@@ -115,6 +119,12 @@ func get_taxman_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     address
 ):
     return gate_taxman_address.read()
+end
+
+@view
+func get_last_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    ) -> (wad):
+    return gate_last_underlying_balance.read()
 end
 
 #
@@ -467,6 +477,8 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         let (updated_balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
         let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
         gate_underlying_balance.write(updated_balance_felt)
+
+        Sync.emit(last_updated, updated_balance_felt, chargeable_wad)
 
         tempvar syscall_ptr = syscall_ptr
         tempvar pedersen_ptr = pedersen_ptr
