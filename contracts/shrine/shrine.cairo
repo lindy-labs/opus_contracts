@@ -139,12 +139,13 @@ end
 # Storage
 #
 
-# Also known as CDPs, sub-accounts, etc. Each user has multiple shrine_troves that they can deposit collateral into and mint synthetic against.
-# This mapping maps a trove to a bitmap containing its information.
+# A trove can forge debt up to its threshold depending on the gages deposited.
+# Each user has multiple shrine_troves that they can deposit collateral into and mint synthetic against.
+# This mapping maps a trove to a `packed` felt containing its information.
 # The first 128 bits contain the amount of debt in the trove.
 # The last 123 bits contain the time interval of start of the next interest accumulation period
 @storage_var
-func shrine_troves(address, trove_id) -> (bitmap):
+func shrine_troves(address, trove_id) -> (packed):
 end
 
 # Stores information about each gage (see Gage struct)
@@ -152,11 +153,14 @@ end
 func shrine_gages(gage_id) -> (gage : Gage):
 end
 
+# Number of gages accepted by the system.
+# The return value is also the ID of the last added gage.
 @storage_var
 func shrine_num_gages() -> (ufelt):
 end
 
-# Mapping from gage address to gage ID
+# Mapping from gage address to gage ID.
+# Gage ID starts at 1.
 @storage_var
 func shrine_gage_id(gage_address) -> (ufelt):
 end
@@ -310,19 +314,6 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
-@external
-func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_multiplier, timestamp
-):
-    assert_auth()
-
-    let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
-
-    shrine_multiplier.write(interval, new_multiplier)
-    MultiplierUpdated.emit(new_multiplier, interval)
-    return ()
-end
-
 # Threshold value should be a wad between 0 and 1
 # Example: 75% = 75 : felt* 10 : felt** 16
 # Example 2: 1% = 1 : felt* 10 : felt** 16
@@ -343,20 +334,20 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     return ()
 end
 
+func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id, trove : Trove
+):
+    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
+    shrine_troves.write(user_address, trove_id, packed_trove)
+    return ()
+end
+
 @external
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     assert_auth()
 
     shrine_live.write(FALSE)
     Killed.emit()
-    return ()
-end
-
-func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, trove : Trove
-):
-    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
-    shrine_troves.write(user_address, trove_id, packed_trove)
     return ()
 end
 
@@ -369,7 +360,7 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 #
-# Core functions
+# Core functions - External
 #
 
 # Appends a new price to the Series of the specified Gage
@@ -383,6 +374,20 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_series.write(gage_id, interval, price)
 
     SeriesIncremented.emit(gage_address, interval, price)
+    return ()
+end
+
+# Appends a new multiplier value
+@external
+func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    new_multiplier, timestamp
+):
+    assert_auth()
+
+    let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
+
+    shrine_multiplier.write(interval, new_multiplier)
+    MultiplierUpdated.emit(new_multiplier, interval)
     return ()
 end
 
@@ -621,39 +626,8 @@ func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 #
-# Internal
+# Core Functions - View
 #
-
-func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    # Check system is live
-    let (live) = shrine_live.read()
-    with_attr error_message("Shrine: System is not live"):
-        assert live = TRUE
-    end
-    return ()
-end
-
-# Get the last updated price for a Gage
-@view
-func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    gage_address
-) -> (wad):
-    alloc_locals
-
-    let (gage_id) = shrine_gage_id.read(gage_address)
-    let (interval) = now()  # Get current interval
-    return get_recent_price_from(gage_id, interval)
-end
-
-# Gets last updated multiplier value
-@view
-func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    ray
-):
-    let (interval) = now()
-    let (m) = get_recent_multiplier_from(interval)
-    return (m)
-end
 
 # Calculate a Trove's current loan-to-value ratio
 # returns a ray
@@ -693,6 +667,54 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     let (healthy) = is_le(trove.debt, trove_threshold)
     return (bool=healthy)
+end
+
+# Get the last updated price for a Gage
+@view
+func gage_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    gage_address
+) -> (wad):
+    alloc_locals
+
+    let (gage_id) = shrine_gage_id.read(gage_address)
+    let (interval) = now()  # Get current interval
+    return get_recent_price_from(gage_id, interval)
+end
+
+# Gets last updated multiplier value
+@view
+func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    ray
+):
+    let (interval) = now()
+    let (m) = get_recent_multiplier_from(interval)
+    return (m)
+end
+
+# Returns the debt a trove owes, including any interest that has accumulated since
+# `Trove.charge_from` but not accrued to `Trove.debt` yet.
+@view
+func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id
+) -> (wad):
+    alloc_locals
+
+    let (trove : Trove) = get_trove(user_address, trove_id)
+    let (current_interval) = now()
+    return estimate_inner(user_address, trove_id, trove, current_interval)
+end
+
+#
+# Internal
+#
+
+func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    # Check system is live
+    let (live) = shrine_live.read()
+    with_attr error_message("Shrine: System is not live"):
+        assert live = TRUE
+    end
+    return ()
 end
 
 # Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
@@ -748,16 +770,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return ()
 end
 
-# Returns the debt a trove owes, including any interest that hasn't yet been accumulated.
-@view
-func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id
-) -> (wad):
-    let (trove : Trove) = get_trove(user_address, trove_id)
-    let (current_interval) = now()
-    return estimate_inner(user_address, trove_id, trove, current_interval)
-end
-
+# Wrapper function to make a call to `compound` for estimating accumulated interest.
 func estimate_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, trove : Trove, current
 ) -> (wad):
@@ -781,13 +794,12 @@ end
 
 # Inner function for calculating accumulated interest.
 # Recursively iterates over time intervals from `current_interval` to `final_interval` and compounds the interest owed over all of them
-# Assumes current_interval <= final_interval
 func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, current_interval, final_interval, debt
 ) -> (wad):
     alloc_locals
 
-    # Terminate
+    # Terminate if final_interval <= current_interval
     let (finished) = is_le(final_interval, current_interval)
     if finished == TRUE:
         return (debt)
@@ -882,9 +894,8 @@ end
 
 # Gets the value of a trove at the gage prices at the given interval.
 # For any series that returns 0 for the given interval, it uses the most recent available price before that interval.
-#
-# This function uses historical prices but the currently deposited gage amounts to calculate value...
-# The underlying assumption is that the amount of each gage deposited at the interval is the same as the amount currently deposited.
+# This function uses historical prices but the currently deposited gage amounts to calculate value.
+# The underlying assumption is that the amount of each gage deposited remains the same throughout the recursive call.
 func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, gage_id, interval, cumulative
 ) -> (wad):
@@ -914,7 +925,7 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     )
 end
 
-# Returns the price for `gage_address` at `interval` if it is non-zero.
+# Returns the price for `gage_id` at `interval` if it is non-zero.
 # Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     gage_id, interval
