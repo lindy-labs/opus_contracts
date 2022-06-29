@@ -17,7 +17,7 @@ from contracts.lib.openzeppelin.token.erc20.library import (
     ERC20_balanceOf,
     ERC20_allowance,
 )
-from contracts.shared.interfaces import IERC20, IERC4626
+from contracts.shared.interfaces import IERC20
 from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
 from contracts.shared.wad_ray import WadRay
 

@@ -128,6 +128,7 @@ namespace ERC4626:
         return (shares)
     end
 
+    # Modified to set `receiver` as the sender in `IERC20.transfer`
     func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assets : Uint256, receiver : felt
     ) -> (shares : Uint256):
@@ -144,7 +145,7 @@ namespace ERC4626:
         let (vault : felt) = get_contract_address()
 
         let (success : felt) = IERC20.transferFrom(
-            contract_address=asset, sender=caller, recipient=vault, amount=assets
+            contract_address=asset, sender=receiver, recipient=vault, amount=assets
         )
         with_attr error_message("ERC4626: Transfer failed"):
             assert success = TRUE
@@ -186,6 +187,7 @@ namespace ERC4626:
         end
     end
 
+    # Modified to set `receiver` as the sender in `IERC20.transfer`
     func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         shares : Uint256, receiver : felt
     ) -> (assets : Uint256):
@@ -198,7 +200,7 @@ namespace ERC4626:
         let (vault : felt) = get_contract_address()
 
         let (success : felt) = IERC20.transferFrom(
-            contract_address=asset, sender=caller, recipient=vault, amount=assets
+            contract_address=asset, sender=receiver, recipient=vault, amount=assets
         )
         with_attr error_message("ERC4626: Transfer failed"):
             assert success = TRUE
