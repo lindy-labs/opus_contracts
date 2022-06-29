@@ -11,17 +11,17 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
-from tests.utils import (
-    WAD_SCALE,
-    Uint256,
-    compile_contract,
-    create_feed,
-    estimate_gas,
-    set_block_timestamp,
-    str_to_felt,
-    to_wad,
+from tests.gate.constants import TAX
+from tests.shrine.constants import (
+    DEBT_CEILING,
+    FEED_LEN,
+    GAGES,
+    LIQUIDATION_THRESHOLD,
+    MAX_PRICE_CHANGE,
+    MULTIPLIER_FEED,
+    SECONDS_PER_MINUTE,
 )
+from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt, to_wad
 
 MRACParameters = namedtuple(
     "MRACParameters",
@@ -146,6 +146,40 @@ async def usda(starknet, users) -> StarknetContract:
 async def mrac_controller(starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
+
+
+#
+# Gage fixtures
+#
+
+
+@pytest.fixture
+async def gage_rebasing(starknet, tokens, users) -> StarknetContract:
+    user = await users("shrine user")
+    return await tokens("Staked ETH", "stETH", 18, (to_wad(100), 0), user.address)
+
+
+#
+# Gate fixtures
+#
+
+
+@pytest.fixture
+async def gate_gage_rebasing(starknet, users, gage_rebasing) -> StarknetContract:
+    contract = compile_contract("contracts/gate/gage_gate.cairo")
+    abbot = await users("abbot")
+    taxman = await users("taxman")
+    return await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            abbot.address,
+            str_to_felt("Aura Staked ETH"),
+            str_to_felt("auStETH"),
+            gage_rebasing.contract_address,
+            TAX,
+            taxman.address,
+        ],
+    )
 
 
 #
