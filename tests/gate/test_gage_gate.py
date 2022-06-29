@@ -1,8 +1,8 @@
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
-from tests.gate.constants import FIRST_DEPOSIT_AMT, TAX
-from tests.utils import MAX_UINT256, TRUE, from_uint, to_uint
+from tests.gate.constants import FIRST_DEPOSIT_AMT, FIRST_REBASE_AMT, TAX
+from tests.utils import MAX_UINT256, TRUE, from_ray, from_uint, to_uint
 
 #
 # Fixtures
@@ -19,13 +19,23 @@ async def gate_deposit(users, gate_gage_rebasing, gage_rebasing) -> StarknetTran
     # Approve Gate to transfer tokens from user
     await shrine_user.send_tx(gage_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
-    # Check user balance
-    # bal = (await gage_rebasing.balanceOf(shrine_user.address).invoke()).result.balance
-    # assert bal == to_uint(0)
-
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address])
     return deposit
+
+
+@pytest.fixture
+async def rebase(users, gate_gage_rebasing, gage_rebasing, gate_deposit) -> StarknetTransactionExecutionInfo:
+    """
+    Rebase the gate contract's balance by adding 10%
+    """
+    gate = gate_gage_rebasing
+    shrine_user = await users("shrine user")
+
+    tx = await shrine_user.send_tx(
+        gage_rebasing.contract_address, "mint", [gate.contract_address, *(FIRST_REBASE_AMT, 0)]
+    )
+    return tx
 
 
 #
@@ -73,6 +83,32 @@ async def test_gate_deposit(users, gate_gage_rebasing, gage_rebasing, gate_depos
 
     shrine_user = await users("shrine user")
 
+    # Check vault underlying balance
+    total_bal = (await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance
+    total_assets = (await gate.totalAssets().invoke()).result.totalManagedAssets
+    assert total_bal == total_assets == to_uint(FIRST_DEPOSIT_AMT)
+
     # Check vault shares balance
-    total_shares = (await gate.totalSupply.invoke()).result.totalSupply
-    assert total_shares == FIRST_DEPOSIT_AMT
+    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
+    user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    assert total_shares == user_shares == to_uint(FIRST_DEPOSIT_AMT)
+
+    # TODO Test events
+
+
+@pytest.mark.asyncio
+async def test_gate_sync(users, gate_gage_rebasing, gage_rebasing, rebase):
+    gate = gate_gage_rebasing
+
+    abbot = await users("abbot")
+
+    # Check gage token contract for rebased balance
+    rebased_bal = (await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance
+    assert rebased_bal == to_uint(FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT)
+
+    # Update Gate's balance and charge tax
+    sync = await abbot.send_tx(gate.contract_address, "sync", [])
+    after_bal = (await gate.totalAssets().invoke()).result.totalManagedAssets
+    assert after_bal.low == rebased_bal.low - (from_ray(TAX) * FIRST_REBASE_AMT)
+
+    # TODO Test events
