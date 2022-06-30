@@ -577,7 +577,7 @@ async def test_shrine_deposit_invalid_yang_fail(users, shrine):
     shrine_user = await users("shrine user")
 
     # Invalid yang ID that has not been added
-    with pytest.raises(StarkException):
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
         await shrine_owner.send_tx(shrine.contract_address, "deposit", [789, to_wad(1), shrine_user.address, 0])
 
 
@@ -587,7 +587,7 @@ async def test_shrine_withdraw_invalid_yang_fail(users, shrine):
     shrine_user = await users("shrine user")
 
     # Invalid yang ID that has not been added
-    with pytest.raises(StarkException):
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "withdraw",
@@ -712,15 +712,15 @@ async def test_update_yang_max(users, shrine):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    yang_id = 0
+    yang_address = YANGS[0]["address"]
     orig_yang_max = YANGS[0]["ceiling"]
 
     async def update_and_assert(new_yang_max):
-        orig_yang = (await shrine.get_yang(yang_id).invoke()).result.yang
-        tx = await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [yang_id, new_yang_max])
-        assert_event_emitted(tx, shrine.contract_address, "YangUpdated", [yang_id, orig_yang.total, new_yang_max])
+        orig_yang = (await shrine.get_yang(yang_address).invoke()).result.yang
+        tx = await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [yang_address, new_yang_max])
+        assert_event_emitted(tx, shrine.contract_address, "YangUpdated", [yang_address, orig_yang.total, new_yang_max])
 
-        updated_yang = (await shrine.get_yang(yang_id).invoke()).result.yang
+        updated_yang = (await shrine.get_yang(yang_address).invoke()).result.yang
         assert updated_yang.total == orig_yang.total
         assert updated_yang.max == new_yang_max
 
@@ -737,7 +737,7 @@ async def test_update_yang_max(users, shrine):
     await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [yang_id, deposit_amt, shrine_user.address, 0],
+        [yang_address, deposit_amt, shrine_user.address, 0],
     )  # Deposit 100 yang tokens
 
     new_yang_max = deposit_amt - to_wad(1)
@@ -750,18 +750,18 @@ async def test_update_yang_max(users, shrine):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "deposit",
-            [yang_id, deposit_amt, shrine_user.address, 0],
+            [yang_address, deposit_amt, shrine_user.address, 0],
         )
 
-    # test calling with a non-existing yang_id
-    # faux_yang_id = 7890
-    # with pytest.raises(StarkException):
-    #     await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [faux_yang_id, new_yang_max])
+    # test calling with a non-existing yang_address
+    faux_yang_address = 7890
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
+        await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [faux_yang_address, new_yang_max])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "update_yang_max", [yang_id, 2**251])
+        await bad_guy.send_tx(shrine.contract_address, "update_yang_max", [yang_address, 2**251])
 
 
 @pytest.mark.asyncio

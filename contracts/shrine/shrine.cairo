@@ -296,7 +296,7 @@ func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 ):
     assert_auth()
 
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang(yang_address)
     let (yang : Yang) = shrine_yangs_storage.read(yang_id)
     shrine_yangs_storage.write(yang_id, Yang(yang.total, new_max))
     YangUpdated.emit(yang_address, yang.total, new_max)
@@ -369,7 +369,7 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, price, timestamp
 ):
     assert_auth()
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang(yang_address)
     let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
     shrine_series_storage.write(yang_id, interval, price)
 
@@ -399,7 +399,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 ):
     assert_auth()
 
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang(yang_address)
 
     # Update yang balance of source trove
     let (src_yang_balance) = shrine_deposited_storage.read(src_address, src_trove_id, yang_id)
@@ -433,7 +433,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     charge(user_address, trove_id)
 
     # Update yang balance of system
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang(yang_address)
     let (old_yang_info) = shrine_yangs_storage.read(yang_id)
     let (new_total) = WadRay.add(old_yang_info.total, amount)
 
@@ -464,11 +464,8 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     assert_auth()
 
     # Retrieve yang info
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang(yang_address)
     let (old_yang_info) = shrine_yangs_storage.read(yang_id)
-
-    # Asserting that yang is valid to align with `deposit` and prevent accounting errors.
-    assert_not_zero(old_yang_info.max)
 
     # Charge interest
     charge(user_address, trove_id)
@@ -715,6 +712,18 @@ func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         assert live = TRUE
     end
     return ()
+end
+
+# Helper function to get the yang ID given a yang address, and throw an error if
+# yang address has not been added (i.e. yang ID = 0)
+func get_valid_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    yang_address
+) -> (ufelt):
+    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    with_attr error_message("Shrine: Yang does not exist"):
+        assert_not_zero(yang_id)
+    end
+    return (yang_id)
 end
 
 # Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
