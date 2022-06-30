@@ -419,7 +419,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_auth()
 
     # Check system is live
-    assert_system_live()
+    assert_live()
 
     # Charge interest
     charge(user_address, trove_id)
@@ -497,7 +497,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_auth()
 
     # Check system is live
-    assert_system_live()
+    assert_live()
 
     # Get current Trove information
     let (old_trove_info : Trove) = get_trove(user_address, trove_id)
@@ -700,7 +700,7 @@ end
 # Internal
 #
 
-func assert_system_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     # Check system is live
     let (live) = shrine_live.read()
     with_attr error_message("Shrine: System is not live"):
