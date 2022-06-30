@@ -15,12 +15,7 @@ from contracts.shared.wad_ray import WadRay
 
 const MAX_THRESHOLD = WadRay.WAD_ONE
 
-const SECONDS_PER_MINUTE = 60
-const SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60
-const SECONDS_PER_DAY = SECONDS_PER_HOUR * 24
-const SECONDS_PER_YEAR = SECONDS_PER_DAY * 365
-
-const TIME_INTERVAL = 30 * SECONDS_PER_MINUTE
+const TIME_INTERVAL = 30 * 60  # 30 minutes * 60 seconds per minute
 const TIME_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 : felt* 24 : felt* 365) = 0.00005707762557077625 (ray)
 
 # Interest rate piece-wise function parameters - all rays
