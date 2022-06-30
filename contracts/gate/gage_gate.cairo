@@ -427,6 +427,14 @@ end
 # External - Others
 #
 
+# Updates the asset balance of the vault, and transfers a tax on the increment
+# to the taxman address.
+@external
+func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    sync_inner()
+    return ()
+end
+
 #
 # Internal
 #
@@ -436,12 +444,6 @@ func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (c) = get_caller_address()
     let (is_authed) = gate_auth.read(c)
     assert is_authed = TRUE
-    return ()
-end
-
-@external
-func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    sync_inner()
     return ()
 end
 
