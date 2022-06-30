@@ -4,27 +4,32 @@ from tests.utils import RAY_SCALE, WAD_SCALE
 
 LIQUIDATION_THRESHOLD = 8 * 10**17
 
+YANG1_ADDRESS = 1234
+YANG2_ADDRESS = 2345
+YANG3_ADDRESS = 3456
+
 # Shrine setup constants
 YANGS = [
     {
-        "address": 1234,
+        "address": YANG1_ADDRESS,
         "start_price": 2000,
         "ceiling": 10_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
-        "address": 2345,
+        "address": YANG2_ADDRESS,
         "start_price": 500,
         "ceiling": 100_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
-        "address": 3456, 
+        "address": YANG3_ADDRESS, 
         "start_price": 1.25, 
         "ceiling": 10_000_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD
     },
 ]
+
 
 FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
@@ -51,3 +56,22 @@ RATE_BOUND3 = Decimal("0.9215")
 
 # 1 / Number of intervals in a year
 TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
+
+# Threshold test constants
+DEPOSITS = [
+    {
+        "address": YANG1_ADDRESS,
+        "amount": 4 * WAD_SCALE,
+        "threshold": YANGS[0]["threshold"]
+    }, 
+    {
+        "address": YANG2_ADDRESS, 
+        "amount": 5 * WAD_SCALE,
+        "threshold": YANGS[1]["threshold"]
+    },
+    {
+        "address": YANG3_ADDRESS, 
+        "amount": 6 * WAD_SCALE,
+        "threshold": YANGS[2]["threshold"]
+    }
+]

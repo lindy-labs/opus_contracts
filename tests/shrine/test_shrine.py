@@ -155,6 +155,16 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     )
     return deposit
 
+
+@pytest.fixture 
+async def shrine_deposit_multiple(users, shrine): 
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    for d in DEPOSITS:
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [d["address"], d["amount"], shrine_user.address, 0])
+
+
 @cache
 @pytest.fixture
 async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
@@ -221,16 +231,6 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 #
 # Tests
 #
-
-@pytest.mark.asyncio
-async def test_shrine_threshold(users, shrine, shrine_deposit):
-    shrine_user = await users("shrine user")
-    trove_value = (await shrine.appraise(shrine_user.address, 0).invoke()).result.wad
-    result = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result
-    print(f"Trove value (appraise): {from_wad(trove_value)}")
-    print(f"Trove value: {from_wad(result.value_wad)}")
-    print(f"Trove threhsold: {from_wad(result.threshold_wad)}")
-
 
 @pytest.mark.asyncio
 async def test_shrine_setup(shrine):
@@ -870,3 +870,29 @@ async def test_set_ceiling(users, shrine):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
+
+
+@pytest.mark.asyncio
+async def test_get_trove_threshold(users, shrine, shrine_deposit_multiple):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Calculating what the trove's threshold should be 
+    cumulative_weighted_threshold = Decimal(0)
+    total_value = Decimal(0)
+    for d in DEPOSITS:
+        price = from_wad((await shrine.yang_last_price(d["address"]).invoke()).result.wad)
+        total_value += price * from_wad(d["amount"])
+        cumulative_weighted_threshold += price * from_wad(d["amount"]) * from_wad(d["threshold"])
+    
+    expected_threshold = cumulative_weighted_threshold / total_value 
+
+    # Getting actual threshold
+    actual_threshold = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result.threshold_wad
+    print(f"Expected: {expected_threshold}")
+    print(f"Actual: {from_wad(actual_threshold)}")
+    assert_equalish(from_wad(actual_threshold), expected_threshold)
+
+
+
+    
