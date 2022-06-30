@@ -5,21 +5,24 @@ from tests.utils import RAY_SCALE, WAD_SCALE
 LIQUIDATION_THRESHOLD = 8 * 10**17
 
 # Shrine setup constants
-GAGES = [
+YANGS = [
     {
+        "address": 1234,
         "start_price": 2000,
         "ceiling": 10_000 * WAD_SCALE,
-        "threshold": 8 * 10**17,
+        "threshold": LIQUIDATION_THRESHOLD,
     },
     {
+        "address": 2345,
         "start_price": 500,
         "ceiling": 100_000 * WAD_SCALE,
-        "threshold": 5 * 10**17,
+        "threshold": LIQUIDATION_THRESHOLD,
     },
     {
+        "address": 3456, 
         "start_price": 1.25, 
         "ceiling": 10_000_000 * WAD_SCALE,
-        "threshold": LIQUIDATION_THRESHOLD,
+        "threshold": LIQUIDATION_THRESHOLD
     },
 ]
 
