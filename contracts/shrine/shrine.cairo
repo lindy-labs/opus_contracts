@@ -404,6 +404,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     # Update yang balance of source trove
     let (src_yang_balance) = shrine_deposited_storage.read(src_address, src_trove_id, yang_id)
 
+    # Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang"):
         assert_le(amount, src_yang_balance)
     end
@@ -472,6 +473,12 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (yang_id) = get_valid_yang(yang_address)
     let (old_yang_info) = shrine_yangs_storage.read(yang_id)
 
+    # Ensure trove has sufficient yang
+    let (trove_yang_balance) = shrine_deposited_storage.read(user_address, trove_id, yang_id)
+    with_attr error_message("Shrine: Insufficient yang"):
+        assert_le(amount, trove_yang_balance)
+    end
+
     # Charge interest
     charge(user_address, trove_id)
 
@@ -481,7 +488,6 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     shrine_yangs_storage.write(yang_id, new_yang_info)
 
     # Update yang balance of trove
-    let (trove_yang_balance) = shrine_deposited_storage.read(user_address, trove_id, yang_id)
     let (new_trove_balance) = WadRay.sub(trove_yang_balance, amount)
     shrine_deposited_storage.write(user_address, trove_id, yang_id, new_trove_balance)
 

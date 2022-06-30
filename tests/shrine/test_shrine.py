@@ -596,6 +596,20 @@ async def test_shrine_withdraw_invalid_yang_fail(users, shrine):
 
 
 @pytest.mark.asyncio
+async def test_shrine_withdraw_insufficient_yang_fail(users, shrine):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    # Invalid yang ID that has not been added
+    with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "withdraw",
+            [YANG_0_ADDRESS, to_wad(11), shrine_user.address, 0],
+        )
+
+
+@pytest.mark.asyncio
 async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
