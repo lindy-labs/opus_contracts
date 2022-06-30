@@ -889,8 +889,6 @@ async def test_get_trove_threshold(users, shrine, shrine_deposit_multiple):
 
     # Getting actual threshold
     actual_threshold = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result.threshold_wad
-    print(f"Expected: {expected_threshold}")
-    print(f"Actual: {from_wad(actual_threshold)}")
     assert_equalish(from_wad(actual_threshold), expected_threshold)
 
 
