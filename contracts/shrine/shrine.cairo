@@ -70,7 +70,7 @@ func MultiplierUpdated(new_multiplier, interval):
 end
 
 @event
-func ThresholdUpdated(yang_id, new_threshold):
+func ThresholdUpdated(yang_address, new_threshold):
 end
 
 @event
