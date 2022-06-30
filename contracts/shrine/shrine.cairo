@@ -15,9 +15,9 @@ from contracts.shared.wad_ray import WadRay
 #
 
 const MAX_THRESHOLD = WadRay.WAD_ONE
-# This is the value of limit/dev.
-# If LIMIT_DIV_THRESHOLD = 95% and a trove's threshold LTV is 80%, then that yang's limit then becomes 76%
-const LIMIT_DIV_THRESHOLD = 95 * 10 ** 16  # 95%
+# This is the value of limit divided by threshold
+# If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is 76%
+const LIMIT_RATIO = 95 * 10 ** 16  # 95%
 
 const TIME_INTERVAL = 30 * 60  # 30 minutes * 60 seconds per minute
 const TIME_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 : felt* 24 : felt* 365) = 0.00005707762557077625 (ray)
@@ -325,7 +325,7 @@ end
 # Example 3: 1.5% = 15 : felt* 10 : felt** 15
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_id, new_threshold
+    yang_address, new_threshold
 ):
     assert_auth()
 
@@ -334,8 +334,10 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
         assert_le(new_threshold, MAX_THRESHOLD)
     end
 
+    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    
     shrine_thresholds_storage.write(yang_id, new_threshold)
-    ThresholdUpdated.emit(yang_id, new_threshold)
+    ThresholdUpdated.emit(yang_address, new_threshold)
     return ()
 end
 
@@ -1006,7 +1008,7 @@ func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     end
 
     let (threshold, value) = get_trove_threshold(user_address, trove_id)
-    let (limit) = WadRay.wmul(LIMIT_DIV_THRESHOLD, threshold)  # limit = (limit/threshold) * threshold
+    let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = (limit/threshold) * threshold
     let (max_debt) = WadRay.wmul(limit, value)
     let (bool) = is_le(trove.debt, max_debt)
 
@@ -1021,7 +1023,7 @@ func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
     user_address, trove_id
 ) -> (threshold_wad, value_wad):
     let (yang_count) = shrine_yangs_count_storage.read()
-    return get_trove_threshold_inner(user_address, trove_id, yang_count - 1, 0, 0)
+    return get_trove_threshold_inner(user_address, trove_id, yang_count, 0, 0)
 end
 
 func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
