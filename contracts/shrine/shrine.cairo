@@ -403,6 +403,11 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Update yang balance of source trove
     let (src_yang_balance) = shrine_deposited_storage.read(src_address, src_trove_id, yang_id)
+
+    with_attr error_message("Shrine: Insufficient yang"):
+        assert_le(amount, src_yang_balance)
+    end
+
     let (new_src_balance) = WadRay.sub_unsigned(src_yang_balance, amount)
     shrine_deposited_storage.write(src_address, src_trove_id, yang_id, new_src_balance)
 

@@ -657,6 +657,20 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
 
 
 @pytest.mark.asyncio
+async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+    shrine_guest = await users("shrine guest")
+
+    with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "move_yang",
+            [YANG_0_ADDRESS, to_wad(11), shrine_user.address, 0, shrine_guest.address, 0],
+        )
+
+
+@pytest.mark.asyncio
 async def test_shrine_unhealthy(starknet, users, shrine, shrine_forge):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
