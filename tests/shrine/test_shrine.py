@@ -23,6 +23,7 @@ from tests.utils import (
 )
 
 GAGE_0_ADDRESS = GAGES[0]["address"]
+GAGE_0_CEILING = GAGES[0]["ceiling"]
 
 #
 # Structs
@@ -294,8 +295,8 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
     assert_event_emitted(
         shrine_deposit,
         shrine.contract_address,
-        "GageTotalUpdated",
-        [GAGE_0_ADDRESS, to_wad(10)],
+        "GageUpdated",
+        [GAGE_0_ADDRESS, to_wad(10), GAGE_0_CEILING],
     )
     assert_event_emitted(
         shrine_deposit,
@@ -318,8 +319,8 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
     assert_event_emitted(
         shrine_withdraw,
         shrine.contract_address,
-        "GageTotalUpdated",
-        [GAGE_0_ADDRESS, 0],
+        "GageUpdated",
+        [GAGE_0_ADDRESS, 0, GAGE_0_CEILING],
     )
     assert_event_emitted(
         shrine_withdraw,
@@ -713,7 +714,7 @@ async def test_update_gage_max(users, shrine):
     async def update_and_assert(new_gage_max):
         orig_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         tx = await shrine_owner.send_tx(shrine.contract_address, "update_gage_max", [gage_id, new_gage_max])
-        assert_event_emitted(tx, shrine.contract_address, "GageMaxUpdated", [gage_id, new_gage_max])
+        assert_event_emitted(tx, shrine.contract_address, "GageUpdated", [gage_id, orig_gage.total, new_gage_max])
 
         updated_gage = (await shrine.get_gage(gage_id).invoke()).result.gage
         assert updated_gage.total == orig_gage.total

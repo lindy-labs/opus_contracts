@@ -50,11 +50,7 @@ func GageAdded(gage_address, gage_id, max):
 end
 
 @event
-func GageTotalUpdated(gage_address, new_total):
-end
-
-@event
-func GageMaxUpdated(gage_address, new_max):
+func GageUpdated(gage_address, new_total, new_max):
 end
 
 @event
@@ -295,7 +291,7 @@ func update_gage_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     let (gage_id) = shrine_gage_id.read(gage_address)
     let (gage : Gage) = shrine_gages.read(gage_id)
     shrine_gages.write(gage_id, Gage(gage.total, new_max))
-    GageMaxUpdated.emit(gage_address, new_max)
+    GageUpdated.emit(gage_address, gage.total, new_max)
 
     return ()
 end
@@ -443,7 +439,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (new_trove_balance) = WadRay.add(trove_gage_balance, amount)
     shrine_deposited.write(user_address, trove_id, gage_id, new_trove_balance)
 
-    GageTotalUpdated.emit(gage_address, new_total)
+    GageUpdated.emit(gage_address, new_total, old_gage_info.max)
     DepositUpdated.emit(user_address, trove_id, gage_address, new_trove_balance)
 
     return ()
@@ -485,7 +481,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert healthy = TRUE
     end
 
-    GageTotalUpdated.emit(gage_address, new_total)
+    GageUpdated.emit(gage_address, new_total, old_gage_info.max)
     DepositUpdated.emit(user_address, trove_id, gage_address, new_trove_balance)
     return ()
 end
