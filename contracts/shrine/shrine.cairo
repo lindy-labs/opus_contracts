@@ -6,7 +6,8 @@ from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
 
-from contracts.shared.types import Trove, Yang, pack_felt
+from contracts.shared.convert import pack_felt
+from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 
 #
