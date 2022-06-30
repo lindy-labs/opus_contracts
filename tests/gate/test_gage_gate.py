@@ -1,8 +1,8 @@
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
-from tests.gate.constants import FIRST_DEPOSIT_AMT, FIRST_REBASE_AMT, TAX
-from tests.utils import MAX_UINT256, TRUE, assert_event_emitted, from_ray, from_uint
+from tests.gate.constants import FIRST_DEPOSIT_AMT, FIRST_REBASE_AMT, INITIAL_AMT, SECOND_DEPOSIT_AMT, TAX
+from tests.utils import MAX_UINT256, TRUE, assert_equalish, assert_event_emitted, from_ray, from_uint, from_wad
 
 #
 # Fixtures
@@ -36,6 +36,31 @@ async def rebase(users, gate_gage_rebasing, gage_rebasing, gate_deposit) -> Star
         gage_rebasing.contract_address, "mint", [gate.contract_address, *(FIRST_REBASE_AMT, 0)]
     )
     return tx
+
+
+@pytest.fixture
+async def sync(users, gate_gage_rebasing, gage_rebasing, rebase) -> StarknetTransactionExecutionInfo:
+    gate = gate_gage_rebasing
+
+    abbot = await users("abbot")
+    # Update Gate's balance and charge tax
+    sync = await abbot.send_tx(gate.contract_address, "sync", [])
+    return sync
+
+
+@pytest.fixture
+async def gate_subsequent_deposit(users, gate_gage_rebasing, gage_rebasing, sync):
+    gate = gate_gage_rebasing
+
+    shrine_user = await users("shrine user")
+    abbot = await users("abbot")
+
+    # Approve Gate to transfer tokens from user
+    await shrine_user.send_tx(gage_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+
+    # Call deposit
+    deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
+    return deposit
 
 
 #
@@ -146,3 +171,50 @@ async def test_gate_sync(users, gate_gage_rebasing, gage_rebasing, rebase):
     # Check taxman has received tax
     after_taxman_bal = from_uint((await gage_rebasing.balanceOf(taxman.address).invoke()).result.balance)
     assert after_taxman_bal == before_taxman_bal + tax
+
+
+@pytest.mark.asyncio
+async def test_gate_subsequent_deposit(users, gate_gage_rebasing, gage_rebasing, sync):
+    gate = gate_gage_rebasing
+
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Check expected shares
+    before_total_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+    before_total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
+    preview_shares_uint = (await gate.previewDeposit((SECOND_DEPOSIT_AMT, 0)).invoke()).result.shares
+    preview_shares = from_uint(preview_shares_uint)
+    expected_shares = from_wad(before_total_shares) * from_wad(SECOND_DEPOSIT_AMT) / from_wad(before_total_assets)
+    assert_equalish(from_wad(preview_shares), expected_shares)
+
+    # Get user's shares before subsequent deposit
+    before_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+
+    # Call deposit
+    deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
+
+    # Check vault underlying balance
+    total_bal = from_uint((await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
+    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - (from_ray(TAX) * FIRST_REBASE_AMT)
+    assert total_bal == total_assets == expected_bal
+
+    underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
+    assert underlying_bal == total_bal
+
+    # Check vault shares balance
+    after_total_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+    assert_equalish(from_wad(after_total_shares), from_wad(before_total_shares) + expected_shares)
+
+    # Check user's shares
+    after_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    assert_equalish(from_wad(after_user_shares), from_wad(before_user_shares) + expected_shares)
+
+    # Check event emitted
+    assert_event_emitted(
+        deposit,
+        gate.contract_address,
+        "Deposit",
+        [abbot.address, shrine_user.address, *(SECOND_DEPOSIT_AMT, 0), *preview_shares_uint],
+    )

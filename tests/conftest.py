@@ -11,7 +11,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.gate.constants import TAX
+from tests.gate.constants import INITIAL_AMT, TAX
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
@@ -21,7 +21,7 @@ from tests.shrine.constants import (
     MULTIPLIER_FEED,
     SECONDS_PER_MINUTE,
 )
-from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt, to_wad
+from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt
 
 MRACParameters = namedtuple(
     "MRACParameters",
@@ -156,7 +156,7 @@ async def mrac_controller(starknet) -> StarknetContract:
 @pytest.fixture
 async def gage_rebasing(starknet, tokens, users) -> StarknetContract:
     user = await users("shrine user")
-    return await tokens("Staked ETH", "stETH", 18, (to_wad(100), 0), user.address)
+    return await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
 
 
 #
