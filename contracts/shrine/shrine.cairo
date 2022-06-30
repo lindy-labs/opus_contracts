@@ -259,9 +259,10 @@ func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 @view
-func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(yang_id) -> (
+func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(yang_address) -> (
     wad
 ):
+    let (yang_id) = get_valid_yang(yang_address)
     return shrine_thresholds_storage.read(yang_id)
 end
 
