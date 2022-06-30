@@ -239,7 +239,7 @@ async def test_shrine_setup(shrine):
     assert ceiling == DEBT_CEILING
 
     # Check gage count
-    gage_count = (await shrine.get_num_gages().invoke()).result.ufelt
+    gage_count = (await shrine.get_gages_count().invoke()).result.ufelt
     assert gage_count == len(GAGES)
 
     # Check gages
@@ -683,12 +683,12 @@ async def test_add_gage(users, shrine):
     shrine_owner = await users("shrine owner")
 
     g_count = len(GAGES)
-    assert (await shrine.get_num_gages().invoke()).result.ufelt == g_count
+    assert (await shrine.get_gages_count().invoke()).result.ufelt == g_count
 
     new_gage_address = 987
     new_gage_max = to_wad(42_000)
     tx = await shrine_owner.send_tx(shrine.contract_address, "add_gage", [new_gage_address, new_gage_max])
-    assert (await shrine.get_num_gages().invoke()).result.ufelt == g_count + 1
+    assert (await shrine.get_gages_count().invoke()).result.ufelt == g_count + 1
     assert_event_emitted(
         tx,
         shrine.contract_address,

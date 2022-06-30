@@ -147,7 +147,7 @@ end
 # Number of gages accepted by the system.
 # The return value is also the ID of the last added gage.
 @storage_var
-func shrine_num_gages() -> (ufelt):
+func shrine_gages_count() -> (ufelt):
 end
 
 # Mapping from gage address to gage ID.
@@ -216,8 +216,10 @@ func get_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 end
 
 @view
-func get_num_gages{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
-    return shrine_num_gages.read()
+func get_gages_count{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    ufelt
+):
+    return shrine_gages_count.read()
 end
 
 @view
@@ -271,12 +273,12 @@ end
 func add_gage{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(gage_address, max):
     assert_auth()
 
-    let (gage_count) = shrine_num_gages.read()
+    let (gage_count) = shrine_gages_count.read()
     shrine_gage_id.write(gage_address, gage_count + 1)
     shrine_gages.write(gage_count + 1, Gage(0, max))
     GageAdded.emit(gage_address, gage_count + 1, max)
 
-    shrine_num_gages.write(gage_count + 1)
+    shrine_gages_count.write(gage_count + 1)
     NumGagesUpdated.emit(gage_count + 1)
 
     return ()
@@ -715,7 +717,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ) -> (wad):
     alloc_locals
 
-    let (gage_count) = shrine_num_gages.read()
+    let (gage_count) = shrine_gages_count.read()
     let (interval) = now()
     let (value) = appraise_inner(user_address, trove_id, gage_count, interval, 0)
     return (value)
@@ -876,7 +878,7 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         return (0)
     end
 
-    let (gage_count) = shrine_num_gages.read()
+    let (gage_count) = shrine_gages_count.read()
     let (value) = appraise_inner(user_address, trove_id, gage_count, interval, 0)
 
     let (ratio) = WadRay.wunsigned_div(debt, value)
