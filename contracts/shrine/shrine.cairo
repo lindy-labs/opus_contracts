@@ -347,6 +347,7 @@ end
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
     shrine_auth.write(authed, TRUE)
     shrine_live.write(TRUE)
+    Authorized.emit(authed)
     return ()
 end
 
