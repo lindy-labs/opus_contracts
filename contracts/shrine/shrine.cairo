@@ -78,7 +78,7 @@ func DepositUpdated(address, trove_id, gage_address, new_amount):
 end
 
 @event
-func SeriesIncremented(gage_address, interval, price):
+func SeriesIncremented(gage_address, price, interval):
 end
 
 @event
@@ -365,7 +365,7 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
     shrine_series.write(gage_id, interval, price)
 
-    SeriesIncremented.emit(gage_address, interval, price)
+    SeriesIncremented.emit(gage_address, price, interval)
     return ()
 end
 
