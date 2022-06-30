@@ -12,11 +12,11 @@ from tests.account import Account
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
-    GAGES,
     LIQUIDATION_THRESHOLD,
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
     SECONDS_PER_MINUTE,
+    YANGS,
 )
 from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt
 
@@ -135,7 +135,7 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
     return shrine
 
 
-# Same as above but also comes with ready-to-use gages and price feeds
+# Same as above but also comes with ready-to-use yangs and price feeds
 @cache
 @pytest.fixture
 async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
@@ -148,22 +148,22 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
     # Set debt ceiling
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [DEBT_CEILING])
 
-    # Creating the gages
-    for g in GAGES:
-        await shrine_owner.send_tx(shrine.contract_address, "add_gage", [g["address"], g["ceiling"]])
+    # Creating the yangs
+    for y in YANGS:
+        await shrine_owner.send_tx(shrine.contract_address, "add_yang", [y["address"], y["ceiling"]])
 
     # Creating the price feeds
-    feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in GAGES]
+    feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
 
     # Putting the price feeds in the `series` storage variable
     for i in range(FEED_LEN):
         timestamp = i * 30 * SECONDS_PER_MINUTE
         set_block_timestamp(starknet.state, timestamp)
-        for j in range(len(GAGES)):
+        for j in range(len(YANGS)):
             await shrine_owner.send_tx(
                 shrine.contract_address,
                 "advance",
-                [GAGES[j]["address"], feeds[j][i], timestamp],
+                [YANGS[j]["address"], feeds[j][i], timestamp],
             )
 
         await shrine_owner.send_tx(

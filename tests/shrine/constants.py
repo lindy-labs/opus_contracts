@@ -3,7 +3,7 @@ from decimal import Decimal
 from tests.utils import RAY_SCALE, WAD_SCALE
 
 # Shrine setup constants
-GAGES = [
+YANGS = [
     {
         "address": 1234,
         "start_price": 2000,

@@ -10,7 +10,7 @@ struct Trove:
     member debt : felt  # Normalized debt
 end
 
-struct Gage:
+struct Yang:
     member total : felt  # Total amount of the Gage currently deposited
     member max : felt  # Maximum amount of the Gage that can be deposited
 end
