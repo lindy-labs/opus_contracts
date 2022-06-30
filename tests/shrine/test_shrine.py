@@ -162,7 +162,7 @@ async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExec
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(5000)])
+    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(5000), shrine_user.address, 0])
     return forge
 
 
@@ -172,7 +172,7 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
     shrine_user = await users("shrine user")
 
     estimated_debt = (await shrine.estimate(shrine_user.address, 0).invoke()).result.wad
-    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, estimated_debt])
+    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [estimated_debt, shrine_user.address, 0])
 
     return melt
 
@@ -622,7 +622,7 @@ async def test_shrine_forge_zero_deposit_fail(users, shrine):
 
     # Forge without any gages deposited
     with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(1_000)])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(1_000), shrine_user.address, 0])
 
 
 @pytest.mark.asyncio
@@ -635,7 +635,7 @@ async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
 
     with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(14_000)])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(14_000), shrine_user.address, 0])
 
 
 @pytest.mark.asyncio
@@ -653,7 +653,7 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(15_000)])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(15_000), shrine_user.address, 0])
 
 
 @pytest.mark.asyncio
@@ -804,7 +804,7 @@ async def test_kill(users, shrine, update_feeds):
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [shrine_user.address, 0, to_wad(100)])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(100), shrine_user.address, 0])
 
     # Test withdraw pass
     await shrine_owner.send_tx(
@@ -814,7 +814,7 @@ async def test_kill(users, shrine, update_feeds):
     )
 
     # Test melt pass
-    await shrine_owner.send_tx(shrine.contract_address, "melt", [shrine_user.address, 0, to_wad(100)])
+    await shrine_owner.send_tx(shrine.contract_address, "melt", [to_wad(100), shrine_user.address, 0])
 
 
 @pytest.mark.asyncio

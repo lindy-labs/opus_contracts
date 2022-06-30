@@ -490,7 +490,7 @@ end
 # Mint a specified amount of synthetic for a Trove
 @external
 func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, amount
+    amount, user_address, trove_id
 ):
     alloc_locals
 
@@ -558,7 +558,7 @@ end
 # The module calling this function should check that `amount` does not exceed Trove's debt.
 @external
 func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, amount
+    amount, user_address, trove_id
 ):
     alloc_locals
 
