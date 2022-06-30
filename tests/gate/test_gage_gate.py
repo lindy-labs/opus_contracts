@@ -1,8 +1,62 @@
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
-from tests.gate.constants import FIRST_DEPOSIT_AMT, FIRST_REBASE_AMT, INITIAL_AMT, SECOND_DEPOSIT_AMT, TAX
+from tests.gate.constants import (
+    FIRST_DEPOSIT_AMT,
+    FIRST_MINT_AMT,
+    FIRST_REBASE_AMT,
+    INITIAL_AMT,
+    SECOND_DEPOSIT_AMT,
+    SECOND_MINT_AMT,
+    TAX,
+)
 from tests.utils import MAX_UINT256, TRUE, assert_equalish, assert_event_emitted, from_ray, from_uint, from_wad
+
+#
+# Helper functions
+#
+
+
+def get_shares_from_assets(total_shares, total_assets, assets_amt):
+    """
+    Helper function to calculate the number of shares given a deposit of assets.
+
+    Arguments
+    ---------
+    total_shares : int
+        Total supply of vault shares before deposit in wad.
+    total_assets : int
+        Total assets held by vault in wad.
+    assets_amt : int
+        Amount of assets to be deposited in wad.
+
+    Returns
+    -------
+    Amount of vault shares to be issued in Decimal.
+    """
+    return from_wad(total_shares) * from_wad(assets_amt) / from_wad(total_assets)
+
+
+def get_assets_from_shares(total_shares, total_assets, shares_amt):
+    """
+    Helper function to calculate the number of assets to be deposited to issue the
+    given value of shares.
+
+    Arguments
+    ---------
+    total_shares : int
+        Total supply of vault shares before deposit in wad.
+    total_assets : int
+        Total assets held by vault in wad.
+    shares_amt : int
+        Amount of shares to be issued in wad.
+
+    Returns
+    -------
+    Amount of assets to be deposited in Decimal.
+    """
+    return from_wad(total_assets) * from_wad(shares_amt) / from_wad(total_shares)
+
 
 #
 # Fixtures
@@ -22,6 +76,21 @@ async def gate_deposit(users, gate_gage_rebasing, gage_rebasing) -> StarknetTran
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address])
     return deposit
+
+
+@pytest.fixture
+async def gate_mint(users, gate_gage_rebasing, gage_rebasing) -> StarknetTransactionExecutionInfo:
+    gate = gate_gage_rebasing
+
+    shrine_user = await users("shrine user")
+    abbot = await users("abbot")
+
+    # Approve Gate to transfer tokens from user
+    await shrine_user.send_tx(gage_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+
+    # Call deposit
+    mint = await abbot.send_tx(gate.contract_address, "deposit", [*(FIRST_MINT_AMT, 0), shrine_user.address])
+    return mint
 
 
 @pytest.fixture
@@ -61,6 +130,21 @@ async def gate_subsequent_deposit(users, gate_gage_rebasing, gage_rebasing, sync
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
     return deposit
+
+
+@pytest.fixture
+async def gate_subsequent_mint(users, gate_gage_rebasing, gage_rebasing, sync):
+    gate = gate_gage_rebasing
+
+    shrine_user = await users("shrine user")
+    abbot = await users("abbot")
+
+    # Approve Gate to transfer tokens from user
+    await shrine_user.send_tx(gage_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+
+    # Call deposit
+    mint = await abbot.send_tx(gate.contract_address, "mint", [*(SECOND_MINT_AMT, 0), shrine_user.address])
+    return mint
 
 
 #
@@ -131,6 +215,34 @@ async def test_gate_deposit(users, gate_gage_rebasing, gage_rebasing, gate_depos
 
 
 @pytest.mark.asyncio
+async def test_gate_mint(users, gate_gage_rebasing, gage_rebasing, gate_mint):
+    gate = gate_gage_rebasing
+
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Check vault underlying balance
+    total_bal = from_uint((await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    total_assets = (await gate.totalAssets().invoke()).result.totalManagedAssets
+    assert total_bal == from_uint(total_assets) == FIRST_DEPOSIT_AMT
+
+    underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
+    assert underlying_bal == total_bal
+
+    # Check vault shares balance
+    total_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+    user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    assert total_shares == from_uint(user_shares) == FIRST_DEPOSIT_AMT
+
+    assert_event_emitted(
+        gate_mint,
+        gate.contract_address,
+        "Deposit",
+        [abbot.address, shrine_user.address, *total_assets, *user_shares],
+    )
+
+
+@pytest.mark.asyncio
 async def test_gate_sync(users, gate_gage_rebasing, gage_rebasing, rebase):
     gate = gate_gage_rebasing
 
@@ -185,7 +297,7 @@ async def test_gate_subsequent_deposit(users, gate_gage_rebasing, gage_rebasing,
     before_total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
     preview_shares_uint = (await gate.previewDeposit((SECOND_DEPOSIT_AMT, 0)).invoke()).result.shares
     preview_shares = from_uint(preview_shares_uint)
-    expected_shares = from_wad(before_total_shares) * from_wad(SECOND_DEPOSIT_AMT) / from_wad(before_total_assets)
+    expected_shares = get_shares_from_assets(before_total_shares, before_total_assets, SECOND_DEPOSIT_AMT)
     assert_equalish(from_wad(preview_shares), expected_shares)
 
     # Get user's shares before subsequent deposit
@@ -195,13 +307,13 @@ async def test_gate_subsequent_deposit(users, gate_gage_rebasing, gage_rebasing,
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
 
     # Check vault underlying balance
-    total_bal = from_uint((await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    after_total_bal = from_uint((await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
     expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - (from_ray(TAX) * FIRST_REBASE_AMT)
-    assert total_bal == total_assets == expected_bal
+    assert after_total_bal == total_assets == expected_bal
 
     underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
-    assert underlying_bal == total_bal
+    assert underlying_bal == after_total_bal
 
     # Check vault shares balance
     after_total_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
@@ -217,4 +329,50 @@ async def test_gate_subsequent_deposit(users, gate_gage_rebasing, gage_rebasing,
         gate.contract_address,
         "Deposit",
         [abbot.address, shrine_user.address, *(SECOND_DEPOSIT_AMT, 0), *preview_shares_uint],
+    )
+
+
+@pytest.mark.asyncio
+async def test_gate_subsequent_mint(users, gate_gage_rebasing, gage_rebasing, sync):
+    gate = gate_gage_rebasing
+
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Check expected shares
+    before_total_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+    before_total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
+    preview_assets_uint = (await gate.previewMint((SECOND_MINT_AMT, 0)).invoke()).result.assets
+    preview_assets = from_uint(preview_assets_uint)
+    expected_assets = get_assets_from_shares(before_total_shares, before_total_assets, SECOND_MINT_AMT)
+    assert_equalish(from_wad(preview_assets), expected_assets)
+
+    # Get user's shares before subsequent deposit
+    before_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+
+    # Call mint
+    mint = await abbot.send_tx(gate.contract_address, "mint", [*(SECOND_MINT_AMT, 0), shrine_user.address])
+
+    # Check vault underlying balance
+    after_total_bal = from_uint((await gage_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
+    assert after_total_bal == total_assets
+    expected_bal = from_wad(before_total_assets) + expected_assets
+    assert_equalish(from_wad(after_total_bal), expected_bal)
+
+    underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
+    assert underlying_bal == after_total_bal
+
+    # Check vault shares balance and user's shares balance
+    after_total_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+    after_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    assert after_total_shares == before_total_shares + SECOND_MINT_AMT
+    assert after_user_shares == before_user_shares + SECOND_MINT_AMT
+
+    # Check event emitted
+    assert_event_emitted(
+        mint,
+        gate.contract_address,
+        "Deposit",
+        [abbot.address, shrine_user.address, *preview_assets_uint, *(SECOND_MINT_AMT, 0)],
     )
