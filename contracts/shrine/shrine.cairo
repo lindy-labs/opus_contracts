@@ -273,6 +273,12 @@ end
 func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(yang_address, max):
     assert_auth()
 
+    # Assert that yang is not already added
+    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    with_attr error_message("Shrine: Yang already exists"):
+        assert yang_id = 0
+    end
+
     let (yang_count) = shrine_yangs_count_storage.read()
     shrine_yang_id_storage.write(yang_address, yang_count + 1)
     shrine_yangs_storage.write(yang_count + 1, Yang(0, max))

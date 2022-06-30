@@ -702,6 +702,10 @@ async def test_add_yang(users, shrine):
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "add_yang", [1])
 
+    # Test adding duplicate Yang
+    with pytest.raises(StarkException, match="Shrine: Yang already exists"):
+        await shrine_owner.send_tx(shrine.contract_address, "add_yang", [YANGS[0]["address"], new_yang_max])
+
 
 @pytest.mark.asyncio
 async def test_update_yang_max(users, shrine):
