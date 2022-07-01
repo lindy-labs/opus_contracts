@@ -394,7 +394,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
         [shrine_user.address, 0, FEED_LEN - 1, to_wad(5000)],
     )
 
-    system_debt = (await shrine.get_yin().invoke()).result.wad
+    system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
     assert system_debt == to_wad(5000)
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
@@ -424,7 +424,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
         [shrine_user.address, 0, FEED_LEN, 0],
     )
 
-    system_debt = (await shrine.get_yin().invoke()).result.wad
+    system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
     assert system_debt == 0
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
