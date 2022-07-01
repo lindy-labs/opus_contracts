@@ -756,11 +756,10 @@ async def test_shrine_unhealthy(starknet, users, shrine, shrine_forge):
     unsafe_price = debt / Decimal("0.85") / yang_balance
 
     # Update yang price to unsafe level
-    timestamp = starknet.state.state.block_info.block_timestamp
     await shrine_owner.send_tx(
         shrine.contract_address,
         "advance",
-        [YANG_0_ADDRESS, to_wad(unsafe_price), timestamp],
+        [YANG_0_ADDRESS, to_wad(unsafe_price)],
     )
 
     is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
