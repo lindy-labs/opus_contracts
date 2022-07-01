@@ -726,6 +726,27 @@ async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
 
 
 @pytest.mark.asyncio
+async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+    shrine_guest = await users("shrine guest")
+
+    # Get latest price
+    price = (await shrine.yang_last_price(YANG_0_ADDRESS).invoke()).result.wad
+    assert price != 0
+
+    unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
+    withdraw_amt = Decimal("10") - unsafe_amt
+
+    with pytest.raises(StarkException, match="Shrine: Trove is at risk after moving yang"):
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "move_yang",
+            [YANG_0_ADDRESS, to_wad(withdraw_amt), shrine_user.address, 0, shrine_guest.address, 0],
+        )
+
+
+@pytest.mark.asyncio
 async def test_shrine_unhealthy(starknet, users, shrine, shrine_forge):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
@@ -814,7 +835,7 @@ async def test_update_yang_max(users, shrine):
     )  # update yang_max to a value smaller than the total amount currently deposited
 
     # This should fail, since yang.total exceeds yang.max
-    with pytest.raises(StarkException):
+    with pytest.raises(StarkException, match="Shrine: Maximum amount of Yang exceeded"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "deposit",
