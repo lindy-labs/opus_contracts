@@ -46,23 +46,36 @@ end
 #
 
 @storage_var
+<<<<<<< HEAD
 func gate_auth(address) -> (authorized):
 end
 
 @storage_var
 func gate_live() -> (live):
+=======
+func gate_auth_storage(address) -> (bool):
+end
+
+@storage_var
+func gate_live_storage() -> (bool):
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 # Admin fee charged on yield from underlying - ray
 @storage_var
+<<<<<<< HEAD
 func gate_tax() -> (tax):
+=======
+func gate_tax_storage() -> (ray):
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 # Address to send admin fees to
 @storage_var
-func gate_taxman_address() -> (address):
+func gate_tax_collector_storage() -> (address):
 end
 
+<<<<<<< HEAD
 # Exchange rate of Gate share to underlying (wad)
 @storage_var
 func gate_exchange_rate() -> (rate):
@@ -82,6 +95,12 @@ end
 # Timestamp of the last update of yield from underlying gage
 @storage_var
 func gate_gage_last_updated() -> (timestamp):
+=======
+# Last updated total balance of underlying asset
+# Used to detect changes in total balance due to rebasing
+@storage_var
+func gate_last_asset_balance_storage() -> (wad):
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 #
@@ -89,6 +108,7 @@ end
 #
 
 @view
+<<<<<<< HEAD
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
     authorized
 ):
@@ -98,6 +118,15 @@ end
 @view
 func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live):
     return gate_live.read()
+=======
+func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
+    return gate_auth_storage.read(address)
+end
+
+@view
+func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool):
+    return gate_live_storage.read()
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 @view
@@ -110,21 +139,25 @@ end
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax):
 =======
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
+<<<<<<< HEAD
 >>>>>>> 81db9f5 (remove shrine interface)
     return gate_tax.read()
+=======
+    return gate_tax_storage.read()
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 @view
 func get_taxman_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     address
 ):
-    return gate_taxman_address.read()
+    return gate_tax_collector_storage.read()
 end
 
 @view
 func get_last_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ) -> (wad):
-    return gate_last_underlying_balance.read()
+    return gate_last_asset_balance_storage.read()
 end
 
 #
@@ -182,10 +215,10 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     authed, name, symbol, asset_address, tax, taxman_address
 ):
     ERC4626.initializer(name, symbol, asset_address)
-    gate_auth.write(authed, TRUE)
-    gate_live.write(TRUE)
-    gate_tax.write(tax)
-    gate_taxman_address.write(taxman_address)
+    gate_auth_storage.write(authed, TRUE)
+    gate_live_storage.write(TRUE)
+    gate_tax_storage.write(tax)
+    gate_tax_collector_storage.write(taxman_address)
     return ()
 end
 
@@ -196,7 +229,7 @@ end
 @external
 func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
     assert_auth()
-    gate_auth.write(address, TRUE)
+    gate_auth_storage.write(address, TRUE)
     Authorized.emit(address)
     return ()
 end
@@ -204,7 +237,7 @@ end
 @external
 func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
     assert_auth()
-    gate_auth.write(address, FALSE)
+    gate_auth_storage.write(address, FALSE)
     Revoked.emit(address)
     return ()
 end
@@ -213,7 +246,7 @@ end
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     assert_auth()
 
-    gate_live.write(FALSE)
+    gate_live_storage.write(FALSE)
     Killed.emit()
     return ()
 end
@@ -302,10 +335,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     alloc_locals
 
     # Assert live
-    let (live) = gate_live.read()
-    with_attr error_message("Gate: Gate is not live"):
-        assert live = TRUE
-    end
+    assert_live()
 
     # Sync
     sync_inner()
@@ -313,7 +343,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (shares : Uint256) = ERC4626.deposit(assets, receiver)
 
     # Update
-    update_underlying_balance()
+    update_last_asset_balance()
 
     return (shares)
 end
@@ -341,10 +371,7 @@ func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     alloc_locals
 
     # Assert live
-    let (live) = gate_live.read()
-    with_attr error_message("Gate: Gate is not live"):
-        assert live = TRUE
-    end
+    assert_live()
 
     # Sync
     sync_inner()
@@ -352,7 +379,7 @@ func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (assets : Uint256) = ERC4626.mint(shares, receiver)
 
     # Update
-    update_underlying_balance()
+    update_last_asset_balance()
 
     return (assets)
 end
@@ -385,7 +412,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (shares : Uint256) = ERC4626.withdraw(assets, receiver, owner)
 
     # Update
-    update_underlying_balance()
+    update_last_asset_balance()
 
     return (shares)
 end
@@ -418,7 +445,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (assets : Uint256) = ERC4626.redeem(shares, receiver, owner)
 
     # Update
-    update_underlying_balance()
+    update_last_asset_balance()
 
     return (assets)
 end
@@ -442,8 +469,17 @@ end
 # Similar to onlyOwner
 func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let (c) = get_caller_address()
-    let (is_authed) = gate_auth.read(c)
+    let (is_authed) = gate_auth_storage.read(c)
     assert is_authed = TRUE
+    return ()
+end
+
+func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    # Check system is live
+    let (live) = gate_live_storage.read()
+    with_attr error_message("Gate: Gate is not live"):
+        assert live = TRUE
+    end
     return ()
 end
 
@@ -457,8 +493,13 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (vault) = get_contract_address()
 
     # Check last balance of underlying asset against latest balance
+<<<<<<< HEAD
     let (last_updated) = gate_underlying_balance.read()
     let (latest) = IERC20.balanceOf(contract_address=asset, account=vault)
+=======
+    let (last_updated) = gate_last_asset_balance_storage.read()
+    let (latest : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
     let (latest_felt) = uint_to_felt_unchecked(latest)
     let (unincremented) = is_le(latest_felt, last_updated)
     if unincremented == FALSE:
@@ -467,18 +508,22 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
         # Calculate amount of underlying chargeable
         let (difference_ray) = WadRay.wad_to_ray_unchecked(difference)
-        let (tax_rate) = gate_tax.read()
+        let (tax_rate) = gate_tax_storage.read()
         let (chargeable) = WadRay.rmul_unchecked(difference_ray, tax_rate)
         let (chargeable_wad) = WadRay.ray_to_wad(chargeable)
         let (chargeable_uint256 : Uint256) = felt_to_uint(chargeable_wad)
 
         # Transfer fees
-        let (taxman) = gate_taxman_address.read()
+        let (taxman) = gate_tax_collector_storage.read()
         IERC20.transfer(contract_address=asset, recipient=taxman, amount=chargeable_uint256)
 
         let (updated_balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
         let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
+<<<<<<< HEAD
         gate_underlying_balance.write(updated_balance_felt)
+=======
+        gate_last_asset_balance_storage.write(updated_balance_felt)
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
 
         Sync.emit(last_updated, updated_balance_felt, chargeable_wad)
 
@@ -495,12 +540,16 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 end
 
 # Helper function to update the underlying balance after a user action
-func update_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     # TODO Look into repeated calls to asset and contract address
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
     let (balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
     let (balance_felt) = uint_to_felt_unchecked(balance)
+<<<<<<< HEAD
     gate_underlying_balance.write(balance_felt)
+=======
+    gate_last_asset_balance_storage.write(balance_felt)
+>>>>>>> d5ded20 (dev(gate): rename storage variables)
     return ()
 end
