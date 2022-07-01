@@ -151,7 +151,7 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     deposit = await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [YANG_0_ADDRESS, to_wad(10), shrine_user.address, 0],
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), shrine_user.address, 0],
     )
     return deposit
 
@@ -185,7 +185,7 @@ async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionE
     withdraw = await shrine_owner.send_tx(
         shrine.contract_address,
         "withdraw",
-        [YANG_0_ADDRESS, to_wad(10), shrine_user.address, 0],
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), shrine_user.address, 0],
     )
     return withdraw
 
@@ -335,20 +335,20 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
         shrine_deposit,
         shrine.contract_address,
         "YangUpdated",
-        [YANG_0_ADDRESS, to_wad(10), YANG_0_CEILING],
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), YANG_0_CEILING],
     )
     assert_event_emitted(
         shrine_deposit,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 0, YANG_0_ADDRESS, to_wad(10)],
+        [shrine_user.address, 0, YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT)],
     )
 
     yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-    assert yang.total == to_wad(10)
+    assert yang.total == to_wad(INITIAL_DEPOSIT)
 
     amt = (await shrine.get_deposit(shrine_user.address, 0, YANG_0_ADDRESS).invoke()).result.wad
-    assert amt == to_wad(10)
+    assert amt == to_wad(INITIAL_DEPOSIT)
 
 
 @pytest.mark.asyncio
@@ -542,7 +542,7 @@ async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
     await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [YANG_0_ADDRESS, to_wad(10), shrine_user.address, 0],
+        [YANG_0_ADDRESS, 0, shrine_user.address, 0],
     )
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
@@ -637,11 +637,10 @@ async def test_shrine_withdraw_invalid_yang_fail(users, shrine):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdraw_insufficient_yang_fail(users, shrine):
+async def test_shrine_withdraw_insufficient_yang_fail(users, shrine, shrine_deposit):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
         await shrine_owner.send_tx(
             shrine.contract_address,
@@ -835,7 +834,7 @@ async def test_update_yang_max(users, shrine):
     )  # update yang_max to a value smaller than the total amount currently deposited
 
     # This should fail, since yang.total exceeds yang.max
-    with pytest.raises(StarkException, match="Shrine: Maximum amount of Yang exceeded"):
+    with pytest.raises(StarkException, match="Shrine: Exceeds maximum amount of Yang allowed for system"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "deposit",

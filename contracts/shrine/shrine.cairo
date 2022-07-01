@@ -297,7 +297,7 @@ func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 ):
     assert_auth()
 
-    let (yang_id) = get_valid_yang(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     let (yang : Yang) = shrine_yangs_storage.read(yang_id)
     shrine_yangs_storage.write(yang_id, Yang(yang.total, new_max))
     YangUpdated.emit(yang_address, yang.total, new_max)
@@ -374,7 +374,7 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_auth()
 
     let (interval) = now()
-    let (yang_id) = get_valid_yang(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     shrine_series_storage.write(yang_id, interval, price)
 
     SeriesIncremented.emit(yang_address, price, interval)
@@ -405,7 +405,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     assert_auth()
 
-    let (yang_id) = get_valid_yang(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
 
     # Charge interest for source trove to ensure it remains safe
     charge(src_address, src_trove_id)
@@ -454,12 +454,12 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     charge(user_address, trove_id)
 
     # Update yang balance of system
-    let (yang_id) = get_valid_yang(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
     let (new_total) = WadRay.add(old_yang_info.total, amount)
 
     # Asserting that the deposit does not cause the total amount of yang deposited to exceed the max.
-    with_attr error_message("Shrine: Maximum amount of Yang exceeded"):
+    with_attr error_message("Shrine: Exceeds maximum amount of Yang allowed for system"):
         assert_le(new_total, old_yang_info.max)
     end
 
@@ -487,25 +487,25 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     assert_auth()
 
     # Retrieve yang info
-    let (yang_id) = get_valid_yang(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
 
     # Ensure trove has sufficient yang
     let (trove_yang_balance) = shrine_deposits_storage.read(user_address, trove_id, yang_id)
     with_attr error_message("Shrine: Insufficient yang"):
         # WadRay.sub_unsigned asserts (amount - old_yang_info.total) > 0
-        let (new_total) = WadRay.sub(old_yang_info.total, amount)
+        let (new_trove_balance) = WadRay.sub_unsigned(trove_yang_balance, amount)
     end
 
     # Charge interest
     charge(user_address, trove_id)
 
     # Update yang balance of system
+    let (new_total) = WadRay.sub_unsigned(old_yang_info.total, amount)
     let new_yang_info : Yang = Yang(total=new_total, max=old_yang_info.max)
     shrine_yangs_storage.write(yang_id, new_yang_info)
 
     # Update yang balance of trove
-    let (new_trove_balance) = WadRay.sub(trove_yang_balance, amount)
     shrine_deposits_storage.write(user_address, trove_id, yang_id, new_trove_balance)
 
     # Check if Trove is healthy
@@ -742,7 +742,7 @@ end
 
 # Helper function to get the yang ID given a yang address, and throw an error if
 # yang address has not been added (i.e. yang ID = 0)
-func get_valid_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func get_valid_yang_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
 ) -> (ufelt):
     let (yang_id) = shrine_yang_id_storage.read(yang_address)

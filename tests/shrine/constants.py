@@ -17,6 +17,8 @@ YANGS = [
     {"address": 3456, "start_price": 1.25, "ceiling": 10_000_000 * WAD_SCALE},
 ]
 
+INITIAL_DEPOSIT = 10
+
 FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
 MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
