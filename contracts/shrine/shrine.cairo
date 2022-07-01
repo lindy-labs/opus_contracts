@@ -1028,8 +1028,6 @@ func assert_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
     return ()
 end
 
-
-
 # Gets the custom threshold (maximum LTV before liquidation) of a trove
 # Also returns the total trove value
 # `threshold` is a wad
