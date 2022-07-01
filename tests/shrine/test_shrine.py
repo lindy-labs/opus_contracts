@@ -7,7 +7,7 @@ import pytest
 from constants import *  # noqa: F403
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starkware_utils.error_handling import StarkException
-from starkware.starknet.testing.starknet import StarknetContract
+
 from tests.utils import (
     FALSE,
     RAY_SCALE,
@@ -139,15 +139,40 @@ def compound(
 
     return debt
 
-async def calculate_trove_threshold(user_address : int, trove_id : int, shrine : StarknetContract) -> Decimal:
-    cumulative_weighted_threshold = Decimal(0)
-    total_value = Decimal(0)
-    for d in DEPOSITS:
-        price = from_wad((await shrine.yang_last_price(d["address"]).invoke()).result.wad)
-        total_value += price * from_wad(d["amount"])
-        cumulative_weighted_threshold += price * from_wad(d["amount"]) * from_wad(d["threshold"])
-    
-    return cumulative_weighted_threshold / total_value 
+
+def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
+    """
+    Helper function to calculate a trove's threshold
+
+    Arguments
+    ---------
+    prices : List[int]
+        Ordered list of the prices of each Yang in wad
+    amounts: List[int]
+        Ordered list of the amount of each Yang deposited in the Trove in wad
+    thresholds: List[Decimal]
+        Ordered list of the threshold for each Yang in wad
+
+    Returns
+    -------
+    Value of the variable threshold in decimal.
+    """
+    cumulative_weighted_threshold = Decimal("0")
+    total_value = Decimal("0")
+
+    # Sanity check on inputs
+    assert len(prices) == len(amounts) == len(thresholds)
+
+    for p, a, t in zip(prices, amounts, thresholds):
+        p = from_wad(p)
+        a = from_wad(a)
+        t = from_wad(t)
+
+        total_value += p * a
+        cumulative_weighted_threshold += p * a * t
+
+    return cumulative_weighted_threshold / total_value
+
 
 #
 # Fixtures
@@ -165,13 +190,15 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     return deposit
 
 
-@pytest.fixture 
-async def shrine_deposit_multiple(users, shrine): 
+@pytest.fixture
+async def shrine_deposit_multiple(users, shrine):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
     for d in DEPOSITS:
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [d["address"], d["amount"], shrine_user.address, 0])
+        await shrine_owner.send_tx(
+            shrine.contract_address, "deposit", [d["address"], d["amount"], shrine_user.address, 0]
+        )
 
 
 @cache
@@ -240,6 +267,7 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 #
 # Tests
 #
+
 
 @pytest.mark.asyncio
 async def test_shrine_setup(shrine):
@@ -880,16 +908,20 @@ async def test_set_ceiling(users, shrine):
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
 
+
 @pytest.mark.asyncio
 async def test_get_trove_threshold(users, shrine, shrine_deposit_multiple):
     shrine_user = await users("shrine user")
 
-    expected_threshold = await calculate_trove_threshold(shrine_user.address, 0, shrine)
+    prices = []
+    for d in DEPOSITS:
+        price = (await shrine.yang_last_price(d["address"]).invoke()).result.wad
+        prices.append(price)
+
+    expected_threshold = calculate_trove_threshold(
+        prices, [d["amount"] for d in DEPOSITS], [d["threshold"] for d in DEPOSITS]
+    )
 
     # Getting actual threshold
     actual_threshold = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result.threshold_wad
     assert_equalish(from_wad(actual_threshold), expected_threshold)
-
-
-
-    
