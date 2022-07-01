@@ -538,7 +538,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_interval) = now()
 
     # Get updated debt amount with interest
-    let (old_trove_debt_compounded) = estimate_inner(
+    let (old_trove_debt_compounded) = estimate_internal(
         user_address, trove_id, old_trove_info, current_interval
     )
 
@@ -602,7 +602,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_interval) = now()
 
     # Get updated debt amount with interest
-    let (old_trove_debt_compounded) = estimate_inner(
+    let (old_trove_debt_compounded) = estimate_internal(
         user_address, trove_id, old_trove_info, current_interval
     )
 
@@ -724,7 +724,7 @@ func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (trove : Trove) = get_trove(user_address, trove_id)
     let (current_interval) = now()
-    return estimate_inner(user_address, trove_id, trove, current_interval)
+    return estimate_internal(user_address, trove_id, trove, current_interval)
 end
 
 #
@@ -752,7 +752,7 @@ func get_valid_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     return (yang_id)
 end
 
-# Wrapper function for the recursive `appraise_inner` function that gets the most recent trove value
+# Wrapper function for the recursive `appraise_internal` function that gets the most recent trove value
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ) -> (wad):
@@ -760,7 +760,7 @@ func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (yang_count) = shrine_yangs_count_storage.read()
     let (interval) = now()
-    let (value) = appraise_inner(user_address, trove_id, yang_count, interval, 0)
+    let (value) = appraise_internal(user_address, trove_id, yang_count, interval, 0)
     return (value)
 end
 
@@ -783,7 +783,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_interval) = now()
 
     # Get new debt amount
-    let (new_debt) = estimate_inner(user_address, trove_id, trove, current_interval)
+    let (new_debt) = estimate_internal(user_address, trove_id, trove, current_interval)
 
     # Update Trove
     let updated_trove : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
@@ -806,7 +806,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 # Wrapper function to make a call to `compound` for estimating accumulated interest.
-func estimate_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func estimate_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, trove : Trove, current
 ) -> (wad):
     alloc_locals
@@ -908,7 +908,7 @@ func linear{range_check_ptr}(x, m, b) -> (ray):
 end
 
 # Calculates the trove's LTV at the given interval.
-# See comments above `appraise_inner` for the underlying assumption on which the correctness of the result depends.
+# See comments above `appraise_internal` for the underlying assumption on which the correctness of the result depends.
 # Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 # Returns a ray.
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -920,7 +920,7 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     end
 
     let (yang_count) = shrine_yangs_count_storage.read()
-    let (value) = appraise_inner(user_address, trove_id, yang_count, interval, 0)
+    let (value) = appraise_internal(user_address, trove_id, yang_count, interval, 0)
 
     let (ratio) = WadRay.wunsigned_div(debt, value)
     let (ratio_ray) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
@@ -931,7 +931,7 @@ end
 # For any series that returns 0 for the given interval, it uses the most recent available price before that interval.
 # This function uses historical prices but the currently deposited yang amounts to calculate value.
 # The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
-func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, yang_id, interval, cumulative
 ) -> (wad):
     alloc_locals
@@ -951,7 +951,7 @@ func appraise_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
 
     # Recursive call
-    return appraise_inner(
+    return appraise_internal(
         user_address=user_address,
         trove_id=trove_id,
         yang_id=yang_id - 1,
