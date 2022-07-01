@@ -783,7 +783,7 @@ async def test_add_yang(users, shrine):
         "YangAdded",
         [new_yang_address, g_count + 1, new_yang_max],
     )
-    assert_event_emitted(tx, shrine.contract_address, "NumYangsUpdated", [g_count + 1])
+    assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")

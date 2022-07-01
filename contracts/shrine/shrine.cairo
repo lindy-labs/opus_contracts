@@ -51,7 +51,7 @@ func YangAdded(yang_address, yang_id, max):
 end
 
 @event
-func YangUpdated(yang_address, new_total, new_max):
+func YangUpdated(yang_address, updated_yang : Yang):
 end
 
 @event
@@ -59,7 +59,7 @@ func YinTotalUpdated(new_total):
 end
 
 @event
-func NumYangsUpdated(num):
+func YangsCountUpdated(num):
 end
 
 @event
@@ -286,7 +286,7 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     YangAdded.emit(yang_address, yang_count + 1, max)
 
     shrine_yangs_count_storage.write(yang_count + 1)
-    NumYangsUpdated.emit(yang_count + 1)
+    YangsCountUpdated.emit(yang_count + 1)
 
     return ()
 end
@@ -298,9 +298,10 @@ func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     assert_auth()
 
     let (yang_id) = get_valid_yang_id(yang_address)
-    let (yang : Yang) = shrine_yangs_storage.read(yang_id)
-    shrine_yangs_storage.write(yang_id, Yang(yang.total, new_max))
-    YangUpdated.emit(yang_address, yang.total, new_max)
+    let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
+    let new_yang_info : Yang = Yang(old_yang_info.total, new_max)
+    shrine_yangs_storage.write(yang_id, new_yang_info)
+    YangUpdated.emit(yang_address, new_yang_info)
 
     return ()
 end
@@ -471,7 +472,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (new_trove_balance) = WadRay.add(trove_yang_balance, amount)
     shrine_deposits_storage.write(user_address, trove_id, yang_id, new_trove_balance)
 
-    YangUpdated.emit(yang_address, new_total, old_yang_info.max)
+    YangUpdated.emit(yang_address, new_yang_info)
     DepositUpdated.emit(user_address, trove_id, yang_address, new_trove_balance)
 
     return ()
@@ -514,7 +515,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert healthy = TRUE
     end
 
-    YangUpdated.emit(yang_address, new_total, old_yang_info.max)
+    YangUpdated.emit(yang_address, new_yang_info)
     DepositUpdated.emit(user_address, trove_id, yang_address, new_trove_balance)
     return ()
 end
