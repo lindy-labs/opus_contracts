@@ -440,7 +440,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
         [shrine_user.address, 0, FEED_LEN - 1, to_wad(5000)],
     )
 
-    system_debt = (await shrine.get_yin().invoke()).result.wad
+    system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
     assert system_debt == to_wad(5000)
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
@@ -470,7 +470,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
         [shrine_user.address, 0, FEED_LEN, 0],
     )
 
-    system_debt = (await shrine.get_yin().invoke()).result.wad
+    system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
     assert system_debt == 0
 
     user_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
@@ -829,7 +829,7 @@ async def test_add_yang(users, shrine):
         "YangAdded",
         [new_yang_address, g_count + 1, new_yang_max],
     )
-    assert_event_emitted(tx, shrine.contract_address, "NumYangsUpdated", [g_count + 1])
+    assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")

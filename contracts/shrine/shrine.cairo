@@ -54,7 +54,7 @@ func YangAdded(yang_address, yang_id, max):
 end
 
 @event
-func YangUpdated(yang_address, new_total, new_max):
+func YangUpdated(yang_address, updated_yang : Yang):
 end
 
 @event
@@ -62,7 +62,7 @@ func YinTotalUpdated(new_total):
 end
 
 @event
-func NumYangsUpdated(num):
+func YangsCountUpdated(num):
 end
 
 @event
@@ -167,7 +167,7 @@ end
 
 # Total amount of synthetic minted
 @storage_var
-func shrine_yin_storage() -> (wad):
+func shrine_debt_storage() -> (wad):
 end
 
 # Keeps track of the price history of each Yang - wad
@@ -234,8 +234,8 @@ func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func get_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
-    return shrine_yin_storage.read()
+func get_shrine_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
+    return shrine_debt_storage.read()
 end
 
 @view
@@ -291,7 +291,7 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     YangAdded.emit(yang_address, yang_count + 1, max)
 
     shrine_yangs_count_storage.write(yang_count + 1)
-    NumYangsUpdated.emit(yang_count + 1)
+    YangsCountUpdated.emit(yang_count + 1)
 
     return ()
 end
@@ -303,9 +303,10 @@ func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     assert_auth()
 
     let (yang_id) = get_valid_yang_id(yang_address)
-    let (yang : Yang) = shrine_yangs_storage.read(yang_id)
-    shrine_yangs_storage.write(yang_id, Yang(yang.total, new_max))
-    YangUpdated.emit(yang_address, yang.total, new_max)
+    let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
+    let new_yang_info : Yang = Yang(old_yang_info.total, new_max)
+    shrine_yangs_storage.write(yang_id, new_yang_info)
+    YangUpdated.emit(yang_address, new_yang_info)
 
     return ()
 end
@@ -475,7 +476,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (new_trove_balance) = WadRay.add(trove_yang_balance, amount)
     shrine_deposits_storage.write(user_address, trove_id, yang_id, new_trove_balance)
 
-    YangUpdated.emit(yang_address, new_total, old_yang_info.max)
+    YangUpdated.emit(yang_address, new_yang_info)
     DepositUpdated.emit(user_address, trove_id, yang_address, new_trove_balance)
 
     return ()
@@ -515,8 +516,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Check if Trove is within limits
     assert_within_limits(user_address, trove_id)
 
-    # Events
-    YangUpdated.emit(yang_address, new_total, old_yang_info.max)
+    YangUpdated.emit(yang_address, new_yang_info)
     DepositUpdated.emit(user_address, trove_id, yang_address, new_trove_balance)
     return ()
 end
@@ -548,8 +548,8 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_info.debt)
 
     # Check that debt ceiling has not been reached
-    let (current_system_debt) = shrine_yin_storage.read()
-    let new_system_debt = current_system_debt + diff + amount  # TODO: should there be an overflow check here?
+    let (current_system_debt) = shrine_debt_storage.read()
+    let new_system_debt = current_system_debt + diff + amount
     let (debt_ceiling) = shrine_ceiling_storage.read()
 
     with_attr error_message("Shrine: Debt ceiling reached"):
@@ -557,7 +557,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     end
 
     # Update system debt
-    shrine_yin_storage.write(new_system_debt)
+    shrine_debt_storage.write(new_system_debt)
 
     # Initialise `Trove.charge_from` to current interval if old debt was 0.
     # Otherwise, set `Trove.charge_from` to current interval + 1 because interest has been
@@ -609,9 +609,9 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_info.debt)
 
     # Update system debt
-    let (current_system_debt) = shrine_yin_storage.read()
+    let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff - amount
-    shrine_yin_storage.write(new_system_debt)
+    shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
     let (new_debt) = WadRay.sub(old_trove_debt_compounded, amount)
@@ -804,14 +804,14 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     set_trove(user_address, trove_id, updated_trove)
 
     # Get old system debt amount
-    let (old_system_debt) = shrine_yin_storage.read()
+    let (old_system_debt) = shrine_debt_storage.read()
 
     # Get interest charged
     let (diff) = WadRay.sub_unsigned(new_debt, trove.debt)
 
     # Get new system debt
     let new_system_debt = old_system_debt + diff
-    shrine_yin_storage.write(new_system_debt)
+    shrine_debt_storage.write(new_system_debt)
 
     YinTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, updated_trove)
