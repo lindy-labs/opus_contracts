@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
@@ -184,7 +186,7 @@ async def test_gate_setup(gate, yang, users):
 
 
 @pytest.mark.asyncio
-async def test_gate_deposit(users, gate, yang, gate_deposit):
+async def test_gate_deposit_pass(users, gate, yang, gate_deposit):
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 
@@ -201,6 +203,11 @@ async def test_gate_deposit(users, gate, yang, gate_deposit):
     user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
     assert total_shares == from_uint(user_shares) == FIRST_DEPOSIT_AMT
 
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert exchange_rate == to_wad(1)
+
+    # Check event
     assert_event_emitted(
         gate_deposit,
         gate.contract_address,
@@ -227,6 +234,11 @@ async def test_gate_mint(users, gate, yang, gate_mint):
     user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
     assert total_shares == from_uint(user_shares) == FIRST_DEPOSIT_AMT
 
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert exchange_rate == to_wad(1)
+
+    # Check event
     assert_event_emitted(
         gate_mint,
         gate.contract_address,
@@ -266,6 +278,12 @@ async def test_gate_sync(users, gate, yang, rebase):
     user_shares_uint = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
     user_underlying = from_uint((await gate.previewRedeem(user_shares_uint).invoke()).result.assets)
     assert user_underlying == after_gate_bal
+
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    user_shares = from_wad(from_uint(user_shares_uint))
+    expected_exchange_rate = int(after_gate_bal / Decimal(user_shares))
+    assert exchange_rate == expected_exchange_rate
 
     # Check event emitted
     assert_event_emitted(

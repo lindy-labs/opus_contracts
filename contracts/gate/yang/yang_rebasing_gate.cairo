@@ -159,6 +159,28 @@ func get_last_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin
     return gate_last_asset_balance_storage.read()
 end
 
+# Returns the amount of assets represented by one share in the pool as currently constituted
+@view
+func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    wad
+):
+    let (total_supply_uint : Uint256) = ERC20_totalSupply()
+    let (total_supply) = uint_to_felt_unchecked(total_supply_uint)
+    let (total_balance) = get_last_underlying_balance()
+
+    # Catch division by zero errors
+    if total_supply == 0:
+        return (0)
+    end
+
+    if total_balance == 0:
+        return (0)
+    end
+
+    let (exchange_rate) = WadRay.wunsigned_div_unchecked(total_balance, total_supply)
+    return (exchange_rate)
+end
+
 #
 # Getters - ERC20
 #
