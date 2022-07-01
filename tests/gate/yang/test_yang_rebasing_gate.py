@@ -80,12 +80,17 @@ def gate(yang_rebasing_gate) -> StarknetContract:
 
 
 @pytest.fixture
-async def gate_deposit(users, gate, yang_rebasing) -> StarknetTransactionExecutionInfo:
+def yang(yang_rebasing) -> StarknetContract:
+    yield yang_rebasing
+
+
+@pytest.fixture
+async def gate_deposit(users, gate, yang) -> StarknetTransactionExecutionInfo:
     shrine_user = await users("shrine user")
     abbot = await users("abbot")
 
     # Approve Gate to transfer tokens from user
-    await shrine_user.send_tx(yang_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+    await shrine_user.send_tx(yang.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address])
@@ -93,12 +98,12 @@ async def gate_deposit(users, gate, yang_rebasing) -> StarknetTransactionExecuti
 
 
 @pytest.fixture
-async def gate_mint(users, gate, yang_rebasing) -> StarknetTransactionExecutionInfo:
+async def gate_mint(users, gate, yang) -> StarknetTransactionExecutionInfo:
     shrine_user = await users("shrine user")
     abbot = await users("abbot")
 
     # Approve Gate to transfer tokens from user
-    await shrine_user.send_tx(yang_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+    await shrine_user.send_tx(yang.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
     # Call deposit
     mint = await abbot.send_tx(gate.contract_address, "deposit", [*(FIRST_MINT_AMT, 0), shrine_user.address])
@@ -106,20 +111,18 @@ async def gate_mint(users, gate, yang_rebasing) -> StarknetTransactionExecutionI
 
 
 @pytest.fixture
-async def rebase(users, gate, yang_rebasing, gate_deposit) -> StarknetTransactionExecutionInfo:
+async def rebase(users, gate, yang, gate_deposit) -> StarknetTransactionExecutionInfo:
     """
     Rebase the gate contract's balance by adding 10%
     """
     shrine_user = await users("shrine user")
 
-    tx = await shrine_user.send_tx(
-        yang_rebasing.contract_address, "mint", [gate.contract_address, *(FIRST_REBASE_AMT, 0)]
-    )
+    tx = await shrine_user.send_tx(yang.contract_address, "mint", [gate.contract_address, *(FIRST_REBASE_AMT, 0)])
     return tx
 
 
 @pytest.fixture
-async def sync(users, gate, yang_rebasing, rebase) -> StarknetTransactionExecutionInfo:
+async def sync(users, gate, yang, rebase) -> StarknetTransactionExecutionInfo:
     abbot = await users("abbot")
     # Update Gate's balance and charge tax
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
@@ -127,12 +130,12 @@ async def sync(users, gate, yang_rebasing, rebase) -> StarknetTransactionExecuti
 
 
 @pytest.fixture
-async def gate_subsequent_deposit(users, gate, yang_rebasing, sync):
+async def gate_subsequent_deposit(users, gate, yang, sync):
     shrine_user = await users("shrine user")
     abbot = await users("abbot")
 
     # Approve Gate to transfer tokens from user
-    await shrine_user.send_tx(yang_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+    await shrine_user.send_tx(yang.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
@@ -140,12 +143,12 @@ async def gate_subsequent_deposit(users, gate, yang_rebasing, sync):
 
 
 @pytest.fixture
-async def gate_subsequent_mint(users, gate, yang_rebasing, sync):
+async def gate_subsequent_mint(users, gate, yang, sync):
     shrine_user = await users("shrine user")
     abbot = await users("abbot")
 
     # Approve Gate to transfer tokens from user
-    await shrine_user.send_tx(yang_rebasing.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+    await shrine_user.send_tx(yang.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
     # Call deposit
     mint = await abbot.send_tx(gate.contract_address, "mint", [*(SECOND_MINT_AMT, 0), shrine_user.address])
@@ -158,14 +161,14 @@ async def gate_subsequent_mint(users, gate, yang_rebasing, sync):
 
 
 @pytest.mark.asyncio
-async def test_gate_setup(gate, yang_rebasing, users):
+async def test_gate_setup(gate, yang, users):
     # Check system is live
     live = (await gate.get_live().invoke()).result.bool
     assert live == TRUE
 
     # Check asset address
     asset = (await gate.asset().invoke()).result.assetTokenAddress
-    assert asset == yang_rebasing.contract_address
+    assert asset == yang.contract_address
 
     # Check total assets
     asset_bal = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
@@ -190,12 +193,12 @@ async def test_gate_setup(gate, yang_rebasing, users):
 
 
 @pytest.mark.asyncio
-async def test_gate_deposit(users, gate, yang_rebasing, gate_deposit):
+async def test_gate_deposit(users, gate, yang, gate_deposit):
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 
     # Check vault underlying balance
-    total_bal = from_uint((await yang_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    total_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = (await gate.totalAssets().invoke()).result.totalManagedAssets
     assert total_bal == from_uint(total_assets) == FIRST_DEPOSIT_AMT
 
@@ -216,12 +219,12 @@ async def test_gate_deposit(users, gate, yang_rebasing, gate_deposit):
 
 
 @pytest.mark.asyncio
-async def test_gate_mint(users, gate, yang_rebasing, gate_mint):
+async def test_gate_mint(users, gate, yang, gate_mint):
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 
     # Check vault underlying balance
-    total_bal = from_uint((await yang_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    total_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = (await gate.totalAssets().invoke()).result.totalManagedAssets
     assert total_bal == from_uint(total_assets) == FIRST_DEPOSIT_AMT
 
@@ -242,14 +245,14 @@ async def test_gate_mint(users, gate, yang_rebasing, gate_mint):
 
 
 @pytest.mark.asyncio
-async def test_gate_sync(users, gate, yang_rebasing, rebase):
+async def test_gate_sync(users, gate, yang, rebase):
     abbot = await users("abbot")
     tax_collector = await users("tax collector")
     shrine_user = await users("shrine user")
 
     # Get balances before sync
-    before_tax_collector_bal = from_uint((await yang_rebasing.balanceOf(tax_collector.address).invoke()).result.balance)
-    rebased_bal = from_uint((await yang_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    before_tax_collector_bal = from_uint((await yang.balanceOf(tax_collector.address).invoke()).result.balance)
+    rebased_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
 
     # Check gage token contract for rebased balance
     assert rebased_bal == FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
@@ -278,12 +281,12 @@ async def test_gate_sync(users, gate, yang_rebasing, rebase):
     assert_event_emitted(sync, gate.contract_address, "Sync", [before_underlying_bal, after_underlying_bal, tax])
 
     # Check tax collector has received tax
-    after_tax_collector_bal = from_uint((await yang_rebasing.balanceOf(tax_collector.address).invoke()).result.balance)
+    after_tax_collector_bal = from_uint((await yang.balanceOf(tax_collector.address).invoke()).result.balance)
     assert after_tax_collector_bal == before_tax_collector_bal + tax
 
 
 @pytest.mark.asyncio
-async def test_gate_subsequent_deposit(users, gate, yang_rebasing, sync):
+async def test_gate_subsequent_deposit(users, gate, yang, sync):
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 
@@ -302,7 +305,7 @@ async def test_gate_subsequent_deposit(users, gate, yang_rebasing, sync):
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
 
     # Check vault underlying balance
-    after_total_bal = from_uint((await yang_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    after_total_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
     expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - (from_ray(TAX) * FIRST_REBASE_AMT)
     assert after_total_bal == total_assets == expected_bal
@@ -328,7 +331,7 @@ async def test_gate_subsequent_deposit(users, gate, yang_rebasing, sync):
 
 
 @pytest.mark.asyncio
-async def test_gate_subsequent_mint(users, gate, yang_rebasing, sync):
+async def test_gate_subsequent_mint(users, gate, yang, sync):
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 
@@ -347,7 +350,7 @@ async def test_gate_subsequent_mint(users, gate, yang_rebasing, sync):
     mint = await abbot.send_tx(gate.contract_address, "mint", [*(SECOND_MINT_AMT, 0), shrine_user.address])
 
     # Check vault underlying balance
-    after_total_bal = from_uint((await yang_rebasing.balanceOf(gate.contract_address).invoke()).result.balance)
+    after_total_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
     assert after_total_bal == total_assets
     expected_bal = from_wad(before_total_assets) + expected_assets
@@ -424,3 +427,28 @@ async def test_gate_transfer_fail(users, gate, gate_subsequent_deposit):
     # Assert no changes
     assert before_sender_balance == after_sender_balance
     assert before_recipient_balance == after_recipient_balance
+
+
+@pytest.mark.asyncio
+async def test_gate_redeem_before_sync_pass(users, gate, yang, gate_deposit):
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Redeem
+    await abbot.send_tx(
+        gate.contract_address, "redeem", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+    )
+
+    # Fetch post-withdrawal balances
+    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
+    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
+
+    assert from_uint(after_user_balance) == INITIAL_AMT
+    assert from_uint(after_gate_balance) == 0
+
+    # Fetch post-withdrawal shares
+    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
+
+    assert from_uint(after_user_shares) == 0
+    assert from_uint(total_shares) == 0

@@ -252,16 +252,16 @@ namespace ERC4626:
 
         let (caller : felt) = get_caller_address()
 
-        if caller != owner:
-            decrease_allowance_by_amount(owner, caller, shares)
-            tempvar syscall_ptr = syscall_ptr
-            tempvar pedersen_ptr = pedersen_ptr
-            tempvar range_check_ptr = range_check_ptr
-        else:
-            tempvar syscall_ptr = syscall_ptr
-            tempvar pedersen_ptr = pedersen_ptr
-            tempvar range_check_ptr = range_check_ptr
-        end
+        # if caller != owner:
+        #    decrease_allowance_by_amount(owner, caller, shares)
+        #    tempvar syscall_ptr = syscall_ptr
+        #    tempvar pedersen_ptr = pedersen_ptr
+        #    tempvar range_check_ptr = range_check_ptr
+        # else:
+        #    tempvar syscall_ptr = syscall_ptr
+        #    tempvar pedersen_ptr = pedersen_ptr
+        #    tempvar range_check_ptr = range_check_ptr
+        # end
 
         ERC20_burn(owner, shares)
 
@@ -303,16 +303,16 @@ namespace ERC4626:
 
         let (caller : felt) = get_caller_address()
 
-        if caller != owner:
-            decrease_allowance_by_amount(owner, caller, shares)
-            tempvar syscall_ptr = syscall_ptr
-            tempvar pedersen_ptr = pedersen_ptr
-            tempvar range_check_ptr = range_check_ptr
-        else:
-            tempvar syscall_ptr = syscall_ptr
-            tempvar pedersen_ptr = pedersen_ptr
-            tempvar range_check_ptr = range_check_ptr
-        end
+        # if caller != owner:
+        #    decrease_allowance_by_amount(owner, caller, shares)
+        #    tempvar syscall_ptr = syscall_ptr
+        #    tempvar pedersen_ptr = pedersen_ptr
+        #    tempvar range_check_ptr = range_check_ptr
+        # else:
+        #    tempvar syscall_ptr = syscall_ptr
+        #    tempvar pedersen_ptr = pedersen_ptr
+        #    tempvar range_check_ptr = range_check_ptr
+        # end
 
         let (assets : Uint256) = previewRedeem(shares)
         let (is_zero_assets : felt) = uint256_is_zero(assets)
