@@ -414,6 +414,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang"):
+        # WadRay.sub_unsigned asserts (amount - src_yang_balance) > 0
         let (new_src_balance) = WadRay.sub_unsigned(src_yang_balance, amount)
     end
 
@@ -421,9 +422,8 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     shrine_deposits_storage.write(src_address, src_trove_id, yang_id, new_src_balance)
 
     # Assert source trove is safe
-    let (healthy) = is_healthy(src_address, src_trove_id)
-
     with_attr error_message("Shrine: Trove is at risk after moving yang"):
+        let (healthy) = is_healthy(src_address, src_trove_id)
         assert healthy = TRUE
     end
 
@@ -493,14 +493,14 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Ensure trove has sufficient yang
     let (trove_yang_balance) = shrine_deposits_storage.read(user_address, trove_id, yang_id)
     with_attr error_message("Shrine: Insufficient yang"):
-        assert_le(amount, trove_yang_balance)
+        # WadRay.sub_unsigned asserts (amount - old_yang_info.total) > 0
+        let (new_total) = WadRay.sub(old_yang_info.total, amount)
     end
 
     # Charge interest
     charge(user_address, trove_id)
 
     # Update yang balance of system
-    let (new_total) = WadRay.sub(old_yang_info.total, amount)
     let new_yang_info : Yang = Yang(total=new_total, max=old_yang_info.max)
     shrine_yangs_storage.write(yang_id, new_yang_info)
 
@@ -509,9 +509,8 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     shrine_deposits_storage.write(user_address, trove_id, yang_id, new_trove_balance)
 
     # Check if Trove is healthy
-    let (healthy) = is_healthy(user_address, trove_id)
-
     with_attr error_message("Shrine: Trove is at risk after withdrawing yang"):
+        let (healthy) = is_healthy(user_address, trove_id)
         assert healthy = TRUE
     end
 
@@ -573,9 +572,8 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     set_trove(user_address, trove_id, new_trove_info)
 
     # Check if Trove is healthy
-    let (healthy) = is_healthy(user_address, trove_id)
-
     with_attr error_message("Shrine: Trove is at risk after forge"):
+        let (healthy) = is_healthy(user_address, trove_id)
         assert healthy = TRUE
     end
 
