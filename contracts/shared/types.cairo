@@ -6,6 +6,6 @@ struct Trove:
 end
 
 struct Yang:
-    member total : felt  # Total amount of the Gage currently deposited
-    member max : felt  # Maximum amount of the Gage that can be deposited
+    member total : felt  # Total amount of the Yang currently deposited
+    member max : felt  # Maximum amount of the Yang that can be deposited
 end

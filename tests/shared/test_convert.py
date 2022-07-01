@@ -9,7 +9,7 @@ A_UPPER_BOUND = 2**128
 
 @pytest.fixture
 async def convert(starknet, users) -> StarknetContract:
-    contract = compile_contract("contracts/shared/convert.cairo")
+    contract = compile_contract("tests/shared/test_convert.cairo")
     convert = await starknet.deploy(contract_class=contract, constructor_calldata=[])
     return convert
 
@@ -29,7 +29,7 @@ async def convert(starknet, users) -> StarknetContract:
 )
 @pytest.mark.asyncio
 async def test_pack_felt_pass(convert, a, b):
-    res = (await convert.pack_felt(a, b).invoke()).result.packed
+    res = (await convert.test_pack_felt(a, b).invoke()).result.packed
     assert res == a + (b * A_UPPER_BOUND)
 
 
@@ -39,4 +39,4 @@ async def test_pack_felt_pass(convert, a, b):
 @pytest.mark.asyncio
 async def test_pack_felt_fail(convert, a, b):
     with pytest.raises(StarkException):
-        (await convert.pack_felt(a, b).invoke()).result.packed
+        (await convert.test_pack_felt(a, b).invoke()).result.packed

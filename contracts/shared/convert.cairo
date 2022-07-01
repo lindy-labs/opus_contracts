@@ -1,5 +1,3 @@
-%lang starknet
-
 from starkware.cairo.common.math import split_felt, assert_in_range
 from starkware.cairo.common.uint256 import Uint256
 
@@ -17,7 +15,6 @@ end
 
 # Packs `a` into the first 128 bits, packs `b` into the last 123 bits
 # Requires that 0 <= a < 2**128 and 0 <= b < 2**123
-@view
 func pack_felt{range_check_ptr}(a : felt, b : felt) -> (packed : felt):
     [range_check_ptr] = a
     let range_check_ptr = range_check_ptr + 1

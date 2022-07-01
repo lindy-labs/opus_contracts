@@ -23,13 +23,14 @@ YANGS = [
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
-        "address": YANG3_ADDRESS, 
-        "start_price": 1.25, 
+        "address": YANG3_ADDRESS,
+        "start_price": 1.25,
         "ceiling": 10_000_000 * WAD_SCALE,
-        "threshold": LIQUIDATION_THRESHOLD
+        "threshold": LIQUIDATION_THRESHOLD,
     },
 ]
 
+INITIAL_DEPOSIT = 10
 
 FEED_LEN = 20
 MAX_PRICE_CHANGE = 0.025
@@ -59,19 +60,7 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 # Threshold test constants
 DEPOSITS = [
-    {
-        "address": YANG1_ADDRESS,
-        "amount": 4 * WAD_SCALE,
-        "threshold": YANGS[0]["threshold"]
-    }, 
-    {
-        "address": YANG2_ADDRESS, 
-        "amount": 5 * WAD_SCALE,
-        "threshold": YANGS[1]["threshold"]
-    },
-    {
-        "address": YANG3_ADDRESS, 
-        "amount": 6 * WAD_SCALE,
-        "threshold": YANGS[2]["threshold"]
-    }
+    {"address": YANG1_ADDRESS, "amount": 4 * WAD_SCALE, "threshold": YANGS[0]["threshold"]},
+    {"address": YANG2_ADDRESS, "amount": 5 * WAD_SCALE, "threshold": YANGS[1]["threshold"]},
+    {"address": YANG3_ADDRESS, "amount": 6 * WAD_SCALE, "threshold": YANGS[2]["threshold"]},
 ]

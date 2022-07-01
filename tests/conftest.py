@@ -9,15 +9,7 @@ from cache import AsyncLRU
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.shrine.constants import (
-    DEBT_CEILING,
-    FEED_LEN,
-    LIQUIDATION_THRESHOLD,
-    MAX_PRICE_CHANGE,
-    MULTIPLIER_FEED,
-    SECONDS_PER_MINUTE,
-    YANGS,
-)
+from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, SECONDS_PER_MINUTE, YANGS
 from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt
 
 MRACParameters = namedtuple(
@@ -142,15 +134,18 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
-
     # Set debt ceiling
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [DEBT_CEILING])
 
     # Creating the gages
     for i in range(len(YANGS)):
-        await shrine_owner.send_tx(shrine.contract_address, "add_yang", [YANGS[i]["address"], YANGS[i]["ceiling"]]) # Add gage
-        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[i]["address"], YANGS[i]["threshold"]]) # Adding the gage's threshold
-        
+        await shrine_owner.send_tx(
+            shrine.contract_address, "add_yang", [YANGS[i]["address"], YANGS[i]["ceiling"]]
+        )  # Add gage
+        await shrine_owner.send_tx(
+            shrine.contract_address, "set_threshold", [YANGS[i]["address"], YANGS[i]["threshold"]]
+        )  # Adding the gage's threshold
+
     # Creating the price feeds
     feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
 
@@ -162,13 +157,13 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
             await shrine_owner.send_tx(
                 shrine.contract_address,
                 "advance",
-                [YANGS[j]["address"], feeds[j][i], timestamp],
+                [YANGS[j]["address"], feeds[j][i]],
             )
 
         await shrine_owner.send_tx(
             shrine.contract_address,
             "update_multiplier",
-            [MULTIPLIER_FEED[i], timestamp],
+            [MULTIPLIER_FEED[i]],
         )
 
     return shrine

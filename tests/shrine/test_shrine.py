@@ -185,7 +185,7 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     deposit = await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [YANG_0_ADDRESS, to_wad(10), shrine_user.address, 0],
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), shrine_user.address, 0],
     )
     return deposit
 
@@ -230,7 +230,7 @@ async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionE
     withdraw = await shrine_owner.send_tx(
         shrine.contract_address,
         "withdraw",
-        [YANG_0_ADDRESS, to_wad(10), shrine_user.address, 0],
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), shrine_user.address, 0],
     )
     return withdraw
 
@@ -253,15 +253,54 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
         await shrine_owner.send_tx(
             shrine.contract_address,
             "advance",
-            [yang0_address, yang0_feed[i], timestamp],
+            [yang0_address, yang0_feed[i]],
         )
         await shrine_owner.send_tx(
             shrine.contract_address,
             "update_multiplier",
-            [MULTIPLIER_FEED[i], timestamp],
+            [MULTIPLIER_FEED[i]],
         )
 
     return list(map(from_wad, yang0_feed))
+
+
+@cache
+@pytest.fixture
+async def update_feeds_intermittent(request, starknet, users, shrine, shrine_forge) -> List[Decimal]:
+    """
+    Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
+
+    This fixture takes in an index as argument, and skips that index when updating the
+    price and multiplier values.
+    """
+    shrine_owner = await users("shrine owner")
+
+    yang0_address = YANG_0_ADDRESS
+    yang0_feed = create_feed(YANGS[0]["start_price"], FEED_LEN, MAX_PRICE_CHANGE)
+
+    idx = request.param
+
+    for i in range(FEED_LEN):
+        # Add offset for initial feeds in `shrine`
+        timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
+        set_block_timestamp(starknet.state, timestamp)
+
+        # Skip index after timestamp is set
+        if i == idx:
+            continue
+
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "advance",
+            [yang0_address, yang0_feed[i]],
+        )
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_multiplier",
+            [MULTIPLIER_FEED[i]],
+        )
+
+    return idx, list(map(from_wad, yang0_feed))
 
 
 #
@@ -342,20 +381,20 @@ async def test_shrine_deposit(users, shrine, shrine_deposit):
         shrine_deposit,
         shrine.contract_address,
         "YangUpdated",
-        [YANG_0_ADDRESS, to_wad(10), YANG_0_CEILING],
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), YANG_0_CEILING],
     )
     assert_event_emitted(
         shrine_deposit,
         shrine.contract_address,
         "DepositUpdated",
-        [shrine_user.address, 0, YANG_0_ADDRESS, to_wad(10)],
+        [shrine_user.address, 0, YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT)],
     )
 
     yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-    assert yang.total == to_wad(10)
+    assert yang.total == to_wad(INITIAL_DEPOSIT)
 
     amt = (await shrine.get_deposit(shrine_user.address, 0, YANG_0_ADDRESS).invoke()).result.wad
-    assert amt == to_wad(10)
+    assert amt == to_wad(INITIAL_DEPOSIT)
 
 
 @pytest.mark.asyncio
@@ -509,24 +548,26 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("idx", [0, 1, FEED_LEN - 2, FEED_LEN - 1])
-async def test_intermittent_charge(users, shrine, update_feeds, idx):
+@pytest.mark.parametrize(
+    "update_feeds_intermittent", [0, 1, FEED_LEN - 2, FEED_LEN - 1], indirect=["update_feeds_intermittent"]
+)
+async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
     """
     Test for `charge` with "missed" price and multiplier updates at the given index.
 
-    The "idx" input is with reference to the second set of feeds (intervals 20 to 39).
+    The `update_feeds_intermittent` fixture returns a tuple of the index that is skipped,
+    and a list for the price feed.
+
+    The index is with reference to the second set of feeds (intervals 20 to 39).
     Therefore, writes to the contract takes in an additional offset of 20 for the initial
     set of feeds in `shrine` fixture.
     """
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    # Update price and multiplier to 0 to simulate missed update
-    timestamp = (idx + FEED_LEN) * 30 * SECONDS_PER_MINUTE
-    await shrine_owner.send_tx(shrine.contract_address, "advance", [YANG_0_ADDRESS, 0, timestamp])
-    await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [0, timestamp])
+    idx, price_feed = update_feeds_intermittent
 
-    # Assert that value has been set to 0
+    # Assert that value for skipped index is set to 0
     assert (await shrine.get_series(YANG_0_ADDRESS, idx + FEED_LEN).invoke()).result.wad == 0
     assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.ray == 0
 
@@ -536,7 +577,7 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.ray
 
     # Modify feeds
-    yang0_price_feed = [from_wad(start_price)] + update_feeds
+    yang0_price_feed = [from_wad(start_price)] + price_feed
     multiplier_feed = [from_ray(start_multiplier)] + [Decimal("1")] * FEED_LEN
 
     # Add offset of 1 to account for last price of first set of feeds being appended as first value
@@ -547,7 +588,7 @@ async def test_intermittent_charge(users, shrine, update_feeds, idx):
     await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [YANG_0_ADDRESS, to_wad(10), shrine_user.address, 0],
+        [YANG_0_ADDRESS, 0, shrine_user.address, 0],
     )
     updated_trove = (await shrine.get_trove(shrine_user.address, 0).invoke()).result.trove
 
@@ -642,11 +683,10 @@ async def test_shrine_withdraw_invalid_yang_fail(users, shrine):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdraw_insufficient_yang_fail(users, shrine):
+async def test_shrine_withdraw_insufficient_yang_fail(users, shrine, shrine_deposit):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
-    # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
         await shrine_owner.send_tx(
             shrine.contract_address,
@@ -727,6 +767,27 @@ async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
             shrine.contract_address,
             "move_yang",
             [YANG_0_ADDRESS, to_wad(11), shrine_user.address, 0, shrine_guest.address, 0],
+        )
+
+
+@pytest.mark.asyncio
+async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+    shrine_guest = await users("shrine guest")
+
+    # Get latest price
+    price = (await shrine.yang_last_price(YANG_0_ADDRESS).invoke()).result.wad
+    assert price != 0
+
+    unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
+    withdraw_amt = Decimal("10") - unsafe_amt
+
+    with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "move_yang",
+            [YANG_0_ADDRESS, to_wad(withdraw_amt), shrine_user.address, 0, shrine_guest.address, 0],
         )
 
 
@@ -819,7 +880,7 @@ async def test_update_yang_max(users, shrine):
     )  # update yang_max to a value smaller than the total amount currently deposited
 
     # This should fail, since yang.total exceeds yang.max
-    with pytest.raises(StarkException):
+    with pytest.raises(StarkException, match="Shrine: Exceeds maximum amount of Yang allowed for system"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "deposit",
