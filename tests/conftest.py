@@ -11,7 +11,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.gate.yang.constants import INITIAL_AMT, TAX
+from tests.gate.yang.constants import INITIAL_AMT, TAX_RAY
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
@@ -176,7 +176,7 @@ async def yang_rebasing_gate(starknet, users, yang_rebasing) -> StarknetContract
             str_to_felt("Aura Staked ETH"),
             str_to_felt("auStETH"),
             yang_rebasing.contract_address,
-            TAX,
+            TAX_RAY,
             tax_collector.address,
         ],
     )

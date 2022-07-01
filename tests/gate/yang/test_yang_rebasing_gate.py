@@ -6,22 +6,13 @@ from tests.gate.yang.constants import (
     FIRST_DEPOSIT_AMT,
     FIRST_MINT_AMT,
     FIRST_REBASE_AMT,
+    FIRST_TAX_AMT,
     INITIAL_AMT,
     SECOND_DEPOSIT_AMT,
     SECOND_MINT_AMT,
-    TAX,
+    TAX_RAY,
 )
-from tests.utils import (
-    FALSE,
-    MAX_UINT256,
-    TRUE,
-    assert_equalish,
-    assert_event_emitted,
-    from_ray,
-    from_uint,
-    from_wad,
-    to_wad,
-)
+from tests.utils import FALSE, MAX_UINT256, TRUE, assert_equalish, assert_event_emitted, from_uint, from_wad, to_wad
 
 #
 # Helper functions
@@ -181,7 +172,7 @@ async def test_gate_setup(gate, yang, users):
 
     # Check tax
     tax = (await gate.get_tax().invoke()).result.ray
-    assert tax == TAX
+    assert tax == TAX_RAY
 
     # Check tax collector
     tax_collector = await users("tax collector")
@@ -267,10 +258,9 @@ async def test_gate_sync(users, gate, yang, rebase):
     after_gate_bal = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
     after_underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
 
-    tax = int(from_ray(TAX) * FIRST_REBASE_AMT)
-    increment = FIRST_REBASE_AMT - tax
+    increment = FIRST_REBASE_AMT - FIRST_TAX_AMT
 
-    assert after_gate_bal == after_underlying_bal == rebased_bal - tax == before_underlying_bal + increment
+    assert after_gate_bal == after_underlying_bal == rebased_bal - FIRST_TAX_AMT == before_underlying_bal + increment
 
     # Check that user's redeemable balance has increased
     user_shares_uint = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
@@ -278,11 +268,13 @@ async def test_gate_sync(users, gate, yang, rebase):
     assert user_underlying == after_gate_bal
 
     # Check event emitted
-    assert_event_emitted(sync, gate.contract_address, "Sync", [before_underlying_bal, after_underlying_bal, tax])
+    assert_event_emitted(
+        sync, gate.contract_address, "Sync", [before_underlying_bal, after_underlying_bal, FIRST_TAX_AMT]
+    )
 
     # Check tax collector has received tax
     after_tax_collector_bal = from_uint((await yang.balanceOf(tax_collector.address).invoke()).result.balance)
-    assert after_tax_collector_bal == before_tax_collector_bal + tax
+    assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
 
 
 @pytest.mark.asyncio
@@ -307,7 +299,7 @@ async def test_gate_subsequent_deposit(users, gate, yang, sync):
     # Check vault underlying balance
     after_total_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
-    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - (from_ray(TAX) * FIRST_REBASE_AMT)
+    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_REBASE_AMT
     assert after_total_bal == total_assets == expected_bal
 
     underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
@@ -444,6 +436,31 @@ async def test_gate_redeem_before_sync_pass(users, gate, yang, gate_deposit):
     after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
 
     assert from_uint(after_user_balance) == INITIAL_AMT
+    assert from_uint(after_gate_balance) == 0
+
+    # Fetch post-withdrawal shares
+    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
+
+    assert from_uint(after_user_shares) == 0
+    assert from_uint(total_shares) == 0
+
+
+@pytest.mark.asyncio
+async def test_gate_redeem_after_sync_pass(users, gate, yang, gate_deposit, sync):
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Redeem
+    await abbot.send_tx(
+        gate.contract_address, "redeem", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+    )
+
+    # Fetch post-withdrawal balances
+    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
+    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
+
+    assert from_uint(after_user_balance) == INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
     assert from_uint(after_gate_balance) == 0
 
     # Fetch post-withdrawal shares
