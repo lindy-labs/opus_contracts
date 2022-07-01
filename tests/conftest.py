@@ -11,7 +11,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.gate.constants import INITIAL_AMT, TAX
+from tests.gate.yang.constants import INITIAL_AMT, TAX
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
@@ -154,7 +154,7 @@ async def mrac_controller(starknet) -> StarknetContract:
 
 
 @pytest.fixture
-async def gage_rebasing(starknet, tokens, users) -> StarknetContract:
+async def yang_rebasing(starknet, tokens, users) -> StarknetContract:
     user = await users("shrine user")
     return await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
 
@@ -165,19 +165,19 @@ async def gage_rebasing(starknet, tokens, users) -> StarknetContract:
 
 
 @pytest.fixture
-async def gate_gage_rebasing(starknet, users, gage_rebasing) -> StarknetContract:
-    contract = compile_contract("contracts/gate/gage_gate.cairo")
+async def yang_rebasing_gate(starknet, users, yang_rebasing) -> StarknetContract:
+    contract = compile_contract("contracts/gate/yang/yang_rebasing_gate.cairo")
     abbot = await users("abbot")
-    taxman = await users("taxman")
+    tax_collector = await users("tax collector")
     return await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
             abbot.address,
             str_to_felt("Aura Staked ETH"),
             str_to_felt("auStETH"),
-            gage_rebasing.contract_address,
+            yang_rebasing.contract_address,
             TAX,
-            taxman.address,
+            tax_collector.address,
         ],
     )
 

@@ -148,9 +148,8 @@ func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 @view
-func get_taxman_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    address
-):
+func get_tax_collector_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    ) -> (address):
     return gate_tax_collector_storage.read()
 end
 
@@ -212,13 +211,13 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, name, symbol, asset_address, tax, taxman_address
+    authed, name, symbol, asset_address, tax, tax_collector_address
 ):
     ERC4626.initializer(name, symbol, asset_address)
     gate_auth_storage.write(authed, TRUE)
     gate_live_storage.write(TRUE)
     gate_tax_storage.write(tax)
-    gate_tax_collector_storage.write(taxman_address)
+    gate_tax_collector_storage.write(tax_collector_address)
     return ()
 end
 
@@ -455,7 +454,7 @@ end
 #
 
 # Updates the asset balance of the vault, and transfers a tax on the increment
-# to the taxman address.
+# to the tax_collector address.
 @external
 func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     sync_inner()
@@ -514,8 +513,8 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         let (chargeable_uint256 : Uint256) = felt_to_uint(chargeable_wad)
 
         # Transfer fees
-        let (taxman) = gate_tax_collector_storage.read()
-        IERC20.transfer(contract_address=asset, recipient=taxman, amount=chargeable_uint256)
+        let (tax_collector) = gate_tax_collector_storage.read()
+        IERC20.transfer(contract_address=asset, recipient=tax_collector, amount=chargeable_uint256)
 
         let (updated_balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
         let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
