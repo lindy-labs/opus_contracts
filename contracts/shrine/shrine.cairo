@@ -262,7 +262,7 @@ end
 func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
 ) -> (wad):
-    let (yang_id) = get_valid_yang(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     return shrine_thresholds_storage.read(yang_id)
 end
 
@@ -1045,7 +1045,7 @@ func get_trove_threshold_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
     alloc_locals
 
     let (yang_threshold) = shrine_thresholds_storage.read(current_yang_id)
-    let (deposited) = shrine_deposited_storage.read(user_address, trove_id, current_yang_id)
+    let (deposited) = shrine_deposits_storage.read(user_address, trove_id, current_yang_id)
 
     let (current_time_id) = now()
     let (yang_price) = get_recent_price_from(current_yang_id, current_time_id)
