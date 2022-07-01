@@ -367,11 +367,14 @@ end
 # Appends a new price to the Series of the specified Yang
 @external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, price, timestamp
+    yang_address, price
 ):
+    alloc_locals
+
     assert_auth()
+
+    let (interval) = now()
     let (yang_id) = get_valid_yang(yang_address)
-    let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
     shrine_series_storage.write(yang_id, interval, price)
 
     SeriesIncremented.emit(yang_address, price, interval)
@@ -381,13 +384,13 @@ end
 # Appends a new multiplier value
 @external
 func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_multiplier, timestamp
+    new_multiplier
 ):
     assert_auth()
 
-    let (interval, _) = unsigned_div_rem(timestamp, TIME_INTERVAL)
-
+    let (interval) = now()
     shrine_multiplier_storage.write(interval, new_multiplier)
+
     MultiplierUpdated.emit(new_multiplier, interval)
     return ()
 end

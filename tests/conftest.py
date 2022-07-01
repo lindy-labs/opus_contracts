@@ -163,13 +163,13 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
             await shrine_owner.send_tx(
                 shrine.contract_address,
                 "advance",
-                [YANGS[j]["address"], feeds[j][i], timestamp],
+                [YANGS[j]["address"], feeds[j][i]],
             )
 
         await shrine_owner.send_tx(
             shrine.contract_address,
             "update_multiplier",
-            [MULTIPLIER_FEED[i], timestamp],
+            [MULTIPLIER_FEED[i]],
         )
 
     return shrine
