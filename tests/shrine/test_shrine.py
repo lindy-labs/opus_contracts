@@ -140,6 +140,40 @@ def compound(
     return debt
 
 
+def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
+    """
+    Helper function to calculate a trove's threshold
+
+    Arguments
+    ---------
+    prices : List[int]
+        Ordered list of the prices of each Yang in wad
+    amounts: List[int]
+        Ordered list of the amount of each Yang deposited in the Trove in wad
+    thresholds: List[Decimal]
+        Ordered list of the threshold for each Yang in wad
+
+    Returns
+    -------
+    Value of the variable threshold in decimal.
+    """
+    cumulative_weighted_threshold = Decimal("0")
+    total_value = Decimal("0")
+
+    # Sanity check on inputs
+    assert len(prices) == len(amounts) == len(thresholds)
+
+    for p, a, t in zip(prices, amounts, thresholds):
+        p = from_wad(p)
+        a = from_wad(a)
+        t = from_wad(t)
+
+        total_value += p * a
+        cumulative_weighted_threshold += p * a * t
+
+    return cumulative_weighted_threshold / total_value
+
+
 #
 # Fixtures
 #
@@ -154,6 +188,17 @@ async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
         [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), shrine_user.address, 0],
     )
     return deposit
+
+
+@pytest.fixture
+async def shrine_deposit_multiple(users, shrine):
+    shrine_owner = await users("shrine owner")
+    shrine_user = await users("shrine user")
+
+    for d in DEPOSITS:
+        await shrine_owner.send_tx(
+            shrine.contract_address, "deposit", [d["address"], d["amount"], shrine_user.address, 0]
+        )
 
 
 @cache
@@ -270,8 +315,9 @@ async def test_shrine_setup(shrine):
     assert live == TRUE
 
     # Check threshold
-    threshold = (await shrine.get_threshold().invoke()).result.wad
-    assert threshold == LIQUIDATION_THRESHOLD
+    for i in range(len(YANGS)):
+        threshold = (await shrine.get_threshold(YANGS[i]["address"]).invoke()).result.wad
+        assert threshold == YANGS[i]["threshold"]
 
     # Check debt ceiling
     ceiling = (await shrine.get_ceiling().invoke()).result.wad
@@ -661,7 +707,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
     withdraw_amt = Decimal("10") - unsafe_amt
 
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after withdrawing yang"):
+    with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "withdraw",
@@ -675,7 +721,7 @@ async def test_shrine_forge_zero_deposit_fail(users, shrine):
     shrine_user = await users("shrine user")
 
     # Forge without any yangs deposited
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
+    with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(1_000), shrine_user.address, 0])
 
 
@@ -688,7 +734,7 @@ async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     new_ceiling = to_wad(100_000)
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
 
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after forge"):
+    with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(14_000), shrine_user.address, 0])
 
 
@@ -737,7 +783,7 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
     withdraw_amt = Decimal("10") - unsafe_amt
 
-    with pytest.raises(StarkException, match="Shrine: Trove is at risk after moving yang"):
+    with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "move_yang",
@@ -857,24 +903,24 @@ async def test_set_threshold(users, shrine):
 
     # test setting to normal value
     value = 9 * 10**17
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [value])
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [value])
-    assert (await shrine.get_threshold().invoke()).result.wad == value
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], value])
+    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.wad == value
 
     # test setting to max value
     max = WAD_SCALE
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max])
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [max])
-    assert (await shrine.get_threshold().invoke()).result.wad == max
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], max])
+    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.wad == max
 
     # test setting over the limit
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
-        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [max + 1])
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max + 1])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [value])
+        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
 
 
 @pytest.mark.asyncio
@@ -921,3 +967,21 @@ async def test_set_ceiling(users, shrine):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
+
+
+@pytest.mark.asyncio
+async def test_get_trove_threshold(users, shrine, shrine_deposit_multiple):
+    shrine_user = await users("shrine user")
+
+    prices = []
+    for d in DEPOSITS:
+        price = (await shrine.yang_last_price(d["address"]).invoke()).result.wad
+        prices.append(price)
+
+    expected_threshold = calculate_trove_threshold(
+        prices, [d["amount"] for d in DEPOSITS], [d["threshold"] for d in DEPOSITS]
+    )
+
+    # Getting actual threshold
+    actual_threshold = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result.threshold_wad
+    assert_equalish(from_wad(actual_threshold), expected_threshold)
