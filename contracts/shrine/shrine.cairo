@@ -957,6 +957,18 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 
     # Calculate current yang value
     let (balance) = shrine_deposits_storage.read(user_address, trove_id, yang_id)
+
+    # Skip over the rest of the logic if the user hasn't deposited any 
+    if balance == 0:
+        return appraise_internal(
+            user_address, 
+            trove_id, 
+            yang_id - 1, 
+            interval, 
+            cumulative 
+        )
+    end
+
     let (price) = get_recent_price_from(yang_id, interval)
     assert_not_zero(price)  # Reverts if price is zero
     let (value) = WadRay.wmul_unchecked(balance, price)
@@ -966,11 +978,11 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 
     # Recursive call
     return appraise_internal(
-        user_address=user_address,
-        trove_id=trove_id,
-        yang_id=yang_id - 1,
-        interval=interval,
-        cumulative=updated_cumulative,
+        user_address,
+        trove_id,
+        yang_id - 1,
+        interval,
+        updated_cumulative,
     )
 end
 
@@ -1052,6 +1064,8 @@ func get_trove_threshold_internal{
 ) -> (threshold_wad, value_wad):
     alloc_locals
 
+
+
     if current_yang_id == 0:
         if cumulative_trove_value != 0:
             let (threshold) = WadRay.wunsigned_div(
@@ -1063,8 +1077,22 @@ func get_trove_threshold_internal{
         end
     end
 
-    let (yang_threshold) = shrine_thresholds_storage.read(current_yang_id)
+    
     let (deposited) = shrine_deposits_storage.read(user_address, trove_id, current_yang_id)
+
+    # Gas optimization - skip over the current yang if the user hasn't deposited any
+    if deposited == 0:
+        return get_trove_threshold_internal(
+            user_address, 
+            trove_id, 
+            current_time_id, 
+            current_yang_id - 1, 
+            cumulative_weighted_threshold, 
+            cumulative_trove_value
+        )
+    end
+
+    let (yang_threshold) = shrine_thresholds_storage.read(current_yang_id)
 
     let (yang_price) = get_recent_price_from(current_yang_id, current_time_id)
 
