@@ -431,7 +431,7 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
 async def test_shrine_forge_pass(users, shrine, shrine_forge):
     shrine_user = await users("shrine user")
 
-    assert_event_emitted(shrine_forge, shrine.contract_address, "YinTotalUpdated", [to_wad(5000)])
+    assert_event_emitted(shrine_forge, shrine.contract_address, "DebtTotalUpdated", [to_wad(5000)])
 
     assert_event_emitted(
         shrine_forge,
@@ -461,7 +461,7 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
 async def test_shrine_melt_pass(users, shrine, shrine_melt):
     shrine_user = await users("shrine user")
 
-    assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
+    assert_event_emitted(shrine_melt, shrine.contract_address, "DebtTotalUpdated", [0])
 
     assert_event_emitted(
         shrine_melt,
@@ -519,7 +519,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     assert_equalish(adjusted_trove_debt, expected_debt)
     assert updated_trove.charge_from == FEED_LEN * 2
 
-    assert_event_emitted(tx, shrine.contract_address, "YinTotalUpdated", [updated_trove.debt])
+    assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [updated_trove.debt])
     assert_event_emitted(
         tx,
         shrine.contract_address,
@@ -536,7 +536,7 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
     assert_event_emitted(
         redundant_tx,
         shrine.contract_address,
-        "YinTotalUpdated",
+        "DebtTotalUpdated",
         [updated_trove.debt],
     )
     assert_event_emitted(

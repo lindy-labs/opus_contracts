@@ -58,7 +58,7 @@ func YangUpdated(yang_address, updated_yang : Yang):
 end
 
 @event
-func YinTotalUpdated(new_total):
+func DebtTotalUpdated(new_total):
 end
 
 @event
@@ -578,7 +578,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Events
 
-    YinTotalUpdated.emit(new_system_debt)
+    DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, new_trove_info)
 
     return ()
@@ -620,7 +620,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Events
 
-    YinTotalUpdated.emit(new_system_debt)
+    DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, new_trove_info)
 
     return ()
@@ -813,7 +813,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let new_system_debt = old_system_debt + diff
     shrine_debt_storage.write(new_system_debt)
 
-    YinTotalUpdated.emit(new_system_debt)
+    DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, updated_trove)
 
     return ()
@@ -958,15 +958,9 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     # Calculate current yang value
     let (balance) = shrine_deposits_storage.read(user_address, trove_id, yang_id)
 
-    # Skip over the rest of the logic if the user hasn't deposited any 
+    # Skip over the rest of the logic if the user hasn't deposited any
     if balance == 0:
-        return appraise_internal(
-            user_address, 
-            trove_id, 
-            yang_id - 1, 
-            interval, 
-            cumulative 
-        )
+        return appraise_internal(user_address, trove_id, yang_id - 1, interval, cumulative)
     end
 
     let (price) = get_recent_price_from(yang_id, interval)
@@ -977,13 +971,7 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
 
     # Recursive call
-    return appraise_internal(
-        user_address,
-        trove_id,
-        yang_id - 1,
-        interval,
-        updated_cumulative,
-    )
+    return appraise_internal(user_address, trove_id, yang_id - 1, interval, updated_cumulative)
 end
 
 # Returns the price for `yang_id` at `interval` if it is non-zero.
@@ -1064,8 +1052,6 @@ func get_trove_threshold_internal{
 ) -> (threshold_wad, value_wad):
     alloc_locals
 
-
-
     if current_yang_id == 0:
         if cumulative_trove_value != 0:
             let (threshold) = WadRay.wunsigned_div(
@@ -1077,18 +1063,17 @@ func get_trove_threshold_internal{
         end
     end
 
-    
     let (deposited) = shrine_deposits_storage.read(user_address, trove_id, current_yang_id)
 
     # Gas optimization - skip over the current yang if the user hasn't deposited any
     if deposited == 0:
         return get_trove_threshold_internal(
-            user_address, 
-            trove_id, 
-            current_time_id, 
-            current_yang_id - 1, 
-            cumulative_weighted_threshold, 
-            cumulative_trove_value
+            user_address,
+            trove_id,
+            current_time_id,
+            current_yang_id - 1,
+            cumulative_weighted_threshold,
+            cumulative_trove_value,
         )
     end
 
