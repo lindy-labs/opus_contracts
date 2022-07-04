@@ -378,13 +378,17 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Assert live
     assert_live()
 
+    # Get asset and vault addresses
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+
     # Sync
-    sync_inner()
+    sync_inner(asset, vault)
 
     let (shares : Uint256) = ERC4626.deposit(assets, receiver)
 
     # Update
-    update_last_asset_balance()
+    update_last_asset_balance(asset, vault)
 
     return (shares)
 end
@@ -414,13 +418,17 @@ func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Assert live
     assert_live()
 
+    # Get asset and vault addresses
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+
     # Sync
-    sync_inner()
+    sync_inner(asset, vault)
 
     let (assets : Uint256) = ERC4626.mint(shares, receiver)
 
     # Update
-    update_last_asset_balance()
+    update_last_asset_balance(asset, vault)
 
     return (assets)
 end
@@ -447,13 +455,23 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ) -> (shares : Uint256):
     alloc_locals
 
+<<<<<<< HEAD
+=======
+    # Only Abbot can call
+    assert_auth()
+
+    # Get asset and vault addresses
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+
+>>>>>>> bfeb7ac (dev(gate): refactor sync functions)
     # Sync
-    sync_inner()
+    sync_inner(asset, vault)
 
     let (shares : Uint256) = ERC4626.withdraw(assets, receiver, owner)
 
     # Update
-    update_last_asset_balance()
+    update_last_asset_balance(asset, vault)
 
     return (shares)
 end
@@ -480,13 +498,23 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (assets : Uint256):
     alloc_locals
 
+<<<<<<< HEAD
+=======
+    # Only Abbot can call
+    assert_auth()
+
+    # Get asset and vault addresses
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+
+>>>>>>> bfeb7ac (dev(gate): refactor sync functions)
     # Sync
-    sync_inner()
+    sync_inner(asset, vault)
 
     let (assets : Uint256) = ERC4626.redeem(shares, receiver, owner)
 
     # Update
-    update_last_asset_balance()
+    update_last_asset_balance(asset, vault)
 
     return (assets)
 end
@@ -528,7 +556,10 @@ end
 # to the tax_collector address.
 @external
 func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    sync_inner()
+    # Get asset and vault addresses
+    let (asset) = ERC4626.asset()
+    let (vault) = get_contract_address()
+    sync_inner(asset, vault)
     return ()
 end
 
@@ -554,13 +585,10 @@ func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 # Helper function to check for balance updates for rebasing tokens, and charge the admin fee.
-func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    asset_address, vault_address
+):
     alloc_locals
-
-    # TODO Look into repeated calls to asset and contract address
-
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
 
     # Check last balance of underlying asset against latest balance
 <<<<<<< HEAD
@@ -568,8 +596,12 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     let (latest) = IERC20.balanceOf(contract_address=asset, account=vault)
 =======
     let (last_updated) = gate_last_asset_balance_storage.read()
+<<<<<<< HEAD
     let (latest : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
 >>>>>>> d5ded20 (dev(gate): rename storage variables)
+=======
+    let (latest : Uint256) = IERC20.balanceOf(contract_address=asset_address, account=vault_address)
+>>>>>>> bfeb7ac (dev(gate): refactor sync functions)
     let (latest_felt) = uint_to_felt_unchecked(latest)
     let (unincremented) = is_le(latest_felt, last_updated)
     if unincremented == FALSE:
@@ -585,9 +617,13 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
         # Transfer fees
         let (tax_collector) = gate_tax_collector_storage.read()
-        IERC20.transfer(contract_address=asset, recipient=tax_collector, amount=chargeable_uint256)
+        IERC20.transfer(
+            contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
+        )
 
-        let (updated_balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
+        let (updated_balance : Uint256) = IERC20.balanceOf(
+            contract_address=asset_address, account=vault_address
+        )
         let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
 <<<<<<< HEAD
         gate_underlying_balance.write(updated_balance_felt)
@@ -610,11 +646,12 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 end
 
 # Helper function to update the underlying balance after a user action
-func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    # TODO Look into repeated calls to asset and contract address
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
-    let (balance : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
+func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    asset_address, vault_address
+):
+    let (balance : Uint256) = IERC20.balanceOf(
+        contract_address=asset_address, account=vault_address
+    )
     let (balance_felt) = uint_to_felt_unchecked(balance)
 <<<<<<< HEAD
     gate_underlying_balance.write(balance_felt)
