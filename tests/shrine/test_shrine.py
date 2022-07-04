@@ -7,6 +7,7 @@ import pytest
 from constants import *  # noqa: F403
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starkware_utils.error_handling import StarkException
+from tests.conftest import collect_gas_cost
 
 from tests.utils import (
     FALSE,
@@ -401,8 +402,10 @@ async def test_shrine_deposit(users, shrine, shrine_deposit, collect_gas_cost):
 
 
 @pytest.mark.asyncio
-async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
+async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw, collect_gas_cost):
     shrine_user = await users("shrine user")
+
+    collect_gas_cost("shrine/withdraw", shrine_withdraw, 4, 1)
 
     assert_event_emitted(
         shrine_withdraw,
@@ -617,6 +620,8 @@ async def test_move_yang_pass(users, shrine, shrine_forge, collect_gas_cost):
         "move_yang",
         [YANG_0_ADDRESS, to_wad(1), shrine_user.address, 0, shrine_user.address, 1],
     )
+
+    collect_gas_cost("shrine/move_yang", intra_user_tx, 4, 1)
 
     assert_event_emitted(
         intra_user_tx,

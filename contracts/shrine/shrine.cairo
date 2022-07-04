@@ -417,7 +417,8 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Charge interest for source trove to ensure it remains safe
     charge(src_address, src_trove_id)
-
+    #TODO: destination trove should also be charged interest here 
+    
     let (src_yang_balance) = shrine_deposits_storage.read(src_address, src_trove_id, yang_id)
 
     # Ensure source trove has sufficient yang
