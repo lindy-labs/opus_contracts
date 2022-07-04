@@ -550,6 +550,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff + amount
+    WadRay.assert_valid(new_system_debt) # Overflow check
     let (debt_ceiling) = shrine_ceiling_storage.read()
 
     with_attr error_message("Shrine: Debt ceiling reached"):
@@ -611,6 +612,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff - amount
+    WadRay.assert_valid(new_system_debt) # Overflow check
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
@@ -811,6 +813,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Get new system debt
     let new_system_debt = old_system_debt + diff
+    WadRay.assert_valid(new_system_debt) # Overflow check
     shrine_debt_storage.write(new_system_debt)
 
     DebtTotalUpdated.emit(new_system_debt)
