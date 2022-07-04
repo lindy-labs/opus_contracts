@@ -376,9 +376,10 @@ async def test_auth(users, shrine_deploy):
 
 
 @pytest.mark.asyncio
-async def test_shrine_deposit(users, shrine, shrine_deposit):
+async def test_shrine_deposit(users, shrine, shrine_deposit, collect_gas_cost):
     shrine_user = await users("shrine user")
 
+    collect_gas_cost("shrine/deposit", shrine_deposit, 4, 1)
     assert_event_emitted(
         shrine_deposit,
         shrine.contract_address,
@@ -409,6 +410,7 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
         "YangUpdated",
         [YANG_0_ADDRESS, 0, YANG_0_CEILING],
     )
+
     assert_event_emitted(
         shrine_withdraw,
         shrine.contract_address,
@@ -604,10 +606,11 @@ async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
 
 
 @pytest.mark.asyncio
-async def test_move_yang_pass(users, shrine, shrine_forge):
+async def test_move_yang_pass(users, shrine, shrine_forge, collect_gas_cost):
     shrine_owner = await users("shrine owner")
     shrine_user = await users("shrine user")
 
+    collect_gas_cost("shrine/forge", shrine_forge, 2, 1)
     # Move yang between two troves of the same user
     intra_user_tx = await shrine_owner.send_tx(
         shrine.contract_address,
