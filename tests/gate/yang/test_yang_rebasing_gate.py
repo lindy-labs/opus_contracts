@@ -186,6 +186,10 @@ async def test_gate_setup(gate, yang, users):
     # Check initial values
     assert from_uint((await gate.totalSupply().invoke()).result.totalSupply) == 0
 
+    # Check initial exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert exchange_rate == 0
+
 
 @pytest.mark.asyncio
 async def test_gate_set_tax_pass(gate, users):
@@ -562,6 +566,76 @@ async def test_gate_withdraw_after_sync_pass(users, gate, yang, gate_deposit, sy
     # Check exchange rate remains unchanged
     after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
     assert after_exchange_rate == before_exchange_rate
+
+
+@pytest.mark.asyncio
+async def test_kill(users, gate, yang, gate_deposit, sync):
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Kill
+    await abbot.send_tx(gate.contract_address, "kill", [])
+    assert (await gate.get_live().invoke()).result.bool == FALSE
+
+    # Assert deposit fails
+    with pytest.raises(StarkException, match="Gate: Gate is not live"):
+        await abbot.send_tx(gate.contract_address, "deposit", [*(SECOND_DEPOSIT_AMT, 0), shrine_user.address])
+
+    # Assert mint fails
+    with pytest.raises(StarkException, match="Gate: Gate is not live"):
+        await abbot.send_tx(gate.contract_address, "mint", [*(SECOND_MINT_AMT, 0), shrine_user.address])
+
+    # Assert withdraw succeeds
+    withdraw_amt = to_wad(5)
+
+    before_user_balance = from_uint((await yang.balanceOf(shrine_user.address).invoke()).result.balance)
+    before_gate_balance = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    before_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    before_gate_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+
+    expected_shares = get_shares_from_assets(before_gate_shares, before_gate_balance, withdraw_amt)
+
+    await abbot.send_tx(
+        gate.contract_address, "withdraw", [*(withdraw_amt, 0), shrine_user.address, shrine_user.address]
+    )
+
+    after_user_balance = from_uint((await yang.balanceOf(shrine_user.address).invoke()).result.balance)
+    after_gate_balance = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    after_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    after_gate_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+
+    assert after_user_balance == before_user_balance + withdraw_amt
+    assert after_gate_balance == before_gate_balance - withdraw_amt
+
+    assert_equalish(from_wad(after_user_shares), from_wad(before_user_shares) - expected_shares)
+    assert_equalish(from_wad(after_gate_shares), from_wad(before_gate_shares) - expected_shares)
+
+    # Assert redeem succeeds
+    redeem_amt = to_wad(5)
+
+    before_user_balance = from_uint((await yang.balanceOf(shrine_user.address).invoke()).result.balance)
+    before_gate_balance = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    before_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    before_gate_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+
+    expected_assets = get_assets_from_shares(before_gate_shares, before_gate_balance, redeem_amt)
+
+    await abbot.send_tx(gate.contract_address, "redeem", [*(redeem_amt, 0), shrine_user.address, shrine_user.address])
+
+    after_user_balance = from_uint((await yang.balanceOf(shrine_user.address).invoke()).result.balance)
+    after_gate_balance = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    after_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    after_gate_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+
+    assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets)
+    assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets)
+
+    assert after_user_shares == before_user_shares - redeem_amt
+    assert after_gate_shares == before_gate_shares - redeem_amt
 
 
 #
