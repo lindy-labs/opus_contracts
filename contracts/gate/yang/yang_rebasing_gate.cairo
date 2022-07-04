@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_sub
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
@@ -22,6 +22,13 @@ from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
 from contracts.shared.wad_ray import WadRay
 
 #
+# Constants
+#
+
+# Maximum tax that can be set by an authorized address (ray)
+const MAX_TAX = 5 * 10 ** 25
+
+#
 # Events
 #
 
@@ -35,6 +42,14 @@ end
 
 @event
 func Killed():
+end
+
+@event
+func TaxUpdated(prev_tax, new_tax):
+end
+
+@event
+func TaxCollectorUpdated(prev_tax_collector, new_tax_collector):
 end
 
 @event
@@ -238,6 +253,11 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     ERC4626.initializer(name, symbol, asset_address)
     gate_auth_storage.write(authed, TRUE)
     gate_live_storage.write(TRUE)
+
+    with_attr error_message("Gate: Maximum tax exceeded"):
+        assert_le(tax, MAX_TAX)
+    end
+
     gate_tax_storage.write(tax)
     gate_tax_collector_storage.write(tax_collector_address)
     return ()
@@ -474,6 +494,35 @@ end
 #
 # External - Others
 #
+
+# Update the tax (ray)
+@external
+func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
+    assert_auth()
+
+    # Check that tax is lower than MAX_TAX
+    with_attr error_message("Gate: Maximum tax exceeded"):
+        assert_le(tax, MAX_TAX)
+    end
+
+    let (prev_tax) = gate_tax_storage.read()
+    gate_tax_storage.write(tax)
+
+    TaxUpdated.emit(prev_tax, tax)
+    return ()
+end
+
+# Update the tax collector address
+@external
+func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    assert_auth()
+
+    let (prev_tax_collector) = gate_tax_collector_storage.read()
+    gate_tax_collector_storage.write(address)
+
+    TaxCollectorUpdated.emit(prev_tax_collector, address)
+    return ()
+end
 
 # Updates the asset balance of the vault, and transfers a tax on the increment
 # to the tax_collector address.

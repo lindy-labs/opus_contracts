@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.yang.constants import (
     FIRST_DEPOSIT_AMT,
@@ -10,6 +11,7 @@ from tests.gate.yang.constants import (
     FIRST_REBASE_AMT,
     FIRST_TAX_AMT,
     INITIAL_AMT,
+    MAX_TAX_RAY,
     SECOND_DEPOSIT_AMT,
     SECOND_MINT_AMT,
     TAX_RAY,
@@ -183,6 +185,44 @@ async def test_gate_setup(gate, yang, users):
 
     # Check initial values
     assert from_uint((await gate.totalSupply().invoke()).result.totalSupply) == 0
+
+
+@pytest.mark.asyncio
+async def test_gate_set_tax_pass(gate, users):
+    abbot = await users("abbot")
+
+    tx = await abbot.send_tx(gate.contract_address, "set_tax", [TAX_RAY // 2])
+    assert_event_emitted(tx, gate.contract_address, "TaxUpdated", [TAX_RAY, TAX_RAY // 2])
+
+    new_tax = (await gate.get_tax().invoke()).result.ray
+    assert new_tax == TAX_RAY // 2
+
+
+@pytest.mark.asyncio
+async def test_gate_set_tax_fail(gate, users):
+    abbot = await users("abbot")
+
+    # Fails due to max tax exceeded
+    with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
+        await abbot.send_tx(gate.contract_address, "set_tax", [MAX_TAX_RAY + 1])
+
+
+@pytest.mark.asyncio
+async def test_gate_set_tax_collector(gate, users):
+    abbot = await users("abbot")
+    tax_collector = await users("tax collector")
+
+    new_tax_collector = 9876
+    tx = await abbot.send_tx(gate.contract_address, "set_tax_collector", [new_tax_collector])
+    assert_event_emitted(tx, gate.contract_address, "TaxCollectorUpdated", [tax_collector.address, new_tax_collector])
+
+    res = (await gate.get_tax_collector_address().invoke()).result.address
+    assert res == new_tax_collector
+
+
+#
+# Tests - ERC4626
+#
 
 
 @pytest.mark.asyncio

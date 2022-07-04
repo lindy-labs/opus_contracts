@@ -24,6 +24,8 @@ from contracts.lib.openzeppelin.token.erc20.library import (
 from contracts.lib.openzeppelin.utils.constants import FALSE, TRUE
 from contracts.shared.interfaces import IERC20
 
+# Adapted from https://github.com/milancermak/cairo-4626/tree/master/contracts/erc4626
+
 @event
 func Deposit(caller : felt, owner : felt, assets : Uint256, shares : Uint256):
 end
