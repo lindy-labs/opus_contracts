@@ -357,7 +357,7 @@ async def test_gate_subsequent_deposit(users, gate, yang, sync):
     # Check vault underlying balance
     after_total_bal = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = from_uint((await gate.totalAssets().invoke()).result.totalManagedAssets)
-    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_REBASE_AMT
+    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
     assert after_total_bal == total_assets == expected_bal
 
     underlying_bal = (await gate.get_last_underlying_balance().invoke()).result.wad
@@ -424,6 +424,146 @@ async def test_gate_subsequent_mint(users, gate, yang, sync):
     )
 
 
+@pytest.mark.asyncio
+async def test_gate_redeem_before_sync_pass(users, gate, yang, gate_deposit):
+    """
+    Redeem all shares before sync.
+    """
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Redeem
+    await abbot.send_tx(
+        gate.contract_address, "redeem", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+    )
+
+    # Fetch post-withdrawal balances
+    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
+    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
+
+    assert from_uint(after_user_balance) == INITIAL_AMT
+    assert from_uint(after_gate_balance) == 0
+
+    # Fetch post-withdrawal shares
+    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
+
+    assert from_uint(after_user_shares) == 0
+    assert from_uint(total_shares) == 0
+
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert exchange_rate == 0
+
+
+@pytest.mark.asyncio
+async def test_gate_redeem_after_sync_pass(users, gate, yang, gate_deposit, sync):
+    """
+    Redeem all shares after sync.
+    """
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Redeem
+    await abbot.send_tx(
+        gate.contract_address, "redeem", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+    )
+
+    # Fetch post-withdrawal balances
+    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
+    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
+
+    assert from_uint(after_user_balance) == INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
+    assert from_uint(after_gate_balance) == 0
+
+    # Fetch post-withdrawal shares
+    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
+
+    assert from_uint(after_user_shares) == 0
+    assert from_uint(total_shares) == 0
+
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert exchange_rate == 0
+
+
+@pytest.mark.asyncio
+async def test_gate_withdraw_before_sync_pass(users, gate, yang, gate_deposit):
+    """
+    Withdraw initially deposited assets before sync.
+    """
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Redeem
+    await abbot.send_tx(
+        gate.contract_address, "withdraw", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+    )
+
+    # Fetch post-withdrawal balances
+    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
+    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
+
+    assert from_uint(after_user_balance) == INITIAL_AMT
+    assert from_uint(after_gate_balance) == 0
+
+    # Fetch post-withdrawal shares
+    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
+    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
+
+    assert from_uint(after_user_shares) == 0
+    assert from_uint(total_shares) == 0
+
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert exchange_rate == 0
+
+
+@pytest.mark.asyncio
+async def test_gate_withdraw_after_sync_pass(users, gate, yang, gate_deposit, sync):
+    """
+    Withdraw initially deposited assets after sync.
+    """
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Get exchange rate, yang balances and share balances before sync
+    before_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+
+    before_user_balance = from_uint((await yang.balanceOf(shrine_user.address).invoke()).result.balance)
+    before_gate_balance = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    before_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    before_gate_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+
+    # Get expected shares
+    expected_shares_withdrawn = get_shares_from_assets(before_gate_shares, before_gate_balance, FIRST_DEPOSIT_AMT)
+
+    # Redeem
+    await abbot.send_tx(
+        gate.contract_address, "withdraw", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+    )
+
+    # Fetch post-withdrawal balances
+    after_user_balance = from_uint((await yang.balanceOf(shrine_user.address).invoke()).result.balance)
+    after_gate_balance = from_uint((await yang.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    assert after_user_balance == before_user_balance + FIRST_DEPOSIT_AMT
+    assert after_gate_balance == before_gate_balance - FIRST_DEPOSIT_AMT
+
+    # Fetch post-withdrawal shares
+    after_user_shares = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    after_gate_shares = from_uint((await gate.totalSupply().invoke()).result.totalSupply)
+
+    assert_equalish(from_wad(after_user_shares), from_wad(before_user_shares) - expected_shares_withdrawn)
+    assert_equalish(from_wad(after_gate_shares), from_wad(before_gate_shares) - expected_shares_withdrawn)
+
+    # Check exchange rate remains unchanged
+    after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    assert after_exchange_rate == before_exchange_rate
+
+
 #
 # Tests - Restricted approve and transfers
 #
@@ -477,53 +617,3 @@ async def test_gate_transfer_fail(users, gate, gate_subsequent_deposit):
     # Assert no changes
     assert before_sender_balance == after_sender_balance
     assert before_recipient_balance == after_recipient_balance
-
-
-@pytest.mark.asyncio
-async def test_gate_redeem_before_sync_pass(users, gate, yang, gate_deposit):
-    abbot = await users("abbot")
-    shrine_user = await users("shrine user")
-
-    # Redeem
-    await abbot.send_tx(
-        gate.contract_address, "redeem", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
-    )
-
-    # Fetch post-withdrawal balances
-    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
-    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
-
-    assert from_uint(after_user_balance) == INITIAL_AMT
-    assert from_uint(after_gate_balance) == 0
-
-    # Fetch post-withdrawal shares
-    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
-    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
-
-    assert from_uint(after_user_shares) == 0
-    assert from_uint(total_shares) == 0
-
-
-@pytest.mark.asyncio
-async def test_gate_redeem_after_sync_pass(users, gate, yang, gate_deposit, sync):
-    abbot = await users("abbot")
-    shrine_user = await users("shrine user")
-
-    # Redeem
-    await abbot.send_tx(
-        gate.contract_address, "redeem", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
-    )
-
-    # Fetch post-withdrawal balances
-    after_user_balance = (await yang.balanceOf(shrine_user.address).invoke()).result.balance
-    after_gate_balance = (await yang.balanceOf(gate.contract_address).invoke()).result.balance
-
-    assert from_uint(after_user_balance) == INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
-    assert from_uint(after_gate_balance) == 0
-
-    # Fetch post-withdrawal shares
-    after_user_shares = (await gate.balanceOf(shrine_user.address).invoke()).result.balance
-    total_shares = (await gate.totalSupply().invoke()).result.totalSupply
-
-    assert from_uint(after_user_shares) == 0
-    assert from_uint(total_shares) == 0
