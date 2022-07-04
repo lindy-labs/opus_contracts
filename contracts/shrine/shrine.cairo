@@ -417,8 +417,11 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Charge interest for source trove to ensure it remains safe
     charge(src_address, src_trove_id)
-    #TODO: destination trove should also be charged interest here 
-    
+    # Charge interest for destination trove since its collateral balance will be changing, affecting its personalized interest rate
+    charge(dst_address, dst_trove_id)
+
+    # TODO: destination trove should also be charged interest here
+
     let (src_yang_balance) = shrine_deposits_storage.read(src_address, src_trove_id, yang_id)
 
     # Ensure source trove has sufficient yang
@@ -551,7 +554,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff + amount
-    WadRay.assert_valid(new_system_debt) # Overflow check
+    WadRay.assert_valid(new_system_debt)  # Overflow check
     let (debt_ceiling) = shrine_ceiling_storage.read()
 
     with_attr error_message("Shrine: Debt ceiling reached"):
@@ -613,7 +616,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff - amount
-    WadRay.assert_valid(new_system_debt) # Overflow check
+    WadRay.assert_valid(new_system_debt)  # Overflow check
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
@@ -814,7 +817,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Get new system debt
     let new_system_debt = old_system_debt + diff
-    WadRay.assert_valid(new_system_debt) # Overflow check
+    WadRay.assert_valid(new_system_debt)  # Overflow check
     shrine_debt_storage.write(new_system_debt)
 
     DebtTotalUpdated.emit(new_system_debt)

@@ -621,7 +621,7 @@ async def test_move_yang_pass(users, shrine, shrine_forge, collect_gas_cost):
         [YANG_0_ADDRESS, to_wad(1), shrine_user.address, 0, shrine_user.address, 1],
     )
 
-    collect_gas_cost("shrine/move_yang", intra_user_tx, 4, 1)
+    collect_gas_cost("shrine/move_yang", intra_user_tx, 6, 1)
 
     assert_event_emitted(
         intra_user_tx,
