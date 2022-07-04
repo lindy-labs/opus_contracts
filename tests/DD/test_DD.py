@@ -59,6 +59,7 @@ async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[Starknet
 # tests
 #
 
+
 @pytest.mark.asyncio
 async def test_deposit(direct_deposit, usda, users):
     dd, stablecoin = direct_deposit

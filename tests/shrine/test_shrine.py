@@ -197,7 +197,9 @@ async def shrine_deposit_multiple(users, shrine):
 
     for d in DEPOSITS:
         await shrine_owner.send_tx(
-            shrine.contract_address, "deposit", [d["address"], d["amount"], shrine_user.address, 0]
+            shrine.contract_address,
+            "deposit",
+            [d["address"], d["amount"], shrine_user.address, 0],
         )
 
 
@@ -549,7 +551,9 @@ async def test_estimate_and_charge(users, shrine, update_feeds):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "update_feeds_intermittent", [0, 1, FEED_LEN - 2, FEED_LEN - 1], indirect=["update_feeds_intermittent"]
+    "update_feeds_intermittent",
+    [0, 1, FEED_LEN - 2, FEED_LEN - 1],
+    indirect=["update_feeds_intermittent"],
 )
 async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
     """
@@ -766,7 +770,14 @@ async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "move_yang",
-            [YANG_0_ADDRESS, to_wad(11), shrine_user.address, 0, shrine_guest.address, 0],
+            [
+                YANG_0_ADDRESS,
+                to_wad(11),
+                shrine_user.address,
+                0,
+                shrine_guest.address,
+                0,
+            ],
         )
 
 
@@ -787,7 +798,14 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "move_yang",
-            [YANG_0_ADDRESS, to_wad(withdraw_amt), shrine_user.address, 0, shrine_guest.address, 0],
+            [
+                YANG_0_ADDRESS,
+                to_wad(withdraw_amt),
+                shrine_user.address,
+                0,
+                shrine_guest.address,
+                0,
+            ],
         )
 
 
@@ -850,7 +868,10 @@ async def test_update_yang_max(users, shrine):
         orig_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
         tx = await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [YANG_0_ADDRESS, new_yang_max])
         assert_event_emitted(
-            tx, shrine.contract_address, "YangUpdated", [YANG_0_ADDRESS, orig_yang.total, new_yang_max]
+            tx,
+            shrine.contract_address,
+            "YangUpdated",
+            [YANG_0_ADDRESS, orig_yang.total, new_yang_max],
         )
 
         updated_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
@@ -879,7 +900,10 @@ async def test_update_yang_max(users, shrine):
     )  # update yang_max to a value smaller than the total amount currently deposited
 
     # This should fail, since yang.total exceeds yang.max
-    with pytest.raises(StarkException, match="Shrine: Exceeds maximum amount of Yang allowed for system"):
+    with pytest.raises(
+        StarkException,
+        match="Shrine: Exceeds maximum amount of Yang allowed for system",
+    ):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "deposit",
@@ -889,7 +913,11 @@ async def test_update_yang_max(users, shrine):
     # test calling with a non-existing yang_address
     faux_yang_address = 7890
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [faux_yang_address, new_yang_max])
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_yang_max",
+            [faux_yang_address, new_yang_max],
+        )
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")

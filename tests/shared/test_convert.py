@@ -34,7 +34,15 @@ async def test_pack_felt_pass(convert, a, b):
 
 
 @pytest.mark.parametrize(
-    "a,b", [(-1, 0), (0, -1), (-1, -1), (2**128 - 1, 2**123), (2**128, 2**123 - 1), (2**128, 2**123)]
+    "a,b",
+    [
+        (-1, 0),
+        (0, -1),
+        (-1, -1),
+        (2**128 - 1, 2**123),
+        (2**128, 2**123 - 1),
+        (2**128, 2**123),
+    ],
 )
 @pytest.mark.asyncio
 async def test_pack_felt_fail(convert, a, b):

@@ -164,7 +164,11 @@ def set_block_timestamp(sn, block_timestamp):
 #
 
 
-def estimate_gas(tx_info: StarknetTransactionExecutionInfo, num_storage_keys: int = 0, num_contracts: int = 0):
+def estimate_gas(
+    tx_info: StarknetTransactionExecutionInfo,
+    num_storage_keys: int = 0,
+    num_contracts: int = 0,
+):
     gas_no_storage = estimate_gas_inner(tx_info.call_info)
     return gas_no_storage + (2 * num_storage_keys + 2 * num_contracts) * WEIGHTS["storage"]
 

@@ -60,7 +60,19 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 # Threshold test constants
 DEPOSITS = [
-    {"address": YANG1_ADDRESS, "amount": 4 * WAD_SCALE, "threshold": YANGS[0]["threshold"]},
-    {"address": YANG2_ADDRESS, "amount": 5 * WAD_SCALE, "threshold": YANGS[1]["threshold"]},
-    {"address": YANG3_ADDRESS, "amount": 6 * WAD_SCALE, "threshold": YANGS[2]["threshold"]},
+    {
+        "address": YANG1_ADDRESS,
+        "amount": 4 * WAD_SCALE,
+        "threshold": YANGS[0]["threshold"],
+    },
+    {
+        "address": YANG2_ADDRESS,
+        "amount": 5 * WAD_SCALE,
+        "threshold": YANGS[1]["threshold"],
+    },
+    {
+        "address": YANG3_ADDRESS,
+        "amount": 6 * WAD_SCALE,
+        "threshold": YANGS[2]["threshold"],
+    },
 ]
