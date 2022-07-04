@@ -13,14 +13,8 @@ from starkware.cairo.common.uint256 import (
     uint256_le,
 )
 
-from contracts.lib.openzeppelin.token.erc20.library import (
-    ERC20_initializer,
-    ERC20_totalSupply,
-    ERC20_mint,
-    ERC20_burn,
-    ERC20_balanceOf,
-    ERC20_allowances,
-)
+from contracts.lib.openzeppelin.token.erc20.library import ERC20, ERC20_allowances
+
 from contracts.lib.openzeppelin.utils.constants import FALSE, TRUE
 from contracts.shared.interfaces import IERC20
 
@@ -51,7 +45,7 @@ namespace ERC4626:
         name : felt, symbol : felt, asset_addr : felt
     ):
         let (decimals) = IERC20.decimals(contract_address=asset_addr)
-        ERC20_initializer(name, symbol, decimals)
+        ERC20.initializer(name, symbol, decimals)
         ERC4626_asset_addr.write(asset_addr)
         return ()
     end
@@ -81,7 +75,7 @@ namespace ERC4626:
     ) -> (shares : Uint256):
         alloc_locals
 
-        let (total_supply : Uint256) = ERC20_totalSupply()
+        let (total_supply : Uint256) = ERC20.total_supply()
         let (is_total_supply_zero : felt) = uint256_is_zero(total_supply)
 
         if is_total_supply_zero == TRUE:
@@ -99,7 +93,7 @@ namespace ERC4626:
     ) -> (assets : Uint256):
         alloc_locals
 
-        let (total_supply : Uint256) = ERC20_totalSupply()
+        let (total_supply : Uint256) = ERC20.total_supply()
         let (is_total_supply_zero : felt) = uint256_is_zero(total_supply)
 
         if is_total_supply_zero == TRUE:
@@ -153,7 +147,7 @@ namespace ERC4626:
             assert success = TRUE
         end
 
-        ERC20_mint(receiver, shares)
+        ERC20._mint(receiver, shares)
 
         Deposit.emit(caller=caller, owner=receiver, assets=assets, shares=shares)
 
@@ -176,7 +170,7 @@ namespace ERC4626:
     ) -> (assets : Uint256):
         alloc_locals
 
-        let (total_supply : Uint256) = ERC20_totalSupply()
+        let (total_supply : Uint256) = ERC20.total_supply()
         let (is_total_supply_zero : felt) = uint256_is_zero(total_supply)
 
         if is_total_supply_zero == TRUE:
@@ -208,7 +202,7 @@ namespace ERC4626:
             assert success = TRUE
         end
 
-        ERC20_mint(receiver, shares)
+        ERC20._mint(receiver, shares)
 
         Deposit.emit(caller=caller, owner=receiver, assets=assets, shares=shares)
 
@@ -222,7 +216,7 @@ namespace ERC4626:
     func maxWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         owner : felt
     ) -> (maxAssets : Uint256):
-        let (owner_balance : Uint256) = ERC20_balanceOf(owner)
+        let (owner_balance : Uint256) = ERC20.balance_of(owner)
         let (maxAssets : Uint256) = convertToAssets(owner_balance)
         return (maxAssets)
     end
@@ -232,7 +226,7 @@ namespace ERC4626:
     ) -> (shares : Uint256):
         alloc_locals
 
-        let (total_supply : Uint256) = ERC20_totalSupply()
+        let (total_supply : Uint256) = ERC20.total_supply()
         let (is_total_supply_zero : felt) = uint256_is_zero(total_supply)
 
         if is_total_supply_zero == TRUE:
@@ -265,7 +259,7 @@ namespace ERC4626:
         #    tempvar range_check_ptr = range_check_ptr
         # end
 
-        ERC20_burn(owner, shares)
+        ERC20._burn(owner, shares)
 
         let (asset : felt) = ERC4626.asset()
         let (success : felt) = IERC20.transfer(
@@ -287,7 +281,7 @@ namespace ERC4626:
     func maxRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         owner : felt
     ) -> (maxShares : Uint256):
-        let (maxShares : Uint256) = ERC20_balanceOf(owner)
+        let (maxShares : Uint256) = ERC20.balance_of(owner)
         return (maxShares)
     end
 
@@ -322,7 +316,7 @@ namespace ERC4626:
             assert is_zero_assets = FALSE
         end
 
-        ERC20_burn(owner, shares)
+        ERC20._burn(owner, shares)
 
         let (asset : felt) = ERC4626.asset()
         let (success : felt) = IERC20.transfer(

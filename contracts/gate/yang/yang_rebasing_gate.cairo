@@ -9,14 +9,7 @@ from starkware.starknet.common.syscalls import get_caller_address, get_contract_
 
 from contracts.lib.erc4626.library import ERC4626
 
-from contracts.lib.openzeppelin.token.erc20.library import (
-    ERC20_name,
-    ERC20_symbol,
-    ERC20_totalSupply,
-    ERC20_decimals,
-    ERC20_balanceOf,
-    ERC20_allowance,
-)
+from contracts.lib.openzeppelin.token.erc20.library import ERC20
 from contracts.shared.interfaces import IERC20
 from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
 from contracts.shared.wad_ray import WadRay
@@ -179,7 +172,7 @@ end
 func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     wad
 ):
-    let (total_supply_uint : Uint256) = ERC20_totalSupply()
+    let (total_supply_uint : Uint256) = ERC20.total_supply()
     let (total_supply) = uint_to_felt_unchecked(total_supply_uint)
     let (total_balance) = get_last_underlying_balance()
 
@@ -202,13 +195,13 @@ end
 
 @view
 func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (name):
-    let (name) = ERC20_name()
+    let (name) = ERC20.name()
     return (name)
 end
 
 @view
 func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (symbol):
-    let (symbol) = ERC20_symbol()
+    let (symbol) = ERC20.symbol()
     return (symbol)
 end
 
@@ -216,13 +209,13 @@ end
 func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     totalSupply : Uint256
 ):
-    let (totalSupply : Uint256) = ERC20_totalSupply()
+    let (totalSupply : Uint256) = ERC20.total_supply()
     return (totalSupply)
 end
 
 @view
 func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (decimals):
-    let (decimals) = ERC20_decimals()
+    let (decimals) = ERC20.decimals()
     return (decimals)
 end
 
@@ -230,7 +223,7 @@ end
 func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
     balance : Uint256
 ):
-    let (balance : Uint256) = ERC20_balanceOf(account)
+    let (balance : Uint256) = ERC20.balance_of(account)
     return (balance)
 end
 
