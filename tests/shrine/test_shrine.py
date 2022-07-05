@@ -250,7 +250,7 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 
     for i in range(FEED_LEN):
         # Add offset for initial feeds in `shrine`
-        timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
+        timestamp = (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
         await shrine_owner.send_tx(
             shrine.contract_address,
@@ -346,7 +346,7 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
 
     for i in range(FEED_LEN):
         # Add offset for initial feeds in `shrine`
-        timestamp = (i + FEED_LEN) * 30 * SECONDS_PER_MINUTE
+        timestamp = (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
 
         # Skip index after timestamp is set
@@ -563,7 +563,7 @@ async def test_estimate(users, shrine, estimate):
     user2_trove = (await shrine.get_trove(shrine_user2.address, 0).invoke()).result.trove
     assert user2_trove.charge_from == FEED_LEN - 1
 
-    last_updated = (await shrine.get_series(YANG_0_ADDRESS, 2*FEED_LEN - 1).invoke()).result.wad
+    last_updated = (await shrine.get_series(YANG_0_ADDRESS, 2 * FEED_LEN - 1).invoke()).result.wad
     assert last_updated != 0
 
     estimated_user1_debt, estimated_user2_debt, expected_debt = estimate
@@ -835,7 +835,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     # Get latest price
-    price = (await shrine.get_series(YANG_0_ADDRESS, 2*FEED_LEN - 1).invoke()).result.wad
+    price = (await shrine.get_series(YANG_0_ADDRESS, 2 * FEED_LEN - 1).invoke()).result.wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)

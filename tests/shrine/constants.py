@@ -36,8 +36,6 @@ FEED_LEN = 10
 MAX_PRICE_CHANGE = 0.025
 MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
 
-SECONDS_PER_MINUTE = 60
-
 DEBT_CEILING = 20_000 * WAD_SCALE
 
 # Interest rate piece-wise function parameters
@@ -55,8 +53,12 @@ RATE_BOUND1 = Decimal("0.5")
 RATE_BOUND2 = Decimal("0.75")
 RATE_BOUND3 = Decimal("0.9215")
 
+# Time Interval
+TIME_INTERVAL = 24 * 60 * 60 # Number of seconds in time interval
 # 1 / Number of intervals in a year
-TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
+TIME_INTERVAL_DIV_YEAR = Decimal("0.00273972602")
+
+
 
 # Threshold test constants
 DEPOSITS = [

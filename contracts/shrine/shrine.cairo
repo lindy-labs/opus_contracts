@@ -16,12 +16,11 @@ from contracts.shared.wad_ray import WadRay
 
 const MAX_THRESHOLD = WadRay.WAD_ONE
 # This is the value of limit divided by threshold
-# If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is 76%
+# If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is (threshold LTV) * LIMIT_RATIO = 76%
 const LIMIT_RATIO = 95 * 10 ** 16  # 95%
 
-const TIME_INTERVAL = 30 * 60  # 30 minutes * 60 seconds per minute
-const TIME_INTERVAL_DIV_YEAR = 57077625570776250000000  # 1 / (2 : felt* 24 : felt* 365) = 0.00005707762557077625 (ray)
-
+const TIME_INTERVAL = 24 * 60 * 60  # 24 hours * 60 minutes per hour * 60 seconds per minute
+const TIME_INTERVAL_DIV_YEAR = 2739726020000000000000000 # 1 day / 365 days = 0.00273972602 (ray)
 # Interest rate piece-wise function parameters - all rays
 const RATE_M1 = 2 * 10 ** 25  # 0.02
 const RATE_B1 = 0

@@ -12,7 +12,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, SECONDS_PER_MINUTE, YANGS
+from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
 from tests.utils import (
     WAD_SCALE,
     Uint256,
@@ -193,7 +193,7 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
 
     # Putting the price feeds in the `series` storage variable
     for i in range(FEED_LEN):
-        timestamp = i * 30 * SECONDS_PER_MINUTE
+        timestamp = i * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
         for j in range(len(YANGS)):
             await shrine_owner.send_tx(
