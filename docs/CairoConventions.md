@@ -105,7 +105,7 @@ Example of what NOT to do:
 let (output) = some_second_func(SomeStruct(4,5)) # <-- The type of output isn't specified
 ```
 
-# Function and Storage Variable Return Variable Names
+## Naming of return values for functions and storage variables
 
 Return variables should be named according to their 'type' rather than according to their purpose or function. This is because many different 'types' of variables are all represented by felts: booleans (0 or 1), fixed point numbers, negative numbers, etc. 
 
