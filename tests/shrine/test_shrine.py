@@ -7,7 +7,6 @@ import pytest
 from constants import *  # noqa: F403
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starkware_utils.error_handling import StarkException
-from tests.conftest import collect_gas_cost
 
 from tests.utils import (
     FALSE,
@@ -77,7 +76,7 @@ def base_rate(ltv: Decimal) -> Decimal:
 
 def compound(
     yangs_amt: List[Decimal],
-    yangs_price: [List[List[Decimal]]],
+    yangs_price: List[List[Decimal]],
     multiplier: List[Decimal],
     debt: Decimal,
 ) -> Decimal:

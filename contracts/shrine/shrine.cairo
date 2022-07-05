@@ -271,6 +271,18 @@ func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     return shrine_live_storage.read()
 end
 
+# Gets the custom threshold (maximum LTV before liquidation) of a trove
+# Also returns the total trove value
+# `threshold` is a wad
+@view
+func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id
+) -> (threshold_wad, value_wad):
+    let (yang_count) = shrine_yangs_count_storage.read()
+    let (current_time_id) = now()
+    return get_trove_threshold_internal(user_address, trove_id, current_time_id, yang_count, 0, 0)
+end
+
 #
 # Setters
 #
@@ -417,10 +429,6 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Charge interest for source trove to ensure it remains safe
     charge(src_address, src_trove_id)
-    # Charge interest for destination trove since its collateral balance will be changing, affecting its personalized interest rate
-    charge(dst_address, dst_trove_id)
-
-    # TODO: destination trove should also be charged interest here
 
     let (src_yang_balance) = shrine_deposits_storage.read(src_address, src_trove_id, yang_id)
 
@@ -554,7 +562,6 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff + amount
-    WadRay.assert_valid(new_system_debt)  # Overflow check
     let (debt_ceiling) = shrine_ceiling_storage.read()
 
     with_attr error_message("Shrine: Debt ceiling reached"):
@@ -616,7 +623,6 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + diff - amount
-    WadRay.assert_valid(new_system_debt)  # Overflow check
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
@@ -671,7 +677,7 @@ end
 
 # Get the last updated price for a yang
 @view
-func yang_last_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func get_current_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
 ) -> (wad):
     alloc_locals
@@ -683,9 +689,8 @@ end
 
 # Gets last updated multiplier value
 @view
-func get_multiplier_recent{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    ray
-):
+func get_current_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    ) -> (ray):
     let (interval) = now()
     let (m) = get_recent_multiplier_from(interval)
     return (m)
@@ -715,7 +720,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     # Early termination if trove has no debt
     if trove.debt == 0:
-        return (bool=TRUE)
+        return (TRUE)
     end
 
     let (threshold, value) = get_trove_threshold(user_address, trove_id)  # Getting the trove's custom threshold and total collateral value
@@ -735,11 +740,11 @@ func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 
     # Early terminating if trove has no debt
     if trove.debt == 0:
-        return (bool=TRUE)
+        return (TRUE)
     end
 
     let (threshold, value) = get_trove_threshold(user_address, trove_id)
-    let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = (limit/threshold) * threshold
+    let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
     let (max_debt) = WadRay.wmul(limit, value)
     let (bool) = is_le(trove.debt, max_debt)
 
@@ -772,7 +777,6 @@ func get_valid_yang_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 end
 
 # Wrapper function for the recursive `appraise_internal` function that gets the most recent trove value
-@view
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ) -> (wad):
@@ -817,7 +821,6 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Get new system debt
     let new_system_debt = old_system_debt + diff
-    WadRay.assert_valid(new_system_debt)  # Overflow check
     shrine_debt_storage.write(new_system_debt)
 
     DebtTotalUpdated.emit(new_system_debt)
@@ -971,7 +974,12 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     end
 
     let (price) = get_recent_price_from(yang_id, interval)
-    assert_not_zero(price)  # Reverts if price is zero
+
+    # Reverts if price is zero
+    with_attr error_message("Shrine: Yang price can never be zero"):
+        assert_not_zero(price)
+    end
+
     let (value) = WadRay.wmul_unchecked(balance, price)
 
     # Update cumulative value
@@ -1033,18 +1041,6 @@ func assert_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
     end
 
     return ()
-end
-
-# Gets the custom threshold (maximum LTV before liquidation) of a trove
-# Also returns the total trove value
-# `threshold` is a wad
-@view
-func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id
-) -> (threshold_wad, value_wad):
-    let (yang_count) = shrine_yangs_count_storage.read()
-    let (current_time_id) = now()
-    return get_trove_threshold_internal(user_address, trove_id, current_time_id, yang_count, 0, 0)
 end
 
 func get_trove_threshold_internal{
