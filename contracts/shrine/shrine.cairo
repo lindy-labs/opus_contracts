@@ -20,7 +20,7 @@ const MAX_THRESHOLD = WadRay.WAD_ONE
 const LIMIT_RATIO = 95 * 10 ** 16  # 95%
 
 const TIME_INTERVAL = 24 * 60 * 60  # 24 hours * 60 minutes per hour * 60 seconds per minute
-const TIME_INTERVAL_DIV_YEAR = 2739726020000000000000000 # 1 day / 365 days = 0.00273972602 (ray)
+const TIME_INTERVAL_DIV_YEAR = 2739726020000000000000000  # 1 day / 365 days = 0.00273972602 (ray)
 # Interest rate piece-wise function parameters - all rays
 const RATE_M1 = 2 * 10 ** 25  # 0.02
 const RATE_B1 = 0
