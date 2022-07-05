@@ -697,6 +697,12 @@ func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     let (trove : Trove) = get_trove(user_address, trove_id)
+
+    # Early termination if no debt
+    if trove.debt == 0:
+        return (trove.debt)
+    end
+
     let (current_interval) = now()
     return estimate_internal(user_address, trove_id, trove, current_interval)
 end
@@ -831,11 +837,6 @@ func estimate_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     user_address, trove_id, trove : Trove, current
 ) -> (wad):
     alloc_locals
-
-    # Early termination if no debt
-    if trove.debt == 0:
-        return (trove.debt)
-    end
 
     # Early termination if `start` is next interval of `current`,
     # meaning interest has been charged up to current interval.
