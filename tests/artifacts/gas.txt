@@ -1,0 +1,8 @@
+shrine/withdraw: 5356.3
+shrine/deposit: 5340.3
+shrine/forge: 3389.5
+shrine/move_yang: 5658.8
+shrine/withdraw: 5356.3
+shrine/deposit: 5341.3
+shrine/forge: 3389.3
+shrine/move_yang: 7770.6

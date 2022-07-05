@@ -3,14 +3,17 @@ from collections import namedtuple
 from decimal import getcontext
 from functools import cache
 from typing import Awaitable, Callable
+from filelock import FileLock
+from pathlib import Path
 
 import pytest
 from cache import AsyncLRU
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
+from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 
 from tests.account import Account
 from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, SECONDS_PER_MINUTE, YANGS
-from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt
+from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt, estimate_gas
 
 MRACParameters = namedtuple(
     "MRACParameters",
@@ -23,6 +26,39 @@ DEFAULT_MRAC_PARAMETERS = MRACParameters(*[int(i * WAD_SCALE) for i in (0, 1.5, 
 #
 # General fixtures
 #
+
+@pytest.fixture(scope="session")
+def collect_gas_cost():
+    # Global variable
+    #gas_info = []
+    path = "tests/artifacts/gas.txt"
+
+    # Adds a function call to gas_info
+    def add_call(func_name : str, tx_info : StarknetTransactionExecutionInfo, num_storage_keys : int, num_contracts : int):
+        gas = estimate_gas(tx_info, num_storage_keys, num_contracts)
+
+        with FileLock(path + ".lock"):
+            if Path(path).is_file():
+                with open(path, "a") as f:
+                    f.write(f"{func_name}: {gas}\n") 
+            else:
+                with open(path, "w") as f:
+                    f.write(f"{func_name}: {gas}\n") 
+
+
+
+    '''
+    def print_gas():
+        print("\n======================================== GAS ESTIMATIONS ========================================")
+        for tx in gas_info: 
+            print(f"{tx[0]}: {tx[1]}")
+        print("=================================================================================================")
+
+
+    request.addfinalizer(print_gas)
+    '''
+    return add_call
+
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -65,7 +101,7 @@ def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     return create_user
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def tokens(
     starknet: Starknet,
 ) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
@@ -140,14 +176,10 @@ async def shrine(starknet, users, shrine_deploy) -> StarknetContract:
     # Creating the gages
     for i in range(len(YANGS)):
         await shrine_owner.send_tx(
-            shrine.contract_address,
-            "add_yang",
-            [YANGS[i]["address"], YANGS[i]["ceiling"]],
+            shrine.contract_address, "add_yang", [YANGS[i]["address"], YANGS[i]["ceiling"]]
         )  # Add gage
         await shrine_owner.send_tx(
-            shrine.contract_address,
-            "set_threshold",
-            [YANGS[i]["address"], YANGS[i]["threshold"]],
+            shrine.contract_address, "set_threshold", [YANGS[i]["address"], YANGS[i]["threshold"]]
         )  # Adding the gage's threshold
 
     # Creating the price feeds

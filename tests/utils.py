@@ -179,7 +179,6 @@ def estimate_gas_inner(call_info: FunctionInvocation):
 
     # Sum of all gas consumed across both the call and its internal calls
     sum_gas = sum(WEIGHTS[name] * builtins[name] for name in NAMES) + steps * WEIGHTS["step"]
-    print(f"Num internal calls: {len(call_info.internal_calls)}")
     for call in call_info.internal_calls:
         sum_gas += estimate_gas_inner(call)
 
