@@ -110,13 +110,13 @@ let (output) = some_second_func(SomeStruct(4,5)) # <-- The type of output isn't 
 Return variables should be named according to their 'type' rather than according to their purpose or function. This is because many different 'types' of variables are all represented by felts: booleans (0 or 1), fixed point numbers, negative numbers, etc. 
 
 The naming conventions are the following:
-- `bool`: 0 or 1
+- `bool`: FALSE or TRUE (from bool.cairo, which are equal to 0 and 1 respectively)
 - `wad`: 18 decimal fixed point number
 - `ray`: 27 decimal fixed point number
 - `ufelt`: "regular" felt. Equivalent to `uint` in other languages.
 - `sfelt`: "signed" felt, or a felt that stores the prime-field arithmetic equivalent of negative numbers. 
 - `address`: a contract address
-- `bitmap`: A felt that has had multiple values packed into it
+- `packed`: A felt that has had multiple values packed into it
 - Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`. 
 
 
