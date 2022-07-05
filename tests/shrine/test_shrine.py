@@ -563,7 +563,7 @@ async def test_estimate(users, shrine, estimate):
     user2_trove = (await shrine.get_trove(shrine_user2.address, 0).invoke()).result.trove
     assert user2_trove.charge_from == FEED_LEN - 1
 
-    last_updated = (await shrine.get_series(YANG_0_ADDRESS, 39).invoke()).result.wad
+    last_updated = (await shrine.get_series(YANG_0_ADDRESS, 2*FEED_LEN - 1).invoke()).result.wad
     assert last_updated != 0
 
     estimated_user1_debt, estimated_user2_debt, expected_debt = estimate
@@ -835,7 +835,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     # Get latest price
-    price = (await shrine.get_series(YANG_0_ADDRESS, 39).invoke()).result.wad
+    price = (await shrine.get_series(YANG_0_ADDRESS, 2*FEED_LEN - 1).invoke()).result.wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
