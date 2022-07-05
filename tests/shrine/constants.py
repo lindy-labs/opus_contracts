@@ -38,7 +38,7 @@ MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
 
 SECONDS_PER_MINUTE = 60
 
-DEBT_CEILING = 10_000 * WAD_SCALE
+DEBT_CEILING = 20_000 * WAD_SCALE
 
 # Interest rate piece-wise function parameters
 RATE_M1 = Decimal("0.02")
@@ -76,3 +76,6 @@ DEPOSITS = [
         "threshold": YANGS[2]["threshold"],
     },
 ]
+
+# Forge constant
+FORGE_AMT = 5_000 * WAD_SCALE
