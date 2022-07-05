@@ -654,7 +654,7 @@ end
 # Calculate a Trove's current loan-to-value ratio
 # returns a ray
 @view
-func trove_ratio_current{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func get_current_trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ) -> (ray):
     alloc_locals

@@ -422,7 +422,7 @@ async def test_shrine_withdraw_pass(users, shrine, shrine_withdraw):
     amt = (await shrine.get_deposit(shrine_user.address, 0, YANG_0_ADDRESS).invoke()).result.wad
     assert amt == 0
 
-    ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ray
+    ltv = (await shrine.get_current_trove_ratio(shrine_user.address, 0).invoke()).result.ray
     assert ltv == 0
 
     is_healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
@@ -449,8 +449,8 @@ async def test_shrine_forge_pass(users, shrine, shrine_forge):
     assert user_trove.debt == to_wad(5000)
     assert user_trove.charge_from == FEED_LEN - 1
 
-    yang0_price = (await shrine.yang_last_price(YANG_0_ADDRESS).invoke()).result.wad
-    trove_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ray
+    yang0_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.wad
+    trove_ltv = (await shrine.get_current_trove_ratio(shrine_user.address, 0).invoke()).result.ray
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
     expected_ltv = Decimal(to_wad(5000)) / Decimal(10 * yang0_price)
     assert_equalish(adjusted_trove_ltv, expected_ltv)
@@ -479,7 +479,7 @@ async def test_shrine_melt_pass(users, shrine, shrine_melt):
     assert user_trove.debt == 0
     assert user_trove.charge_from == FEED_LEN
 
-    shrine_ltv = (await shrine.trove_ratio_current(shrine_user.address, 0).invoke()).result.ray
+    shrine_ltv = (await shrine.get_current_trove_ratio(shrine_user.address, 0).invoke()).result.ray
     assert shrine_ltv == 0
 
     healthy = (await shrine.is_healthy(shrine_user.address, 0).invoke()).result.bool
@@ -788,7 +788,7 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
     shrine_guest = await users("shrine guest")
 
     # Get latest price
-    price = (await shrine.yang_last_price(YANG_0_ADDRESS).invoke()).result.wad
+    price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
@@ -1003,7 +1003,7 @@ async def test_get_trove_threshold(users, shrine, shrine_deposit_multiple):
 
     prices = []
     for d in DEPOSITS:
-        price = (await shrine.yang_last_price(d["address"]).invoke()).result.wad
+        price = (await shrine.get_current_yang_price(d["address"]).invoke()).result.wad
         prices.append(price)
 
     expected_threshold = calculate_trove_threshold(
