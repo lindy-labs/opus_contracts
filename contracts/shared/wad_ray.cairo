@@ -29,45 +29,73 @@ namespace WadRay:
     func floor{range_check_ptr}(n) -> (wad):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
         let floored = n - mod_val
-        assert_valid(floored)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(floored)
+        end
+
         return (wad=floored)
     end
 
     func ceil{range_check_ptr}(n) -> (wad):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
         let ceiled = (int_val + 1) * WAD_ONE
-        assert_valid(ceiled)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(ceiled)
+        end
+
         return (wad=ceiled)
     end
 
     func add{range_check_ptr}(a, b) -> (wad):
         let sum = a + b
-        assert_valid(sum)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(sum)
+        end
+
         return (wad=sum)
     end
 
     func add_unsigned{range_check_ptr}(a, b) -> (wad):
         let sum = a + b
-        assert_valid_unsigned(sum)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid_unsigned(sum)
+        end
+
         return (wad=sum)
     end
 
     func sub{range_check_ptr}(a, b) -> (wad):
         let diff = a - b
-        assert_valid(diff)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(diff)
+        end
+
         return (wad=diff)
     end
 
     func sub_unsigned{range_check_ptr}(a, b) -> (wad):
         let diff = a - b
-        assert_valid_unsigned(diff)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid_unsigned(diff)
+        end
+
         return (wad=diff)
     end
 
     func wmul{range_check_ptr}(a, b) -> (wad):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, WAD_SCALE, BOUND)
-        assert_valid(scaled_prod)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(scaled_prod)
+        end
+
         return (wad=scaled_prod)
     end
 
@@ -83,7 +111,11 @@ namespace WadRay:
         let (div_sign) = sign(b)
         tempvar prod = a * WAD_SCALE
         let (wad_u, _) = signed_div_rem(prod, div, BOUND)
-        assert_valid_unsigned(wad_u)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid_unsigned(wad_u)
+        end
+
         return (wad=wad_u * div_sign)
     end
 
@@ -101,7 +133,11 @@ namespace WadRay:
     func wunsigned_div{range_check_ptr}(a, b) -> (wad):
         tempvar product = a * WAD_SCALE
         let (q, _) = unsigned_div_rem(product, b)
-        assert_valid(q)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(q)
+        end
+
         return (wad=q)
     end
 
@@ -117,7 +153,11 @@ namespace WadRay:
     func rmul{range_check_ptr}(a, b) -> (ray):
         tempvar prod = a * b
         let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
-        assert_valid(scaled_prod)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(scaled_prod)
+        end
+
         return (ray=scaled_prod)
     end
 
@@ -133,7 +173,11 @@ namespace WadRay:
         let (div_sign) = sign(b)
         tempvar prod = a * RAY_SCALE
         let (ray_u, _) = signed_div_rem(prod, div, BOUND)
-        assert_valid_unsigned(ray_u)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid_unsigned(ray_u)
+        end
+
         return (ray=ray_u * div_sign)
     end
 
@@ -151,7 +195,11 @@ namespace WadRay:
     func runsigned_div{range_check_ptr}(a, b) -> (ray):
         tempvar product = a * RAY_SCALE
         let (q, _) = signed_div_rem(product, b, BOUND)
-        assert_valid(q)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(q)
+        end
+
         return (ray=q)
     end
 
@@ -173,14 +221,21 @@ namespace WadRay:
 
     func from_uint{range_check_ptr}(n : Uint256) -> (wad):
         assert n.high = 0
-        assert_valid(n.low)
+
+        with_attr error_message("WadRay: Uint256.low is out of bounds"):
+            assert_valid(n.low)
+        end
 
         return (wad=n.low)
     end
 
     func to_wad{range_check_ptr}(n) -> (wad):
         let n_wad = n * WAD_SCALE
-        assert_valid(n_wad)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(n_wad)
+        end
+
         return (wad=n_wad)
     end
 
@@ -192,7 +247,11 @@ namespace WadRay:
 
     func wad_to_ray{range_check_ptr}(n) -> (ray):
         let ray = n * DIFF
-        assert_valid(ray)
+
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_valid(ray)
+        end
+
         return (ray)
     end
 
