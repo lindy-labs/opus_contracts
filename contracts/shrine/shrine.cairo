@@ -278,6 +278,8 @@ end
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ) -> (threshold_wad, value_wad):
+    alloc_locals
+
     let (yang_count) = shrine_yangs_count_storage.read()
     let (current_time_id) = now()
     return get_trove_threshold_internal(user_address, trove_id, current_time_id, yang_count, 0, 0)
@@ -545,23 +547,18 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Check system is live
     assert_live()
 
+    # Charge interest
+    charge(user_address, trove_id)
+
     # Get current Trove information
     let (old_trove_info : Trove) = get_trove(user_address, trove_id)
 
     # Get current interval
     let (current_interval) = now()
 
-    # Get updated debt amount with interest
-    let (old_trove_debt_compounded) = estimate_internal(
-        user_address, trove_id, old_trove_info, current_interval
-    )
-
-    # Get interest charged
-    let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_info.debt)
-
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_debt_storage.read()
-    let new_system_debt = current_system_debt + diff + amount
+    let new_system_debt = current_system_debt + amount
     let (debt_ceiling) = shrine_ceiling_storage.read()
 
     with_attr error_message("Shrine: Debt ceiling reached"):
@@ -577,11 +574,11 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     if old_trove_info.debt == 0:
         tempvar new_charge_from = current_interval
     else:
-        tempvar new_charge_from = current_interval + 1
+        tempvar new_charge_from = old_trove_info.charge_from
     end
 
     # Update trove information
-    let (new_debt) = WadRay.add(old_trove_debt_compounded, amount)
+    let (new_debt) = WadRay.add(old_trove_info.debt, amount)
     let new_trove_info : Trove = Trove(charge_from=new_charge_from, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
@@ -606,27 +603,22 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     assert_auth()
 
+    # Charge interest
+    charge(user_address, trove_id)
+
     # Get current Trove information
     let (old_trove_info : Trove) = get_trove(user_address, trove_id)
 
     # Get current interval
     let (current_interval) = now()
 
-    # Get updated debt amount with interest
-    let (old_trove_debt_compounded) = estimate_internal(
-        user_address, trove_id, old_trove_info, current_interval
-    )
-
-    # Get interest charged
-    let (diff) = WadRay.sub_unsigned(old_trove_debt_compounded, old_trove_info.debt)
-
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
-    let new_system_debt = current_system_debt + diff - amount
+    let new_system_debt = current_system_debt - amount
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
-    let (new_debt) = WadRay.sub(old_trove_debt_compounded, amount)
+    let (new_debt) = WadRay.sub(old_trove_info.debt, amount)
     let new_trove_info : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
@@ -802,6 +794,11 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Get trove info
     let (trove : Trove) = get_trove(user_address, trove_id)
+
+    # Early termination if no debt
+    if trove.debt == 0:
+        return ()
+    end
 
     # Get current interval
     let (current_interval) = now()
