@@ -167,7 +167,7 @@ def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds:
     for p, a, t in zip(prices, amounts, thresholds):
         p = from_wad(p)
         a = from_wad(a)
-        t = from_wad(t)
+        t = from_ray(t)
 
         total_value += p * a
         cumulative_weighted_threshold += p * a * t
@@ -403,7 +403,7 @@ async def test_shrine_setup(shrine_setup):
     # Check threshold
     for i in range(len(YANGS)):
         yang_address = YANGS[i]["address"]
-        threshold = (await shrine.get_threshold(yang_address).invoke()).result.wad
+        threshold = (await shrine.get_threshold(yang_address).invoke()).result.ray
         assert threshold == YANGS[i]["threshold"]
 
         # Assert that `get_current_yang_price` terminates
@@ -1099,16 +1099,16 @@ async def test_set_threshold(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # test setting to normal value
-    value = 9 * 10**17
+    value = 9 * 10**26
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], value])
-    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.wad == value
+    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == value
 
     # test setting to max value
-    max = WAD_SCALE
+    max = RAY_SCALE
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max])
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], max])
-    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.wad == max
+    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == max
 
     # test setting over the limit
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
@@ -1180,5 +1180,5 @@ async def test_get_trove_threshold(users, shrine, shrine_deposit_multiple):
     )
 
     # Getting actual threshold
-    actual_threshold = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result.threshold_wad
-    assert_equalish(from_wad(actual_threshold), expected_threshold)
+    actual_threshold = (await shrine.get_trove_threshold(shrine_user.address, 0).invoke()).result.threshold_ray
+    assert_equalish(from_ray(actual_threshold), expected_threshold)

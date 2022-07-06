@@ -17,7 +17,7 @@ from contracts.shared.wad_ray import WadRay
 # Initial multiplier value to ensure `get_recent_multiplier_from` terminates
 const INITIAL_MULTIPLIER = WadRay.RAY_ONE
 
-const MAX_THRESHOLD = WadRay.WAD_ONE
+const MAX_THRESHOLD = WadRay.RAY_ONE
 # This is the value of limit divided by threshold
 # If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is (threshold LTV) * LIMIT_RATIO = 76%
 const LIMIT_RATIO = 95 * 10 ** 16  # 95%
@@ -189,9 +189,9 @@ end
 func shrine_multiplier_storage(interval) -> (ray):
 end
 
-# Liquidation threshold per yang (as LTV) - wad
+# Liquidation threshold per yang (as LTV) - ray
 @storage_var
-func shrine_thresholds_storage(yang_id) -> (wad):
+func shrine_thresholds_storage(yang_id) -> (ray):
 end
 
 @storage_var
@@ -263,7 +263,7 @@ end
 @view
 func get_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
-) -> (wad):
+) -> (ray):
     let (yang_id) = get_valid_yang_id(yang_address)
     return shrine_thresholds_storage.read(yang_id)
 end
@@ -336,10 +336,10 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
-# Threshold value should be a wad between 0 and 1
-# Example: 75% = 75 : felt* 10 : felt** 16
-# Example 2: 1% = 1 : felt* 10 : felt** 16
-# Example 3: 1.5% = 15 : felt* 10 : felt** 15
+# Threshold value should be a ray between 0 and 1
+# Example: 75% = 75 * 10 ** 25
+# Example 2: 1% = 1 * 10 ** 25
+# Example 3: 1.5% = 15 * 10 ** 24
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_threshold
@@ -452,6 +452,8 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Charge interest for destination trove since its collateral balance will be changed,
     # affecting its personalized interest rate due to the underlying assumption in `appraise_internal`
+    # TODO: maybe move this under `assert_within_limits` call so failed `move_yang` calls are cheaper?
+    # It depends on starknet handles fees for failed transactions
     charge(dst_address, dst_trove_id)
 
     let (src_yang_balance) = shrine_deposits_storage.read(src_address, src_trove_id, yang_id)
@@ -699,7 +701,7 @@ end
 @view
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
-) -> (threshold_wad, value_wad):
+) -> (threshold_ray, value_wad):
     alloc_locals
 
     let (yang_count) = shrine_yangs_count_storage.read()
@@ -1102,17 +1104,18 @@ func get_trove_threshold_internal{
     current_yang_id,
     cumulative_weighted_threshold,
     cumulative_trove_value,
-) -> (threshold_wad, value_wad):
+) -> (threshold_ray, value_wad):
     alloc_locals
 
     if current_yang_id == 0:
         if cumulative_trove_value != 0:
+            # WadRay.wunsigneddiv, with the numerator a ray, and the denominator a wad, returns a ray
             let (threshold) = WadRay.wunsigned_div(
                 cumulative_weighted_threshold, cumulative_trove_value
             )
-            return (threshold_wad=threshold, value_wad=cumulative_trove_value)
+            return (threshold_ray=threshold, value_wad=cumulative_trove_value)
         else:
-            return (threshold_wad=0, value_wad=0)
+            return (threshold_ray=0, value_wad=0)
         end
     end
 
@@ -1135,6 +1138,7 @@ func get_trove_threshold_internal{
     let (yang_price) = get_recent_price_from(current_yang_id, current_time_id)
 
     let (deposited_value) = WadRay.wmul(yang_price, deposited)
+    # Since we're using wmul on the product of a wad and a ray, the result is a ray
     let (weighted_threshold) = WadRay.wmul(yang_threshold, deposited_value)
 
     let (cumulative_weighted_threshold) = WadRay.add(
