@@ -589,9 +589,8 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_system_debt) = shrine_debt_storage.read()
     let new_system_debt = current_system_debt + amount
 
-    # Overflow check
-    with_attr error_message("Shrine: System debt overflow"):
-        WadRay.assert_valid(new_system_debt)
+    with_attr error_message("Shrine: system debt overflow"):
+        let (new_system_debt) = WadRay.add(current_system_debt, amount) # WadRay.add checks for overflow
     end
 
     let (debt_ceiling) = shrine_ceiling_storage.read()
@@ -649,11 +648,10 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
-    let new_system_debt = current_system_debt - amount
 
-    # Underflow check
+    
     with_attr error_message("Shrine: System debt underflow"):
-        WadRay.assert_valid(new_system_debt)
+        let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, amount) # WadRay.sub_unsigned contains an underflow check
     end
 
     shrine_debt_storage.write(new_system_debt)
