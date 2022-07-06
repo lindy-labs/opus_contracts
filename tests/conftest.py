@@ -2,7 +2,6 @@ import asyncio
 from collections import namedtuple
 from decimal import getcontext
 from functools import cache
-from pathlib import Path
 from typing import Awaitable, Callable
 
 import pytest

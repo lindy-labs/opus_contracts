@@ -587,7 +587,6 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_debt_storage.read()
-    let new_system_debt = current_system_debt + amount
 
     with_attr error_message("Shrine: system debt overflow"):
         let (new_system_debt) = WadRay.add(current_system_debt, amount)  # WadRay.add checks for overflow
