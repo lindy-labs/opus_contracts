@@ -700,10 +700,11 @@ async def test_charge(users, shrine, estimate, method, calldata):
         )
 
 
+# Skip index 0 because initial price is set in `add_yang`
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "update_feeds_intermittent",
-    [0, 1, FEED_LEN - 2, FEED_LEN - 1],
+    [1, FEED_LEN - 2, FEED_LEN - 1],
     indirect=["update_feeds_intermittent"],
 )
 async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
