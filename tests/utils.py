@@ -138,13 +138,13 @@ def assert_equalish(a: Decimal, b: Decimal):
 #
 
 # Returns a price feed
-def create_feed(start_price: Decimal, length: int, max_change: Decimal) -> list[int]:
+def create_feed(start_price: Decimal, length: int, max_change: float) -> list[int]:
     feed = []
 
     feed.append(start_price)
     for i in range(1, length):
         change = Decimal(
-            uniform(-float(max_change), -float(max_change))
+            uniform(-max_change, max_change)
         )  # Returns the % change in price (in decimal form, meaning 1% = 0.01)
         feed.append(feed[i - 1] * (1 + change))
 
