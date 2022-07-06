@@ -48,12 +48,8 @@ def collect_gas_cost():
         gas = estimate_gas(tx_info, num_storage_keys, num_contracts)
 
         with FileLock(path + ".lock"):
-            if Path(path).is_file():
-                with open(path, "a") as f:
-                    f.write(f"{func_name}: {gas}\n")
-            else:
-                with open(path, "w") as f:
-                    f.write(f"{func_name}: {gas}\n")
+            with open(path, "a") as f:
+                f.write(f"{func_name}: {gas}\n")
 
     """
     def print_gas():
