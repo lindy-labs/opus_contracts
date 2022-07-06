@@ -741,7 +741,8 @@ func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     end
 
     let (current_interval) = now()
-    return estimate_internal(user_address, trove_id, trove, current_interval)
+
+    return compound(user_address, trove_id, trove.charge_from, current_interval + 1, trove.debt)
 end
 
 # Returns a bool indicating whether the given trove is healthy or not
@@ -847,7 +848,9 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (current_interval) = now()
 
     # Get new debt amount
-    let (new_debt) = estimate_internal(user_address, trove_id, trove, current_interval)
+    let (new_debt) = compound(
+        user_address, trove_id, trove.charge_from, current_interval + 1, trove.debt
+    )
 
     # Update Trove
     let updated_trove : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
@@ -873,23 +876,6 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     TroveUpdated.emit(user_address, trove_id, updated_trove)
 
     return ()
-end
-
-# Wrapper function to make a call to `compound` for estimating accumulated interest.
-func estimate_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, trove : Trove, current
-) -> (wad):
-    alloc_locals
-
-    # Early termination if `start` is next interval of `current`,
-    # meaning interest has been charged up to current interval.
-    let (is_updated) = is_le(current + 1, trove.charge_from)
-    if is_updated == TRUE:
-        return (trove.debt)
-    end
-
-    # Get new debt amount
-    return compound(user_address, trove_id, trove.charge_from, current + 1, trove.debt)
 end
 
 # Inner function for calculating accumulated interest.
