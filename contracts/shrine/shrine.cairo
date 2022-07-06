@@ -778,7 +778,7 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     end
 
     let (threshold, value) = get_trove_threshold(user_address, trove_id)  # Getting the trove's custom threshold and total collateral value
-    let (max_debt) = WadRay.wmul(threshold, value)  # Calculating the maximum amount of debt the trove can have
+    let (max_debt) = WadRay.rmul(threshold, value)  # Calculating the maximum amount of debt the trove can have
     let (bool) = is_le(trove.debt, max_debt)
 
     return (bool)
@@ -799,7 +799,7 @@ func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 
     let (threshold, value) = get_trove_threshold(user_address, trove_id)
     let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
-    let (max_debt) = WadRay.wmul(limit, value)
+    let (max_debt) = WadRay.rmul(limit, value)
     let (bool) = is_le(trove.debt, max_debt)
 
     return (bool)
