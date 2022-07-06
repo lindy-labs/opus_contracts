@@ -704,7 +704,7 @@ async def test_charge(users, shrine, estimate, method, calldata):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "update_feeds_intermittent",
-    [1, FEED_LEN - 2, FEED_LEN - 1],
+    [0, 1, FEED_LEN - 2, FEED_LEN - 1],
     indirect=["update_feeds_intermittent"],
 )
 async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
@@ -714,8 +714,8 @@ async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
     The `update_feeds_intermittent` fixture returns a tuple of the index that is skipped,
     and a list for the price feed.
 
-    The index is with reference to the second set of feeds (intervals 20 to 39).
-    Therefore, writes to the contract takes in an additional offset of 20 for the initial
+    The index is with reference to the second set of feeds.
+    Therefore, writes to the contract takes in an additional offset of FEED_LEN for the initial
     set of feeds in `shrine` fixture.
     """
     shrine_owner = await users("shrine owner")
