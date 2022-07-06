@@ -138,16 +138,25 @@ def assert_equalish(a: Decimal, b: Decimal):
 #
 
 # Returns a price feed
-def create_feed(start_price: float, length: int, max_change: float) -> list[int]:
+def create_feed(start_price: Decimal, length: int, max_change: Decimal) -> list[int]:
     feed = []
 
     feed.append(start_price)
     for i in range(1, length):
-        change = uniform(-max_change, max_change)  # Returns the % change in price (in decimal form, meaning 1% = 0.01)
+        change = Decimal(
+            uniform(-float(max_change), -float(max_change))
+        )  # Returns the % change in price (in decimal form, meaning 1% = 0.01)
         feed.append(feed[i - 1] * (1 + change))
 
     # Scaling the feed before returning so it's ready to use in contracts
     return list(map(to_wad, feed))
+
+
+# Returns the lower and upper bounds of a yang's price as a tuple of wads
+def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[int, int]:
+    lo = ((Decimal("1") - Decimal(max_change)) ** length) * start_price
+    hi = ((Decimal("1") + Decimal(max_change)) ** length) * start_price
+    return lo, hi
 
 
 def set_block_timestamp(sn, block_timestamp):

@@ -14,6 +14,9 @@ from contracts.shared.wad_ray import WadRay
 # Constants
 #
 
+# Initial multiplier value to ensure `get_recent_multiplier_from` terminates
+const INITIAL_MULTIPLIER = WadRay.RAY_ONE
+
 const MAX_THRESHOLD = WadRay.WAD_ONE
 # This is the value of limit divided by threshold
 # If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is (threshold LTV) * LIMIT_RATIO = 76%
@@ -49,7 +52,7 @@ func Revoked(address):
 end
 
 @event
-func YangAdded(yang_address, yang_id, max):
+func YangAdded(yang_address, yang_id, max, start_price):
 end
 
 @event
@@ -289,7 +292,11 @@ end
 #
 
 @external
-func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(yang_address, max):
+func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    yang_address, max, price
+):
+    alloc_locals
+
     assert_auth()
 
     # Assert that yang is not already added
@@ -298,12 +305,19 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert yang_id = 0
     end
 
+    # Assign ID to yang and add yang struct
     let (yang_count) = shrine_yangs_count_storage.read()
     shrine_yang_id_storage.write(yang_address, yang_count + 1)
     shrine_yangs_storage.write(yang_count + 1, Yang(0, max))
-    YangAdded.emit(yang_address, yang_count + 1, max)
 
+    # Update yangs count
     shrine_yangs_count_storage.write(yang_count + 1)
+
+    # Seed initial price to ensure `get_recent_price_from` terminates
+    advance(yang_address, price)
+
+    # Events
+    YangAdded.emit(yang_address, yang_count + 1, max, price)
     YangsCountUpdated.emit(yang_count + 1)
 
     return ()
@@ -374,10 +388,18 @@ end
 
 # Constructor
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    authed, multiplier
+):
     shrine_auth_storage.write(authed, TRUE)
     shrine_live_storage.write(TRUE)
     Authorized.emit(authed)
+
+    # Set initial multiplier value
+    let (interval) = now()
+    shrine_multiplier_storage.write(interval, multiplier)
+
+    MultiplierUpdated.emit(multiplier, interval)
     return ()
 end
 

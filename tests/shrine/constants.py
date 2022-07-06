@@ -12,19 +12,19 @@ YANG3_ADDRESS = 3456
 YANGS = [
     {
         "address": YANG1_ADDRESS,
-        "start_price": 2000,
+        "start_price": Decimal("2000"),
         "ceiling": 10_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
         "address": YANG2_ADDRESS,
-        "start_price": 500,
+        "start_price": Decimal("500"),
         "ceiling": 100_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
         "address": YANG3_ADDRESS,
-        "start_price": 1.25,
+        "start_price": Decimal("1.25"),
         "ceiling": 10_000_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
@@ -33,7 +33,7 @@ YANGS = [
 INITIAL_DEPOSIT = 10
 
 FEED_LEN = 10
-MAX_PRICE_CHANGE = 0.025
+MAX_PRICE_CHANGE = Decimal("0.025")
 MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
 
 DEBT_CEILING = 20_000 * WAD_SCALE
@@ -54,10 +54,9 @@ RATE_BOUND2 = Decimal("0.75")
 RATE_BOUND3 = Decimal("0.9215")
 
 # Time Interval
-TIME_INTERVAL = 24 * 60 * 60 # Number of seconds in time interval
+TIME_INTERVAL = 24 * 60 * 60  # Number of seconds in time interval
 # 1 / Number of intervals in a year
 TIME_INTERVAL_DIV_YEAR = Decimal("0.00273972602")
-
 
 
 # Threshold test constants

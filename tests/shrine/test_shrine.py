@@ -18,6 +18,7 @@ from tests.utils import (
     create_feed,
     from_ray,
     from_wad,
+    price_bounds,
     set_block_timestamp,
     to_wad,
 )
@@ -373,15 +374,21 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
 
 
 @pytest.mark.asyncio
-async def test_shrine_setup(shrine):
+async def test_shrine_deploy(shrine_deploy):
+    shrine = shrine_deploy
+
     # Check system is live
     live = (await shrine.get_live().invoke()).result.bool
     assert live == TRUE
 
-    # Check threshold
-    for i in range(len(YANGS)):
-        threshold = (await shrine.get_threshold(YANGS[i]["address"]).invoke()).result.wad
-        assert threshold == YANGS[i]["threshold"]
+    # Assert that `get_current_multiplier` terminates
+    multiplier = (await shrine.get_current_multiplier().invoke()).result.ray
+    assert multiplier == RAY_SCALE
+
+
+@pytest.mark.asyncio
+async def test_shrine_setup(shrine_setup):
+    shrine = shrine_setup
 
     # Check debt ceiling
     ceiling = (await shrine.get_ceiling().invoke()).result.wad
@@ -391,19 +398,36 @@ async def test_shrine_setup(shrine):
     yang_count = (await shrine.get_yangs_count().invoke()).result.ufelt
     assert yang_count == len(YANGS)
 
-    # Check yangs
+    # Check threshold
+    for i in range(len(YANGS)):
+        yang_address = YANGS[i]["address"]
+        threshold = (await shrine.get_threshold(yang_address).invoke()).result.wad
+        assert threshold == YANGS[i]["threshold"]
 
-    for g in YANGS:
-        result_yang = (await shrine.get_yang(g["address"]).invoke()).result.yang
-        assert result_yang == Yang(0, g["ceiling"])
+        # Assert that `get_current_yang_price` terminates
+        price = (await shrine.get_current_yang_price(yang_address).invoke()).result.wad
+        assert price == to_wad(YANGS[i]["start_price"])
+
+
+@pytest.mark.asyncio
+async def test_shrine_setup_with_feed(shrine):
 
     # Check price feeds
-    yang0_first_point = (await shrine.get_series(YANG_0_ADDRESS, 0).invoke()).result.wad
-    assert yang0_first_point == to_wad(YANGS[0]["start_price"])
+    for i in range(len(YANGS)):
+        yang_address = YANGS[i]["address"]
+        start_price = (await shrine.get_series(yang_address, 0).invoke()).result.wad
+        assert start_price == to_wad(YANGS[i]["start_price"])
+
+        end_price = (await shrine.get_series(yang_address, FEED_LEN - 1).invoke()).result.wad
+        lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
+        assert lo <= end_price <= hi
 
     # Check multiplier feed
     multiplier_first_point = (await shrine.get_multiplier(0).invoke()).result.ray
     assert multiplier_first_point == RAY_SCALE
+
+    multiplier_last_point = (await shrine.get_multiplier(FEED_LEN - 1).invoke()).result.ray
+    assert multiplier_last_point != 0
 
 
 @pytest.mark.asyncio
@@ -969,24 +993,36 @@ async def test_add_yang(users, shrine):
 
     new_yang_address = 987
     new_yang_max = to_wad(42_000)
-    tx = await shrine_owner.send_tx(shrine.contract_address, "add_yang", [new_yang_address, new_yang_max])
+    new_yang_start_price = to_wad(5)
+    tx = await shrine_owner.send_tx(
+        shrine.contract_address, "add_yang", [new_yang_address, new_yang_max, new_yang_start_price]
+    )
     assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
+    assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.wad == new_yang_start_price
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "YangAdded",
-        [new_yang_address, g_count + 1, new_yang_max],
+        [new_yang_address, g_count + 1, new_yang_max, new_yang_start_price],
     )
     assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
+    bad_guy_yang_address = 555
+    bad_guy_yang_max = to_wad(10_000)
+    bad_guy_yang_start_price = to_wad(10)
     with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "add_yang", [1])
+
+        await bad_guy.send_tx(
+            shrine.contract_address, "add_yang", [bad_guy_yang_address, bad_guy_yang_max, bad_guy_yang_start_price]
+        )
 
     # Test adding duplicate Yang
     with pytest.raises(StarkException, match="Shrine: Yang already exists"):
-        await shrine_owner.send_tx(shrine.contract_address, "add_yang", [YANG_0_ADDRESS, new_yang_max])
+        await shrine_owner.send_tx(
+            shrine.contract_address, "add_yang", [YANG_0_ADDRESS, new_yang_max, new_yang_start_price]
+        )
 
 
 @pytest.mark.asyncio
