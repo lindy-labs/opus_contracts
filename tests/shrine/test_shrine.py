@@ -329,8 +329,7 @@ async def estimate(users, shrine, update_feeds_with_user2):
     return estimated_user1_debt, estimated_user2_debt, expected_debt
 
 
-@cache
-@pytest.fixture
+@pytest.fixture(scope="function")
 async def update_feeds_intermittent(request, starknet, users, shrine, shrine_forge) -> List[Decimal]:
     """
     Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
@@ -350,19 +349,22 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
         timestamp = (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
 
+        price = yang0_feed[i]
+        multiplier = MULTIPLIER_FEED[i]
         # Skip index after timestamp is set
         if i == idx:
-            continue
+            price = 0
+            multiplier = 0
 
         await shrine_owner.send_tx(
             shrine.contract_address,
             "advance",
-            [yang0_address, yang0_feed[i]],
+            [yang0_address, price],
         )
         await shrine_owner.send_tx(
             shrine.contract_address,
             "update_multiplier",
-            [MULTIPLIER_FEED[i]],
+            [multiplier],
         )
 
     return idx, list(map(from_wad, yang0_feed))
