@@ -383,19 +383,17 @@ end
 #
 
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, multiplier
-):
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
     shrine_auth_storage.write(authed, TRUE)
     shrine_live_storage.write(TRUE)
 
     # Set initial multiplier value
     let (interval) = now()
-    shrine_multiplier_storage.write(interval, multiplier)
+    shrine_multiplier_storage.write(interval, INITIAL_MULTIPLIER)
 
     # Events
     Authorized.emit(authed)
-    MultiplierUpdated.emit(multiplier, interval)
+    MultiplierUpdated.emit(INITIAL_MULTIPLIER, interval)
 
     return ()
 end

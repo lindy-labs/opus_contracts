@@ -14,7 +14,6 @@ from starkware.starknet.testing.starknet import Starknet, StarknetContract
 from tests.account import Account
 from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
 from tests.utils import (
-    RAY_SCALE,
     WAD_SCALE,
     Uint256,
     compile_contract,
@@ -166,9 +165,7 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
     shrine_owner = await users("shrine owner")
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
 
-    shrine = await starknet.deploy(
-        contract_class=shrine_contract, constructor_calldata=[shrine_owner.address, RAY_SCALE]
-    )
+    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[shrine_owner.address])
 
     return shrine
 
