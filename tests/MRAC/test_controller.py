@@ -2,7 +2,8 @@ from typing import List, NamedTuple
 
 import pytest
 
-from tests.conftest import DEFAULT_MRAC_PARAMETERS, SCALE, MRACParameters
+from tests.conftest import DEFAULT_MRAC_PARAMETERS, MRACParameters
+from tests.utils import to_wad
 
 Int125 = NamedTuple("Int125", [("value", int)])
 
@@ -29,7 +30,7 @@ async def test_constructor(mrac_controller):
 
 @pytest.mark.asyncio
 async def test_adjust_parameters(mrac_controller):
-    p = 42 * SCALE
+    p = to_wad(42)
     params = [p, p, p, p, p]
     tx = await mrac_controller.adjust_parameters(*params).invoke()
 

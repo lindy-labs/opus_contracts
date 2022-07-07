@@ -33,7 +33,8 @@ class Account:
 
     async def deploy(self, starknet: Starknet):
         self.contract = await starknet.deploy(
-            contract_class=Account.compiled_acconut_contract, constructor_calldata=[self.public_key]
+            contract_class=Account.compiled_acconut_contract,
+            constructor_calldata=[self.public_key],
         )
 
     async def send_tx(self, to: Addressable, selector: str, calldata: Calldata, max_fee=0):
@@ -65,7 +66,12 @@ def from_call_to_call_array(calls):
     calldata = []
     for call in calls:
         assert len(call) == 3, "Invalid call parameters"
-        entry = (as_address(call[0]), get_selector_from_name(call[1]), len(calldata), len(call[2]))
+        entry = (
+            as_address(call[0]),
+            get_selector_from_name(call[1]),
+            len(calldata),
+            len(call[2]),
+        )
         call_array.append(entry)
         calldata.extend(call[2])
     return (call_array, calldata)
