@@ -195,7 +195,7 @@ async def shrine(starknet, users, shrine_setup) -> StarknetContract:
     # Creating the price feeds
     feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
 
-    # Putting the price feeds in the `series` storage variable
+    # Putting the price feeds in the `shrine_yang_price_storage` storage variable
     for i in range(FEED_LEN):
         timestamp = i * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)

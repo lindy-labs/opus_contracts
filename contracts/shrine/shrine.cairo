@@ -84,7 +84,7 @@ func DepositUpdated(address, trove_id, yang_address, amount):
 end
 
 @event
-func SeriesIncremented(yang_address, price, interval):
+func YangPriceUpdated(yang_address, price, interval):
 end
 
 @event
@@ -175,7 +175,7 @@ end
 # Keeps track of the price history of each Yang - wad
 # interval: timestamp-divided by TIME_INTERVAL.
 @storage_var
-func shrine_series_storage(yang_id, interval) -> (wad):
+func shrine_yang_price_storage(yang_id, interval) -> (wad):
 end
 
 # Total debt ceiling - wad
@@ -240,11 +240,11 @@ func get_shrine_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 end
 
 @view
-func get_series{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func get_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, interval
 ) -> (wad):
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
-    return shrine_series_storage.read(yang_id, interval)
+    return shrine_yang_price_storage.read(yang_id, interval)
 end
 
 @view
@@ -404,7 +404,7 @@ end
 # Core functions - External
 #
 
-# Appends a new price to the Series of the specified Yang
+# Set the price of the specified Yang for a given interval
 @external
 func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, price
@@ -415,9 +415,9 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
-    shrine_series_storage.write(yang_id, interval, price)
+    shrine_yang_price_storage.write(yang_id, interval, price)
 
-    SeriesIncremented.emit(yang_address, price, interval)
+    YangPriceUpdated.emit(yang_address, price, interval)
 
     return ()
 end
@@ -999,7 +999,7 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 # Gets the value of a trove at the yang prices at the given interval.
-# For any series that returns 0 for the given interval, it uses the most recent available price before that interval.
+# For any yang that returns a price of 0 for the given interval, it uses the most recent available price before that interval.
 # This function uses historical prices but the currently deposited yang amounts to calculate value.
 # The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
 func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -1041,7 +1041,7 @@ end
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_id, interval
 ) -> (wad):
-    let (price) = shrine_series_storage.read(yang_id, interval)
+    let (price) = shrine_yang_price_storage.read(yang_id, interval)
 
     if price != 0:
         return (price)
