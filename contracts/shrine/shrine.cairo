@@ -463,7 +463,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 
     # Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang"):
-        # WadRay.sub_unsigned asserts (amount - src_yang_balance) > 0
+        # WadRay.sub_unsigned asserts (src_yang_balance - amount) >= 0
         let (new_src_balance) = WadRay.sub_unsigned(src_yang_balance, amount)
     end
 
