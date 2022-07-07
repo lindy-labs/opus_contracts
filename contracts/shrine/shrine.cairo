@@ -279,7 +279,7 @@ end
 
 @external
 func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, max, price
+    yang_address, max, threshold, price
 ):
     alloc_locals
 
@@ -298,6 +298,9 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     # Update yangs count
     shrine_yangs_count_storage.write(yang_count + 1)
+
+    # Set threshold
+    set_threshold(yang_address, threshold)
 
     # Seed initial price to ensure `get_recent_price_from` terminates
     advance(yang_address, price)

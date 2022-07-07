@@ -996,9 +996,10 @@ async def test_add_yang(users, shrine):
 
     new_yang_address = 987
     new_yang_max = to_wad(42_000)
+    new_yang_threshold = to_wad(Decimal("0.6"))
     new_yang_start_price = to_wad(5)
     tx = await shrine_owner.send_tx(
-        shrine.contract_address, "add_yang", [new_yang_address, new_yang_max, new_yang_start_price]
+        shrine.contract_address, "add_yang", [new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price]
     )
     assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
     assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.wad == new_yang_start_price
@@ -1009,22 +1010,28 @@ async def test_add_yang(users, shrine):
         [new_yang_address, g_count + 1, new_yang_max, new_yang_start_price],
     )
     assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [new_yang_address, new_yang_threshold])
 
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     bad_guy_yang_address = 555
     bad_guy_yang_max = to_wad(10_000)
+    bad_guy_yang_threshold = to_wad(Decimal("0.5"))
     bad_guy_yang_start_price = to_wad(10)
     with pytest.raises(StarkException):
 
         await bad_guy.send_tx(
-            shrine.contract_address, "add_yang", [bad_guy_yang_address, bad_guy_yang_max, bad_guy_yang_start_price]
+            shrine.contract_address,
+            "add_yang",
+            [bad_guy_yang_address, bad_guy_yang_max, bad_guy_yang_threshold, bad_guy_yang_start_price],
         )
 
     # Test adding duplicate Yang
     with pytest.raises(StarkException, match="Shrine: Yang already exists"):
         await shrine_owner.send_tx(
-            shrine.contract_address, "add_yang", [YANG_0_ADDRESS, new_yang_max, new_yang_start_price]
+            shrine.contract_address,
+            "add_yang",
+            [YANG_0_ADDRESS, new_yang_max, new_yang_threshold, new_yang_start_price],
         )
 
 

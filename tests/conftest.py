@@ -180,11 +180,8 @@ async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
         await shrine_owner.send_tx(
             shrine.contract_address,
             "add_yang",
-            [YANGS[i]["address"], YANGS[i]["ceiling"], to_wad(YANGS[i]["start_price"])],
+            [YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])],
         )  # Add yang
-        await shrine_owner.send_tx(
-            shrine.contract_address, "set_threshold", [YANGS[i]["address"], YANGS[i]["threshold"]]
-        )  # Adding the yang's threshold
 
     return shrine
 
