@@ -174,7 +174,6 @@ end
 
 # Keeps track of the price history of each Yang - wad
 # interval: timestamp-divided by TIME_INTERVAL.
-# TODO: Maybe this should be a ray?
 @storage_var
 func shrine_series_storage(yang_id, interval) -> (wad):
 end
