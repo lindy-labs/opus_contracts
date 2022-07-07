@@ -539,7 +539,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (trove_yang_balance) = shrine_deposits_storage.read(user_address, trove_id, yang_id)
 
     with_attr error_message("Shrine: Insufficient yang"):
-        # WadRay.sub_unsigned asserts (amount - old_yang_info.total) > 0
+        # WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
         let (new_trove_balance) = WadRay.sub_unsigned(trove_yang_balance, amount)
     end
 
@@ -992,9 +992,8 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (yang_count) = shrine_yangs_count_storage.read()
     let (value) = appraise_internal(user_address, trove_id, yang_count, interval, 0)
 
-    let (ratio) = WadRay.wunsigned_div(debt, value)
-    let (ratio_ray) = WadRay.wad_to_ray_unchecked(ratio)  # Can be unchecked since `ratio` should always be between 0 and 1 (scaled by 10**18)
-    return (ratio_ray)
+    let (ratio) = WadRay.runsigned_div(debt, value)  # Using WadRay.runsigned_div on two wads returns a ray
+    return (ratio)
 end
 
 # Gets the value of a trove at the yang prices at the given interval.
