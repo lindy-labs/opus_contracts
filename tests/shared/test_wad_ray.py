@@ -1,5 +1,4 @@
 import math
-from decimal import Decimal
 
 import pytest
 from hypothesis import example, given, settings
@@ -7,7 +6,7 @@ from hypothesis import strategies as st
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import RAY_SCALE, WAD_SCALE, compile_contract, from_ray, from_uint, from_wad, to_uint, to_wad
+from tests.utils import WAD_SCALE, compile_contract, to_wad
 
 BOUND = 2**125
 RANGE_CHECK_BOUND = 2**128
@@ -48,11 +47,12 @@ async def test_assert_valid_unsigned(wad_ray, val):
 
 
 @settings(max_examples=50, deadline=None)
-@given(val=st.integers(min_value=-(2**251), max_value=2**251 - 1))
+@given(val=st.integers(min_value=-(2**200), max_value=2**200))
 @example(val=to_wad(RANGE_CHECK_BOUND) + 1)
 @example(val=to_wad(RANGE_CHECK_BOUND))
 @example(val=to_wad(BOUND + 1))
 @example(val=to_wad(BOUND))
+@example(val=to_wad(to_wad(25)))  # Test exact multiple of wad - should return same value
 @example(val=0)
 @example(val=-to_wad(BOUND + 1))
 @example(val=-to_wad(BOUND))
@@ -62,8 +62,10 @@ async def test_assert_valid_unsigned(wad_ray, val):
 async def test_floor(wad_ray, val):
     # For positive integers, input value to contract call is same as value
     input_val = val
+
     # Perform integer division
-    expected_py = to_wad(math.floor(val // WAD_SCALE))
+    q = val // WAD_SCALE
+    expected_py = to_wad(math.floor(q))
     expected_cairo = expected_py
 
     if val < 0:
@@ -71,13 +73,65 @@ async def test_floor(wad_ray, val):
         input_val = PRIME + val
         expected_cairo = PRIME + expected_py
 
-    if abs(expected_py) > RANGE_CHECK_BOUND:
+    if q < (-BOUND) or q >= BOUND:
         # Exception raised by Cairo's builtin `signed_div_rem`
+        # -bound <= q < bound
         with pytest.raises(StarkException):
-            await wad_ray.test_floor(val).invoke()
-    elif abs(expected_py) > BOUND:
+            await wad_ray.test_floor(input_val).invoke()
+    elif expected_py < (-BOUND) or expected_py > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
-            await wad_ray.test_floor(val).invoke()
+            await wad_ray.test_floor(input_val).invoke()
     else:
-        res = (await wad_ray.test_floor(val).invoke()).result.wad
+        res = (await wad_ray.test_floor(input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(val=st.integers(min_value=-(2**200), max_value=2**200))
+@example(val=to_wad(RANGE_CHECK_BOUND) + 1)
+@example(val=to_wad(RANGE_CHECK_BOUND))
+@example(val=to_wad(BOUND + 1))
+@example(val=to_wad(BOUND))
+@example(val=to_wad(to_wad(25)))  # Test exact multiple of wad - should return same value
+@example(val=0)
+@example(val=-to_wad(BOUND + 1))
+@example(val=-to_wad(BOUND))
+@example(val=to_wad(-RANGE_CHECK_BOUND))
+@example(val=to_wad(-(RANGE_CHECK_BOUND + 1)))
+@pytest.mark.asyncio
+async def test_ceil(wad_ray, val):
+    # For positive integers, input value to contract call is same as value
+    input_val = val
+
+    # Perform integer division
+    q = val // WAD_SCALE
+    r = val % WAD_SCALE
+    expected_py = to_wad(math.floor(q))
+
+    if r == 0:
+        # If exact multiple of wad (i.e. no remainder), input value should be returned.
+        expected_cairo = val
+    else:
+        # Otherwise, round up by adding one wad
+        expected_cairo = expected_py + WAD_SCALE
+
+    if val < 0:
+        # For negative integers, input value to contract call is PRIME - abs(value)
+        input_val = PRIME + val
+        expected_cairo = PRIME + expected_cairo
+
+        # Negative integers below one wad are rounded to 0
+        if expected_cairo == PRIME:
+            expected_cairo = 0
+
+    if q < (-BOUND) or q >= BOUND:
+        # Exception raised by Cairo's builtin `signed_div_rem`
+        # -bound <= q < bound
+        with pytest.raises(StarkException):
+            await wad_ray.test_ceil(input_val).invoke()
+    elif expected_py < (-BOUND) or expected_py > BOUND:
+        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+            await wad_ray.test_ceil(input_val).invoke()
+    else:
+        res = (await wad_ray.test_ceil(input_val).invoke()).result.wad
         assert res == expected_cairo
