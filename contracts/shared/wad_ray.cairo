@@ -39,7 +39,14 @@ namespace WadRay:
 
     func ceil{range_check_ptr}(n) -> (wad):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
-        let ceiled = (int_val + 1) * WAD_ONE
+
+        if mod_val == 0:
+            tempvar ceiled = n
+            tempvar range_check_ptr = range_check_ptr
+        else:
+            tempvar ceiled = (int_val + 1) * WAD_ONE
+            tempvar range_check_ptr = range_check_ptr
+        end
 
         with_attr error_message("WadRay: Result is out of bounds"):
             assert_valid(ceiled)
