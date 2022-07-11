@@ -12,7 +12,8 @@ from tests.utils import RANGE_CHECK_BOUND, WAD_SCALE, compile_contract, signed_i
 BOUND = 2**125
 
 
-st_int = st.integers(min_value=-(2**200), max_value=2**200)
+st_int = st.integers(min_value=-(2**250), max_value=2**250)
+st_int128 = st.integers(min_value=-(2**128), max_value=2**128)
 st_uint = st.integers(min_value=0, max_value=2 * 200)
 
 
@@ -138,12 +139,44 @@ async def test_add_sub(wad_ray, left, right, fn, op):
     right_input_val = signed_int_to_felt(right)
 
     expected_py = op(left, right)
+
     expected_cairo = signed_int_to_felt(expected_py)
 
     method = wad_ray.get_contract_function(fn)
 
     if abs(expected_py) > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+            await method(left_input_val, right_input_val).invoke()
+
+    else:
+        res = (await method(left_input_val, right_input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(left=st_int128, right=st_int128)
+@pytest.mark.parametrize(
+    "fn,op",
+    [
+        ("test_wmul", operator.mul),
+    ],
+)
+@pytest.mark.asyncio
+async def test_checked(wad_ray, left, right, fn, op):
+    left_input_val = signed_int_to_felt(left)
+    right_input_val = signed_int_to_felt(right)
+
+    expected_py = op(left, right)
+
+    if fn.endswith(("wmul",)):
+        expected_py //= WAD_SCALE
+
+    expected_cairo = signed_int_to_felt(expected_py)
+
+    method = wad_ray.get_contract_function(fn)
+
+    if expected_py < -BOUND or expected_py >= BOUND:
+        with pytest.raises(StarkException):
             await method(left_input_val, right_input_val).invoke()
 
     else:
