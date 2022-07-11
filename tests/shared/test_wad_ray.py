@@ -12,6 +12,7 @@ BOUND = 2**125
 
 
 st_int = st.integers(min_value=-(2**200), max_value=2**200)
+st_uint = st.integers(min_value=0, max_value=2 * 200)
 
 
 @pytest.fixture(scope="session")
@@ -148,4 +149,37 @@ async def test_add_sub(wad_ray, left, right):
 
     else:
         res = (await wad_ray.test_sub(left_input_val, right_input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(left=st_uint, right=st_uint)
+@example(left=0, right=1)
+@example(left=0, right=0)
+@example(left=1, right=0)
+@pytest.mark.asyncio
+async def test_add_sub_unsigned(wad_ray, left, right):
+    left_input_val = signed_int_to_felt(left)
+    right_input_val = signed_int_to_felt(right)
+
+    expected_py = left + right
+    expected_cairo = signed_int_to_felt(expected_py)
+
+    if expected_py < 0 or expected_py > BOUND:
+        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+            await wad_ray.test_add_unsigned(left_input_val, right_input_val).invoke()
+
+    else:
+        res = (await wad_ray.test_add_unsigned(left_input_val, right_input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+    expected_py = left - right
+    expected_cairo = signed_int_to_felt(expected_py)
+
+    if expected_py < 0 or expected_py > BOUND:
+        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+            await wad_ray.test_sub_unsigned(left_input_val, right_input_val).invoke()
+
+    else:
+        res = (await wad_ray.test_sub_unsigned(left_input_val, right_input_val).invoke()).result.wad
         assert res == expected_cairo
