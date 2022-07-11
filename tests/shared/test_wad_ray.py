@@ -71,7 +71,7 @@ async def test_floor(wad_ray, val):
         # -bound <= q < bound
         with pytest.raises(StarkException):
             await wad_ray.test_floor(input_val).invoke()
-    elif expected_py < (-BOUND) or expected_py > BOUND:
+    elif abs(expected_py) > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
             await wad_ray.test_floor(input_val).invoke()
     else:
@@ -113,9 +113,39 @@ async def test_ceil(wad_ray, val):
         # -bound <= q < bound
         with pytest.raises(StarkException):
             await wad_ray.test_ceil(input_val).invoke()
-    elif expected_py < (-BOUND) or expected_py > BOUND:
+    elif abs(expected_py) > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
             await wad_ray.test_ceil(input_val).invoke()
     else:
         res = (await wad_ray.test_ceil(input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(left=st_int, right=st_int)
+@pytest.mark.asyncio
+async def test_add_sub(wad_ray, left, right):
+    left_input_val = signed_int_to_felt(left)
+    right_input_val = signed_int_to_felt(right)
+
+    expected_py = left + right
+    expected_cairo = signed_int_to_felt(expected_py)
+
+    if abs(expected_py) > BOUND:
+        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+            await wad_ray.test_add(left_input_val, right_input_val).invoke()
+
+    else:
+        res = (await wad_ray.test_add(left_input_val, right_input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+    expected_py = left - right
+    expected_cairo = signed_int_to_felt(expected_py)
+
+    if abs(expected_py) > BOUND:
+        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+            await wad_ray.test_sub(left_input_val, right_input_val).invoke()
+
+    else:
+        res = (await wad_ray.test_sub(left_input_val, right_input_val).invoke()).result.wad
         assert res == expected_cairo
