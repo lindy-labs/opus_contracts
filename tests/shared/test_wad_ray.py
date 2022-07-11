@@ -1,4 +1,5 @@
 import math
+import operator
 
 import pytest
 from hypothesis import example, given, settings
@@ -124,31 +125,29 @@ async def test_ceil(wad_ray, val):
 
 @settings(max_examples=50, deadline=None)
 @given(left=st_int, right=st_int)
+@pytest.mark.parametrize(
+    "fn,op",
+    [
+        ("test_add", operator.add),
+        ("test_sub", operator.sub),
+    ],
+)
 @pytest.mark.asyncio
-async def test_add_sub(wad_ray, left, right):
+async def test_add_sub(wad_ray, left, right, fn, op):
     left_input_val = signed_int_to_felt(left)
     right_input_val = signed_int_to_felt(right)
 
-    expected_py = left + right
+    expected_py = op(left, right)
     expected_cairo = signed_int_to_felt(expected_py)
+
+    method = wad_ray.get_contract_function(fn)
 
     if abs(expected_py) > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
-            await wad_ray.test_add(left_input_val, right_input_val).invoke()
+            await method(left_input_val, right_input_val).invoke()
 
     else:
-        res = (await wad_ray.test_add(left_input_val, right_input_val).invoke()).result.wad
-        assert res == expected_cairo
-
-    expected_py = left - right
-    expected_cairo = signed_int_to_felt(expected_py)
-
-    if abs(expected_py) > BOUND:
-        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
-            await wad_ray.test_sub(left_input_val, right_input_val).invoke()
-
-    else:
-        res = (await wad_ray.test_sub(left_input_val, right_input_val).invoke()).result.wad
+        res = (await method(left_input_val, right_input_val).invoke()).result.wad
         assert res == expected_cairo
 
 
@@ -157,29 +156,27 @@ async def test_add_sub(wad_ray, left, right):
 @example(left=0, right=1)
 @example(left=0, right=0)
 @example(left=1, right=0)
+@pytest.mark.parametrize(
+    "fn,op",
+    [
+        ("test_add_unsigned", operator.add),
+        ("test_sub_unsigned", operator.sub),
+    ],
+)
 @pytest.mark.asyncio
-async def test_add_sub_unsigned(wad_ray, left, right):
+async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
     left_input_val = signed_int_to_felt(left)
     right_input_val = signed_int_to_felt(right)
 
-    expected_py = left + right
+    expected_py = op(left, right)
     expected_cairo = signed_int_to_felt(expected_py)
+
+    method = wad_ray.get_contract_function(fn)
 
     if expected_py < 0 or expected_py > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
-            await wad_ray.test_add_unsigned(left_input_val, right_input_val).invoke()
+            await method(left_input_val, right_input_val).invoke()
 
     else:
-        res = (await wad_ray.test_add_unsigned(left_input_val, right_input_val).invoke()).result.wad
-        assert res == expected_cairo
-
-    expected_py = left - right
-    expected_cairo = signed_int_to_felt(expected_py)
-
-    if expected_py < 0 or expected_py > BOUND:
-        with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
-            await wad_ray.test_sub_unsigned(left_input_val, right_input_val).invoke()
-
-    else:
-        res = (await wad_ray.test_sub_unsigned(left_input_val, right_input_val).invoke()).result.wad
+        res = (await method(left_input_val, right_input_val).invoke()).result.wad
         assert res == expected_cairo
