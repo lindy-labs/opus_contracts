@@ -15,6 +15,9 @@ from starkware.starknet.services.api.feeder_gateway.response_objects import Func
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
 
+PRIME = 2**251 + 17 * 2**192 + 1
+RANGE_CHECK_BOUND = 2**128
+
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0
 TRUE = 1
@@ -55,6 +58,13 @@ def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
         return value.contract_address
     return value
+
+
+def signed_int_to_felt(a: int) -> int:
+    """Takes in integer value, returns input if positive, otherwise return PRIME + input"""
+    if a >= 0:
+        return a
+    return PRIME + a
 
 
 def str_to_felt(text: str) -> int:
