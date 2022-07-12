@@ -102,12 +102,6 @@ namespace WadRay:
         return (wad=scaled_prod)
     end
 
-    func wmul_unchecked{range_check_ptr}(a, b) -> (wad):
-        tempvar prod = a * b
-        let (scaled_prod, _) = signed_div_rem(prod, WAD_SCALE, BOUND)
-        return (wad=scaled_prod)
-    end
-
     func wsigned_div{range_check_ptr}(a, b) -> (wad):
         alloc_locals
         # `signed_div_rem` assumes 0 < div <= PRIME / rc_bound

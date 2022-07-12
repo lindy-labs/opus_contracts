@@ -52,11 +52,6 @@ func test_wmul{range_check_ptr}(a, b) -> (wad):
 end
 
 @view
-func test_wmul_unchecked{range_check_ptr}(a, b) -> (wad):
-    return WadRay.wmul_unchecked(a, b)
-end
-
-@view
 func test_wsigned_div{range_check_ptr}(a, b) -> (wad):
     return WadRay.wsigned_div(a, b)
 end
