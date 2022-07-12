@@ -164,7 +164,7 @@ namespace WadRay:
         let (ray_u, _) = signed_div_rem(prod, div, BOUND)
 
         with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid_unsigned(ray_u)
+            assert_valid(ray_u)
         end
 
         return (ray=ray_u * div_sign)
