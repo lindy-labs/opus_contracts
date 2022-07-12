@@ -7,7 +7,7 @@ from hypothesis import strategies as st
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import PRIME, RANGE_CHECK_BOUND, WAD_SCALE, compile_contract, signed_int_to_felt, to_wad
+from tests.utils import PRIME, RANGE_CHECK_BOUND, RAY_SCALE, WAD_SCALE, compile_contract, signed_int_to_felt, to_wad
 
 BOUND = 2**125
 
@@ -188,15 +188,16 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
 @settings(max_examples=50, deadline=None)
 @given(left=st_int128, right=st_int128)
 @pytest.mark.parametrize(
-    "fn,op",
+    "fn,op,ret",
     [
-        ("test_wmul", operator.mul),
-        ("test_wsigned_div", operator.floordiv),
-        ("test_wsigned_div_unchecked", operator.floordiv),
+        ("test_wmul", operator.mul, "wad"),
+        ("test_wsigned_div", operator.floordiv, "wad"),
+        ("test_wsigned_div_unchecked", operator.floordiv, "wad"),
+        ("test_rmul", operator.mul, "ray"),
     ],
 )
 @pytest.mark.asyncio
-async def test_mul_div_signed(wad_ray, left, right, fn, op):
+async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
     # skip right = 0
     assume(right != 0)
 
@@ -214,9 +215,13 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op):
 
     expected_py = op(left, right)
 
-    if fn.endswith(("wmul",)):
+    if fn.endswith("wmul"):
         expected_py //= WAD_SCALE
-    elif fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
+
+    if fn.endswith("rmul"):
+        expected_py //= RAY_SCALE
+
+    if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
         expected_py *= sign
 
     expected_cairo = signed_int_to_felt(expected_py)
@@ -228,7 +233,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op):
             await method(left_input_val, right_input_val).invoke()
 
     else:
-        res = (await method(left_input_val, right_input_val).invoke()).result.wad
+        res = getattr((await method(left_input_val, right_input_val).invoke()).result, ret)
         assert res == expected_cairo
 
 
