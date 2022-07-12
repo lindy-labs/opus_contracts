@@ -77,11 +77,6 @@ func test_rmul{range_check_ptr}(a, b) -> (ray):
 end
 
 @view
-func test_rmul_unchecked{range_check_ptr}(a, b) -> (ray):
-    return WadRay.rmul_unchecked(a, b)
-end
-
-@view
 func test_rsigned_div{range_check_ptr}(a, b) -> (ray):
     return WadRay.rsigned_div(a, b)
 end

@@ -151,17 +151,7 @@ namespace WadRay:
     # Operations with rays
     func rmul{range_check_ptr}(a, b) -> (ray):
         tempvar prod = a * b
-        let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(scaled_prod)
-        end
-
-        return (ray=scaled_prod)
-    end
-
-    func rmul_unchecked{range_check_ptr}(a, b) -> (ray):
-        tempvar prod = a * b
+        # `signed_div_rem` asserts -BOUND <= `scaled_prod` < BOUND
         let (scaled_prod, _) = signed_div_rem(prod, RAY_SCALE, BOUND)
         return (ray=scaled_prod)
     end
