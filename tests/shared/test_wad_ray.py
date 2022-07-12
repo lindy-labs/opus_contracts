@@ -194,6 +194,7 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
         ("test_wsigned_div", operator.floordiv, "wad"),
         ("test_wsigned_div_unchecked", operator.floordiv, "wad"),
         ("test_rmul", operator.mul, "ray"),
+        ("test_rsigned_div", operator.floordiv, "ray"),
     ],
 )
 @pytest.mark.asyncio
@@ -204,14 +205,17 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
     left_input_val = signed_int_to_felt(left)
     right_input_val = signed_int_to_felt(right)
 
-    if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
+    if "div" in fn:
         sign = -1 if right < 0 else 1
         # Convert right to absolute value before converting it to felt
         right = abs(right)
         # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
         assume(right <= PRIME // RANGE_CHECK_BOUND)
         # Scale left by wad after converting it to felt for computation of python value
-        left *= WAD_SCALE
+        if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
+            left *= WAD_SCALE
+        elif fn.endswith(("rsigned_div",)):
+            left *= RAY_SCALE
 
     expected_py = op(left, right)
 
@@ -221,7 +225,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
     if fn.endswith("rmul"):
         expected_py //= RAY_SCALE
 
-    if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
+    if fn.endswith(("wsigned_div", "wsigned_div_unchecked", "rsigned_div")):
         expected_py *= sign
 
     expected_cairo = signed_int_to_felt(expected_py)
