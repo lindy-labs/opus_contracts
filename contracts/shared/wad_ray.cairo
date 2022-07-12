@@ -150,7 +150,7 @@ namespace WadRay:
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
     func wunsigned_div_unchecked{range_check_ptr}(a, b) -> (wad):
         tempvar product = a * WAD_SCALE
-        let (q, _) = signed_div_rem(product, b, BOUND)
+        let (q, _) = unsigned_div_rem(product, b)
         return (wad=q)
     end
 
