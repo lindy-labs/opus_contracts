@@ -243,24 +243,37 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
 @settings(max_examples=50, deadline=None)
 @given(left=st_uint128, right=st_uint128)
 @pytest.mark.parametrize(
-    "fn,op",
+    "fn,op,ret",
     [
-        ("test_wunsigned_div", operator.floordiv),
-        ("test_wunsigned_div_unchecked", operator.floordiv),
+        ("test_wunsigned_div", operator.floordiv, "wad"),
+        ("test_wunsigned_div_unchecked", operator.floordiv, "wad"),
+        ("test_runsigned_div", operator.floordiv, "ray"),
+        ("test_runsigned_div_unchecked", operator.floordiv, "ray"),
     ],
 )
 @pytest.mark.asyncio
-async def test_div_unsigned(wad_ray, left, right, fn, op):
+async def test_div_unsigned(wad_ray, left, right, fn, op, ret):
+    if "wunsigned" in fn:
+        scale = WAD_SCALE
+    elif "runsigned" in fn:
+        scale = RAY_SCALE
+
     # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
     assume(right <= PRIME // RANGE_CHECK_BOUND)
-    expected_py = op(left * WAD_SCALE, right)
+    expected_py = op(left * scale, right)
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
 
     if abs(expected_py) > BOUND:
-        with pytest.raises(StarkException):
-            await method(left, right).invoke()
+        # `unsigned_div_rem` asserts 0 <= quotient < rc_bound, meaning this exception
+        # will only catch BOUND < quotient <= rc_bound
+        if not fn.endswith("unchecked") and expected_py < RANGE_CHECK_BOUND:
+            with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+                await method(left, right).invoke()
+        else:
+            with pytest.raises(StarkException):
+                await method(left, right).invoke()
 
     else:
-        res = (await method(left, right).invoke()).result.wad
+        res = getattr((await method(left, right).invoke()).result, ret)
         assert res == expected_cairo
