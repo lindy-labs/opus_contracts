@@ -57,11 +57,6 @@ func test_wsigned_div{range_check_ptr}(a, b) -> (wad):
 end
 
 @view
-func test_wsigned_div_unchecked{range_check_ptr}(a, b) -> (wad):
-    return WadRay.wsigned_div_unchecked(a, b)
-end
-
-@view
 func test_wunsigned_div{range_check_ptr}(a, b) -> (wad):
     return WadRay.wunsigned_div(a, b)
 end
@@ -79,11 +74,6 @@ end
 @view
 func test_rsigned_div{range_check_ptr}(a, b) -> (ray):
     return WadRay.rsigned_div(a, b)
-end
-
-@view
-func test_rsigned_div_unchecked{range_check_ptr}(a, b) -> (ray):
-    return WadRay.rsigned_div_unchecked(a, b)
 end
 
 @view

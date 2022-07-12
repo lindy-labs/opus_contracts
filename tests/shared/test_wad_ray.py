@@ -192,7 +192,6 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
     [
         ("test_wmul", operator.mul, "wad"),
         ("test_wsigned_div", operator.floordiv, "wad"),
-        ("test_wsigned_div_unchecked", operator.floordiv, "wad"),
         ("test_rmul", operator.mul, "ray"),
         ("test_rsigned_div", operator.floordiv, "ray"),
     ],

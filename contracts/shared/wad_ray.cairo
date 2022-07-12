@@ -109,21 +109,7 @@ namespace WadRay:
         # `sign` assumes -rc_bound < value < rc_bound
         let (div_sign) = sign(b)
         tempvar prod = a * WAD_SCALE
-        let (wad_u, _) = signed_div_rem(prod, div, BOUND)
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(wad_u)
-        end
-
-        return (wad=wad_u * div_sign)
-    end
-
-    # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func wsigned_div_unchecked{range_check_ptr}(a, b) -> (wad):
-        alloc_locals
-        let (div) = abs_value(b)
-        let (div_sign) = sign(b)
-        tempvar prod = a * WAD_SCALE
+        # `signed_div_rem` asserts -BOUND <= `wad_u` < BOUND
         let (wad_u, _) = signed_div_rem(prod, div, BOUND)
         return (wad=wad_u * div_sign)
     end
@@ -161,21 +147,7 @@ namespace WadRay:
         let (div) = abs_value(b)
         let (div_sign) = sign(b)
         tempvar prod = a * RAY_SCALE
-        let (ray_u, _) = signed_div_rem(prod, div, BOUND)
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(ray_u)
-        end
-
-        return (ray=ray_u * div_sign)
-    end
-
-    # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
-    func rsigned_div_unchecked{range_check_ptr}(a, b) -> (ray):
-        alloc_locals
-        let (div) = abs_value(b)
-        let (div_sign) = sign(b)
-        tempvar prod = a * RAY_SCALE
+        # `signed_div_rem` asserts -BOUND <= `ray_u` < BOUND
         let (ray_u, _) = signed_div_rem(prod, div, BOUND)
         return (ray=ray_u * div_sign)
     end
