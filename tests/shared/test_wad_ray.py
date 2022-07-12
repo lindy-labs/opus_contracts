@@ -161,6 +161,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
     [
         ("test_wmul", operator.mul),
         ("test_wsigned_div", operator.floordiv),
+        ("test_wsigned_div_unchecked", operator.floordiv),
     ],
 )
 @pytest.mark.asyncio
@@ -171,7 +172,7 @@ async def test_checked(wad_ray, left, right, fn, op):
     left_input_val = signed_int_to_felt(left)
     right_input_val = signed_int_to_felt(right)
 
-    if fn.endswith(("wsigned_div",)):
+    if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
         sign = -1 if right < 0 else 1
         # Convert right to absolute value before converting it to felt
         right = abs(right)
@@ -184,7 +185,7 @@ async def test_checked(wad_ray, left, right, fn, op):
 
     if fn.endswith(("wmul",)):
         expected_py //= WAD_SCALE
-    elif fn.endswith(("wsigned_div",)):
+    elif fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
         expected_py *= sign
 
     expected_cairo = signed_int_to_felt(expected_py)
