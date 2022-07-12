@@ -110,13 +110,15 @@ namespace WadRay:
 
     func wsigned_div{range_check_ptr}(a, b) -> (wad):
         alloc_locals
+        # `signed_div_rem` assumes 0 < div <= PRIME / rc_bound
         let (div) = abs_value(b)
+        # `sign` assumes -rc_bound < value < rc_bound
         let (div_sign) = sign(b)
         tempvar prod = a * WAD_SCALE
         let (wad_u, _) = signed_div_rem(prod, div, BOUND)
 
         with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid_unsigned(wad_u)
+            assert_valid(wad_u)
         end
 
         return (wad=wad_u * div_sign)
