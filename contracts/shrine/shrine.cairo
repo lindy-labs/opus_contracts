@@ -922,10 +922,10 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (m) = get_recent_multiplier_from(current_interval)
 
     # Derive the interest rate
-    let (real_rate) = WadRay.rmul_unchecked(rate, m)
+    let (real_rate) = WadRay.rmul(rate, m)
 
     # Derive the real interest rate to be charged
-    let (percent_owed) = WadRay.rmul_unchecked(real_rate, TIME_INTERVAL_DIV_YEAR)
+    let (percent_owed) = WadRay.rmul(real_rate, TIME_INTERVAL_DIV_YEAR)
 
     # Compound the debt
     let (amount_owed) = WadRay.rmul(debt, percent_owed)  # Returns a wad
@@ -1027,7 +1027,7 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         assert_not_zero(price)
     end
 
-    let (value) = WadRay.wmul_unchecked(balance, price)
+    let (value) = WadRay.wmul(balance, price)
 
     # Update cumulative value
     let (updated_cumulative) = WadRay.add_unsigned(cumulative, value)
