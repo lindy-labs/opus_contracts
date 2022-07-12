@@ -155,53 +155,6 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 
 
 @settings(max_examples=50, deadline=None)
-@given(left=st_int128, right=st_int128)
-@pytest.mark.parametrize(
-    "fn,op",
-    [
-        ("test_wmul", operator.mul),
-        ("test_wsigned_div", operator.floordiv),
-        ("test_wsigned_div_unchecked", operator.floordiv),
-    ],
-)
-@pytest.mark.asyncio
-async def test_checked(wad_ray, left, right, fn, op):
-    # skip right = 0
-    assume(right != 0)
-
-    left_input_val = signed_int_to_felt(left)
-    right_input_val = signed_int_to_felt(right)
-
-    if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
-        sign = -1 if right < 0 else 1
-        # Convert right to absolute value before converting it to felt
-        right = abs(right)
-        # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
-        assume(right <= PRIME // RANGE_CHECK_BOUND)
-        # Scale left by wad after converting it to felt for computation of python value
-        left *= WAD_SCALE
-
-    expected_py = op(left, right)
-
-    if fn.endswith(("wmul",)):
-        expected_py //= WAD_SCALE
-    elif fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
-        expected_py *= sign
-
-    expected_cairo = signed_int_to_felt(expected_py)
-
-    method = wad_ray.get_contract_function(fn)
-
-    if abs(expected_py) > BOUND or expected_cairo == PRIME:
-        with pytest.raises(StarkException):
-            await method(left_input_val, right_input_val).invoke()
-
-    else:
-        res = (await method(left_input_val, right_input_val).invoke()).result.wad
-        assert res == expected_cairo
-
-
-@settings(max_examples=50, deadline=None)
 @given(left=st_uint, right=st_uint)
 @example(left=0, right=1)
 @example(left=0, right=0)
@@ -229,4 +182,77 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
 
     else:
         res = (await method(left_input_val, right_input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(left=st_int128, right=st_int128)
+@pytest.mark.parametrize(
+    "fn,op",
+    [
+        ("test_wmul", operator.mul),
+        ("test_wsigned_div", operator.floordiv),
+        ("test_wsigned_div_unchecked", operator.floordiv),
+    ],
+)
+@pytest.mark.asyncio
+async def test_mul_div_signed(wad_ray, left, right, fn, op):
+    # skip right = 0
+    assume(right != 0)
+
+    left_input_val = signed_int_to_felt(left)
+    right_input_val = signed_int_to_felt(right)
+
+    if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
+        sign = -1 if right < 0 else 1
+        # Convert right to absolute value before converting it to felt
+        right = abs(right)
+        # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
+        assume(right <= PRIME // RANGE_CHECK_BOUND)
+        # Scale left by wad after converting it to felt for computation of python value
+        left *= WAD_SCALE
+
+    expected_py = op(left, right)
+
+    if fn.endswith(("wmul",)):
+        expected_py //= WAD_SCALE
+    elif fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
+        expected_py *= sign
+
+    expected_cairo = signed_int_to_felt(expected_py)
+
+    method = wad_ray.get_contract_function(fn)
+
+    if abs(expected_py) > BOUND:
+        with pytest.raises(StarkException):
+            await method(left_input_val, right_input_val).invoke()
+
+    else:
+        res = (await method(left_input_val, right_input_val).invoke()).result.wad
+        assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(left=st_uint128, right=st_uint128)
+@pytest.mark.parametrize(
+    "fn,op",
+    [
+        ("test_wunsigned_div", operator.floordiv),
+        ("test_wunsigned_div_unchecked", operator.floordiv),
+    ],
+)
+@pytest.mark.asyncio
+async def test_div_unsigned(wad_ray, left, right, fn, op):
+    # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
+    assume(right <= PRIME // RANGE_CHECK_BOUND)
+    expected_py = op(left * WAD_SCALE, right)
+    expected_cairo = signed_int_to_felt(expected_py)
+    method = wad_ray.get_contract_function(fn)
+
+    if abs(expected_py) > BOUND:
+        with pytest.raises(StarkException):
+            await method(left, right).invoke()
+
+    else:
+        res = (await method(left, right).invoke()).result.wad
         assert res == expected_cairo
