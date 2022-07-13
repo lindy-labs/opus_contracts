@@ -127,6 +127,11 @@ async def test_ceil(wad_ray, val):
 
 @settings(max_examples=50, deadline=None)
 @given(left=st_int, right=st_int)
+@example(left=0, right=-1)
+@example(left=-1, right=0)
+@example(left=0, right=1)
+@example(left=0, right=0)
+@example(left=1, right=0)
 @pytest.mark.parametrize(
     "fn,op",
     [
@@ -140,9 +145,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
     right_input_val = signed_int_to_felt(right)
 
     expected_py = op(left, right)
-
     expected_cairo = signed_int_to_felt(expected_py)
-
     method = wad_ray.get_contract_function(fn)
 
     if abs(expected_py) > BOUND:
@@ -168,36 +171,32 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 )
 @pytest.mark.asyncio
 async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
-    left_input_val = signed_int_to_felt(left)
-    right_input_val = signed_int_to_felt(right)
-
     expected_py = op(left, right)
     expected_cairo = signed_int_to_felt(expected_py)
-
     method = wad_ray.get_contract_function(fn)
 
     if expected_py < 0 or expected_py > BOUND:
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
-            await method(left_input_val, right_input_val).invoke()
+            await method(left, right).invoke()
 
     else:
-        res = (await method(left_input_val, right_input_val).invoke()).result.wad
+        res = (await method(left, right).invoke()).result.wad
         assert res == expected_cairo
 
 
 @settings(max_examples=50, deadline=None)
 @given(left=st_int128, right=st_int128)
 @pytest.mark.parametrize(
-    "fn,op,ret",
+    "fn,op,scale,ret",
     [
-        ("test_wmul", operator.mul, "wad"),
-        ("test_wsigned_div", operator.floordiv, "wad"),
-        ("test_rmul", operator.mul, "ray"),
-        ("test_rsigned_div", operator.floordiv, "ray"),
+        ("test_wmul", operator.mul, WAD_SCALE, "wad"),
+        ("test_wsigned_div", operator.floordiv, WAD_SCALE, "wad"),
+        ("test_rmul", operator.mul, RAY_SCALE, "ray"),
+        ("test_rsigned_div", operator.floordiv, RAY_SCALE, "ray"),
     ],
 )
 @pytest.mark.asyncio
-async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
+async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
     # skip right = 0
     assume(right != 0)
 
@@ -211,20 +210,14 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
         # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
         assume(right <= PRIME // RANGE_CHECK_BOUND)
         # Scale left by wad after converting it to felt for computation of python value
-        if fn.endswith(("wsigned_div", "wsigned_div_unchecked")):
-            left *= WAD_SCALE
-        elif fn.endswith(("rsigned_div",)):
-            left *= RAY_SCALE
+        left *= scale
 
     expected_py = op(left, right)
 
-    if fn.endswith("wmul"):
-        expected_py //= WAD_SCALE
+    if "mul" in fn:
+        expected_py //= scale
 
-    if fn.endswith("rmul"):
-        expected_py //= RAY_SCALE
-
-    if fn.endswith(("wsigned_div", "wsigned_div_unchecked", "rsigned_div")):
+    if "div" in fn:
         expected_py *= sign
 
     expected_cairo = signed_int_to_felt(expected_py)
@@ -243,21 +236,16 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, ret):
 @settings(max_examples=50, deadline=None)
 @given(left=st_uint128, right=st_uint128)
 @pytest.mark.parametrize(
-    "fn,op,ret",
+    "fn,op,scale,ret",
     [
-        ("test_wunsigned_div", operator.floordiv, "wad"),
-        ("test_wunsigned_div_unchecked", operator.floordiv, "wad"),
-        ("test_runsigned_div", operator.floordiv, "ray"),
-        ("test_runsigned_div_unchecked", operator.floordiv, "ray"),
+        ("test_wunsigned_div", operator.floordiv, WAD_SCALE, "wad"),
+        ("test_wunsigned_div_unchecked", operator.floordiv, WAD_SCALE, "wad"),
+        ("test_runsigned_div", operator.floordiv, RAY_SCALE, "ray"),
+        ("test_runsigned_div_unchecked", operator.floordiv, RAY_SCALE, "ray"),
     ],
 )
 @pytest.mark.asyncio
-async def test_div_unsigned(wad_ray, left, right, fn, op, ret):
-    if "wunsigned" in fn:
-        scale = WAD_SCALE
-    elif "runsigned" in fn:
-        scale = RAY_SCALE
-
+async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
     # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
     assume(right <= PRIME // RANGE_CHECK_BOUND)
     expected_py = op(left * scale, right)
