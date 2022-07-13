@@ -155,7 +155,7 @@ namespace WadRay:
     # Assumes both a and b are positive integers
     func runsigned_div{range_check_ptr}(a, b) -> (ray):
         tempvar product = a * RAY_SCALE
-        let (q, _) = signed_div_rem(product, b, BOUND)
+        let (q, _) = unsigned_div_rem(product, b)
 
         with_attr error_message("WadRay: Result is out of bounds"):
             assert_valid(q)
@@ -168,7 +168,7 @@ namespace WadRay:
     # No overflow check - use only if the quotient of a and b is guaranteed not to overflow
     func runsigned_div_unchecked{range_check_ptr}(a, b) -> (ray):
         tempvar product = a * RAY_SCALE
-        let (q, _) = signed_div_rem(product, b, BOUND)
+        let (q, _) = unsigned_div_rem(product, b)
         return (ray=q)
     end
     #
