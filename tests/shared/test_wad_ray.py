@@ -7,7 +7,18 @@ from hypothesis import strategies as st
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import PRIME, RANGE_CHECK_BOUND, RAY_SCALE, WAD_SCALE, compile_contract, signed_int_to_felt, to_wad
+from tests.utils import (
+    PRIME,
+    RANGE_CHECK_BOUND,
+    RAY_SCALE,
+    WAD_RAY_DIFF,
+    WAD_SCALE,
+    compile_contract,
+    signed_int_to_felt,
+    to_uint,
+    to_wad,
+    wad_to_ray,
+)
 
 BOUND = 2**125
 
@@ -265,3 +276,61 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
     else:
         res = getattr((await method(left, right).invoke()).result, ret)
         assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(val=st_uint)
+@pytest.mark.parametrize(
+    "fn,input_op,output_op,ret",
+    [
+        ("test_to_uint", int, to_uint, "uint"),
+        ("test_from_uint", to_uint, int, "wad"),
+        ("test_to_wad", int, to_wad, "wad"),
+        ("test_wad_to_felt", to_wad, int, "wad"),
+        ("test_wad_to_ray", int, wad_to_ray, "ray"),
+        ("test_wad_to_ray_unchecked", int, wad_to_ray, "ray"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_conversions_pass(wad_ray, val, fn, input_op, output_op, ret):
+    input_val = input_op(val)
+    expected_py = output_op(val)
+
+    method = wad_ray.get_contract_function(fn)
+
+    res = getattr((await method(input_val).invoke()).result, ret)
+    assert res == expected_py
+
+
+@pytest.mark.parametrize("val", [BOUND + 1, RANGE_CHECK_BOUND - 1])
+@pytest.mark.asyncio
+async def test_from_uint_fail(wad_ray, val):
+    val = to_uint(val)
+    with pytest.raises(StarkException, match="WadRay: Uint256.low is out of bounds"):
+        await wad_ray.test_from_uint(val).invoke()
+
+
+@pytest.mark.parametrize(
+    "val",
+    [
+        to_wad((BOUND // WAD_SCALE) + 1),
+        to_wad((RANGE_CHECK_BOUND // WAD_SCALE) + 1),
+    ],
+)
+@pytest.mark.asyncio
+async def test_to_wad_fail(wad_ray, val):
+    with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+        await wad_ray.test_to_wad(val).invoke()
+
+
+@pytest.mark.parametrize(
+    "val",
+    [
+        (BOUND // WAD_RAY_DIFF) + 1,
+        (RANGE_CHECK_BOUND // WAD_RAY_DIFF) + 1,
+    ],
+)
+@pytest.mark.asyncio
+async def test_wad_to_ray_fail(wad_ray, val):
+    with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
+        await wad_ray.test_wad_to_ray(val).invoke()

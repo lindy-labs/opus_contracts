@@ -25,6 +25,7 @@ FALSE = 0
 
 WAD_SCALE = 10**18
 RAY_SCALE = 10**27
+WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
 
 # Gas estimation constants
 NAMES = [
@@ -133,6 +134,10 @@ def to_wad(n: Union[int, float, Decimal]) -> int:
 
 def from_wad(n: int) -> Decimal:
     return Decimal(n) / WAD_SCALE
+
+
+def wad_to_ray(n: int) -> int:
+    return int(n * (RAY_SCALE // WAD_SCALE))
 
 
 def from_ray(n: int) -> Decimal:

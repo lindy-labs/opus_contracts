@@ -201,8 +201,8 @@ namespace WadRay:
     end
 
     # Truncates fractional component
-    func to_felt{range_check_ptr}(n) -> (wad):
-        let (wad, _) = signed_div_rem(n, WAD_SCALE, BOUND)  # 2**127 is the maximum possible value of the bound parameter.
+    func wad_to_felt{range_check_ptr}(n) -> (wad):
+        let (wad, _) = signed_div_rem(n, WAD_SCALE, BOUND)
         return (wad)
     end
 

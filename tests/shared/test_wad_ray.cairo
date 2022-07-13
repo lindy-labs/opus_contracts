@@ -102,8 +102,8 @@ func test_to_wad{range_check_ptr}(n) -> (wad):
 end
 
 @view
-func test_to_felt{range_check_ptr}(n) -> (wad):
-    return WadRay.to_felt(n)
+func test_wad_to_felt{range_check_ptr}(n) -> (wad):
+    return WadRay.wad_to_felt(n)
 end
 
 @view
