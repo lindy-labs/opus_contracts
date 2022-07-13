@@ -360,14 +360,6 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     return ()
 end
 
-func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, trove : Trove
-):
-    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
-    shrine_troves_storage.write(trove_id, packed_trove)
-    return ()
-end
-
 @external
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     assert_auth()
@@ -962,6 +954,14 @@ func linear{range_check_ptr}(x, m, b) -> (ray):
     let (m_x) = WadRay.rmul(m, x)
     let (y) = WadRay.add(m_x, b)
     return (y)
+end
+
+func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    trove_id, trove : Trove
+):
+    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
+    shrine_troves_storage.write(trove_id, packed_trove)
+    return ()
 end
 
 # Calculates the trove's LTV at the given interval.
