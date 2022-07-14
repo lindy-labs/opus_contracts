@@ -36,12 +36,12 @@ Repo maintainers should prioritize reviewing pull requests over their "normal"
 tasks to unblock other teammates and help push the project forward.
 
 #### Skipping CI
-If you're contributing a change where it's not necessary to run the full
+If you're contributing a change where it's not necessary to run the Cairo
 test suite (CI), you can include a `[skip ci]` string anywhere in the
 commit message body. This will instruct GitHub Actions to skip the
 appropriate jobs.
 
-Note that the CI won't run for draft pull requests either.
+Note that the Cairo test suite CI won't run for draft pull requests either.
 
 ### Cairo conventions
 
