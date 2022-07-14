@@ -11,7 +11,6 @@ from contracts.lib.erc4626.library import ERC4626
 
 from contracts.lib.openzeppelin.token.erc20.library import ERC20
 from contracts.shared.interfaces import IERC20
-from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
 from contracts.shared.wad_ray import WadRay
 
 #
@@ -114,11 +113,11 @@ func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     wad
 ):
     let (total_supply_uint : Uint256) = ERC20.total_supply()
-    let (total_supply) = uint_to_felt_unchecked(total_supply_uint)
+    let (total_supply_wad) = WadRay.from_uint(total_supply_uint)
     let (total_balance) = get_last_underlying_balance()
 
     # Catch division by zero errors
-    if total_supply == 0:
+    if total_supply_wad == 0:
         return (0)
     end
 
@@ -126,7 +125,7 @@ func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         return (0)
     end
 
-    let (exchange_rate) = WadRay.wunsigned_div_unchecked(total_balance, total_supply)
+    let (exchange_rate) = WadRay.wunsigned_div_unchecked(total_balance, total_supply_wad)
     return (exchange_rate)
 end
 
@@ -135,34 +134,34 @@ end
 #
 
 @view
-func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (name):
+func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
     let (name) = ERC20.name()
     return (name)
 end
 
 @view
-func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (symbol):
+func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
     let (symbol) = ERC20.symbol()
     return (symbol)
 end
 
 @view
 func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    totalSupply : Uint256
+    uint : Uint256
 ):
     let (totalSupply : Uint256) = ERC20.total_supply()
     return (totalSupply)
 end
 
 @view
-func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (decimals):
+func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
     let (decimals) = ERC20.decimals()
     return (decimals)
 end
 
 @view
 func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
-    balance : Uint256
+    uint : Uint256
 ):
     let (balance : Uint256) = ERC20.balance_of(account)
     return (balance)
@@ -172,7 +171,7 @@ end
 @view
 func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner, spender
-) -> (remaining : Uint256):
+) -> (uint : Uint256):
     return (Uint256(0, 0))
 end
 
@@ -233,21 +232,21 @@ end
 @external
 func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     recipient, amount : Uint256
-) -> (success):
+) -> (bool):
     return (FALSE)
 end
 
 @external
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount : Uint256
-) -> (success):
+) -> (bool):
     return (FALSE)
 end
 
 @external
 func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender, amount : Uint256
-) -> (success):
+) -> (bool):
     return (FALSE)
 end
 
@@ -256,16 +255,14 @@ end
 #
 
 @view
-func asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    assetTokenAddress
-):
+func asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
     let (asset) = ERC4626.asset()
     return (asset)
 end
 
 @view
 func totalAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    totalManagedAssets : Uint256
+    uint : Uint256
 ):
     let (total : Uint256) = ERC4626.totalAssets()
     return (total)
@@ -274,7 +271,7 @@ end
 @view
 func convertToShares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256
-) -> (shares : Uint256):
+) -> (uint : Uint256):
     let (shares : Uint256) = ERC4626.convertToShares(assets)
     return (shares)
 end
@@ -282,14 +279,14 @@ end
 @view
 func convertToAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256
-) -> (assets : Uint256):
+) -> (uint : Uint256):
     let (assets : Uint256) = ERC4626.convertToAssets(shares)
     return (assets)
 end
 
 @view
 func maxDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(receiver) -> (
-    maxAssets : Uint256
+    uint : Uint256
 ):
     let (maxAssets : Uint256) = ERC4626.maxDeposit(receiver)
     return (maxAssets)
@@ -298,7 +295,7 @@ end
 @view
 func previewDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256
-) -> (shares : Uint256):
+) -> (uint : Uint256):
     let (shares : Uint256) = ERC4626.previewDeposit(assets)
     return (shares)
 end
@@ -306,7 +303,7 @@ end
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256, receiver
-) -> (shares : Uint256):
+) -> (uint : Uint256):
     alloc_locals
 
     # Assert live
@@ -333,7 +330,7 @@ end
 @view
 func maxMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     receiver : felt
-) -> (maxShares : Uint256):
+) -> (uint : Uint256):
     let (maxShares : Uint256) = ERC4626.maxMint(receiver)
     return (maxShares)
 end
@@ -341,7 +338,7 @@ end
 @view
 func previewMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256
-) -> (assets : Uint256):
+) -> (uint : Uint256):
     let (assets : Uint256) = ERC4626.previewMint(shares)
     return (assets)
 end
@@ -349,7 +346,7 @@ end
 @external
 func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256, receiver : felt
-) -> (assets : Uint256):
+) -> (uint : Uint256):
     alloc_locals
 
     # Assert live
@@ -376,7 +373,7 @@ end
 @view
 func maxWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner : felt
-) -> (maxAssets : Uint256):
+) -> (uint : Uint256):
     let (maxWithdraw : Uint256) = ERC4626.maxWithdraw(owner)
     return (maxWithdraw)
 end
@@ -384,7 +381,7 @@ end
 @view
 func previewWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256
-) -> (shares : Uint256):
+) -> (uint : Uint256):
     let (shares : Uint256) = ERC4626.previewWithdraw(assets)
     return (shares)
 end
@@ -392,7 +389,7 @@ end
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets : Uint256, receiver : felt, owner : felt
-) -> (shares : Uint256):
+) -> (uint : Uint256):
     alloc_locals
 
     # Only Abbot can call
@@ -415,7 +412,7 @@ end
 
 @view
 func maxRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(owner : felt) -> (
-    maxShares : Uint256
+    uint : Uint256
 ):
     let (maxShares : Uint256) = ERC4626.maxRedeem(owner)
     return (maxShares)
@@ -424,7 +421,7 @@ end
 @view
 func previewRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256
-) -> (assets : Uint256):
+) -> (uint : Uint256):
     let (assets : Uint256) = ERC4626.previewRedeem(shares)
     return (assets)
 end
@@ -432,7 +429,7 @@ end
 @external
 func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shares : Uint256, receiver : felt, owner : felt
-) -> (assets : Uint256):
+) -> (uint : Uint256):
     alloc_locals
 
     # Only Abbot can call
@@ -526,19 +523,20 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     # Check last balance of underlying asset against latest balance
     let (last_updated) = gate_last_asset_balance_storage.read()
-    let (latest : Uint256) = IERC20.balanceOf(contract_address=asset_address, account=vault_address)
-    let (latest_felt) = uint_to_felt_unchecked(latest)
-    let (unincremented) = is_le(latest_felt, last_updated)
+    let (latest_uint : Uint256) = IERC20.balanceOf(
+        contract_address=asset_address, account=vault_address
+    )
+    let (latest_wad) = WadRay.from_uint(latest_uint)
+    let (unincremented) = is_le(latest_wad, last_updated)
     if unincremented == FALSE:
         # Get difference in shares
-        let difference = latest_felt - last_updated
+        let difference = latest_wad - last_updated
 
         # Calculate amount of underlying chargeable
-        let (difference_ray) = WadRay.wad_to_ray_unchecked(difference)
         let (tax_rate) = gate_tax_storage.read()
-        let (chargeable) = WadRay.rmul_unchecked(difference_ray, tax_rate)
-        let (chargeable_wad) = WadRay.ray_to_wad(chargeable)
-        let (chargeable_uint256 : Uint256) = felt_to_uint(chargeable_wad)
+        # `rmul` on a wad and a ray returns a wad
+        let (chargeable_wad) = WadRay.rmul_unchecked(difference, tax_rate)
+        let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
 
         # Transfer fees
         let (tax_collector) = gate_tax_collector_storage.read()
@@ -546,14 +544,14 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
             contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
         )
 
-        let (updated_balance : Uint256) = IERC20.balanceOf(
+        let (updated_balance_uint : Uint256) = IERC20.balanceOf(
             contract_address=asset_address, account=vault_address
         )
-        let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
+        let (updated_balance_wad) = WadRay.from_uint(updated_balance_uint)
 
-        gate_last_asset_balance_storage.write(updated_balance_felt)
+        gate_last_asset_balance_storage.write(updated_balance_wad)
 
-        Sync.emit(last_updated, updated_balance_felt, chargeable_wad)
+        Sync.emit(last_updated, updated_balance_wad, chargeable_wad)
 
         tempvar syscall_ptr = syscall_ptr
         tempvar pedersen_ptr = pedersen_ptr
@@ -571,10 +569,10 @@ end
 func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     asset_address, vault_address
 ):
-    let (balance : Uint256) = IERC20.balanceOf(
+    let (balance_uint : Uint256) = IERC20.balanceOf(
         contract_address=asset_address, account=vault_address
     )
-    let (balance_felt) = uint_to_felt_unchecked(balance)
-    gate_last_asset_balance_storage.write(balance_felt)
+    let (balance_wad) = WadRay.from_uint(balance_uint)
+    gate_last_asset_balance_storage.write(balance_wad)
     return ()
 end
