@@ -12,16 +12,17 @@ from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
 from tests.gate.yang.constants import INITIAL_AMT, TAX_RAY
-from tests.shrine.constants import (
-    DEBT_CEILING,
-    FEED_LEN,
-    GAGES,
-    LIQUIDATION_THRESHOLD,
-    MAX_PRICE_CHANGE,
-    MULTIPLIER_FEED,
-    SECONDS_PER_MINUTE,
+from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
+from tests.utils import (
+    WAD_SCALE,
+    Uint256,
+    compile_contract,
+    create_feed,
+    estimate_gas,
+    set_block_timestamp,
+    str_to_felt,
+    to_wad,
 )
-from tests.utils import WAD_SCALE, Uint256, compile_contract, create_feed, set_block_timestamp, str_to_felt
 
 MRACParameters = namedtuple(
     "MRACParameters",

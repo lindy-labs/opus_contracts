@@ -54,28 +54,16 @@ end
 #
 
 @storage_var
-<<<<<<< HEAD
-func gate_auth(address) -> (authorized):
-end
-
-@storage_var
-func gate_live() -> (live):
-=======
 func gate_auth_storage(address) -> (bool):
 end
 
 @storage_var
 func gate_live_storage() -> (bool):
->>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 # Admin fee charged on yield from underlying - ray
 @storage_var
-<<<<<<< HEAD
-func gate_tax() -> (tax):
-=======
 func gate_tax_storage() -> (ray):
->>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 # Address to send admin fees to
@@ -83,32 +71,10 @@ end
 func gate_tax_collector_storage() -> (address):
 end
 
-<<<<<<< HEAD
-# Exchange rate of Gate share to underlying (wad)
-@storage_var
-func gate_exchange_rate() -> (rate):
-end
-
-# Last updated total balance of underlying
-# Used to detect changes in total balance due to rebasing
-@storage_var
-func gate_underlying_balance() -> (balance):
-end
-
-# Total number of gage tokens held by contract (wad)
-@storage_var
-func gate_gage_total() -> (total):
-end
-
-# Timestamp of the last update of yield from underlying gage
-@storage_var
-func gate_gage_last_updated() -> (timestamp):
-=======
 # Last updated total balance of underlying asset
 # Used to detect changes in total balance due to rebasing
 @storage_var
 func gate_last_asset_balance_storage() -> (wad):
->>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 #
@@ -116,17 +82,6 @@ end
 #
 
 @view
-<<<<<<< HEAD
-func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
-    authorized
-):
-    return gate_auth.read(address)
-end
-
-@view
-func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (live):
-    return gate_live.read()
-=======
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
     return gate_auth_storage.read(address)
 end
@@ -134,25 +89,11 @@ end
 @view
 func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool):
     return gate_live_storage.read()
->>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 @view
-<<<<<<< HEAD
-func get_shrine{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
-    return gate_shrine_address.read()
-end
-
-@view
-func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (tax):
-=======
 func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
-<<<<<<< HEAD
->>>>>>> 81db9f5 (remove shrine interface)
-    return gate_tax.read()
-=======
     return gate_tax_storage.read()
->>>>>>> d5ded20 (dev(gate): rename storage variables)
 end
 
 @view
@@ -371,6 +312,9 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Assert live
     assert_live()
 
+    # Only Abbot can call
+    assert_auth()
+
     # Get asset and vault addresses
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
@@ -411,6 +355,9 @@ func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Assert live
     assert_live()
 
+    # Only Abbot can call
+    assert_auth()
+
     # Get asset and vault addresses
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
@@ -448,8 +395,6 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ) -> (shares : Uint256):
     alloc_locals
 
-<<<<<<< HEAD
-=======
     # Only Abbot can call
     assert_auth()
 
@@ -457,7 +402,6 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
 
->>>>>>> bfeb7ac (dev(gate): refactor sync functions)
     # Sync
     sync_inner(asset, vault)
 
@@ -491,8 +435,6 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (assets : Uint256):
     alloc_locals
 
-<<<<<<< HEAD
-=======
     # Only Abbot can call
     assert_auth()
 
@@ -500,7 +442,6 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (asset) = ERC4626.asset()
     let (vault) = get_contract_address()
 
->>>>>>> bfeb7ac (dev(gate): refactor sync functions)
     # Sync
     sync_inner(asset, vault)
 
@@ -584,17 +525,8 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     alloc_locals
 
     # Check last balance of underlying asset against latest balance
-<<<<<<< HEAD
-    let (last_updated) = gate_underlying_balance.read()
-    let (latest) = IERC20.balanceOf(contract_address=asset, account=vault)
-=======
     let (last_updated) = gate_last_asset_balance_storage.read()
-<<<<<<< HEAD
-    let (latest : Uint256) = IERC20.balanceOf(contract_address=asset, account=vault)
->>>>>>> d5ded20 (dev(gate): rename storage variables)
-=======
     let (latest : Uint256) = IERC20.balanceOf(contract_address=asset_address, account=vault_address)
->>>>>>> bfeb7ac (dev(gate): refactor sync functions)
     let (latest_felt) = uint_to_felt_unchecked(latest)
     let (unincremented) = is_le(latest_felt, last_updated)
     if unincremented == FALSE:
@@ -618,11 +550,8 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
             contract_address=asset_address, account=vault_address
         )
         let (updated_balance_felt) = uint_to_felt_unchecked(updated_balance)
-<<<<<<< HEAD
-        gate_underlying_balance.write(updated_balance_felt)
-=======
+
         gate_last_asset_balance_storage.write(updated_balance_felt)
->>>>>>> d5ded20 (dev(gate): rename storage variables)
 
         Sync.emit(last_updated, updated_balance_felt, chargeable_wad)
 
@@ -646,10 +575,6 @@ func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
         contract_address=asset_address, account=vault_address
     )
     let (balance_felt) = uint_to_felt_unchecked(balance)
-<<<<<<< HEAD
-    gate_underlying_balance.write(balance_felt)
-=======
     gate_last_asset_balance_storage.write(balance_felt)
->>>>>>> d5ded20 (dev(gate): rename storage variables)
     return ()
 end
