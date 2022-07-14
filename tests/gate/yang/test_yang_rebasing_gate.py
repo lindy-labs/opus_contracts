@@ -71,12 +71,14 @@ def get_assets_from_shares(total_shares, total_assets, shares_amt):
 # Convenience fixture
 @pytest.fixture
 def gate(yang_rebasing_gate) -> StarknetContract:
-    yield yang_rebasing_gate
+    _, gate = yang_rebasing_gate
+    yield gate
 
 
 @pytest.fixture
-def yang(yang_rebasing) -> StarknetContract:
-    yield yang_rebasing
+def yang(yang_rebasing_gate) -> StarknetContract:
+    yang, _ = yang_rebasing_gate
+    yield yang
 
 
 @pytest.fixture
@@ -686,6 +688,40 @@ async def test_kill(users, gate, yang, gate_deposit, sync):
 
     assert after_user_shares == before_user_shares - redeem_amt
     assert after_gate_shares == before_gate_shares - redeem_amt
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_mint_deposit(users, yang, gate):
+    """Test third-party initiated"""
+    shrine_user = await users("shrine user")
+    bad_guy = await users("bad guy")
+
+    # Seed unauthorized address with yang
+    await bad_guy.send_tx(yang.contract_address, "mint", [bad_guy.address, *(INITIAL_AMT, 0)])
+    # Sanity check
+    assert from_uint((await yang.balanceOf(bad_guy.address).invoke()).result.balance) == INITIAL_AMT
+
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(gate.contract_address, "mint", [*(FIRST_MINT_AMT, 0), shrine_user.address])
+        await bad_guy.send_tx(gate.contract_address, "deposit", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address])
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_redeem_withdraw(users, gate, gate_deposit):
+    """Test user-initiated"""
+    shrine_user = await users("shrine user")
+
+    # Sanity check
+    bal = from_uint((await gate.balanceOf(shrine_user.address).invoke()).result.balance)
+    assert bal == INITIAL_AMT - FIRST_DEPOSIT_AMT
+
+    with pytest.raises(StarkException):
+        await shrine_user.send_tx(
+            gate.contract_address, "redeem", [*(FIRST_MINT_AMT, 0), shrine_user.address, shrine_user.address]
+        )
+        await shrine_user.send_tx(
+            gate.contract_address, "withdraw", [*(FIRST_DEPOSIT_AMT, 0), shrine_user.address, shrine_user.address]
+        )
 
 
 #
