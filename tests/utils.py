@@ -132,6 +132,10 @@ def to_wad(n: Union[int, float, Decimal]) -> int:
     return int(n * WAD_SCALE)
 
 
+def to_ray(n: Union[int, float, Decimal]) -> int:
+    return int(n * RAY_SCALE)
+
+
 def from_wad(n: int) -> Decimal:
     return Decimal(n) / WAD_SCALE
 

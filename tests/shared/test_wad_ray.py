@@ -15,6 +15,7 @@ from tests.utils import (
     WAD_SCALE,
     compile_contract,
     signed_int_to_felt,
+    to_ray,
     to_uint,
     to_wad,
     wad_to_ray,
@@ -175,6 +176,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 @example(left=0, right=1)
 @example(left=0, right=0)
 @example(left=1, right=0)
+@example(left=to_wad(1), right=to_wad(1))  # Test wad values
 @pytest.mark.parametrize(
     "fn,op",
     [
@@ -199,6 +201,12 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
 
 @settings(max_examples=50, deadline=None)
 @given(left=st_int128, right=st_int128)
+@example(left=to_wad(1), right=to_wad(1))  # Test wad values
+@example(left=to_wad(2), right=to_wad(2))  # Test wad values
+@example(left=to_wad(1), right=to_wad(1) // 2)  # Test percentage
+@example(left=to_ray(1), right=to_ray(1))  # Test wad values
+@example(left=to_ray(2), right=to_ray(2))  # Test wad values
+@example(left=to_ray(1), right=to_ray(1) // 2)  # Test percentage
 @pytest.mark.parametrize(
     "fn,op,scale,ret",
     [
@@ -248,6 +256,12 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 
 @settings(max_examples=50, deadline=None)
 @given(left=st_uint128, right=st_uint128)
+@example(left=to_wad(1), right=to_wad(1))  # Test wad values
+@example(left=to_wad(2), right=to_wad(2))  # Test wad values
+@example(left=to_wad(1), right=to_wad(1) // 2)  # Test percentage
+@example(left=to_ray(1), right=to_ray(1))  # Test wad values
+@example(left=to_ray(2), right=to_ray(2))  # Test wad values
+@example(left=to_ray(1), right=to_ray(1) // 2)  # Test percentage
 @pytest.mark.parametrize(
     "fn,op,scale,ret",
     [
