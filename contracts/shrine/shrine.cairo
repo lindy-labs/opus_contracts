@@ -159,7 +159,7 @@ end
 
 @view
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
-    return Auth.get_authorization(address)
+    return Auth.is_authorized(address)
 end
 
 @view
@@ -243,7 +243,7 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Assert that yang is not already added
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
@@ -276,7 +276,7 @@ end
 func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_max
 ):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
@@ -290,7 +290,7 @@ end
 
 @external
 func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_ceiling):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     shrine_ceiling_storage.write(new_ceiling)
 
@@ -307,7 +307,7 @@ end
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_threshold
 ):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Check that threshold value is not greater than max threshold
     with_attr error_message("Shrine: Threshold exceeds 100%"):
@@ -324,7 +324,7 @@ end
 
 @external
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     shrine_live_storage.write(FALSE)
 
@@ -358,14 +358,14 @@ end
 
 @external
 func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
     Auth.authorize(address)
     return ()
 end
 
 @external
 func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
     Auth.revoke(address)
     return ()
 end
@@ -377,7 +377,7 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -393,7 +393,7 @@ end
 func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_multiplier
 ):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     let (interval) = now()
     shrine_multiplier_storage.write(interval, new_multiplier)
@@ -411,7 +411,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 ):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -457,7 +457,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Check system is live
     assert_live()
@@ -497,7 +497,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Retrieve yang info
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -537,7 +537,7 @@ end
 func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Check system is live
     assert_live()
@@ -598,7 +598,7 @@ end
 func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
     alloc_locals
 
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Charge interest
     charge(trove_id)
@@ -634,7 +634,7 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id):
-    Auth.assert_caller()
+    Auth.assert_caller_authed()
 
     # Update Trove information
     let (old_trove_info : Trove) = get_trove(trove_id)

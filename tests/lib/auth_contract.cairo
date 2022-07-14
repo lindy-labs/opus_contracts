@@ -18,22 +18,24 @@ func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(a
 end
 
 @view
-func get_authorization{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    address
-) -> (bool):
-    return Auth.get_authorization(address)
+func is_authorized{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
+    bool
+):
+    return Auth.is_authorized(address)
 end
 
 @view
-func assert_caller{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool):
-    Auth.assert_caller()
+func assert_caller_authed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    bool
+):
+    Auth.assert_caller_authed()
     return (TRUE)
 end
 
 @view
-func assert_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (
-    bool
-):
-    Auth.assert_address(address)
+func assert_address_authed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    address
+) -> (bool):
+    Auth.assert_address_authed(address)
     return (TRUE)
 end

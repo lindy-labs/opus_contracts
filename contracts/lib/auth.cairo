@@ -20,7 +20,7 @@ end
 
 namespace Auth:
     # asserts whether the caller is authorized, fails if they are not
-    func assert_caller{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    func assert_caller_authed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
         let (c) = get_caller_address()
         let (is_authed) = auth_authorization_storage.read(c)
         with_attr error_message("Auth: caller not authorized"):
@@ -30,7 +30,9 @@ namespace Auth:
     end
 
     # asserts whether an address is authorized, fails if they are not
-    func assert_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    func assert_address_authed{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        address
+    ):
         let (is_authed) = auth_authorization_storage.read(address)
         with_attr error_message("Auth: address {address} not authorized"):
             assert is_authed = TRUE
@@ -53,7 +55,7 @@ namespace Auth:
     end
 
     # returns the authorization status of an address
-    func get_authorization{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    func is_authorized{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         address
     ) -> (bool):
         return auth_authorization_storage.read(address)
