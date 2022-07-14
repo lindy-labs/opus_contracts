@@ -4,7 +4,7 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.utils import FALSE, TRUE, assert_event_emitted, compile_contract
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 async def auth_contract(starknet):
     contract = compile_contract("tests/lib/auth_contract.cairo")
     return await starknet.deploy(contract_class=contract)
