@@ -95,7 +95,7 @@ func get_last_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin
     return gate_last_asset_balance_storage.read()
 end
 
-# Returns the amount of assets represented by one share in the pool as currently constituted
+# Returns the amount of underlying assets represented by one share in the pool
 @view
 func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     wad
@@ -106,10 +106,6 @@ func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 
     # Catch division by zero errors
     if total_supply_wad == 0:
-        return (0)
-    end
-
-    if total_balance == 0:
         return (0)
     end
 

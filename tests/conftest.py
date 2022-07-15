@@ -155,11 +155,11 @@ async def mrac_controller(starknet) -> StarknetContract:
 
 
 @pytest.fixture
-async def yang_rebasing_gate(starknet, users, tokens) -> StarknetContract:
+async def gate_rebasing(starknet, users, tokens) -> StarknetContract:
     user = await users("shrine user")
-    asset = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
+    underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
 
-    contract = compile_contract("contracts/gate/yang/yang_rebasing_gate.cairo")
+    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
     abbot = await users("abbot")
     tax_collector = await users("tax collector")
     gate = await starknet.deploy(
@@ -168,12 +168,12 @@ async def yang_rebasing_gate(starknet, users, tokens) -> StarknetContract:
             abbot.address,
             str_to_felt("Aura Staked ETH"),
             str_to_felt("auStETH"),
-            asset.contract_address,
+            underlying.contract_address,
             TAX_RAY,
             tax_collector.address,
         ],
     )
-    yield asset, gate
+    yield underlying, gate
 
 
 #
