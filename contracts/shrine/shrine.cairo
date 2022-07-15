@@ -777,7 +777,7 @@ func get_max_forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     end
 
     let (threshold, value) = get_trove_threshold(trove_id)
-    let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
+    let (limit) = WadRay.rmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
     let (max_debt) = WadRay.rmul(limit, value)
 
     # Get updated debt with interest
