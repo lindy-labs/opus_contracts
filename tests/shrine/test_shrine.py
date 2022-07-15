@@ -599,7 +599,8 @@ async def test_shrine_forge_pass(shrine, shrine_forge):
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.wad
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [to_wad(INITIAL_DEPOSIT)], [YANG_0_THRESHOLD])
-    assert_equalish(max_forge_amt, expected_limit - trove.debt)
+    current_debt = from_wad((await shrine.estimate(TROVE_1).invoke()).result.wad)
+    assert_equalish(max_forge_amt, expected_limit - current_debt)
 
 
 @pytest.mark.asyncio
