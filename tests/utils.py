@@ -15,6 +15,9 @@ from starkware.starknet.services.api.feeder_gateway.response_objects import Func
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
 
+PRIME = 2**251 + 17 * 2**192 + 1
+RANGE_CHECK_BOUND = 2**128
+
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0
 TRUE = 1
@@ -22,6 +25,7 @@ FALSE = 0
 
 WAD_SCALE = 10**18
 RAY_SCALE = 10**27
+WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
 
 # Gas estimation constants
 NAMES = [
@@ -55,6 +59,13 @@ def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
         return value.contract_address
     return value
+
+
+def signed_int_to_felt(a: int) -> int:
+    """Takes in integer value, returns input if positive, otherwise return PRIME + input"""
+    if a >= 0:
+        return a
+    return PRIME + a
 
 
 def str_to_felt(text: str) -> int:
@@ -117,12 +128,20 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
 #
 
 
-def to_wad(n: Union[float, Decimal]) -> int:
+def to_wad(n: Union[int, float, Decimal]) -> int:
     return int(n * WAD_SCALE)
+
+
+def to_ray(n: Union[int, float, Decimal]) -> int:
+    return int(n * RAY_SCALE)
 
 
 def from_wad(n: int) -> Decimal:
     return Decimal(n) / WAD_SCALE
+
+
+def wad_to_ray(n: int) -> int:
+    return int(n * (RAY_SCALE // WAD_SCALE))
 
 
 def from_ray(n: int) -> Decimal:
