@@ -761,6 +761,32 @@ func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     return (bool)
 end
 
+@view
+func get_max_forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id) -> (
+    wad
+):
+    alloc_locals
+
+    let (trove : Trove) = get_trove(trove_id)
+
+    let (can_forge) = is_within_limits(trove_id)
+
+    # Early termination if trove is not within limits
+    if can_forge == FALSE:
+        return (0)
+    end
+
+    let (threshold, value) = get_trove_threshold(trove_id)
+    let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
+    let (max_debt) = WadRay.rmul(limit, value)
+
+    # Get updated debt with interest
+    let (current_debt) = estimate(trove_id)
+    let max_forge_amt = max_debt - current_debt
+
+    return (max_forge_amt)
+end
+
 #
 # Internal
 #
