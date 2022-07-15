@@ -5,9 +5,11 @@ on:
     branches:
       - main
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   test:
+    if: "!(contains(toJSON(github.event.commits.*.message), '[skip ci]') || contains(toJSON(github.event.commits.*.message), '[ci skip]')) || github.event.pull_request.draft == false"
     runs-on: ubuntu-latest
 
     steps:
