@@ -14,26 +14,26 @@ namespace WadRay:
     const WAD_ONE = WAD_SCALE
 
     # Reverts if `n` overflows or underflows
-    func assert_valid{range_check_ptr}(n):
-        assert_le(n, BOUND)
-        assert_le(-BOUND, n)
+    func assert_result_valid{range_check_ptr}(n):
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_le(n, BOUND)
+            assert_le(-BOUND, n)
+        end
         return ()
     end
 
-    func assert_valid_unsigned{range_check_ptr}(n):
-        assert_le(n, BOUND)
-        assert_le(0, n)
+    func assert_result_valid_unsigned{range_check_ptr}(n):
+        with_attr error_message("WadRay: Result is out of bounds"):
+            assert_le(n, BOUND)
+            assert_le(0, n)
+        end
         return ()
     end
 
     func floor{range_check_ptr}(n) -> (wad):
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND)
         let floored = n - mod_val
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(floored)
-        end
-
+        assert_result_valid(floored)
         return (wad=floored)
     end
 
@@ -47,51 +47,31 @@ namespace WadRay:
             tempvar ceiled = (int_val + 1) * WAD_ONE
             tempvar range_check_ptr = range_check_ptr
         end
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(ceiled)
-        end
-
+        assert_result_valid(ceiled)
         return (wad=ceiled)
     end
 
     func add{range_check_ptr}(a, b) -> (wad):
         let sum = a + b
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(sum)
-        end
-
+        assert_result_valid(sum)
         return (wad=sum)
     end
 
     func add_unsigned{range_check_ptr}(a, b) -> (wad):
         let sum = a + b
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid_unsigned(sum)
-        end
-
+        assert_result_valid_unsigned(sum)
         return (wad=sum)
     end
 
     func sub{range_check_ptr}(a, b) -> (wad):
         let diff = a - b
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(diff)
-        end
-
+        assert_result_valid(diff)
         return (wad=diff)
     end
 
     func sub_unsigned{range_check_ptr}(a, b) -> (wad):
         let diff = a - b
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid_unsigned(diff)
-        end
-
+        assert_result_valid_unsigned(diff)
         return (wad=diff)
     end
 
@@ -118,11 +98,7 @@ namespace WadRay:
     func wunsigned_div{range_check_ptr}(a, b) -> (wad):
         tempvar product = a * WAD_SCALE
         let (q, _) = unsigned_div_rem(product, b)
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(q)
-        end
-
+        assert_result_valid(q)
         return (wad=q)
     end
 
@@ -156,11 +132,7 @@ namespace WadRay:
     func runsigned_div{range_check_ptr}(a, b) -> (ray):
         tempvar product = a * RAY_SCALE
         let (q, _) = unsigned_div_rem(product, b)
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(q)
-        end
-
+        assert_result_valid(q)
         return (ray=q)
     end
 
@@ -182,21 +154,13 @@ namespace WadRay:
 
     func from_uint{range_check_ptr}(n : Uint256) -> (wad):
         assert n.high = 0
-
-        with_attr error_message("WadRay: Uint256.low is out of bounds"):
-            assert_valid(n.low)
-        end
-
+        assert_result_valid(n.low)
         return (wad=n.low)
     end
 
     func to_wad{range_check_ptr}(n) -> (wad):
         let n_wad = n * WAD_SCALE
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(n_wad)
-        end
-
+        assert_result_valid(n_wad)
         return (wad=n_wad)
     end
 
@@ -208,11 +172,7 @@ namespace WadRay:
 
     func wad_to_ray{range_check_ptr}(n) -> (ray):
         let ray = n * DIFF
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(ray)
-        end
-
+        assert_result_valid(ray)
         return (ray)
     end
 

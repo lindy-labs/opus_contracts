@@ -43,22 +43,22 @@ BOUND_TEST_CASES = [-(BOUND + 1), -BOUND, -1, 0, 1, BOUND - 1, BOUND, BOUND + 1]
 
 @pytest.mark.parametrize("val", BOUND_TEST_CASES)
 @pytest.mark.asyncio
-async def test_assert_valid(wad_ray, val):
+async def test_assert_result_valid(wad_ray, val):
     if abs(val) > BOUND:
         with pytest.raises(StarkException):
-            await wad_ray.test_assert_valid(val).invoke()
+            await wad_ray.test_assert_result_valid(val).invoke()
     else:
-        await wad_ray.test_assert_valid(val).invoke()
+        await wad_ray.test_assert_result_valid(val).invoke()
 
 
 @pytest.mark.parametrize("val", BOUND_TEST_CASES)
 @pytest.mark.asyncio
-async def test_assert_valid_unsigned(wad_ray, val):
+async def test_assert_result_valid_unsigned(wad_ray, val):
     if val < 0 or val > BOUND:
         with pytest.raises(StarkException):
-            await wad_ray.test_assert_valid_unsigned(val).invoke()
+            await wad_ray.test_assert_result_valid_unsigned(val).invoke()
     else:
-        await wad_ray.test_assert_valid_unsigned(val).invoke()
+        await wad_ray.test_assert_result_valid_unsigned(val).invoke()
 
 
 @settings(max_examples=50, deadline=None)
@@ -317,7 +317,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
     method = wad_ray.get_contract_function(fn)
 
     if fn in ("test_to_wad", "test_wad_to_ray") and abs(expected_py) > BOUND:
-        # Test `assert_valid`
+        # Test `assert_result_valid`
         with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
             await method(input_val).invoke()
     elif fn == "test_wad_to_felt" and not (-BOUND <= expected_py < BOUND):
@@ -353,5 +353,5 @@ async def test_uint_conversion_pass(wad_ray, val, fn, input_op, output_op, ret):
 @pytest.mark.asyncio
 async def test_from_uint_fail(wad_ray, val):
     val = to_uint(val)
-    with pytest.raises(StarkException, match="WadRay: Uint256.low is out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
         await wad_ray.test_from_uint(val).invoke()

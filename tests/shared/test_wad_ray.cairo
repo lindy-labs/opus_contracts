@@ -5,14 +5,14 @@ from starkware.cairo.common.uint256 import Uint256
 from contracts.shared.wad_ray import WadRay
 
 @view
-func test_assert_valid{range_check_ptr}(n):
-    WadRay.assert_valid(n)
+func test_assert_result_valid{range_check_ptr}(n):
+    WadRay.assert_result_valid(n)
     return ()
 end
 
 @view
-func test_assert_valid_unsigned{range_check_ptr}(n):
-    WadRay.assert_valid_unsigned(n)
+func test_assert_result_valid_unsigned{range_check_ptr}(n):
+    WadRay.assert_result_valid_unsigned(n)
     return ()
 end
 
