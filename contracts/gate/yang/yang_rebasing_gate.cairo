@@ -491,40 +491,35 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         contract_address=asset_address, account=vault_address
     )
     let (latest_wad) = WadRay.from_uint(latest_uint)
+    # Assumption: Balance cannot decrease without any user action
     let (unincremented) = is_le(latest_wad, last_updated)
-    if unincremented == FALSE:
-        # Get difference in shares
-        let difference = latest_wad - last_updated
-
-        # Calculate amount of underlying chargeable
-        let (tax_rate) = gate_tax_storage.read()
-        # `rmul` on a wad and a ray returns a wad
-        let (chargeable_wad) = WadRay.rmul_unchecked(difference, tax_rate)
-        let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
-
-        # Transfer fees
-        let (tax_collector) = gate_tax_collector_storage.read()
-        IERC20.transfer(
-            contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
-        )
-
-        let (updated_balance_uint : Uint256) = IERC20.balanceOf(
-            contract_address=asset_address, account=vault_address
-        )
-        let (updated_balance_wad) = WadRay.from_uint(updated_balance_uint)
-
-        gate_last_asset_balance_storage.write(updated_balance_wad)
-
-        Sync.emit(last_updated, updated_balance_wad, chargeable_wad)
-
-        tempvar syscall_ptr = syscall_ptr
-        tempvar pedersen_ptr = pedersen_ptr
-        tempvar range_check_ptr = range_check_ptr
-    else:
-        tempvar syscall_ptr = syscall_ptr
-        tempvar pedersen_ptr = pedersen_ptr
-        tempvar range_check_ptr = range_check_ptr
+    if unincremented == TRUE:
+        return ()
     end
+
+    # Get difference in shares
+    let difference = latest_wad - last_updated
+
+    # Calculate amount of underlying chargeable
+    let (tax_rate) = gate_tax_storage.read()
+    # `rmul` on a wad and a ray returns a wad
+    let (chargeable_wad) = WadRay.rmul_unchecked(difference, tax_rate)
+    let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
+
+    # Transfer fees
+    let (tax_collector) = gate_tax_collector_storage.read()
+    IERC20.transfer(
+        contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
+    )
+
+    let (updated_balance_uint : Uint256) = IERC20.balanceOf(
+        contract_address=asset_address, account=vault_address
+    )
+    let (updated_balance_wad) = WadRay.from_uint(updated_balance_uint)
+
+    gate_last_asset_balance_storage.write(updated_balance_wad)
+
+    Sync.emit(last_updated, updated_balance_wad, chargeable_wad)
 
     return ()
 end
