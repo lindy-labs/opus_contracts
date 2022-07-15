@@ -864,7 +864,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
 
     # Overflow check
     with_attr error_message("Shrine: System debt overflow"):
-        WadRay.assert_valid(new_system_debt)
+        WadRay.assert_result_valid(new_system_debt)
     end
 
     shrine_debt_storage.write(new_system_debt)
