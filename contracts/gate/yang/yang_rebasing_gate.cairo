@@ -7,8 +7,8 @@ from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_sub
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
+from contracts.lib.auth import Auth
 from contracts.lib.erc4626.library import ERC4626
-
 from contracts.lib.openzeppelin.token.erc20.library import ERC20
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
@@ -23,14 +23,6 @@ const MAX_TAX = 5 * 10 ** 25
 #
 # Events
 #
-
-@event
-func Authorized(address):
-end
-
-@event
-func Revoked(address):
-end
 
 @event
 func Killed():
@@ -51,10 +43,6 @@ end
 #
 # Storage
 #
-
-@storage_var
-func gate_auth_storage(address) -> (bool):
-end
 
 @storage_var
 func gate_live_storage() -> (bool):
@@ -82,7 +70,7 @@ end
 
 @view
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
-    return gate_auth_storage.read(address)
+    return Auth.is_authorized(address)
 end
 
 @view
@@ -183,8 +171,8 @@ end
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     authed, name, symbol, asset_address, tax, tax_collector_address
 ):
+    Auth.authorize(authed)
     ERC4626.initializer(name, symbol, asset_address)
-    gate_auth_storage.write(authed, TRUE)
     gate_live_storage.write(TRUE)
 
     with_attr error_message("Gate: Maximum tax exceeded"):
@@ -197,28 +185,12 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 #
-# External - Auth
+# External
 #
 
 @external
-func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    assert_auth()
-    gate_auth_storage.write(address, TRUE)
-    Authorized.emit(address)
-    return ()
-end
-
-@external
-func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    assert_auth()
-    gate_auth_storage.write(address, FALSE)
-    Revoked.emit(address)
-    return ()
-end
-
-@external
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    assert_auth()
+    Auth.assert_caller_authed()
 
     gate_live_storage.write(FALSE)
     Killed.emit()
@@ -310,7 +282,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_live()
 
     # Only Abbot can call
-    assert_auth()
+    Auth.assert_caller_authed()
 
     # Get asset and vault addresses
     let (asset) = ERC4626.asset()
@@ -353,7 +325,7 @@ func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_live()
 
     # Only Abbot can call
-    assert_auth()
+    Auth.assert_caller_authed()
 
     # Get asset and vault addresses
     let (asset) = ERC4626.asset()
@@ -393,7 +365,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     # Only Abbot can call
-    assert_auth()
+    Auth.assert_caller_authed()
 
     # Get asset and vault addresses
     let (asset) = ERC4626.asset()
@@ -433,7 +405,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     alloc_locals
 
     # Only Abbot can call
-    assert_auth()
+    Auth.assert_caller_authed()
 
     # Get asset and vault addresses
     let (asset) = ERC4626.asset()
@@ -457,7 +429,7 @@ end
 # Update the tax (ray)
 @external
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
-    assert_auth()
+    Auth.assert_caller_authed()
 
     # Check that tax is lower than MAX_TAX
     with_attr error_message("Gate: Maximum tax exceeded"):
@@ -474,7 +446,7 @@ end
 # Update the tax collector address
 @external
 func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    assert_auth()
+    Auth.assert_caller_authed()
 
     let (prev_tax_collector) = gate_tax_collector_storage.read()
     gate_tax_collector_storage.write(address)
@@ -497,14 +469,6 @@ end
 #
 # Internal
 #
-
-# Similar to onlyOwner
-func assert_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    let (c) = get_caller_address()
-    let (is_authed) = gate_auth_storage.read(c)
-    assert is_authed = TRUE
-    return ()
-end
 
 func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     # Check system is live
