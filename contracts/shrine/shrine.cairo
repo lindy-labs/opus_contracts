@@ -22,7 +22,7 @@ const INITIAL_MULTIPLIER = WadRay.RAY_ONE
 const MAX_THRESHOLD = WadRay.RAY_ONE
 # This is the value of limit divided by threshold
 # If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is (threshold LTV) * LIMIT_RATIO = 76%
-const LIMIT_RATIO = 95 * 10 ** 16  # 95%
+const LIMIT_RATIO = 95 * 10 ** 25  # 95%
 
 const TIME_INTERVAL = 24 * 60 * 60  # 24 hours * 60 minutes per hour * 60 seconds per minute
 const TIME_INTERVAL_DIV_YEAR = 2739726020000000000000000  # 1 day / 365 days = 0.00273972602 (ray)
@@ -754,7 +754,7 @@ func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     end
 
     let (threshold, value) = get_trove_threshold(trove_id)
-    let (limit) = WadRay.wmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
+    let (limit) = WadRay.rmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
     let (max_debt) = WadRay.rmul(limit, value)
     let (bool) = is_le(trove.debt, max_debt)
 
