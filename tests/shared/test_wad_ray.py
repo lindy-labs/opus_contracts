@@ -275,20 +275,26 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
     # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
     assume(right <= PRIME // RANGE_CHECK_BOUND)
-    expected_py = op(left * scale, right)
+    scaled_left = left * scale
+    # Exclude values greater than felt after scaling
+    assume(scaled_left <= PRIME)
+    expected_py = op(scaled_left, right)
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
 
-    if abs(expected_py) > BOUND:
+    if not fn.endswith("unchecked") and abs(expected_py) > BOUND:
         # `unsigned_div_rem` asserts 0 <= quotient < rc_bound, meaning this exception
         # will only catch BOUND < quotient <= rc_bound
-        if not fn.endswith("unchecked") and expected_py < RANGE_CHECK_BOUND:
+        if expected_py < RANGE_CHECK_BOUND:
             with pytest.raises(StarkException, match="WadRay: Result is out of bounds"):
                 await method(left, right).invoke()
         else:
             with pytest.raises(StarkException):
                 await method(left, right).invoke()
-
+    elif fn.endswith("unchecked") and expected_py > RANGE_CHECK_BOUND:
+        # `unsigned_div_rem` asserts 0 <= quotient < rc_bound,
+        with pytest.raises(StarkException):
+            await method(left, right).invoke()
     else:
         res = getattr((await method(left, right).invoke()).result, ret)
         assert res == expected_cairo
