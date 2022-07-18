@@ -2,3 +2,6 @@ __pycache__
 accounts.json
 node.json
 .python-version
+
+# Hypothesis
+.hypothesis
