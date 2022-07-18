@@ -2,9 +2,9 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero
+from starkware.cairo.common.math import assert_le
 from starkware.cairo.common.math_cmp import is_le
-from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_sub
+from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.lib.auth import Auth
