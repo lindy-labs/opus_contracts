@@ -208,7 +208,16 @@ end
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount : Uint256
 ) -> (bool):
-    return (FALSE)
+    # Only Abbot can call
+    let (caller) = get_caller_address()
+    let (authed) = Auth.is_authorized(caller)
+    if authed == FALSE:
+        return (FALSE)
+    end
+
+    # Execute transfer
+    ERC20._transfer(sender, recipient, amount)
+    return (TRUE)
 end
 
 @external

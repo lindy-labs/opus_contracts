@@ -762,6 +762,27 @@ async def test_unauthorized_redeem_withdraw(users, gate, gate_deposit):
 
 
 @pytest.mark.asyncio
+async def test_gate_transferfrom_pass(users, gate, gate_deposit):
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+    shrine_guest = await users("shrine guest")
+
+    transfer = await abbot.send_tx(
+        gate.contract_address,
+        "transferFrom",
+        [shrine_user.address, shrine_guest.address, *(FIRST_DEPOSIT_AMT, 0)],
+    )
+    assert transfer.call_info.result[1] == TRUE
+
+    # Fetch sender and recipient balances after transfer
+    after_sender_balance = (await gate.balanceOf(shrine_user.address).invoke()).result.uint
+    after_recipient_balance = (await gate.balanceOf(shrine_guest.address).invoke()).result.uint
+
+    assert from_uint(after_sender_balance) == 0
+    assert from_uint(after_recipient_balance) == FIRST_DEPOSIT_AMT
+
+
+@pytest.mark.asyncio
 async def test_gate_approve_transferfrom_fail(users, gate, gate_subsequent_deposit):
     shrine_user = await users("shrine user")
     shrine_guest = await users("shrine guest")
