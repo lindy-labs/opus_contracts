@@ -2,9 +2,9 @@ import decimal
 
 from tests.utils import to_ray, to_wad
 
-TAX = decimal.Decimal("0.05")
+TAX = decimal.Decimal("0.025")
+TAX_MAX = decimal.Decimal("0.05")
 TAX_RAY = to_ray(TAX)
-MAX_TAX_RAY = TAX_RAY
 
 INITIAL_AMT = to_wad(100)
 

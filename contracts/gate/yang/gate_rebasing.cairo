@@ -425,6 +425,8 @@ end
 # Update the tax (ray)
 @external
 func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
+    assert_live()
+
     Auth.assert_caller_authed()
 
     # Check that tax is lower than MAX_TAX
@@ -499,7 +501,7 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     # Calculate amount of underlying chargeable
     let (tax_rate) = gate_tax_storage.read()
     # `rmul` on a wad and a ray returns a wad
-    let (chargeable_wad) = WadRay.rmul_unchecked(difference, tax_rate)
+    let (chargeable_wad) = WadRay.rmul(difference, tax_rate)
     let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
 
     # Transfer fees

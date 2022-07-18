@@ -11,9 +11,9 @@ from tests.gate.yang.constants import (
     FIRST_REBASE_AMT,
     FIRST_TAX_AMT,
     INITIAL_AMT,
-    MAX_TAX_RAY,
     SECOND_DEPOSIT_AMT,
     SECOND_MINT_AMT,
+    TAX_MAX,
     TAX_RAY,
 )
 from tests.utils import (
@@ -26,6 +26,7 @@ from tests.utils import (
     from_uint,
     from_wad,
     str_to_felt,
+    to_ray,
     to_wad,
 )
 
@@ -222,7 +223,7 @@ async def test_gate_constructor_invalid_tax(users, starknet, underlying):
                 str_to_felt("Aura Staked ETH"),
                 str_to_felt("auStETH"),
                 underlying.contract_address,
-                TAX_RAY + 1,
+                to_ray(TAX_MAX) + 1,
                 tax_collector.address,
             ],
         )
@@ -245,7 +246,7 @@ async def test_gate_set_tax_fail(gate, users):
 
     # Fails due to max tax exceeded
     with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
-        await abbot.send_tx(gate.contract_address, "set_tax", [MAX_TAX_RAY + 1])
+        await abbot.send_tx(gate.contract_address, "set_tax", [to_ray(TAX_MAX) + 1])
 
 
 @pytest.mark.asyncio
