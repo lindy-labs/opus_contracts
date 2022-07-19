@@ -59,12 +59,12 @@ def linear(x: Decimal, m: Decimal, b: Decimal):
 
 def base_rate(ltv: Decimal) -> Decimal:
     """
-    Helper function to calculate base rate given loan-to-value ratio.
+    Helper function to calculate base rate given loan-to-threshold-value ratio.
 
     Arguments
     ---------
     ltv : Decimal
-        Loan-to-value ratio in Decimal
+        Loan-to-threshold-value ratio in Decimal
 
     Returns
     -------
@@ -82,6 +82,7 @@ def base_rate(ltv: Decimal) -> Decimal:
 def compound(
     yangs_amt: List[Decimal],
     yangs_price: List[List[Decimal]],
+    yangs_threshold: List[Decimal],
     multiplier: List[Decimal],
     debt: Decimal,
 ) -> Decimal:
@@ -95,6 +96,8 @@ def compound(
     yangs_price: List[List[Decimal]]
         For each Yang in `yangs_amt` in the same order, an ordered list of prices
         beginning from the start interval to the end interval.
+    yangs_threshold: List[Decimal]
+        Ordered list of the threshold of each Yang
     multiplier: List[Decimal]
         List of multiplier values from the start interval to the end interval
     debt : Decimal
@@ -106,7 +109,7 @@ def compound(
     Decimal with ray precision of 27 decimals.
     """
     # Sanity check on input data
-    assert len(yangs_amt) == len(yangs_price)
+    assert len(yangs_amt) == len(yangs_price) == len(yangs_threshold)
     for i in range(len(yangs_amt)):
         assert len(yangs_price[i]) == len(multiplier)
 
@@ -115,20 +118,20 @@ def compound(
 
     # Loop through each interval
     for i in range(total_intervals):
-        total_yang_val = 0
+        cumulative_weighted_threshold_val = 0
 
         # Loop through each yang
         for j in range(len(yangs_amt)):
-            total_yang_val += yangs_amt[j] * yangs_price[j][i]
+            cumulative_weighted_threshold_val += yangs_amt[j] * yangs_price[j][i] * from_ray(yangs_threshold[j])
 
             # Override decimal context using ray precision of 27 decimals
             with localcontext() as ctx:
                 ctx.prec = 27
-                # Calculate LTV
-                ltv = Decimal(debt) / Decimal(total_yang_val)
+                # Calculate loan-to-threshold-value
+                ltv_to_threshold = Decimal(debt) / Decimal(cumulative_weighted_threshold_val)
 
                 # Calculate base rate
-                b = base_rate(ltv)
+                b = base_rate(ltv_to_threshold)
 
                 # Calculate interest rate
                 ir = b * multiplier[i]
@@ -356,6 +359,7 @@ async def estimate(shrine, update_feeds_with_trove2):
     expected_debt = compound(
         [Decimal("10")],
         [[from_wad(start_price)] + update_feeds_with_trove2],
+        [YANG_0_THRESHOLD],
         [from_ray(start_multiplier)] + [Decimal("1")] * FEED_LEN,
         Decimal("5000"),
     )
@@ -796,7 +800,7 @@ async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
     )
     updated_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
 
-    expected_debt = compound([Decimal("10")], [yang0_price_feed], multiplier_feed, Decimal("5000"))
+    expected_debt = compound([Decimal("10")], [yang0_price_feed], [YANG_0_THRESHOLD], multiplier_feed, Decimal("5000"))
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     assert_equalish(adjusted_trove_debt, expected_debt)
