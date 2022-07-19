@@ -54,9 +54,9 @@ RATE_BOUND2 = Decimal("0.75")
 RATE_BOUND3 = Decimal("0.9215")
 
 # Time Interval
-TIME_INTERVAL = 24 * 60 * 60  # Number of seconds in time interval
-# 1 / Number of intervals in a year
-TIME_INTERVAL_DIV_YEAR = Decimal("0.00273972602")
+TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
+# 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625)
+TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 
 # Threshold test constants

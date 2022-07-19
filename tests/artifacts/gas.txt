@@ -257,3 +257,21 @@ exp - Expected: 7.3890560989306504069418224389664828777313232421875 	 Got: 7.389
 exp - Expected: 20.08553692318766792368478490971028804779052734375 	 Got: 20.0855369231876677: 54.3
 exp - Expected: 23.140692632784055859929139842279255390167236328125 	 Got: 23.1406926327840566: 54.3
 exp - Expected: 442413.3920089204912073910236358642578125 	 Got: 442413.392008920503: 56.550000000000004
+shrine/deposit: 5294.6
+shrine/withdraw: 5310.4
+shrine/deposit: 5295.0
+shrine/withdraw: 5310.2
+shrine/deposit: 5294.8
+shrine/withdraw: 5310.6
+shrine/withdraw: 5310.0
+shrine/deposit: 5294.8
+shrine/withdraw: 5310.6
+shrine/deposit: 5294.4
+shrine/withdraw: 5309.6
+shrine/deposit: 5294.6
+shrine/withdraw: 5309.8
+shrine/deposit: 5294.6
+shrine/withdraw: 5309.6
+shrine/deposit: 5295.0
+shrine/deposit: 5294.8
+shrine/withdraw: 5310.0

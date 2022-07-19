@@ -175,7 +175,7 @@ end
 
 # Keeps track of the price history of each Yang - packed
 # interval: timestamp divided by TIME_INTERVAL.
-# packed contains both the actual price (high 125 bits) and the cumulative price (low 125 bits) of 
+# packed contains both the actual price (high 123 bits) and the cumulative price (low 128 bits) of
 # the yang at each time interval, both as wads
 @storage_var
 func shrine_yang_price_storage(yang_id, interval) -> (packed):
@@ -187,8 +187,8 @@ func shrine_ceiling_storage() -> (wad):
 end
 
 # Global interest rate multiplier - packed
-# packed contains both the actual multiplier (high 125 bits), and the cumulative multiplier (low 125 bits) of 
-# the yang at each time interval, both as rays 
+# packed contains both the actual multiplier (high 123 bits), and the cumulative multiplier (low 128 bits) of
+# the yang at each time interval, both as rays
 @storage_var
 func shrine_multiplier_storage(interval) -> (packed):
 end
@@ -248,9 +248,10 @@ end
 func get_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, interval
 ) -> (price_wad, cumulative_price_wad):
+    alloc_locals
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
     let (packed) = shrine_yang_price_storage.read(yang_id, interval)
-    let (price, cumulative_price) = unpack_125(packed) 
+    let (price, cumulative_price) = unpack_125(packed)
     return (price, cumulative_price)
 end
 
@@ -263,6 +264,7 @@ end
 func get_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     interval
 ) -> (multiplier_ray, cumulative_multiplier_ray):
+    alloc_locals
     let (packed) = shrine_multiplier_storage.read(interval)
     let (multiplier, cumulative_multiplier) = unpack_125(packed)
     return (multiplier, cumulative_multiplier)
@@ -294,28 +296,35 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     assert_auth()
 
     # Assert that yang is not already added
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (potential_yang_id) = shrine_yang_id_storage.read(yang_address)
     with_attr error_message("Shrine: Yang already exists"):
-        assert yang_id = 0
+        assert potential_yang_id = 0
     end
 
     # Assign ID to yang and add yang struct
     let (yang_count) = shrine_yangs_count_storage.read()
-    shrine_yang_id_storage.write(yang_address, yang_count + 1)
-    shrine_yangs_storage.write(yang_count + 1, Yang(0, max))
+    tempvar new_yang_count = yang_count + 1
+
+    shrine_yang_id_storage.write(yang_address, new_yang_count)
+    shrine_yangs_storage.write(new_yang_count, Yang(0, max))
 
     # Update yangs count
-    shrine_yangs_count_storage.write(yang_count + 1)
+    shrine_yangs_count_storage.write(new_yang_count)
 
     # Set threshold
     set_threshold(yang_address, threshold)
 
     # Seed initial price to ensure `get_recent_price_from` terminates
-    advance(yang_address, price)
+    let (current_time_interval) = now() 
+
+    # Since `price` is the first price in the price history, the cumulative price is also set to `price`
+    # `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
+    let (packed) = pack_125(price, price)
+    shrine_yang_price_storage.write(new_yang_count, current_time_interval, packed) 
 
     # Events
-    YangAdded.emit(yang_address, yang_count + 1, max, price)
-    YangsCountUpdated.emit(yang_count + 1)
+    YangAdded.emit(yang_address, new_yang_count, max, price)
+    YangsCountUpdated.emit(new_yang_count)
 
     return ()
 end
@@ -373,7 +382,7 @@ end
 func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, trove : Trove
 ):
-    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
+    let (packed_trove) = pack_felt(trove.charge_from, trove.debt)
     shrine_troves_storage.write(user_address, trove_id, packed_trove)
     return ()
 end
@@ -400,7 +409,9 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 
     # Set initial multiplier value
     let (interval) = now()
-    shrine_multiplier_storage.write(interval, INITIAL_MULTIPLIER)
+    # The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
+    let (packed) = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER)
+    shrine_multiplier_storage.write(interval, packed)
 
     # Events
     Authorized.emit(authed)
@@ -424,13 +435,15 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
-    
-    # Calculating the new cumulative price 
-    # To do this, we get the interval of the last price update, find the number of 
-    # intervals BETWEEN the current interval and the last_interval (non-inclusive), multiply that by 
-    # the last price, and add it to the last cumulative price. Then we add the new price, `price`. 
-    let (last_price, last_cumulative_price, last_interval) = get_recent_price_from(yang_id, interval - 1)
-    # TODO: should there be an overflow check here? 
+
+    # Calculating the new cumulative price
+    # To do this, we get the interval of the last price update, find the number of
+    # intervals BETWEEN the current interval and the last_interval (non-inclusive), multiply that by
+    # the last price, and add it to the last cumulative price. Then we add the new price, `price`.
+    let (last_price, last_cumulative_price, last_interval) = get_recent_price_from(
+        yang_id, interval - 1
+    )
+    # TODO: should there be an overflow check here?
     let new_cumulative = last_cumulative_price + (interval - last_interval - 1) * last_price + price
 
     let (packed) = pack_125(price, new_cumulative)
@@ -447,17 +460,20 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     new_multiplier
 ):
     alloc_locals
+
     assert_auth()
 
     let (interval) = now()
 
-    let (last_multiplier, last_cumulative_multiplier, last_interval) = get_recent_multiplier_from(interval - 1) 
-    let new_cumulative = last_cumulative_multiplier + (interval - last_interval - 1) * last_multiplier + new_multiplier 
+    let (last_multiplier, last_cumulative_multiplier, last_interval) = get_recent_multiplier_from(
+        interval - 1
+    )
+    let new_cumulative_multiplier = last_cumulative_multiplier + (interval - last_interval - 1) * last_multiplier + new_multiplier
 
-    let (packed) = pack_125(new_multiplier, new_cumulative)
+    let (packed) = pack_125(new_multiplier, new_cumulative_multiplier)
     shrine_multiplier_storage.write(interval, packed)
 
-    MultiplierUpdated.emit(new_multiplier, new_cumulative, interval)
+    MultiplierUpdated.emit(new_multiplier, new_cumulative_multiplier, interval)
 
     return ()
 end
@@ -604,7 +620,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_live()
 
     # Charge interest
-    charge(user_address, trove_id)
+    charge(user_address, trove_id) # TODO: Maybe move this under the debt ceiling check to save gas in case of failed tx
 
     # Get current Trove information
     let (old_trove_info : Trove) = get_trove(user_address, trove_id)
@@ -683,7 +699,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update trove information
     let (new_debt) = WadRay.sub(old_trove_info.debt, amount)
-    let new_trove_info : Trove = Trove(charge_from=current_interval + 1, debt=new_debt)
+    let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
     set_trove(user_address, trove_id, new_trove_info)
 
     # Events
@@ -749,12 +765,13 @@ end
 @view
 func get_current_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
-) -> (price_wad, cumulative_price_wad, interval_ufelt):
+) -> (price_wad, cumulative_price_wad):
     alloc_locals
 
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
     let (interval) = now()  # Get current interval
-    return get_recent_price_from(yang_id, interval)
+    let (price_wad, cumulative_price_wad, _) = get_recent_price_from(yang_id, interval)
+    return (price_wad, cumulative_price_wad)
 end
 
 # Gets last updated multiplier value
@@ -765,14 +782,15 @@ func get_current_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
     return get_recent_multiplier_from(interval)
 end
 
-
 # Returns the debt a trove owes, including any interest that has accumulated since
 # `Trove.charge_from` but not accrued to `Trove.debt` yet.
-@view 
-func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user_address, trove_id) -> (wad):
-    alloc_locals 
+@view
+func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id
+) -> (wad):
+    alloc_locals
 
-    let (trove : Trove) = get_trove(user_address, trove_id) 
+    let (trove : Trove) = get_trove(user_address, trove_id)
 
     # Early termination if no debt
     if trove.debt == 0:
@@ -781,9 +799,8 @@ func estimate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     let (current_interval) = now()
 
-    return compound(user_address, trove_id, trove.charge_from, current_interval, trove.debt)
+    return compound(user_address, trove_id, trove.debt, trove.charge_from, current_interval)
 end
-
 
 # Returns a bool indicating whether the given trove is healthy or not
 @view
@@ -874,81 +891,84 @@ func now{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() ->
     return (interval)
 end
 
-# Adds accumulated interest as debt to the given trove 
+# Adds accumulated interest as debt to the given trove
 func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id
 ):
     alloc_locals
-    # Get trove info 
-    let (trove : Trove) = get_trove(user_address, trove_id) 
+    # Get trove info
+    let (trove : Trove) = get_trove(user_address, trove_id)
 
-    # Early termination if no debt 
+    # Early termination if no debt
     if trove.debt == 0:
-        return () 
-    end 
+        return ()
+    end
 
-    # Get current interval 
-    let (current_interval) = now() 
+    # Get current interval
+    let (current_interval) = now()
 
-    # Get new debt amount 
-    let (new_debt) = compound(user_address, trove_id, trove.debt, trove.charge_from, current_interval) 
+    # Early termination if trove has just been charged (that is, if 
 
-    # Update trove 
-    let updated_trove : Trove = Trove(charge_from=current_interval, debt=new_debt) 
-    set_trove(user_address, trove_id, updated_trove) 
+    # Get new debt amount
+    let (new_debt) = compound(
+        user_address, trove_id, trove.debt, trove.charge_from, current_interval
+    )
 
-    # Get old system debt amount 
-    let (old_system_debt) = shrine_debt_storage.read() 
+    # Update trove
+    let updated_trove : Trove = Trove(charge_from=current_interval, debt=new_debt)
+    set_trove(user_address, trove_id, updated_trove)
 
-    # Get interest charged 
-    let (diff) = WadRay.sub_unsigned(new_debt, trove.debt) # TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
+    # Get old system debt amount
+    let (old_system_debt) = shrine_debt_storage.read()
 
-    # Get new system debt 
-    tempvar new_system_debt = old_system_debt + diff 
+    # Get interest charged
+    let (diff) = WadRay.sub_unsigned(new_debt, trove.debt)  # TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
 
-    # Overflow check 
+    # Get new system debt
+    tempvar new_system_debt = old_system_debt + diff
+
+    # Overflow check
     with_attr error_message("Shrine: system debt overflow"):
         WadRay.assert_valid(new_system_debt)
-    end 
+    end
 
     shrine_debt_storage.write(new_system_debt)
 
-    # Events 
+    # Events
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(user_address, trove_id, updated_trove)
 
-    return()
-end 
-
+    return ()
+end
 
 # Returns the amount of debt owed by trove after having interest charged over a given time period
 # Assumes the trove hasn't minted or payed back any additional debt during the given time period
-# Assumes the trove hasn't deposited or withdrawn any additional collateral during the given time period 
-# Time period includes `end_interval` and does NOT include `start_interval`. 
+# Assumes the trove hasn't deposited or withdrawn any additional collateral during the given time period
+# Time period includes `end_interval` and does NOT include `start_interval`.
 
 # Compound interest formula: P(t) = P_0 * e^(rt)
-# P_0 = principle 
-# r = nominal interest rate (what the interest rate would be if there was no compounding 
-# t = time elapsed, in years 
+# P_0 = principle
+# r = nominal interest rate (what the interest rate would be if there was no compounding
+# t = time elapsed, in years
+@view
 func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, current_debt, start_interval, end_interval
 ) -> (wad):
     alloc_locals
 
     let (avg_ratio) = get_avg_ratio(user_address, trove_id, current_debt, start_interval, end_interval)
-    let (avg_multiplier) = get_avg_multiplier(start_interval, end_interval) 
+    let (avg_multiplier) = get_avg_multiplier(start_interval, end_interval)
 
     let (base_rate) = get_base_rate(avg_ratio)
-    let (true_rate) = WadRay.rmul(base_rate, avg_multiplier) # represents `r` in the compound interest formula
+    let (true_rate) = WadRay.rmul(base_rate, avg_multiplier)  # represents `r` in the compound interest formula
 
-    let t = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR # wad, represents `t` in the compound interest formula
+    let t = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR  # wad, represents `t` in the compound interest formula
 
     # Using `rmul` on a ray and a wad yields a wad, which we need since `exp` only takes wads
-    let (rt) = WadRay.rmul(true_rate, t) 
-    let (e_pow_rt) = exp(rt) 
+    let (rt) = WadRay.rmul(true_rate, t)
+    let (e_pow_rt) = exp(rt)
 
     let (new_debt) = WadRay.wmul(current_debt, e_pow_rt)
-
     return (new_debt)
 end
 
@@ -1053,14 +1073,14 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     return appraise_internal(user_address, trove_id, yang_id - 1, interval, updated_cumulative)
 end
 
-
 # Returns the price for `yang_id` at `interval` if it is non-zero.
-# Otherwise, check `interval` - 1 recursively for the last available price. Returns the price at 
+# Otherwise, check `interval` - 1 recursively for the last available price. Returns the price at
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_id, interval
 ) -> (price_wad, cumulative_price_wad, interval_ufelt):
+    alloc_locals
     let (packed) = shrine_yang_price_storage.read(yang_id, interval)
-    
+
     if packed != 0:
         let (price, cumulative_price) = unpack_125(packed)
         return (price, cumulative_price, interval)
@@ -1074,7 +1094,7 @@ end
 func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     interval
 ) -> (multiplier_ray, cumulative_multiplier_ray, interval_ufelt):
-
+    alloc_locals
     let (packed) = shrine_multiplier_storage.read(interval)
 
     if packed != 0:
@@ -1085,18 +1105,26 @@ func get_recent_multiplier_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     return get_recent_multiplier_from(interval - 1)
 end
 
-
-
 # Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
-func get_avg_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(start_interval, end_interval) -> (ray):
+func get_avg_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    start_interval, end_interval
+) -> (ray):
     alloc_locals
 
-    let (_, end_cumulative_multiplier, _) = get_recent_multiplier_from(end_interval)
-    let (_, start_cumulative_multiplier, _) = get_recent_multiplier_from(start_interval) 
+    
+
+    let (end_multiplier, end_cumulative_multiplier, _) = get_recent_multiplier_from(end_interval)
+
+    # If `start_interval` == `end_interval`, then the "average" multiplier is simply
+    # the multiplier at `end_interval` (or equally, the multiplier at `start_interval`
+    if start_interval == end_interval:
+        return (end_multiplier) 
+    end
+
+    let (_, start_cumulative_multiplier, _) = get_recent_multiplier_from(start_interval)
 
     let (avg_multiplier, _) = unsigned_div_rem(
-        end_cumulative_multiplier - start_cumulative_multiplier, 
-        end_interval - start_interval
+        end_cumulative_multiplier - start_cumulative_multiplier, end_interval - start_interval
     )
 
     return (avg_multiplier)
@@ -1106,64 +1134,81 @@ end
 func get_avg_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, debt, start_interval, end_interval
 ) -> (ray):
-
     # Getting average value of the trove
     let (num_yangs) = shrine_yangs_count_storage.read()
 
     let (avg_val) = get_avg_val_internal(
-        user_address,
-        trove_id, 
-        start_interval, 
-        end_interval,
-        num_yangs, 
-        0
+        user_address, trove_id, start_interval, end_interval, num_yangs, 0
     )
 
-    let (avg_ratio) = WadRay.runsigned_div(debt, avg_val) # Dividing two wads with `runsigned_div` yields a ray
+    let (avg_ratio) = WadRay.runsigned_div(debt, avg_val)  # Dividing two wads with `runsigned_div` yields a ray
     return (avg_ratio)
 end
-
 
 # Returns the average value of a trove over the specified period of time
 # Includes the values at `end_interval` but NOT `start_interval` in the average
 func get_avg_val_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, start_interval, end_interval, current_yang_id, cumulative_value
+    user_address, trove_id, start_interval, end_interval, current_yang_id, cumulative_val
 ) -> (wad):
     alloc_locals
 
     # Terminate if all yangs have been iterated over already
     if current_yang_id == 0:
-        return (cumulative_value)
+        return (cumulative_val)
     end
 
     let (balance) = shrine_deposits_storage.read(user_address, trove_id, current_yang_id)
 
     # Skipping over the rest of the logic if the user hasn't deposited anything for this yang
     if balance == 0:
-        return get_avg_val_internal(user_address, trove_id, start_interval, end_interval, current_yang_id - 1, cumulative_value)
+        return get_avg_val_internal(
+            user_address,
+            trove_id,
+            start_interval,
+            end_interval,
+            current_yang_id - 1,
+            cumulative_val,
+        )
     end
 
-    let (_, end_cumulative_price, _) = get_recent_price_from(current_yang_id, end_interval) 
-    let (_, start_cumulative_price, _) = get_recent_price_from(current_yang_id, start_interval) 
+    # If start_interval == end_interval, then the average price is simply the price at 
+    # `start_interval` (or equally, the price at `end_interval`)
+    if start_interval == end_interval:
+        let (price, _, _) = get_recent_price_from(current_yang_id, start_interval)
+        let (balance_val) = WadRay.wmul(balance, price)
+        WadRay.assert_valid(cumulative_val + balance_val) # Overflow check 
+
+        return get_avg_val_internal(
+            user_address, 
+            trove_id, 
+            start_interval, 
+            end_interval,
+            current_yang_id - 1, 
+            cumulative_val + balance_val 
+        )
+    end
+
+
+    let (_, end_cumulative_price, _) = get_recent_price_from(current_yang_id, end_interval)
+    let (_, start_cumulative_price, _) = get_recent_price_from(current_yang_id, start_interval)
 
     let (avg_price, _) = unsigned_div_rem(
         end_cumulative_price - start_cumulative_price, 
         end_interval - start_interval
-    ) # We add the 1 to `end_interval - start_interval` to account for the fact that `start_interval` is being included in the average 
+    )
 
-    let (balance_value) = WadRay.wmul(balance, avg_price) 
-    WadRay.assert_valid(cumulative_value + balance_value) # Overflow check
+    let (balance_val) = WadRay.wmul(balance, avg_price)
+    WadRay.assert_valid(cumulative_val + balance_val)  # Overflow check
 
     return get_avg_val_internal(
-        user_address, 
-        trove_id, 
-        start_interval, 
-        end_interval, 
-        current_yang_id - 1, 
-        cumulative_value + balance_value
+        user_address,
+        trove_id,
+        start_interval,
+        end_interval,
+        current_yang_id - 1,
+        cumulative_val + balance_val,
     )
 end
-
 
 #
 # Trove health internal functions
