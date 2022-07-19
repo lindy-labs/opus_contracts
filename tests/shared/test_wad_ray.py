@@ -273,7 +273,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 )
 @pytest.mark.asyncio
 async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
-    # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
+    # `unsigned_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
     assume(right <= PRIME // RANGE_CHECK_BOUND)
     scaled_left = left * scale
     # Exclude values greater than felt after scaling
