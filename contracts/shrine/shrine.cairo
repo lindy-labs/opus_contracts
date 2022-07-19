@@ -654,7 +654,7 @@ end
 #
 
 # Gets the custom threshold (maximum LTV before liquidation) of a trove
-# Also returns the total trove value
+# Also returns the total cumulative weighted threshold value and the total trove value
 # `threshold` and `value` are both wads
 @view
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -890,10 +890,10 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         return (debt)
     end
 
-    # Get LTV for Trove at the given time ID
-    let (ratio) = trove_ratio(trove_id, current_interval, debt)
+    # Get loan-to-threshold-value ratio for Trove at the given time ID
+    let (ratio) = trove_ratio_to_threshold(trove_id, current_interval, debt)
 
-    # Get base rate using LTV
+    # Get base rate using loan-to-threshold-value ratio
     let (rate) = base_rate(ratio)
 
     # Get multiplier at the given time ID
@@ -915,11 +915,13 @@ end
 
 # base rate function:
 #
+#  LTTV = loan-to-threshold-value ratio
 #
-#           { 0.02*LTV                   if 0 <= LTV <= 0.5
-#           { 0.1*LTV - 0.04             if 0.5 < LTV <= 0.75
-#  r(LTV) = { LTV - 0.715                if 0.75 < LTV <= 0.9215
-#           { 3.101908*LTV - 2.65190822  if 0.9215 < LTV < \infinity
+#
+#            { 0.02*LTTV                   if 0 <= LTTV <= 0.5
+#            { 0.1*LTTV - 0.04             if 0.5 < LTTV <= 0.75
+#  r(LTTV) = { LTTV - 0.715                if 0.75 < LTTV <= 0.9215
+#            { 3.101908*LTTV - 2.65190822  if 0.9215 < LTTV < \infinity
 #
 #
 
@@ -981,6 +983,29 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (value) = appraise_internal(trove_id, yang_count, interval, 0)
 
     let (ratio) = WadRay.runsigned_div(debt, value)  # Using WadRay.runsigned_div on two wads returns a ray
+    return (ratio)
+end
+
+# Calculates the trove's loan to threshold value ratio at the given interval.
+# See comments above `appraise_internal` for the underlying assumption on which the correctness of the result depends.
+# Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
+# Returns a ray.
+func trove_ratio_to_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    trove_id, interval, debt
+) -> (ray):
+    # Early termination if no debt
+    if debt == 0:
+        return (0)
+    end
+
+    let (yang_count) = shrine_yangs_count_storage.read()
+    let (threshold, value) = get_trove_threshold_internal(trove_id, interval, yang_count, 0, 0)
+
+    # Multiplying a ray and wad with `wmul` returns a ray
+    let (cumulative_weighted_threshold) = WadRay.wmul(threshold, value)
+    # Convert `debt` to ray before `runsigned_div`
+    let (debt_ray) = WadRay.wad_to_ray(debt)
+    let (ratio) = WadRay.runsigned_div(debt_ray, cumulative_weighted_threshold)
     return (ratio)
 end
 
