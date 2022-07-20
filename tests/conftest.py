@@ -150,33 +150,6 @@ async def mrac_controller(starknet) -> StarknetContract:
 
 
 #
-# Gate fixtures
-#
-
-
-@pytest.fixture
-async def gate_rebasing(starknet, users, tokens) -> StarknetContract:
-    user = await users("shrine user")
-    underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
-
-    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
-    abbot = await users("abbot")
-    tax_collector = await users("tax collector")
-    gate = await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            abbot.address,
-            str_to_felt("Aura Staked ETH"),
-            str_to_felt("auStETH"),
-            underlying.contract_address,
-            TAX_RAY,
-            tax_collector.address,
-        ],
-    )
-    yield underlying, gate
-
-
-#
 # Shrine fixtures
 #
 
@@ -241,3 +214,29 @@ async def shrine(starknet, users, shrine_setup) -> StarknetContract:
         )
 
     return shrine
+
+
+#
+# Gate fixtures
+#
+
+
+@pytest.fixture
+async def gate_rebasing(starknet, shrine, users, tokens) -> StarknetContract:
+    user = await users("shrine user")
+    underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
+
+    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
+    abbot = await users("abbot")
+    tax_collector = await users("tax collector")
+    gate = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            abbot.address,
+            shrine.contract_address,
+            underlying.contract_address,
+            TAX_RAY,
+            tax_collector.address,
+        ],
+    )
+    yield underlying, gate
