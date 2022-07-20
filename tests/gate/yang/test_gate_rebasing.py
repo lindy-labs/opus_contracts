@@ -297,7 +297,7 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase):
 
     # Check that user's redeemable balance has increased
     user_shares = (await shrine_authed.get_deposit(TROVE_1, asset.contract_address).invoke()).result.wad
-    user_asset = from_uint((await gate.preview_redeem(user_shares).invoke()).result.wad)
+    user_asset = (await gate.preview_redeem(user_shares).invoke()).result.wad
     assert user_asset == after_gate_bal
 
     # Check exchange rate
@@ -381,7 +381,7 @@ async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, g
     shrine_user = await users("shrine user")
 
     # Redeem
-    await abbot.send_tx(
+    redeem = await abbot.send_tx(
         gate.contract_address,
         "redeem",
         [FIRST_DEPOSIT_AMT, shrine_user.address, TROVE_1],
@@ -404,6 +404,14 @@ async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, g
     exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
     assert exchange_rate == 0
 
+    # Check event
+    assert_event_emitted(
+        redeem,
+        gate.contract_address,
+        "Redeem",
+        [shrine_user.address, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
+    )
+
 
 @pytest.mark.asyncio
 async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, gate_deposit, sync):
@@ -414,7 +422,7 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     shrine_user = await users("shrine user")
 
     # Redeem
-    await abbot.send_tx(
+    redeem = await abbot.send_tx(
         gate.contract_address,
         "redeem",
         [FIRST_DEPOSIT_AMT, shrine_user.address, TROVE_1],
@@ -423,8 +431,8 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     # Fetch post-redemption balances
     after_user_balance = (await asset.balanceOf(shrine_user.address).invoke()).result.balance
     after_gate_balance = (await asset.balanceOf(gate.contract_address).invoke()).result.balance
-
-    assert from_uint(after_user_balance) == INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
+    expected_user_balance = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
+    assert from_uint(after_user_balance) == expected_user_balance
     assert from_uint(after_gate_balance) == 0
 
     # Fetch post-redemption shares
@@ -436,6 +444,14 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     # Check exchange rate
     exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
     assert exchange_rate == 0
+
+    # Check event
+    assert_event_emitted(
+        redeem,
+        gate.contract_address,
+        "Redeem",
+        [shrine_user.address, TROVE_1, expected_user_balance, FIRST_DEPOSIT_AMT],
+    )
 
 
 @pytest.mark.asyncio
