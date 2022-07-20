@@ -3,14 +3,14 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.math_cmp import is_le
+from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.cairo.common.uint256 import Uint256
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+from starkware.starknet.common.syscalls import get_contract_address
 
+from contracts.interfaces import IShrine
 from contracts.lib.auth import Auth
-from contracts.lib.erc4626.library import ERC4626
-from contracts.lib.openzeppelin.token.erc20.library import ERC20
 from contracts.shared.interfaces import IERC20
+from contracts.shared.types import Yang
 from contracts.shared.wad_ray import WadRay
 
 #
@@ -29,6 +29,14 @@ func Killed():
 end
 
 @event
+func Deposit(user, trove_id, assets_wad, shares_wad):
+end
+
+@event
+func Redeem(user, trove_id, assets_wad, shares_wad):
+end
+
+@event
 func TaxUpdated(prev_tax, new_tax):
 end
 
@@ -43,6 +51,14 @@ end
 #
 # Storage
 #
+
+@storage_var
+func gate_shrine_storage() -> (address):
+end
+
+@storage_var
+func gate_asset_storage() -> (address):
+end
 
 @storage_var
 func gate_live_storage() -> (bool):
@@ -74,6 +90,16 @@ func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 end
 
 @view
+func get_shrine{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
+    return gate_shrine_storage.read()
+end
+
+@view
+func get_asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
+    return gate_asset_storage.read()
+end
+
+@view
 func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool):
     return gate_live_storage.read()
 end
@@ -90,9 +116,29 @@ func get_tax_collector_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
 end
 
 @view
-func get_last_underlying_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func get_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ) -> (wad):
     return gate_last_asset_balance_storage.read()
+end
+
+@view
+func get_total_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    uint : Uint256
+):
+    let (asset_address) = get_asset()
+    let (gate_address) = get_contract_address()
+    let (total : Uint256) = IERC20.balanceOf(contract_address=asset_address, account=gate_address)
+    return (total)
+end
+
+@view
+func get_total_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
+    let (shrine_address) = get_shrine()
+    let (asset_address) = get_asset()
+    let (yang_info : Yang) = IShrine.get_yang(
+        contract_address=shrine_address, yang_address=asset_address
+    )
+    return (yang_info.total)
 end
 
 # Returns the amount of underlying assets represented by one share in the pool
@@ -100,9 +146,8 @@ end
 func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     wad
 ):
-    let (total_supply_uint : Uint256) = ERC20.total_supply()
-    let (total_supply_wad) = WadRay.from_uint(total_supply_uint)
-    let (total_balance) = get_last_underlying_balance()
+    let (total_supply_wad) = get_total_yang()
+    let (total_balance) = get_last_asset_balance()
 
     # Catch division by zero errors
     if total_supply_wad == 0:
@@ -113,50 +158,20 @@ func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     return (exchange_rate)
 end
 
-#
-# Getters - ERC20
-#
-
 @view
-func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
-    let (name) = ERC20.name()
-    return (name)
+func preview_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    assets_wad
+) -> (wad):
+    let (shares) = convert_to_shares(assets_wad)
+    return (shares)
 end
 
 @view
-func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
-    let (symbol) = ERC20.symbol()
-    return (symbol)
-end
-
-@view
-func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    uint : Uint256
-):
-    let (totalSupply : Uint256) = ERC20.total_supply()
-    return (totalSupply)
-end
-
-@view
-func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
-    let (decimals) = ERC20.decimals()
-    return (decimals)
-end
-
-@view
-func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
-    uint : Uint256
-):
-    let (balance : Uint256) = ERC20.balance_of(account)
-    return (balance)
-end
-
-# Non-transferable
-@view
-func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner, spender
-) -> (uint : Uint256):
-    return (Uint256(0, 0))
+func preview_redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    shares_wad
+) -> (wad):
+    let (assets_wad) = convert_to_assets(shares_wad)
+    return (assets_wad)
 end
 
 #
@@ -165,10 +180,11 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, name, symbol, asset_address, tax, tax_collector_address
+    authed, shrine_address, asset_address, tax, tax_collector_address
 ):
     Auth.authorize(authed)
-    ERC4626.initializer(name, symbol, asset_address)
+    gate_shrine_storage.write(shrine_address)
+    gate_asset_storage.write(asset_address)
     gate_live_storage.write(TRUE)
 
     with_attr error_message("Gate: Maximum tax exceeded"):
@@ -193,94 +209,10 @@ func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     return ()
 end
 
-#
-# External - ERC20
-#
-
-@external
-func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    recipient, amount : Uint256
-) -> (bool):
-    return (FALSE)
-end
-
-@external
-func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    sender, recipient, amount : Uint256
-) -> (bool):
-    # Only Abbot can call
-    let (caller) = get_caller_address()
-    let (authed) = Auth.is_authorized(caller)
-    if authed == FALSE:
-        return (FALSE)
-    end
-
-    # Execute transfer
-    ERC20._transfer(sender, recipient, amount)
-    return (TRUE)
-end
-
-@external
-func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    spender, amount : Uint256
-) -> (bool):
-    return (FALSE)
-end
-
-#
-# External - ERC4626
-#
-
-@view
-func asset{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
-    let (asset) = ERC4626.asset()
-    return (asset)
-end
-
-@view
-func totalAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    uint : Uint256
-):
-    let (total : Uint256) = ERC4626.totalAssets()
-    return (total)
-end
-
-@view
-func convertToShares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets : Uint256
-) -> (uint : Uint256):
-    let (shares : Uint256) = ERC4626.convertToShares(assets)
-    return (shares)
-end
-
-@view
-func convertToAssets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares : Uint256
-) -> (uint : Uint256):
-    let (assets : Uint256) = ERC4626.convertToAssets(shares)
-    return (assets)
-end
-
-@view
-func maxDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(receiver) -> (
-    uint : Uint256
-):
-    let (maxAssets : Uint256) = ERC4626.maxDeposit(receiver)
-    return (maxAssets)
-end
-
-@view
-func previewDeposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets : Uint256
-) -> (uint : Uint256):
-    let (shares : Uint256) = ERC4626.previewDeposit(assets)
-    return (shares)
-end
-
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets : Uint256, receiver
-) -> (uint : Uint256):
+    assets, user_address, trove_id
+) -> (wad):
     alloc_locals
 
     # Assert live
@@ -290,139 +222,40 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     Auth.assert_caller_authed()
 
     # Get asset and vault addresses
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
+    let (asset_address) = get_asset()
+    let (gate_address) = get_contract_address()
 
     # Sync
-    sync_inner(asset, vault)
+    sync_inner(asset_address, gate_address)
 
-    let (shares : Uint256) = ERC4626.deposit(assets, receiver)
-
-    # Update
-    update_last_asset_balance(asset, vault)
-
-    return (shares)
-end
-
-@view
-func maxMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    receiver : felt
-) -> (uint : Uint256):
-    let (maxShares : Uint256) = ERC4626.maxMint(receiver)
-    return (maxShares)
-end
-
-@view
-func previewMint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares : Uint256
-) -> (uint : Uint256):
-    let (assets : Uint256) = ERC4626.previewMint(shares)
-    return (assets)
-end
-
-@external
-func mint{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares : Uint256, receiver : felt
-) -> (uint : Uint256):
-    alloc_locals
-
-    # Assert live
-    assert_live()
-
-    # Only Abbot can call
-    Auth.assert_caller_authed()
-
-    # Get asset and vault addresses
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
-
-    # Sync
-    sync_inner(asset, vault)
-
-    let (assets : Uint256) = ERC4626.mint(shares, receiver)
+    let (shares) = deposit_internal(asset_address, gate_address, assets, user_address, trove_id)
 
     # Update
-    update_last_asset_balance(asset, vault)
-
-    return (assets)
-end
-
-@view
-func maxWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner : felt
-) -> (uint : Uint256):
-    let (maxWithdraw : Uint256) = ERC4626.maxWithdraw(owner)
-    return (maxWithdraw)
-end
-
-@view
-func previewWithdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets : Uint256
-) -> (uint : Uint256):
-    let (shares : Uint256) = ERC4626.previewWithdraw(assets)
-    return (shares)
-end
-
-@external
-func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets : Uint256, receiver : felt, owner : felt
-) -> (uint : Uint256):
-    alloc_locals
-
-    # Only Abbot can call
-    Auth.assert_caller_authed()
-
-    # Get asset and vault addresses
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
-
-    # Sync
-    sync_inner(asset, vault)
-
-    let (shares : Uint256) = ERC4626.withdraw(assets, receiver, owner)
-
-    # Update
-    update_last_asset_balance(asset, vault)
+    update_last_asset_balance(asset_address, gate_address)
 
     return (shares)
-end
-
-@view
-func maxRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(owner : felt) -> (
-    uint : Uint256
-):
-    let (maxShares : Uint256) = ERC4626.maxRedeem(owner)
-    return (maxShares)
-end
-
-@view
-func previewRedeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares : Uint256
-) -> (uint : Uint256):
-    let (assets : Uint256) = ERC4626.previewRedeem(shares)
-    return (assets)
 end
 
 @external
 func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares : Uint256, receiver : felt, owner : felt
-) -> (uint : Uint256):
+    shares, user_address, trove_id
+) -> (wad):
     alloc_locals
 
     # Only Abbot can call
     Auth.assert_caller_authed()
 
     # Get asset and vault addresses
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
+    let (asset_address) = get_asset()
+    let (gate_address) = get_contract_address()
 
     # Sync
-    sync_inner(asset, vault)
+    sync_inner(asset_address, gate_address)
 
-    let (assets : Uint256) = ERC4626.redeem(shares, receiver, owner)
+    let (assets) = redeem_internal(asset_address, gate_address, shares, user_address, trove_id)
 
     # Update
-    update_last_asset_balance(asset, vault)
+    update_last_asset_balance(asset_address, gate_address)
 
     return (assets)
 end
@@ -467,9 +300,9 @@ end
 @external
 func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     # Get asset and vault addresses
-    let (asset) = ERC4626.asset()
-    let (vault) = get_contract_address()
-    sync_inner(asset, vault)
+    let (asset_address) = get_asset()
+    let (gate_address) = get_contract_address()
+    sync_inner(asset_address, gate_address)
     return ()
 end
 
@@ -486,16 +319,122 @@ func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
+func convert_to_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    shares
+) -> (wad):
+    alloc_locals
+
+    let (total_supply_wad) = get_total_yang()
+
+    if total_supply_wad == 0:
+        return (shares)
+    else:
+        let (total_assets : Uint256) = get_total_assets()
+        let (total_assets_wad) = WadRay.from_uint(total_assets)
+        let (product) = WadRay.wmul(shares, total_assets_wad)
+        let (assets_wad) = WadRay.wunsigned_div_unchecked(product, total_supply_wad)
+        return (assets_wad)
+    end
+end
+
+func convert_to_shares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    assets_wad
+) -> (wad):
+    alloc_locals
+
+    let (total_supply_wad) = get_total_yang()
+
+    if total_supply_wad == 0:
+        return (assets_wad)
+    else:
+        let (product) = WadRay.wmul(assets_wad, total_supply_wad)
+        let (total_assets_uint : Uint256) = get_total_assets()
+        let (total_assets_wad) = WadRay.from_uint(total_assets_uint)
+        let (shares) = WadRay.wunsigned_div_unchecked(product, total_assets_wad)
+        return (shares)
+    end
+end
+
+func deposit_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    asset_address, gate_address, assets_wad, user_address, trove_id
+) -> (wad):
+    alloc_locals
+
+    let (shares_wad) = convert_to_shares(assets_wad)
+    let (not_zero) = is_not_zero(shares_wad)
+    with_attr error_message("Gate: Zero shares"):
+        assert not_zero = TRUE
+    end
+
+    # Update Shrine
+    let (shrine_address) = get_shrine()
+    IShrine.deposit(
+        contract_address=shrine_address,
+        yang_address=asset_address,
+        amount=shares_wad,
+        trove_id=trove_id,
+    )
+
+    # Transfer asset from `user_address` to Gate
+    let (assets_uint) = WadRay.to_uint(assets_wad)
+    let (success : felt) = IERC20.transferFrom(
+        contract_address=asset_address,
+        sender=user_address,
+        recipient=gate_address,
+        amount=assets_uint,
+    )
+    with_attr error_message("Gate: Transfer failed"):
+        assert success = TRUE
+    end
+
+    Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, shares_wad=shares_wad)
+
+    return (shares_wad)
+end
+
+func redeem_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    asset_address, gate_address, shares, user_address, trove_id
+) -> (wad):
+    alloc_locals
+
+    let (assets_wad) = convert_to_assets(shares)
+    let (not_zero) = is_not_zero(assets_wad)
+    with_attr error_message("Gate: Zero assets"):
+        assert not_zero = TRUE
+    end
+
+    let (shrine_address) = get_shrine()
+
+    IShrine.withdraw(
+        contract_address=shrine_address,
+        yang_address=asset_address,
+        amount=shares,
+        trove_id=trove_id,
+    )
+
+    let (assets_uint : Uint256) = WadRay.to_uint(assets_wad)
+    let (success : felt) = IERC20.transfer(
+        contract_address=asset_address, recipient=user_address, amount=assets_uint
+    )
+    with_attr error_message("Gate: Transfer failed"):
+        assert success = TRUE
+    end
+
+    Redeem.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, shares_wad=shares)
+
+    return (assets_wad)
+end
+
 # Helper function to check for balance updates for rebasing tokens, and charge the admin fee.
 func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    asset_address, vault_address
+    asset_address, gate_address
 ):
     alloc_locals
 
     # Check last balance of underlying asset against latest balance
     let (last_updated) = gate_last_asset_balance_storage.read()
     let (latest_uint : Uint256) = IERC20.balanceOf(
-        contract_address=asset_address, account=vault_address
+        contract_address=asset_address, account=gate_address
     )
     let (latest_wad) = WadRay.from_uint(latest_uint)
     # Assumption: Balance cannot decrease without any user action
@@ -520,7 +459,7 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     )
 
     let (updated_balance_uint : Uint256) = IERC20.balanceOf(
-        contract_address=asset_address, account=vault_address
+        contract_address=asset_address, account=gate_address
     )
     let (updated_balance_wad) = WadRay.from_uint(updated_balance_uint)
 
@@ -535,6 +474,7 @@ end
 func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     asset_address, vault_address
 ):
+    # TODO inline this into deposit and redeem
     let (balance_uint : Uint256) = IERC20.balanceOf(
         contract_address=asset_address, account=vault_address
     )
