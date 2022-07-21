@@ -130,7 +130,7 @@ async def rebase(users, gate, asset, gate_deposit) -> StarknetTransactionExecuti
 
 
 @pytest.fixture
-async def sync(users, gate, asset, rebase) -> StarknetTransactionExecutionInfo:
+async def sync(users, gate, rebase) -> StarknetTransactionExecutionInfo:
     abbot = await users("abbot")
     # Update Gate's balance and charge tax
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
@@ -445,12 +445,13 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
     assert exchange_rate == 0
 
+    expected_withdrawn_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
     # Check event
     assert_event_emitted(
         redeem,
         gate.contract_address,
         "Redeem",
-        [shrine_user.address, TROVE_1, expected_user_balance, FIRST_DEPOSIT_AMT],
+        [shrine_user.address, TROVE_1, expected_withdrawn_assets, FIRST_DEPOSIT_AMT],
     )
 
 
