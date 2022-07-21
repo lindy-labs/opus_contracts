@@ -110,7 +110,7 @@ async def gate_deposit(users, shrine_authed, gate, asset) -> StarknetTransaction
     await shrine_user.send_tx(asset.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
     # Call deposit
-    deposit = await abbot.send_tx(gate.contract_address, "deposit", [FIRST_DEPOSIT_AMT, shrine_user.address, 1])
+    deposit = await abbot.send_tx(gate.contract_address, "deposit", [shrine_user.address, 1, FIRST_DEPOSIT_AMT])
     return deposit
 
 
@@ -318,6 +318,11 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase):
     after_tax_collector_bal = from_uint((await asset.balanceOf(tax_collector.address).invoke()).result.balance)
     assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
 
+    # Ensure that second sync has no effect
+    sync = await abbot.send_tx(gate.contract_address, "sync", [])
+    redundant_gate_bal = (await gate.get_last_asset_balance().invoke()).result.wad
+    assert redundant_gate_bal == after_asset_bal
+
 
 @pytest.mark.asyncio
 async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
@@ -338,7 +343,7 @@ async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
     deposit = await abbot.send_tx(
         gate.contract_address,
         "deposit",
-        [SECOND_DEPOSIT_AMT, shrine_user.address, TROVE_1],
+        [shrine_user.address, TROVE_1, SECOND_DEPOSIT_AMT],
     )
 
     # Check gate asset balance
@@ -384,7 +389,7 @@ async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, g
     redeem = await abbot.send_tx(
         gate.contract_address,
         "redeem",
-        [FIRST_DEPOSIT_AMT, shrine_user.address, TROVE_1],
+        [shrine_user.address, TROVE_1, FIRST_DEPOSIT_AMT],
     )
 
     # Fetch post-redemption balances
@@ -425,7 +430,7 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     redeem = await abbot.send_tx(
         gate.contract_address,
         "redeem",
-        [FIRST_DEPOSIT_AMT, shrine_user.address, TROVE_1],
+        [shrine_user.address, TROVE_1, FIRST_DEPOSIT_AMT],
     )
 
     # Fetch post-redemption balances
@@ -469,7 +474,7 @@ async def test_kill(users, shrine_authed, gate, asset, gate_deposit, sync):
         await abbot.send_tx(
             gate.contract_address,
             "deposit",
-            [SECOND_DEPOSIT_AMT, shrine_user.address, TROVE_1],
+            [shrine_user.address, TROVE_1, SECOND_DEPOSIT_AMT],
         )
 
     # Assert redeem succeeds
@@ -486,7 +491,7 @@ async def test_kill(users, shrine_authed, gate, asset, gate_deposit, sync):
     await abbot.send_tx(
         gate.contract_address,
         "redeem",
-        [redeem_amt, shrine_user.address, TROVE_1],
+        [shrine_user.address, TROVE_1, redeem_amt],
     )
 
     after_user_balance = from_uint((await asset.balanceOf(shrine_user.address).invoke()).result.balance)
@@ -517,7 +522,7 @@ async def test_unauthorized_deposit(users, asset, gate):
         await bad_guy.send_tx(
             gate.contract_address,
             "deposit",
-            [FIRST_DEPOSIT_AMT, shrine_user.address, TROVE_1],
+            [shrine_user.address, TROVE_1, FIRST_DEPOSIT_AMT],
         )
 
 
@@ -534,5 +539,5 @@ async def test_unauthorized_redeem(users, shrine_authed, gate, asset, gate_depos
         await shrine_user.send_tx(
             gate.contract_address,
             "redeem",
-            [FIRST_MINT_AMT, shrine_user.address, TROVE_1],
+            [shrine_user.address, TROVE_1, FIRST_MINT_AMT],
         )

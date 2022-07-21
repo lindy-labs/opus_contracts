@@ -211,7 +211,7 @@ end
 
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    assets, user_address, trove_id
+    user_address, trove_id, assets
 ) -> (wad):
     alloc_locals
 
@@ -228,7 +228,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Sync
     sync_inner(asset_address, gate_address)
 
-    let (shares) = deposit_internal(asset_address, gate_address, assets, user_address, trove_id)
+    let (shares) = deposit_internal(asset_address, gate_address, user_address, trove_id, assets)
 
     # Update
     update_last_asset_balance(asset_address, gate_address)
@@ -238,7 +238,7 @@ end
 
 @external
 func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares, user_address, trove_id
+    user_address, trove_id, shares
 ) -> (wad):
     alloc_locals
 
@@ -252,7 +252,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Sync
     sync_inner(asset_address, gate_address)
 
-    let (assets) = redeem_internal(asset_address, gate_address, shares, user_address, trove_id)
+    let (assets) = redeem_internal(asset_address, gate_address, user_address, trove_id, shares)
 
     # Update
     update_last_asset_balance(asset_address, gate_address)
@@ -356,7 +356,7 @@ func convert_to_shares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 end
 
 func deposit_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    asset_address, gate_address, assets_wad, user_address, trove_id
+    asset_address, gate_address, user_address, trove_id, assets_wad
 ) -> (wad):
     alloc_locals
 
@@ -393,7 +393,7 @@ func deposit_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 end
 
 func redeem_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    asset_address, gate_address, shares, user_address, trove_id
+    asset_address, gate_address, user_address, trove_id, shares
 ) -> (wad):
     alloc_locals
 
