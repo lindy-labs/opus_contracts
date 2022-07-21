@@ -221,7 +221,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Only Abbot can call
     Auth.assert_caller_authed()
 
-    # Get asset and vault addresses
+    # Get asset and gate addresses
     let (asset_address) = get_asset()
     let (gate_address) = get_contract_address()
 
@@ -245,7 +245,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Only Abbot can call
     Auth.assert_caller_authed()
 
-    # Get asset and vault addresses
+    # Get asset and gate addresses
     let (asset_address) = get_asset()
     let (gate_address) = get_contract_address()
 
@@ -295,14 +295,17 @@ func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     return ()
 end
 
-# Updates the asset balance of the vault, and transfers a tax on the increment
+# Updates the asset balance of the Gate, and transfers a tax on the increment
 # to the tax_collector address.
 @external
 func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    # Get asset and vault addresses
+    alloc_locals
+
+    # Get asset and gate addresses
     let (asset_address) = get_asset()
     let (gate_address) = get_contract_address()
     sync_inner(asset_address, gate_address)
+    update_last_asset_balance(asset_address, gate_address)
     return ()
 end
 
@@ -458,13 +461,8 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
     )
 
-    let (updated_balance_uint : Uint256) = IERC20.balanceOf(
-        contract_address=asset_address, account=gate_address
-    )
-    let (updated_balance_wad) = WadRay.from_uint(updated_balance_uint)
-
-    gate_last_asset_balance_storage.write(updated_balance_wad)
-
+    # Events
+    let updated_balance_wad = latest_wad - chargeable_wad
     Sync.emit(last_updated, updated_balance_wad, chargeable_wad)
 
     return ()
@@ -472,11 +470,10 @@ end
 
 # Helper function to update the underlying balance after a user action
 func update_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    asset_address, vault_address
+    asset_address, gate_address
 ):
-    # TODO inline this into deposit and redeem
     let (balance_uint : Uint256) = IERC20.balanceOf(
-        contract_address=asset_address, account=vault_address
+        contract_address=asset_address, account=gate_address
     )
     let (balance_wad) = WadRay.from_uint(balance_uint)
     gate_last_asset_balance_storage.write(balance_wad)
