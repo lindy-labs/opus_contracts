@@ -260,7 +260,7 @@ namespace Int125:
     # Therefore, in the code below we adjust negative inputs upwards by adding an offset of (2 ** SHIFT).
 
     # bitwise XOR
-    func xor{range_check_ptr, bitwise_ptr : BitwiseBuiltin*}(a : Int, b : Int) -> (res : Int):
+    func bit_xor{range_check_ptr, bitwise_ptr : BitwiseBuiltin*}(a : Int, b : Int) -> (res : Int):
         alloc_locals
         local res_value : felt
         let a_offset = a.value + SHIFT  # guarantee positive number, since minimum input value is DEFAULT_PRIME - SHIFT.  e.g. 0 maps to 128, 127 maps to 255, and -1 maps to 127.  This gets applied to _both_ inputs, so intuitively, XOR doesn't notice or care.
@@ -279,7 +279,7 @@ namespace Int125:
     # xor(127,-127)-> bitwise_xor(255,1)   = 254   ->   -2
 
     # # bitwise OR
-    func or{range_check_ptr, bitwise_ptr : BitwiseBuiltin*}(a : Int, b : Int) -> (res : Int):
+    func bit_or{range_check_ptr, bitwise_ptr : BitwiseBuiltin*}(a : Int, b : Int) -> (res : Int):
         alloc_locals
         local res_value : felt
         local a_offset : felt
@@ -306,7 +306,7 @@ namespace Int125:
     end
 
     # # bitwise AND
-    func and{range_check_ptr, bitwise_ptr : BitwiseBuiltin*}(a : Int, b : Int) -> (res : Int):
+    func bit_and{range_check_ptr, bitwise_ptr : BitwiseBuiltin*}(a : Int, b : Int) -> (res : Int):
         alloc_locals
         local res_value : felt
         local a_offset : felt
