@@ -179,12 +179,7 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
 
 
 def set_block_timestamp(sn, block_timestamp):
-    sn.state.block_info = BlockInfo(
-        sn.state.block_info.block_number,
-        block_timestamp,
-        sn.state.block_info.gas_price,
-        sequencer_address=None,
-    )
+    sn.state.block_info = BlockInfo.create_for_testing(sn.state.block_info.block_number, block_timestamp)
 
 
 #
