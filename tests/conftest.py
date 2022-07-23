@@ -1,7 +1,6 @@
 import asyncio
 from collections import namedtuple
 from decimal import getcontext
-from functools import cache
 from typing import Awaitable, Callable
 
 import pytest
@@ -73,14 +72,14 @@ def event_loop():
     return asyncio.new_event_loop()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def starknet() -> Starknet:
     starknet = await Starknet.empty()
     return starknet
 
 
 # TODO: figure out a good way how not to use magic string constants for common users
-@pytest.fixture(scope="session")
+@pytest.fixture
 def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     """
     A factory fixture that creates users.
@@ -153,7 +152,6 @@ async def mrac_controller(starknet) -> StarknetContract:
 #
 
 # Returns the deployed shrine module
-@cache
 @pytest.fixture
 async def shrine_deploy(starknet, users) -> StarknetContract:
 
@@ -166,9 +164,8 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
 
 
 # Same as above but also comes with ready-to-use yangs and price feeds
-@cache
 @pytest.fixture
-async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
+async def shrine_setup(users, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
@@ -186,7 +183,6 @@ async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
     return shrine
 
 
-@cache
 @pytest.fixture
 async def shrine(starknet, users, shrine_setup) -> StarknetContract:
     shrine = shrine_setup

@@ -1,7 +1,6 @@
 from collections import namedtuple
 from curses.ascii import FF
 from decimal import Decimal, localcontext
-from functools import cache
 from typing import List
 from math import exp 
 
@@ -195,7 +194,6 @@ async def shrine_deposit_multiple(users, shrine):
         )
 
 
-@cache
 @pytest.fixture
 async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
@@ -229,7 +227,6 @@ async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionE
     return withdraw
 
 
-@cache
 @pytest.fixture
 async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
     """
@@ -274,7 +271,6 @@ async def shrine_deposit_user2(users, shrine) -> StarknetTransactionExecutionInf
     return deposit
 
 
-@cache
 @pytest.fixture
 async def shrine_forge_user2(users, shrine, shrine_deposit_user2) -> StarknetTransactionExecutionInfo:
     """
@@ -295,7 +291,6 @@ async def update_feeds_with_user2(shrine_forge, shrine_forge_user2, update_feeds
     return update_feeds
 
 
-@cache
 @pytest.fixture
 async def estimate(users, shrine, update_feeds_with_user2):
     shrine_user1 = await users("shrine user")
@@ -870,7 +865,7 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
     shrine_user = await users("shrine user")
 
     # Get latest price
-    price = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).invoke()).result.wad
+    price = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).invoke()).result.price_wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
@@ -953,7 +948,7 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
     shrine_guest = await users("shrine guest")
 
     # Get latest price
-    price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.wad
+    price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
@@ -1010,7 +1005,7 @@ async def test_add_yang(users, shrine):
         shrine.contract_address, "add_yang", [new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price]
     )
     assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
-    assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.wad == new_yang_start_price
+    assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.price_wad == new_yang_start_price
     assert_event_emitted(
         tx,
         shrine.contract_address,
