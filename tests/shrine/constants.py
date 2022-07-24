@@ -3,6 +3,7 @@ from decimal import Decimal
 from tests.utils import RAY_SCALE, WAD_SCALE
 
 LIQUIDATION_THRESHOLD = 8 * 10**26
+LIMIT_RATIO = 95 * 10**25
 
 YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345

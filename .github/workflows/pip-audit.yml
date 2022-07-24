@@ -1,15 +1,13 @@
-name: Cairo tests
+name: Python dependencies
 
 on:
   push:
     branches:
       - main
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  test:
-    if: "!(contains(toJSON(github.event.commits.*.message), '[skip ci]') || contains(toJSON(github.event.commits.*.message), '[ci skip]')) || github.event.pull_request.draft == false"
+  pip-audit:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,5 +24,8 @@ jobs:
       - name: Env setup
         run: pip install -r requirements-dev.txt
 
-      - name: Run tests
-        run: pytest -sv -r A tests
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit --ignore-vuln PYSEC-2021-427
