@@ -154,13 +154,15 @@ def from_ray(n: int) -> Decimal:
 def assert_equalish(a: Decimal, b: Decimal):
     assert abs(a - b) <= ERROR_MARGIN
 
-def assert_equalish_soft(a: Decimal, b : Decimal):
+
+def assert_equalish_soft(a: Decimal, b: Decimal):
     assert abs(a - b) <= SOFTER_ERROR_MARGIN
 
 
 # Converts a signed integer into a felt
 def int_to_felt(x):
     return x if x >= 0 else CAIRO_PRIME + x
+
 
 #
 # Shrine helper functions

@@ -5,7 +5,7 @@ from starkware.cairo.common.alloc import alloc
 const LOW_UPPER_BOUND = 2 ** 128
 const HIGH_UPPER_BOUND = 2 ** 123
 
-const PACKED_125_UPPER_BOUND = 2**125
+const PACKED_125_UPPER_BOUND = 2 ** 125
 
 func felt_to_uint{range_check_ptr}(value : felt) -> (value : Uint256):
     let (high : felt, low : felt) = split_felt(value)
@@ -38,12 +38,7 @@ end
 func unpack_125{range_check_ptr}(packed) -> (high, low):
     alloc_locals
     let (unpacked : felt*) = alloc()
-    split_int(packed, 2, 2**125, 2**125, unpacked)
-    
+    split_int(packed, 2, 2 ** 125, 2 ** 125, unpacked)
+
     return (high=unpacked[1], low=unpacked[0])
 end
-
-
-
-
-

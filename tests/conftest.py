@@ -42,7 +42,12 @@ def collect_gas_cost():
     path = "tests/artifacts/gas.txt"
 
     # Adds a function call to gas_info
-    def add_call(func_name: str, tx_info: StarknetTransactionExecutionInfo, num_storage_keys: int, num_contracts: int):
+    def add_call(
+        func_name: str,
+        tx_info: StarknetTransactionExecutionInfo,
+        num_storage_keys: int,
+        num_contracts: int,
+    ):
         gas = estimate_gas(tx_info, num_storage_keys, num_contracts)
 
         with FileLock(path + ".lock"):
@@ -177,7 +182,12 @@ async def shrine_setup(users, shrine_deploy) -> StarknetContract:
         await shrine_owner.send_tx(
             shrine.contract_address,
             "add_yang",
-            [YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])],
+            [
+                YANGS[i]["address"],
+                YANGS[i]["ceiling"],
+                YANGS[i]["threshold"],
+                to_wad(YANGS[i]["start_price"]),
+            ],
         )  # Add yang
 
     return shrine
@@ -210,3 +220,32 @@ async def shrine(starknet, users, shrine_setup) -> StarknetContract:
         )
 
     return shrine
+
+
+@pytest.fixture
+async def shrine_with_feeds(starknet, users, shrine_setup) -> StarknetContract:
+    shrine = shrine_setup
+    shrine_owner = await users("shrine owner")
+
+    # Creating the price feeds
+    feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
+
+    # Putting the price feeds in the `shrine_yang_price_storage` storage variable
+    # Skipping over the first element in `feeds` since the start price is set in `add_yang`
+    for i in range(1, FEED_LEN):
+        timestamp = i * TIME_INTERVAL
+        set_block_timestamp(starknet.state, timestamp)
+        for j in range(len(YANGS)):
+            await shrine_owner.send_tx(
+                shrine.contract_address,
+                "advance",
+                [YANGS[j]["address"], feeds[j][i]],
+            )
+
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_multiplier",
+            [MULTIPLIER_FEED[i]],
+        )
+
+    return shrine, feeds

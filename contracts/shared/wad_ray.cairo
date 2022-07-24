@@ -170,19 +170,9 @@ namespace WadRay:
         return (wad)
     end
 
-<<<<<<< HEAD
-    func wad_to_ray{range_check_ptr}(wad) -> (ray):
-        let ray = wad * DIFF
-
-        with_attr error_message("WadRay: Result is out of bounds"):
-            assert_valid(ray)
-        end
-
-=======
     func wad_to_ray{range_check_ptr}(n) -> (ray):
         let ray = n * DIFF
         assert_result_valid(ray)
->>>>>>> main
         return (ray)
     end
 
@@ -192,7 +182,7 @@ namespace WadRay:
 
     # Truncates a ray to return a wad
     func ray_to_wad{range_check_ptr}(ray) -> (wad):
-        let (wad, _) = unsigned_div_rem(ray, DIFF) 
-        return (wad) 
+        let (wad, _) = unsigned_div_rem(ray, DIFF)
+        return (wad)
     end
 end
