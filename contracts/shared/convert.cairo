@@ -16,8 +16,8 @@ func uint_to_felt_unchecked(value : Uint256) -> (value : felt):
     return (value.low + value.high * 2 ** 128)
 end
 
-# Packs `a` into the first 128 bits, packs `b` into the last 123 bits
-# Requires that 0 <= a < 2**128 and 0 <= b < 2**123
+# Packs `low` into the first 128 bits, packs `high` into the last 123 bits
+# Requires that 0 <= low < 2**128 and 0 <= high < 2**123
 func pack_felt{range_check_ptr}(high, low) -> (packed : felt):
     [range_check_ptr] = low
     let range_check_ptr = range_check_ptr + 1

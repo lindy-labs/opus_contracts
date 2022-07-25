@@ -98,8 +98,8 @@ def users(starknet_func_scope: Starknet) -> Callable[[str], Awaitable[Account]]:
 
     The returned factory function takes a single string as an argument,
     which it uses as an identifier of the user and also to generates their
-    private key. The fixture is session-scoped and has an internal cache,
-    so the same argument (user name) will return the same result.
+    private key. The fixture has an internal cache, so the same argument (user name)
+    will return the same result within a given test.
 
     The return value is an instance of Account, useful for sending
     signed transactions, assigning ownership, etc.

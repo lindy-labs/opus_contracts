@@ -210,13 +210,14 @@ func exp{range_check_ptr}(x) -> (res):
 
     # Next up is the Taylor series
 
+    # First term
     let series_sum = ONE_20
 
-    # First term
+    # Second term
     let term = x
     let series_sum = series_sum + term
 
-    # Second term
+    # Third term
     let term = term * x
     let (term, _) = unsigned_div_rem(term, ONE_20 * 2)
     let series_sum = series_sum + term

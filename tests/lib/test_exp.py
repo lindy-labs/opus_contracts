@@ -4,7 +4,7 @@ from math import exp
 import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import assert_equalish_soft, compile_contract, from_wad, signed_int_to_felt, to_wad
+from tests.utils import assert_equalish, compile_contract, from_wad, signed_int_to_felt, to_wad
 
 TEST_CASES = [
     -40,
@@ -49,7 +49,7 @@ async def test_exp_pass(deploy_test_contract, case):
 
     result = Decimal(from_wad(tx.result.res))
     expected_result = Decimal(exp(case))
-    assert_equalish_soft(result, expected_result)
+    assert_equalish(result, expected_result, Decimal("0.00001"))
 
 
 @pytest.mark.parametrize("case", [-40.1, 40.1, -40.0000001, 40.0000001])
@@ -71,7 +71,7 @@ async def test_exp_inversions(deploy_test_contract, case):
     inverse_result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(to_wad(-case))).invoke()).result.res))
 
     # Precision starts getting pretty bad with all these multiplications and divisions
-    assert abs((result * inverse_result) - Decimal(1)) <= Decimal(0.06)
+    assert_equalish(result * inverse_result, Decimal(1), Decimal("0.06"))
 
 
 # This tests that exp(x+y) = exp(x)*exp(y)
@@ -95,4 +95,4 @@ async def test_exponent_sum(deploy_test_contract, case):
         from_wad((await contract.get_exp(signed_int_to_felt(to_wad(case[0] + case[1]))).invoke()).result.res)
     )
 
-    assert_equalish_soft(result1 * result2, result_sum)
+    assert_equalish(result1 * result2, result_sum, Decimal("0.00001"))

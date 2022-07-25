@@ -53,7 +53,6 @@ Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as
 
 # Acceptable error margin for fixed point calculations
 ERROR_MARGIN = Decimal("0.000000001")
-SOFTER_ERROR_MARGIN = Decimal("0.00001")
 
 seed(420)
 
@@ -151,12 +150,8 @@ def from_ray(n: int) -> Decimal:
     return Decimal(n) / RAY_SCALE
 
 
-def assert_equalish(a: Decimal, b: Decimal):
-    assert abs(a - b) <= ERROR_MARGIN
-
-
-def assert_equalish_soft(a: Decimal, b: Decimal):
-    assert abs(a - b) <= SOFTER_ERROR_MARGIN
+def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
+    assert abs(a - b) <= error
 
 
 #

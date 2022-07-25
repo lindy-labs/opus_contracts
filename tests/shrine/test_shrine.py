@@ -346,13 +346,13 @@ async def estimate(shrine, update_feeds_with_trove2):
     ).result.cumulative_multiplier_ray
 
     # Getting the current yang price and multiplier value
-    end__cumulative_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.cumulative_price_wad
+    end_cumulative_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.cumulative_price_wad
     end_cumulative_multiplier = (await shrine.get_current_multiplier().invoke()).result.cumulative_multiplier_ray
 
     expected_debt = compound(
         [Decimal(INITIAL_DEPOSIT)],
         [from_wad(start_cumulative_price)],
-        [from_wad(end__cumulative_price)],
+        [from_wad(end_cumulative_price)],
         from_ray(start_cumulative_multiplier),
         from_ray(end_cumulative_multiplier),
         trove.charge_from,
@@ -459,31 +459,22 @@ async def test_shrine_setup_with_feed(shrine_with_feeds):
     # Check price feeds
     for i in range(len(YANGS)):
         yang_address = YANGS[i]["address"]
-        start = (await shrine.get_yang_price(yang_address, 0).invoke()).result
-        start_price = start.price_wad
-        start_cumulative_price = start.cumulative_price_wad
 
+        start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).invoke()).result
         assert start_price == to_wad(YANGS[i]["start_price"])
         assert start_cumulative_price == to_wad(YANGS[i]["start_price"])
-        end = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).invoke()).result
-        end_price = end.price_wad
-        end_cumulative_price = end.cumulative_price_wad
 
+        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).invoke()).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
         assert lo <= end_price <= hi
         assert end_cumulative_price == sum(feeds[i])
 
     # Check multiplier feed
-    start = (await shrine.get_multiplier(0).invoke()).result
-    start_multiplier = start.multiplier_ray
-    start_cumulative_multiplier = start.cumulative_multiplier_ray
+    start_multiplier, start_cumulative_multiplier = (await shrine.get_multiplier(0).invoke()).result
     assert start_multiplier == RAY_SCALE
     assert start_cumulative_multiplier == RAY_SCALE
 
-    end = (await shrine.get_multiplier(FEED_LEN - 1).invoke()).result
-    end_multiplier = end.multiplier_ray
-    end_cumulative_multiplier = end.cumulative_multiplier_ray
-
+    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(FEED_LEN - 1).invoke()).result
     assert end_multiplier != 0
     assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
 
