@@ -926,15 +926,14 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
 end
 
 # Returns the amount of debt owed by trove after having interest charged over a given time period
-# Assumes the trove hasn't minted or payed back any additional debt during the given time period
+# Assumes the trove hasn't minted or paid back any additional debt during the given time period
 # Assumes the trove hasn't deposited or withdrawn any additional collateral during the given time period
 # Time period includes `end_interval` and does NOT include `start_interval`.
 
 # Compound interest formula: P(t) = P_0 * e^(rt)
-# P_0 = principle
+# P_0 = principal
 # r = nominal interest rate (what the interest rate would be if there was no compounding
 # t = time elapsed, in years
-@view
 func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     trove_id, current_debt, start_interval, end_interval
 ) -> (wad):
@@ -1058,7 +1057,7 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 end
 
 # Returns the price for `yang_id` at `interval` if it is non-zero.
-# Otherwise, check `interval` - 1 recursively for the last available price. Returns the price at
+# Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_id, interval
 ) -> (price_wad, cumulative_price_wad, interval_ufelt):

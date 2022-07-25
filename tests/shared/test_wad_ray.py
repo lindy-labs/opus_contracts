@@ -2,7 +2,7 @@ import math
 import operator
 
 import pytest
-from hypothesis import HealthCheck, assume, example, given, settings
+from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
@@ -25,14 +25,13 @@ BOUND = 2**125
 
 
 st_int = st.integers(min_value=-(2**250), max_value=2**250)
-st_int128 = st.integers(min_value=-(2**128), max_value=2**128)
 st_int125 = st.integers(min_value=-(2**125), max_value=2**125)
 st_uint125 = st.integers(min_value=1, max_value=2**125)
 st_uint128 = st.integers(min_value=1, max_value=2**128)
 st_uint = st.integers(min_value=0, max_value=2 * 200)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 async def wad_ray(starknet) -> StarknetContract:
     contract = compile_contract("tests/shared/test_wad_ray.cairo")
     wad_ray = await starknet.deploy(contract_class=contract, constructor_calldata=[])
@@ -62,7 +61,7 @@ async def test_assert_result_valid_unsigned(wad_ray, val):
         await wad_ray.test_assert_result_valid_unsigned(val).invoke()
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(val=st_int)
 @example(val=to_wad(RANGE_CHECK_BOUND) + 1)
 @example(val=to_wad(RANGE_CHECK_BOUND))
@@ -97,7 +96,7 @@ async def test_floor(wad_ray, val):
         assert res == expected_cairo
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(val=st_int)
 @example(val=to_wad(RANGE_CHECK_BOUND) + 1)
 @example(val=to_wad(RANGE_CHECK_BOUND))
@@ -139,7 +138,7 @@ async def test_ceil(wad_ray, val):
         assert res == expected_cairo
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(left=st_int, right=st_int)
 @example(left=0, right=-1)
 @example(left=-1, right=0)
@@ -172,7 +171,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
         assert res == expected_cairo
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(left=st_uint, right=st_uint)
 @example(left=0, right=1)
 @example(left=0, right=0)
@@ -200,7 +199,7 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
         assert res == expected_cairo
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(left=st_int125, right=st_int125)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
 @example(left=to_wad(2), right=to_wad(2))  # Test wad values
@@ -255,7 +254,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
         assert res == expected_cairo
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(left=st_uint128, right=st_uint128)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
 @example(left=to_wad(2), right=to_wad(2))  # Test wad values
@@ -301,7 +300,7 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
         assert res == expected_cairo
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(val=st_uint125)
 @example(val=(BOUND // WAD_RAY_DIFF) + 1)  # Failing case for wad_to_ray
 @example(val=(RANGE_CHECK_BOUND // WAD_RAY_DIFF) + 1)  # Failing case for wad_to_ray
@@ -336,7 +335,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
         assert res == expected_py
 
 
-@settings(max_examples=50, deadline=None, suppress_health_check=(HealthCheck.function_scoped_fixture,))
+@settings(max_examples=50, deadline=None)
 @given(val=st_uint125)
 @pytest.mark.parametrize(
     "fn,input_op,output_op,ret",

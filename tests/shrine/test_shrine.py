@@ -214,6 +214,8 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
 #
 # Fixtures
 #
+
+
 @pytest.fixture
 async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
@@ -269,7 +271,8 @@ async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionE
 
 
 @pytest.fixture
-async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
+async def update_feeds(starknet_func_scope, users, shrine, shrine_forge) -> List[Decimal]:
+    starknet = starknet_func_scope
     """
     Additional price feeds for yang 0 after `shrine_forge`
     """
@@ -357,14 +360,15 @@ async def estimate(shrine, update_feeds_with_trove2):
         from_wad(trove.debt),
     )
 
-    # Get estimated debt for users
+    # Get estimated debt for troves
     estimated_trove1_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
     estimated_trove2_debt = (await shrine.estimate(TROVE_2).invoke()).result.wad
     return estimated_trove1_debt, estimated_trove2_debt, expected_debt
 
 
 @pytest.fixture(scope="function")
-async def update_feeds_intermittent(request, starknet, users, shrine, shrine_forge) -> List[Decimal]:
+async def update_feeds_intermittent(request, starknet_func_scope, users, shrine, shrine_forge) -> List[Decimal]:
+    starknet = starknet_func_scope
     """
     Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
 
@@ -1013,7 +1017,8 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
 
 
 @pytest.mark.asyncio
-async def test_shrine_unhealthy(starknet, users, shrine, shrine_forge):
+async def test_shrine_unhealthy(users, shrine, shrine_forge):
+
     shrine_owner = await users("shrine owner")
 
     # Calculate unsafe yang price

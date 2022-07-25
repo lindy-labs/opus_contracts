@@ -77,15 +77,22 @@ def event_loop():
     return asyncio.new_event_loop()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 async def starknet() -> Starknet:
+    starknet = await Starknet.empty()
+    return starknet
+
+
+@pytest.fixture
+async def starknet_func_scope() -> Starknet:
     starknet = await Starknet.empty()
     return starknet
 
 
 # TODO: figure out a good way how not to use magic string constants for common users
 @pytest.fixture
-def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
+def users(starknet_func_scope: Starknet) -> Callable[[str], Awaitable[Account]]:
+    starknet = starknet_func_scope
     """
     A factory fixture that creates users.
 
@@ -109,8 +116,9 @@ def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
 
 @pytest.fixture
 def tokens(
-    starknet: Starknet,
+    starknet_func_scope: Starknet,
 ) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
+    starknet = starknet_func_scope
     """
     A factory fixture that creates a mock ERC20 token.
 
@@ -140,14 +148,16 @@ def tokens(
 
 
 @pytest.fixture
-async def usda(starknet, users) -> StarknetContract:
+async def usda(starknet_func_scope, users) -> StarknetContract:
+    starknet = starknet_func_scope
     owner = await users("usda owner")
     contract = compile_contract("contracts/USDa/USDa.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[owner.address])
 
 
 @pytest.fixture
-async def mrac_controller(starknet) -> StarknetContract:
+async def mrac_controller(starknet_func_scope) -> StarknetContract:
+    starknet = starknet_func_scope
     contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
 
@@ -158,8 +168,8 @@ async def mrac_controller(starknet) -> StarknetContract:
 
 # Returns the deployed shrine module
 @pytest.fixture
-async def shrine_deploy(starknet, users) -> StarknetContract:
-
+async def shrine_deploy(starknet_func_scope, users) -> StarknetContract:
+    starknet = starknet_func_scope
     shrine_owner = await users("shrine owner")
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
 
@@ -194,36 +204,8 @@ async def shrine_setup(users, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine(starknet, users, shrine_setup) -> StarknetContract:
-    shrine = shrine_setup
-    shrine_owner = await users("shrine owner")
-
-    # Creating the price feeds
-    feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
-
-    # Putting the price feeds in the `shrine_yang_price_storage` storage variable
-    # Skipping over the first element in `feeds` since the start price is set in `add_yang`
-    for i in range(1, FEED_LEN):
-        timestamp = i * TIME_INTERVAL
-        set_block_timestamp(starknet.state, timestamp)
-        for j in range(len(YANGS)):
-            await shrine_owner.send_tx(
-                shrine.contract_address,
-                "advance",
-                [YANGS[j]["address"], feeds[j][i]],
-            )
-
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_multiplier",
-            [MULTIPLIER_FEED[i]],
-        )
-
-    return shrine
-
-
-@pytest.fixture
-async def shrine_with_feeds(starknet, users, shrine_setup) -> StarknetContract:
+async def shrine_with_feeds(starknet_func_scope, users, shrine_setup) -> StarknetContract:
+    starknet = starknet_func_scope
     shrine = shrine_setup
     shrine_owner = await users("shrine owner")
 
@@ -249,3 +231,9 @@ async def shrine_with_feeds(starknet, users, shrine_setup) -> StarknetContract:
         )
 
     return shrine, feeds
+
+
+@pytest.fixture
+async def shrine(shrine_with_feeds) -> StarknetContract:
+    shrine, feeds = shrine_with_feeds
+    return shrine
