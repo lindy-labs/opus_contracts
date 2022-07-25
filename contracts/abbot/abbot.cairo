@@ -162,10 +162,6 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     return ()
 end
 
-# @external
-# func forge(amount, trove_id):
-# end
-
 # closes a trove, repaying its debt in full and withdrawing all the Yangs
 @external
 func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id):
