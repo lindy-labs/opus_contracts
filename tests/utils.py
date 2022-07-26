@@ -51,7 +51,7 @@ Addressable = Union[int, StarknetContract]
 Calldata = list[int]  # payload arguments sent with a function call
 Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
 
-# Acceptable error margin for fixed point calculations
+# Default error margin for fixed point calculations
 ERROR_MARGIN = Decimal("0.000000001")
 
 seed(420)

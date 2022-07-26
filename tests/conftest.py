@@ -69,7 +69,7 @@ def collect_gas_cost():
 
 @pytest.fixture(autouse=True, scope="session")
 def setup():
-    getcontext().prec = 27
+    getcontext().prec = 38
 
 
 @pytest.fixture(scope="session")
