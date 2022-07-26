@@ -132,6 +132,8 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         assert_not_zero(yang_addrs_len)
     end
 
+    let (user_address) = get_caller_address()
+
     let (user_troves_count) = abbot_trove_ids_storage.read(user_address, 0)
     abbot_trove_ids_storage.write(user_address, 0, user_troves_count + 1)
 
@@ -141,13 +143,13 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     abbot_trove_ids_storage.write(user_address, user_troves_count + 1, new_trove_id)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
-    do_deposits(shrine_address, new_trove_id, yang_addrs_len, yang_addrs, amounts)
+    do_deposits(user_address, new_trove_id, yang_addrs_len, yang_addrs, amounts)
     IShrine.forge(shrine_address, forge_amount, new_trove_id)
 
     # TODO: should we use a reentrancy guard here? if the token has a
     #       callback hook (a la ERC777), can it fuck us? or maybe that
     #       should be done only in the Gate?
-    do_transfers_from(user_address, yang_addrs_len, yang_addrs, amounts)
+    # do_transfers_from(user_address, yang_addrs_len, yang_addrs, amounts)
 
     TroveOpened.emit(user_address, new_trove_id)
 
@@ -176,9 +178,8 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (outstanding_debt) = IShrine.estimate(shrine_address, trove_id)
     let total_debt = trove.debt + outstanding_debt
 
-    do_withdrawals(shrine_address, trove_id, 1)
     IShrine.melt(shrine_address, total_debt, trove_id)
-    do_transfers_to(shrine_address, trove_id, user_address, 1)
+    do_withdrawals(shrine_address, user_address, trove_id, 1)
 
     # TODO: emit an event?
 
@@ -272,27 +273,28 @@ func get_yang_addresses_loop{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     return get_yang_addresses_loop(idx + 1, addresses + 1)
 end
 
-# loop through all the yangs and their respective amounts that need to be deposited into
-# the shrine and call the Shrine's `deposit` function
+# loop through all the yangs and their respective amounts that need to be deposited
+# and call the appropriate Gate's `deposit` function
 func do_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shrine_address, trove_id, deposits_count, yang_addresses : felt*, amounts : felt*
+    user_address, trove_id, deposits_count, yang_addresses : felt*, amounts : felt*
 ):
     if deposits_count == 0:
         return ()
     end
 
-    IShrine.deposit(shrine_address, [yang_addresses], [amounts], trove_id)
+    let (gate_address) = abbot_yang_to_gate_storage.read([yang_addresses])
+    IGate.deposit(gate_address, user_address, trove_id, [amounts])
 
-    return do_deposits(
-        shrine_address, trove_id, deposits_count - 1, yang_addresses + 1, amounts + 1
-    )
+    return do_deposits(user_address, trove_id, deposits_count - 1, yang_addresses + 1, amounts + 1)
 end
 
 # loop through all the yangs of a trove and withdraw full yang amount
 # deposited into the trove
 func do_withdrawals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shrine_address, trove_id, yang_idx
+    shrine_address, user_address, trove_id, yang_idx
 ):
+    alloc_locals
+
     # taking advantage of the 1-based append-only nature of
     # abbot_yang_addresses_storage - the first 0 value we
     # encounter marks the end of the array
@@ -300,44 +302,15 @@ func do_withdrawals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     if yang_address == 0:
         return ()
     end
+    let (amount) = IShrine.get_deposit(shrine_address, trove_id, yang_address)
 
-    let (withdraw_amount) = IShrine.get_deposit(shrine_address, trove_id, yang_address)
-    IShrine.withdraw(shrine_address, yang_address, withdraw_amount, trove_id)
-
-    return do_withdrawals(shrine_address, trove_id, yang_idx + 1)
-end
-
-# loop through yangs and transfer the appropriate amount of tokens
-# by calling the correct Gate and it's `transfer` function
-func do_transfers_from{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, yangs_count, yang_addresses : felt*, amounts : felt*
-):
-    if yangs_count == 0:
-        return ()
+    if amount == 0:
+        return do_withdrawals(shrine_address, user_address, trove_id, yang_idx + 1)
+    else:
+        let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
+        IGate.redeem(gate_address, user_address, trove_id, amount)
+        return do_withdrawals(shrine_address, user_address, trove_id, yang_idx + 1)
     end
-
-    let (gate_address) = abbot_yang_to_gate_storage.read([yang_addresses])
-    IGate.transfer_from(gate_address, user_address, [amounts])  # TODO: Gate func needs to be built
-
-    return do_transfers_from(user_address, yangs_count - 1, yang_addresses + 1, amounts + 1)
-end
-
-func do_transfers_to{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shrine_address, trove_id, user_address, yang_idx
-):
-    # taking advantage of the 1-based append-only nature of
-    # abbot_yang_addresses_storage - the first 0 value we
-    # encounter marks the end of the array
-    let (yang_address) = abbot_yang_addresses_storage.read(yang_idx)
-    if yang_address == 0:
-        return ()
-    end
-
-    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
-    let (transfer_amount) = IShrine.get_deposit(shrine_address, trove_id, yang_address)
-    IGate.transfer_to(gate_address, user_address, transfer_amount)  # TODO: Gate func needs to be built
-
-    return do_transfers_to(shrine_address, trove_id, user_address, yang_idx + 1)
 end
 
 func get_user_trove_ids_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
