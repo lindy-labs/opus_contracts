@@ -73,9 +73,9 @@ Add the `_address` suffix to any variable holding an address. Unlike Solidity, C
 
 
 # Specifying variable and function argument types
-If a variable or function type is a felt, don't specify its type with the `: felt` prefix. 
+If a variable or function type is a felt, don't specify its type with the `: felt` prefix.
 
-If a variable is any type but a felt, always specify its type. 
+If a variable is any type but a felt, always specify its type.
 
 Examples of what to do:
 
@@ -107,16 +107,14 @@ let (output) = some_second_func(SomeStruct(4,5)) # <-- The type of output isn't 
 
 ## Naming of return values for functions and storage variables
 
-Return variables should be named according to their 'type' rather than according to their purpose or function. This is because many different 'types' of variables are all represented by felts: booleans (0 or 1), fixed point numbers, negative numbers, etc. 
+Return variables should be named according to their 'type' rather than according to their purpose or function. This is because many different 'types' of variables are all represented by felts: booleans (0 or 1), fixed point numbers, negative numbers, etc.
 
 The naming conventions are the following:
 - `bool`: FALSE or TRUE (from bool.cairo, which are equal to 0 and 1 respectively)
 - `wad`: 18 decimal fixed point number
 - `ray`: 27 decimal fixed point number
 - `ufelt`: "regular" felt. Equivalent to `uint` in other languages.
-- `sfelt`: "signed" felt, or a felt that stores the prime-field arithmetic equivalent of negative numbers. 
+- `sfelt`: "signed" felt, or a felt that stores the prime-field arithmetic equivalent of negative numbers.
 - `address`: a contract address
 - `packed`: A felt that has had multiple values packed into it
-- Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`. 
-
-
+- Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`.

@@ -25,7 +25,7 @@ BOUND = 2**125
 
 
 st_int = st.integers(min_value=-(2**250), max_value=2**250)
-st_int128 = st.integers(min_value=-(2**128), max_value=2**128)
+st_int125 = st.integers(min_value=-(2**125), max_value=2**125)
 st_uint125 = st.integers(min_value=1, max_value=2**125)
 st_uint128 = st.integers(min_value=1, max_value=2**128)
 st_uint = st.integers(min_value=0, max_value=2 * 200)
@@ -200,7 +200,7 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
 
 
 @settings(max_examples=50, deadline=None)
-@given(left=st_int128, right=st_int128)
+@given(left=st_int125, right=st_int125)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
 @example(left=to_wad(2), right=to_wad(2))  # Test wad values
 @example(left=to_wad(1), right=to_wad(1) // 2)  # Test percentage
