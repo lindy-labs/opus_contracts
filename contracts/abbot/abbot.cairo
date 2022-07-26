@@ -7,7 +7,8 @@ from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.interfaces import IGate, IShrine
-from contracts.shared.types import Trove
+from contracts.lib.auth import Auth
+from contracts.shared.types import Trove, Yang
 
 #
 # Constants
@@ -75,7 +76,10 @@ end
 #
 
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(shrine_address):
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    shrine_address, authed
+):
+    Auth.authorize(authed)
     abbot_shrine_address_storage.write(shrine_address)
     return ()
 end
@@ -128,18 +132,6 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         assert_not_zero(yang_addrs_len)
     end
 
-    # TODO: should this check be here? why not open w/ 0?
-    with_attr error_message("Abbot: cannot open a trove with zero amount"):
-        assert_not_zero(forge_amount)
-    end
-
-    # TODO: is this check even necessary since all txs will have to go through
-    #       an account contract?
-    let (user_address) = get_caller_address()
-    with_attr error_message("Abbot: caller address cannot be zero"):
-        assert_not_zero(user_address)
-    end
-
     let (user_troves_count) = abbot_trove_ids_storage.read(user_address, 0)
     abbot_trove_ids_storage.write(user_address, 0, user_troves_count + 1)
 
@@ -165,7 +157,6 @@ end
 # closes a trove, repaying its debt in full and withdrawing all the Yangs
 @external
 func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id):
-    # TODO: is there a difference between closing a trove and just making its debt 0?
     alloc_locals
     # checks, effects, interactions
     let (user_address) = get_caller_address()
@@ -189,29 +180,43 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     IShrine.melt(shrine_address, total_debt, trove_id)
     do_transfers_to(shrine_address, trove_id, user_address, 1)
 
-    # TODO: withdraw yangs
-    # do_withdrawals
-    # do_transfers_to
-
     # TODO: emit an event?
 
     return ()
 end
 
 # TODO:
+#   docs
 #   funcs to support the UI
 
-# TODO: docs
-#       maybe a better name - should it be the same as in shrine? assign_yang? allow_yang?
+@external
+func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    Auth.assert_caller_authed()
+    Auth.authorize(address)
+    return ()
+end
+
+@external
+func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    Auth.assert_caller_authed()
+    Auth.revoke(address)
+    return ()
+end
+
 @external
 func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, yang_max, yang_threshold, yang_price, gate_address
 ):
-    # TODO: auth, how?
+    Auth.assert_caller_authed()
 
     with_attr error_message("Abbot: address cannot be zero"):
         assert_not_zero(yang_address)
         assert_not_zero(gate_address)
+    end
+
+    with_attr error_message("Abbot: yang already added"):
+        let (stored_address) = abbot_yang_to_gate_storage.read(yang_address)
+        assert stored_address = 0
     end
 
     let (yang_count) = abbot_yang_addresses_storage.read(0)
