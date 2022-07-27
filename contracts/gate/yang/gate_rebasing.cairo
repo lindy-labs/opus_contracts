@@ -432,6 +432,14 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 ):
     alloc_locals
 
+    # Calculate amount of underlying chargeable
+    let (tax_rate) = gate_tax_storage.read()
+
+    # Early return if tax is 0
+    if tax_rate == 0:
+        return ()
+    end
+
     # Check last balance of underlying asset against latest balance
     let (last_updated) = gate_last_asset_balance_storage.read()
     let (latest_uint : Uint256) = IERC20.balanceOf(
@@ -447,8 +455,6 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     # Get difference in shares
     let difference = latest_wad - last_updated
 
-    # Calculate amount of underlying chargeable
-    let (tax_rate) = gate_tax_storage.read()
     # `rmul` on a wad and a ray returns a wad
     let (chargeable_wad) = WadRay.rmul(difference, tax_rate)
     let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
