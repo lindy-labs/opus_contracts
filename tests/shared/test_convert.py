@@ -7,8 +7,8 @@ from tests.utils import compile_contract
 A_UPPER_BOUND = 2**128
 
 
-@pytest.fixture
-async def convert(starknet, users) -> StarknetContract:
+@pytest.fixture(scope="session")
+async def convert(starknet) -> StarknetContract:
     contract = compile_contract("tests/shared/test_convert.cairo")
     convert = await starknet.deploy(contract_class=contract, constructor_calldata=[])
     return convert
@@ -22,15 +22,15 @@ async def convert(starknet, users) -> StarknetContract:
         (1, 0),
         (1, 1),
         (5, 5),
-        (2**128 - 2, 2**123 - 1),
-        (2**128 - 1, 2**123 - 2),
-        (2**128 - 1, 2**123 - 1),
+        (2**123 - 1, 2**128 - 2),
+        (2**123 - 2, 2**128 - 1),
+        (2**123 - 1, 2**128 - 1),
     ],
 )
 @pytest.mark.asyncio
 async def test_pack_felt_pass(convert, a, b):
     res = (await convert.test_pack_felt(a, b).invoke()).result.packed
-    assert res == a + (b * A_UPPER_BOUND)
+    assert res == b + (a * A_UPPER_BOUND)
 
 
 @pytest.mark.parametrize(

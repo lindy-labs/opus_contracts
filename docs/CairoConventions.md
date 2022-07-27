@@ -74,9 +74,7 @@ Add the `_address` suffix to any variable holding an address. Unlike Solidity, C
 
 # Specifying variable and function argument types
 
-If a variable or function type is a felt, don't specify its type with the `: felt` prefix.
-
-If a variable is any type but a felt, always specify its type.
+If a variable or function type is a felt, don't specify its type with the `: felt` specifier. If a variable is any type but a felt, always specify its type.
 
 Examples of what to do:
 
@@ -128,3 +126,4 @@ Cairo doesn't have inheritance, but with a sprinkle of dark magic and exploiting
 You can create files that hold reusable (i.e. useful for distinct smart contracts) functionality. These files must have the `_external.cairo` suffix in their name. When using these mixins in a smart contract, **explicitly** import every public function (even though it's not needed) in the `import` statement.
 
 As an example, have a look at the [`auth_external.cairo`](../contracts/lib/auth_external.cairo) file; to import its functions, do `from contracts.lib.auth_external import authorize, revoke, get_auth`.
+

@@ -179,4 +179,10 @@ namespace WadRay:
     func wad_to_ray_unchecked(n) -> (ray):
         return (ray=n * DIFF)
     end
+
+    # Truncates a ray to return a wad
+    func ray_to_wad{range_check_ptr}(ray) -> (wad):
+        let (wad, _) = unsigned_div_rem(ray, DIFF)
+        return (wad)
+    end
 end
