@@ -240,7 +240,13 @@ async def test_gate_set_tax_collector(gate, users):
 
 
 @pytest.mark.asyncio
-async def test_gate_deposit_pass(users, shrine_authed, gate, asset, gate_deposit):
+async def test_gate_deposit_pass(users, shrine_authed, gate, asset, gate_deposit, collect_gas_cost):
+    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
+    # 1 unique key updated for ERC20 transfer (Gate's balance, user's balance)
+    # 1 key updated for ReentrancyGuard
+    # 2 keys updated for Shrine
+    collect_gas_cost("gate/deposit", gate_deposit, 7, 3)
+
     shrine_user = await users("shrine user")
 
     # Check vault asset balance
@@ -270,7 +276,7 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, asset, gate_deposit
 
 
 @pytest.mark.asyncio
-async def test_gate_sync(users, shrine_authed, gate, asset, rebase):
+async def test_gate_sync(users, shrine_authed, gate, asset, rebase, collect_gas_cost):
     abbot = await users("abbot")
     tax_collector = await users("tax collector")
 
@@ -286,6 +292,10 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase):
 
     # Update Gate's balance and charge tax
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
+
+    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
+    # 1 key updated for Gate
+    collect_gas_cost("gate/redeem", gate_deposit, 3, 2)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
@@ -378,10 +388,17 @@ async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
 
 
 @pytest.mark.asyncio
-async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, gate_deposit):
+async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, gate_deposit, collect_gas_cost):
     """
     Redeem all shares before sync.
     """
+    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
+    # 1 unique key updated for ERC20 transfer (Gate's balance, user's balance)
+    # 1 key updated for ReentrancyGuard
+    # 2 keys updated for Shrine
+    # 1 key updated for Gate
+    collect_gas_cost("gate/redeem", gate_deposit, 7, 3)
+
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 

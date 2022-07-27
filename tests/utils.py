@@ -194,6 +194,18 @@ def estimate_gas(
     num_storage_keys: int = 0,
     num_contracts: int = 0,
 ):
+    """
+    Helper function to estimate gas for a transaction.
+
+    Arguments
+    ---------
+    tx_info : StarknetTransactionExecutionInfo.
+        Transaction receipt
+    num_storage_keys : int
+        Number of unique keys updated in the transaction.
+    num_contracts : int
+        Number of unique contracts updated in the transaction.
+    """
     gas_no_storage = estimate_gas_inner(tx_info.call_info)
     return gas_no_storage + (2 * num_storage_keys + 2 * num_contracts) * WEIGHTS["storage"]
 
