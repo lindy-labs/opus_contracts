@@ -11,7 +11,8 @@ from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 
 from contracts.lib.auth import Auth
-from contracts.lib.auth_external import AUTH_ALL
+# these imported public functions are part of the contract's interface
+from contracts.lib.auth_external import authorize, revoke, get_auth
 
 #
 # Constants

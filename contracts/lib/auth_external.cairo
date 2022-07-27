@@ -4,9 +4,6 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.lib.auth import Auth
 
-# importable placeholder
-const AUTH_ALL = 1
-
 @view
 func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
     return Auth.is_authorized(address)
