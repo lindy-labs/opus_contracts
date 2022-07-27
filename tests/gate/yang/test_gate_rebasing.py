@@ -541,3 +541,24 @@ async def test_unauthorized_redeem(users, shrine_authed, gate, asset, gate_depos
             "redeem",
             [shrine_user.address, TROVE_1, FIRST_MINT_AMT],
         )
+
+
+@pytest.mark.parametrize("fn", ["deposit", "redeem"])
+@pytest.mark.asyncio
+async def test_zero_deposit(users, shrine_authed, gate, asset, gate_deposit, fn):
+    abbot = await users("abbot")
+    shrine_user = await users("shrine user")
+
+    # Get balance before
+    before_yang_bal = (await shrine_authed.get_deposit(TROVE_1, asset.contract_address).invoke()).result.wad
+    before_asset_bal = from_uint((await asset.balanceOf(shrine_user.address).invoke()).result.balance)
+
+    # Call deposit
+    await abbot.send_tx(gate.contract_address, fn, [shrine_user.address, 1, 0])
+
+    # Get balance after
+    after_yang_bal = (await shrine_authed.get_deposit(TROVE_1, asset.contract_address).invoke()).result.wad
+    after_asset_bal = from_uint((await asset.balanceOf(shrine_user.address).invoke()).result.balance)
+
+    assert before_yang_bal == after_yang_bal
+    assert before_asset_bal == after_asset_bal
