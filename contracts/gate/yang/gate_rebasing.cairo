@@ -451,17 +451,15 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         contract_address=asset_address, account=gate_address
     )
     let (latest_wad) = WadRay.from_uint(latest_uint)
+
     # Assumption: Balance cannot decrease without any user action
     let (unincremented) = is_le(latest_wad, last_updated)
     if unincremented == TRUE:
         return ()
     end
 
-    # Get difference in shares
-    let difference = latest_wad - last_updated
-
     # `rmul` on a wad and a ray returns a wad
-    let (chargeable_wad) = WadRay.rmul(difference, tax_rate)
+    let (chargeable_wad) = WadRay.rmul(latest_wad - last_updated, tax_rate)
     let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
 
     # Transfer fees
@@ -471,8 +469,7 @@ func sync_inner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     )
 
     # Events
-    let updated_balance_wad = latest_wad - chargeable_wad
-    Sync.emit(last_updated, updated_balance_wad, chargeable_wad)
+    Sync.emit(last_updated, latest_wad - chargeable_wad, chargeable_wad)
 
     return ()
 end
