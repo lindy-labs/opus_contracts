@@ -568,7 +568,7 @@ async def test_unauthorized_redeem(users, shrine_authed, gate, asset, gate_depos
 
 @pytest.mark.parametrize("fn", ["deposit", "redeem"])
 @pytest.mark.asyncio
-async def test_zero_deposit(users, shrine_authed, gate, asset, gate_deposit, fn):
+async def test_zero_deposit_redeem(users, shrine_authed, gate, asset, gate_deposit, fn):
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
 
