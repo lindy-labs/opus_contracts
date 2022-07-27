@@ -378,13 +378,13 @@ func deposit_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 
     # Transfer asset from `user_address` to Gate
     let (assets_uint) = WadRay.to_uint(assets_wad)
-    let (success : felt) = IERC20.transferFrom(
-        contract_address=asset_address,
-        sender=user_address,
-        recipient=gate_address,
-        amount=assets_uint,
-    )
-    with_attr error_message("Gate: Transfer failed"):
+    with_attr error_message("Gate: Transfer of asset failed"):
+        let (success) = IERC20.transferFrom(
+            contract_address=asset_address,
+            sender=user_address,
+            recipient=gate_address,
+            amount=assets_uint,
+        )
         assert success = TRUE
     end
 
@@ -413,10 +413,11 @@ func redeem_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     )
 
     let (assets_uint : Uint256) = WadRay.to_uint(assets_wad)
-    let (success : felt) = IERC20.transfer(
-        contract_address=asset_address, recipient=user_address, amount=assets_uint
-    )
-    with_attr error_message("Gate: Transfer failed"):
+
+    with_attr error_message("Gate: Transfer of asset failed"):
+        let (success) = IERC20.transfer(
+            contract_address=asset_address, recipient=user_address, amount=assets_uint
+        )
         assert success = TRUE
     end
 
