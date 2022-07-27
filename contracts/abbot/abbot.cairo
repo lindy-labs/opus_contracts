@@ -10,6 +10,9 @@ from contracts.interfaces import IGate, IShrine
 from contracts.lib.auth import Auth
 from contracts.shared.types import Trove, Yang
 
+# these imported public functions are part of the contract's interface
+from contracts.lib.auth_external import authorize, revoke, get_auth
+
 #
 # Constants
 #
@@ -211,20 +214,6 @@ end
 # TODO:
 #   docs
 #   funcs to support the UI
-
-@external
-func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller_authed()
-    Auth.authorize(address)
-    return ()
-end
-
-@external
-func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller_authed()
-    Auth.revoke(address)
-    return ()
-end
 
 @external
 func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
