@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.math_cmp import is_le, is_not_zero
+from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
@@ -363,9 +363,8 @@ func deposit_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     alloc_locals
 
     let (shares_wad) = convert_to_shares(assets_wad)
-    let (not_zero) = is_not_zero(shares_wad)
-    with_attr error_message("Gate: Zero shares"):
-        assert not_zero = TRUE
+    if shares_wad == 0:
+        return (0)
     end
 
     # Update Shrine
@@ -400,9 +399,8 @@ func redeem_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     alloc_locals
 
     let (assets_wad) = convert_to_assets(shares)
-    let (not_zero) = is_not_zero(assets_wad)
-    with_attr error_message("Gate: Zero assets"):
-        assert not_zero = TRUE
+    if assets_wad == 0:
+        return (0)
     end
 
     let (shrine_address) = get_shrine()
