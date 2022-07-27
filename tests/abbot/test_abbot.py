@@ -5,6 +5,11 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.shrine.constants import YANGS
 from tests.utils import assert_event_emitted, compile_contract, to_wad
 
+# TODO:
+# deposit - happy path, depositing into foreign trove, depositing 0 amount,
+#           depositing twice the same token in 1 call, depositing a yang that hasn't been added,
+#           yangs & amounts that don't match in length as args
+
 #
 # fixtures
 #

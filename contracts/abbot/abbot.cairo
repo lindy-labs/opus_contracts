@@ -160,7 +160,7 @@ end
 @external
 func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id):
     alloc_locals
-    # checks, effects, interactions
+
     let (user_address) = get_caller_address()
     let (shrine_address) = abbot_shrine_address_storage.read()
 
@@ -182,6 +182,28 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     do_withdrawals(shrine_address, user_address, trove_id, 1)
 
     # TODO: emit an event?
+
+    return ()
+end
+
+@external
+func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    trove_id, yangs_addrs_len, yangs_addrs : felt*, amounts_len, amounts : felt*
+):
+    alloc_locals
+
+    with_attr error_message("Abbot: yangs and amounts count don't match"):
+        assert yangs_addrs_len = amounts_len
+    end
+
+    let (user_address) = get_caller_address()
+
+    # don't allow depositing to foreign troves
+    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
+        assert_trove_owner(user_address, trove_id, 1)
+    end
+
+    do_deposits(user_address, trove_id, yangs_addrs_len, yangs_addrs, amounts)
 
     return ()
 end
@@ -282,7 +304,11 @@ func do_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         return ()
     end
 
-    let (gate_address) = abbot_yang_to_gate_storage.read([yang_addresses])
+    let yang_address = [yang_addresses]
+    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
+    with_attr error_message("Abbot: yang {yang_address} is not allowed"):
+        assert_not_zero(gate_address)
+    end
     IGate.deposit(gate_address, user_address, trove_id, [amounts])
 
     return do_deposits(user_address, trove_id, deposits_count - 1, yang_addresses + 1, amounts + 1)
