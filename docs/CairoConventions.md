@@ -67,41 +67,40 @@ end
 ```
 
 ## Address Variables
+
 Add the `_address` suffix to any variable holding an address. Unlike Solidity, Cairo doesn't yet have an address type, and so adding this suffix makes it clearer to the reader what the variable is and does.
 
 `const usdc = 0x...` becomes `const usdc_address = 0x...` and so on.
 
-
 # Specifying variable and function argument types
-If a variable or function type is a felt, don't specify its type with the `: felt` prefix.
 
-If a variable is any type but a felt, always specify its type.
+If a variable or function type is a felt, don't specify its type with the `: felt` specifier. If a variable is any type but a felt, always specify its type.
 
 Examples of what to do:
 
-```
+```cairo
 func some_func(a) -> (b):
     return (y)
 end
 ```
 
-```
+```cairo
 let (output) = some_func(5)
 ```
 
-```
+```cairo
 func some_second_func(a : SomeStruct) -> (b : SomeStruct):
     return (a)
 end
 ```
 
-```
+```cairo
 let (output : SomeStruct) = some_second_func(SomeStruct(4,5))
 ```
 
 Example of what NOT to do:
 
-```
+```cairo
 let (output) = some_second_func(SomeStruct(4,5)) # <-- The type of output isn't specified
 ```
 
@@ -110,6 +109,7 @@ let (output) = some_second_func(SomeStruct(4,5)) # <-- The type of output isn't 
 Return variables should be named according to their 'type' rather than according to their purpose or function. This is because many different 'types' of variables are all represented by felts: booleans (0 or 1), fixed point numbers, negative numbers, etc.
 
 The naming conventions are the following:
+
 - `bool`: FALSE or TRUE (from bool.cairo, which are equal to 0 and 1 respectively)
 - `wad`: 18 decimal fixed point number
 - `ray`: 27 decimal fixed point number
@@ -118,3 +118,12 @@ The naming conventions are the following:
 - `address`: a contract address
 - `packed`: A felt that has had multiple values packed into it
 - Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`.
+
+## `*_external.cairo` modules a.k.a. mixins
+
+Cairo doesn't have inheritance, but with a sprinkle of dark magic and exploiting the compiler's behaviour, we can get mixins. When importing anything from a file that contains public functions (`@view`, `@external`, `@l1_handler`), the compiler silently pulls these into scope, even if they are not explicitly imported, so that they become available in the final compiled smart contract. By itself, this behaviour is A Bad Thing, but when used deliberately, it can become An Ok Thing.
+
+You can create files that hold reusable (i.e. useful for distinct smart contracts) functionality. These files must have the `_external.cairo` suffix in their name. When using these mixins in a smart contract, **explicitly** import every public function (even though it's not needed) in the `import` statement.
+
+As an example, have a look at the [`auth_external.cairo`](../contracts/lib/auth_external.cairo) file; to import its functions, do `from contracts.lib.auth_external import authorize, revoke, get_auth`.
+
