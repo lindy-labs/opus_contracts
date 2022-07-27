@@ -122,13 +122,14 @@ func get_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
 end
 
 @view
-func get_total_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    uint : Uint256
-):
+func get_total_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
     let (asset_address) = get_asset()
     let (gate_address) = get_contract_address()
-    let (total : Uint256) = IERC20.balanceOf(contract_address=asset_address, account=gate_address)
-    return (total)
+    let (total_uint : Uint256) = IERC20.balanceOf(
+        contract_address=asset_address, account=gate_address
+    )
+    let (total_wad) = WadRay.from_uint(total_uint)
+    return (total_wad)
 end
 
 @view
@@ -332,8 +333,7 @@ func convert_to_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     if total_supply_wad == 0:
         return (shares)
     else:
-        let (total_assets : Uint256) = get_total_assets()
-        let (total_assets_wad) = WadRay.from_uint(total_assets)
+        let (total_assets_wad) = get_total_assets()
         let (product) = WadRay.wmul(shares, total_assets_wad)
         let (assets_wad) = WadRay.wunsigned_div_unchecked(product, total_supply_wad)
         return (assets_wad)
@@ -351,8 +351,7 @@ func convert_to_shares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         return (assets_wad)
     else:
         let (product) = WadRay.wmul(assets_wad, total_supply_wad)
-        let (total_assets_uint : Uint256) = get_total_assets()
-        let (total_assets_wad) = WadRay.from_uint(total_assets_uint)
+        let (total_assets_wad) = get_total_assets()
         let (shares) = WadRay.wunsigned_div_unchecked(product, total_assets_wad)
         return (shares)
     end

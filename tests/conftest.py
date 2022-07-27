@@ -246,12 +246,15 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 
 @pytest.fixture
-async def gate_rebasing(starknet, shrine, users, tokens) -> AsyncIterator[Tuple[StarknetContract, StarknetContract]]:
+async def gate_rebasing(
+    starknet_func_scope, shrine, users, tokens
+) -> AsyncIterator[Tuple[StarknetContract, StarknetContract]]:
     """
     Fixture that deploys an ERC20 (representing a rebasing-type collateral) and
     a Gate for rebasing-type gollateral, and returns deployed instances of both
     `StarknetContract`s.
     """
+    starknet = starknet_func_scope
     user = await users("shrine user")
     underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
 

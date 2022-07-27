@@ -152,7 +152,7 @@ async def test_gate_setup(gate, asset, users):
     assert (await gate.get_asset().invoke()).result.address == asset.contract_address
 
     # Check total assets
-    asset_bal = from_uint((await gate.get_total_assets().invoke()).result.uint)
+    asset_bal = (await gate.get_total_assets().invoke()).result.wad
     assert asset_bal == 0
 
     # Check Abbot address is authorized
@@ -245,7 +245,7 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, asset, gate_deposit
 
     # Check vault asset balance
     total_bal = from_uint((await asset.balanceOf(gate.contract_address).invoke()).result.balance)
-    total_assets = from_uint((await gate.get_total_assets().invoke()).result.uint)
+    total_assets = (await gate.get_total_assets().invoke()).result.wad
     assert total_bal == total_assets == FIRST_DEPOSIT_AMT
 
     asset_bal = (await gate.get_last_asset_balance().invoke()).result.wad
@@ -288,7 +288,7 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase):
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
 
     # Check Gate's managed assets and balance
-    after_gate_bal = from_uint((await gate.get_total_assets().invoke()).result.uint)
+    after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
     after_asset_bal = (await gate.get_last_asset_balance().invoke()).result.wad
 
     increment = FIRST_REBASE_AMT - FIRST_TAX_AMT
@@ -331,7 +331,7 @@ async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
 
     # Check expected shares
     before_total_shares = (await gate.get_total_yang().invoke()).result.wad
-    before_total_assets = from_uint((await gate.get_total_assets().invoke()).result.uint)
+    before_total_assets = (await gate.get_total_assets().invoke()).result.wad
     preview_shares = (await gate.preview_deposit(SECOND_DEPOSIT_AMT).invoke()).result.wad
     expected_shares = get_shares_from_assets(before_total_shares, before_total_assets, SECOND_DEPOSIT_AMT)
     assert_equalish(from_wad(preview_shares), expected_shares)
@@ -348,7 +348,7 @@ async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
 
     # Check gate asset balance
     after_total_bal = from_uint((await asset.balanceOf(gate.contract_address).invoke()).result.balance)
-    total_assets = from_uint((await gate.get_total_assets().invoke()).result.uint)
+    total_assets = (await gate.get_total_assets().invoke()).result.wad
     expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
     assert after_total_bal == total_assets == expected_bal
 
