@@ -1,7 +1,7 @@
 import asyncio
 from collections import namedtuple
 from decimal import getcontext
-from typing import Awaitable, Callable
+from typing import AsyncIterator, Awaitable, Callable, Tuple
 
 import pytest
 from cache import AsyncLRU
@@ -246,7 +246,12 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 
 @pytest.fixture
-async def gate_rebasing(starknet, shrine, users, tokens) -> StarknetContract:
+async def gate_rebasing(starknet, shrine, users, tokens) -> AsyncIterator[Tuple[StarknetContract, StarknetContract]]:
+    """
+    Fixture that deploys an ERC20 (representing a rebasing-type collateral) and
+    a Gate for rebasing-type gollateral, and returns deployed instances of both
+    `StarknetContract`s.
+    """
     user = await users("shrine user")
     underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
 
