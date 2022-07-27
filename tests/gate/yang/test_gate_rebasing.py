@@ -508,6 +508,29 @@ async def test_kill(users, shrine_authed, gate, asset, gate_deposit, sync):
 
 
 @pytest.mark.asyncio
+async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, asset):
+    shrine_user = await users("shrine user")
+    abbot = await users("abbot")
+
+    # Approve Gate to transfer tokens from user
+    await shrine_user.send_tx(asset.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
+
+    # Call deposit with more asset than user has
+    with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
+        await abbot.send_tx(gate.contract_address, "deposit", [shrine_user.address, 1, INITIAL_AMT + 1])
+
+
+@pytest.mark.asyncio
+async def test_gate_redeem_insufficient_fail(users, shrine_authed, gate, asset, gate_deposit):
+    shrine_user = await users("shrine user")
+    abbot = await users("abbot")
+
+    # Call redeem with more gate shares than user has
+    with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
+        await abbot.send_tx(gate.contract_address, "redeem", [shrine_user.address, 1, FIRST_DEPOSIT_AMT + 1])
+
+
+@pytest.mark.asyncio
 async def test_unauthorized_deposit(users, asset, gate):
     """Test third-party initiated"""
     shrine_user = await users("shrine user")
