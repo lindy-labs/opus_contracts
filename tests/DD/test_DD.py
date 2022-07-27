@@ -34,7 +34,8 @@ async def dd_stablecoin(request, tokens, users) -> StarknetContract:
 # fixture returns the deployed direct deposit module together
 # with its associated stablecoin mock ERC20
 @pytest.fixture
-async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[StarknetContract, StarknetContract]:
+async def direct_deposit(starknet_func_scope, usda, dd_stablecoin, users) -> tuple[StarknetContract, StarknetContract]:
+    starknet = starknet_func_scope
 
     dd_owner = await users("dd owner")
     dd_contract = compile_contract("contracts/DD/DD.cairo")

@@ -180,8 +180,9 @@ namespace WadRay:
         return (ray=n * DIFF)
     end
 
-    func ray_to_wad{range_check_ptr}(n) -> (wad):
-        let (res, _) = signed_div_rem(n, DIFF, BOUND)
-        return (res)
+    # Truncates a ray to return a wad
+    func ray_to_wad{range_check_ptr}(ray) -> (wad):
+        let (wad, _) = unsigned_div_rem(ray, DIFF)
+        return (wad)
     end
 end

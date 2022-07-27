@@ -27,6 +27,8 @@ WAD_SCALE = 10**18
 RAY_SCALE = 10**27
 WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
 
+CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
+
 # Gas estimation constants
 NAMES = [
     "ecdsa_builtin",
@@ -49,7 +51,7 @@ Addressable = Union[int, StarknetContract]
 Calldata = list[int]  # payload arguments sent with a function call
 Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
 
-# Acceptable error margin for fixed point calculations
+# Default error margin for fixed point calculations
 ERROR_MARGIN = Decimal("0.000000001")
 
 seed(420)
@@ -148,8 +150,8 @@ def from_ray(n: int) -> Decimal:
     return Decimal(n) / RAY_SCALE
 
 
-def assert_equalish(a: Decimal, b: Decimal):
-    assert abs(a - b) <= ERROR_MARGIN
+def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
+    assert abs(a - b) <= error
 
 
 #
@@ -179,12 +181,7 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
 
 
 def set_block_timestamp(sn, block_timestamp):
-    sn.state.block_info = BlockInfo(
-        sn.state.block_info.block_number,
-        block_timestamp,
-        sn.state.block_info.gas_price,
-        sequencer_address=None,
-    )
+    sn.state.block_info = BlockInfo.create_for_testing(sn.state.block_info.block_number, block_timestamp)
 
 
 #
