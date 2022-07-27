@@ -295,7 +295,7 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase, collect_gas_
 
     # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
     # 1 key updated for Gate
-    collect_gas_cost("gate/redeem", gate_deposit, 3, 2)
+    collect_gas_cost("gate/sync", sync, 3, 2)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
