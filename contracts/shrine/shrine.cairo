@@ -12,6 +12,8 @@ from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
 
 from contracts.lib.auth import Auth
+# these imported public functions are part of the contract's interface
+from contracts.lib.auth_external import authorize, revoke, get_auth
 
 #
 # Constants
@@ -161,11 +163,6 @@ end
 #
 # Getters
 #
-
-@view
-func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
-    return Auth.is_authorized(address)
-end
 
 @view
 func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id) -> (
@@ -382,20 +379,6 @@ end
 #
 # Core functions - External
 #
-
-@external
-func authorize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller_authed()
-    Auth.authorize(address)
-    return ()
-end
-
-@external
-func revoke{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller_authed()
-    Auth.revoke(address)
-    return ()
-end
 
 # Set the price of the specified Yang for a given interval
 @external
