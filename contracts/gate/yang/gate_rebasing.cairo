@@ -9,6 +9,8 @@ from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.interfaces import IShrine
 from contracts.lib.auth import Auth
+# these imported public functions are part of the contract's interface
+from contracts.lib.auth_external import authorize, revoke, get_auth
 from contracts.lib.openzeppelin.security.reentrancyguard import ReentrancyGuard
 from contracts.shared.interfaces import IERC20
 from contracts.shared.types import Yang
@@ -84,11 +86,6 @@ end
 #
 # Getters
 #
-
-@view
-func get_auth{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address) -> (bool):
-    return Auth.is_authorized(address)
-end
 
 @view
 func get_shrine{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):

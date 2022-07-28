@@ -259,12 +259,12 @@ async def gate_rebasing(
     underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
 
     contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
-    abbot = await users("abbot")
+    admin = await users("admin")
     tax_collector = await users("tax collector")
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
-            abbot.address,
+            admin.address,
             shrine.contract_address,
             underlying.contract_address,
             TAX_RAY,

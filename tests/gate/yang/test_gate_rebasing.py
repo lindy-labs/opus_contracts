@@ -73,8 +73,15 @@ def get_assets_from_shares(total_shares, total_assets, shares_amt):
 
 # Convenience fixture
 @pytest.fixture
-def gate(gate_rebasing) -> StarknetContract:
+async def gate(users, gate_rebasing) -> StarknetContract:
     _, gate = gate_rebasing
+
+    # Authorise Abbot
+    abbot = await users("abbot")
+    admin = await users("admin")
+
+    await admin.send_tx(gate.contract_address, "authorize", [abbot.address])
+
     yield gate
 
 
