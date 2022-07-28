@@ -174,6 +174,41 @@ func preview_redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 #
+# Setters
+#
+
+# Update the tax (ray)
+@external
+func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
+    assert_live()
+
+    Auth.assert_caller_authed()
+
+    # Check that tax is lower than MAX_TAX
+    with_attr error_message("Gate: Maximum tax exceeded"):
+        assert_le(tax, MAX_TAX)
+    end
+
+    let (prev_tax) = gate_tax_storage.read()
+    gate_tax_storage.write(tax)
+
+    TaxUpdated.emit(prev_tax, tax)
+    return ()
+end
+
+# Update the tax collector address
+@external
+func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    Auth.assert_caller_authed()
+
+    let (prev_tax_collector) = gate_tax_collector_storage.read()
+    gate_tax_collector_storage.write(address)
+
+    TaxCollectorUpdated.emit(prev_tax_collector, address)
+    return ()
+end
+
+#
 # Constructor
 #
 
@@ -257,41 +292,6 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     update_last_asset_balance(asset_address, gate_address)
 
     return (assets)
-end
-
-#
-# External - Others
-#
-
-# Update the tax (ray)
-@external
-func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
-    assert_live()
-
-    Auth.assert_caller_authed()
-
-    # Check that tax is lower than MAX_TAX
-    with_attr error_message("Gate: Maximum tax exceeded"):
-        assert_le(tax, MAX_TAX)
-    end
-
-    let (prev_tax) = gate_tax_storage.read()
-    gate_tax_storage.write(tax)
-
-    TaxUpdated.emit(prev_tax, tax)
-    return ()
-end
-
-# Update the tax collector address
-@external
-func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller_authed()
-
-    let (prev_tax_collector) = gate_tax_collector_storage.read()
-    gate_tax_collector_storage.write(address)
-
-    TaxCollectorUpdated.emit(prev_tax_collector, address)
-    return ()
 end
 
 # Updates the asset balance of the Gate, and transfers a tax on the increment
