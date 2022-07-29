@@ -1,7 +1,7 @@
 import asyncio
 from collections import namedtuple
 from decimal import getcontext
-from typing import AsyncIterator, Awaitable, Callable, Tuple
+from typing import Awaitable, Callable
 
 import pytest
 from cache import AsyncLRU
@@ -10,7 +10,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.gate.yang.constants import INITIAL_AMT, TAX_RAY
+from tests.gate.yang.constants import INITIAL_AMT
 from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
 from tests.utils import (
     WAD_SCALE,
@@ -241,34 +241,16 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 
 #
-# Gate fixtures
+# Collateral
+#
+
+#
+# Fixtures
 #
 
 
 @pytest.fixture
-async def gate_rebasing(
-    starknet_func_scope, shrine, users, tokens
-) -> AsyncIterator[Tuple[StarknetContract, StarknetContract]]:
-    """
-    Fixture that deploys an ERC20 (representing a rebasing-type collateral) and
-    a Gate for rebasing-type gollateral, and returns deployed instances of both
-    `StarknetContract`s.
-    """
-    starknet = starknet_func_scope
+async def asset(users, tokens) -> StarknetContract:
     user = await users("shrine user")
-    underlying = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
-
-    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
-    admin = await users("admin")
-    tax_collector = await users("tax collector")
-    gate = await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            admin.address,
-            shrine.contract_address,
-            underlying.contract_address,
-            TAX_RAY,
-            tax_collector.address,
-        ],
-    )
-    yield underlying, gate
+    asset = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
+    yield asset

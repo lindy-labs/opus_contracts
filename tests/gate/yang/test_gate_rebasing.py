@@ -71,28 +71,56 @@ def get_assets_from_shares(total_shares, total_assets, shares_amt):
 # Fixtures
 #
 
-# Convenience fixture
+
 @pytest.fixture
-async def gate(users, gate_rebasing) -> StarknetContract:
-    _, gate = gate_rebasing
+async def gate_rebasing_tax(starknet_func_scope, users, shrine, asset) -> StarknetContract:
+    starknet = starknet_func_scope
+
+    contract = compile_contract("contracts/gate/yang/gate_rebasing_tax.cairo")
+    admin = await users("admin")
+    tax_collector = await users("tax collector")
+    gate = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            admin.address,
+            shrine.contract_address,
+            asset.contract_address,
+            TAX_RAY,
+            tax_collector.address,
+        ],
+    )
 
     # Authorise Abbot
     abbot = await users("abbot")
-    admin = await users("admin")
-
     await admin.send_tx(gate.contract_address, "authorize", [abbot.address])
 
     yield gate
 
 
 @pytest.fixture
-def asset(gate_rebasing) -> StarknetContract:
-    asset, _ = gate_rebasing
-    yield asset
+async def gate_rebasing(starknet_func_scope, users, shrine, asset) -> StarknetContract:
+    starknet = starknet_func_scope
+
+    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
+    admin = await users("admin")
+    gate = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            admin.address,
+            shrine.contract_address,
+            asset.contract_address,
+        ],
+    )
+
+    # Authorise Abbot
+    abbot = await users("abbot")
+    await admin.send_tx(gate.contract_address, "authorize", [abbot.address])
+
+    yield gate
 
 
 @pytest.fixture
-async def shrine_authed(shrine, gate, asset, users) -> StarknetContract:
+async def shrine_authed(users, shrine, gate, asset) -> StarknetContract:
     shrine_owner = await users("shrine owner")
 
     # Add Gate as authorized
@@ -118,7 +146,7 @@ async def gate_deposit(users, shrine_authed, gate, asset) -> StarknetTransaction
 
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [shrine_user.address, 1, FIRST_DEPOSIT_AMT])
-    return deposit
+    yield deposit
 
 
 @pytest.fixture
@@ -133,7 +161,7 @@ async def rebase(users, gate, asset, gate_deposit) -> StarknetTransactionExecuti
         "mint",
         [gate.contract_address, *FIRST_REBASE_AMT_UINT],
     )
-    return tx
+    yield tx
 
 
 @pytest.fixture
@@ -141,16 +169,26 @@ async def sync(users, gate, rebase) -> StarknetTransactionExecutionInfo:
     abbot = await users("abbot")
     # Update Gate's balance and charge tax
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
-    return sync
+    yield sync
+
+
+@pytest.fixture
+def gate(request):
+    """
+    Wrapper fixture to pass the non-taxable and taxable instances of Gate module
+    to `pytest.parametrize`.
+    """
+    return request.getfixturevalue(request.param)
 
 
 #
-# Tests
+# Tests - Setup
 #
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_setup(gate, asset, users):
+async def test_gate_setup(gate, users, asset):
     # Check system is live
     live = (await gate.get_live().invoke()).result.bool
     assert live == TRUE
@@ -167,15 +205,6 @@ async def test_gate_setup(gate, asset, users):
     authorized = (await gate.get_auth(abbot.address).invoke()).result.bool
     assert authorized == TRUE
 
-    # Check tax
-    tax = (await gate.get_tax().invoke()).result.ray
-    assert tax == TAX_RAY
-
-    # Check tax collector
-    tax_collector = await users("tax collector")
-    tax_collector_address = (await gate.get_tax_collector_address().invoke()).result.address
-    assert tax_collector_address == tax_collector.address
-
     # Check initial values
     assert (await gate.get_total_yang().invoke()).result.wad == 0
 
@@ -183,76 +212,32 @@ async def test_gate_setup(gate, asset, users):
     exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
     assert exchange_rate == 0
 
+    if "get_tax" in gate._contract_functions:
+        # Check tax
+        tax = (await gate.get_tax().invoke()).result.ray
+        assert tax == TAX_RAY
 
-@pytest.mark.asyncio
-async def test_gate_constructor_invalid_tax(users, shrine, starknet, asset):
-    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
-    abbot = await users("abbot")
-    tax_collector = await users("tax collector")
-
-    with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
-        await starknet.deploy(
-            contract_class=contract,
-            constructor_calldata=[
-                abbot.address,
-                shrine.contract_address,
-                asset.contract_address,
-                to_ray(TAX_MAX) + 1,
-                tax_collector.address,
-            ],
-        )
-
-
-@pytest.mark.asyncio
-async def test_gate_set_tax_pass(gate, users):
-    abbot = await users("abbot")
-
-    tx = await abbot.send_tx(gate.contract_address, "set_tax", [TAX_RAY // 2])
-    assert_event_emitted(tx, gate.contract_address, "TaxUpdated", [TAX_RAY, TAX_RAY // 2])
-
-    new_tax = (await gate.get_tax().invoke()).result.ray
-    assert new_tax == TAX_RAY // 2
-
-
-@pytest.mark.asyncio
-async def test_gate_set_tax_fail(gate, users):
-    abbot = await users("abbot")
-
-    # Fails due to max tax exceeded
-    with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
-        await abbot.send_tx(gate.contract_address, "set_tax", [to_ray(TAX_MAX) + 1])
-
-
-@pytest.mark.asyncio
-async def test_gate_set_tax_collector(gate, users):
-    abbot = await users("abbot")
-    tax_collector = await users("tax collector")
-
-    new_tax_collector = 9876
-    tx = await abbot.send_tx(gate.contract_address, "set_tax_collector", [new_tax_collector])
-    assert_event_emitted(
-        tx,
-        gate.contract_address,
-        "TaxCollectorUpdated",
-        [tax_collector.address, new_tax_collector],
-    )
-
-    res = (await gate.get_tax_collector_address().invoke()).result.address
-    assert res == new_tax_collector
+        # Check tax collector
+        tax_collector = await users("tax collector")
+        tax_collector_address = (await gate.get_tax_collector_address().invoke()).result.address
+        assert tax_collector_address == tax_collector.address
 
 
 #
-# Tests - ERC4626
+# Tests - Gate
 #
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_deposit_pass(users, shrine_authed, gate, asset, gate_deposit, collect_gas_cost):
-    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
-    # 1 unique key updated for ERC20 transfer (Gate's balance, user's balance)
-    # 1 key updated for ReentrancyGuard
-    # 2 keys updated for Shrine
-    collect_gas_cost("gate/deposit", gate_deposit, 7, 3)
+    # 2 unique key updated for ERC20 transfer (Gate's balance, user's balance)
+    # 2 keys updated for Shrine (`shrine_yangs_storage`, `shrine_deposits_storage`)
+    # 1 key updated for Gate (`gate_last_asset_balance_storage`)
+    #
+    # Note that ReentrancyGuard updates 1 key but storage is not charged because value is reset
+    # at the end of the transaction.
+    collect_gas_cost("gate/deposit", gate_deposit, 5, 3)
 
     shrine_user = await users("shrine user")
 
@@ -282,6 +267,7 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, asset, gate_deposit
     )
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_sync(users, shrine_authed, gate, asset, rebase, collect_gas_cost):
     abbot = await users("abbot")
@@ -300,17 +286,16 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase, collect_gas_
     # Update Gate's balance and charge tax
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
 
-    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
-    # 1 key updated for Gate
-    collect_gas_cost("gate/sync", sync, 3, 2)
+    # 1 key updated for Gate (`gate_last_asset_balance_storage`)
+    collect_gas_cost("gate/sync", sync, 1, 1)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
     after_asset_bal = (await gate.get_last_asset_balance().invoke()).result.wad
 
-    increment = FIRST_REBASE_AMT - FIRST_TAX_AMT
+    increment = FIRST_REBASE_AMT
 
-    assert after_gate_bal == after_asset_bal == rebased_bal - FIRST_TAX_AMT == before_asset_bal + increment
+    assert after_gate_bal == after_asset_bal == rebased_bal == before_asset_bal + increment
 
     # Check that user's redeemable balance has increased
     user_shares = (await shrine_authed.get_deposit(TROVE_1, asset.contract_address).invoke()).result.wad
@@ -323,17 +308,9 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase, collect_gas_
     expected_exchange_rate = int(after_gate_bal / Decimal(user_shares))
     assert exchange_rate == expected_exchange_rate
 
-    # Check event emitted
-    assert_event_emitted(
-        sync,
-        gate.contract_address,
-        "Sync",
-        [before_asset_bal, after_asset_bal, FIRST_TAX_AMT],
-    )
-
     # Check tax collector has received tax
     after_tax_collector_bal = from_uint((await asset.balanceOf(tax_collector.address).invoke()).result.balance)
-    assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
+    assert after_tax_collector_bal == before_tax_collector_bal
 
     # Ensure that second sync has no effect
     sync = await abbot.send_tx(gate.contract_address, "sync", [])
@@ -341,6 +318,7 @@ async def test_gate_sync(users, shrine_authed, gate, asset, rebase, collect_gas_
     assert redundant_gate_bal == after_asset_bal
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
     abbot = await users("abbot")
@@ -366,7 +344,7 @@ async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
     # Check gate asset balance
     after_total_bal = from_uint((await asset.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = (await gate.get_total_assets().invoke()).result.wad
-    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
+    expected_bal = INITIAL_AMT + FIRST_REBASE_AMT
     assert after_total_bal == total_assets == expected_bal
 
     asset_bal = (await gate.get_last_asset_balance().invoke()).result.wad
@@ -394,17 +372,19 @@ async def test_gate_subsequent_deposit(users, shrine_authed, gate, asset, sync):
     )
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, gate_deposit, collect_gas_cost):
     """
     Redeem all shares before sync.
     """
-    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
-    # 1 unique key updated for ERC20 transfer (Gate's balance, user's balance)
-    # 1 key updated for ReentrancyGuard
-    # 2 keys updated for Shrine
-    # 1 key updated for Gate
-    collect_gas_cost("gate/redeem", gate_deposit, 7, 3)
+    # 2 unique key updated for ERC20 transfer (Gate's balance, user's balance)
+    # 2 keys updated for Shrine (`shrine_yangs_storage`, `shrine_deposits_storage`)
+    # 1 key updated for Gate (`gate_last_asset_balance_storage`)
+    #
+    # Note that ReentrancyGuard updates 1 key but storage is not charged because value is reset
+    # at the end of the transaction.
+    collect_gas_cost("gate/redeem", gate_deposit, 5, 3)
 
     abbot = await users("abbot")
     shrine_user = await users("shrine user")
@@ -442,6 +422,7 @@ async def test_gate_redeem_before_sync_pass(users, shrine_authed, gate, asset, g
     )
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, gate_deposit, sync):
     """
@@ -460,7 +441,7 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     # Fetch post-redemption balances
     after_user_balance = (await asset.balanceOf(shrine_user.address).invoke()).result.balance
     after_gate_balance = (await asset.balanceOf(gate.contract_address).invoke()).result.balance
-    expected_user_balance = INITIAL_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
+    expected_user_balance = INITIAL_AMT + FIRST_REBASE_AMT
     assert from_uint(after_user_balance) == expected_user_balance
     assert from_uint(after_gate_balance) == 0
 
@@ -474,7 +455,7 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
     assert exchange_rate == 0
 
-    expected_withdrawn_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT - FIRST_TAX_AMT
+    expected_withdrawn_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
     # Check event
     assert_event_emitted(
         redeem,
@@ -484,6 +465,7 @@ async def test_gate_redeem_after_sync_pass(users, shrine_authed, gate, asset, ga
     )
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_kill(users, shrine_authed, gate, asset, gate_deposit, sync):
     abbot = await users("abbot")
@@ -531,6 +513,7 @@ async def test_kill(users, shrine_authed, gate, asset, gate_deposit, sync):
     assert after_gate_shares == before_gate_shares - redeem_amt
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, asset):
     shrine_user = await users("shrine user")
@@ -544,6 +527,7 @@ async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, asset)
         await abbot.send_tx(gate.contract_address, "deposit", [shrine_user.address, 1, INITIAL_AMT + 1])
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_redeem_insufficient_fail(users, shrine_authed, gate, asset, gate_deposit):
     shrine_user = await users("shrine user")
@@ -554,6 +538,7 @@ async def test_gate_redeem_insufficient_fail(users, shrine_authed, gate, asset, 
         await abbot.send_tx(gate.contract_address, "redeem", [shrine_user.address, 1, FIRST_DEPOSIT_AMT + 1])
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_unauthorized_deposit(users, asset, gate):
     """Test third-party initiated"""
@@ -573,6 +558,7 @@ async def test_unauthorized_deposit(users, asset, gate):
         )
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_unauthorized_redeem(users, shrine_authed, gate, asset, gate_deposit):
     """Test user-initiated"""
@@ -590,6 +576,7 @@ async def test_unauthorized_redeem(users, shrine_authed, gate, asset, gate_depos
         )
 
 
+@pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.parametrize("fn", ["deposit", "redeem"])
 @pytest.mark.asyncio
 async def test_zero_deposit_redeem(users, shrine_authed, gate, asset, gate_deposit, fn):
@@ -609,3 +596,138 @@ async def test_zero_deposit_redeem(users, shrine_authed, gate, asset, gate_depos
 
     assert before_yang_bal == after_yang_bal
     assert before_asset_bal == after_asset_bal
+
+
+#
+# Tests - Tax
+#
+
+
+@pytest.mark.asyncio
+async def test_gate_constructor_invalid_tax(users, shrine, starknet, asset):
+    contract = compile_contract("contracts/gate/yang/gate_rebasing_tax.cairo")
+    abbot = await users("abbot")
+    tax_collector = await users("tax collector")
+
+    with pytest.raises(StarkException):
+        await starknet.deploy(
+            contract_class=contract,
+            constructor_calldata=[
+                abbot.address,
+                shrine.contract_address,
+                asset.contract_address,
+                to_ray(TAX_MAX) + 1,
+                tax_collector.address,
+            ],
+        )
+
+
+@pytest.mark.asyncio
+async def test_gate_set_tax_pass(gate_rebasing_tax, users):
+    gate = gate_rebasing_tax
+
+    abbot = await users("abbot")
+
+    tx = await abbot.send_tx(gate.contract_address, "set_tax", [TAX_RAY // 2])
+    assert_event_emitted(tx, gate.contract_address, "TaxUpdated", [TAX_RAY, TAX_RAY // 2])
+
+    new_tax = (await gate.get_tax().invoke()).result.ray
+    assert new_tax == TAX_RAY // 2
+
+
+@pytest.mark.asyncio
+async def test_gate_set_tax_collector(gate_rebasing_tax, users):
+    gate = gate_rebasing_tax
+
+    abbot = await users("abbot")
+    tax_collector = await users("tax collector")
+
+    new_tax_collector = 9876
+    tx = await abbot.send_tx(gate.contract_address, "set_tax_collector", [new_tax_collector])
+    assert_event_emitted(
+        tx,
+        gate.contract_address,
+        "TaxCollectorUpdated",
+        [tax_collector.address, new_tax_collector],
+    )
+
+    res = (await gate.get_tax_collector_address().invoke()).result.address
+    assert res == new_tax_collector
+
+
+@pytest.mark.asyncio
+async def test_gate_set_tax_parameters_fail(gate_rebasing_tax, users):
+    gate = gate_rebasing_tax
+
+    abbot = await users("abbot")
+
+    # Fails due to max tax exceeded
+    with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
+        await abbot.send_tx(gate.contract_address, "set_tax", [to_ray(TAX_MAX) + 1])
+
+    bad_guy = await users("bad guy")
+    # Fails due to non-authorised address
+    with pytest.raises(StarkException, match="Auth: caller not authorized"):
+        await bad_guy.send_tx(gate.contract_address, "set_tax", [TAX_RAY])
+        await bad_guy.send_tx(gate.contract_address, "set_tax_collector", [bad_guy.address])
+
+
+@pytest.mark.parametrize("gate", ["gate_rebasing_tax"], indirect=["gate"])
+@pytest.mark.asyncio
+async def test_gate_levy(users, shrine_authed, gate, asset, rebase, collect_gas_cost):
+    """`rebase` fixture simulates an autocompounding"""
+    abbot = await users("abbot")
+    tax_collector = await users("tax collector")
+
+    # Get balances before levy
+    before_tax_collector_bal = from_uint((await asset.balanceOf(tax_collector.address).invoke()).result.balance)
+    rebased_bal = from_uint((await asset.balanceOf(gate.contract_address).invoke()).result.balance)
+
+    # Check gage token contract for rebased balance
+    assert rebased_bal == FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
+
+    # Fetch last asset balance
+    before_asset_bal = (await gate.get_last_asset_balance().invoke()).result.wad
+
+    # Update Gate's balance and charge tax
+    levy = await abbot.send_tx(gate.contract_address, "levy", [])
+
+    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
+    # 1 key updated for Gate (`gate_last_asset_balance_storage`)
+    collect_gas_cost("gate/levy", levy, 3, 2)
+
+    # Check Gate's managed assets and balance
+    after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
+    after_asset_bal = (await gate.get_last_asset_balance().invoke()).result.wad
+
+    increment = FIRST_REBASE_AMT - FIRST_TAX_AMT
+
+    assert after_gate_bal == after_asset_bal == rebased_bal - FIRST_TAX_AMT == before_asset_bal + increment
+
+    # Check that user's redeemable balance has increased
+    user_shares = (await shrine_authed.get_deposit(TROVE_1, asset.contract_address).invoke()).result.wad
+    user_asset = (await gate.preview_redeem(user_shares).invoke()).result.wad
+    assert user_asset == after_gate_bal
+
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    user_shares = from_wad(user_shares)
+    expected_exchange_rate = int(after_gate_bal / Decimal(user_shares))
+    assert exchange_rate == expected_exchange_rate
+
+    # Check event emitted
+    assert_event_emitted(
+        levy,
+        gate.contract_address,
+        "TaxLevied",
+        [FIRST_TAX_AMT],
+    )
+
+    # Check tax collector has received tax
+    after_tax_collector_bal = from_uint((await asset.balanceOf(tax_collector.address).invoke()).result.balance)
+    assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
+
+    # Ensure that second levy has no effect
+    levy = await abbot.send_tx(gate.contract_address, "levy", [])
+    redundant_gate_bal = (await gate.get_last_asset_balance().invoke()).result.wad
+    assert redundant_gate_bal == after_asset_bal
