@@ -6,7 +6,6 @@ from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.interfaces import IShrine
-from contracts.lib.auth import Auth
 # these imported public functions are part of the contract's interface
 from contracts.lib.openzeppelin.security.reentrancyguard import ReentrancyGuard
 from contracts.shared.interfaces import IERC20
