@@ -219,7 +219,7 @@ async def test_gate_setup(gate, users, asset):
 
         # Check tax collector
         tax_collector = await users("tax collector")
-        tax_collector_address = (await gate.get_tax_collector_address().invoke()).result.address
+        tax_collector_address = (await gate.get_tax_collector().invoke()).result.address
         assert tax_collector_address == tax_collector.address
 
 
@@ -651,7 +651,7 @@ async def test_gate_set_tax_collector(gate_rebasing_tax, users):
         [tax_collector.address, new_tax_collector],
     )
 
-    res = (await gate.get_tax_collector_address().invoke()).result.address
+    res = (await gate.get_tax_collector().invoke()).result.address
     assert res == new_tax_collector
 
 
