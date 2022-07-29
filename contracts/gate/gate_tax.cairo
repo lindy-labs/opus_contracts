@@ -46,22 +46,33 @@ end
 func gate_tax_collector_storage() -> (address):
 end
 
-#
-# Getters
-#
-
-@view
-func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
-    return gate_tax_storage.read()
-end
-
-@view
-func get_tax_collector_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    ) -> (address):
-    return gate_tax_collector_storage.read()
-end
-
 namespace GateTax:
+    func initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        tax, tax_collector_address
+    ):
+        set_tax(tax)
+        set_tax_collector(tax_collector_address)
+        return ()
+    end
+
+    #
+    # Getters
+    #
+
+    func get_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
+        return gate_tax_storage.read()
+    end
+
+    func get_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+        address
+    ):
+        return gate_tax_collector_storage.read()
+    end
+
+    #
+    # Setters
+    #
+
     func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
         # Check that tax is lower than MAX_TAX
         with_attr error_message("Gate: Maximum tax exceeded"):
@@ -85,6 +96,10 @@ namespace GateTax:
         TaxCollectorUpdated.emit(prev_tax_collector, address)
         return ()
     end
+
+    #
+    # Core
+    #
 
     # Charge the tax and transfer to the tax collector
     func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
