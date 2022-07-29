@@ -2,12 +2,9 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
-from contracts.gate.gate_tax import GateTax
 from contracts.interfaces import IShrine
 from contracts.lib.auth import Auth
 # these imported public functions are part of the contract's interface
@@ -208,8 +205,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return (assets)
 end
 
-# Updates the asset balance of the Gate, and transfers a tax on the increment
-# to the tax_collector address.
+# Updates the asset balance of the Gate.
 @external
 func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
