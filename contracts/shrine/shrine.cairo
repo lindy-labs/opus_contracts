@@ -261,13 +261,13 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     # Assign ID to yang and add yang struct
     let (yang_count) = shrine_yangs_count_storage.read()
-    tempvar new_yang_count = yang_count + 1
+    let yang_id = yang_count + 1
 
-    shrine_yang_id_storage.write(yang_address, new_yang_count)
-    shrine_yangs_storage.write(new_yang_count, Yang(0, max))
+    shrine_yang_id_storage.write(yang_address, yang_id)
+    shrine_yangs_storage.write(yang_id, Yang(0, max))
 
     # Update yangs count
-    shrine_yangs_count_storage.write(new_yang_count)
+    shrine_yangs_count_storage.write(yang_id)
 
     # Set threshold
     set_threshold(yang_address, threshold)
@@ -278,11 +278,11 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # Since `price` is the first price in the price history, the cumulative price is also set to `price`
     # `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
     let (packed) = pack_125(price, price)
-    shrine_yang_price_storage.write(new_yang_count, current_time_interval, packed)
+    shrine_yang_price_storage.write(yang_id, current_time_interval, packed)
 
     # Events
-    YangAdded.emit(yang_address, new_yang_count, max, price)
-    YangsCountUpdated.emit(new_yang_count)
+    YangAdded.emit(yang_address, yang_id, max, price)
+    YangsCountUpdated.emit(yang_id)
 
     return ()
 end
