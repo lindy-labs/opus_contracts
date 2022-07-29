@@ -149,11 +149,6 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
     do_deposits(user_address, new_trove_id, yang_addrs_len, yang_addrs, amounts)
     IShrine.forge(shrine_address, forge_amount, new_trove_id)
 
-    # TODO: should we use a reentrancy guard here? if the token has a
-    #       callback hook (a la ERC777), can it fuck us? or maybe that
-    #       should be done only in the Gate?
-    # do_transfers_from(user_address, yang_addrs_len, yang_addrs, amounts)
-
     TroveOpened.emit(user_address, new_trove_id)
 
     return ()
@@ -195,8 +190,12 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    with_attr error_message("Abbot: yangs and amounts count don't match"):
+    with_attr error_message("Abbot: input arguments mismatch: {yang_addrs_len} != {amounts_len}"):
         assert yangs_addrs_len = amounts_len
+    end
+
+    with_attr error_message("Abbot: no yangs selected"):
+        assert_not_zero(yang_addrs_len)
     end
 
     let (user_address) = get_caller_address()
