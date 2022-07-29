@@ -18,6 +18,13 @@ from contracts.shared.types import Yang
 from contracts.shared.wad_ray import WadRay
 
 #
+# Constants
+#
+
+# Maximum tax that can be set by an authorized address (ray)
+const MAX_TAX = 5 * 10 ** 25
+
+#
 # Events
 #
 
@@ -31,6 +38,14 @@ end
 
 @event
 func Redeem(user, trove_id, assets_wad, shares_wad):
+end
+
+@event
+func TaxUpdated(prev_tax, new_tax):
+end
+
+@event
+func TaxCollectorUpdated(prev_tax_collector, new_tax_collector):
 end
 
 #
@@ -135,17 +150,45 @@ func preview_redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
 end
 
 #
+# Setters
+#
+
+# Update the tax (ray)
+@external
+func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
+    assert_live()
+
+    Auth.assert_caller_authed()
+
+    GateTax.set_tax(tax)
+    return ()
+end
+
+@external
+func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    assert_live()
+
+    Auth.assert_caller_authed()
+
+    GateTax.set_tax_collector(address)
+    return ()
+end
+
+#
 # Constructor
 #
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, shrine_address, asset_address
+    authed, shrine_address, asset_address, tax, tax_collector_address
 ):
     Auth.authorize(authed)
     gate_shrine_storage.write(shrine_address)
     gate_asset_storage.write(asset_address)
     gate_live_storage.write(TRUE)
+
+    GateTax.set_tax(tax)
+    GateTax.set_tax_collector(tax_collector_address)
 
     return ()
 end
@@ -181,7 +224,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (shares) = deposit_internal(asset_address, gate_address, user_address, trove_id, assets)
 
-    # Update before deposit
+    # Update after deposit
     update_last_asset_balance(asset_address, gate_address)
 
     return (shares)
@@ -202,14 +245,13 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (assets) = redeem_internal(asset_address, gate_address, user_address, trove_id, shares)
 
-    # Update before redeem
+    # Update after deposit
     update_last_asset_balance(asset_address, gate_address)
 
     return (assets)
 end
 
-# Updates the asset balance of the Gate, and transfers a tax on the increment
-# to the tax_collector address.
+# Updates the asset balance of the Gate.
 @external
 func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
@@ -217,7 +259,33 @@ func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     # Get asset and gate addresses
     let (asset_address) = get_asset()
     let (gate_address) = get_contract_address()
+
+    # Update balance
     update_last_asset_balance(asset_address, gate_address)
+    return ()
+end
+
+# Autocompound and charge the admin fee.
+@external
+func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    alloc_locals
+
+    # Check last balance of underlying asset against latest balance
+    let (last_updated_balance_wad) = gate_last_asset_balance_storage.read()
+
+    # Autocompound
+    compound()
+
+    # Get asset and gate addresses
+    let (asset_address) = get_asset()
+    let (gate_address) = get_contract_address()
+
+    # Charge tax
+    GateTax.levy(asset_address, gate_address, last_updated_balance_wad)
+
+    # Update balance
+    update_last_asset_balance(asset_address, gate_address)
+
     return ()
 end
 
@@ -339,6 +407,11 @@ func redeem_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
     Redeem.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, shares_wad=shares)
 
     return (assets_wad)
+end
+
+# Stub function for compounding by selling token rewards for underlying asset
+func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
+    return ()
 end
 
 # Helper function to update the underlying balance after a user action
