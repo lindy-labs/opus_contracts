@@ -23,9 +23,6 @@ from tests.utils import (
     to_wad,
 )
 
-TROVE_1 = 1
-TROVE_2 = 2
-
 YANG_0_ADDRESS = YANGS[0]["address"]
 YANG_0_CEILING = YANGS[0]["ceiling"]
 YANG_0_THRESHOLD = YANGS[0]["threshold"]

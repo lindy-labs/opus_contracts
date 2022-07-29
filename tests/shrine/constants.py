@@ -81,3 +81,7 @@ DEPOSITS = [
 
 # Forge constant
 FORGE_AMT = 5_000 * WAD_SCALE
+
+# Troves
+TROVE_1 = 1
+TROVE_2 = 2

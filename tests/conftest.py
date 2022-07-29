@@ -244,10 +244,6 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 # Collateral
 #
 
-#
-# Fixtures
-#
-
 
 @pytest.fixture
 async def asset(users, tokens) -> StarknetContract:

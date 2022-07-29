@@ -6,6 +6,7 @@ from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.yang.constants import *  # noqa: F403
+from tests.shrine.constants import TROVE_1
 from tests.utils import (
     FALSE,
     MAX_UINT256,
@@ -22,8 +23,6 @@ from tests.utils import (
 #
 # Helper functions
 #
-
-TROVE_1 = 1
 
 
 def get_shares_from_assets(total_shares, total_assets, assets_amt):
