@@ -1,9 +1,7 @@
 %lang starknet
 
-from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 
 from contracts.shared.interfaces import IERC20
@@ -103,7 +101,7 @@ namespace GateTax:
 
     # Charge the tax and transfer to the tax collector
     func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        asset_address, gate_address, last_updated_balance_wad
+        asset_address, gate_address, taxable_wad
     ):
         alloc_locals
 
@@ -115,23 +113,13 @@ namespace GateTax:
             return ()
         end
 
-        let (latest_uint : Uint256) = IERC20.balanceOf(
-            contract_address=asset_address, account=gate_address
-        )
-        let (latest_wad) = WadRay.from_uint(latest_uint)
-
-        # Assumption: Balance cannot decrease without any user action
-        let (unincremented) = is_le(latest_wad, last_updated_balance_wad)
-        if unincremented == TRUE:
-            return ()
-        end
-
+        # Calculate taxable amount
         # `rmul` on a wad and a ray returns a wad
-        let (chargeable_wad) = WadRay.rmul(latest_wad - last_updated_balance_wad, tax_rate)
-        let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
+        let (chargeable_wad) = WadRay.rmul(taxable_wad, tax_rate)
 
         # Transfer fees
         let (tax_collector) = gate_tax_collector_storage.read()
+        let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
         IERC20.transfer(
             contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
         )

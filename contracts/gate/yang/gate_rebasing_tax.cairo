@@ -1,6 +1,9 @@
 %lang starknet
 
+from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math_cmp import is_le
+from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.gate.gate_tax import GateTax
@@ -19,6 +22,8 @@ from contracts.gate.yang.library_external import (
 )
 from contracts.lib.auth import Auth
 from contracts.lib.auth_external import authorize, revoke, get_auth
+from contracts.shared.interfaces import IERC20
+from contracts.shared.wad_ray import WadRay
 
 #
 # Constructor
@@ -103,8 +108,21 @@ func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     let (asset_address) = Gate.get_asset()
     let (gate_address) = get_contract_address()
 
-    # Charge tax
-    GateTax.levy(asset_address, gate_address, last_updated_balance_wad)
+    # Get latest asset balance
+    let (latest_uint : Uint256) = IERC20.balanceOf(
+        contract_address=asset_address, account=gate_address
+    )
+    let (latest_wad) = WadRay.from_uint(latest_uint)
+
+    # Assumption: Balance cannot decrease without any user action
+    let (unincremented) = is_le(latest_wad, last_updated_balance_wad)
+    if unincremented == TRUE:
+        return ()
+    end
+
+    # Charge tax on the taxable amount
+    let taxable_wad = latest_wad - last_updated_balance_wad
+    GateTax.levy(asset_address, gate_address, taxable_wad)
 
     # Update balance
     Gate.update_last_asset_balance(asset_address, gate_address)
