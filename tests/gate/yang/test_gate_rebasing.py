@@ -21,6 +21,12 @@ from tests.utils import (
 )
 
 #
+# Constants
+#
+
+CUSTOM_ERROR_MARGIN = Decimal("10e18")
+
+#
 # Helper functions
 #
 
@@ -288,11 +294,11 @@ async def test_gate_subsequent_deposit_with_rebase(users, shrine_authed, gate, r
 
     # Check vault shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
-    assert_equalish(from_wad(after_total_shares), from_wad(before_total_shares) + expected_shares)
+    assert_equalish(from_wad(after_total_shares), from_wad(before_total_shares) + expected_shares, CUSTOM_ERROR_MARGIN)
 
     # Check user's shares
     after_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
-    assert_equalish(from_wad(after_user_shares), from_wad(before_user_shares) + expected_shares)
+    assert_equalish(from_wad(after_user_shares), from_wad(before_user_shares) + expected_shares, CUSTOM_ERROR_MARGIN)
 
     # Check event emitted
     assert_event_emitted(
@@ -432,8 +438,8 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
     after_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     after_gate_shares = (await gate.get_total_yang().invoke()).result.wad
 
-    assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets)
-    assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets)
+    assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets, CUSTOM_ERROR_MARGIN)
 
     assert after_user_shares == before_user_shares - redeem_amt
     assert after_gate_shares == before_gate_shares - redeem_amt
