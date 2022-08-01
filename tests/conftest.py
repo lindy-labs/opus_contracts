@@ -241,4 +241,7 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 async def rebasing_token(users, tokens) -> StarknetContract:
     user = await users("aura user")
     rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user.address)
+
+    user2 = await users("aura user 2")
+    await user2.send_tx(rebasing_token.contract_address, "mint", [user2.address, *(INITIAL_AMT, 0)])
     yield rebasing_token
