@@ -238,7 +238,7 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 
 @pytest.fixture
-async def asset(users, tokens) -> StarknetContract:
-    user = await users("shrine user")
-    asset = await tokens("Staked ETH", "stETH", 18, (INITIAL_AMT, 0), user.address)
-    yield asset
+async def rebasing_token(users, tokens) -> StarknetContract:
+    user = await users("aura user")
+    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user.address)
+    yield rebasing_token

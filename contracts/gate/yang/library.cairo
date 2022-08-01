@@ -44,10 +44,6 @@ end
 func gate_live_storage() -> (bool):
 end
 
-#
-# Getters
-#
-
 namespace Gate:
     #
     # Constructor
@@ -119,7 +115,7 @@ namespace Gate:
     end
 
     #
-    # External
+    # Core functions
     #
 
     func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
