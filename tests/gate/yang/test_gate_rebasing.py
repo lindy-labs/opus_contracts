@@ -607,6 +607,11 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax, users):
         await bad_guy.send_tx(gate.contract_address, "set_tax", [TAX_RAY])
         await bad_guy.send_tx(gate.contract_address, "set_tax_collector", [bad_guy.address])
 
+    # Fails due to zero address
+    ZERO_ADDRESS = 0
+    with pytest.raises(StarkException, match="Gate: Invalid tax collector address"):
+        await abbot.send_tx(gate.contract_address, "set_tax_collector", [ZERO_ADDRESS])
+
 
 """
 @pytest.mark.parametrize("gate", ["gate_rebasing_tax"], indirect=["gate"])

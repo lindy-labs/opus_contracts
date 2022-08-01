@@ -1,7 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le
+from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
 
 from contracts.shared.interfaces import IERC20
@@ -88,6 +88,10 @@ namespace GateTax:
     func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         address
     ):
+        with_attr error_message("Gate: Invalid tax collector address"):
+            assert_not_zero(address)
+        end
+
         let (prev_tax_collector) = gate_tax_collector_storage.read()
         gate_tax_collector_storage.write(address)
 
