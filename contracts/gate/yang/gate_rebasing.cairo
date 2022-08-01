@@ -7,7 +7,6 @@ from contracts.gate.yang.library_external import (
     get_shrine,
     get_asset,
     get_live,
-    get_last_asset_balance,
     get_total_assets,
     get_total_yang,
     get_exchange_rate,
@@ -59,11 +58,4 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     Auth.assert_caller_authed()
 
     return Gate.redeem(user_address, trove_id, shares)
-end
-
-# Updates the asset balance of the Gate.
-@external
-func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Gate.sync()
-    return ()
 end

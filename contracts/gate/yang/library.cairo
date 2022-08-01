@@ -44,12 +44,6 @@ end
 func gate_live_storage() -> (bool):
 end
 
-# Last updated total balance of underlying asset
-# Used to detect changes in total balance due to rebasing
-@storage_var
-func gate_last_asset_balance_storage() -> (wad):
-end
-
 #
 # Getters
 #
@@ -86,11 +80,6 @@ namespace Gate:
         return gate_live_storage.read()
     end
 
-    func get_last_asset_balance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        ) -> (wad):
-        return gate_last_asset_balance_storage.read()
-    end
-
     func get_total_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
         wad
     ):
@@ -118,7 +107,7 @@ namespace Gate:
         wad
     ):
         let (total_supply_wad) = get_total_yang()
-        let (total_balance) = get_last_asset_balance()
+        let (total_balance) = get_total_assets()
 
         # Catch division by zero errors
         if total_supply_wad == 0:
@@ -153,9 +142,6 @@ namespace Gate:
 
         let (shares) = deposit_internal(asset_address, gate_address, user_address, trove_id, assets)
 
-        # Update before deposit
-        update_last_asset_balance(asset_address, gate_address)
-
         return (shares)
     end
 
@@ -170,21 +156,7 @@ namespace Gate:
 
         let (assets) = redeem_internal(asset_address, gate_address, user_address, trove_id, shares)
 
-        # Update before redeem
-        update_last_asset_balance(asset_address, gate_address)
-
         return (assets)
-    end
-
-    # Updates the asset balance of the Gate.
-    func sync{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-        alloc_locals
-
-        # Get asset and gate addresses
-        let (asset_address) = get_asset()
-        let (gate_address) = get_contract_address()
-        update_last_asset_balance(asset_address, gate_address)
-        return ()
     end
 
     #
@@ -307,17 +279,5 @@ namespace Gate:
         Redeem.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, shares_wad=shares)
 
         return (assets_wad)
-    end
-
-    # Helper function to update the underlying balance after a user action
-    func update_last_asset_balance{
-        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
-    }(asset_address, gate_address):
-        let (balance_uint : Uint256) = IERC20.balanceOf(
-            contract_address=asset_address, account=gate_address
-        )
-        let (balance_wad) = WadRay.from_uint(balance_uint)
-        gate_last_asset_balance_storage.write(balance_wad)
-        return ()
     end
 end

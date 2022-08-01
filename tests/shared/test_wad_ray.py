@@ -146,13 +146,7 @@ async def test_ceil(wad_ray, val):
 @example(left=0, right=0)
 @example(left=1, right=0)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
-@pytest.mark.parametrize(
-    "fn,op",
-    [
-        ("test_add", operator.add),
-        ("test_sub", operator.sub),
-    ],
-)
+@pytest.mark.parametrize("fn,op", [("test_add", operator.add), ("test_sub", operator.sub)])
 @pytest.mark.asyncio
 async def test_add_sub(wad_ray, left, right, fn, op):
     left_input_val = signed_int_to_felt(left)
@@ -177,13 +171,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 @example(left=0, right=0)
 @example(left=1, right=0)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
-@pytest.mark.parametrize(
-    "fn,op",
-    [
-        ("test_add_unsigned", operator.add),
-        ("test_sub_unsigned", operator.sub),
-    ],
-)
+@pytest.mark.parametrize("fn,op", [("test_add_unsigned", operator.add), ("test_sub_unsigned", operator.sub)])
 @pytest.mark.asyncio
 async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
     expected_py = op(left, right)
@@ -339,10 +327,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
 @given(val=st_uint125)
 @pytest.mark.parametrize(
     "fn,input_op,output_op,ret",
-    [
-        ("test_to_uint", int, to_uint, "uint"),
-        ("test_from_uint", to_uint, int, "wad"),
-    ],
+    [("test_to_uint", int, to_uint, "uint"), ("test_from_uint", to_uint, int, "wad")],
 )
 @pytest.mark.asyncio
 async def test_uint_conversion_pass(wad_ray, val, fn, input_op, output_op, ret):

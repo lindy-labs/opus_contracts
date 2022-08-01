@@ -219,17 +219,9 @@ async def shrine_with_feeds(starknet_func_scope, users, shrine_setup) -> Starkne
         timestamp = i * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
         for j in range(len(YANGS)):
-            await shrine_owner.send_tx(
-                shrine.contract_address,
-                "advance",
-                [YANGS[j]["address"], feeds[j][i]],
-            )
+            await shrine_owner.send_tx(shrine.contract_address, "advance", [YANGS[j]["address"], feeds[j][i]])
 
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_multiplier",
-            [MULTIPLIER_FEED[i]],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i]])
 
     return shrine, feeds
 
