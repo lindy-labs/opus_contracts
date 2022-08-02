@@ -5,7 +5,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.gate.yang.constants import *  # noqa: F403
+from tests.gate.rebasing_yang.constants import *  # noqa: F403
 from tests.shrine.constants import TROVE_1, TROVE_2
 from tests.utils import (
     FALSE,
@@ -84,7 +84,7 @@ async def gate_rebasing_tax(starknet_func_scope, users, shrine, rebasing_token) 
     """
     starknet = starknet_func_scope
 
-    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
+    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
     admin = await users("admin")
     tax_collector = await users("tax collector")
     gate = await starknet.deploy(

@@ -10,7 +10,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
-from tests.gate.yang.constants import INITIAL_AMT
+from tests.gate.rebasing_yang.constants import INITIAL_AMT
 from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
 from tests.utils import (
     WAD_SCALE,

@@ -21,3 +21,6 @@ SECOND_DEPOSIT_AMT = INITIAL_AMT - FIRST_DEPOSIT_AMT
 SECOND_DEPOSIT_AMT_UINT = to_uint(SECOND_DEPOSIT_AMT)
 SECOND_MINT_AMT = to_wad(4)
 SECOND_MINT_AMT_UINT = to_uint(SECOND_MINT_AMT)
+
+# Value for simulated `compound` in `levy` for `test_gate_taxable.cairo`
+COMPOUND_MULTIPLIER = decimal.Decimal("1.1")
