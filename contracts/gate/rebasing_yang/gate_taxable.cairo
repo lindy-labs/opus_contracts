@@ -8,8 +8,8 @@ from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.gate.gate_tax import GateTax
 from contracts.gate.gate_tax_external import get_tax, get_tax_collector
-from contracts.gate.yang.library import Gate
-from contracts.gate.yang.library_external import (
+from contracts.gate.rebasing_yang.library import Gate
+from contracts.gate.rebasing_yang.library_external import (
     get_shrine,
     get_asset,
     get_live,

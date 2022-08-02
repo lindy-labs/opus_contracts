@@ -84,7 +84,7 @@ async def gate_rebasing_tax(starknet_func_scope, users, shrine, rebasing_token) 
     """
     starknet = starknet_func_scope
 
-    contract = compile_contract("contracts/gate/yang/gate_rebasing_tax.cairo")
+    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
     admin = await users("admin")
     tax_collector = await users("tax collector")
     gate = await starknet.deploy(
@@ -112,7 +112,7 @@ async def gate_rebasing(starknet_func_scope, users, shrine, rebasing_token) -> S
     """
     starknet = starknet_func_scope
 
-    contract = compile_contract("contracts/gate/yang/gate_rebasing.cairo")
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
     admin = await users("admin")
     gate = await starknet.deploy(
         contract_class=contract,
@@ -785,7 +785,7 @@ async def test_zero_deposit_redeem(users, shrine_authed, gate, rebasing_token, g
 
 @pytest.mark.asyncio
 async def test_gate_constructor_invalid_tax(users, shrine, starknet, rebasing_token):
-    contract = compile_contract("contracts/gate/yang/gate_rebasing_tax.cairo")
+    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
     abbot = await users("abbot")
     tax_collector = await users("tax collector")
 

@@ -2,8 +2,8 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
-from contracts.gate.yang.library import Gate
-from contracts.gate.yang.library_external import (
+from contracts.gate.rebasing_yang.library import Gate
+from contracts.gate.rebasing_yang.library_external import (
     get_shrine,
     get_asset,
     get_live,
