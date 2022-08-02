@@ -103,10 +103,11 @@ func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
         return ()
     end
 
-    # Charge tax on the taxable amount
     # Get asset and gate addresses
     let (asset_address) = Gate.get_asset()
     let (gate_address) = get_contract_address()
+
+    # Charge tax on the taxable amount
     let taxable_wad = after_balance_wad - before_balance_wad
     GateTax.levy(asset_address, gate_address, taxable_wad)
 
