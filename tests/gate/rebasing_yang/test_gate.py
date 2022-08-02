@@ -888,4 +888,64 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax, users):
         await abbot.send_tx(gate.contract_address, "set_tax_collector", [ZERO_ADDRESS])
 
 
-# TODO Add tests for `levy` once specific implementations of `compound` are ready.
+@pytest.mark.parametrize("gate", ["gate_rebasing_tax"], indirect=["gate"])
+@pytest.mark.asyncio
+async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposit, collect_gas_cost):
+    # `rebase` fixture simulates an autocompounding
+    abbot = await users("abbot")
+    tax_collector = await users("tax collector")
+    trove_1_owner = await users("aura user 1")
+
+    # Get balances before levy
+    before_tax_collector_bal = from_uint(
+        (await rebasing_token.balanceOf(tax_collector.address).invoke()).result.balance
+    )
+    before_gate_bal = (await gate.get_total_assets().invoke()).result.wad
+
+    # Update Gate's balance and charge tax
+    levy = await abbot.send_tx(gate.contract_address, "levy", [])
+
+    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
+    # 1 key updated for Gate (`gate_last_asset_balance_storage`)
+    collect_gas_cost("gate/levy", levy, 3, 2)
+
+    # Check Gate's managed assets and balance
+    after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
+    assert after_gate_bal > before_gate_bal
+    assert after_gate_bal == before_gate_bal * COMPOUND_MULTIPLIER - FIRST_TAX_AMT
+
+    # Check that user's redeemable balance has increased
+    user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
+    expected_user_assets = (await gate.preview_redeem(user_shares).invoke()).result.wad
+    assert expected_user_assets == after_gate_bal
+
+    # Check exchange rate
+    exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+    expected_exchange_rate = int(after_gate_bal / from_wad(user_shares))
+    assert exchange_rate == expected_exchange_rate
+
+    # Check event emitted
+    assert_event_emitted(
+        levy,
+        gate.contract_address,
+        "TaxLevied",
+        [FIRST_TAX_AMT],
+    )
+
+    # Check tax collector has received tax
+    after_tax_collector_bal = from_uint((await rebasing_token.balanceOf(tax_collector.address).invoke()).result.balance)
+    assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
+
+    # Check balances before redeem
+    before_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
+
+    # Redeem
+    redeem = await abbot.send_tx(
+        gate.contract_address,
+        "redeem",
+        [trove_1_owner.address, TROVE_1, user_shares],
+    )
+
+    # Get balances after redeem
+    after_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
+    assert after_user_bal == before_user_bal + expected_user_assets
