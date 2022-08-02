@@ -270,9 +270,8 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, rebasing_token, gat
     aura_user = await users("aura user")
 
     # Check vault asset balance
-    total_bal = from_uint((await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance)
-    total_assets = (await gate.get_total_assets().invoke()).result.wad
-    assert total_bal == total_assets == FIRST_DEPOSIT_AMT
+    total_bal = (await gate.get_total_assets().invoke()).result.wad
+    assert total_bal == FIRST_DEPOSIT_AMT
 
     # Check vault shares balance
     total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -288,7 +287,7 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, rebasing_token, gat
         gate_deposit,
         gate.contract_address,
         "Deposit",
-        [aura_user.address, TROVE_1, total_assets, user_shares],
+        [aura_user.address, TROVE_1, total_bal, user_shares],
     )
 
 
@@ -315,10 +314,9 @@ async def test_gate_subsequent_deposit_with_rebase(users, shrine_authed, gate, r
     )
 
     # Check gate asset balance
-    after_total_bal = from_uint((await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance)
     total_assets = (await gate.get_total_assets().invoke()).result.wad
     expected_bal = INITIAL_AMT + FIRST_REBASE_AMT
-    assert after_total_bal == total_assets == expected_bal
+    assert total_assets == expected_bal
 
     # Check vault shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -345,10 +343,9 @@ async def test_gate_subsequent_unique_deposit_before_rebase(
     aura_user = await users("aura user 2")
 
     # Check gate asset balance
-    after_total_bal = from_uint((await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance)
-    total_assets = (await gate.get_total_assets().invoke()).result.wad
+    after_total_bal = (await gate.get_total_assets().invoke()).result.wad
     expected_bal = FIRST_DEPOSIT_AMT * 2
-    assert after_total_bal == total_assets == expected_bal
+    assert after_total_bal == expected_bal
 
     # Check vault shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -376,10 +373,9 @@ async def test_gate_subsequent_unique_deposit_after_rebase(
     aura_user = await users("aura user 2")
 
     # Check gate asset balance
-    after_total_bal = from_uint((await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance)
-    total_assets = (await gate.get_total_assets().invoke()).result.wad
+    after_total_bal = (await gate.get_total_assets().invoke()).result.wad
     expected_bal = FIRST_DEPOSIT_AMT * 2 + FIRST_REBASE_AMT
-    assert after_total_bal == total_assets == expected_bal
+    assert after_total_bal == expected_bal
 
     # Calculate expected shares
     expected_shares = get_shares_from_assets(FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT, FIRST_DEPOSIT_AMT)
@@ -426,10 +422,10 @@ async def test_gate_redeem_before_rebase(users, shrine_authed, gate, rebasing_to
 
     # Fetch post-redemption balances
     after_user_balance = (await rebasing_token.balanceOf(aura_user.address).invoke()).result.balance
-    after_gate_balance = (await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance
+    after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
     assert from_uint(after_user_balance) == INITIAL_AMT
-    assert from_uint(after_gate_balance) == 0
+    assert after_gate_balance == 0
 
     # Fetch post-redemption shares
     after_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
@@ -468,10 +464,10 @@ async def test_gate_redeem_after_rebase_pass(users, shrine_authed, gate, rebasin
 
     # Fetch post-redemption balances
     after_user_balance = (await rebasing_token.balanceOf(aura_user.address).invoke()).result.balance
-    after_gate_balance = (await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance
+    after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
     expected_user_balance = INITIAL_AMT + FIRST_REBASE_AMT
     assert from_uint(after_user_balance) == expected_user_balance
-    assert from_uint(after_gate_balance) == 0
+    assert after_gate_balance == 0
 
     # Fetch post-redemption shares
     after_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
@@ -671,7 +667,7 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
     redeem_amt = to_wad(5)
 
     before_user_balance = from_uint((await rebasing_token.balanceOf(aura_user.address).invoke()).result.balance)
-    before_gate_balance = from_uint((await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance)
+    before_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
     before_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     before_gate_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -681,7 +677,7 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
     await abbot.send_tx(gate.contract_address, "redeem", [aura_user.address, TROVE_1, redeem_amt])
 
     after_user_balance = from_uint((await rebasing_token.balanceOf(aura_user.address).invoke()).result.balance)
-    after_gate_balance = from_uint((await rebasing_token.balanceOf(gate.contract_address).invoke()).result.balance)
+    after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
     after_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     after_gate_shares = (await gate.get_total_yang().invoke()).result.wad
