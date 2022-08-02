@@ -102,7 +102,7 @@ async def gate_rebasing_tax(starknet_func_scope, users, shrine, rebasing_token) 
     abbot = await users("abbot")
     await admin.send_tx(gate.contract_address, "authorize", [abbot.address])
 
-    yield gate
+    return gate
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ async def gate_rebasing(starknet_func_scope, users, shrine, rebasing_token) -> S
     abbot = await users("abbot")
     await admin.send_tx(gate.contract_address, "authorize", [abbot.address])
 
-    yield gate
+    return gate
 
 
 @pytest.fixture
@@ -144,7 +144,7 @@ async def shrine_authed(users, shrine, gate, rebasing_token) -> StarknetContract
         [rebasing_token.contract_address, to_wad(1000), to_ray(Decimal("0.8")), to_wad(1000)],
     )
 
-    yield shrine
+    return shrine
 
 
 @pytest.fixture
@@ -157,7 +157,7 @@ async def gate_deposit(users, shrine_authed, gate, rebasing_token) -> StarknetTr
 
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [aura_user.address, TROVE_1, FIRST_DEPOSIT_AMT])
-    yield deposit
+    return deposit
 
 
 @pytest.fixture
@@ -170,7 +170,7 @@ async def gate_deposit_alt(users, gate, rebasing_token, gate_deposit) -> Starkne
 
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [aura_user.address, TROVE_2, FIRST_DEPOSIT_AMT])
-    yield deposit
+    return deposit
 
 
 @pytest.fixture
@@ -185,7 +185,7 @@ async def gate_deposit_alt_with_rebase(
 
     # Call deposit
     deposit = await abbot.send_tx(gate.contract_address, "deposit", [aura_user.address, TROVE_2, FIRST_DEPOSIT_AMT])
-    yield deposit
+    return deposit
 
 
 @pytest.fixture
@@ -198,7 +198,7 @@ async def rebase(users, gate, rebasing_token, gate_deposit) -> StarknetTransacti
     tx = await aura_user.send_tx(
         rebasing_token.contract_address, "mint", [gate.contract_address, *FIRST_REBASE_AMT_UINT]
     )
-    yield tx
+    return tx
 
 
 @pytest.fixture

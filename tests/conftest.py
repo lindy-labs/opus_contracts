@@ -244,4 +244,4 @@ async def rebasing_token(users, tokens) -> StarknetContract:
 
     user2 = await users("aura user 2")
     await user2.send_tx(rebasing_token.contract_address, "mint", [user2.address, *(INITIAL_AMT, 0)])
-    yield rebasing_token
+    return rebasing_token
