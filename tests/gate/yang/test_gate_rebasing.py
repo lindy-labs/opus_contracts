@@ -24,7 +24,7 @@ from tests.utils import (
 # Constants
 #
 
-CUSTOM_ERROR_MARGIN = Decimal("10e18")
+CUSTOM_ERROR_MARGIN = Decimal("10e-18")
 
 #
 # Helper functions
@@ -601,7 +601,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     after_total_bal = (await gate.get_total_assets().invoke()).result.wad
 
     # Using `assert_equalish` due to rounding error
-    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal - FIRST_DEPOSIT_AMT), Decimal("10e-18"))
+    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal - FIRST_DEPOSIT_AMT), CUSTOM_ERROR_MARGIN)
 
     # Check vault shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -614,7 +614,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_2_owner.address).invoke()).result.balance)
 
     # Using `assert_equalish` due to rounding error
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal + FIRST_DEPOSIT_AMT), Decimal("10e-18"))
+    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal + FIRST_DEPOSIT_AMT), CUSTOM_ERROR_MARGIN)
 
     # Check exchange rate
     after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -631,7 +631,7 @@ async def test_gate_multi_user_redeem_with_rebase(
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal - expected_assets), Decimal("10e-18"))
+    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal - expected_assets), CUSTOM_ERROR_MARGIN)
 
     # Check vault shares balance
     end_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -642,7 +642,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     assert after_user_shares == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal + expected_assets), Decimal("10e-18"))
+    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal + expected_assets), CUSTOM_ERROR_MARGIN)
 
     # Check exchange rate
     end_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
