@@ -239,8 +239,8 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 @pytest.fixture
 async def rebasing_token(users, tokens) -> StarknetContract:
-    user = await users("aura user")
-    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user.address)
+    user1 = await users("aura user 1")
+    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user1.address)
 
     user2 = await users("aura user 2")
     await user2.send_tx(rebasing_token.contract_address, "mint", [user2.address, *(INITIAL_AMT, 0)])

@@ -132,6 +132,9 @@ async def gate_rebasing(starknet_func_scope, users, shrine, rebasing_token) -> S
 
 @pytest.fixture
 async def shrine_authed(users, shrine, gate, rebasing_token) -> StarknetContract:
+    """
+    Add Gate as an authorized address of Shrine.
+    """
     shrine_owner = await users("shrine owner")
 
     # Add Gate as authorized
@@ -149,7 +152,10 @@ async def shrine_authed(users, shrine, gate, rebasing_token) -> StarknetContract
 
 @pytest.fixture
 async def gate_deposit(users, shrine_authed, gate, rebasing_token) -> StarknetTransactionExecutionInfo:
-    aura_user = await users("aura user")
+    """
+    Deposit by user 1.
+    """
+    aura_user = await users("aura user 1")
     abbot = await users("abbot")
 
     # Approve Gate to transfer tokens from user
@@ -162,6 +168,9 @@ async def gate_deposit(users, shrine_authed, gate, rebasing_token) -> StarknetTr
 
 @pytest.fixture
 async def gate_deposit_alt(users, gate, rebasing_token, gate_deposit) -> StarknetTransactionExecutionInfo:
+    """
+    Deposit by user 2 after user 1 has deposited but before rebase.
+    """
     aura_user = await users("aura user 2")
     abbot = await users("abbot")
 
@@ -177,6 +186,9 @@ async def gate_deposit_alt(users, gate, rebasing_token, gate_deposit) -> Starkne
 async def gate_deposit_alt_with_rebase(
     users, gate, rebasing_token, gate_deposit, rebase
 ) -> StarknetTransactionExecutionInfo:
+    """
+    Deposit by user 2 after user 1 has deposited and after rebase.
+    """
     aura_user = await users("aura user 2")
     abbot = await users("abbot")
 
@@ -193,7 +205,7 @@ async def rebase(users, gate, rebasing_token, gate_deposit) -> StarknetTransacti
     """
     Rebase the gate contract's balance by adding 10%
     """
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     tx = await aura_user.send_tx(
         rebasing_token.contract_address, "mint", [gate.contract_address, *FIRST_REBASE_AMT_UINT]
@@ -267,7 +279,7 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, rebasing_token, gat
     # at the end of the transaction.
     collect_gas_cost("gate/deposit", gate_deposit, 4, 2)
 
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Check vault asset balance
     total_bal = (await gate.get_total_assets().invoke()).result.wad
@@ -295,7 +307,7 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, rebasing_token, gat
 @pytest.mark.asyncio
 async def test_gate_subsequent_deposit_with_rebase(users, shrine_authed, gate, rebasing_token, rebase):
     abbot = await users("abbot")
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Check expected shares
     before_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -411,7 +423,7 @@ async def test_gate_redeem_before_rebase(users, shrine_authed, gate, rebasing_to
     collect_gas_cost("gate/redeem", gate_deposit, 4, 2)
 
     abbot = await users("abbot")
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Redeem
     redeem = await abbot.send_tx(
@@ -424,6 +436,7 @@ async def test_gate_redeem_before_rebase(users, shrine_authed, gate, rebasing_to
     after_user_balance = (await rebasing_token.balanceOf(aura_user.address).invoke()).result.balance
     after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
+    # Assert user receives initial deposit
     assert from_uint(after_user_balance) == INITIAL_AMT
     assert after_gate_balance == 0
 
@@ -453,7 +466,7 @@ async def test_gate_redeem_after_rebase_pass(users, shrine_authed, gate, rebasin
     Redeem all shares after rebase.
     """
     abbot = await users("abbot")
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Redeem
     redeem = await abbot.send_tx(
@@ -465,6 +478,8 @@ async def test_gate_redeem_after_rebase_pass(users, shrine_authed, gate, rebasin
     # Fetch post-redemption balances
     after_user_balance = (await rebasing_token.balanceOf(aura_user.address).invoke()).result.balance
     after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
+
+    # Assert user receives initial deposit and rebased amount
     expected_user_balance = INITIAL_AMT + FIRST_REBASE_AMT
     assert from_uint(after_user_balance) == expected_user_balance
     assert after_gate_balance == 0
@@ -493,11 +508,14 @@ async def test_gate_redeem_after_rebase_pass(users, shrine_authed, gate, rebasin
 @pytest.mark.asyncio
 async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate, rebasing_token, gate_deposit_alt):
     abbot = await users("abbot")
-    trove_1_owner = await users("aura user")
+    trove_1_owner = await users("aura user 1")
     trove_2_owner = await users("aura user 2")
 
     # Get initial exchange rate
     start_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
+
+    # Get initial balance for trove 2
+    trove_2_shares = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).invoke()).result.wad
 
     # Check gate asset balance
     start_total_bal = (await gate.get_total_assets().invoke()).result.wad
@@ -506,12 +524,15 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
 
     # Redeem trove 2
     trove_2_redeem = await abbot.send_tx(
-        gate.contract_address, "redeem", [trove_2_owner.address, TROVE_2, FIRST_DEPOSIT_AMT]
+        gate.contract_address, "redeem", [trove_2_owner.address, TROVE_2, trove_2_shares]
     )
+
+    # Calculate expected assets
+    expected_assets = get_assets_from_shares(start_total_shares, start_total_bal, trove_2_shares)
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert after_total_bal == start_total_bal - FIRST_DEPOSIT_AMT
+    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check vault shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -522,7 +543,7 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     assert after_user_shares == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_2_owner.address).invoke()).result.balance)
-    assert after_user_bal == start_user_bal + FIRST_DEPOSIT_AMT
+    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check exchange rate
     after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -539,14 +560,20 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     # Get user balance
     start_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
 
+    # Get initial balance for trove 2
+    trove_1_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
+
     # Redeem trove 1
     trove_1_redeem = await abbot.send_tx(
-        gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT]
+        gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, trove_1_shares]
     )
+
+    # Calculate expected assets
+    expected_assets = get_assets_from_shares(after_total_shares, after_total_bal, trove_1_shares)
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert end_total_bal == after_total_bal - FIRST_DEPOSIT_AMT == 0
+    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check vault shares balance
     end_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -557,7 +584,7 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     assert after_user_shares == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
-    assert after_user_bal == start_user_bal + FIRST_DEPOSIT_AMT
+    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check exchange rate
     end_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -578,7 +605,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     users, shrine_authed, gate, rebasing_token, gate_deposit_alt_with_rebase
 ):
     abbot = await users("abbot")
-    trove_1_owner = await users("aura user")
+    trove_1_owner = await users("aura user 1")
     trove_2_owner = await users("aura user 2")
 
     # Get initial exchange rate
@@ -588,20 +615,23 @@ async def test_gate_multi_user_redeem_with_rebase(
     start_total_bal = (await gate.get_total_assets().invoke()).result.wad
     start_total_shares = (await gate.get_total_yang().invoke()).result.wad
     start_user_bal = from_uint((await rebasing_token.balanceOf(trove_2_owner.address).invoke()).result.balance)
-    start_user_shares = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).invoke()).result.wad
+    trove_2_shares = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).invoke()).result.wad
 
     # Redeem trove 2
-    await abbot.send_tx(gate.contract_address, "redeem", [trove_2_owner.address, TROVE_2, start_user_shares])
+    await abbot.send_tx(gate.contract_address, "redeem", [trove_2_owner.address, TROVE_2, trove_2_shares])
+
+    # Calculate expected assets
+    expected_assets = get_assets_from_shares(start_total_shares, start_total_bal, trove_2_shares)
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().invoke()).result.wad
 
     # Using `assert_equalish` due to rounding error
-    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal - FIRST_DEPOSIT_AMT), CUSTOM_ERROR_MARGIN)
+    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check vault shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
-    assert after_total_shares == start_total_shares - start_user_shares
+    assert after_total_shares == start_total_shares - trove_2_shares
 
     # Check user's shares
     after_user_shares = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).invoke()).result.wad
@@ -610,7 +640,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_2_owner.address).invoke()).result.balance)
 
     # Using `assert_equalish` due to rounding error
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal + FIRST_DEPOSIT_AMT), CUSTOM_ERROR_MARGIN)
+    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check exchange rate
     after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -618,16 +648,17 @@ async def test_gate_multi_user_redeem_with_rebase(
 
     # Get user balance
     start_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
+    trove_1_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
 
-    # Expected assets
-    expected_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
+    # Calculate expected assets
+    expected_assets = get_assets_from_shares(after_total_shares, after_total_bal, trove_1_shares)
 
     # Redeem trove 1
-    await abbot.send_tx(gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT])
+    await abbot.send_tx(gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, trove_1_shares])
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal - expected_assets), CUSTOM_ERROR_MARGIN)
+    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check vault shares balance
     end_total_shares = (await gate.get_total_yang().invoke()).result.wad
@@ -638,7 +669,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     assert after_user_shares == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal + expected_assets), CUSTOM_ERROR_MARGIN)
+    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
 
     # Check exchange rate
     end_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -649,7 +680,7 @@ async def test_gate_multi_user_redeem_with_rebase(
 @pytest.mark.asyncio
 async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, rebase):
     abbot = await users("abbot")
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Kill
     await abbot.send_tx(gate.contract_address, "kill", [])
@@ -692,7 +723,7 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, rebasing_token):
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
     abbot = await users("abbot")
 
     # Approve Gate to transfer tokens from user
@@ -706,7 +737,7 @@ async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, rebasi
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_redeem_insufficient_fail(users, shrine_authed, gate, rebasing_token, gate_deposit):
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
     abbot = await users("abbot")
 
     # Call redeem with more gate shares than user has
@@ -722,7 +753,7 @@ async def test_gate_redeem_insufficient_fail(users, shrine_authed, gate, rebasin
 @pytest.mark.asyncio
 async def test_unauthorized_deposit(users, rebasing_token, gate):
     """Test third-party initiated"""
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
     bad_guy = await users("bad guy")
 
     # Seed unauthorized address with asset
@@ -742,7 +773,7 @@ async def test_unauthorized_deposit(users, rebasing_token, gate):
 @pytest.mark.asyncio
 async def test_unauthorized_redeem(users, shrine_authed, gate, rebasing_token, gate_deposit):
     """Test user-initiated"""
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Sanity check
     bal = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
@@ -761,7 +792,7 @@ async def test_unauthorized_redeem(users, shrine_authed, gate, rebasing_token, g
 @pytest.mark.asyncio
 async def test_zero_deposit_redeem(users, shrine_authed, gate, rebasing_token, gate_deposit, fn):
     abbot = await users("abbot")
-    aura_user = await users("aura user")
+    aura_user = await users("aura user 1")
 
     # Get balance before
     before_yang_bal = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
