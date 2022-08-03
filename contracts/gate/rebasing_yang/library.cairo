@@ -6,7 +6,6 @@ from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.interfaces import IShrine
-from contracts.lib.openzeppelin.security.reentrancyguard import ReentrancyGuard
 from contracts.shared.interfaces import IERC20
 from contracts.shared.types import Yang
 from contracts.shared.wad_ray import WadRay
@@ -223,14 +222,13 @@ namespace Gate:
         # Transfer asset from `user_address` to Gate
         let (assets_uint) = WadRay.to_uint(assets_wad)
         with_attr error_message("Gate: Transfer of asset failed"):
-            ReentrancyGuard._start()
+            # TODO: Revisit whether reentrancy guard should be added here
             let (success) = IERC20.transferFrom(
                 contract_address=asset_address,
                 sender=user_address,
                 recipient=gate_address,
                 amount=assets_uint,
             )
-            ReentrancyGuard._end()
             assert success = TRUE
         end
 
@@ -263,11 +261,10 @@ namespace Gate:
         let (assets_uint : Uint256) = WadRay.to_uint(assets_wad)
 
         with_attr error_message("Gate: Transfer of asset failed"):
-            ReentrancyGuard._start()
+            # TODO: Revisit whether reentrancy guard should be added here
             let (success) = IERC20.transfer(
                 contract_address=asset_address, recipient=user_address, amount=assets_uint
             )
-            ReentrancyGuard._end()
             assert success = TRUE
         end
 
