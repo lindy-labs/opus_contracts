@@ -103,3 +103,48 @@ namespace IShrine:
     func is_within_limits(trove_id) -> (bool):
     end
 end
+
+@contract_interface
+namespace IGate:
+    #
+    # getters
+    #
+    func get_live() -> (bool):
+    end
+
+    func get_shrine() -> (address):
+    end
+
+    func get_asset() -> (address):
+    end
+
+    #
+    # external
+    #
+    func deposit(user_address, trove_id, assets_wad) -> (wad):
+    end
+
+    func redeem(user_address, trove_id, shares_wad) -> (wad):
+    end
+
+    func kill():
+    end
+
+    #
+    # view
+    #
+    func get_total_assets() -> (wad):
+    end
+
+    func get_total_yang() -> (wad):
+    end
+
+    func get_exchange_rate() -> (wad):
+    end
+
+    func preview_deposit(assets_wad) -> (wad):
+    end
+
+    func preview_redeem(shares_wad) -> (wad):
+    end
+end
