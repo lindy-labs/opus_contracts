@@ -924,17 +924,18 @@ async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposi
     expected_exchange_rate = int(after_gate_bal / from_wad(user_shares))
     assert exchange_rate == expected_exchange_rate
 
+    # Check tax collector has received tax
+    after_tax_collector_bal = from_uint((await rebasing_token.balanceOf(tax_collector.address).invoke()).result.balance)
+    assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
+
     # Check event emitted
+    # Event should be emitted if tax is successfully transferred to tax collector.
     assert_event_emitted(
         levy,
         gate.contract_address,
         "TaxLevied",
         [FIRST_TAX_AMT],
     )
-
-    # Check tax collector has received tax
-    after_tax_collector_bal = from_uint((await rebasing_token.balanceOf(tax_collector.address).invoke()).result.balance)
-    assert after_tax_collector_bal == before_tax_collector_bal + FIRST_TAX_AMT
 
     # Check balances before redeem
     before_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)

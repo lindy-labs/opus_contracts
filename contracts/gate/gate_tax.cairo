@@ -1,5 +1,6 @@
 %lang starknet
 
+from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
@@ -124,12 +125,14 @@ namespace GateTax:
         # Transfer fees
         let (tax_collector) = gate_tax_collector_storage.read()
         let (chargeable_uint256 : Uint256) = WadRay.to_uint(chargeable_wad)
-        IERC20.transfer(
+        let (success) = IERC20.transfer(
             contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
         )
 
         # Events
-        TaxLevied.emit(chargeable_wad)
+        if success == TRUE:
+            TaxLevied.emit(chargeable_wad)
+        end
 
         return ()
     end
