@@ -579,7 +579,7 @@ async def test_shrine_forge_pass(shrine, shrine_forge):
         [TROVE_1, FEED_LEN - 1, FORGE_AMT],
     )
 
-    system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
+    system_debt = (await shrine.get_debt().invoke()).result.wad
     assert system_debt == FORGE_AMT
 
     trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
@@ -614,7 +614,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
         [TROVE_1, FEED_LEN, 0],
     )
 
-    system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
+    system_debt = (await shrine.get_debt().invoke()).result.wad
     assert system_debt == 0
 
     trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
@@ -682,7 +682,7 @@ async def test_charge(users, shrine, estimate, method, calldata):
     tx = await shrine_owner.send_tx(shrine.contract_address, method, calldata)
 
     # Get updated system info
-    new_system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
+    new_system_debt = (await shrine.get_debt().invoke()).result.wad
     assert new_system_debt == expected_system_debt
 
     # Get updated trove information for Trove ID 1

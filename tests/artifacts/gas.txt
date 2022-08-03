@@ -10,3 +10,9 @@ shrine/deposit: 5295.0
 shrine/withdraw: 5310.4
 shrine/forge: 3400.9
 shrine/move_yang: 7720.4
+shrine/deposit: 5288.6
+shrine/withdraw: 5302.2
+shrine/deposit: 5288.6
+shrine/withdraw: 5302.0
+shrine/forge: 3372.3
+shrine/move_yang: 7666.4
