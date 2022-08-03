@@ -142,7 +142,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         return (0)
     end
 
-    # Get asset and gate addresses
+    # Get asset address
     let (asset_address) = get_asset()
 
     # Update Shrine
