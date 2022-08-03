@@ -11,6 +11,7 @@ from tests.utils import (
     FALSE,
     MAX_UINT256,
     TRUE,
+    ZERO_ADDRESS,
     assert_equalish,
     assert_event_emitted,
     compile_contract,
@@ -31,7 +32,7 @@ CUSTOM_ERROR_MARGIN = Decimal("10e-18")
 #
 
 
-def get_shares_from_assets(total_shares, total_assets, assets_amt):
+def get_shares_from_assets(total_shares: int, total_assets: int, assets_amt: int) -> Decimal:
     """
     Helper function to calculate the number of shares given a deposit of assets.
 
@@ -51,7 +52,7 @@ def get_shares_from_assets(total_shares, total_assets, assets_amt):
     return from_wad(total_shares) * from_wad(assets_amt) / from_wad(total_assets)
 
 
-def get_assets_from_shares(total_shares, total_assets, shares_amt):
+def get_assets_from_shares(total_shares: int, total_assets: int, shares_amt: int) -> Decimal:
     """
     Helper function to calculate the number of assets to be deposited to issue the
     given value of shares.
@@ -214,7 +215,7 @@ async def rebase(users, gate, rebasing_token, gate_deposit) -> StarknetTransacti
 
 
 @pytest.fixture
-def gate(request):
+def gate(request) -> StarknetContract:
     """
     Wrapper fixture to pass the non-taxable and taxable instances of Gate module
     to `pytest.parametrize`.
@@ -281,11 +282,11 @@ async def test_gate_deposit_pass(users, shrine_authed, gate, rebasing_token, gat
 
     trove_1_owner = await users("trove 1 owner")
 
-    # Check vault asset balance
+    # Check gate asset balance
     total_bal = (await gate.get_total_assets().invoke()).result.wad
     assert total_bal == FIRST_DEPOSIT_AMT
 
-    # Check vault shares balance
+    # Check gate shares balance
     total_shares = (await gate.get_total_yang().invoke()).result.wad
     user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     assert total_shares == user_shares == FIRST_DEPOSIT_AMT
@@ -309,10 +310,11 @@ async def test_gate_subsequent_deposit_with_rebase(users, shrine_authed, gate, r
     abbot = await users("abbot")
     trove_1_owner = await users("trove 1 owner")
 
-    # Check expected shares
+    # Get gate asset and shares balance
     before_total_shares = (await gate.get_total_yang().invoke()).result.wad
     before_total_assets = (await gate.get_total_assets().invoke()).result.wad
 
+    # Calculate expected shares
     expected_shares = get_shares_from_assets(before_total_shares, before_total_assets, SECOND_DEPOSIT_AMT)
 
     # Get user's shares before subsequent deposit
@@ -359,7 +361,7 @@ async def test_gate_subsequent_unique_deposit_before_rebase(
     expected_bal = FIRST_DEPOSIT_AMT * 2
     assert after_total_bal == expected_bal
 
-    # Check vault shares balance
+    # Check gate shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
     assert after_total_shares == after_total_bal
 
@@ -392,7 +394,7 @@ async def test_gate_subsequent_unique_deposit_after_rebase(
     # Calculate expected shares
     expected_shares = get_shares_from_assets(FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT, FIRST_DEPOSIT_AMT)
 
-    # Check vault shares balance
+    # Check gate shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
     assert_equalish(from_wad(after_total_shares), from_wad(FIRST_DEPOSIT_AMT) + expected_shares, CUSTOM_ERROR_MARGIN)
 
@@ -534,7 +536,7 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     after_total_bal = (await gate.get_total_assets().invoke()).result.wad
     assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
-    # Check vault shares balance
+    # Check gate shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
     assert after_total_shares == start_total_shares - FIRST_DEPOSIT_AMT
 
@@ -575,7 +577,7 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
     assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
-    # Check vault shares balance
+    # Check gate shares balance
     end_total_shares = (await gate.get_total_yang().invoke()).result.wad
     assert end_total_shares == 0
 
@@ -629,7 +631,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     # Using `assert_equalish` due to rounding error
     assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
-    # Check vault shares balance
+    # Check gate shares balance
     after_total_shares = (await gate.get_total_yang().invoke()).result.wad
     assert after_total_shares == start_total_shares - trove_2_shares
 
@@ -660,7 +662,7 @@ async def test_gate_multi_user_redeem_with_rebase(
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
     assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
 
-    # Check vault shares balance
+    # Check gate shares balance
     end_total_shares = (await gate.get_total_yang().invoke()).result.wad
     assert end_total_shares == 0
 
@@ -697,6 +699,7 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
     # Assert redeem succeeds
     redeem_amt = to_wad(5)
 
+    # Get user's and gate's asset and shares balances before redeem
     before_user_balance = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
     before_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
@@ -705,14 +708,17 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
 
     expected_assets = get_assets_from_shares(before_gate_shares, before_gate_balance, redeem_amt)
 
+    # Redeem
     await abbot.send_tx(gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, redeem_amt])
 
+    # Get user's and gate's asset and share balances after redeem
     after_user_balance = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
     after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
     after_user_shares = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     after_gate_shares = (await gate.get_total_yang().invoke()).result.wad
 
+    # Assert redemption is successful
     assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets, CUSTOM_ERROR_MARGIN)
     assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets, CUSTOM_ERROR_MARGIN)
 
@@ -726,7 +732,7 @@ async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, rebasi
     trove_1_owner = await users("trove 1 owner")
     abbot = await users("abbot")
 
-    # Approve Gate to transfer tokens from user
+    # Approve Gate to transfer asset from user
     await trove_1_owner.send_tx(rebasing_token.contract_address, "approve", [gate.contract_address, *MAX_UINT256])
 
     # Call deposit with more asset than user has
@@ -883,7 +889,6 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax, users):
         await bad_guy.send_tx(gate.contract_address, "set_tax_collector", [bad_guy.address])
 
     # Fails due to zero address
-    ZERO_ADDRESS = 0
     with pytest.raises(StarkException, match="Gate: Invalid tax collector address"):
         await abbot.send_tx(gate.contract_address, "set_tax_collector", [ZERO_ADDRESS])
 
