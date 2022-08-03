@@ -24,7 +24,7 @@ func get_total_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_chec
     return Gate.get_total_yang()
 end
 
-# Returns the amount of underlying assets represented by one share in the pool
+# Returns the amount of underlying assets represented by one share in the Gate
 @view
 func get_exchange_rate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     wad

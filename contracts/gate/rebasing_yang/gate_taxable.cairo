@@ -3,8 +3,6 @@
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math_cmp import is_le
-from starkware.cairo.common.uint256 import Uint256
-from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.gate.gate_tax import GateTax
 from contracts.gate.gate_tax_external import get_tax, get_tax_collector
@@ -117,13 +115,13 @@ end
 func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
 
-    # Check last balance of underlying asset against latest balance
+    # Get asset balance before compound
     let (before_balance_wad) = Gate.get_total_assets()
 
     # Autocompound
     compound()
 
-    # Get latest asset balance
+    # Get asset balance after compound
     let (after_balance_wad) = Gate.get_total_assets()
 
     # Assumption: Balance cannot decrease without any user action
@@ -132,7 +130,7 @@ func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
         return ()
     end
 
-    # Get asset and gate addresses
+    # Get asset address
     let (asset_address) = Gate.get_asset()
 
     # Charge tax on the taxable amount
