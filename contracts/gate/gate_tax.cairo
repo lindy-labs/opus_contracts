@@ -106,7 +106,7 @@ namespace GateTax:
 
     # Charge the tax and transfer to the tax collector
     func levy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        asset_address, gate_address, taxable_wad
+        asset_address, taxable_wad
     ):
         alloc_locals
 
@@ -132,6 +132,12 @@ namespace GateTax:
         # Events
         if success == TRUE:
             TaxLevied.emit(chargeable_wad)
+
+            tempvar syscall_ptr = syscall_ptr
+            tempvar range_check_ptr = range_check_ptr
+        else:
+            tempvar syscall_ptr = syscall_ptr
+            tempvar range_check_ptr = range_check_ptr
         end
 
         return ()
