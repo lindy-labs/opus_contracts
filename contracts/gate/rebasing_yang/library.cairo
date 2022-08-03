@@ -1,6 +1,6 @@
 %lang starknet
 
-from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
@@ -13,10 +13,6 @@ from contracts.shared.wad_ray import WadRay
 #
 # Events
 #
-
-@event
-func Killed():
-end
 
 @event
 func Deposit(user, trove_id, assets_wad, shares_wad):
@@ -38,10 +34,6 @@ end
 func gate_asset_storage() -> (address):
 end
 
-@storage_var
-func gate_live_storage() -> (bool):
-end
-
 namespace Gate:
     #
     # Constructor
@@ -52,7 +44,6 @@ namespace Gate:
     ):
         gate_shrine_storage.write(shrine_address)
         gate_asset_storage.write(asset_address)
-        gate_live_storage.write(TRUE)
         return ()
     end
 
@@ -68,10 +59,6 @@ namespace Gate:
         address
     ):
         return gate_asset_storage.read()
-    end
-
-    func get_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool):
-        return gate_live_storage.read()
     end
 
     func get_total_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
@@ -116,19 +103,10 @@ namespace Gate:
     # Core functions
     #
 
-    func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-        gate_live_storage.write(FALSE)
-        Killed.emit()
-        return ()
-    end
-
     func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         user_address, trove_id, assets
     ) -> (wad):
         alloc_locals
-
-        # Assert live
-        assert_live()
 
         # Get asset and gate addresses
         let (asset_address) = get_asset()
@@ -156,15 +134,6 @@ namespace Gate:
     #
     # Internal
     #
-
-    func assert_live{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-        # Check system is live
-        let (live) = gate_live_storage.read()
-        with_attr error_message("Gate: Gate is not live"):
-            assert live = TRUE
-        end
-        return ()
-    end
 
     func convert_to_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         shares
