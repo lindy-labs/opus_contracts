@@ -4,6 +4,10 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.gate.rebasing_yang.library import Gate
 
+#
+# Getters
+#
+
 @view
 func get_shrine{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
     return Gate.get_shrine()
