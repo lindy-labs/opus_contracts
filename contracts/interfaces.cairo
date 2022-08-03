@@ -124,7 +124,7 @@ namespace IGate:
     func deposit(user_address, trove_id, assets_wad) -> (wad):
     end
 
-    func redeem(user_address, trove_id, shares_wad) -> (wad):
+    func withdraw(user_address, trove_id, yang_wad) -> (wad):
     end
 
     func kill():
@@ -145,6 +145,6 @@ namespace IGate:
     func preview_deposit(assets_wad) -> (wad):
     end
 
-    func preview_redeem(shares_wad) -> (wad):
+    func preview_withdraw(yang_wad) -> (wad):
     end
 end

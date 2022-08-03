@@ -40,12 +40,12 @@ end
 func preview_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assets_wad
 ) -> (wad):
-    return Gate.convert_to_shares(assets_wad)
+    return Gate.convert_to_yang(assets_wad)
 end
 
 @view
-func preview_redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shares_wad
+func preview_withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    yang_wad
 ) -> (wad):
-    return Gate.convert_to_assets(shares_wad)
+    return Gate.convert_to_assets(yang_wad)
 end

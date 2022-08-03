@@ -91,23 +91,23 @@ namespace Gate:
     #
 
     func convert_to_assets{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        shares
+        yang
     ) -> (wad):
         alloc_locals
 
         let (total_supply_wad) = get_total_yang()
 
         if total_supply_wad == 0:
-            return (shares)
+            return (yang)
         else:
             let (total_assets_wad) = get_total_assets()
-            let (product) = WadRay.wmul(shares, total_assets_wad)
+            let (product) = WadRay.wmul(yang, total_assets_wad)
             let (assets_wad) = WadRay.wunsigned_div_unchecked(product, total_supply_wad)
             return (assets_wad)
         end
     end
 
-    func convert_to_shares{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    func convert_to_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assets_wad
     ) -> (wad):
         alloc_locals
@@ -119,8 +119,8 @@ namespace Gate:
         else:
             let (product) = WadRay.wmul(assets_wad, total_supply_wad)
             let (total_assets_wad) = get_total_assets()
-            let (shares) = WadRay.wunsigned_div_unchecked(product, total_assets_wad)
-            return (shares)
+            let (yang) = WadRay.wunsigned_div_unchecked(product, total_assets_wad)
+            return (yang)
         end
     end
 end

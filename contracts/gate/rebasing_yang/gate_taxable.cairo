@@ -16,7 +16,7 @@ from contracts.gate.rebasing_yang.library_external import (
     get_total_yang,
     get_exchange_rate,
     preview_deposit,
-    preview_redeem,
+    preview_withdraw,
 )
 from contracts.interfaces import IShrine
 from contracts.lib.auth import Auth
@@ -29,11 +29,11 @@ from contracts.shared.wad_ray import WadRay
 #
 
 @event
-func Deposit(user, trove_id, assets_wad, shares_wad):
+func Deposit(user, trove_id, assets_wad, yang_wad):
 end
 
 @event
-func Redeem(user, trove_id, assets_wad, shares_wad):
+func Redeem(user, trove_id, assets_wad, yang_wad):
 end
 
 @event
@@ -112,8 +112,8 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Only Abbot can call
     Auth.assert_caller_authed()
 
-    let (shares_wad) = Gate.convert_to_shares(assets_wad)
-    if shares_wad == 0:
+    let (yang_wad) = Gate.convert_to_yang(assets_wad)
+    if yang_wad == 0:
         return (0)
     end
 
@@ -126,7 +126,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     IShrine.deposit(
         contract_address=shrine_address,
         yang_address=asset_address,
-        amount=shares_wad,
+        amount=yang_wad,
         trove_id=trove_id,
     )
 
@@ -143,21 +143,21 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert success = TRUE
     end
 
-    Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, shares_wad=shares_wad)
+    Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad)
 
-    return (shares_wad)
+    return (yang_wad)
 end
 
 @external
 func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, shares_wad
+    user_address, trove_id, yang_wad
 ) -> (wad):
     alloc_locals
 
     # Only Abbot can call
     Auth.assert_caller_authed()
 
-    let (assets_wad) = Gate.convert_to_assets(shares_wad)
+    let (assets_wad) = Gate.convert_to_assets(yang_wad)
     if assets_wad == 0:
         return (0)
     end
@@ -170,7 +170,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     IShrine.withdraw(
         contract_address=shrine_address,
         yang_address=asset_address,
-        amount=shares_wad,
+        amount=yang_wad,
         trove_id=trove_id,
     )
 
@@ -184,7 +184,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert success = TRUE
     end
 
-    Redeem.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, shares_wad=shares_wad)
+    Redeem.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad)
 
     return (assets_wad)
 end
