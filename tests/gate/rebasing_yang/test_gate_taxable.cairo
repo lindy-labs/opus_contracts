@@ -38,7 +38,7 @@ end
 # Constant
 #
 
-const REBASE_RATIO = 10 ** WadRay.RAY_PERCENT  # 10%
+const REBASE_RATIO = 10 * WadRay.RAY_PERCENT  # 10%
 
 #
 # Events
