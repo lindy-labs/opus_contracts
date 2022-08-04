@@ -4,7 +4,7 @@ import operator
 import pytest
 from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
-from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starknet.testing.starknet import Starknet, StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.utils import (
@@ -32,9 +32,9 @@ st_uint = st.integers(min_value=0, max_value=2 * 200)
 
 
 @pytest.fixture(scope="session")
-async def wad_ray(starknet) -> StarknetContract:
+async def wad_ray(starknet_session: Starknet) -> StarknetContract:
     contract = compile_contract("tests/shared/test_wad_ray.cairo")
-    wad_ray = await starknet.deploy(contract_class=contract, constructor_calldata=[])
+    wad_ray = await starknet_session.deploy(contract_class=contract, constructor_calldata=[])
     return wad_ray
 
 

@@ -12,6 +12,7 @@ import pytest
 from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 from numpy import exp
+from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.utils import assert_equalish, compile_contract, from_wad, signed_int_to_felt, to_wad
@@ -26,10 +27,10 @@ st_invalid_range2 = st.integers(min_value=to_wad(40) + 1, max_value=2**125)
 
 
 @pytest.fixture(scope="session")
-async def deploy_test_contract(starknet):
+async def deploy_test_contract(starknet_session: Starknet):
     test_contract = compile_contract("tests/lib/exp_contract.cairo")
 
-    contract = await starknet.deploy(contract_class=test_contract)
+    contract = await starknet_session.deploy(contract_class=test_contract)
 
     return contract
 

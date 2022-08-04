@@ -1,7 +1,7 @@
 from collections import namedtuple
 from decimal import Decimal
 from math import exp
-from typing import List
+from typing import List, Tuple
 
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
@@ -131,7 +131,9 @@ def compound(
     return new_debt
 
 
-def calculate_threshold_and_value(prices: List[int], amounts: List[int], thresholds: List[int]) -> (Decimal, Decimal):
+def calculate_threshold_and_value(
+    prices: List[int], amounts: List[int], thresholds: List[int]
+) -> Tuple[Decimal, Decimal]:
     """
     Helper function to calculate a trove's cumulative weighted threshold and value
 
@@ -264,8 +266,7 @@ async def shrine_withdraw(users, shrine, shrine_deposit) -> StarknetTransactionE
 
 
 @pytest.fixture
-async def update_feeds(starknet_func_scope, users, shrine, shrine_forge) -> List[Decimal]:
-    starknet = starknet_func_scope
+async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
     """
     Additional price feeds for yang 0 after `shrine_forge`
     """
@@ -352,8 +353,7 @@ async def estimate(shrine, update_feeds_with_trove2):
 
 
 @pytest.fixture(scope="function")
-async def update_feeds_intermittent(request, starknet_func_scope, users, shrine, shrine_forge) -> List[Decimal]:
-    starknet = starknet_func_scope
+async def update_feeds_intermittent(request, starknet, users, shrine, shrine_forge) -> List[Decimal]:
     """
     Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
 

@@ -79,21 +79,20 @@ def event_loop():
 
 
 @pytest.fixture(scope="session")
-async def starknet() -> Starknet:
+async def starknet_session() -> Starknet:
     starknet = await Starknet.empty()
     return starknet
 
 
 @pytest.fixture
-async def starknet_func_scope() -> Starknet:
+async def starknet() -> Starknet:
     starknet = await Starknet.empty()
     return starknet
 
 
 # TODO: figure out a good way how not to use magic string constants for common users
 @pytest.fixture
-def users(starknet_func_scope: Starknet) -> Callable[[str], Awaitable[Account]]:
-    starknet = starknet_func_scope
+def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     """
     A factory fixture that creates users.
 
@@ -117,9 +116,8 @@ def users(starknet_func_scope: Starknet) -> Callable[[str], Awaitable[Account]]:
 
 @pytest.fixture
 def tokens(
-    starknet_func_scope: Starknet,
+    starknet: Starknet,
 ) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
-    starknet = starknet_func_scope
     """
     A factory fixture that creates a mock ERC20 token.
 
@@ -149,16 +147,14 @@ def tokens(
 
 
 @pytest.fixture
-async def usda(starknet_func_scope, users) -> StarknetContract:
-    starknet = starknet_func_scope
+async def usda(starknet: Starknet, users) -> StarknetContract:
     owner = await users("usda owner")
     contract = compile_contract("contracts/USDa/USDa.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[owner.address])
 
 
 @pytest.fixture
-async def mrac_controller(starknet_func_scope) -> StarknetContract:
-    starknet = starknet_func_scope
+async def mrac_controller(starknet: Starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
 
@@ -169,8 +165,7 @@ async def mrac_controller(starknet_func_scope) -> StarknetContract:
 
 # Returns the deployed shrine module
 @pytest.fixture
-async def shrine_deploy(starknet_func_scope, users) -> StarknetContract:
-    starknet = starknet_func_scope
+async def shrine_deploy(starknet: Starknet, users) -> StarknetContract:
     shrine_owner = await users("shrine owner")
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
 
@@ -205,8 +200,7 @@ async def shrine_setup(users, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine_with_feeds(starknet_func_scope, users, shrine_setup) -> StarknetContract:
-    starknet = starknet_func_scope
+async def shrine_with_feeds(starknet: Starknet, users, shrine_setup) -> StarknetContract:
     shrine = shrine_setup
     shrine_owner = await users("shrine owner")
 
