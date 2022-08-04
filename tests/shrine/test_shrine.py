@@ -23,9 +23,6 @@ from tests.utils import (
     to_wad,
 )
 
-TROVE_1 = 1
-TROVE_2 = 2
-
 YANG_0_ADDRESS = YANGS[0]["address"]
 YANG_0_CEILING = YANGS[0]["ceiling"]
 YANG_0_THRESHOLD = YANGS[0]["threshold"]
@@ -233,11 +230,7 @@ async def shrine_deposit_multiple(users, shrine):
     shrine_owner = await users("shrine owner")
 
     for d in DEPOSITS:
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "deposit",
-            [d["address"], d["amount"], TROVE_1],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [d["address"], d["amount"], TROVE_1])
 
 
 @pytest.fixture
@@ -285,16 +278,8 @@ async def update_feeds(starknet_func_scope, users, shrine, shrine_forge) -> List
         # Add offset for initial feeds in `shrine`
         timestamp = (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "advance",
-            [yang0_address, yang0_feed[i]],
-        )
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_multiplier",
-            [MULTIPLIER_FEED[i]],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "advance", [yang0_address, yang0_feed[i]])
+        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i]])
 
     return list(map(from_wad, yang0_feed))
 
@@ -394,16 +379,8 @@ async def update_feeds_intermittent(request, starknet_func_scope, users, shrine,
             price = 0
             multiplier = 0
 
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "advance",
-            [yang0_address, price],
-        )
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_multiplier",
-            [multiplier],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "advance", [yang0_address, price])
+        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [multiplier])
 
     return idx, list(map(from_wad, yang0_feed))
 
@@ -613,12 +590,7 @@ async def test_shrine_forge_pass(shrine, shrine_forge):
 async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_event_emitted(shrine_melt, shrine.contract_address, "DebtTotalUpdated", [0])
 
-    assert_event_emitted(
-        shrine_melt,
-        shrine.contract_address,
-        "TroveUpdated",
-        [TROVE_1, FEED_LEN - 1, 0],
-    )
+    assert_event_emitted(shrine_melt, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, 0])
 
     system_debt = (await shrine.get_shrine_debt().invoke()).result.wad
     assert system_debt == 0
@@ -800,11 +772,7 @@ async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
     multiplier_feed[idx + 1] = multiplier_feed[idx]
 
     # Test 'charge' by calling deposit without any value
-    await shrine_owner.send_tx(
-        shrine.contract_address,
-        "deposit",
-        [YANG_0_ADDRESS, 0, TROVE_1],
-    )
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, 0, TROVE_1])
     updated_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
 
     expected_debt = compound(
@@ -890,11 +858,7 @@ async def test_shrine_withdraw_invalid_yang_fail(users, shrine):
 
     # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "withdraw",
-            [789, to_wad(1), TROVE_1],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [789, to_wad(1), TROVE_1])
 
 
 @pytest.mark.asyncio
@@ -902,11 +866,7 @@ async def test_shrine_withdraw_insufficient_yang_fail(users, shrine, shrine_depo
     shrine_owner = await users("shrine owner")
 
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "withdraw",
-            [YANG_0_ADDRESS, to_wad(11), TROVE_1],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(11), TROVE_1])
 
 
 @pytest.mark.asyncio
@@ -954,11 +914,7 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
 
     # Deposit more yang
-    await shrine_owner.send_tx(
-        shrine.contract_address,
-        "deposit",
-        [YANG_0_ADDRESS, to_wad(10), TROVE_1],
-    )
+    await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, to_wad(10), TROVE_1])
     updated_deposit = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).invoke()).result.wad
     assert updated_deposit == to_wad(20)
 
@@ -974,12 +930,7 @@ async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "move_yang",
-            [
-                YANG_0_ADDRESS,
-                to_wad(11),
-                TROVE_1,
-                TROVE_2,
-            ],
+            [YANG_0_ADDRESS, to_wad(11), TROVE_1, TROVE_2],
         )
 
 
@@ -998,12 +949,7 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "move_yang",
-            [
-                YANG_0_ADDRESS,
-                to_wad(withdraw_amt),
-                TROVE_1,
-                TROVE_2,
-            ],
+            [YANG_0_ADDRESS, to_wad(withdraw_amt), TROVE_1, TROVE_2],
         )
 
 
@@ -1018,11 +964,7 @@ async def test_shrine_unhealthy(users, shrine, shrine_forge):
     unsafe_price = debt / Decimal("0.85") / yang_balance
 
     # Update yang price to unsafe level
-    await shrine_owner.send_tx(
-        shrine.contract_address,
-        "advance",
-        [YANG_0_ADDRESS, to_wad(unsafe_price)],
-    )
+    await shrine_owner.send_tx(shrine.contract_address, "advance", [YANG_0_ADDRESS, to_wad(unsafe_price)])
 
     is_healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
     assert is_healthy == FALSE
@@ -1117,9 +1059,7 @@ async def test_update_yang_max(users, shrine):
     # test decreasing the max below yang.total
     deposit_amt = to_wad(100)
     await shrine_owner.send_tx(
-        shrine.contract_address,
-        "deposit",
-        [YANG_0_ADDRESS, deposit_amt, TROVE_1],
+        shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1]
     )  # Deposit 100 yang tokens
 
     new_yang_max = deposit_amt - to_wad(1)
@@ -1132,11 +1072,7 @@ async def test_update_yang_max(users, shrine):
         StarkException,
         match="Shrine: Exceeds maximum amount of Yang allowed for system",
     ):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "deposit",
-            [YANG_0_ADDRESS, deposit_amt, TROVE_1],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1])
 
     # test calling with a non-existing yang_address
     faux_yang_address = 7890
@@ -1188,22 +1124,14 @@ async def test_kill(users, shrine, update_feeds):
 
     # Check deposit fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "deposit",
-            [YANG_0_ADDRESS, to_wad(10), TROVE_1],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, to_wad(10), TROVE_1])
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(100), TROVE_1])
 
     # Test withdraw pass
-    await shrine_owner.send_tx(
-        shrine.contract_address,
-        "withdraw",
-        [YANG_0_ADDRESS, to_wad(1), TROVE_1],
-    )
+    await shrine_owner.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(1), TROVE_1])
 
     # Test melt pass
     await shrine_owner.send_tx(shrine.contract_address, "melt", [to_wad(100), TROVE_1])

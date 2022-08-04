@@ -10,6 +10,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
+from tests.gate.rebasing_yang.constants import INITIAL_AMT
 from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
 from tests.utils import (
     WAD_SCALE,
@@ -218,17 +219,9 @@ async def shrine_with_feeds(starknet_func_scope, users, shrine_setup) -> Starkne
         timestamp = i * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
         for j in range(len(YANGS)):
-            await shrine_owner.send_tx(
-                shrine.contract_address,
-                "advance",
-                [YANGS[j]["address"], feeds[j][i]],
-            )
+            await shrine_owner.send_tx(shrine.contract_address, "advance", [YANGS[j]["address"], feeds[j][i]])
 
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_multiplier",
-            [MULTIPLIER_FEED[i]],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i]])
 
     return shrine, feeds
 
@@ -237,3 +230,18 @@ async def shrine_with_feeds(starknet_func_scope, users, shrine_setup) -> Starkne
 async def shrine(shrine_with_feeds) -> StarknetContract:
     shrine, feeds = shrine_with_feeds
     return shrine
+
+
+#
+# Collateral
+#
+
+
+@pytest.fixture
+async def rebasing_token(users, tokens) -> StarknetContract:
+    user1 = await users("trove 1 owner")
+    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user1.address)
+
+    user2 = await users("trove 2 owner")
+    await user2.send_tx(rebasing_token.contract_address, "mint", [user2.address, *(INITIAL_AMT, 0)])
+    return rebasing_token
