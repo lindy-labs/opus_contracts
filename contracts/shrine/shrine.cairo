@@ -198,7 +198,7 @@ func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func get_shrine_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
+func get_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
     return shrine_debt_storage.read()
 end
 
@@ -334,14 +334,6 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     ThresholdUpdated.emit(yang_address, new_threshold)
 
-    return ()
-end
-
-func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, trove : Trove
-):
-    let (packed_trove) = pack_felt(trove.charge_from, trove.debt)
-    shrine_troves_storage.write(trove_id, packed_trove)
     return ()
 end
 
@@ -684,8 +676,9 @@ end
 #
 
 # Gets the custom threshold (maximum LTV before liquidation) of a trove
-# Also returns the total trove value
-# `threshold` and `value` are both wads
+# Also returns the total trove value.
+# This is because it needs to calculate the trove value anyway, and `is_healthy` needs the trove value, so it
+# saves some gas to just return it rather than having to calculate it again with `appraise`.
 @view
 func get_trove_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     trove_id
@@ -846,6 +839,14 @@ func get_valid_yang_id{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     return (yang_id)
 end
 
+func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    trove_id, trove : Trove
+):
+    let (packed_trove) = pack_felt(trove.charge_from, trove.debt)
+    shrine_troves_storage.write(trove_id, packed_trove)
+    return ()
+end
+
 # Wrapper function for the recursive `appraise_internal` function that gets the most recent trove value
 func appraise{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id) -> (wad):
     alloc_locals
@@ -893,11 +894,6 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
 
     # Get new system debt
     tempvar new_system_debt = old_system_debt + diff
-
-    # Overflow check
-    with_attr error_message("Shrine: System debt overflow"):
-        WadRay.assert_result_valid(new_system_debt)
-    end
 
     shrine_debt_storage.write(new_system_debt)
 
