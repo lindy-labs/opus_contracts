@@ -105,6 +105,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, assets_wad
 ) -> (wad):
     alloc_locals
+    # TODO: Revisit whether reentrancy guard should be added here
 
     # Assert live
     assert_live()
@@ -133,7 +134,6 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Transfer asset from `user_address` to Gate
     let (assets_uint) = WadRay.to_uint(assets_wad)
     with_attr error_message("Gate: Transfer of asset failed"):
-        # TODO: Revisit whether reentrancy guard should be added here
         let (success) = IERC20.transferFrom(
             contract_address=asset_address,
             sender=user_address,
@@ -143,6 +143,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert success = TRUE
     end
 
+    # Emit event
     Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad)
 
     return (yang_wad)
@@ -153,6 +154,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     user_address, trove_id, yang_wad
 ) -> (wad):
     alloc_locals
+    # TODO: Revisit whether reentrancy guard should be added here
 
     # Only Abbot can call
     Auth.assert_caller_authed()
@@ -174,16 +176,16 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         trove_id=trove_id,
     )
 
+    # Transfer asset from Gate to `user_address`
     let (assets_uint : Uint256) = WadRay.to_uint(assets_wad)
-
     with_attr error_message("Gate: Transfer of asset failed"):
-        # TODO: Revisit whether reentrancy guard should be added here
         let (success) = IERC20.transfer(
             contract_address=asset_address, recipient=user_address, amount=assets_uint
         )
         assert success = TRUE
     end
 
+    # Emit events
     Withdraw.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad)
 
     return (assets_wad)
