@@ -217,8 +217,7 @@ async def rebase(users, gate, rebasing_token, gate_deposit) -> StarknetTransacti
 @pytest.fixture
 def gate(request) -> StarknetContract:
     """
-    Wrapper fixture to pass the non-taxable and taxable instances of Gate module
-    to `pytest.parametrize`.
+    Wrapper fixture to pass the non-taxable and taxable instances of Gate module to `pytest.parametrize`.
     """
     return request.getfixturevalue(request.param)
 
@@ -895,7 +894,7 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax, users):
 
 @pytest.mark.parametrize("gate", ["gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposit, collect_gas_cost):
+async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposit):
     # `rebase` fixture simulates an autocompounding
     abbot = await users("abbot")
     tax_collector = await users("tax collector")
@@ -909,10 +908,6 @@ async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposi
 
     # Update Gate's balance and charge tax
     levy = await abbot.send_tx(gate.contract_address, "levy", [])
-
-    # 2 unique keys updated for ERC20 transfer of tax (Gate's balance, tax collector's balance)
-    # 1 key updated for Gate (`gate_last_asset_balance_storage`)
-    collect_gas_cost("gate/levy", levy, 3, 2)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().invoke()).result.wad
