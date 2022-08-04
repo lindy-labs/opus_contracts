@@ -842,7 +842,7 @@ end
 func set_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     trove_id, trove : Trove
 ):
-    let (packed_trove) = pack_felt(trove.debt, trove.charge_from)
+    let (packed_trove) = pack_felt(trove.charge_from, trove.debt)
     shrine_troves_storage.write(trove_id, packed_trove)
     return ()
 end
