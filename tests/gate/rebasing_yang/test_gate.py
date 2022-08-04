@@ -413,24 +413,24 @@ async def test_gate_subsequent_unique_deposit_after_rebase(
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_redeem_before_rebase(users, shrine_authed, gate, rebasing_token, gate_deposit, collect_gas_cost):
+async def test_gate_withdraw_before_rebase(users, shrine_authed, gate, rebasing_token, gate_deposit, collect_gas_cost):
     """
-    Redeem all yang before rebase.
+    Withdraw all yang before rebase.
     """
     # 2 unique key updated for ERC20 transfer (Gate's balance, user's balance)
     # 2 keys updated for Shrine (`shrine_yangs_storage`, `shrine_deposits_storage`)
     #
     # Note that ReentrancyGuard updates 1 key but storage is not charged because value is reset
     # at the end of the transaction.
-    collect_gas_cost("gate/redeem", gate_deposit, 4, 2)
+    collect_gas_cost("gate/withdraw", gate_deposit, 4, 2)
 
     abbot = await users("abbot")
     trove_1_owner = await users("trove 1 owner")
 
-    # Redeem
-    redeem = await abbot.send_tx(
+    # Withdraw
+    withdraw = await abbot.send_tx(
         gate.contract_address,
-        "redeem",
+        "withdraw",
         [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT],
     )
 
@@ -454,26 +454,26 @@ async def test_gate_redeem_before_rebase(users, shrine_authed, gate, rebasing_to
 
     # Check event
     assert_event_emitted(
-        redeem,
+        withdraw,
         gate.contract_address,
-        "Redeem",
+        "Withdraw",
         [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
     )
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_redeem_after_rebase_pass(users, shrine_authed, gate, rebasing_token, gate_deposit, rebase):
+async def test_gate_withdraw_after_rebase_pass(users, shrine_authed, gate, rebasing_token, gate_deposit, rebase):
     """
-    Redeem all yang after rebase.
+    Withdraw all yang after rebase.
     """
     abbot = await users("abbot")
     trove_1_owner = await users("trove 1 owner")
 
-    # Redeem
-    redeem = await abbot.send_tx(
+    # withdraw
+    withdraw = await abbot.send_tx(
         gate.contract_address,
-        "redeem",
+        "withdraw",
         [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT],
     )
 
@@ -499,16 +499,16 @@ async def test_gate_redeem_after_rebase_pass(users, shrine_authed, gate, rebasin
     expected_withdrawn_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
     # Check event
     assert_event_emitted(
-        redeem,
+        withdraw,
         gate.contract_address,
-        "Redeem",
+        "Withdraw",
         [trove_1_owner.address, TROVE_1, expected_withdrawn_assets, FIRST_DEPOSIT_AMT],
     )
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate, rebasing_token, gate_deposit_alt):
+async def test_gate_multi_user_withdraw_without_rebase(users, shrine_authed, gate, rebasing_token, gate_deposit_alt):
     abbot = await users("abbot")
     trove_1_owner = await users("trove 1 owner")
     trove_2_owner = await users("trove 2 owner")
@@ -524,9 +524,9 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     start_total_yang = (await gate.get_total_yang().invoke()).result.wad
     start_user_bal = from_uint((await rebasing_token.balanceOf(trove_2_owner.address).invoke()).result.balance)
 
-    # Redeem trove 2
-    trove_2_redeem = await abbot.send_tx(
-        gate.contract_address, "redeem", [trove_2_owner.address, TROVE_2, trove_2_yang]
+    # Withdraw trove 2
+    trove_2_withdraw = await abbot.send_tx(
+        gate.contract_address, "withdraw", [trove_2_owner.address, TROVE_2, trove_2_yang]
     )
 
     # Calculate expected assets
@@ -553,9 +553,9 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
 
     # Check event emitted
     assert_event_emitted(
-        trove_2_redeem,
+        trove_2_withdraw,
         gate.contract_address,
-        "Redeem",
+        "Withdraw",
         [trove_2_owner.address, TROVE_2, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
     )
 
@@ -565,9 +565,9 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
     # Get initial balance for trove 2
     trove_1_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
 
-    # Redeem trove 1
-    trove_1_redeem = await abbot.send_tx(
-        gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, trove_1_yang]
+    # Withdraw from trove 1
+    trove_1_withdraw = await abbot.send_tx(
+        gate.contract_address, "withdraw", [trove_1_owner.address, TROVE_1, trove_1_yang]
     )
 
     # Calculate expected assets
@@ -594,16 +594,16 @@ async def test_gate_multi_user_redeem_without_rebase(users, shrine_authed, gate,
 
     # Check event emitted
     assert_event_emitted(
-        trove_1_redeem,
+        trove_1_withdraw,
         gate.contract_address,
-        "Redeem",
+        "Withdraw",
         [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
     )
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_multi_user_redeem_with_rebase(
+async def test_gate_multi_user_withdraw_with_rebase(
     users, shrine_authed, gate, rebasing_token, gate_deposit_alt_with_rebase
 ):
     abbot = await users("abbot")
@@ -619,8 +619,8 @@ async def test_gate_multi_user_redeem_with_rebase(
     start_user_bal = from_uint((await rebasing_token.balanceOf(trove_2_owner.address).invoke()).result.balance)
     trove_2_yang = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).invoke()).result.wad
 
-    # Redeem trove 2
-    await abbot.send_tx(gate.contract_address, "redeem", [trove_2_owner.address, TROVE_2, trove_2_yang])
+    # Withdraw from trove 2
+    await abbot.send_tx(gate.contract_address, "withdraw", [trove_2_owner.address, TROVE_2, trove_2_yang])
 
     # Calculate expected assets
     expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang)
@@ -655,8 +655,8 @@ async def test_gate_multi_user_redeem_with_rebase(
     # Calculate expected assets
     expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang)
 
-    # Redeem trove 1
-    await abbot.send_tx(gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, trove_1_yang])
+    # Withdraw from trove 1
+    await abbot.send_tx(gate.contract_address, "withdraw", [trove_1_owner.address, TROVE_1, trove_1_yang])
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
@@ -696,22 +696,22 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
             [trove_1_owner.address, TROVE_1, SECOND_DEPOSIT_AMT],
         )
 
-    # Assert redeem succeeds
-    redeem_amt = to_wad(5)
+    # Assert withdraw succeeds
+    withdraw_amt = to_wad(5)
 
-    # Get user's and gate's asset and yang balances before redeem
+    # Get user's and gate's asset and yang balances before withdraw
     before_user_balance = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
     before_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
     before_user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     before_gate_yang = (await gate.get_total_yang().invoke()).result.wad
 
-    expected_assets = get_assets_from_yang(before_gate_yang, before_gate_balance, redeem_amt)
+    expected_assets = get_assets_from_yang(before_gate_yang, before_gate_balance, withdraw_amt)
 
-    # Redeem
-    await abbot.send_tx(gate.contract_address, "redeem", [trove_1_owner.address, TROVE_1, redeem_amt])
+    # Withdraw
+    await abbot.send_tx(gate.contract_address, "withdraw", [trove_1_owner.address, TROVE_1, withdraw_amt])
 
-    # Get user's and gate's asset and share balances after redeem
+    # Get user's and gate's asset and share balances after withdraw
     after_user_balance = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
     after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
@@ -722,8 +722,8 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
     assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets, CUSTOM_ERROR_MARGIN)
     assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets, CUSTOM_ERROR_MARGIN)
 
-    assert after_user_yang == before_user_yang - redeem_amt
-    assert after_gate_yang == before_gate_yang - redeem_amt
+    assert after_user_yang == before_user_yang - withdraw_amt
+    assert after_gate_yang == before_gate_yang - withdraw_amt
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
@@ -742,15 +742,15 @@ async def test_gate_deposit_insufficient_fail(users, shrine_authed, gate, rebasi
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_gate_redeem_insufficient_fail(users, shrine_authed, gate, rebasing_token, gate_deposit):
+async def test_gate_withdraw_insufficient_fail(users, shrine_authed, gate, rebasing_token, gate_deposit):
     trove_1_owner = await users("trove 1 owner")
     abbot = await users("abbot")
 
-    # Call redeem with more gate yang than user has
+    # Call withdraw with more gate yang than user has
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
         await abbot.send_tx(
             gate.contract_address,
-            "redeem",
+            "withdraw",
             [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT + 1],
         )
 
@@ -777,7 +777,7 @@ async def test_unauthorized_deposit(users, rebasing_token, gate):
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
-async def test_unauthorized_redeem(users, shrine_authed, gate, rebasing_token, gate_deposit):
+async def test_unauthorized_withdraw(users, shrine_authed, gate, rebasing_token, gate_deposit):
     """Test user-initiated"""
     trove_1_owner = await users("trove 1 owner")
 
@@ -788,15 +788,15 @@ async def test_unauthorized_redeem(users, shrine_authed, gate, rebasing_token, g
     with pytest.raises(StarkException):
         await trove_1_owner.send_tx(
             gate.contract_address,
-            "redeem",
+            "withdraw",
             [trove_1_owner.address, TROVE_1, FIRST_MINT_AMT],
         )
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
-@pytest.mark.parametrize("fn", ["deposit", "redeem"])
+@pytest.mark.parametrize("fn", ["deposit", "withdraw"])
 @pytest.mark.asyncio
-async def test_zero_deposit_redeem(users, shrine_authed, gate, rebasing_token, gate_deposit, fn):
+async def test_zero_deposit_withdraw(users, shrine_authed, gate, rebasing_token, gate_deposit, fn):
     abbot = await users("abbot")
     trove_1_owner = await users("trove 1 owner")
 
@@ -919,7 +919,7 @@ async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposi
     assert after_gate_bal > before_gate_bal
     assert after_gate_bal == before_gate_bal * COMPOUND_MULTIPLIER - FIRST_TAX_AMT
 
-    # Check that user's redeemable balance has increased
+    # Check that user's withdrawable balance has increased
     user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     expected_user_assets = (await gate.preview_withdraw(user_yang).invoke()).result.wad
     assert expected_user_assets == after_gate_bal
@@ -942,16 +942,16 @@ async def test_gate_levy(users, shrine_authed, gate, rebasing_token, gate_deposi
         [FIRST_TAX_AMT],
     )
 
-    # Check balances before redeem
+    # Check balances before withdraw
     before_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
 
-    # Redeem
+    # Withdraw
     await abbot.send_tx(
         gate.contract_address,
-        "redeem",
+        "withdraw",
         [trove_1_owner.address, TROVE_1, user_yang],
     )
 
-    # Get balances after redeem
+    # Get balances after withdraw
     after_user_bal = from_uint((await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance)
     assert after_user_bal == before_user_bal + expected_user_assets

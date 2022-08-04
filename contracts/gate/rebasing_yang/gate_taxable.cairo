@@ -33,7 +33,7 @@ func Deposit(user, trove_id, assets_wad, yang_wad):
 end
 
 @event
-func Redeem(user, trove_id, assets_wad, yang_wad):
+func Withdraw(user, trove_id, assets_wad, yang_wad):
 end
 
 @event
@@ -149,7 +149,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 @external
-func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address, trove_id, yang_wad
 ) -> (wad):
     alloc_locals
@@ -184,7 +184,7 @@ func redeem{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert success = TRUE
     end
 
-    Redeem.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad)
+    Withdraw.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad)
 
     return (assets_wad)
 end
