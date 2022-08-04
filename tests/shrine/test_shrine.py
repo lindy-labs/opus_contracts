@@ -1,7 +1,7 @@
 from collections import namedtuple
 from decimal import Decimal
 from math import exp
-from typing import List
+from typing import List, Tuple
 
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
@@ -131,7 +131,9 @@ def compound(
     return new_debt
 
 
-def calculate_threshold_and_value(prices: List[int], amounts: List[int], thresholds: List[int]) -> (Decimal, Decimal):
+def calculate_threshold_and_value(
+    prices: List[int], amounts: List[int], thresholds: List[int]
+) -> Tuple[Decimal, Decimal]:
     """
     Helper function to calculate a trove's cumulative weighted threshold and value
 
