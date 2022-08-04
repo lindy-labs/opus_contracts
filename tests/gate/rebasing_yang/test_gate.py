@@ -433,7 +433,7 @@ async def test_gate_withdraw_before_rebase(users, shrine_authed, gate, rebasing_
         [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT],
     )
 
-    # Fetch post-redemption balances
+    # Fetch post-withdrawal balances
     after_user_balance = (await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance
     after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
@@ -441,7 +441,7 @@ async def test_gate_withdraw_before_rebase(users, shrine_authed, gate, rebasing_
     assert from_uint(after_user_balance) == INITIAL_AMT
     assert after_gate_balance == 0
 
-    # Fetch post-redemption yang
+    # Fetch post-withdrawal yang
     after_user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     total_yang = (await gate.get_total_yang().invoke()).result.wad
 
@@ -476,7 +476,7 @@ async def test_gate_withdraw_after_rebase_pass(users, shrine_authed, gate, rebas
         [trove_1_owner.address, TROVE_1, FIRST_DEPOSIT_AMT],
     )
 
-    # Fetch post-redemption balances
+    # Fetch post-withdrawal balances
     after_user_balance = (await rebasing_token.balanceOf(trove_1_owner.address).invoke()).result.balance
     after_gate_balance = (await gate.get_total_assets().invoke()).result.wad
 
@@ -485,7 +485,7 @@ async def test_gate_withdraw_after_rebase_pass(users, shrine_authed, gate, rebas
     assert from_uint(after_user_balance) == expected_user_balance
     assert after_gate_balance == 0
 
-    # Fetch post-redemption yang
+    # Fetch post-withdrawal yang
     after_user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     total_yang = (await gate.get_total_yang().invoke()).result.wad
 
@@ -717,7 +717,7 @@ async def test_kill(users, shrine_authed, gate, rebasing_token, gate_deposit, re
     after_user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
     after_gate_yang = (await gate.get_total_yang().invoke()).result.wad
 
-    # Assert redemption is successful
+    # Assert withdrawal is successful
     assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets, CUSTOM_ERROR_MARGIN)
     assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets, CUSTOM_ERROR_MARGIN)
 
