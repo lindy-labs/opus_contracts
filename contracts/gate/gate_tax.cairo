@@ -20,7 +20,7 @@ const MAX_TAX = 5 * 10 ** 25
 #
 
 @event
-func TaxUpdated(prev_tax, new_tax):
+func TaxUpdated(prev_tax_ray, new_tax_ray):
 end
 
 @event
@@ -28,7 +28,7 @@ func TaxCollectorUpdated(prev_tax_collector, new_tax_collector):
 end
 
 @event
-func TaxLevied(tax):
+func TaxLevied(tax_ray):
 end
 
 #
@@ -47,9 +47,9 @@ end
 
 namespace GateTax:
     func initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        tax, tax_collector_address
+        tax_ray, tax_collector_address
     ):
-        set_tax(tax)
+        set_tax(tax_ray)
         set_tax_collector(tax_collector_address)
         return ()
     end
@@ -72,16 +72,16 @@ namespace GateTax:
     # Setters
     #
 
-    func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
+    func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax_ray):
         # Check that tax is lower than MAX_TAX
         with_attr error_message("Gate: Maximum tax exceeded"):
-            assert_le(tax, MAX_TAX)
+            assert_le(tax_ray, MAX_TAX)
         end
 
-        let (prev_tax) = gate_tax_storage.read()
-        gate_tax_storage.write(tax)
+        let (prev_tax_ray) = gate_tax_storage.read()
+        gate_tax_storage.write(tax_ray)
 
-        TaxUpdated.emit(prev_tax, tax)
+        TaxUpdated.emit(prev_tax_ray, tax_ray)
         return ()
     end
 
@@ -111,16 +111,16 @@ namespace GateTax:
         alloc_locals
 
         # Get tax
-        let (tax_rate) = gate_tax_storage.read()
+        let (tax_ray) = gate_tax_storage.read()
 
         # Early return if tax is 0
-        if tax_rate == 0:
+        if tax_ray == 0:
             return ()
         end
 
         # Calculate taxable amount
         # `rmul` on a wad and a ray returns a wad
-        let (chargeable_wad) = WadRay.rmul(taxable_wad, tax_rate)
+        let (chargeable_wad) = WadRay.rmul(taxable_wad, tax_ray)
 
         # Transfer fees
         let (tax_collector) = gate_tax_collector_storage.read()

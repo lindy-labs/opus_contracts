@@ -75,9 +75,9 @@ end
 # Setters
 
 @external
-func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax):
+func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax_ray):
     Auth.assert_caller_authed()
-    GateTax.set_tax(tax)
+    GateTax.set_tax(tax_ray)
     return ()
 end
 
