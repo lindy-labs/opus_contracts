@@ -79,12 +79,10 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> D
 
 
 @pytest.fixture
-async def gate_rebasing_tax(starknet_func_scope, users, shrine, rebasing_token) -> StarknetContract:
+async def gate_rebasing_tax(starknet, users, shrine, rebasing_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
     """
-    starknet = starknet_func_scope
-
     contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
     admin = await users("admin")
     tax_collector = await users("tax collector")
@@ -107,12 +105,10 @@ async def gate_rebasing_tax(starknet_func_scope, users, shrine, rebasing_token) 
 
 
 @pytest.fixture
-async def gate_rebasing(starknet_func_scope, users, shrine, rebasing_token) -> StarknetContract:
+async def gate_rebasing(starknet, users, shrine, rebasing_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module, without any autocompounding or tax.
     """
-    starknet = starknet_func_scope
-
     contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
     admin = await users("admin")
     gate = await starknet.deploy(

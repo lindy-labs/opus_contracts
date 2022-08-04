@@ -1,5 +1,5 @@
 import pytest
-from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starknet.testing.starknet import Starknet, StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.utils import compile_contract
@@ -8,9 +8,9 @@ A_UPPER_BOUND = 2**128
 
 
 @pytest.fixture(scope="session")
-async def convert(starknet) -> StarknetContract:
+async def convert(starknet_session: Starknet) -> StarknetContract:
     contract = compile_contract("tests/shared/test_convert.cairo")
-    convert = await starknet.deploy(contract_class=contract, constructor_calldata=[])
+    convert = await starknet_session.deploy(contract_class=contract, constructor_calldata=[])
     return convert
 
 
