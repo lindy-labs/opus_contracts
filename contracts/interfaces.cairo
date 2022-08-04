@@ -136,7 +136,6 @@ end
 
 @contract_interface
 namespace IGate:
-<<<<<<< HEAD
     #
     # getters
     #
@@ -195,12 +194,6 @@ namespace IGate:
     end
 
     func preview_withdraw(yang_wad) -> (wad):
-=======
-    func deposit(user_address, trove_id, amount):
-    end
-
-    func redeem(user_address, trove_id, shares):
->>>>>>> 185773b (dev(abbot): delegating to Gates)
     end
 
     func has_role(role, user) -> (bool):
