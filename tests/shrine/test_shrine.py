@@ -1002,6 +1002,19 @@ async def test_add_yang(users, shrine):
         [new_yang_address, new_yang_threshold],
     )
 
+    # Check maximum is correct
+    new_yang_info = (await shrine.get_yang(new_yang_address).invoke()).result.yang
+    assert new_yang_info.total == 0
+    assert new_yang_info.max == new_yang_max
+
+    # Check start price is correct
+    new_yang_price_info = (await shrine.get_current_yang_price(new_yang_address).invoke()).result
+    assert new_yang_price_info.price_wad == new_yang_start_price
+
+    # Check threshold is correct
+    actual_threshold = (await shrine.get_threshold(new_yang_address).invoke()).result.ray
+    assert actual_threshold == new_yang_threshold
+
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     bad_guy_yang_address = 555
