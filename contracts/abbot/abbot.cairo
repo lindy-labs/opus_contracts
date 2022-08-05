@@ -113,6 +113,13 @@ func get_yang_addresses{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     return (len, addresses)
 end
 
+@view
+func get_troves_count{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
+    ufelt
+):
+    return abbot_troves_count_storage.read()
+end
+
 # TODO: getters for all(?) @storage_vars
 
 #
@@ -124,7 +131,6 @@ end
 func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     forge_amount, yang_addrs_len, yang_addrs : felt*, amounts_len, amounts : felt*
 ):
-    # TODO: test w/ forge_amount = 0
     alloc_locals
 
     with_attr error_message("Abbot: input arguments mismatch: {yang_addrs_len} != {amounts_len}"):
@@ -174,7 +180,7 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     IShrine.melt(shrine_address, total_debt, trove_id)
     do_withdrawals_full(shrine_address, user_address, trove_id, 1)
 
-    # TODO: emit an event?
+    # deliberately not emitting an event
 
     return ()
 end
@@ -292,21 +298,21 @@ func assert_trove_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 end
 
 func assert_valid_yangs{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_addrs_len, yang_addrs : felt*
+    yang_addresses_len, yang_addresses : felt*
 ):
     alloc_locals
 
-    if yang_addrs_len == 0:
+    if yang_addresses_len == 0:
         return ()
     end
 
-    let yang_addr = [yang_addrs]
-    let (gate_addr) = abbot_yang_to_gate_storage.read(yang_addr)
-    with_attr error_message("Abbot: yang {yang_addr} not approved"):
-        assert_not_zero(gate_addr)
+    let yang_address = [yang_addresses]
+    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
+    with_attr error_message("Abbot: yang {yang_address} is not approved"):
+        assert_not_zero(gate_address)
     end
 
-    return assert_valid_yangs(yang_addrs_len - 1, yang_addrs + 1)
+    return assert_valid_yangs(yang_addresses_len - 1, yang_addresses + 1)
 end
 
 func get_yang_addresses_loop{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -333,11 +339,7 @@ func do_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
         return ()
     end
 
-    let yang_address = [yang_addresses]
-    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
-    with_attr error_message("Abbot: yang {yang_address} is not allowed"):
-        assert_not_zero(gate_address)
-    end
+    let (gate_address) = abbot_yang_to_gate_storage.read([yang_addresses])
     IGate.deposit(gate_address, user_address, trove_id, [amounts])
 
     return do_deposits(user_address, trove_id, deposits_count - 1, yang_addresses + 1, amounts + 1)

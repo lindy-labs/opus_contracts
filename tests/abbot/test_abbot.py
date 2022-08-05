@@ -8,13 +8,10 @@ from tests.account import Account
 from tests.utils import assert_event_emitted, compile_contract, to_wad
 
 TAX_RAY = 3 * 10**25
+UINT256_MAX = (2**128 - 1, 2**128 - 1)
+STARKNET_ADDR = r"-?\d+"  # addresses are sometimes printed as negative numbers, hence the -?
 
 YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_wad gate_address")
-
-# TODO:
-# deposit - happy path, depositing into foreign trove, depositing 0 amount,
-#           depositing twice the same token in 1 call, depositing a yang that hasn't been added,
-#           yangs & amounts that don't match in length as args
 
 #
 # fixtures
@@ -34,28 +31,35 @@ async def shrine_owner(users) -> Account:
 @pytest.fixture
 async def steth_token(users, tokens) -> StarknetContract:
     owner = await users("steth owner")
-    return await tokens("Lido Staked ETH", "stETH", 18, (10**9, 0), owner.address)
+    return await tokens("Lido Staked ETH", "stETH", 18, (10**6, 0), owner.address)
 
 
 @pytest.fixture
 async def doge_token(users, tokens) -> StarknetContract:
     owner = await users("doge owner")
-    return await tokens("Dogecoin", "DOGE", 18, (10**32, 0), owner.address)
+    return await tokens("Dogecoin", "DOGE", 18, (10**20, 0), owner.address)
+
+
+@pytest.fixture
+async def shitcoin(users, tokens) -> StarknetContract:
+    owner = await users("shitcoin owner")
+    return await tokens("To the moon", "SHIT", 18, (2**128 - 1, 0), owner.address)
 
 
 @pytest.fixture
 async def shrine(starknet, shrine_owner) -> StarknetContract:
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[shrine_owner.address])
+    await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [to_wad(500)])
     return shrine
 
 
 @pytest.fixture
-async def steth_gate(starknet, users, abbot, shrine, steth_token) -> StarknetContract:
+async def steth_gate(starknet, users, abbot, shrine, shrine_owner, steth_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
     """
-    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
+    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
     admin = await users("admin")
     tax_collector = await users("tax collector")
 
@@ -70,14 +74,16 @@ async def steth_gate(starknet, users, abbot, shrine, steth_token) -> StarknetCon
         ],
     )
 
-    # Authorise Abbot
+    # auth Abbot in Gate
     await admin.send_tx(gate.contract_address, "authorize", [abbot.contract_address])
+    # auth Gate in Shrine
+    await shrine_owner.send_tx(shrine.contract_address, "authorize", [gate.contract_address])
 
     return gate
 
 
 @pytest.fixture
-async def doge_gate(starknet, users, abbot, shrine, doge_token) -> StarknetContract:
+async def doge_gate(starknet, users, abbot, shrine, shrine_owner, doge_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module, without any autocompounding or tax.
     """
@@ -92,8 +98,10 @@ async def doge_gate(starknet, users, abbot, shrine, doge_token) -> StarknetContr
         ],
     )
 
-    # Authorise Abbot
+    # auth Abbot in Gate
     await admin.send_tx(gate.contract_address, "authorize", [abbot.contract_address])
+    # auth Gate in Shrine
+    await shrine_owner.send_tx(shrine.contract_address, "authorize", [gate.contract_address])
 
     return gate
 
@@ -115,17 +123,21 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
 
 
 @pytest.fixture
+def shitcoin_yang(shitcoin) -> YangConfig:
+    return YangConfig(shitcoin.contract_address, 0, 0, to_wad(0), 0)
+
+
+@pytest.fixture
 async def abbot(starknet, shrine, shrine_owner, abbot_owner) -> StarknetContract:
     abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
         contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, abbot_owner.address]
     )
-    # authorize abbot in shrine
+    # auth Abbot in Shrine
     await shrine_owner.send_tx(shrine.contract_address, "authorize", [abbot.contract_address])
     return abbot
 
 
-# TODO: use proper yangs, like real deployed ERC20 contracts
 @pytest.fixture
 async def abbot_with_yangs(abbot, abbot_owner, steth_yang: YangConfig, doge_yang: YangConfig):
     for yang in (steth_yang, doge_yang):
@@ -136,12 +148,49 @@ async def abbot_with_yangs(abbot, abbot_owner, steth_yang: YangConfig, doge_yang
         )
 
 
+@pytest.fixture
+async def funded_aura_user(users, steth_token, doge_token, steth_gate, doge_gate):
+    user = await users("aura user")
+    steth_owner = await users("steth owner")
+    doge_owner = await users("doge owner")
+
+    # fund the user with bags
+    await steth_owner.send_tx(steth_token.contract_address, "transfer", [user.address, *[1_000, 0]])
+    await doge_owner.send_tx(doge_token.contract_address, "transfer", [user.address, *[1_000_000, 0]])
+
+    # user approves Aura gates to spend bags
+    await max_approve(user, steth_token.contract_address, steth_gate.contract_address)
+    await max_approve(user, doge_token.contract_address, doge_gate.contract_address)
+
+
+#
+# helpers
+#
+
+
+async def max_approve(owner: Account, token_addr: int, spender_addr: int):
+    await owner.send_tx(token_addr, "approve", [spender_addr, *UINT256_MAX])
+
+
 #
 # tests
 #
 
-# TODO: test_get_user_trove_ids
-#       test_get_yang_addresses
+# TODO:
+# deposit - happy path, depositing into foreign trove, depositing 0 amount,
+#           depositing twice the same token in 1 call, depositing a yang that hasn't been added,
+#           yangs & amounts that don't match in length as args
+# test_get_user_trove_ids
+# test_get_yang_addresses
+
+
+@pytest.mark.usefixtures("abbot_with_yangs")
+@pytest.mark.asyncio
+async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+    yang_addrs = (await abbot.get_yang_addresses().invoke()).result.addresses
+    assert len(yang_addrs) == 2
+    assert steth_yang.contract_address in yang_addrs
+    assert doge_yang.contract_address in yang_addrs
 
 
 @pytest.mark.asyncio
@@ -201,17 +250,58 @@ async def test_add_yang(abbot, shrine, abbot_owner, users, steth_yang: YangConfi
         )
 
 
-# @pytest.mark.skip
-# @pytest.mark.usefixtures("abbot_yangs")
-# @pytest.mark.asyncio
-# async def test_open_trove(abbot, users):
-#     aura_user = await users("aura user")
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user")
+@pytest.mark.parametrize("forge_amount", [0, 3000])
+@pytest.mark.asyncio
+async def test_open_trove(abbot, users, shrine, steth_yang: YangConfig, doge_yang: YangConfig, forge_amount):
+    aura_user = await users("aura user")
 
-#     tx = await aura_user.send_tx(abbot.contract_address, "open_trove", [to_wad(10), [YANGS[0]], [to_wad(50)]])
-#     print(tx)
-#     assert_event_emitted(tx, abbot.contract_address, [aura_user.address, 1])
+    steth_deposit = 20
+    doge_deposit = 1000
+    tx = await aura_user.send_tx(
+        abbot.contract_address,
+        "open_trove",
+        [forge_amount, 2, steth_yang.contract_address, doge_yang.contract_address, 2, steth_deposit, doge_deposit],
+    )
+    trove_id = 1  # first trove, hence trove_id=1
 
-#     # TODO: check something on the gate
-#     #       check something on the shrine
-#     #       check something on the yang token
-#     #       check something on the abbot
+    # asserts on the Abbot
+    assert_event_emitted(tx, abbot.contract_address, "TroveOpened", [aura_user.address, trove_id])
+    assert (await abbot.get_user_trove_ids(aura_user.address).invoke()).result.trove_ids == [trove_id]
+    assert (await abbot.get_troves_count().invoke()).result.ufelt == trove_id
+
+    # TODO: should I check more on downstream contracts? or just leave that responsibility to their tests?
+
+    # asserts on the gates
+    assert_event_emitted(tx, steth_yang.gate_address, "Deposit")
+    assert_event_emitted(tx, doge_yang.gate_address, "Deposit")
+
+    # asserts on the shrine
+    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated")
+    assert_event_emitted(tx, shrine.contract_address, "YangUpdated")
+    assert (await shrine.get_trove(trove_id).invoke()).result.trove.debt == forge_amount
+
+    # asserts on the tokens
+    # the 0 is to conform to Uint256
+    assert_event_emitted(
+        tx, steth_yang.contract_address, "Transfer", [aura_user.address, steth_yang.gate_address, steth_deposit, 0]
+    )
+    assert_event_emitted(
+        tx, doge_yang.contract_address, "Transfer", [aura_user.address, doge_yang.gate_address, doge_deposit, 0]
+    )
+
+
+@pytest.mark.asyncio
+async def test_open_trove_failures(abbot, users, steth_yang: YangConfig, shitcoin_yang: YangConfig):
+    aura_user = await users("aura user")
+
+    with pytest.raises(StarkException, match=r"Abbot: input arguments mismatch: \d != \d"):
+        await aura_user.send_tx(abbot.contract_address, "open_trove", [0, 1, steth_yang.contract_address, 2, 10, 200])
+
+    with pytest.raises(StarkException, match="Abbot: no yangs selected"):
+        await aura_user.send_tx(abbot.contract_address, "open_trove", [0, 0, 0])
+
+    with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
+        await aura_user.send_tx(
+            abbot.contract_address, "open_trove", [0, 1, shitcoin_yang.contract_address, 1, 10**10]
+        )
