@@ -627,19 +627,18 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amo
     # Get current interval
     let (current_interval) = now()
 
-    # Update system debt
-    let (current_system_debt) = shrine_debt_storage.read()
-
-    with_attr error_message("Shrine: System debt underflow"):
-        let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, amount)  # WadRay.sub_unsigned contains an underflow check
-    end
-
-    shrine_debt_storage.write(new_system_debt)
-
     # Update trove information
-    let (new_debt) = WadRay.sub(old_trove_info.debt, amount)
+    with_attr error_message("Shrine: Trove debt underflow"):
+        let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # WadRay.sub_unsigned contains an underflow check
+    end
     let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
     set_trove(trove_id, new_trove_info)
+
+    # Update system debt
+    let (current_system_debt) = shrine_debt_storage.read()
+    let (new_system_debt) = WadRay.sub(current_system_debt, amount)
+
+    shrine_debt_storage.write(new_system_debt)
 
     # Events
     DebtTotalUpdated.emit(new_system_debt)
