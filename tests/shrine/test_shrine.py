@@ -1305,6 +1305,17 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
         )
 
 
+@pytest.mark.asyncio
+async def test_move_yang_unauthorized(users, shrine, shrine_deposit):
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(
+            shrine.contract_address,
+            "move_yang",
+            [YANG_0_ADDRESS, to_wad(1), TROVE_1, TROVE_2],
+        )
+
+
 #
 # Tests - Getters for Trove information
 #
