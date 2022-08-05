@@ -750,6 +750,7 @@ async def test_advance(starknet, users, shrine, update_feeds):
     updated_yang_price_info = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result
     assert updated_yang_price_info.price_wad == new_price
     assert updated_yang_price_info.cumulative_price_wad == expected_cumulative
+    assert updated_yang_price_info.interval_ufelt == interval
 
 
 @pytest.mark.asyncio

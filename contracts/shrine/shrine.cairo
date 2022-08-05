@@ -703,13 +703,12 @@ end
 @view
 func get_current_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
-) -> (price_wad, cumulative_price_wad):
+) -> (price_wad, cumulative_price_wad, interval_ufelt):
     alloc_locals
 
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
     let (interval) = now()  # Get current interval
-    let (price_wad, cumulative_price_wad, _) = get_recent_price_from(yang_id, interval)
-    return (price_wad, cumulative_price_wad)
+    return get_recent_price_from(yang_id, interval)
 end
 
 # Gets last updated multiplier value
