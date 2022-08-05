@@ -25,7 +25,7 @@ const INITIAL_MULTIPLIER = WadRay.RAY_ONE
 const MAX_THRESHOLD = WadRay.RAY_ONE
 # This is the value of limit divided by threshold
 # If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is (threshold LTV) * LIMIT_RATIO = 76%
-const LIMIT_RATIO = 95 * 10 ** 25  # 95%
+const LIMIT_RATIO = 95 * WadRay.RAY_PERCENT  # 95%
 
 const TIME_INTERVAL = 30 * 60  # 30 minutes * 60 seconds per minute
 const TIME_INTERVAL_DIV_YEAR = 57077625570776  # 1 / (48 30-minute segments per day) / (365 days per year) = 0.000057077625 (wad)

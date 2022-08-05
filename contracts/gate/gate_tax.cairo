@@ -13,7 +13,7 @@ from contracts.shared.wad_ray import WadRay
 #
 
 # Maximum tax that can be set by an authorized address (ray)
-const MAX_TAX = 5 * 10 ** 25
+const MAX_TAX = 5 * WadRay.RAY_PERCENT  # 5%
 
 #
 # Events

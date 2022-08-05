@@ -16,6 +16,8 @@ namespace WadRay:
     const BOUND = 2 ** 125
     const WAD_SCALE = 10 ** 18
     const RAY_SCALE = 10 ** 27
+    const WAD_PERCENT = 10 ** 16
+    const RAY_PERCENT = 10 ** 25
     const DIFF = 10 ** 9
     const RAY_ONE = RAY_SCALE
     const WAD_ONE = WAD_SCALE
