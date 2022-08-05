@@ -1020,6 +1020,13 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(15_000), TROVE_1])
 
 
+@pytest.mark.asyncio
+async def test_shrine_forge_unauthorized(users, shrine, shrine_deposit):
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_1])
+
+
 #
 # Tests - Trove melt
 #
