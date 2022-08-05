@@ -10,6 +10,7 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
     FALSE,
+    RAY_PERCENT,
     RAY_SCALE,
     TRUE,
     WAD_SCALE,
@@ -628,7 +629,7 @@ async def test_set_threshold(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # test setting to normal value
-    value = 9 * 10**26
+    value = 90 * RAY_PERCENT
     tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], value])
     assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == value
@@ -646,7 +647,7 @@ async def test_set_threshold(users, shrine):
 
 @pytest.mark.asyncio
 async def test_set_threshold_unauthorized(users, shrine):
-    value = 9 * 10**26
+    value = 90 * RAY_PERCENT
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
