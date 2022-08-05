@@ -77,6 +77,10 @@ func TroveUpdated(trove_id, trove : Trove):
 end
 
 @event
+func YinUpdated(user_address, credits):
+end
+
+@event
 func DepositUpdated(trove_id, yang_address, amount):
 end
 
@@ -102,6 +106,12 @@ end
 # The last 123 bits stores the start time interval of the next interest accumulation period.
 @storage_var
 func shrine_troves_storage(trove_id) -> (packed):
+end
+
+# Stores the amount of the "yin" (synthetic) each user owns.
+# yin can be exchanged for ERC20 synthetic tokens via the yin gate.
+@storage_var
+func shrine_yin_storage(user_address) -> (wad):
 end
 
 # Stores information about each collateral (see Yang struct)
@@ -556,7 +566,9 @@ end
 
 # Mint a specified amount of synthetic for a Trove
 @external
-func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
+func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    amount, trove_id, user_address
+):
     alloc_locals
 
     Auth.assert_caller_authed()
@@ -607,17 +619,25 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(am
     # Check if Trove is within limits
     assert_within_limits(trove_id)
 
+    # Update the user's yin
+    let (old_yin) = shrine_yin_storage.read(user_address)
+    let (new_yin) = WadRay.add(old_yin, amount)
+    shrine_yin_storage.write(user_address, new_yin)
+
     # Events
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
+    YinUpdated(user_address, new_yin)
 
     return ()
 end
 
 # Repay a specified amount of synthetic for a Trove
-# The module calling this function should check that `amount` does not exceed Trove's debt.
+# The module calling this function should ensure that `amount` does not exceed Trove's debt.
 @external
-func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
+func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    amount, trove_id, user_address
+):
     alloc_locals
 
     Auth.assert_caller_authed()
@@ -641,13 +661,27 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amo
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
-    let (new_debt) = WadRay.sub(old_trove_info.debt, amount)
+    let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # Reverts if amount > old_trove_info.debt
     let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
     set_trove(trove_id, new_trove_info)
 
+    # Updating the user's yin
+    let (old_yin) = shrine_yin_storage.read(user_address)
+
+    # Reverts if amount > old_yin. This means a user must have enough yin
+    # within shrine (which means excluding any ERC20 representations of it)
+    # in order to pay back their debt.
+    with_attr error_message("Shrine: not enough yin to melt debt"):
+        let (new_yin) = WadRay.sub_unsigned(old_yin, amount)
+    end
+
+    shrine_yin_storage.write(new_yin)
+
     # Events
+
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
+    YinUpdated(user_address, new_yin)
 
     return ()
 end
