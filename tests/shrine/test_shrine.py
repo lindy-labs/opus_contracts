@@ -239,7 +239,7 @@ async def shrine_deposit_multiple(users, shrine):
 async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
     shrine_owner = await users("shrine owner")
 
-    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_1])
+    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_1, USER_1])
     return forge
 
 
@@ -248,7 +248,7 @@ async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecuti
     shrine_owner = await users("shrine owner")
 
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [estimated_debt, TROVE_1])
+    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [estimated_debt, TROVE_1, USER_1])
 
     return melt
 
@@ -307,7 +307,7 @@ async def shrine_forge_trove2(users, shrine, shrine_deposit_trove2) -> StarknetT
     """
     shrine_owner = await users("shrine owner")
 
-    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_2])
+    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_2, USER_2])
     return forge
 
 
@@ -640,8 +640,8 @@ async def test_estimate(shrine, estimate):
     [
         ("deposit", [YANG_0_ADDRESS, 0, 1]),  # yang_address, amount, trove_id
         ("withdraw", [YANG_0_ADDRESS, 0, 1]),  # yang_address, amount, trove_id
-        ("forge", [0, 1]),  # amount, trove_id
-        ("melt", [0, 1]),  # amount, trove_id
+        ("forge", [0, 1, 1]),  # amount, trove_id, user_address
+        ("melt", [0, 1, 1]),  # amount, trove_id, user_address
         (
             "move_yang",
             [YANG_0_ADDRESS, 0, 1, 2],
@@ -894,7 +894,7 @@ async def test_shrine_forge_zero_deposit_fail(users, shrine):
 
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(1_000), TROVE_1])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(1_000), TROVE_1, USER_1])
 
 
 @pytest.mark.asyncio
@@ -906,7 +906,7 @@ async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
     await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(14_000), TROVE_1])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(14_000), TROVE_1, USER_1])
 
 
 @pytest.mark.asyncio
@@ -919,7 +919,7 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(15_000), TROVE_1])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(15_000), TROVE_1, USER_1])
 
 
 @pytest.mark.asyncio
@@ -1128,13 +1128,13 @@ async def test_kill(users, shrine, update_feeds):
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(100), TROVE_1])
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(100), TROVE_1, USER_1])
 
     # Test withdraw pass
     await shrine_owner.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(1), TROVE_1])
 
     # Test melt pass
-    await shrine_owner.send_tx(shrine.contract_address, "melt", [to_wad(100), TROVE_1])
+    await shrine_owner.send_tx(shrine.contract_address, "melt", [to_wad(100), TROVE_1, USER_1])
 
 
 @pytest.mark.asyncio

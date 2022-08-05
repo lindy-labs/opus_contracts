@@ -185,6 +185,13 @@ func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @view
+func get_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user_address) -> (
+    wad
+):
+    return shrine_yin_storage.read(user_address)
+end
+
+@view
 func get_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(yang_address) -> (
     yang : Yang
 ):
@@ -627,7 +634,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Events
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
-    YinUpdated(user_address, new_yin)
+    YinUpdated.emit(user_address, new_yin)
 
     return ()
 end
@@ -675,13 +682,13 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         let (new_yin) = WadRay.sub_unsigned(old_yin, amount)
     end
 
-    shrine_yin_storage.write(new_yin)
+    shrine_yin_storage.write(user_address, new_yin)
 
     # Events
 
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
-    YinUpdated(user_address, new_yin)
+    YinUpdated.emit(user_address, new_yin)
 
     return ()
 end
