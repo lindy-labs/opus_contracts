@@ -1127,6 +1127,10 @@ async def test_set_threshold(users, shrine):
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
 
+    faux_yang_address = 7890
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [faux_yang_address, to_wad(1000)])
+
 
 @pytest.mark.asyncio
 async def test_kill(users, shrine, update_feeds):

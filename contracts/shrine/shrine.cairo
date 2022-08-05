@@ -314,10 +314,6 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
-# Threshold value should be a ray between 0 and 1
-# Example: 75% = 75 * 10 ** 25
-# Example 2: 1% = 1 * 10 ** 25
-# Example 3: 1.5% = 15 * 10 ** 24
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_threshold
@@ -329,7 +325,7 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
         assert_le(new_threshold, MAX_THRESHOLD)
     end
 
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     shrine_thresholds_storage.write(yang_id, new_threshold)
 
     ThresholdUpdated.emit(yang_address, new_threshold)
