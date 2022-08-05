@@ -1163,6 +1163,14 @@ async def test_kill(users, shrine, update_feeds):
 
 
 @pytest.mark.asyncio
+async def test_unauthorized_kill(users, shrine):
+    # test calling func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "kill", [])
+
+
+@pytest.mark.asyncio
 async def test_set_ceiling(users, shrine):
     shrine_owner = await users("shrine owner")
 
