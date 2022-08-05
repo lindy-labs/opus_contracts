@@ -386,7 +386,7 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
 
 
 #
-# Tests
+# Tests - Shrine parameters
 #
 
 
@@ -485,6 +485,226 @@ async def test_auth(users, shrine_deploy):
     # Calling an authorized function with an unauthorized address - should fail
     with pytest.raises(StarkException):
         await c.send_tx(shrine.contract_address, "revoke", [b.address])
+
+
+@pytest.mark.asyncio
+async def test_add_yang(users, shrine):
+    shrine_owner = await users("shrine owner")
+
+    g_count = len(YANGS)
+    assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count
+
+    new_yang_address = 987
+    new_yang_max = to_wad(42_000)
+    new_yang_threshold = to_wad(Decimal("0.6"))
+    new_yang_start_price = to_wad(5)
+    tx = await shrine_owner.send_tx(
+        shrine.contract_address,
+        "add_yang",
+        [new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price],
+    )
+    assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
+    assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.price_wad == new_yang_start_price
+    assert_event_emitted(
+        tx,
+        shrine.contract_address,
+        "YangAdded",
+        [new_yang_address, g_count + 1, new_yang_max, new_yang_start_price],
+    )
+    assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
+    assert_event_emitted(
+        tx,
+        shrine.contract_address,
+        "ThresholdUpdated",
+        [new_yang_address, new_yang_threshold],
+    )
+
+    # Check maximum is correct
+    new_yang_info = (await shrine.get_yang(new_yang_address).invoke()).result.yang
+    assert new_yang_info.total == 0
+    assert new_yang_info.max == new_yang_max
+
+    # Check start price is correct
+    new_yang_price_info = (await shrine.get_current_yang_price(new_yang_address).invoke()).result
+    assert new_yang_price_info.price_wad == new_yang_start_price
+
+    # Check threshold is correct
+    actual_threshold = (await shrine.get_threshold(new_yang_address).invoke()).result.ray
+    assert actual_threshold == new_yang_threshold
+
+    # test calling the func unauthorized
+    bad_guy = await users("bad guy")
+    bad_guy_yang_address = 555
+    bad_guy_yang_max = to_wad(10_000)
+    bad_guy_yang_threshold = to_wad(Decimal("0.5"))
+    bad_guy_yang_start_price = to_wad(10)
+    with pytest.raises(StarkException):
+
+        await bad_guy.send_tx(
+            shrine.contract_address,
+            "add_yang",
+            [
+                bad_guy_yang_address,
+                bad_guy_yang_max,
+                bad_guy_yang_threshold,
+                bad_guy_yang_start_price,
+            ],
+        )
+
+    # Test adding duplicate Yang
+    with pytest.raises(StarkException, match="Shrine: Yang already exists"):
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "add_yang",
+            [YANG_0_ADDRESS, new_yang_max, new_yang_threshold, new_yang_start_price],
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_yang_max(users, shrine):
+    shrine_owner = await users("shrine owner")
+
+    async def update_and_assert(new_yang_max):
+        orig_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
+        tx = await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [YANG_0_ADDRESS, new_yang_max])
+        assert_event_emitted(
+            tx,
+            shrine.contract_address,
+            "YangUpdated",
+            [YANG_0_ADDRESS, orig_yang.total, new_yang_max],
+        )
+
+        updated_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
+        assert updated_yang.total == orig_yang.total
+        assert updated_yang.max == new_yang_max
+
+    # test increasing the max
+    new_yang_max = YANG_0_CEILING * 2
+    await update_and_assert(new_yang_max)
+
+    # test decreasing the max
+    new_yang_max = YANG_0_CEILING - 1
+    await update_and_assert(new_yang_max)
+
+    # test decreasing the max below yang.total
+    deposit_amt = to_wad(100)
+    await shrine_owner.send_tx(
+        shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1]
+    )  # Deposit 100 yang tokens
+
+    new_yang_max = deposit_amt - to_wad(1)
+    await update_and_assert(
+        new_yang_max
+    )  # update yang_max to a value smaller than the total amount currently deposited
+
+    # This should fail, since yang.total exceeds yang.max
+    with pytest.raises(
+        StarkException,
+        match="Shrine: Exceeds maximum amount of Yang allowed for system",
+    ):
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1])
+
+    # test calling with a non-existing yang_address
+    faux_yang_address = 7890
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
+        await shrine_owner.send_tx(
+            shrine.contract_address,
+            "update_yang_max",
+            [faux_yang_address, new_yang_max],
+        )
+
+    # test calling the func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "update_yang_max", [YANG_0_ADDRESS, 2**251])
+
+
+@pytest.mark.asyncio
+async def test_set_threshold(users, shrine):
+    shrine_owner = await users("shrine owner")
+
+    # test setting to normal value
+    value = 9 * 10**26
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], value])
+    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == value
+
+    # test setting to max value
+    max = RAY_SCALE
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max])
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], max])
+    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == max
+
+    # test setting over the limit
+    with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max + 1])
+
+    # test calling the func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
+
+    faux_yang_address = 7890
+    with pytest.raises(StarkException):
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [faux_yang_address, to_wad(1000)])
+
+
+@pytest.mark.asyncio
+async def test_kill(users, shrine, update_feeds):
+    shrine_owner = await users("shrine owner")
+
+    # Check shrine is live
+    is_live = (await shrine.get_live().invoke()).result.bool
+    assert is_live == TRUE
+
+    tx = await shrine_owner.send_tx(shrine.contract_address, "kill", [])
+    assert_event_emitted(tx, shrine.contract_address, "Killed")
+
+    # Check shrine is not live
+    is_live = (await shrine.get_live().invoke()).result.bool
+    assert is_live == FALSE
+
+    # Check deposit fails
+    with pytest.raises(StarkException, match="Shrine: System is not live"):
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, to_wad(10), TROVE_1])
+
+    # Check forge fails
+    with pytest.raises(StarkException, match="Shrine: System is not live"):
+        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(100), TROVE_1])
+
+    # Test withdraw pass
+    await shrine_owner.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(1), TROVE_1])
+
+    # Test melt pass
+    await shrine_owner.send_tx(shrine.contract_address, "melt", [to_wad(100), TROVE_1])
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_kill(users, shrine):
+    # test calling func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "kill", [])
+
+
+@pytest.mark.asyncio
+async def test_set_ceiling(users, shrine):
+    shrine_owner = await users("shrine owner")
+
+    new_ceiling = to_wad(20_000_000)
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
+    assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
+    assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
+
+    # test calling func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
+
+
+#
+# Tests - Trove actions
+#
 
 
 @pytest.mark.asyncio
@@ -968,221 +1188,6 @@ async def test_shrine_unhealthy(users, shrine, shrine_forge):
 
     is_healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
     assert is_healthy == FALSE
-
-
-@pytest.mark.asyncio
-async def test_add_yang(users, shrine):
-    shrine_owner = await users("shrine owner")
-
-    g_count = len(YANGS)
-    assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count
-
-    new_yang_address = 987
-    new_yang_max = to_wad(42_000)
-    new_yang_threshold = to_wad(Decimal("0.6"))
-    new_yang_start_price = to_wad(5)
-    tx = await shrine_owner.send_tx(
-        shrine.contract_address,
-        "add_yang",
-        [new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price],
-    )
-    assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
-    assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.price_wad == new_yang_start_price
-    assert_event_emitted(
-        tx,
-        shrine.contract_address,
-        "YangAdded",
-        [new_yang_address, g_count + 1, new_yang_max, new_yang_start_price],
-    )
-    assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
-    assert_event_emitted(
-        tx,
-        shrine.contract_address,
-        "ThresholdUpdated",
-        [new_yang_address, new_yang_threshold],
-    )
-
-    # Check maximum is correct
-    new_yang_info = (await shrine.get_yang(new_yang_address).invoke()).result.yang
-    assert new_yang_info.total == 0
-    assert new_yang_info.max == new_yang_max
-
-    # Check start price is correct
-    new_yang_price_info = (await shrine.get_current_yang_price(new_yang_address).invoke()).result
-    assert new_yang_price_info.price_wad == new_yang_start_price
-
-    # Check threshold is correct
-    actual_threshold = (await shrine.get_threshold(new_yang_address).invoke()).result.ray
-    assert actual_threshold == new_yang_threshold
-
-    # test calling the func unauthorized
-    bad_guy = await users("bad guy")
-    bad_guy_yang_address = 555
-    bad_guy_yang_max = to_wad(10_000)
-    bad_guy_yang_threshold = to_wad(Decimal("0.5"))
-    bad_guy_yang_start_price = to_wad(10)
-    with pytest.raises(StarkException):
-
-        await bad_guy.send_tx(
-            shrine.contract_address,
-            "add_yang",
-            [
-                bad_guy_yang_address,
-                bad_guy_yang_max,
-                bad_guy_yang_threshold,
-                bad_guy_yang_start_price,
-            ],
-        )
-
-    # Test adding duplicate Yang
-    with pytest.raises(StarkException, match="Shrine: Yang already exists"):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "add_yang",
-            [YANG_0_ADDRESS, new_yang_max, new_yang_threshold, new_yang_start_price],
-        )
-
-
-@pytest.mark.asyncio
-async def test_update_yang_max(users, shrine):
-    shrine_owner = await users("shrine owner")
-
-    async def update_and_assert(new_yang_max):
-        orig_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-        tx = await shrine_owner.send_tx(shrine.contract_address, "update_yang_max", [YANG_0_ADDRESS, new_yang_max])
-        assert_event_emitted(
-            tx,
-            shrine.contract_address,
-            "YangUpdated",
-            [YANG_0_ADDRESS, orig_yang.total, new_yang_max],
-        )
-
-        updated_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-        assert updated_yang.total == orig_yang.total
-        assert updated_yang.max == new_yang_max
-
-    # test increasing the max
-    new_yang_max = YANG_0_CEILING * 2
-    await update_and_assert(new_yang_max)
-
-    # test decreasing the max
-    new_yang_max = YANG_0_CEILING - 1
-    await update_and_assert(new_yang_max)
-
-    # test decreasing the max below yang.total
-    deposit_amt = to_wad(100)
-    await shrine_owner.send_tx(
-        shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1]
-    )  # Deposit 100 yang tokens
-
-    new_yang_max = deposit_amt - to_wad(1)
-    await update_and_assert(
-        new_yang_max
-    )  # update yang_max to a value smaller than the total amount currently deposited
-
-    # This should fail, since yang.total exceeds yang.max
-    with pytest.raises(
-        StarkException,
-        match="Shrine: Exceeds maximum amount of Yang allowed for system",
-    ):
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1])
-
-    # test calling with a non-existing yang_address
-    faux_yang_address = 7890
-    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_yang_max",
-            [faux_yang_address, new_yang_max],
-        )
-
-    # test calling the func unauthorized
-    bad_guy = await users("bad guy")
-    with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "update_yang_max", [YANG_0_ADDRESS, 2**251])
-
-
-@pytest.mark.asyncio
-async def test_set_threshold(users, shrine):
-    shrine_owner = await users("shrine owner")
-
-    # test setting to normal value
-    value = 9 * 10**26
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], value])
-    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == value
-
-    # test setting to max value
-    max = RAY_SCALE
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max])
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANGS[0]["address"], max])
-    assert (await shrine.get_threshold(YANGS[0]["address"]).invoke()).result.ray == max
-
-    # test setting over the limit
-    with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
-        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max + 1])
-
-    # test calling the func unauthorized
-    bad_guy = await users("bad guy")
-    with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
-
-    faux_yang_address = 7890
-    with pytest.raises(StarkException):
-        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [faux_yang_address, to_wad(1000)])
-
-
-@pytest.mark.asyncio
-async def test_kill(users, shrine, update_feeds):
-    shrine_owner = await users("shrine owner")
-
-    # Check shrine is live
-    is_live = (await shrine.get_live().invoke()).result.bool
-    assert is_live == TRUE
-
-    tx = await shrine_owner.send_tx(shrine.contract_address, "kill", [])
-    assert_event_emitted(tx, shrine.contract_address, "Killed")
-
-    # Check shrine is not live
-    is_live = (await shrine.get_live().invoke()).result.bool
-    assert is_live == FALSE
-
-    # Check deposit fails
-    with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, to_wad(10), TROVE_1])
-
-    # Check forge fails
-    with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(100), TROVE_1])
-
-    # Test withdraw pass
-    await shrine_owner.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(1), TROVE_1])
-
-    # Test melt pass
-    await shrine_owner.send_tx(shrine.contract_address, "melt", [to_wad(100), TROVE_1])
-
-
-@pytest.mark.asyncio
-async def test_unauthorized_kill(users, shrine):
-    # test calling func unauthorized
-    bad_guy = await users("bad guy")
-    with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "kill", [])
-
-
-@pytest.mark.asyncio
-async def test_set_ceiling(users, shrine):
-    shrine_owner = await users("shrine owner")
-
-    new_ceiling = to_wad(20_000_000)
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
-    assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
-    assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
-
-    # test calling func unauthorized
-    bad_guy = await users("bad guy")
-    with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
 
 
 @pytest.mark.asyncio
