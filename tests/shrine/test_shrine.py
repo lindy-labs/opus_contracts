@@ -427,7 +427,7 @@ async def test_shrine_setup(shrine_setup):
 
         # Assert that `get_current_yang_price` terminates
         price = (await shrine.get_current_yang_price(yang_address).invoke()).result.price_wad
-        assert price == to_wad(YANG_0_START_PRICE)
+        assert price == to_wad(YANGS[i]["start_price"])
 
     # Check maximum forge amount
     forge_amt = (await shrine.get_max_forge(TROVE_1).invoke()).result.wad
@@ -443,8 +443,8 @@ async def test_shrine_setup_with_feed(shrine_with_feeds):
         yang_address = YANGS[i]["address"]
 
         start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).invoke()).result
-        assert start_price == to_wad(YANG_0_START_PRICE)
-        assert start_cumulative_price == to_wad(YANG_0_START_PRICE)
+        assert start_price == to_wad(YANGS[i]["start_price"])
+        assert start_cumulative_price == to_wad(YANGS[i]["start_price"])
 
         end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).invoke()).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
@@ -610,12 +610,11 @@ async def test_update_yang_max(users, shrine):
         await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1])
 
     # test calling with a non-existing yang_address
-    faux_yang_address = 7890
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "update_yang_max",
-            [faux_yang_address, new_yang_max],
+            [FAUX_YANG_ADDRESS, new_yang_max],
         )
 
     # test calling the func unauthorized
@@ -644,14 +643,21 @@ async def test_set_threshold(users, shrine):
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
         await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], max + 1])
 
+
+@pytest.mark.asyncio
+async def test_set_threshold_unauthorized(users, shrine):
+    value = 9 * 10**26
     # test calling the func unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_threshold", [YANGS[0]["address"], value])
 
-    faux_yang_address = 7890
-    with pytest.raises(StarkException):
-        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [faux_yang_address, to_wad(1000)])
+
+@pytest.mark.asyncio
+async def test_set_threshold_invalid_yang(users, shrine):
+    shrine_owner = await users("shrine owner")
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
+        await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [FAUX_YANG_ADDRESS, to_wad(1000)])
 
 
 @pytest.mark.asyncio
@@ -729,10 +735,21 @@ async def test_advance(starknet, users, shrine, update_feeds):
     assert updated_yang_price_info.price_wad == new_price
     assert updated_yang_price_info.cumulative_price_wad == expected_cumulative
 
+
+@pytest.mark.asyncio
+async def test_advance_unauthorized(starknet, users, shrine, update_feeds):
     # Test calling advance unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "advance", [YANG_0_ADDRESS, to_wad(YANG_0_START_PRICE)])
+
+
+@pytest.mark.asyncio
+async def test_advance_invalid_yang(starknet, users, shrine, update_feeds):
+    # Test calling advance unauthorized
+    shrine_owner = await users("shrine owner")
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
+        await shrine_owner.send_tx(shrine.contract_address, "advance", [FAUX_YANG_ADDRESS, to_wad(YANG_0_START_PRICE)])
 
 
 #
