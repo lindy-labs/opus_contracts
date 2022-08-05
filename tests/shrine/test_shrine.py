@@ -494,6 +494,29 @@ async def test_auth(users, shrine_deploy):
 
 
 #
+# Tests - Yin parameters
+#
+
+
+@pytest.mark.asyncio
+async def test_set_ceiling(users, shrine):
+    shrine_owner = await users("shrine owner")
+
+    new_ceiling = to_wad(20_000_000)
+    tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
+    assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
+    assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
+
+
+@pytest.mark.asyncio
+async def test_set_ceiling_unauthorized(users, shrine):
+    # test calling func unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
+
+
+#
 # Tests - Yang onboarding and parameters
 #
 
@@ -664,21 +687,6 @@ async def test_set_threshold_invalid_yang(users, shrine):
     shrine_owner = await users("shrine owner")
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
         await shrine_owner.send_tx(shrine.contract_address, "set_threshold", [FAUX_YANG_ADDRESS, to_wad(1000)])
-
-
-@pytest.mark.asyncio
-async def test_set_ceiling(users, shrine):
-    shrine_owner = await users("shrine owner")
-
-    new_ceiling = to_wad(20_000_000)
-    tx = await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [new_ceiling])
-    assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
-    assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
-
-    # test calling func unauthorized
-    bad_guy = await users("bad guy")
-    with pytest.raises(StarkException):
-        await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
 
 
 #
