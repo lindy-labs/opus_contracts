@@ -753,6 +753,38 @@ async def test_advance_invalid_yang(starknet, users, shrine, update_feeds):
         await shrine_owner.send_tx(shrine.contract_address, "advance", [FAUX_YANG_ADDRESS, to_wad(YANG_0_START_PRICE)])
 
 
+@pytest.mark.asyncio
+async def test_update_multiplier(starknet, users, shrine, update_feeds):
+    shrine_owner = await users("shrine owner")
+
+    interval = get_interval(starknet.state.state.block_info.block_timestamp)
+    multiplier_info = (await shrine.get_multiplier(interval - 1).invoke()).result
+
+    new_multiplier_value = RAY_SCALE + RAY_SCALE // 2
+    update = await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [new_multiplier_value])
+
+    expected_cumulative = int(multiplier_info.cumulative_multiplier_ray + new_multiplier_value)
+
+    # Test event emitted
+    assert_event_emitted(
+        update, shrine.contract_address, "MultiplierUpdated", [new_multiplier_value, expected_cumulative, interval]
+    )
+
+    # Test multiplier is updated
+    updated_multiplier_info = (await shrine.get_current_multiplier().invoke()).result
+    assert updated_multiplier_info.multiplier_ray == new_multiplier_value
+    assert updated_multiplier_info.cumulative_multiplier_ray == expected_cumulative
+    assert updated_multiplier_info.interval_ufelt == interval
+
+
+@pytest.mark.asyncio
+async def test_update_multiplier_unauthorized(starknet, users, shrine, update_feeds):
+    # Test calling advance unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "update_multiplier", [YANG_0_ADDRESS, RAY_SCALE])
+
+
 #
 # Tests - Trove actions
 #
