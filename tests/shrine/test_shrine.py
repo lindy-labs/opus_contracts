@@ -1111,6 +1111,45 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
 
 
 @pytest.mark.asyncio
+async def test_shrine_partial_melt_pass(users, shrine, shrine_forge):
+    shrine_owner = await users("shrine owner")
+
+    price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
+
+    estimated_debt_wad = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    melt_amt_wad = estimated_debt_wad // 5
+    outstanding_amt_wad = estimated_debt_wad - melt_amt_wad
+
+    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [melt_amt_wad, TROVE_1])
+
+    assert_event_emitted(melt, shrine.contract_address, "DebtTotalUpdated", [outstanding_amt_wad])
+
+    assert_event_emitted(melt, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, outstanding_amt_wad])
+
+    system_debt = (await shrine.get_debt().invoke()).result.wad
+    assert system_debt == outstanding_amt_wad
+
+    trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    assert trove.debt == outstanding_amt_wad
+    assert trove.charge_from == FEED_LEN - 1
+
+    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
+    expected_ltv = from_wad(outstanding_amt_wad) / (INITIAL_DEPOSIT * from_wad(price_wad))
+    assert_equalish(from_ray(shrine_ltv), expected_ltv)
+
+    healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    assert healthy == TRUE
+
+    # Check max forge amount
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    expected_limit = calculate_max_forge([yang_price], [to_wad(INITIAL_DEPOSIT)], [YANG_0_THRESHOLD]) - from_wad(
+        outstanding_amt_wad
+    )
+    assert_equalish(max_forge_amt, expected_limit)
+
+
+@pytest.mark.asyncio
 async def test_shrine_melt_system_underflow(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
 
