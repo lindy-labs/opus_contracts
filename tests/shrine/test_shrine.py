@@ -939,6 +939,13 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
         )
 
 
+@pytest.mark.asyncio
+async def test_shrine_withdraw_unauthorized(users, shrine, shrine_deposit):
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1])
+
+
 #
 # Tests - Trove forge
 #
