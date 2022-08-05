@@ -1136,8 +1136,16 @@ async def test_set_threshold(users, shrine):
 async def test_kill(users, shrine, update_feeds):
     shrine_owner = await users("shrine owner")
 
+    # Check shrine is live
+    is_live = (await shrine.get_live().invoke()).result.bool
+    assert is_live == TRUE
+
     tx = await shrine_owner.send_tx(shrine.contract_address, "kill", [])
     assert_event_emitted(tx, shrine.contract_address, "Killed")
+
+    # Check shrine is not live
+    is_live = (await shrine.get_live().invoke()).result.bool
+    assert is_live == FALSE
 
     # Check deposit fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
