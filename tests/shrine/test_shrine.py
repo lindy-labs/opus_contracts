@@ -1058,6 +1058,34 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_equalish(max_forge_amt, expected_limit)
 
 
+@pytest.mark.asyncio
+async def test_shrine_melt_system_underflow(users, shrine, update_feeds):
+    shrine_owner = await users("shrine owner")
+
+    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    excess_debt = estimated_debt + 1
+    with pytest.raises(StarkException, match="Shrine: Trove debt underflow"):
+        await shrine_owner.send_tx(shrine.contract_address, "melt", [excess_debt, TROVE_1])
+
+
+@pytest.mark.asyncio
+async def test_shrine_melt_trove_underflow(users, shrine, update_feeds_with_trove2):
+    shrine_owner = await users("shrine owner")
+
+    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    excess_debt = estimated_debt + 1
+    with pytest.raises(StarkException, match="Shrine: Trove debt underflow"):
+        await shrine_owner.send_tx(shrine.contract_address, "melt", [excess_debt, TROVE_1])
+
+
+@pytest.mark.asyncio
+async def test_shrine_melt_unauthorized(users, shrine, shrine_forge):
+    bad_guy = await users("bad guy")
+    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "melt", [estimated_debt, TROVE_1])
+
+
 #
 # Tests - Trove estimate and charge
 #
