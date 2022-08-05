@@ -13,7 +13,7 @@ from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
-from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starknet.testing.starknet import StarknetContract, StarknetState
 
 PRIME = 2**251 + 17 * 2**192 + 1
 RANGE_CHECK_BOUND = 2**128
@@ -177,7 +177,7 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
     return lo, hi
 
 
-def set_block_timestamp(sn, block_timestamp):
+def set_block_timestamp(sn: StarknetState, block_timestamp: int):
     sn.state.block_info = BlockInfo.create_for_testing(sn.state.block_info.block_number, block_timestamp)
 
 

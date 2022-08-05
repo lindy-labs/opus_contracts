@@ -26,6 +26,7 @@ from tests.utils import (
 YANG_0_ADDRESS = YANGS[0]["address"]
 YANG_0_CEILING = YANGS[0]["ceiling"]
 YANG_0_THRESHOLD = YANGS[0]["threshold"]
+YANG_0_START_PRICE = YANGS[0]["start_price"]
 
 #
 # Structs
@@ -210,6 +211,10 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
     return cumulative_weighted_threshold * from_ray(LIMIT_RATIO)
 
 
+def get_interval(block_timestamp: int) -> int:
+    return block_timestamp // TIME_INTERVAL
+
+
 #
 # Fixtures
 #
@@ -273,7 +278,7 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
     shrine_owner = await users("shrine owner")
 
     yang0_address = YANG_0_ADDRESS
-    yang0_feed = create_feed(YANGS[0]["start_price"], FEED_LEN, MAX_PRICE_CHANGE)
+    yang0_feed = create_feed(YANG_0_START_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
 
     for i in range(FEED_LEN):
         # Add offset for initial feeds in `shrine`
@@ -363,7 +368,7 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
     shrine_owner = await users("shrine owner")
 
     yang0_address = YANG_0_ADDRESS
-    yang0_feed = create_feed(YANGS[0]["start_price"], FEED_LEN, MAX_PRICE_CHANGE)
+    yang0_feed = create_feed(YANG_0_START_PRICE, FEED_LEN, MAX_PRICE_CHANGE)
 
     idx = request.param
 
@@ -422,7 +427,7 @@ async def test_shrine_setup(shrine_setup):
 
         # Assert that `get_current_yang_price` terminates
         price = (await shrine.get_current_yang_price(yang_address).invoke()).result.price_wad
-        assert price == to_wad(YANGS[i]["start_price"])
+        assert price == to_wad(YANG_0_START_PRICE)
 
     # Check maximum forge amount
     forge_amt = (await shrine.get_max_forge(TROVE_1).invoke()).result.wad
@@ -438,8 +443,8 @@ async def test_shrine_setup_with_feed(shrine_with_feeds):
         yang_address = YANGS[i]["address"]
 
         start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).invoke()).result
-        assert start_price == to_wad(YANGS[i]["start_price"])
-        assert start_cumulative_price == to_wad(YANGS[i]["start_price"])
+        assert start_price == to_wad(YANG_0_START_PRICE)
+        assert start_cumulative_price == to_wad(YANG_0_START_PRICE)
 
         end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).invoke()).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
@@ -700,6 +705,34 @@ async def test_set_ceiling(users, shrine):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "set_ceiling", [1])
+
+
+@pytest.mark.asyncio
+async def test_advance(starknet, users, shrine, update_feeds):
+    shrine_owner = await users("shrine owner")
+
+    interval = get_interval(starknet.state.state.block_info.block_timestamp)
+    yang_price_info = (await shrine.get_yang_price(YANG_0_ADDRESS, interval - 1).invoke()).result
+
+    new_price = to_wad(YANG_0_START_PRICE + 1)
+    advance = await shrine_owner.send_tx(shrine.contract_address, "advance", [YANG_0_ADDRESS, new_price])
+
+    expected_cumulative = int(yang_price_info.cumulative_price_wad + new_price)
+
+    # Test event emitted
+    assert_event_emitted(
+        advance, shrine.contract_address, "YangPriceUpdated", [YANG_0_ADDRESS, new_price, expected_cumulative, interval]
+    )
+
+    # Test yang price is updated
+    updated_yang_price_info = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result
+    assert updated_yang_price_info.price_wad == new_price
+    assert updated_yang_price_info.cumulative_price_wad == expected_cumulative
+
+    # Test calling advance unauthorized
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(shrine.contract_address, "advance", [YANG_0_ADDRESS, to_wad(YANG_0_START_PRICE)])
 
 
 #
