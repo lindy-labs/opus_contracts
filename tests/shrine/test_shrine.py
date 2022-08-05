@@ -852,6 +852,17 @@ async def test_shrine_deposit_invalid_yang_fail(users, shrine):
         await shrine_owner.send_tx(shrine.contract_address, "deposit", [789, to_wad(1), TROVE_1])
 
 
+@pytest.mark.asyncio
+async def test_shrine_deposit_unauthorized(users, shrine):
+    bad_guy = await users("bad guy")
+    with pytest.raises(StarkException):
+        await bad_guy.send_tx(
+            shrine.contract_address,
+            "deposit",
+            [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+        )
+
+
 #
 # Tests - Trove withdraw
 #
