@@ -174,10 +174,9 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     end
 
     let (shrine_address) = abbot_shrine_address_storage.read()
-    let (trove : Trove) = IShrine.get_trove(shrine_address, trove_id)
     let (outstanding_debt) = IShrine.estimate(shrine_address, trove_id)
-    let total_debt = trove.debt + outstanding_debt
-    IShrine.melt(shrine_address, total_debt, trove_id)
+
+    IShrine.melt(shrine_address, outstanding_debt, trove_id)
     do_withdrawals_full(shrine_address, user_address, trove_id, 1)
 
     # deliberately not emitting an event
