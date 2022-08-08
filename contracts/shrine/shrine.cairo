@@ -4,7 +4,7 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, split_felt
 from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
+from starkware.starknet.common.syscalls import get_block_timestamp
 
 from contracts.shared.convert import pack_felt, pack_125, unpack_125
 from contracts.shared.types import Trove, Yang
@@ -513,7 +513,7 @@ func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (dst_balance) = shrine_yin_storage.read(dst_address)
 
     # WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
-    with_attr error_message("Shrine: insufficient yin balance"):
+    with_attr error_message("Shrine: transfer amount exceeds yin balance"):
         let (new_src_balance) = WadRay.sub_unsigned(src_balance, amount)
     end
 
@@ -663,13 +663,13 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_within_limits(trove_id)
 
     # Update the user's yin
-    let (old_user_yin) = shrine_yin_storage.read(user_address)
-    let (new_user_yin) = WadRay.add(old_user_yin, amount)
+    let (user_yin) = shrine_yin_storage.read(user_address)
+    let (new_user_yin) = WadRay.add(user_yin, amount)
     shrine_yin_storage.write(user_address, new_user_yin)
 
     # Update the total yin
-    let (old_total_yin) = shrine_total_yin_storage.read()
-    let (new_total_yin) = WadRay.add(old_total_yin, amount)
+    let (total_yin) = shrine_total_yin_storage.read()
+    let (new_total_yin) = WadRay.add(total_yin, amount)
     shrine_total_yin_storage.write(new_total_yin)
 
     # Events
@@ -714,15 +714,15 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     set_trove(trove_id, new_trove_info)
 
     # Updating the user's yin
-    let (old_user_yin) = shrine_yin_storage.read(user_address)
+    let (user_yin) = shrine_yin_storage.read(user_address)
 
     # Updating the total yin
-    let (old_total_yin) = shrine_total_yin_storage.read()
+    let (total_yin) = shrine_total_yin_storage.read()
 
     # Reverts if amount > old_user_yin or amount > old_total_yin.
     with_attr error_message("Shrine: not enough yin to melt debt"):
-        let (new_user_yin) = WadRay.sub_unsigned(old_user_yin, amount)
-        let (new_total_yin) = WadRay.sub_unsigned(old_total_yin, amount)
+        let (new_user_yin) = WadRay.sub_unsigned(user_yin, amount)
+        let (new_total_yin) = WadRay.sub_unsigned(total_yin, amount)
     end
 
     shrine_yin_storage.write(user_address, new_user_yin)

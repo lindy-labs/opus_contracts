@@ -1,10 +1,12 @@
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.starknet.common.syscalls import get_caller_address
+from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.interfaces import IShrine
-
+from contracts.shared.wad_ray import WadRay
 # Yin-ERC20
 # -------------------------------
 # This is a modified OpenZeppelin ERC20 contract that allows users to interact with Yin as a standard ERC20 token.
@@ -13,6 +15,12 @@ from contracts.interfaces import IShrine
 #
 # However, this functionality is not enough to make yin usable as a token, and so this modified ERC-20 contract serves
 # as a wrapper for "raw" yin, enabling its use in the broader DeFi ecosystem.
+
+#
+# Constants
+#
+
+const INFINITE_ALLOWANCE = 2 ** 125
 
 #
 # Events
@@ -122,3 +130,132 @@ end
 #
 # External functions
 #
+@external
+func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(recipient, amount):
+    let (sender) = get_caller_address()
+    _transfer(sender, recipient, amount)
+    return ()
+end
+
+@external
+func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    sender, recipient, amount
+):
+    let (caller) = get_caller_address()
+    _spend_allowance(sender, caller, amount)
+    _transfer(sender, recipient, amount)
+    return ()
+end
+
+@external
+func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(spender, amount):
+    let (caller) = get_caller_address()
+    _approve(caller, spender, amount)
+    return ()
+end
+
+@external
+func increaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    spender, added_value
+):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(added_value)  # Valid range: [0, 2**125]
+    end
+
+    let (caller) = get_caller_address()
+    let (current_allowance) = yin_allowances_storage.read(caller, spender)
+
+    with_attr error_message("Yin: allowance overflow"):
+        let (new_allowance) = WadRay.add(current_allowance, added_value)
+    end
+
+    _approve(caller, spender, new_allowance)
+    return ()
+end
+
+@external
+func decreaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    spender, subtracted_value
+):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(subtracted_value)  # Valid range: [0, 2**125]
+    end
+
+    let (caller) = get_caller_address()
+    let (current_allowance) = yin_allowances_storage.read(caller, spender)
+
+    with_attr error_message("Yin: allowance underflow"):
+        let (new_allowance) = WadRay.sub_unsigned(current_allowance, subtracted_value)
+    end
+
+    _approve(caller, spender, new_allowance)
+    return ()
+end
+#
+# Private functions
+#
+
+# Difference from OZ: Allows transfers to zero-address as "burning"
+func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    sender, recipient, amount
+):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
+    with_attr error_message("Yin: cannot transfer from the zero address"):
+        assert_not_zero(sender)
+    end
+
+    let (shrine_address) = yin_shrine_address_storage.read()
+
+    # Calling shrine's `move_yin` function, which handles the rest of the transfer logic
+    IShrine.move_yin(
+        contract_address=shrine_address, src_address=sender, dst_address=recipient, amount=amount
+    )
+
+    Transfer.emit(sender, recipient, amount)
+    return ()
+end
+
+func _approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    owner, spender, amount
+):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
+    with_attr error_message("ERC20: cannot approve from the zero address"):
+        assert_not_zero(owner)
+    end
+
+    with_attr error_message("ERC20: cannot approve to the zero address"):
+        assert_not_zero(spender)
+    end
+
+    yin_allowances_storage.write(owner, spender, amount)
+    Approval.emit(owner, spender, amount)
+    return ()
+end
+
+func _spend_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    owner, spender, amount
+):
+    alloc_locals
+
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
+    let (current_allowance) = yin_allowances_storage.read(owner, spender)
+    if current_allowance != INFINITE_ALLOWANCE:
+        with_attr error_message("Yin: insufficient allowance"):
+            let (new_allowance) = WadRay.sub_unsigned(current_allowance, amount)  # Reverts if amount > current_allowance
+        end
+
+        _approve(owner, spender, new_allowance)
+        return ()
+    end
+
+    return ()
+end
