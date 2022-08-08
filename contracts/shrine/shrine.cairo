@@ -489,6 +489,28 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return ()
 end
 
+@external
+func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    src_address, dst_address, amount
+):
+    Auth.assert_caller_authed()
+
+    let (src_balance) = shrine_yin_storage.read(src_address)
+    let (dst_balance) = shrine_yin_storage.read(dst_address)
+
+    # WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
+    with_attr error_message("Shrine: insufficient yin balance"):
+        let (new_src_balance) = WadRay.sub_unsigned(src_balance, amount)
+    end
+
+    let (new_dst_balance) = WadRay.add(dst_balance, amount)
+
+    shrine_yin_storage.write(src_address, new_src_balance)
+    shrine_yin_storage.write(dst_address, new_dst_balance)
+
+    return ()
+end
+
 # Deposit a specified amount of a Yang into a Trove
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
