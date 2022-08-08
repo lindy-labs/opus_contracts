@@ -57,7 +57,11 @@ func YangUpdated(yang_address, yang : Yang):
 end
 
 @event
-func DebtTotalUpdated(total):
+func DebtTotalUpdated(total_wad):
+end
+
+@event
+func YinTotalUpdated(total_wad):
 end
 
 @event
@@ -136,9 +140,14 @@ end
 func shrine_deposits_storage(trove_id, yang_id) -> (wad):
 end
 
-# Total amount of synthetic minted
+# Total amount of debt issued
 @storage_var
 func shrine_debt_storage() -> (wad):
+end
+
+# Total amount of synthetic minted
+@storage_var
+func shrine_total_yin_storage() -> (wad : felt):
 end
 
 # Keeps track of the price history of each Yang - packed
@@ -189,6 +198,11 @@ func get_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     wad
 ):
     return shrine_yin_storage.read(user_address)
+end
+
+@view
+func get_total_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
+    return shrine_total_yin_storage.read()
 end
 
 @view
@@ -649,9 +663,14 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_within_limits(trove_id)
 
     # Update the user's yin
-    let (old_yin) = shrine_yin_storage.read(user_address)
-    let (new_yin) = WadRay.add(old_yin, amount)
-    shrine_yin_storage.write(user_address, new_yin)
+    let (old_user_yin) = shrine_yin_storage.read(user_address)
+    let (new_user_yin) = WadRay.add(old_user_yin, amount)
+    shrine_yin_storage.write(user_address, new_user_yin)
+
+    # Update the total yin
+    let (old_total_yin) = shrine_total_yin_storage.read()
+    let (new_total_yin) = WadRay.add(old_total_yin, amount)
+    shrine_total_yin_storage.write(new_total_yin)
 
     # Events
     DebtTotalUpdated.emit(new_system_debt)
@@ -695,16 +714,19 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     set_trove(trove_id, new_trove_info)
 
     # Updating the user's yin
-    let (old_yin) = shrine_yin_storage.read(user_address)
+    let (old_user_yin) = shrine_yin_storage.read(user_address)
 
-    # Reverts if amount > old_yin. This means a user must have enough yin
-    # within shrine (which means excluding any ERC20 representations of it)
-    # in order to pay back their debt.
+    # Updating the total yin
+    let (old_total_yin) = shrine_total_yin_storage.read()
+
+    # Reverts if amount > old_user_yin or amount > old_total_yin.
     with_attr error_message("Shrine: not enough yin to melt debt"):
-        let (new_yin) = WadRay.sub_unsigned(old_yin, amount)
+        let (new_user_yin) = WadRay.sub_unsigned(old_user_yin, amount)
+        let (new_total_yin) = WadRay.sub_unsigned(old_total_yin, amount)
     end
 
-    shrine_yin_storage.write(user_address, new_yin)
+    shrine_yin_storage.write(user_address, new_user_yin)
+    shrine_total_yin_storage.write(new_total_yin)
 
     # Events
 
