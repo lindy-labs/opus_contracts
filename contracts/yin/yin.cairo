@@ -131,33 +131,37 @@ end
 # External functions
 #
 @external
-func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(recipient, amount):
+func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    recipient, amount
+) -> (success):
     let (sender) = get_caller_address()
     _transfer(sender, recipient, amount)
-    return ()
+    return (TRUE)
 end
 
 @external
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
-):
+) -> (success):
     let (caller) = get_caller_address()
     _spend_allowance(sender, caller, amount)
     _transfer(sender, recipient, amount)
-    return ()
+    return (TRUE)
 end
 
 @external
-func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(spender, amount):
+func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    spender, amount
+) -> (success):
     let (caller) = get_caller_address()
     _approve(caller, spender, amount)
-    return ()
+    return (TRUE)
 end
 
 @external
 func increaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender, added_value
-):
+) -> (success):
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
         WadRay.assert_result_valid_unsigned(added_value)  # Valid range: [0, 2**125]
     end
@@ -170,13 +174,13 @@ func increaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     end
 
     _approve(caller, spender, new_allowance)
-    return ()
+    return (TRUE)
 end
 
 @external
 func decreaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender, subtracted_value
-):
+) -> (success):
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
         WadRay.assert_result_valid_unsigned(subtracted_value)  # Valid range: [0, 2**125]
     end
@@ -189,7 +193,7 @@ func decreaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     end
 
     _approve(caller, spender, new_allowance)
-    return ()
+    return (TRUE)
 end
 #
 # Private functions
