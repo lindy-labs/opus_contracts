@@ -675,7 +675,8 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Events
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
-    YinUpdated.emit(user_address, new_yin)
+    YinTotalUpdated.emit(new_total_yin)
+    YinUpdated.emit(user_address, new_user_yin)
 
     return ()
 end
@@ -732,7 +733,8 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
-    YinUpdated.emit(user_address, new_yin)
+    YinTotalUpdated.emit(new_total_yin)
+    YinUpdated.emit(user_address, new_user_yin)
 
     return ()
 end

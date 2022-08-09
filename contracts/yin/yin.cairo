@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.starknet.common.syscalls import get_caller_address
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_not_zero, assert_lt
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.interfaces import IShrine
@@ -13,7 +13,7 @@ from contracts.shared.wad_ray import WadRay
 # Yin has an internal representation inside shrine.cairo (in the storage variable `shrine_yin_storage`), together
 # with minting (`forge`), burning (`melt`), and transfer (`move_yin`) functions.
 #
-# However, this functionality is not enough to make yin usable as a token, and so this modified ERC-20 contract serves
+# However, this functionality is not enough to make yin usable as a fully-fledged token, and so this modified ERC-20 contract serves
 # as a wrapper for "raw" yin, enabling its use in the broader DeFi ecosystem.
 
 #
@@ -21,17 +21,17 @@ from contracts.shared.wad_ray import WadRay
 #
 
 const INFINITE_ALLOWANCE = 2 ** 125
-
+const UINT8_MAX = 256
 #
 # Events
 #
 
 @event
-func Transfer(from_ : felt, to : felt, value : Uint256):
+func Transfer(from_, to, value):
 end
 
 @event
-func Approval(owner : felt, spender : felt, value : Uint256):
+func Approval(owner, spender, value):
 end
 
 #
@@ -39,15 +39,15 @@ end
 #
 
 @storage_var
-func yin_name_storage() -> (name : felt):
+func yin_name_storage() -> (name):
 end
 
 @storage_var
-func yin_symbol_storage() -> (symbol : felt):
+func yin_symbol_storage() -> (symbol):
 end
 
 @storage_var
-func yin_decimals_storage() -> (decimals : felt):
+func yin_decimals_storage() -> (decimals):
 end
 
 @storage_var
@@ -55,7 +55,7 @@ func yin_shrine_address_storage() -> (address):
 end
 
 @storage_var
-func yin_allowances_storage(owner : felt, spender : felt) -> (allowance : Uint256):
+func yin_allowances_storage(owner, spender) -> (allowance):
 end
 
 #

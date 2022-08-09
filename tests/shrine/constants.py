@@ -31,6 +31,10 @@ YANGS = [
     },
 ]
 
+YANG_0_ADDRESS = YANGS[0]["address"]
+YANG_0_CEILING = YANGS[0]["ceiling"]
+YANG_0_THRESHOLD = YANGS[0]["threshold"]
+
 INITIAL_DEPOSIT = 10
 
 FEED_LEN = 10
@@ -89,3 +93,5 @@ TROVE_2 = 2
 # Corresponding user addresses of each trove
 USER_1 = 1
 USER_2 = 2
+USER_3 = 3
+USER_4 = 4
