@@ -511,14 +511,13 @@ async def test_shrine_withdraw_pass(shrine, shrine_withdraw, collect_gas_cost):
 
 @pytest.mark.asyncio
 async def test_shrine_forge_pass(shrine, shrine_forge):
-    assert_event_emitted(shrine_forge, shrine.contract_address, "DebtTotalUpdated", [FORGE_AMT])
 
-    assert_event_emitted(
-        shrine_forge,
-        shrine.contract_address,
-        "TroveUpdated",
-        [TROVE_1, FEED_LEN - 1, FORGE_AMT],
-    )
+    assert_event_emitted(shrine_forge, shrine.contract_address, "DebtTotalUpdated", [FORGE_AMT])
+    assert_event_emitted(shrine_forge, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, FORGE_AMT])
+
+    # Yin Events
+    assert_event_emitted(shrine_forge, shrine.contract_address, "YinUpdated", [USER_1, FORGE_AMT])
+    assert_event_emitted(shrine_forge, shrine.contract_address, "YinTotalUpdated", [FORGE_AMT])
 
     system_debt = (await shrine.get_debt().invoke()).result.wad
     assert system_debt == FORGE_AMT
@@ -547,8 +546,11 @@ async def test_shrine_forge_pass(shrine, shrine_forge):
 @pytest.mark.asyncio
 async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_event_emitted(shrine_melt, shrine.contract_address, "DebtTotalUpdated", [0])
-
     assert_event_emitted(shrine_melt, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, 0])
+
+    # Yin events
+    assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [USER_1, 0])
+    assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
 
     system_debt = (await shrine.get_debt().invoke()).result.wad
     assert system_debt == 0
