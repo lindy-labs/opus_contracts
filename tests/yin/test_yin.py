@@ -27,7 +27,7 @@ async def yin(yin_deploy, shrine, users) -> StarknetContract:
 
 
 @pytest.mark.asyncio
-async def test_yin_transfer_pass(shrine_forge, yin):
+async def test_yin_transfer_pass(shrine, shrine_forge, yin):
 
     # Checking USER_1's and USER_2's initial balance
     u1_bal = (await yin.balanceOf(USER_1).invoke()).result.balance
@@ -38,11 +38,11 @@ async def test_yin_transfer_pass(shrine_forge, yin):
 
     # Transferring all of USER_1's balance to USER_2
     transfer_tx = await yin.transfer(USER_2, FORGE_AMT).invoke(caller_address=USER_1)
-
     assert transfer_tx.result.success == 1
 
     u1_new_bal = (await yin.balanceOf(USER_1).invoke()).result.balance
     assert u1_new_bal == 0
+
     u2_new_bal = (await yin.balanceOf(USER_2).invoke()).result.balance
     assert u2_new_bal == FORGE_AMT
 
@@ -93,6 +93,30 @@ async def test_yin_transfer_from_pass(shrine_forge, yin):
     await yin.transferFrom(USER_3, USER_1, FORGE_AMT).invoke(caller_address=USER_2)
     u2_allowance = (await yin.allowance(USER_3, USER_2).invoke()).result.remaining
     assert u2_allowance == INFINITE_ALLOWANCE
+
+
+@pytest.mark.asyncio
+async def test_yin_transfer_from_fail(shrine_forge, yin):
+    # Calling `transferFrom` with an allowance of zero
+
+    # USER_2 transfers all of USER_1's funds to USER_3 - should fail
+    # since USER_1 hasn't approved USER_2
+    with pytest.raises(StarkException, match="Yin: insufficient allowance"):
+        await yin.transferFrom(USER_1, USER_3, FORGE_AMT).invoke(caller_address=USER_2)
+
+    # USER_1 approves USER_2 but not enough to send FORGE_AMT
+    await yin.approve(USER_2, FORGE_AMT // 2).invoke(caller_address=USER_1)
+
+    # Should fail since USER_2's allowance for USER_1 is less than FORGE_AMT
+    with pytest.raises(StarkException, match="Yin: insufficient allowance"):
+        await yin.transferFrom(USER_1, USER_3, FORGE_AMT).invoke(caller_address=USER_2)
+
+    # USER_1 grants USER_2 unlimited allowance
+    await yin.approve(USER_2, INFINITE_ALLOWANCE).invoke(caller_address=USER_1)
+
+    # Should fail since USER_2's tries transferring more than USER_1 has in their balance
+    with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
+        await yin.transferFrom(USER_1, USER_3, FORGE_AMT + 1).invoke(caller_address=USER_2)
 
 
 @pytest.mark.asyncio

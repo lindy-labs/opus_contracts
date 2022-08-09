@@ -244,6 +244,26 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 
 
 @pytest.fixture
+async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
+    shrine_owner = await users("shrine owner")
+
+    deposit = await shrine_owner.send_tx(
+        shrine.contract_address,
+        "deposit",
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+    )
+    return deposit
+
+
+@pytest.fixture
+async def shrine_deposit_multiple(users, shrine):
+    shrine_owner = await users("shrine owner")
+
+    for d in DEPOSITS:
+        await shrine_owner.send_tx(shrine.contract_address, "deposit", [d["address"], d["amount"], TROVE_1])
+
+
+@pytest.fixture
 async def shrine_deposit_trove2(users, shrine) -> StarknetTransactionExecutionInfo:
     """
     Replicate deposit for another trove.
@@ -256,6 +276,16 @@ async def shrine_deposit_trove2(users, shrine) -> StarknetTransactionExecutionIn
         [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_2],
     )
     return deposit
+
+
+@pytest.fixture
+async def shrine_melt(users, shrine, shrine_forge) -> StarknetTransactionExecutionInfo:
+    shrine_owner = await users("shrine owner")
+
+    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [estimated_debt, TROVE_1, USER_1])
+
+    return melt
 
 
 @pytest.fixture

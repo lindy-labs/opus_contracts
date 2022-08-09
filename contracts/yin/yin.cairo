@@ -158,43 +158,6 @@ func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     return (TRUE)
 end
 
-@external
-func increaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    spender, added_value
-) -> (success):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(added_value)  # Valid range: [0, 2**125]
-    end
-
-    let (caller) = get_caller_address()
-    let (current_allowance) = yin_allowances_storage.read(caller, spender)
-
-    with_attr error_message("Yin: allowance overflow"):
-        let (new_allowance) = WadRay.add(current_allowance, added_value)
-    end
-
-    _approve(caller, spender, new_allowance)
-    return (TRUE)
-end
-
-@external
-func decreaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    spender, subtracted_value
-) -> (success):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(subtracted_value)  # Valid range: [0, 2**125]
-    end
-
-    let (caller) = get_caller_address()
-    let (current_allowance) = yin_allowances_storage.read(caller, spender)
-
-    with_attr error_message("Yin: allowance underflow"):
-        let (new_allowance) = WadRay.sub_unsigned(current_allowance, subtracted_value)
-    end
-
-    _approve(caller, spender, new_allowance)
-    return (TRUE)
-end
 #
 # Private functions
 #
@@ -247,6 +210,7 @@ func _spend_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
 ):
     alloc_locals
 
+    # This check here is probably unnecessary
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
         WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
     end
