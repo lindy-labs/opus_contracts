@@ -244,18 +244,6 @@ async def update_feeds(starknet, users, shrine, shrine_forge) -> List[Decimal]:
 
 
 @pytest.fixture
-async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
-    shrine_owner = await users("shrine owner")
-
-    deposit = await shrine_owner.send_tx(
-        shrine.contract_address,
-        "deposit",
-        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
-    )
-    return deposit
-
-
-@pytest.fixture
 async def shrine_deposit_multiple(users, shrine):
     shrine_owner = await users("shrine owner")
 
