@@ -396,10 +396,9 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
 #
 
 
+@pytest.mark.usefixtures("shrine_deploy")
 @pytest.mark.asyncio
-async def test_shrine_deploy(shrine_deploy):
-    shrine = shrine_deploy
-
+async def test_shrine_deploy(shrine):
     # Check system is live
     live = (await shrine.get_live().invoke()).result.bool
     assert live == TRUE
@@ -462,9 +461,9 @@ async def test_shrine_setup_with_feed(shrine_with_feeds):
     assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
 
 
+@pytest.mark.usefixtures("shrine_deploy")
 @pytest.mark.asyncio
-async def test_auth(users, shrine_deploy):
-    shrine = shrine_deploy
+async def test_auth(users, shrine):
     shrine_owner = await users("shrine owner")
 
     #
@@ -694,8 +693,9 @@ async def test_set_threshold_invalid_yang(users, shrine):
 #
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_kill(users, shrine, update_feeds):
+async def test_kill(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # Check shrine is live
@@ -737,8 +737,9 @@ async def test_unauthorized_kill(users, shrine):
 #
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_advance(starknet, users, shrine, update_feeds):
+async def test_advance(starknet, users, shrine):
     shrine_owner = await users("shrine owner")
 
     interval = get_interval(starknet.state.state.block_info.block_timestamp)
@@ -761,24 +762,27 @@ async def test_advance(starknet, users, shrine, update_feeds):
     assert updated_yang_price_info.interval_ufelt == interval
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_advance_unauthorized(starknet, users, shrine, update_feeds):
+async def test_advance_unauthorized(users, shrine):
     # Test calling advance unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "advance", [YANG_0_ADDRESS, to_wad(YANG_0_START_PRICE)])
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_advance_invalid_yang(starknet, users, shrine, update_feeds):
+async def test_advance_invalid_yang(users, shrine):
     # Test calling advance unauthorized
     shrine_owner = await users("shrine owner")
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
         await shrine_owner.send_tx(shrine.contract_address, "advance", [FAUX_YANG_ADDRESS, to_wad(YANG_0_START_PRICE)])
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_update_multiplier(starknet, users, shrine, update_feeds):
+async def test_update_multiplier(starknet, users, shrine):
     shrine_owner = await users("shrine owner")
 
     interval = get_interval(starknet.state.state.block_info.block_timestamp)
@@ -801,8 +805,9 @@ async def test_update_multiplier(starknet, users, shrine, update_feeds):
     assert updated_multiplier_info.interval_ufelt == interval
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_update_multiplier_unauthorized(starknet, users, shrine, update_feeds):
+async def test_update_multiplier_unauthorized(users, shrine):
     # Test calling advance unauthorized
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
@@ -903,9 +908,10 @@ async def test_shrine_withdraw_pass(shrine, shrine_withdraw, collect_gas_cost):
     assert max_forge_amt == 0
 
 
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.parametrize("withdraw_amt_wad", [to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
-async def test_shrine_partial_withdraw_pass(users, shrine, shrine_forge, withdraw_amt_wad):
+async def test_shrine_partial_withdraw_pass(users, shrine, withdraw_amt_wad):
     shrine_owner = await users("shrine owner")
 
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
@@ -964,16 +970,18 @@ async def test_shrine_withdraw_invalid_yang_fail(users, shrine):
         await shrine_owner.send_tx(shrine.contract_address, "withdraw", [789, to_wad(1), TROVE_1])
 
 
+@pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_withdraw_insufficient_yang_fail(users, shrine, shrine_deposit):
+async def test_shrine_withdraw_insufficient_yang_fail(users, shrine):
     shrine_owner = await users("shrine owner")
 
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
         await shrine_owner.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(11), TROVE_1])
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
+async def test_shrine_withdraw_unsafe_fail(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # Get latest price
@@ -991,8 +999,9 @@ async def test_shrine_withdraw_unsafe_fail(users, shrine, update_feeds):
         )
 
 
+@pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_withdraw_unauthorized(users, shrine, shrine_deposit):
+async def test_shrine_withdraw_unauthorized(users, shrine):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "withdraw", [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1])
@@ -1047,8 +1056,9 @@ async def test_shrine_forge_zero_deposit_fail(users, shrine):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(1_000), TROVE_1])
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
+async def test_shrine_forge_unsafe_fail(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # Increase debt ceiling
@@ -1059,8 +1069,9 @@ async def test_shrine_forge_unsafe_fail(users, shrine, update_feeds):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(14_000), TROVE_1])
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
+async def test_shrine_forge_ceiling_fail(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # Deposit more yang
@@ -1072,8 +1083,9 @@ async def test_shrine_forge_ceiling_fail(users, shrine, update_feeds):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(15_000), TROVE_1])
 
 
+@pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_forge_unauthorized(users, shrine, shrine_deposit):
+async def test_shrine_forge_unauthorized(users, shrine):
     bad_guy = await users("bad guy")
     with pytest.raises(StarkException):
         await bad_guy.send_tx(shrine.contract_address, "forge", [FORGE_AMT_WAD, TROVE_1])
@@ -1110,9 +1122,10 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_equalish(max_forge_amt, expected_limit)
 
 
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.parametrize("melt_amt_wad", [to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1])
 @pytest.mark.asyncio
-async def test_shrine_partial_melt_pass(users, shrine, shrine_forge, melt_amt_wad):
+async def test_shrine_partial_melt_pass(users, shrine, melt_amt_wad):
     shrine_owner = await users("shrine owner")
 
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
@@ -1149,8 +1162,9 @@ async def test_shrine_partial_melt_pass(users, shrine, shrine_forge, melt_amt_wa
     assert_equalish(max_forge_amt, expected_limit)
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_melt_system_underflow(users, shrine, update_feeds):
+async def test_shrine_melt_system_underflow(users, shrine):
     shrine_owner = await users("shrine owner")
 
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
@@ -1159,8 +1173,9 @@ async def test_shrine_melt_system_underflow(users, shrine, update_feeds):
         await shrine_owner.send_tx(shrine.contract_address, "melt", [excess_debt, TROVE_1])
 
 
+@pytest.mark.usefixtures("update_feeds_with_trove2")
 @pytest.mark.asyncio
-async def test_shrine_melt_trove_underflow(users, shrine, update_feeds_with_trove2):
+async def test_shrine_melt_trove_underflow(users, shrine):
     shrine_owner = await users("shrine owner")
 
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
@@ -1169,8 +1184,9 @@ async def test_shrine_melt_trove_underflow(users, shrine, update_feeds_with_trov
         await shrine_owner.send_tx(shrine.contract_address, "melt", [excess_debt, TROVE_1])
 
 
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_shrine_melt_unauthorized(users, shrine, shrine_forge):
+async def test_shrine_melt_unauthorized(users, shrine):
     bad_guy = await users("bad guy")
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
     with pytest.raises(StarkException):
@@ -1370,7 +1386,7 @@ async def test_intermittent_charge(users, shrine, update_feeds_intermittent):
 
 
 @pytest.mark.asyncio
-async def test_move_yang_pass(users, shrine, shrine_forge, collect_gas_cost):
+async def test_move_yang_pass(users, shrine, collect_gas_cost, shrine_forge):
     shrine_owner = await users("shrine owner")
 
     collect_gas_cost("shrine/forge", shrine_forge, 2, 1)
@@ -1418,8 +1434,9 @@ async def test_move_yang_pass(users, shrine, shrine_forge, collect_gas_cost):
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
 
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
+async def test_move_yang_insufficient_fail(users, shrine):
     shrine_owner = await users("shrine owner")
 
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
@@ -1430,8 +1447,9 @@ async def test_move_yang_insufficient_fail(users, shrine, shrine_forge):
         )
 
 
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
+async def test_move_yang_unsafe_fail(users, shrine):
     shrine_owner = await users("shrine owner")
 
     # Get latest price
@@ -1449,6 +1467,7 @@ async def test_move_yang_unsafe_fail(users, shrine, shrine_forge):
         )
 
 
+@pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
 async def test_move_yang_unauthorized(users, shrine, shrine_deposit):
     bad_guy = await users("bad guy")
@@ -1465,6 +1484,7 @@ async def test_move_yang_unauthorized(users, shrine, shrine_deposit):
 #
 
 
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_shrine_unhealthy(users, shrine, shrine_forge):
 
@@ -1482,8 +1502,9 @@ async def test_shrine_unhealthy(users, shrine, shrine_forge):
     assert is_healthy == FALSE
 
 
+@pytest.mark.usefixtures("shrine_deposit_multiple")
 @pytest.mark.asyncio
-async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
+async def test_get_trove_threshold(shrine):
     prices = []
     for d in DEPOSITS:
         price = (await shrine.get_current_yang_price(d["address"]).invoke()).result.price_wad
