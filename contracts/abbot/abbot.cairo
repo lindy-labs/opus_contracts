@@ -33,7 +33,7 @@ end
 # Storage
 #
 
-# mapping between a gage address and our deployed Gate
+# mapping between a yang address and our deployed Gate
 @storage_var
 func abbot_yang_to_gate_storage(yang_address) -> (address):
 end
@@ -53,13 +53,13 @@ end
 
 # total number of troves in Shrine; monotonically increasing
 # also used to calculate the next ID (count+1) when opening a new trove
-# in essense, it serves as an index / primary key in a SQL table
+# in essence, it serves as an index / primary key in a SQL table
 @storage_var
 func abbot_troves_count_storage() -> (ufelt):
 end
 
 # a mapping between user addresses and their trove IDs
-# the value at each key (user_address) is na append-only array
+# the value at each key (user_address) is an append-only array
 # where the value at index 0 is the array length and the rest
 # are the trove IDs
 # in other words, the value at 0 (array length) is the number
