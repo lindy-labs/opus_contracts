@@ -145,7 +145,7 @@ end
 func shrine_debt_storage() -> (wad):
 end
 
-# Total amount of synthetic minted
+# Total amount of synthetic forged
 @storage_var
 func shrine_total_yin_storage() -> (wad : felt):
 end
@@ -710,7 +710,10 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
-    let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # Reverts if amount > old_trove_info.debt
+    with_attr error_message("Shrine: cannot pay back more debt than exists in this trove"):
+        let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # Reverts if amount > old_trove_info.debt
+    end
+
     let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
     set_trove(trove_id, new_trove_info)
 
