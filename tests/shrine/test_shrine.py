@@ -318,7 +318,7 @@ async def shrine_forge_trove2(users, shrine, shrine_deposit_trove2) -> StarknetT
 
 
 @pytest.fixture
-async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_feeds):
+async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_feeds) -> List[Decimal]:
     """
     Helper fixture for `update_feeds` with two troves.
     """
@@ -326,7 +326,7 @@ async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_fee
 
 
 @pytest.fixture
-async def estimate(shrine, update_feeds_with_trove2):
+async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]:
     trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
 
     # Get yang price and multiplier value at `trove.charge_from`
