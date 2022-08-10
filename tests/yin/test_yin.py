@@ -30,13 +30,29 @@ async def yin(yin_deploy, shrine, users) -> StarknetContract:
     return yin_deploy
 
 
+@pytest.fixture
+async def shrine_killed(shrine, users) -> StarknetContract:
+    shrine_owner = await users("shrine owner")
+    shrine_owner.send_tx(shrine, "kill", [])
+    return shrine
+
+
+@pytest.fixture
+def shrine_both(request) -> StarknetContract:
+    """
+    Wrapper fixture to pass the regular and killed instances of shrine to `pytest.parametrize`.
+    """
+    return request.getfixturevalue(request.param)
+
+
 #
 # Basic tests
 #
 
 
+@pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
-async def test_yin_transfer_pass(shrine_forge, yin):
+async def test_yin_transfer_pass(shrine_forge, shrine_both, yin):
 
     # Checking USER_1's and USER_2's initial balance
     u1_bal = (await yin.balanceOf(USER_1).invoke()).result.balance
@@ -72,8 +88,9 @@ async def test_yin_transfer_fail(shrine_forge, yin):
     await yin.transfer(USER_1, 0).invoke(caller_address=USER_2)
 
 
+@pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
-async def test_yin_transfer_from_pass(shrine_forge, yin):
+async def test_yin_transfer_from_pass(shrine_forge, shrine_both, yin):
 
     # USER_1 approves USER_2
     approve_tx = await yin.approve(USER_2, FORGE_AMT).invoke(caller_address=USER_1)
@@ -149,8 +166,11 @@ async def test_yin_invalid_inputs(yin):
 #
 
 
+@pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
-async def test_yin_melt_after_transfer(shrine, shrine_forge, yin, users):
+async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin, users):
+    shrine = shrine_both
+
     shrine_owner = await users("shrine owner")
 
     # Transferring half of USER_1's balance to USER_2
