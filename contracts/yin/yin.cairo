@@ -70,7 +70,7 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     yin_symbol_storage.write(symbol)
     yin_shrine_address_storage.write(shrine_address)
 
-    with_attr error_message("ERC20: decimals exceed 2^8"):
+    with_attr error_message("Yin: decimals exceed 2^8"):
         assert_lt(decimals, UINT8_MAX)
     end
 
@@ -134,6 +134,10 @@ end
 func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     recipient, amount
 ) -> (success):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
     let (sender) = get_caller_address()
     _transfer(sender, recipient, amount)
     return (TRUE)
@@ -143,6 +147,10 @@ end
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
 ) -> (success):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
     let (caller) = get_caller_address()
     _spend_allowance(sender, caller, amount)
     _transfer(sender, recipient, amount)
@@ -153,6 +161,10 @@ end
 func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender, amount
 ) -> (success):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
     let (caller) = get_caller_address()
     _approve(caller, spender, amount)
     return (TRUE)
@@ -166,10 +178,6 @@ end
 func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
 ):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-    end
-
     with_attr error_message("Yin: cannot transfer from the zero address"):
         assert_not_zero(sender)
     end
@@ -188,15 +196,11 @@ end
 func _approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner, spender, amount
 ):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-    end
-
-    with_attr error_message("ERC20: cannot approve from the zero address"):
+    with_attr error_message("Yin: cannot approve from the zero address"):
         assert_not_zero(owner)
     end
 
-    with_attr error_message("ERC20: cannot approve to the zero address"):
+    with_attr error_message("Yin: cannot approve to the zero address"):
         assert_not_zero(spender)
     end
 
@@ -209,11 +213,6 @@ func _spend_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
     owner, spender, amount
 ):
     alloc_locals
-
-    # This check here is probably unnecessary
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-    end
 
     let (current_allowance) = yin_allowances_storage.read(owner, spender)
     if current_allowance != INFINITE_ALLOWANCE:

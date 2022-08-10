@@ -2,10 +2,14 @@ import pytest
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.shrine.constants import FORGE_AMT, USER_1, USER_2, USER_3
+from tests.shrine.constants import FORGE_AMT, TROVE_1, USER_1, USER_2, USER_3
 from tests.utils import assert_event_emitted, compile_contract, str_to_felt
 
 INFINITE_ALLOWANCE = 2**125
+
+#
+# Fixtures
+#
 
 
 @pytest.fixture
@@ -26,8 +30,13 @@ async def yin(yin_deploy, shrine, users) -> StarknetContract:
     return yin_deploy
 
 
+#
+# Basic tests
+#
+
+
 @pytest.mark.asyncio
-async def test_yin_transfer_pass(shrine, shrine_forge, yin):
+async def test_yin_transfer_pass(shrine_forge, yin):
 
     # Checking USER_1's and USER_2's initial balance
     u1_bal = (await yin.balanceOf(USER_1).invoke()).result.balance
@@ -133,3 +142,32 @@ async def test_yin_invalid_inputs(yin):
 
     with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.transfer(USER_2, 2**125 + 1).invoke(caller_address=USER_1)
+
+
+#
+# Testing edge cases
+#
+
+
+@pytest.mark.asyncio
+async def test_yin_melt_after_transfer(shrine, shrine_forge, yin, users):
+    shrine_owner = await users("shrine owner")
+
+    # Transferring half of USER_1's balance to USER_2
+    await yin.transfer(USER_2, FORGE_AMT // 2).invoke(caller_address=USER_1)
+
+    # Trying to melt `FORGE_AMT` debt. Shoulld fail since USER_1 no longer has FORGE_AMT yin.
+    with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
+        await shrine_owner.send_tx(shrine.contract_address, "melt", [FORGE_AMT, TROVE_1, USER_1])
+
+    # Trying to melt less than half of `FORGE_AMT`. Should pass since USER_1 has enough yin to do this.
+    await shrine_owner.send_tx(shrine.contract_address, "melt", [FORGE_AMT // 2 - 1, TROVE_1, USER_1])
+
+    # Checking that the user's debt and yin are what we expect them to be
+    u1_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    u1_yin = (await shrine.get_yin(USER_1).invoke()).result.wad
+
+    assert u1_trove.debt == FORGE_AMT - (FORGE_AMT // 2 - 1)
+
+    # First `FORGE_AMT//2` yin was transferred, and then `FORGE_AMT//2 - 1` was melted
+    assert u1_yin == FORGE_AMT - FORGE_AMT // 2 - (FORGE_AMT // 2 - 1)
