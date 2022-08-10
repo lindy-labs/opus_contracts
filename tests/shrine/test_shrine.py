@@ -903,14 +903,14 @@ async def test_shrine_withdraw_pass(shrine, shrine_withdraw, collect_gas_cost):
     assert max_forge_amt == 0
 
 
+@pytest.mark.parametrize("withdraw_amt_wad", [to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
-async def test_shrine_partial_withdraw_pass(users, shrine, shrine_forge):
+async def test_shrine_partial_withdraw_pass(users, shrine, shrine_forge, withdraw_amt_wad):
     shrine_owner = await users("shrine owner")
 
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
 
     initial_amt_wad = to_wad(INITIAL_DEPOSIT)
-    withdraw_amt_wad = to_wad(1)
     remaining_amt_wad = initial_amt_wad - withdraw_amt_wad
 
     withdraw = await shrine_owner.send_tx(
@@ -1110,14 +1110,14 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_equalish(max_forge_amt, expected_limit)
 
 
+@pytest.mark.parametrize("melt_amt_wad", [to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1])
 @pytest.mark.asyncio
-async def test_shrine_partial_melt_pass(users, shrine, shrine_forge):
+async def test_shrine_partial_melt_pass(users, shrine, shrine_forge, melt_amt_wad):
     shrine_owner = await users("shrine owner")
 
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
 
     estimated_debt_wad = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    melt_amt_wad = estimated_debt_wad // 5
     outstanding_amt_wad = estimated_debt_wad - melt_amt_wad
 
     melt = await shrine_owner.send_tx(shrine.contract_address, "melt", [melt_amt_wad, TROVE_1])
