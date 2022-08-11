@@ -38,7 +38,7 @@ YANG_0_START_PRICE = YANGS[0]["start_price"]
 Yang = namedtuple("Yang", ["total", "max"])
 
 
-def linear(x: Decimal, m: Decimal, b: Decimal):
+def linear(x: Decimal, m: Decimal, b: Decimal) -> Decimal:
     """
     Helper function for y = m*x + b
 
@@ -110,8 +110,7 @@ def compound(
 
     Returns
     -------
-    Value of the compounded debt from start interval to end interval in
-    Decimal with ray precision of 27 decimals.
+    Value of the compounded debt from start interval to end interval in Decimal
     """
 
     # Sanity check on input data
@@ -152,7 +151,7 @@ def calculate_threshold_and_value(
 
     Returns
     -------
-    Value of the cumulative weighted threshold and total trove value, both in Decimal
+    A tuple of the cumulative weighted threshold and total trove value, both in Decimal
     """
 
     cumulative_weighted_threshold = Decimal("0")
@@ -215,6 +214,19 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
 
 
 def get_interval(block_timestamp: int) -> int:
+    """
+    Helper function to calculate the interval by dividing the provided timestamp
+    by the TIME_INTERVAL constant.
+
+    Arguments
+    ---------
+    block_timestamp: int
+        Timestamp value
+
+    Returns
+    -------
+    Interval ID based on the given timestamp.
+    """
     return block_timestamp // TIME_INTERVAL
 
 
@@ -414,6 +426,7 @@ async def test_shrine_setup(shrine_setup):
     # Check yang count
     yang_count = (await shrine.get_yangs_count().invoke()).result.ufelt
     assert yang_count == len(YANGS)
+
     # Check threshold
     for i in range(len(YANGS)):
         yang_address = YANGS[i]["address"]
@@ -423,10 +436,6 @@ async def test_shrine_setup(shrine_setup):
         # Assert that `get_current_yang_price` terminates
         price = (await shrine.get_current_yang_price(yang_address).invoke()).result.price_wad
         assert price == to_wad(YANGS[i]["start_price"])
-
-    # Check maximum forge amount
-    forge_amt = (await shrine.get_max_forge(TROVE_1).invoke()).result.wad
-    assert forge_amt == 0
 
 
 @pytest.mark.asyncio
@@ -506,7 +515,7 @@ async def test_set_ceiling_unauthorized(bad_guy, shrine):
 
 
 @pytest.mark.asyncio
-async def test_add_yang(shrine_owner, shrine):
+async def test_add_yang_pass(shrine_owner, shrine):
     g_count = len(YANGS)
     assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count
 
@@ -548,12 +557,15 @@ async def test_add_yang(shrine_owner, shrine):
     actual_threshold = (await shrine.get_threshold(new_yang_address).invoke()).result.ray
     assert actual_threshold == new_yang_threshold
 
+
+@pytest.mark.asyncio
+async def test_add_yang_duplicate_fail(shrine_owner, shrine):
     # Test adding duplicate Yang
     with pytest.raises(StarkException, match="Shrine: Yang already exists"):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "add_yang",
-            [YANG_0_ADDRESS, new_yang_max, new_yang_threshold, new_yang_start_price],
+            [YANG_0_ADDRESS, YANG_0_CEILING, YANG_0_THRESHOLD, YANG_0_START_PRICE],
         )
 
 
@@ -1065,9 +1077,7 @@ async def test_shrine_forge_pass(shrine_owner, shrine, forge_amt_wad, collect_ga
 
 
 @pytest.mark.asyncio
-async def test_shrine_forge_zero_deposit_fail(users, shrine):
-    shrine_owner = await users("shrine owner")
-
+async def test_shrine_forge_zero_deposit_fail(shrine_owner, shrine):
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine_owner.send_tx(shrine.contract_address, "forge", [to_wad(1_000), TROVE_1])
