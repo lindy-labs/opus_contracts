@@ -1391,7 +1391,7 @@ async def test_intermittent_charge(shrine_owner, shrine, update_feeds_intermitte
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
     # Precision loss gets quite bad for the interest accumulation calculations due
     # to the several multiplications and divisions, as well the `exp` function.
-    assert abs(adjusted_trove_debt - expected_debt) <= 0.1
+    assert_equalish(adjusted_trove_debt, expected_debt, Decimal("0.1"))
 
     assert updated_trove.charge_from == FEED_LEN * 2 - 1
 
