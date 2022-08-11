@@ -938,7 +938,7 @@ async def test_shrine_withdraw_pass(shrine_owner, shrine, collect_gas_cost, with
 
 
 @pytest.mark.usefixtures("shrine_forge")
-@pytest.mark.parametrize("withdraw_amt_wad", [to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
+@pytest.mark.parametrize("withdraw_amt_wad", [0, to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
 async def test_shrine_forged_partial_withdraw_pass(shrine_owner, shrine, withdraw_amt_wad):
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
@@ -1035,7 +1035,7 @@ async def test_shrine_withdraw_unauthorized(bad_guy, shrine):
 
 
 @pytest.mark.parametrize(
-    "forge_amt_wad", [to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1, FORGE_AMT_WAD]
+    "forge_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1, FORGE_AMT_WAD]
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
@@ -1145,7 +1145,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
 
 
 @pytest.mark.usefixtures("shrine_forge")
-@pytest.mark.parametrize("melt_amt_wad", [to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD])
+@pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD])
 @pytest.mark.asyncio
 async def test_shrine_partial_melt_pass(shrine_owner, shrine, melt_amt_wad):
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
