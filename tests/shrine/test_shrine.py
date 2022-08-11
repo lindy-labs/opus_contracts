@@ -20,6 +20,7 @@ from tests.utils import (
     create_feed,
     from_ray,
     from_wad,
+    get_block_timestamp,
     price_bounds,
     set_block_timestamp,
     to_wad,
@@ -284,7 +285,7 @@ async def update_feeds(starknet, shrine_owner, shrine, shrine_forge) -> List[Dec
     for i in range(FEED_LEN):
         # Add offset for initial feeds in `shrine`
         timestamp = (i + FEED_LEN) * TIME_INTERVAL
-        set_block_timestamp(starknet.state, timestamp)
+        set_block_timestamp(starknet, timestamp)
         await shrine_owner.send_tx(shrine.contract_address, "advance", [yang0_address, yang0_feed[i]])
         await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i]])
 
@@ -370,7 +371,7 @@ async def update_feeds_intermittent(request, starknet, shrine_owner, shrine, shr
     for i in range(FEED_LEN):
         # Add offset for initial feeds in `shrine`
         timestamp = (i + FEED_LEN) * TIME_INTERVAL
-        set_block_timestamp(starknet.state, timestamp)
+        set_block_timestamp(starknet, timestamp)
 
         price = yang0_feed[i]
         multiplier = MULTIPLIER_FEED[i]
@@ -722,7 +723,8 @@ async def test_unauthorized_kill(bad_guy, shrine):
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_advance(starknet, shrine_owner, shrine):
-    interval = get_interval(starknet.state.state.block_info.block_timestamp)
+    timestamp = get_block_timestamp(starknet)
+    interval = get_interval(timestamp)
     yang_price_info = (await shrine.get_yang_price(YANG_0_ADDRESS, interval - 1).invoke()).result
 
     new_price = to_wad(YANG_0_START_PRICE + 1)
@@ -770,7 +772,8 @@ async def test_advance_invalid_yang(shrine_owner, shrine):
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_update_multiplier(starknet, shrine_owner, shrine):
-    interval = get_interval(starknet.state.state.block_info.block_timestamp)
+    timestamp = get_block_timestamp(starknet)
+    interval = get_interval(timestamp)
     multiplier_info = (await shrine.get_multiplier(interval - 1).invoke()).result
 
     new_multiplier_value = RAY_SCALE + RAY_SCALE // 2

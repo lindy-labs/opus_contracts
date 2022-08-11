@@ -211,7 +211,7 @@ async def shrine_with_feeds(starknet: Starknet, users, shrine_setup) -> Starknet
     # Skipping over the first element in `feeds` since the start price is set in `add_yang`
     for i in range(1, FEED_LEN):
         timestamp = i * TIME_INTERVAL
-        set_block_timestamp(starknet.state, timestamp)
+        set_block_timestamp(starknet, timestamp)
         for j in range(len(YANGS)):
             await shrine_owner.send_tx(shrine.contract_address, "advance", [YANGS[j]["address"], feeds[j][i]])
 
