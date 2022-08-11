@@ -9,7 +9,10 @@ on:
 
 jobs:
   test:
-    if: "!(contains(toJSON(github.event.commits.*.message), '[skip ci]') || contains(toJSON(github.event.commits.*.message), '[ci skip]')) || github.event.pull_request.draft == false"
+    if: >-
+      !github.event.pull_request.draft &&
+      !(contains(toJSON(github.event.commits.*.message), '[skip ci]') ||
+        contains(toJSON(github.event.commits.*.message), '[ci skip]'))
     runs-on: ubuntu-latest
 
     steps:
