@@ -238,7 +238,7 @@ async def shrine_deposit(shrine_owner, shrine) -> StarknetTransactionExecutionIn
     deposit = await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+        [YANG_0_ADDRESS, INITIAL_DEPOSIT_WAD, TROVE_1],
     )
     return deposit
 
@@ -268,7 +268,7 @@ async def shrine_withdraw(shrine_owner, shrine, shrine_deposit) -> StarknetTrans
     withdraw = await shrine_owner.send_tx(
         shrine.contract_address,
         "withdraw",
-        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+        [YANG_0_ADDRESS, INITIAL_DEPOSIT_WAD, TROVE_1],
     )
     return withdraw
 
@@ -299,7 +299,7 @@ async def shrine_deposit_trove2(shrine_owner, shrine) -> StarknetTransactionExec
     deposit = await shrine_owner.send_tx(
         shrine.contract_address,
         "deposit",
-        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_2],
+        [YANG_0_ADDRESS, INITIAL_DEPOSIT_WAD, TROVE_2],
     )
     return deposit
 
@@ -857,14 +857,14 @@ async def test_shrine_deposit_unauthorized(bad_guy, shrine):
         await bad_guy.send_tx(
             shrine.contract_address,
             "deposit",
-            [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+            [YANG_0_ADDRESS, INITIAL_DEPOSIT_WAD, TROVE_1],
         )
 
 
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
 async def test_shrine_deposit_exceeds_max(shrine_owner, shrine):
-    deposit_amt = YANG_0_CEILING - to_wad(INITIAL_DEPOSIT) + 1
+    deposit_amt = YANG_0_CEILING - INITIAL_DEPOSIT_WAD + 1
     # Checks for shrine deposit that would exceed the max
     with pytest.raises(StarkException, match="Shrine: Exceeds maximum amount of Yang allowed for system"):
         await shrine_owner.send_tx(shrine.contract_address, "deposit", [YANG_0_ADDRESS, deposit_amt, TROVE_1])
@@ -928,7 +928,7 @@ async def test_shrine_withdraw_pass(shrine_owner, shrine, collect_gas_cost, with
 async def test_shrine_forged_partial_withdraw_pass(shrine_owner, shrine, withdraw_amt_wad):
     price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
 
-    initial_amt_wad = to_wad(INITIAL_DEPOSIT)
+    initial_amt_wad = INITIAL_DEPOSIT_WAD
     remaining_amt_wad = initial_amt_wad - withdraw_amt_wad
 
     withdraw = await shrine_owner.send_tx(
@@ -1010,7 +1010,7 @@ async def test_shrine_withdraw_unauthorized(bad_guy, shrine):
         await bad_guy.send_tx(
             shrine.contract_address,
             "withdraw",
-            [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+            [YANG_0_ADDRESS, INITIAL_DEPOSIT_WAD, TROVE_1],
         )
 
 
@@ -1026,6 +1026,7 @@ async def test_shrine_withdraw_unauthorized(bad_guy, shrine):
 @pytest.mark.asyncio
 async def test_shrine_forge_pass(shrine_owner, shrine, forge_amt_wad):
     forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [forge_amt_wad, TROVE_1])
+    collect_gas_cost("shrine/forge", forge, 2, 1)
 
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
 
@@ -1055,7 +1056,7 @@ async def test_shrine_forge_pass(shrine_owner, shrine, forge_amt_wad):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
-    expected_limit = calculate_max_forge([yang_price], [to_wad(INITIAL_DEPOSIT)], [YANG_0_THRESHOLD])
+    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
     current_debt = from_wad((await shrine.estimate(TROVE_1).invoke()).result.wad)
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
@@ -1126,7 +1127,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
-    expected_limit = calculate_max_forge([yang_price], [to_wad(INITIAL_DEPOSIT)], [YANG_0_THRESHOLD])
+    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
     assert_equalish(max_forge_amt, expected_limit)
 
 
@@ -1167,7 +1168,7 @@ async def test_shrine_partial_melt_pass(shrine_owner, shrine, melt_amt_wad):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
-    expected_limit = calculate_max_forge([yang_price], [to_wad(INITIAL_DEPOSIT)], [YANG_0_THRESHOLD]) - from_wad(
+    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD]) - from_wad(
         outstanding_amt_wad
     )
     assert_equalish(max_forge_amt, expected_limit)
@@ -1387,18 +1388,16 @@ async def test_intermittent_charge(shrine_owner, shrine, update_feeds_intermitte
 #
 
 
+@pytest.mark.parametrize("move_amt", [0, to_wad(Decimal("1E-18")), 1, INITIAL_DEPOSIT // 2])
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_move_yang_pass(shrine_owner, shrine, collect_gas_cost, shrine_forge):
-    collect_gas_cost("shrine/forge", shrine_forge, 2, 1)
-
+async def test_move_yang_pass(shrine_owner, shrine, move_amt, collect_gas_cost):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
-    expected_limit = calculate_max_forge([yang_price], [to_wad(INITIAL_DEPOSIT)], [YANG_0_THRESHOLD])
+    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
     current_debt = from_wad((await shrine.estimate(TROVE_1).invoke()).result.wad)
     assert_equalish(max_forge_amt, expected_limit - current_debt)
-
-    move_amt = 1
 
     tx = await shrine_owner.send_tx(
         shrine.contract_address,
