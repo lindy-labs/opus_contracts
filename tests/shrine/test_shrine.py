@@ -1497,7 +1497,7 @@ async def test_get_trove_threshold(shrine):
 
 @pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_shrine_unhealthy(shrine_owner, shrine, shrine_forge):
+async def test_shrine_unhealthy(shrine_owner, shrine):
     # Calculate unsafe yang price
     yang_balance = from_wad((await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).invoke()).result.wad)
     debt = from_wad((await shrine.get_trove(TROVE_1).invoke()).result.trove.debt)
