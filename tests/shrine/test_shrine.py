@@ -565,7 +565,7 @@ async def test_add_yang_duplicate_fail(shrine_owner, shrine):
         await shrine_owner.send_tx(
             shrine.contract_address,
             "add_yang",
-            [YANG_0_ADDRESS, YANG_0_CEILING, YANG_0_THRESHOLD, YANG_0_START_PRICE],
+            [YANG_0_ADDRESS, YANG_0_CEILING, YANG_0_THRESHOLD, to_wad(YANG_0_START_PRICE)],
         )
 
 
