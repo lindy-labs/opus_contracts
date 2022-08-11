@@ -1024,7 +1024,7 @@ async def test_shrine_withdraw_unauthorized(bad_guy, shrine):
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_forge_pass(shrine_owner, shrine, forge_amt_wad):
+async def test_shrine_forge_pass(shrine_owner, shrine, forge_amt_wad, collect_gas_cost):
     forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [forge_amt_wad, TROVE_1])
     collect_gas_cost("shrine/forge", forge, 2, 1)
 
