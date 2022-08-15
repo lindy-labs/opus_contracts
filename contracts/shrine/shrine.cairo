@@ -936,13 +936,13 @@ end
 
 # base rate function:
 #
-#  LTTV = loan-to-threshold-value ratio
+#  rLTV = relative loan-to-value ratio
 #
 #
-#            { 0.02*LTTV                   if 0 <= LTTV <= 0.5
-#            { 0.1*LTTV - 0.04             if 0.5 < LTTV <= 0.75
-#  r(LTTV) = { LTTV - 0.715                if 0.75 < LTTV <= 0.9215
-#            { 3.101908*LTTV - 2.65190822  if 0.9215 < LTTV < \infinity
+#            { 0.02*rLTV                   if 0 <= rLTV <= 0.5
+#            { 0.1*rLTV - 0.04             if 0.5 < rLTV <= 0.75
+#  r(rLTV) = { rLTV - 0.715                if 0.75 < rLTV <= 0.9215
+#            { 3.101908*rLTV - 2.65190822  if 0.9215 < rLTV < \infinity
 #
 #
 
