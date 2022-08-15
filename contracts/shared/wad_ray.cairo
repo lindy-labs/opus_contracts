@@ -9,6 +9,8 @@ namespace WadRay:
     const BOUND = 2 ** 125
     const WAD_SCALE = 10 ** 18
     const RAY_SCALE = 10 ** 27
+    const WAD_PERCENT = 10 ** 16
+    const RAY_PERCENT = 10 ** 25
     const DIFF = 10 ** 9
     const RAY_ONE = RAY_SCALE
     const WAD_ONE = WAD_SCALE
@@ -178,5 +180,11 @@ namespace WadRay:
 
     func wad_to_ray_unchecked(n) -> (ray):
         return (ray=n * DIFF)
+    end
+
+    # Truncates a ray to return a wad
+    func ray_to_wad{range_check_ptr}(ray) -> (wad):
+        let (wad, _) = unsigned_div_rem(ray, DIFF)
+        return (wad)
     end
 end

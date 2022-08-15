@@ -1,7 +1,6 @@
 import asyncio
 from collections import namedtuple
 from decimal import getcontext
-from functools import cache
 from typing import Awaitable, Callable
 
 import pytest
@@ -11,6 +10,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
+from tests.gate.rebasing_yang.constants import INITIAL_AMT
 from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
 from tests.utils import (
     WAD_SCALE,
@@ -43,7 +43,12 @@ def collect_gas_cost():
     path = "tests/artifacts/gas.txt"
 
     # Adds a function call to gas_info
-    def add_call(func_name: str, tx_info: StarknetTransactionExecutionInfo, num_storage_keys: int, num_contracts: int):
+    def add_call(
+        func_name: str,
+        tx_info: StarknetTransactionExecutionInfo,
+        num_storage_keys: int,
+        num_contracts: int,
+    ):
         gas = estimate_gas(tx_info, num_storage_keys, num_contracts)
 
         with FileLock(path + ".lock"):
@@ -65,7 +70,7 @@ def collect_gas_cost():
 
 @pytest.fixture(autouse=True, scope="session")
 def setup():
-    getcontext().prec = 18
+    getcontext().prec = 38
 
 
 @pytest.fixture(scope="session")
@@ -74,21 +79,27 @@ def event_loop():
 
 
 @pytest.fixture(scope="session")
+async def starknet_session() -> Starknet:
+    starknet = await Starknet.empty()
+    return starknet
+
+
+@pytest.fixture
 async def starknet() -> Starknet:
     starknet = await Starknet.empty()
     return starknet
 
 
 # TODO: figure out a good way how not to use magic string constants for common users
-@pytest.fixture(scope="session")
+@pytest.fixture
 def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
     """
     A factory fixture that creates users.
 
     The returned factory function takes a single string as an argument,
     which it uses as an identifier of the user and also to generates their
-    private key. The fixture is session-scoped and has an internal cache,
-    so the same argument (user name) will return the same result.
+    private key. The fixture has an internal cache, so the same argument (user name)
+    will return the same result within a given test.
 
     The return value is an instance of Account, useful for sending
     signed transactions, assigning ownership, etc.
@@ -136,14 +147,14 @@ def tokens(
 
 
 @pytest.fixture
-async def usda(starknet, users) -> StarknetContract:
+async def usda(starknet: Starknet, users) -> StarknetContract:
     owner = await users("usda owner")
     contract = compile_contract("contracts/USDa/USDa.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[owner.address])
 
 
 @pytest.fixture
-async def mrac_controller(starknet) -> StarknetContract:
+async def mrac_controller(starknet: Starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
 
@@ -153,10 +164,8 @@ async def mrac_controller(starknet) -> StarknetContract:
 #
 
 # Returns the deployed shrine module
-@cache
 @pytest.fixture
-async def shrine_deploy(starknet, users) -> StarknetContract:
-
+async def shrine_deploy(starknet: Starknet, users) -> StarknetContract:
     shrine_owner = await users("shrine owner")
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
 
@@ -166,9 +175,8 @@ async def shrine_deploy(starknet, users) -> StarknetContract:
 
 
 # Same as above but also comes with ready-to-use yangs and price feeds
-@cache
 @pytest.fixture
-async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
+async def shrine_setup(users, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
     shrine_owner = await users("shrine owner")
 
@@ -180,15 +188,19 @@ async def shrine_setup(starknet, users, shrine_deploy) -> StarknetContract:
         await shrine_owner.send_tx(
             shrine.contract_address,
             "add_yang",
-            [YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])],
+            [
+                YANGS[i]["address"],
+                YANGS[i]["ceiling"],
+                YANGS[i]["threshold"],
+                to_wad(YANGS[i]["start_price"]),
+            ],
         )  # Add yang
 
     return shrine
 
 
-@cache
 @pytest.fixture
-async def shrine(starknet, users, shrine_setup) -> StarknetContract:
+async def shrine_with_feeds(starknet: Starknet, users, shrine_setup) -> StarknetContract:
     shrine = shrine_setup
     shrine_owner = await users("shrine owner")
 
@@ -196,20 +208,34 @@ async def shrine(starknet, users, shrine_setup) -> StarknetContract:
     feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
-    for i in range(FEED_LEN):
+    # Skipping over the first element in `feeds` since the start price is set in `add_yang`
+    for i in range(1, FEED_LEN):
         timestamp = i * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
         for j in range(len(YANGS)):
-            await shrine_owner.send_tx(
-                shrine.contract_address,
-                "advance",
-                [YANGS[j]["address"], feeds[j][i]],
-            )
+            await shrine_owner.send_tx(shrine.contract_address, "advance", [YANGS[j]["address"], feeds[j][i]])
 
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "update_multiplier",
-            [MULTIPLIER_FEED[i]],
-        )
+        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i]])
 
+    return shrine, feeds
+
+
+@pytest.fixture
+async def shrine(shrine_with_feeds) -> StarknetContract:
+    shrine, feeds = shrine_with_feeds
     return shrine
+
+
+#
+# Collateral
+#
+
+
+@pytest.fixture
+async def rebasing_token(users, tokens) -> StarknetContract:
+    user1 = await users("trove 1 owner")
+    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user1.address)
+
+    user2 = await users("trove 2 owner")
+    await user2.send_tx(rebasing_token.contract_address, "mint", [user2.address, *(INITIAL_AMT, 0)])
+    return rebasing_token

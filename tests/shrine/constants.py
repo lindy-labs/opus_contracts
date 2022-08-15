@@ -1,9 +1,9 @@
 from decimal import Decimal
 
-from tests.utils import RAY_SCALE, WAD_SCALE
+from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
 
-LIQUIDATION_THRESHOLD = 8 * 10**26
-LIMIT_RATIO = 95 * 10**25
+LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
+LIMIT_RATIO = 95 * RAY_PERCENT
 
 YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
@@ -55,9 +55,9 @@ RATE_BOUND2 = Decimal("0.75")
 RATE_BOUND3 = Decimal("0.9215")
 
 # Time Interval
-TIME_INTERVAL = 24 * 60 * 60  # Number of seconds in time interval
-# 1 / Number of intervals in a year
-TIME_INTERVAL_DIV_YEAR = Decimal("0.00273972602")
+TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
+# 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625)
+TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 
 # Threshold test constants
@@ -81,3 +81,7 @@ DEPOSITS = [
 
 # Forge constant
 FORGE_AMT = 5_000 * WAD_SCALE
+
+# Troves
+TROVE_1 = 1
+TROVE_2 = 2

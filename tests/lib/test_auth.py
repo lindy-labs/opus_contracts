@@ -5,9 +5,9 @@ from tests.utils import FALSE, TRUE, assert_event_emitted, compile_contract
 
 
 @pytest.fixture(scope="session")
-async def auth_contract(starknet):
+async def auth_contract(starknet_session):
     contract = compile_contract("tests/lib/auth_contract.cairo")
-    return await starknet.deploy(contract_class=contract)
+    return await starknet_session.deploy(contract_class=contract)
 
 
 @pytest.mark.asyncio
