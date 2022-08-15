@@ -374,10 +374,9 @@ async def update_feeds_intermittent(request, starknet, users, shrine, shrine_for
 
         price = yang0_feed[i]
         multiplier = MULTIPLIER_FEED[i]
-        # Skip index after timestamp is set
+        # Skip index
         if i == idx:
-            price = 0
-            multiplier = 0
+            continue
 
         await shrine_owner.send_tx(shrine.contract_address, "advance", [yang0_address, price])
         await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [multiplier])

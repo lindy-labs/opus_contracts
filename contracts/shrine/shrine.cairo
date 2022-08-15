@@ -919,6 +919,8 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     let (avg_ratio) = get_avg_ratio(trove_id, current_debt, start_interval, end_interval)
+    let (threshold, _) = get_trove_threshold(trove_id)
+    let (avg_relative_ratio) = WadRay.runsigned_div(avg_ratio, threshold)
     let (avg_multiplier) = get_avg_multiplier(start_interval, end_interval)
 
     let (base_rate) = get_base_rate(avg_ratio)
@@ -996,29 +998,6 @@ func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (value) = appraise_internal(trove_id, yang_count, interval, 0)
 
     let (ratio) = WadRay.runsigned_div(debt, value)  # Using WadRay.runsigned_div on two wads returns a ray
-    return (ratio)
-end
-
-# Calculates the trove's loan to threshold value ratio at the given interval.
-# See comments above `appraise_internal` for the underlying assumption on which the correctness of the result depends.
-# Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
-# Returns a ray.
-func trove_ratio_to_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, interval, debt
-) -> (ray):
-    # Early termination if no debt
-    if debt == 0:
-        return (0)
-    end
-
-    let (yang_count) = shrine_yangs_count_storage.read()
-    let (threshold, value) = get_trove_threshold_internal(trove_id, interval, yang_count, 0, 0)
-
-    # Multiplying a ray and wad with `wmul` returns a ray
-    let (cumulative_weighted_threshold) = WadRay.wmul(threshold, value)
-    # Convert `debt` to ray before `runsigned_div`
-    let (debt_ray) = WadRay.wad_to_ray(debt)
-    let (ratio) = WadRay.runsigned_div(debt_ray, cumulative_weighted_threshold)
     return (ratio)
 end
 
