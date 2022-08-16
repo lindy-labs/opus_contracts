@@ -38,10 +38,12 @@ end
 func abbot_yang_to_gate_storage(yang_address) -> (address):
 end
 
-# append-only array of yangs added to the system (Shrine)
-# the value at index 0 is the length of the array
-# since we only ever add yangs and never remove any,
-# it works well for our purpose
+# length of the abbot_yang_addresses_storage array
+@storage_var
+func abbot_yang_addresses_count_storage() -> (ufelt):
+end
+
+# 0-based array of yang addresses added to the Shrine via this Abbot
 @storage_var
 func abbot_yang_addresses_storage(idx) -> (address):
 end
@@ -58,20 +60,24 @@ end
 func abbot_troves_count_storage() -> (ufelt):
 end
 
-# a mapping between user addresses and their trove IDs
-# the value at each key (user_address) is an append-only array
-# where the value at index 0 is the array length and the rest
-# are the trove IDs
-# in other words, the value at 0 (array length) is the number
-# of troves a particular user has; because it's an append-only
-# array, this value is monotonically increasing
+# the length of each individual user_address to trove mapping
+# as stored in abbot_user_troves_storage
 #
+# in python pseudocode:
 #
-# user_troves_count = abbot_trove_ids_storage[user_address][0]
-# user_trove_id_1 = abbot_trove_ids_storage[user_address][1]
-# assert 0 == abbot_trove_ids_storage[user_address][user_troves_count]
+# user_address = get_caller_address()
+# user_troves_count = abbot_user_troves_count_storage[user_address]
+# for idx in range(user_troves_count):
+#     user_trove_id = abbot_user_troves_storage[user_address][idx]
 @storage_var
-func abbot_trove_ids_storage(user_address, index) -> (ufelt):
+func abbot_user_troves_count_storage(user_address) -> (ufelt):
+end
+
+# a mapping between a user address and an array of their trove IDs
+# value at each key (user_address) is a 0-based append-only array
+# of trove IDs belonging to the user
+@storage_var
+func abbot_user_troves_storage(user_address, index) -> (ufelt):
 end
 
 #
@@ -96,10 +102,10 @@ func get_user_trove_ids{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     user_address
 ) -> (trove_ids_len, trove_ids : felt*):
     alloc_locals
-    let (len) = abbot_trove_ids_storage.read(user_address, 0)
+    let (count) = abbot_user_troves_count_storage.read(user_address)
     let (ids : felt*) = alloc()
-    get_user_trove_ids_internal(user_address, 1, ids)
-    return (len, ids)
+    get_user_trove_ids_loop(user_address, count, 0, ids)
+    return (count, ids)
 end
 
 @view
@@ -107,10 +113,10 @@ func get_yang_addresses{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
     addresses_len, addresses : felt*
 ):
     alloc_locals
-    let (len) = abbot_yang_addresses_storage.read(0)
+    let (count) = abbot_yang_addresses_count_storage.read()
     let (addresses : felt*) = alloc()
-    get_yang_addresses_loop(1, addresses)
-    return (len, addresses)
+    get_yang_addresses_loop(count, 0, addresses)
+    return (count, addresses)
 end
 
 @view
@@ -143,15 +149,15 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     assert_valid_yangs(yang_addrs_len, yang_addrs)
 
-    let (user_address) = get_caller_address()
-
-    let (user_troves_count) = abbot_trove_ids_storage.read(user_address, 0)
-    abbot_trove_ids_storage.write(user_address, 0, user_troves_count + 1)
-
     let (troves_count) = abbot_troves_count_storage.read()
+    abbot_troves_count_storage.write(troves_count + 1)
+
+    let (user_address) = get_caller_address()
+    let (user_troves_count) = abbot_user_troves_count_storage.read(user_address)
+    abbot_user_troves_count_storage.write(user_address, user_troves_count + 1)
+
     let new_trove_id = troves_count + 1
-    abbot_troves_count_storage.write(new_trove_id)
-    abbot_trove_ids_storage.write(user_address, user_troves_count + 1, new_trove_id)
+    abbot_user_troves_storage.write(user_address, user_troves_count, new_trove_id)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     do_deposits(user_address, new_trove_id, yang_addrs_len, yang_addrs, amounts)
@@ -170,14 +176,15 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     # don't allow manipulation of foreign troves
     let (user_address) = get_caller_address()
     with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 1)
+        assert_trove_owner(user_address, trove_id, 0)
     end
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     let (outstanding_debt) = IShrine.estimate(shrine_address, trove_id)
 
     IShrine.melt(shrine_address, outstanding_debt, trove_id)
-    do_withdrawals_full(shrine_address, user_address, trove_id, 1)
+    let (yang_addresses_count) = abbot_yang_addresses_count_storage.read()
+    do_withdrawals_full(shrine_address, user_address, trove_id, 0, yang_addresses_count)
 
     # deliberately not emitting an event
 
@@ -203,7 +210,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # don't allow depositing to foreign troves
     let (user_address) = get_caller_address()
     with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 1)
+        assert_trove_owner(user_address, trove_id, 0)
     end
 
     do_deposits(user_address, trove_id, yang_addrs_len, yang_addrs, amounts)
@@ -230,7 +237,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # don't allow withdrawing from foreign troves
     let (user_address) = get_caller_address()
     with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 1)
+        assert_trove_owner(user_address, trove_id, 0)
     end
 
     do_withdrawals_partial(user_address, trove_id, yang_addrs_len, yang_addrs, amounts)
@@ -258,10 +265,10 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert stored_address = 0
     end
 
-    let (yang_count) = abbot_yang_addresses_storage.read(0)
+    let (yang_addresses_count) = abbot_yang_addresses_count_storage.read()
+    abbot_yang_addresses_count_storage.write(yang_addresses_count + 1)
+    abbot_yang_addresses_storage.write(yang_addresses_count, yang_address)
     abbot_yang_to_gate_storage.write(yang_address, gate_address)
-    abbot_yang_addresses_storage.write(0, yang_count + 1)
-    abbot_yang_addresses_storage.write(yang_count + 1, yang_address)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     IShrine.add_yang(shrine_address, yang_address, yang_max, yang_threshold, yang_price)
@@ -280,7 +287,7 @@ func assert_trove_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 ):
     alloc_locals
 
-    let (idx_trove_id) = abbot_trove_ids_storage.read(user_address, idx)
+    let (idx_trove_id) = abbot_user_troves_storage.read(user_address, idx)
     if idx_trove_id == 0:
         # if the trove ID at index idx is 0, it means we reached
         # then end of the array without finding a user_address
@@ -315,18 +322,14 @@ func assert_valid_yangs{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 end
 
 func get_yang_addresses_loop{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    idx, addresses : felt*
+    count, idx, addresses : felt*
 ):
-    # taking advantage of the 1-based append-only nature of
-    # abbot_yang_addresses_storage - the first 0 value we
-    # encounter marks the end of the array
-    let (address_at_idx) = abbot_yang_addresses_storage.read(idx)
-    if address_at_idx == 0:
+    if count == idx:
         return ()
     end
-    assert [addresses] = address_at_idx
-
-    return get_yang_addresses_loop(idx + 1, addresses + 1)
+    let (address) = abbot_yang_addresses_storage.read(idx)
+    assert [addresses] = address
+    return get_yang_addresses_loop(count, idx + 1, addresses + 1)
 end
 
 # loop through all the yangs and their respective amounts that need to be deposited
@@ -347,25 +350,23 @@ end
 # loop through all the yangs of a trove and withdraw full yang amount
 # deposited into the trove
 func do_withdrawals_full{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shrine_address, user_address, trove_id, yang_idx
+    shrine_address, user_address, trove_id, yang_idx, yang_count
 ):
     alloc_locals
 
-    # taking advantage of the 1-based append-only nature of
-    # abbot_yang_addresses_storage - the first 0 value we
-    # encounter marks the end of the array
-    let (yang_address) = abbot_yang_addresses_storage.read(yang_idx)
-    if yang_address == 0:
+    if yang_idx == yang_count:
         return ()
     end
+
+    let (yang_address) = abbot_yang_addresses_storage.read(yang_idx)
     let (amount_wad) = IShrine.get_deposit(shrine_address, trove_id, yang_address)
 
     if amount_wad == 0:
-        return do_withdrawals_full(shrine_address, user_address, trove_id, yang_idx + 1)
+        return do_withdrawals_full(shrine_address, user_address, trove_id, yang_idx + 1, yang_count)
     else:
         let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
         IGate.withdraw(gate_address, user_address, trove_id, amount_wad)
-        return do_withdrawals_full(shrine_address, user_address, trove_id, yang_idx + 1)
+        return do_withdrawals_full(shrine_address, user_address, trove_id, yang_idx + 1, yang_count)
     end
 end
 
@@ -385,17 +386,13 @@ func do_withdrawals_partial{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ra
     )
 end
 
-func get_user_trove_ids_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, idx, ids : felt*
+func get_user_trove_ids_loop{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, count, idx, ids : felt*
 ):
-    # taking advantage of the 1-based append-only nature of
-    # abbot_trove_ids_storage - the first 0 value we encounter
-    # marks the end of the array
-    let (trove_id) = abbot_trove_ids_storage.read(user_address, idx)
-    if trove_id == 0:
+    if count == idx:
         return ()
     end
+    let (trove_id) = abbot_user_troves_storage.read(user_address, idx)
     assert [ids] = trove_id
-
-    return get_user_trove_ids_internal(user_address, idx + 1, ids + 1)
+    return get_user_trove_ids_loop(user_address, count, idx + 1, ids + 1)
 end
