@@ -218,19 +218,16 @@ end
 
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, yang_addrs_len, yang_addrs : felt*, amounts_len, amounts : felt*
+    trove_id, yang_address, amount
 ):
     alloc_locals
+    let (__fp__, _) = get_fp_and_pc()
 
-    with_attr error_message("Abbot: input arguments mismatch: {yang_addrs_len} != {amounts_len}"):
-        assert yang_addrs_len = amounts_len
+    with_attr error_message("Abbot: yang address cannot be zero"):
+        assert_not_zero(yang_address)
     end
 
-    with_attr error_message("Abbot: no yangs selected"):
-        assert_not_zero(yang_addrs_len)
-    end
-
-    assert_valid_yangs(yang_addrs_len, yang_addrs)
+    assert_valid_yangs(1, &yang_address)
 
     # don't allow withdrawing from foreign troves
     let (user_address) = get_caller_address()
@@ -238,7 +235,8 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
         assert_trove_owner(user_address, trove_id, 0)
     end
 
-    do_withdrawals_partial(user_address, trove_id, yang_addrs_len, yang_addrs, amounts)
+    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
+    IGate.withdraw(gate_address, user_address, trove_id, amount)
 
     return ()
 end
@@ -366,22 +364,6 @@ func do_withdrawals_full{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
         IGate.withdraw(gate_address, user_address, trove_id, amount_wad)
         return do_withdrawals_full(shrine_address, user_address, trove_id, yang_idx + 1, yang_count)
     end
-end
-
-func do_withdrawals_partial{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, yang_addrs_len, yang_addrs : felt*, amounts : felt*
-):
-    alloc_locals
-
-    if yang_addrs_len == 0:
-        return ()
-    end
-
-    let (gate_address) = abbot_yang_to_gate_storage.read([yang_addrs])
-    IGate.withdraw(gate_address, user_address, trove_id, [amounts])
-    return do_withdrawals_partial(
-        user_address, trove_id, yang_addrs_len - 1, yang_addrs + 1, amounts + 1
-    )
 end
 
 func get_user_trove_ids_loop{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(

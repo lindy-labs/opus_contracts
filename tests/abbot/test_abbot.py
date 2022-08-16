@@ -460,29 +460,29 @@ async def test_withdraw(aura_user, abbot, shrine, steth_yang: YangConfig, doge_y
     doge_withdraw_amount = to_wad(50)
     trove_id = 1
 
-    tx = await aura_user.send_tx(
+    tx1 = await aura_user.send_tx(
         abbot.contract_address,
         "withdraw",
         [
             trove_id,
-            2,
             steth_yang.contract_address,
-            doge_yang.contract_address,
-            2,
             steth_withdraw_amount,
-            doge_withdraw_amount,
         ],
     )
 
+    tx2 = await aura_user.send_tx(
+        abbot.contract_address, "withdraw", [trove_id, doge_yang.contract_address, doge_withdraw_amount]
+    )
+
     assert_event_emitted(
-        tx,
+        tx1,
         steth_yang.gate_address,
         "Withdraw",
         lambda d: d[:2] == [aura_user.address, trove_id] and d[-1] == steth_withdraw_amount,
     )
 
     assert_event_emitted(
-        tx,
+        tx2,
         doge_yang.gate_address,
         "Withdraw",
         lambda d: d[:2] == [aura_user.address, trove_id] and d[-1] == doge_withdraw_amount,
@@ -501,21 +501,14 @@ async def test_withdraw(aura_user, abbot, shrine, steth_yang: YangConfig, doge_y
 async def test_withdraw_failures(aura_user, abbot, users, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     trove_id = 1
 
-    with pytest.raises(StarkException, match=r"Abbot: input arguments mismatch: \d != \d"):
-        await aura_user.send_tx(
-            abbot.contract_address, "withdraw", [trove_id, 1, steth_yang.contract_address, 2, to_wad(1), to_wad(10)]
-        )
-
-    with pytest.raises(StarkException, match="Abbot: no yangs selected"):
+    with pytest.raises(StarkException, match="Abbot: yang address cannot be zero"):
         await aura_user.send_tx(abbot.contract_address, "withdraw", [trove_id, 0, 0])
 
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
         await aura_user.send_tx(
-            abbot.contract_address, "withdraw", [trove_id, 1, shitcoin_yang.contract_address, 1, to_wad(100_000)]
+            abbot.contract_address, "withdraw", [trove_id, shitcoin_yang.contract_address, to_wad(100_000)]
         )
 
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
         other_one = await users("other")
-        await other_one.send_tx(
-            abbot.contract_address, "withdraw", [trove_id, 1, steth_yang.contract_address, 1, to_wad(10)]
-        )
+        await other_one.send_tx(abbot.contract_address, "withdraw", [trove_id, steth_yang.contract_address, to_wad(10)])
