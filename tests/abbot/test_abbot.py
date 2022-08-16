@@ -407,26 +407,22 @@ async def test_deposit(aura_user, abbot, shrine, steth_yang: YangConfig, doge_ya
     fresh_doge_deposit = to_wad(200)
     trove_id = 1
 
-    tx = await aura_user.send_tx(
+    tx1 = await aura_user.send_tx(
         abbot.contract_address,
         "deposit",
-        [
-            trove_id,
-            2,
-            steth_yang.contract_address,
-            doge_yang.contract_address,
-            2,
-            fresh_steth_deposit,
-            fresh_doge_deposit,
-        ],
+        [trove_id, steth_yang.contract_address, fresh_steth_deposit],
+    )
+
+    tx2 = await aura_user.send_tx(
+        abbot.contract_address, "deposit", [trove_id, doge_yang.contract_address, fresh_doge_deposit]
     )
 
     # check if gates emitted Deposit from aura_user to trove with the right amount
     assert_event_emitted(
-        tx, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [aura_user.address, trove_id, fresh_steth_deposit]
+        tx1, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [aura_user.address, trove_id, fresh_steth_deposit]
     )
     assert_event_emitted(
-        tx, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [aura_user.address, trove_id, fresh_doge_deposit]
+        tx2, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [aura_user.address, trove_id, fresh_doge_deposit]
     )
 
     assert (
@@ -441,24 +437,18 @@ async def test_deposit(aura_user, abbot, shrine, steth_yang: YangConfig, doge_ya
 @pytest.mark.asyncio
 async def test_deposit_failures(aura_user, abbot, users, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     trove_id = 1
-    with pytest.raises(StarkException, match=r"Abbot: input arguments mismatch: \d != \d"):
-        await aura_user.send_tx(
-            abbot.contract_address, "deposit", [trove_id, 1, steth_yang.contract_address, 2, to_wad(1), to_wad(100)]
-        )
 
-    with pytest.raises(StarkException, match="Abbot: no yangs selected"):
+    with pytest.raises(StarkException, match="Abbot: yang address cannot be zero"):
         await aura_user.send_tx(abbot.contract_address, "deposit", [trove_id, 0, 0])
 
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
         await aura_user.send_tx(
-            abbot.contract_address, "deposit", [trove_id, 1, shitcoin_yang.contract_address, 1, to_wad(100_000)]
+            abbot.contract_address, "deposit", [trove_id, shitcoin_yang.contract_address, to_wad(100_000)]
         )
 
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
         other_one = await users("other")
-        await other_one.send_tx(
-            abbot.contract_address, "deposit", [trove_id, 1, steth_yang.contract_address, 1, to_wad(1)]
-        )
+        await other_one.send_tx(abbot.contract_address, "deposit", [trove_id, steth_yang.contract_address, to_wad(1)])
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")

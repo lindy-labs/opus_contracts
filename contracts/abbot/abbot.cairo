@@ -4,6 +4,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.lang.compiler.lib.registers import get_fp_and_pc
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.interfaces import IGate, IShrine
@@ -193,19 +194,16 @@ end
 
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, yang_addrs_len, yang_addrs : felt*, amounts_len, amounts : felt*
+    trove_id, yang_address, amount
 ):
     alloc_locals
+    let (__fp__, _) = get_fp_and_pc()
 
-    with_attr error_message("Abbot: input arguments mismatch: {yang_addrs_len} != {amounts_len}"):
-        assert yang_addrs_len = amounts_len
+    with_attr error_message("Abbot: yang address cannot be zero"):
+        assert_not_zero(yang_address)
     end
 
-    with_attr error_message("Abbot: no yangs selected"):
-        assert_not_zero(yang_addrs_len)
-    end
-
-    assert_valid_yangs(yang_addrs_len, yang_addrs)
+    assert_valid_yangs(1, &yang_address)
 
     # don't allow depositing to foreign troves
     let (user_address) = get_caller_address()
@@ -213,7 +211,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert_trove_owner(user_address, trove_id, 0)
     end
 
-    do_deposits(user_address, trove_id, yang_addrs_len, yang_addrs, amounts)
+    do_deposits(user_address, trove_id, 1, &yang_address, &amount)
 
     return ()
 end
