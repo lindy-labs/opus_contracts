@@ -20,6 +20,7 @@ from tests.utils import (
     from_wad,
     price_bounds,
     set_block_timestamp,
+    signed_int_to_felt,
     to_wad,
 )
 
@@ -1144,3 +1145,46 @@ async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
     # Getting actual threshold
     actual_threshold = (await shrine.get_trove_threshold(TROVE_1).invoke()).result.threshold_ray
     assert_equalish(from_ray(actual_threshold), expected_threshold)
+
+
+@pytest.mark.parametrize("transfer_amount", [0, FORGE_AMT // 2, FORGE_AMT])
+@pytest.mark.asyncio
+async def test_shrine_move_yin_pass(shrine, users, shrine_forge, transfer_amount):
+    shrine_owner = await users("shrine owner")
+
+    await shrine_owner.send_tx(shrine.contract_address, "move_yin", [USER_1, USER_2, transfer_amount])
+
+    # Checking the updated balances
+    u1_new_bal = (await shrine.get_yin(USER_1).invoke()).result.wad
+    assert u1_new_bal == FORGE_AMT - transfer_amount
+
+    u2_new_bal = (await shrine.get_yin(USER_2).invoke()).result.wad
+    assert u2_new_bal == transfer_amount
+
+
+@pytest.mark.asyncio
+async def test_shrine_move_yin_fail(shrine, users, shrine_forge):
+    shrine_owner = await users("shrine owner")
+    # Trying to transfer more than the user owns
+    with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
+        await shrine_owner.send_tx(shrine.contract_address, "move_yin", [USER_1, USER_2, FORGE_AMT + 1])
+
+    # Trying to transfer a negative amount
+    with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
+        await shrine_owner.send_tx(shrine.contract_address, "move_yin", [USER_1, USER_2, signed_int_to_felt(-1)])
+
+    # Trying to transfer an amount greater than 2**125
+    with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
+        await shrine_owner.send_tx(shrine.contract_address, "move_yin", [USER_1, USER_2, 2**125 + 1])
+
+
+@pytest.mark.asyncio
+async def test_shrine_melt_after_move_yin_fail(shrine, users, shrine_forge):
+    shrine_owner = await users("shrine owner")
+
+    # Transfer half of the forge amount to another account
+    await shrine_owner.send_tx(shrine.contract_address, "move_yin", [USER_1, USER_2, FORGE_AMT // 2])
+
+    # Attempt to melt all debt - should fail since not enough yin
+    with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
+        await shrine_owner.send_tx(shrine.contract_address, "melt", [FORGE_AMT, TROVE_1, USER_1])

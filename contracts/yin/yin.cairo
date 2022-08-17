@@ -1,12 +1,13 @@
 %lang starknet
 
-from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.cairo.common.bool import TRUE
 from starkware.starknet.common.syscalls import get_caller_address
-from starkware.cairo.common.math import assert_not_zero, assert_lt
+from starkware.cairo.common.math import assert_not_zero, assert_le
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.interfaces import IShrine
 from contracts.shared.wad_ray import WadRay
+
 # Yin-ERC20
 # -------------------------------
 # This is a modified OpenZeppelin ERC20 contract that allows users to interact with Yin as a standard ERC20 token.
@@ -20,8 +21,9 @@ from contracts.shared.wad_ray import WadRay
 # Constants
 #
 
-const INFINITE_ALLOWANCE = 2 ** 125
-const UINT8_MAX = 256
+const INFINITE_ALLOWANCE = -1
+const UINT8_MAX = 255
+
 #
 # Events
 #
@@ -39,15 +41,15 @@ end
 #
 
 @storage_var
-func yin_name_storage() -> (name):
+func yin_name_storage() -> (str):
 end
 
 @storage_var
-func yin_symbol_storage() -> (symbol):
+func yin_symbol_storage() -> (str):
 end
 
 @storage_var
-func yin_decimals_storage() -> (decimals):
+func yin_decimals_storage() -> (ufelt):
 end
 
 @storage_var
@@ -55,7 +57,7 @@ func yin_shrine_address_storage() -> (address):
 end
 
 @storage_var
-func yin_allowances_storage(owner, spender) -> (allowance):
+func yin_allowances_storage(owner, spender) -> (wad):
 end
 
 #
@@ -70,8 +72,8 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     yin_symbol_storage.write(symbol)
     yin_shrine_address_storage.write(shrine_address)
 
-    with_attr error_message("Yin: decimals exceed 2^8"):
-        assert_lt(decimals, UINT8_MAX)
+    with_attr error_message("Yin: decimals exceed 2^8 - 1"):
+        assert_le(decimals, UINT8_MAX)
     end
 
     yin_decimals_storage.write(decimals)
@@ -84,36 +86,29 @@ end
 #
 
 @view
-func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (name):
-    let (name) = yin_name_storage.read()
-    return (name)
+func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (str):
+    return yin_name_storage.read()
 end
 
 @view
-func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (symbol):
-    let (symbol) = yin_symbol_storage.read()
-    return (symbol)
+func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (str):
+    return yin_symbol_storage.read()
 end
 
 @view
-func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
-    total_supply
-):
+func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
     let (shrine_address) = yin_shrine_address_storage.read()
     let (total_supply) = IShrine.get_total_yin(contract_address=shrine_address)
     return (total_supply)
 end
 
 @view
-func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (decimals):
-    let (decimals) = yin_decimals_storage.read()
-    return (decimals)
+func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
+    return yin_decimals_storage.read()
 end
 
 @view
-func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
-    balance
-):
+func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (wad):
     let (shrine_address) = yin_shrine_address_storage.read()
     let (balance) = IShrine.get_yin(contract_address=shrine_address, user_address=account)
     return (balance)
@@ -122,18 +117,18 @@ end
 @view
 func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     owner, spender
-) -> (remaining):
-    let (remaining) = yin_allowances_storage.read(owner, spender)
-    return (remaining)
+) -> (wad):
+    return yin_allowances_storage.read(owner, spender)
 end
 
 #
 # External functions
 #
+
 @external
 func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     recipient, amount
-) -> (success):
+) -> (bool):
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
         WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
     end
@@ -146,7 +141,7 @@ end
 @external
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
-) -> (success):
+) -> (bool):
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
         WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
     end
@@ -160,9 +155,15 @@ end
 @external
 func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender, amount
-) -> (success):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+) -> (bool):
+    alloc_locals
+    if amount != INFINITE_ALLOWANCE:
+        with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+            WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+        end
+        tempvar range_check_ptr = range_check_ptr
+    else:
+        tempvar range_check_ptr = range_check_ptr
     end
 
     let (caller) = get_caller_address()
@@ -174,12 +175,15 @@ end
 # Private functions
 #
 
-# Difference from OZ: Allows transfers to zero-address as "burning"
 func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
 ):
     with_attr error_message("Yin: cannot transfer from the zero address"):
         assert_not_zero(sender)
+    end
+
+    with_attr error_message("Yin: cannot transfer to the zero address"):
+        assert_not_zero(recipient)
     end
 
     let (shrine_address) = yin_shrine_address_storage.read()

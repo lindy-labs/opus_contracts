@@ -81,7 +81,7 @@ func TroveUpdated(trove_id, trove : Trove):
 end
 
 @event
-func YinUpdated(user_address, credits):
+func YinUpdated(user_address, amount):
 end
 
 @event
@@ -140,14 +140,14 @@ end
 func shrine_deposits_storage(trove_id, yang_id) -> (wad):
 end
 
-# Total amount of debt issued
+# Total amount of debt accrued
 @storage_var
 func shrine_debt_storage() -> (wad):
 end
 
 # Total amount of synthetic forged
 @storage_var
-func shrine_total_yin_storage() -> (wad : felt):
+func shrine_total_yin_storage() -> (wad):
 end
 
 # Keeps track of the price history of each Yang - packed
@@ -509,6 +509,10 @@ func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ):
     Auth.assert_caller_authed()
 
+    with_attr error_message("Shrine: transfer amount outside the valid range."):
+        WadRay.assert_result_valid_unsigned(amount)
+    end
+
     let (src_balance) = shrine_yin_storage.read(src_address)
     let (dst_balance) = shrine_yin_storage.read(dst_address)
 
@@ -521,6 +525,9 @@ func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     shrine_yin_storage.write(src_address, new_src_balance)
     shrine_yin_storage.write(dst_address, new_dst_balance)
+
+    # No event emissions - this is because `move-yin` should only be called by an
+    # ERC20 wrapper contract which emits a `Transfer` event on transfers anyway.
 
     return ()
 end
@@ -723,7 +730,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Updating the total yin
     let (total_yin) = shrine_total_yin_storage.read()
 
-    # Reverts if amount > old_user_yin or amount > old_total_yin.
+    # Reverts if amount > user_yin or amount > total_yin.
     with_attr error_message("Shrine: not enough yin to melt debt"):
         let (new_user_yin) = WadRay.sub_unsigned(user_yin, amount)
         let (new_total_yin) = WadRay.sub_unsigned(total_yin, amount)
