@@ -149,6 +149,10 @@ async def test_yin_transfer_from_fail(shrine_forge, yin):
     with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
         await yin.transferFrom(USER_1, USER_3, FORGE_AMT + 1).invoke(caller_address=USER_2)
 
+    # Transfer to zero address - should fail since a check prevents this
+    with pytest.raises(StarkException, match="Yin: cannot transfer to the zero address"):
+        await yin.transferFrom(USER_1, 0, FORGE_AMT).invoke(caller_address=USER_2)
+
 
 @pytest.mark.asyncio
 async def test_yin_invalid_inputs(yin):

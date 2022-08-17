@@ -178,12 +178,12 @@ end
 func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
 ):
-    with_attr error_message("Yin: cannot transfer from the zero address"):
-        assert_not_zero(sender)
-    end
-
     with_attr error_message("Yin: cannot transfer to the zero address"):
         assert_not_zero(recipient)
+    end
+
+    with_attr error_message("Yin: cannot transfer from the zero address"):
+        assert_not_zero(sender)
     end
 
     let (shrine_address) = yin_shrine_address_storage.read()
