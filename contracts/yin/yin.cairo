@@ -182,10 +182,6 @@ func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
         assert_not_zero(recipient)
     end
 
-    with_attr error_message("Yin: cannot transfer from the zero address"):
-        assert_not_zero(sender)
-    end
-
     let (shrine_address) = yin_shrine_address_storage.read()
 
     # Calling shrine's `move_yin` function, which handles the rest of the transfer logic
