@@ -1,10 +1,15 @@
-from starkware.cairo.common.hash_state import compute_hash_on_elements
 from starkware.crypto.signature.signature import private_to_stark_key, sign
-from starkware.starknet.public.abi import get_selector_from_name
+from starkware.starknet.core.os.transaction_hash.transaction_hash import (
+    TransactionHashPrefix,
+    calculate_transaction_hash_common,
+)
+from starkware.starknet.definitions.constants import TRANSACTION_VERSION
+from starkware.starknet.definitions.general_config import StarknetChainId
+from starkware.starknet.public.abi import EXECUTE_ENTRY_POINT_SELECTOR, get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.utils import Addressable, Call, Calldata, as_address, compile_contract, str_to_felt
+from tests.utils import Addressable, Call, Calldata, as_address, compile_contract
 
 # IDEA:
 # create a context manager out of the account
@@ -18,7 +23,7 @@ class Account:
     to simplify sending TXs in tests.
     """
 
-    compiled_acconut_contract: ContractClass = compile_contract("contracts/lib/openzeppelin/account/Account.cairo")
+    compiled_acconut_contract: ContractClass = compile_contract("openzeppelin/account/presets/Account.cairo")
 
     def __init__(self, name):
         self.private_key = abs(hash(name))
@@ -42,13 +47,13 @@ class Account:
         return await self.send_txs([call_payload], max_fee)
 
     async def send_txs(self, calls: list[Call], max_fee=0):
-        calls_with_selector = [(as_address(call[0]), get_selector_from_name(call[1]), call[2]) for call in calls]
         call_array, calldata = from_call_to_call_array(calls)
 
         nonce = self.nonce
         self.nonce += 1
 
-        message_hash = hash_multicall(self.address, calls_with_selector, nonce, max_fee)
+        message_hash = get_transaction_hash(self.address, call_array, calldata, nonce, max_fee)
+
         sig_r, sig_s = sign(message_hash, self.private_key)
 
         try:
@@ -59,6 +64,28 @@ class Account:
             # contract so we have to decrease it here as well
             self.nonce -= 1
             raise
+
+
+def get_transaction_hash(account, call_array, calldata, nonce, max_fee):
+    """Calculate the transaction hash."""
+    execute_calldata = [
+        len(call_array),
+        *[x for t in call_array for x in t],
+        len(calldata),
+        *calldata,
+        nonce,
+    ]
+
+    return calculate_transaction_hash_common(
+        TransactionHashPrefix.INVOKE,
+        TRANSACTION_VERSION,
+        account,
+        EXECUTE_ENTRY_POINT_SELECTOR,
+        execute_calldata,
+        max_fee,
+        StarknetChainId.TESTNET.value,
+        [],
+    )
 
 
 def from_call_to_call_array(calls):
@@ -75,20 +102,3 @@ def from_call_to_call_array(calls):
         call_array.append(entry)
         calldata.extend(call[2])
     return (call_array, calldata)
-
-
-def hash_multicall(sender, calls, nonce, max_fee):
-    hash_array = []
-    for call in calls:
-        call_elements = [call[0], call[1], compute_hash_on_elements(call[2])]
-        hash_array.append(compute_hash_on_elements(call_elements))
-
-    message = [
-        str_to_felt("StarkNet Transaction"),
-        sender,
-        compute_hash_on_elements(hash_array),
-        nonce,
-        max_fee,
-        0,  # transaction version
-    ]
-    return compute_hash_on_elements(message)
