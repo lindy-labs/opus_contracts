@@ -10,6 +10,9 @@ namespace IShrine:
     func get_trove(trove_id) -> (trove : Trove):
     end
 
+    func get_yin(user_address) -> (wad):
+    end
+
     func get_yang(yang_address) -> (yang : Yang):
     end
 
@@ -19,7 +22,10 @@ namespace IShrine:
     func get_deposit(trove_id, yang_address) -> (wad):
     end
 
-    func get_shrine_debt() -> (wad):
+    func get_debt() -> (wad):
+    end
+
+    func get_total_yin() -> (wad):
     end
 
     func get_yang_price(yang_address, interval) -> (wad):
@@ -62,6 +68,9 @@ namespace IShrine:
     end
 
     func move_yang(yang_address, amount, src_trove_id, dst_trove_id):
+    end
+
+    func move_yin(src_address, dst_address, amount):
     end
 
     func deposit(yang_address, amount, trove_id):
