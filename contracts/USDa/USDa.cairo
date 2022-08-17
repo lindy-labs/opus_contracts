@@ -8,14 +8,14 @@ from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.lib.openzeppelin.token.erc20.library import ERC20
+from openzeppelin.token.erc20.library import ERC20
 
-from contracts.lib.openzeppelin.access.ownable import Ownable_initializer, Ownable_only_owner
+from openzeppelin.access.ownable.ownable import Ownable
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(owner : felt):
     ERC20.initializer('USDa', 'USDa', 18)
-    Ownable_initializer(owner)
+    Ownable.initializer(owner)
     return ()
 end
 

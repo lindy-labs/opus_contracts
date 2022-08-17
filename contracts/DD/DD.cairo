@@ -37,12 +37,7 @@ from starkware.starknet.common.syscalls import get_caller_address, get_contract_
 
 from contracts.shared.interfaces import IERC20, IERC20Mintable, IERC20Burnable, IUSDa
 from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
-from contracts.lib.openzeppelin.access.ownable import (
-    Ownable_initializer,
-    Ownable_get_owner,
-    Ownable_only_owner,
-    Ownable_transfer_ownership,
-)
+from openzeppelin.access.ownable.ownable import Ownable
 
 const HUNDRED_PERCENT_BPS = 10000  # 100%
 # bounds used to check the allowed value of the
@@ -135,7 +130,7 @@ end
 func get_owner_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     addr : felt
 ):
-    let (addr) = Ownable_get_owner()
+    let (addr) = Ownable.owner()
     return (addr)
 end
 
@@ -186,7 +181,7 @@ end
 func set_threshold_buffer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     value : felt
 ):
-    Ownable_only_owner()
+    Ownable.assert_only_owner()
     with_attr error_message("DD: value {value} out of bounds"):
         # value is in basis points, has to be between lower and
         # upper bound (inclusive, that's why the +1)
@@ -205,7 +200,7 @@ end
 func set_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(addr : felt):
     # this function already does only owner and zero address checks internally
     # and also emits an event
-    Ownable_transfer_ownership(addr)
+    Ownable.transfer_ownership(addr)
     return ()
 end
 
@@ -213,7 +208,7 @@ end
 func set_reserve_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     addr : felt
 ):
-    Ownable_only_owner()
+    Ownable.assert_only_owner()
     with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(addr)
     end
@@ -230,7 +225,7 @@ end
 func set_stability_fee{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     fee : felt
 ):
-    Ownable_only_owner()
+    Ownable.assert_only_owner()
     with_attr error_message("DD: invalid stability fee"):
         assert_le(fee, HUNDRED_PERCENT_BPS)
     end
@@ -247,7 +242,7 @@ end
 func set_treasury_address{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     addr : felt
 ):
-    Ownable_only_owner()
+    Ownable.assert_only_owner()
     with_attr error_message("DD: address cannot be zero"):
         assert_not_zero(addr)
     end
@@ -274,7 +269,7 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     stability_fee : felt,
     threshold_buffer : felt,
 ):
-    Ownable_initializer(owner)
+    Ownable.initializer(owner)
     DDS_initializer(
         stablecoin_addr, usda_addr, reserve_addr, treasury_addr, stability_fee, threshold_buffer
     )
