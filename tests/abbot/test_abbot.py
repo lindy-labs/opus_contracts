@@ -240,6 +240,10 @@ async def test_add_yang(abbot, shrine, abbot_owner, users, steth_yang: YangConfi
     with pytest.raises(StarkException):
         await bad_guy.send_tx(abbot.contract_address, "add_yang", [0xC0FFEE, 10**30, 10**27, to_wad(1), 0xDEADBEEF])
 
+
+@pytest.mark.asyncio
+async def test_add_yang_failures(abbot, abbot_owner, steth_yang: YangConfig, doge_yang: YangConfig):
+
     yang = steth_yang
 
     # test reverting on yang address equal 0
@@ -259,11 +263,25 @@ async def test_add_yang(abbot, shrine, abbot_owner, users, steth_yang: YangConfi
         )
 
     # test reverting on trying to add the same yang / gate combo
+    await abbot_owner.send_tx(
+        abbot.contract_address,
+        "add_yang",
+        [yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address],
+    )
     with pytest.raises(StarkException, match="Abbot: yang already added"):
         await abbot_owner.send_tx(
             abbot.contract_address,
             "add_yang",
             [yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address],
+        )
+
+    # test reverting when the Gate is for a different yang
+    yang = doge_yang
+    with pytest.raises(StarkException, match="Abbot: yang address does not match Gate's asset"):
+        await abbot_owner.send_tx(
+            abbot.contract_address,
+            "add_yang",
+            [yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address],
         )
 
 

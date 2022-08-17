@@ -1,7 +1,6 @@
 %lang starknet
 
 from starkware.cairo.common.alloc import alloc
-from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.lang.compiler.lib.registers import get_fp_and_pc
@@ -259,6 +258,11 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     with_attr error_message("Abbot: yang already added"):
         let (stored_address) = abbot_yang_to_gate_storage.read(yang_address)
         assert stored_address = 0
+    end
+
+    with_attr error_message("Abbot: yang address does not match Gate's asset"):
+        let (asset_address) = IGate.get_asset(gate_address)
+        assert yang_address = asset_address
     end
 
     let (yang_addresses_count) = abbot_yang_addresses_count_storage.read()
