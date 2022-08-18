@@ -193,7 +193,7 @@ end
 
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, yang_address, amount
+    yang_address, trove_id, amount
 ):
     alloc_locals
     let (__fp__, _) = get_fp_and_pc()
@@ -217,7 +217,7 @@ end
 
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, yang_address, amount
+    yang_address, trove_id, amount
 ):
     alloc_locals
     let (__fp__, _) = get_fp_and_pc()
