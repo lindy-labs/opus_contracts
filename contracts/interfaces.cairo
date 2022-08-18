@@ -67,7 +67,7 @@ namespace IShrine:
     func update_multiplier(new_multiplier):
     end
 
-    func move_yang(yang_address, amount, src_trove_id, dst_trove_id):
+    func move_yang(yang_address, src_trove_id, dst_trove_id, amount):
     end
 
     func move_yin(src_address, dst_address, amount):

@@ -610,8 +610,8 @@ async def test_estimate(shrine, estimate):
         ("melt", [0, 1, 1]),  # amount, trove_id, user_address
         (
             "move_yang",
-            [YANG_0_ADDRESS, 0, 1, 2],
-        ),  # yang_address, amount, src_trove_id, dst_trove_id
+            [YANG_0_ADDRESS, 1, 2, 0],
+        ),  # yang_address, src_trove_id, dst_trove_id, amount
     ],
 )
 async def test_charge(shrine, estimate, method, calldata):
@@ -771,7 +771,7 @@ async def test_move_yang_pass(shrine, shrine_forge, collect_gas_cost):
 
     move_amt = 1
 
-    tx = await shrine.move_yang(YANG_0_ADDRESS, to_wad(move_amt), TROVE_1, TROVE_2).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(move_amt)).invoke(caller_address=SHRINE_OWNER)
 
     collect_gas_cost("shrine/move_yang", tx, 6, 1)
 
@@ -870,7 +870,7 @@ async def test_shrine_forge_ceiling_fail(shrine, update_feeds):
 @pytest.mark.asyncio
 async def test_move_yang_insufficient_fail(shrine, shrine_forge):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine.move_yang(YANG_0_ADDRESS, to_wad(11), TROVE_1, TROVE_2).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(11)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -883,7 +883,7 @@ async def test_move_yang_unsafe_fail(shrine, shrine_forge):
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.move_yang(YANG_0_ADDRESS, to_wad(withdraw_amt), TROVE_1, TROVE_2).invoke(
+        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(withdraw_amt),).invoke(
             caller_address=SHRINE_OWNER
         )
 

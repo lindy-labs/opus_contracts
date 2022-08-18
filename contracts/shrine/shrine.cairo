@@ -460,7 +460,7 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, src_trove_id, dst_trove_id
+    yang_address, src_trove_id, dst_trove_id, amount
 ):
     alloc_locals
 
