@@ -212,7 +212,7 @@ async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
 
 @pytest.fixture
 async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    forge = await shrine.forge(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 

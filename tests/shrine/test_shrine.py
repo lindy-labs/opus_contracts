@@ -273,7 +273,7 @@ async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetTransact
     """
     Replicate forge for another trove.
     """
-    forge = await shrine.forge(FORGE_AMT, TROVE_2, TROVE2_OWNER).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE2_OWNER, TROVE_2, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -605,7 +605,7 @@ async def test_estimate(shrine, estimate):
     [
         ("deposit", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
         ("withdraw", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
-        ("forge", [0, 1, 1]),  # amount, trove_id, user_address
+        ("forge", [1, 1, 0]),  # user_address, trove_id, amount
         ("melt", [0, 1, 1]),  # amount, trove_id, user_address
         (
             "move_yang",
@@ -841,7 +841,7 @@ async def test_shrine_forge_zero_deposit_fail(shrine):
 
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(to_wad(1_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(1_000)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -851,7 +851,7 @@ async def test_shrine_forge_unsafe_fail(shrine, update_feeds):
     await shrine.set_ceiling(new_ceiling).invoke(caller_address=SHRINE_OWNER)
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(to_wad(14_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(14_000)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -863,7 +863,7 @@ async def test_shrine_forge_ceiling_fail(shrine, update_feeds):
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
-        await shrine.forge(to_wad(15_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(15_000)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -1036,7 +1036,7 @@ async def test_kill(shrine, update_feeds):
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine.forge(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(100)).invoke(caller_address=SHRINE_OWNER)
 
     # Test withdraw pass
     await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)

@@ -617,7 +617,7 @@ end
 # Mint a specified amount of synthetic for a Trove
 @external
 func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    amount, trove_id, user_address
+    user_address, trove_id, amount
 ):
     alloc_locals
 
