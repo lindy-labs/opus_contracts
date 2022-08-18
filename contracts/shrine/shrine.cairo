@@ -575,7 +575,7 @@ end
 # Withdraw a specified amount of a Yang from a Trove
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, trove_id
+    yang_address, trove_id, amount
 ):
     alloc_locals
 

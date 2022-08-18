@@ -219,7 +219,7 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
 
 @pytest.fixture
 async def shrine_withdraw(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    withdraw = await shrine.withdraw(YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1).invoke(
+    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).invoke(
         caller_address=SHRINE_OWNER
     )
     return withdraw
@@ -604,7 +604,7 @@ async def test_estimate(shrine, estimate):
     "method,calldata",
     [
         ("deposit", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
-        ("withdraw", [YANG_0_ADDRESS, 0, 1]),  # yang_address, amount, trove_id
+        ("withdraw", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
         ("forge", [0, 1, 1]),  # amount, trove_id, user_address
         ("melt", [0, 1, 1]),  # amount, trove_id, user_address
         (
@@ -813,13 +813,13 @@ async def test_shrine_withdraw_invalid_yang_fail(shrine):
 
     # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.withdraw(789, to_wad(1), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(789, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_withdraw_insufficient_yang_fail(shrine, shrine_deposit):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine.withdraw(YANG_0_ADDRESS, to_wad(11), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(11)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -833,7 +833,7 @@ async def test_shrine_withdraw_unsafe_fail(shrine, update_feeds):
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.withdraw(YANG_0_ADDRESS, to_wad(withdraw_amt), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(withdraw_amt)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -1039,7 +1039,7 @@ async def test_kill(shrine, update_feeds):
         await shrine.forge(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
 
     # Test withdraw pass
-    await shrine.withdraw(YANG_0_ADDRESS, to_wad(1), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
 
     # Test melt pass
     await shrine.melt(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)

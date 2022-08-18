@@ -76,7 +76,7 @@ namespace IShrine:
     func deposit(yang_address, trove_id, amount):
     end
 
-    func withdraw(yang_address, amount, trove_id):
+    func withdraw(yang_address, trove_id, amount):
     end
 
     func forge(amount, trove_id):
