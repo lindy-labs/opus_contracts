@@ -37,7 +37,7 @@ from starkware.starknet.common.syscalls import get_caller_address, get_contract_
 
 from contracts.shared.interfaces import IERC20, IERC20Mintable, IERC20Burnable, IUSDa
 from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
-from openzeppelin.access.ownable.ownable import Ownable
+from contracts.lib.openzeppelin.access.ownable.ownable import Ownable
 
 const HUNDRED_PERCENT_BPS = 10000  # 100%
 # bounds used to check the allowed value of the
