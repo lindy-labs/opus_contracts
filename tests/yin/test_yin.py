@@ -193,10 +193,14 @@ async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin):
 
     # Trying to melt `FORGE_AMT` debt. Should fail since TROVE1_OWNER no longer has FORGE_AMT yin.
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
 
     # Trying to melt less than half of `FORGE_AMT`. Should pass since TROVE1_OWNER has enough yin to do this.
-    await shrine.melt(FORGE_AMT // 2 - 1, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    await shrine.melt(
+        TROVE1_OWNER,
+        TROVE_1,
+        FORGE_AMT // 2 - 1,
+    ).invoke(caller_address=SHRINE_OWNER)
 
     # Checking that the user's debt and yin are what we expect them to be
     u1_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
