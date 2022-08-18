@@ -134,10 +134,10 @@ def tokens(
 
 
 @pytest.fixture
-async def usda(starknet: Starknet, users) -> StarknetContract:
-    owner = await users("usda owner")
+async def usda(starknet: Starknet) -> StarknetContract:
+    owner = str_to_felt("usda owner")
     contract = compile_contract("contracts/USDa/USDa.cairo")
-    return await starknet.deploy(contract_class=contract, constructor_calldata=[owner.address])
+    return await starknet.deploy(contract_class=contract, constructor_calldata=[owner])
 
 
 @pytest.fixture

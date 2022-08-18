@@ -2,7 +2,7 @@ import pytest
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.shrine.constants import FORGE_AMT, TROVE_1, USER_1, USER_2, USER_3
+from tests.shrine.constants import FORGE_AMT, SHRINE_OWNER, TROVE_1, USER_1, USER_2, USER_3
 from tests.utils import assert_event_emitted, compile_contract, str_to_felt
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
@@ -16,7 +16,7 @@ TRUE = 1
 
 
 @pytest.fixture
-async def yin(starknet, shrine, users) -> StarknetContract:
+async def yin(starknet, shrine) -> StarknetContract:
 
     # Deploying the yin contract
     yin_contract = compile_contract("contracts/yin/yin.cairo")
@@ -26,16 +26,14 @@ async def yin(starknet, shrine, users) -> StarknetContract:
     )
 
     # Authorizing the yin contract in shrine
-    shrine_owner = await users("shrine owner")
-    await shrine_owner.send_tx(shrine.contract_address, "authorize", [deployed_yin.contract_address])
+    await shrine.authorize(deployed_yin.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return deployed_yin
 
 
 @pytest.fixture
-async def shrine_killed(shrine, users) -> StarknetContract:
-    shrine_owner = await users("shrine owner")
-    shrine_owner.send_tx(shrine, "kill", [])
+async def shrine_killed(shrine) -> StarknetContract:
+    shrine.kill().invoke(caller_address=SHRINE_OWNER)
     return shrine
 
 
@@ -183,20 +181,18 @@ async def test_yin_invalid_inputs(yin):
 
 @pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
-async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin, users):
+async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin):
     shrine = shrine_both
-
-    shrine_owner = await users("shrine owner")
 
     # Transferring half of USER_1's balance to USER_2
     await yin.transfer(USER_2, FORGE_AMT // 2).invoke(caller_address=USER_1)
 
     # Trying to melt `FORGE_AMT` debt. Should fail since USER_1 no longer has FORGE_AMT yin.
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine_owner.send_tx(shrine.contract_address, "melt", [FORGE_AMT, TROVE_1, USER_1])
+        await shrine.melt(FORGE_AMT, TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
 
     # Trying to melt less than half of `FORGE_AMT`. Should pass since USER_1 has enough yin to do this.
-    await shrine_owner.send_tx(shrine.contract_address, "melt", [FORGE_AMT // 2 - 1, TROVE_1, USER_1])
+    await shrine.melt(FORGE_AMT // 2 - 1, TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
 
     # Checking that the user's debt and yin are what we expect them to be
     u1_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
