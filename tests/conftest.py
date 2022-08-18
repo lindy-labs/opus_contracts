@@ -4,12 +4,10 @@ from decimal import getcontext
 from typing import Awaitable, Callable
 
 import pytest
-from cache import AsyncLRU
 from filelock import FileLock
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
-from tests.account import Account
 from tests.gate.rebasing_yang.constants import INITIAL_AMT
 from tests.shrine.constants import (
     DEBT_CEILING,
@@ -101,30 +99,6 @@ async def starknet_session() -> Starknet:
 async def starknet() -> Starknet:
     starknet = await Starknet.empty()
     return starknet
-
-
-# TODO: figure out a good way how not to use magic string constants for common users
-@pytest.fixture
-def users(starknet: Starknet) -> Callable[[str], Awaitable[Account]]:
-    """
-    A factory fixture that creates users.
-
-    The returned factory function takes a single string as an argument,
-    which it uses as an identifier of the user and also to generates their
-    private key. The fixture has an internal cache, so the same argument (user name)
-    will return the same result within a given test.
-
-    The return value is an instance of Account, useful for sending
-    signed transactions, assigning ownership, etc.
-    """
-
-    @AsyncLRU()
-    async def create_user(name):
-        account = Account(name)
-        await account.deploy(starknet)
-        return account
-
-    return create_user
 
 
 @pytest.fixture
@@ -247,10 +221,11 @@ async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionIn
 
 
 @pytest.fixture
-async def rebasing_token(users, tokens) -> StarknetContract:
-    user1 = await users("trove 1 owner")
-    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user1.address)
+async def rebasing_token(tokens) -> StarknetContract:
+    user1 = str_to_felt("trove 1 owner")
+    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user1)
 
-    user2 = await users("trove 2 owner")
-    await user2.send_tx(rebasing_token.contract_address, "mint", [user2.address, *(INITIAL_AMT, 0)])
+    user2 = str_to_felt("trove 2 owner")
+    await rebasing_token.mint(user2, (INITIAL_AMT, 0)).invoke(caller_address=user2)
+
     return rebasing_token
