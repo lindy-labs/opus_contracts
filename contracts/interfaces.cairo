@@ -73,7 +73,7 @@ namespace IShrine:
     func move_yin(src_address, dst_address, amount):
     end
 
-    func deposit(yang_address, amount, trove_id):
+    func deposit(yang_address, trove_id, amount):
     end
 
     func withdraw(yang_address, amount, trove_id):

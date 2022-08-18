@@ -85,7 +85,7 @@ func YinUpdated(user_address, amount):
 end
 
 @event
-func DepositUpdated(trove_id, yang_address, amount):
+func DepositUpdated(yang_address, trove_id, amount):
 end
 
 @event
@@ -497,8 +497,8 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     shrine_deposits_storage.write(dst_trove_id, yang_id, new_dst_balance)
 
     # Events
-    DepositUpdated.emit(src_trove_id, yang_address, new_src_balance)
-    DepositUpdated.emit(dst_trove_id, yang_address, new_dst_balance)
+    DepositUpdated.emit(yang_address, src_trove_id, new_src_balance)
+    DepositUpdated.emit(yang_address, dst_trove_id, new_dst_balance)
 
     return ()
 end
@@ -535,7 +535,7 @@ end
 # Deposit a specified amount of a Yang into a Trove
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, trove_id
+    yang_address, trove_id, amount
 ):
     alloc_locals
 
@@ -567,7 +567,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
-    DepositUpdated.emit(trove_id, yang_address, new_trove_balance)
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance)
 
     return ()
 end
@@ -609,7 +609,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
-    DepositUpdated.emit(trove_id, yang_address, new_trove_balance)
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance)
 
     return ()
 end

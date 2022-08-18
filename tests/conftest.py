@@ -206,7 +206,7 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 @pytest.fixture
 async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
-    deposit = await shrine.deposit(YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).invoke(caller_address=SHRINE_OWNER)
     return deposit
 
 
