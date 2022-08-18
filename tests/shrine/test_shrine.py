@@ -264,7 +264,7 @@ async def shrine_deposit_trove2(shrine) -> StarknetTransactionExecutionInfo:
 async def shrine_melt(shrine, shrine_forge) -> StarknetTransactionExecutionInfo:
 
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    melt = await shrine.melt(estimated_debt, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    melt = await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).invoke(caller_address=SHRINE_OWNER)
     return melt
 
 
@@ -606,7 +606,7 @@ async def test_estimate(shrine, estimate):
         ("deposit", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
         ("withdraw", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
         ("forge", [1, 1, 0]),  # user_address, trove_id, amount
-        ("melt", [0, 1, 1]),  # amount, trove_id, user_address
+        ("melt", [1, 1, 0]),  # user_address, trove_id, amount
         (
             "move_yang",
             [YANG_0_ADDRESS, 1, 2, 0],
@@ -1042,7 +1042,7 @@ async def test_kill(shrine, update_feeds):
     await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
 
     # Test melt pass
-    await shrine.melt(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE1_OWNER, TROVE_1, to_wad(100)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -1110,4 +1110,4 @@ async def test_shrine_melt_after_move_yin_fail(shrine, shrine_forge):
     await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT // 2).invoke(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)

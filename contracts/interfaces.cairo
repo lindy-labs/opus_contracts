@@ -82,7 +82,7 @@ namespace IShrine:
     func forge(user_address, trove_id, amount):
     end
 
-    func melt(amount, trove_id):
+    func melt(user_address, trove_id, amount):
     end
 
     func seize(trove_id):

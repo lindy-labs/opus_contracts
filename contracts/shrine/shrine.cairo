@@ -692,7 +692,7 @@ end
 # The module calling this function should ensure that `amount` does not exceed Trove's debt.
 @external
 func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    amount, trove_id, user_address
+    user_address, trove_id, amount
 ):
     alloc_locals
 
