@@ -224,7 +224,7 @@ async def test_getters_setters(direct_deposit, usda, users):
     new_owner = await users("new dd owner")
     assert (await dd.get_owner_address().invoke()).result.addr == dd_owner.address
     tx = await dd_owner.send_tx(dd, "set_owner", [new_owner.address])
-    assert_event_emitted(tx, dd.contract_address, "OwnerChange", [dd_owner.address, new_owner.address])
+    assert_event_emitted(tx, dd.contract_address, "OwnershipTransferred", [dd_owner.address, new_owner.address])
     assert (await dd.get_owner_address().invoke()).result.addr == new_owner.address
     with pytest.raises(StarkException):
         await rektooor.send_tx(dd, "set_owner", [rektooor.address])

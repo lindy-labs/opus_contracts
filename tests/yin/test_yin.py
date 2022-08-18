@@ -35,7 +35,7 @@ async def yin(starknet, shrine, users) -> StarknetContract:
 @pytest.fixture
 async def shrine_killed(shrine, users) -> StarknetContract:
     shrine_owner = await users("shrine owner")
-    shrine_owner.send_tx(shrine, "kill", [])
+    await shrine_owner.send_tx(shrine, "kill", [])
     return shrine
 
 
