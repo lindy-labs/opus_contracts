@@ -18,6 +18,7 @@ from tests.shrine.constants import (
     INITIAL_DEPOSIT,
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
+    SHRINE_OWNER,
     TIME_INTERVAL,
     TROVE_1,
     USER_1,
@@ -177,44 +178,33 @@ async def mrac_controller(starknet: Starknet) -> StarknetContract:
 
 # Returns the deployed shrine module
 @pytest.fixture
-async def shrine_deploy(starknet: Starknet, users) -> StarknetContract:
-    shrine_owner = await users("shrine owner")
+async def shrine_deploy(starknet: Starknet) -> StarknetContract:
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
 
-    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[shrine_owner.address])
+    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 
     return shrine
 
 
 # Same as above but also comes with ready-to-use yangs and price feeds
 @pytest.fixture
-async def shrine_setup(users, shrine_deploy) -> StarknetContract:
+async def shrine_setup(shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
-    shrine_owner = await users("shrine owner")
 
     # Set debt ceiling
-    await shrine_owner.send_tx(shrine.contract_address, "set_ceiling", [DEBT_CEILING])
-
+    await shrine.set_ceiling(DEBT_CEILING).invoke(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
-        await shrine_owner.send_tx(
-            shrine.contract_address,
-            "add_yang",
-            [
-                YANGS[i]["address"],
-                YANGS[i]["ceiling"],
-                YANGS[i]["threshold"],
-                to_wad(YANGS[i]["start_price"]),
-            ],
-        )  # Add yang
+        await shrine.add_yang(
+            YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])
+        ).invoke(caller_address=SHRINE_OWNER)
 
     return shrine
 
 
 @pytest.fixture
-async def shrine_with_feeds(starknet: Starknet, users, shrine_setup) -> StarknetContract:
+async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContract:
     shrine = shrine_setup
-    shrine_owner = await users("shrine owner")
 
     # Creating the price feeds
     feeds = [create_feed(g["start_price"], FEED_LEN, MAX_PRICE_CHANGE) for g in YANGS]
@@ -224,10 +214,11 @@ async def shrine_with_feeds(starknet: Starknet, users, shrine_setup) -> Starknet
     for i in range(1, FEED_LEN):
         timestamp = i * TIME_INTERVAL
         set_block_timestamp(starknet.state, timestamp)
-        for j in range(len(YANGS)):
-            await shrine_owner.send_tx(shrine.contract_address, "advance", [YANGS[j]["address"], feeds[j][i]])
 
-        await shrine_owner.send_tx(shrine.contract_address, "update_multiplier", [MULTIPLIER_FEED[i]])
+        for j in range(len(YANGS)):
+            await shrine.advance(YANGS[j]["address"], feeds[j][i]).invoke(caller_address=SHRINE_OWNER)
+
+        await shrine.update_multiplier(MULTIPLIER_FEED[i]).invoke(caller_address=SHRINE_OWNER)
 
     return shrine, feeds
 
@@ -239,22 +230,14 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
-    shrine_owner = await users("shrine owner")
-
-    deposit = await shrine_owner.send_tx(
-        shrine.contract_address,
-        "deposit",
-        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
-    )
+async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
+    deposit = await shrine.deposit(YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1).invoke(caller_address=SHRINE_OWNER)
     return deposit
 
 
 @pytest.fixture
-async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    shrine_owner = await users("shrine owner")
-
-    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_1, USER_1])
+async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
+    forge = await shrine.forge(FORGE_AMT, TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 

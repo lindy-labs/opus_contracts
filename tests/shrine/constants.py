@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
+from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE, str_to_felt
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 LIMIT_RATIO = 95 * RAY_PERCENT
@@ -8,6 +8,12 @@ LIMIT_RATIO = 95 * RAY_PERCENT
 YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
+
+
+#
+# Admin addresses
+#
+SHRINE_OWNER = str_to_felt("shrine owner")
 
 # Shrine setup constants
 YANGS = [
