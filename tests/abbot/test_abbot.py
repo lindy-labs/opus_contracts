@@ -484,3 +484,23 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
 
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
         await abbot.withdraw(steth_yang.contract_address, trove_id, to_wad(10)).invoke(caller_address=other_user)
+
+
+@pytest.mark.asyncio
+async def test_forge():
+    pass
+
+
+@pytest.mark.asyncio
+async def test_forge_failures():
+    pass
+
+
+@pytest.mark.asyncio
+async def test_melt():
+    pass
+
+
+@pytest.mark.asyncio
+async def test_melt_failures():
+    pass

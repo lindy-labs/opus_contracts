@@ -240,9 +240,33 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     return ()
 end
 
-# TODO:
-#   docs
-#   funcs to support the UI
+@external
+func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id, amount):
+    alloc_locals
+
+    let (user_address) = get_caller_address()
+    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
+        assert_trove_owner(user_address, trove_id, 0)
+    end
+
+    IShrine.forge(user_address, trove_id, amount)
+
+    return ()
+end
+
+@external
+func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id, amount):
+    alloc_locals
+
+    let (user_address) = get_caller_address()
+    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
+        assert_trove_owner(user_address, trove_id, 0)
+    end
+
+    IShrine.melt(user_address, trove_id, amount)
+
+    return ()
+end
 
 @external
 func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
