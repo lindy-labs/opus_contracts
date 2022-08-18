@@ -1,4 +1,11 @@
-from starkware.cairo.common.math import assert_le, sign, abs_value, signed_div_rem, unsigned_div_rem
+from starkware.cairo.common.math import (
+    assert_le,
+    assert_nn_le,
+    sign,
+    abs_value,
+    signed_div_rem,
+    unsigned_div_rem,
+)
 
 from starkware.cairo.common.uint256 import Uint256
 
@@ -26,8 +33,7 @@ namespace WadRay:
 
     func assert_result_valid_unsigned{range_check_ptr}(n):
         with_attr error_message("WadRay: Result is out of bounds"):
-            assert_le(n, BOUND)
-            assert_le(0, n)
+            assert_nn_le(n, BOUND)
         end
         return ()
     end
