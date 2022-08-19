@@ -1,6 +1,6 @@
 import decimal
 
-from tests.utils import to_ray, to_uint, to_wad
+from tests.utils import str_to_felt, to_ray, to_uint, to_wad
 
 TAX = decimal.Decimal("0.025")
 TAX_MAX = decimal.Decimal("0.05")
@@ -24,3 +24,7 @@ SECOND_MINT_AMT_UINT = to_uint(SECOND_MINT_AMT)
 
 # Value for simulated `compound` in `levy` for `test_gate_taxable.cairo`
 COMPOUND_MULTIPLIER = decimal.Decimal("1.1")
+
+
+# Accounts
+TAX_COLLECTOR = str_to_felt("tax collector")

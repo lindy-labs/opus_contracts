@@ -8,7 +8,16 @@ import pytest
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import MAX_UINT256, Uint256, assert_event_emitted, compile_contract, felt_to_str, from_uint, to_uint
+from tests.utils import (
+    MAX_UINT256,
+    Uint256,
+    assert_event_emitted,
+    compile_contract,
+    felt_to_str,
+    from_uint,
+    str_to_felt,
+    to_uint,
+)
 
 RESERVE_ADDR = 1
 TREASURY_ADDR = 2
@@ -24,24 +33,24 @@ HUNDRED_PERCENT_BPS = 10_000
 # parametrized fixture used to emulate stablecoins allowed
 # in the direct deposit contract
 @pytest.fixture(params=[("DAI", 18), ("USDC", 6)], ids=["DAI", "USDC"])
-async def dd_stablecoin(request, tokens, users) -> StarknetContract:
+async def dd_stablecoin(request, tokens) -> StarknetContract:
     ten_billy = 10**10
     token, decimals = request.param
-    owner = await users(f"{token.lower()} owner")
-    return await tokens(f"Test {token}", f"t{token}", decimals, (ten_billy, 0), owner.address)
+    owner = str_to_felt(f"{token.lower()} owner")
+    return await tokens(f"Test {token}", f"t{token}", decimals, (ten_billy, 0), owner)
 
 
 # fixture returns the deployed direct deposit module together
 # with its associated stablecoin mock ERC20
 @pytest.fixture
-async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[StarknetContract, StarknetContract]:
-    dd_owner = await users("dd owner")
+async def direct_deposit(starknet, usda, dd_stablecoin) -> tuple[StarknetContract, StarknetContract]:
+    dd_owner = str_to_felt("dd owner")
     dd_contract = compile_contract("contracts/DD/DD.cairo")
 
     dd = await starknet.deploy(
         contract_class=dd_contract,
         constructor_calldata=[
-            dd_owner.address,
+            dd_owner,
             dd_stablecoin.contract_address,
             usda.contract_address,
             RESERVE_ADDR,
@@ -60,23 +69,23 @@ async def direct_deposit(starknet, usda, dd_stablecoin, users) -> tuple[Starknet
 
 
 @pytest.mark.asyncio
-async def test_deposit(direct_deposit, usda, users):
+async def test_deposit(direct_deposit, usda):
     dd, stablecoin = direct_deposit
     stable_symbol = felt_to_str((await stablecoin.symbol().invoke()).result.symbol)
-    depositor = await users(f"{stable_symbol} depositor")
+    depositor = str_to_felt(f"{stable_symbol} depositor")
 
     usda_decimals = (await usda.decimals().invoke()).result.decimals
     stable_decimals = (await stablecoin.decimals().invoke()).result.decimals
     deposit_amount = 3983 * 10**stable_decimals
 
     # give some stablecoin to the actor
-    await stablecoin.mint(depositor.address, to_uint(10000 * 10**stable_decimals)).invoke()
+    await stablecoin.mint(depositor, to_uint(10000 * 10**stable_decimals)).invoke()
 
     # allow Aura to take stable
-    await depositor.send_tx(stablecoin.contract_address, "approve", [dd.contract_address, *MAX_UINT256])
+    await stablecoin.approve(dd.contract_address, MAX_UINT256).invoke(caller_address=depositor)
 
     # deposit stables into Aura
-    tx = await depositor.send_tx(dd.contract_address, "deposit", [*to_uint(deposit_amount)])
+    tx = await dd.deposit(to_uint(deposit_amount)).invoke(caller_address=depositor)
     assert_event_emitted(tx, dd.contract_address, "Deposit", [*to_uint(deposit_amount)])
 
     # DD module should hold the requested amount of stablecoin
@@ -90,7 +99,7 @@ async def test_deposit(direct_deposit, usda, users):
         Decimal(usda_scaled_deposit * (HUNDRED_PERCENT_BPS - STABILITY_FEE)) / HUNDRED_PERCENT_BPS
     )
 
-    tx = await usda.balanceOf(depositor.address).invoke()
+    tx = await usda.balanceOf(depositor).invoke()
     assert tx.result.balance == to_uint(expected_depositor_balance)
 
     rest = usda_scaled_deposit - expected_depositor_balance
@@ -106,41 +115,41 @@ async def test_deposit(direct_deposit, usda, users):
 
 
 @pytest.mark.asyncio
-async def test_withdraw(direct_deposit, usda, users):
+async def test_withdraw(direct_deposit, usda):
     dd, stablecoin = direct_deposit
     stable_symbol = felt_to_str((await stablecoin.symbol().invoke()).result.symbol)
-    ape = await users(f"{stable_symbol} ape")
+    ape = str_to_felt(f"{stable_symbol} ape")
 
     usda_decimals = (await usda.decimals().invoke()).result.decimals
     stable_decimals = (await stablecoin.decimals().invoke()).result.decimals
     amount = 5000 * 10**stable_decimals
 
     # give some stables to ape
-    await stablecoin.mint(ape.address, to_uint(amount)).invoke()
+    await stablecoin.mint(ape, to_uint(amount)).invoke()
 
     # have them deposited to Aura via direct deposit
-    await ape.send_tx(stablecoin.contract_address, "approve", [dd.contract_address, *MAX_UINT256])
-    await ape.send_tx(dd.contract_address, "deposit", [*to_uint(amount)])
-    tx = await usda.balanceOf(ape.address).invoke()
+    await stablecoin.approve(dd.contract_address, MAX_UINT256).invoke(caller_address=ape)
+    await dd.deposit(to_uint(amount)).invoke(caller_address=ape)
+    tx = await usda.balanceOf(ape).invoke()
     # check if, indeed, we got some USDa and have no more stables
     ape_usda_balance: Uint256 = tx.result.balance
     assert from_uint(ape_usda_balance) > 0
-    assert (await stablecoin.balanceOf(ape.address).invoke()).result.balance == to_uint(0)
+    assert (await stablecoin.balanceOf(ape).invoke()).result.balance == to_uint(0)
 
     # now withdraw all of it back and check result
     # amount has to be in the scale of stablecoin
     withdraw_amount = int(Decimal(from_uint(ape_usda_balance)) / 10 ** (usda_decimals - stable_decimals))
-    tx = await ape.send_tx(dd.contract_address, "withdraw", [*to_uint(withdraw_amount)])
+    tx = await dd.withdraw(to_uint(withdraw_amount)).invoke(caller_address=ape)
     assert_event_emitted(tx, dd.contract_address, "Withdrawal", [*to_uint(withdraw_amount)])
-    assert (await usda.balanceOf(ape.address).invoke()).result.balance == to_uint(0)
-    assert (await stablecoin.balanceOf(ape.address).invoke()).result.balance == to_uint(withdraw_amount)
+    assert (await usda.balanceOf(ape).invoke()).result.balance == to_uint(0)
+    assert (await stablecoin.balanceOf(ape).invoke()).result.balance == to_uint(withdraw_amount)
 
 
 @pytest.mark.asyncio
-async def test_getters_setters(direct_deposit, usda, users):
+async def test_getters_setters(direct_deposit, usda):
     dd, stablecoin = direct_deposit
-    dd_owner = await users("dd owner")
-    rektooor = await users("rektooor")
+    dd_owner = str_to_felt("dd owner")
+    rektooor = str_to_felt("rektooor")
 
     new_reserve_address = 42**2
     new_treasury_address = 42**3
@@ -149,7 +158,8 @@ async def test_getters_setters(direct_deposit, usda, users):
 
     # test getting and setting threshold buffer
     assert (await dd.get_threshold_buffer().invoke()).result.value == THRESHOLD_BUFFER
-    tx = await dd_owner.send_tx(dd, "set_threshold_buffer", [new_threshold_buffer])
+    tx = await dd.set_threshold_buffer(new_threshold_buffer).invoke(caller_address=dd_owner)
+
     assert_event_emitted(
         tx,
         dd.contract_address,
@@ -160,18 +170,19 @@ async def test_getters_setters(direct_deposit, usda, users):
     # test setting the limits
     min_threshold_buffer = 500
     max_threshold_buffer = 10_000
-    await dd_owner.send_tx(dd, "set_threshold_buffer", [min_threshold_buffer])
-    await dd_owner.send_tx(dd, "set_threshold_buffer", [max_threshold_buffer])
+    await dd.set_threshold_buffer(min_threshold_buffer).invoke(caller_address=dd_owner)
+    await dd.set_threshold_buffer(max_threshold_buffer).invoke(caller_address=dd_owner)
+
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_threshold_buffer", [min_threshold_buffer - 1])
+        await dd.set_threshold_buffer(min_threshold_buffer - 1).invoke(caller_address=dd_owner)
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_threshold_buffer", [max_threshold_buffer + 1])
+        await dd.set_threshold_buffer(max_threshold_buffer + 1).invoke(caller_address=dd_owner)
     with pytest.raises(StarkException):
-        await rektooor.send_tx(dd, "set_threshold_buffer", [THRESHOLD_BUFFER])
+        await dd.set_threshold_buffer(THRESHOLD_BUFFER).invoke(caller_address=rektooor)
 
     # tests getting and setting reserve address
     assert (await dd.get_reserve_address().invoke()).result.addr == RESERVE_ADDR
-    tx = await dd_owner.send_tx(dd, "set_reserve_address", [new_reserve_address])
+    tx = await dd.set_reserve_address(new_reserve_address).invoke(caller_address=dd_owner)
     assert_event_emitted(
         tx,
         dd.contract_address,
@@ -180,13 +191,13 @@ async def test_getters_setters(direct_deposit, usda, users):
     )
     assert (await dd.get_reserve_address().invoke()).result.addr == new_reserve_address
     with pytest.raises(StarkException):
-        await rektooor.send_tx(dd, "set_reserve_address", [rektooor.address])
+        await dd.set_reserve_address(rektooor).invoke(caller_address=rektooor)
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_reserve_address", [0])
+        await dd.set_reserve_address(0).invoke(caller_address=dd_owner)
 
     # test getting and setting treasury address
     assert (await dd.get_treasury_address().invoke()).result.addr == TREASURY_ADDR
-    tx = await dd_owner.send_tx(dd, "set_treasury_address", [new_treasury_address])
+    tx = await dd.set_treasury_address(new_treasury_address).invoke(caller_address=dd_owner)
     assert_event_emitted(
         tx,
         dd.contract_address,
@@ -195,13 +206,13 @@ async def test_getters_setters(direct_deposit, usda, users):
     )
     assert (await dd.get_treasury_address().invoke()).result.addr == new_treasury_address
     with pytest.raises(StarkException):
-        await rektooor.send_tx(dd, "set_treasury_address", [rektooor.address])
+        await dd.set_treasury_address(rektooor).invoke(caller_address=rektooor)
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_treasury_address", [0])
+        await dd.set_treasury_address(0).invoke(caller_address=dd_owner)
 
     # test getting and setting stability fee
     assert (await dd.get_stability_fee().invoke()).result.fee == STABILITY_FEE
-    tx = await dd_owner.send_tx(dd, "set_stability_fee", [new_stability_fee])
+    tx = await dd.set_stability_fee(new_stability_fee).invoke(caller_address=dd_owner)
     assert_event_emitted(
         tx,
         dd.contract_address,
@@ -210,9 +221,9 @@ async def test_getters_setters(direct_deposit, usda, users):
     )
     assert (await dd.get_stability_fee().invoke()).result.fee == new_stability_fee
     with pytest.raises(StarkException):
-        await rektooor.send_tx(dd, "set_stability_fee", [1200])
+        await dd.set_stability_fee(1200).invoke(caller_address=rektooor)
     with pytest.raises(StarkException):
-        await dd_owner.send_tx(dd, "set_stability_fee", [11_000])
+        await dd.set_stability_fee(11_000).invoke(caller_address=dd_owner)
 
     # test getting stablecoin address
     assert (await dd.get_stablecoin_address().invoke()).result.addr == stablecoin.contract_address
@@ -221,10 +232,10 @@ async def test_getters_setters(direct_deposit, usda, users):
     assert (await dd.get_usda_address().invoke()).result.addr == usda.contract_address
 
     # test getting and setting owner
-    new_owner = await users("new dd owner")
-    assert (await dd.get_owner_address().invoke()).result.addr == dd_owner.address
-    tx = await dd_owner.send_tx(dd, "set_owner", [new_owner.address])
-    assert_event_emitted(tx, dd.contract_address, "OwnershipTransferred", [dd_owner.address, new_owner.address])
-    assert (await dd.get_owner_address().invoke()).result.addr == new_owner.address
+    new_owner = str_to_felt("new dd owner")
+    assert (await dd.get_owner_address().invoke()).result.addr == dd_owner
+    tx = await dd.set_owner(new_owner).invoke(caller_address=dd_owner)
+    assert_event_emitted(tx, dd.contract_address, "OwnershipTransferred", [dd_owner, new_owner])
+    assert (await dd.get_owner_address().invoke()).result.addr == new_owner
     with pytest.raises(StarkException):
-        await rektooor.send_tx(dd, "set_owner", [rektooor.address])
+        await dd.set_owner(rektooor).invoke(caller_address=rektooor)

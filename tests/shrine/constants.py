@@ -9,6 +9,7 @@ YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
 
+
 # Shrine setup constants
 YANGS = [
     {
@@ -89,9 +90,3 @@ FORGE_AMT = 5_000 * WAD_SCALE
 # Troves
 TROVE_1 = 1
 TROVE_2 = 2
-
-# Corresponding user addresses of each trove
-USER_1 = 1
-USER_2 = 2
-USER_3 = 3
-USER_4 = 4
