@@ -1018,7 +1018,6 @@ async def test_set_threshold(shrine):
         await shrine.set_threshold(YANGS[0]["address"], max + 1).invoke(caller_address=SHRINE_OWNER)
 
     # test calling the func unauthorized
-    BAD_GUY = str_to_felt("bad guy")
     with pytest.raises(StarkException):
         await shrine.set_threshold(YANGS[0]["address"], value).invoke(caller_address=BAD_GUY)
 
@@ -1052,7 +1051,6 @@ async def test_set_ceiling(shrine):
     assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
 
     # test calling func unauthorized
-    BAD_GUY = str_to_felt("bad guy")
     with pytest.raises(StarkException):
         await shrine.set_ceiling(1).invoke(caller_address=BAD_GUY)
 
