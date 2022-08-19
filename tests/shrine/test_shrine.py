@@ -20,6 +20,7 @@ from tests.utils import (
     from_wad,
     price_bounds,
     set_block_timestamp,
+    str_to_felt,
     to_wad,
 )
 
@@ -404,9 +405,9 @@ async def test_shrine_deploy(shrine_deploy):
 
 
 @pytest.mark.asyncio
-async def test_shrine_setup(shrine_setup):
+async def test_shrine_setup_only(users, shrine_setup):
     shrine = shrine_setup
-
+    shrine_owner = await users("shrine owner")
     # Check debt ceiling
     ceiling = (await shrine.get_ceiling().invoke()).result.wad
     assert ceiling == DEBT_CEILING
@@ -427,6 +428,9 @@ async def test_shrine_setup(shrine_setup):
     # Check maximum forge amount
     forge_amt = (await shrine.get_max_forge(TROVE_1).invoke()).result.wad
     assert forge_amt == 0
+
+    # Check auth
+    assert (await shrine.get_role_admin(str_to_felt("set_ceiling")).invoke()).result.address == shrine_owner.address
 
 
 @pytest.mark.asyncio
@@ -468,23 +472,25 @@ async def test_auth(users, shrine_deploy):
     b = await users("2nd owner")
     c = await users("3rd owner")
 
+    auth_function = str_to_felt("set_ceiling")
+
     # Authorizing an address and testing that it can use authorized functions
-    await shrine_owner.send_tx(shrine.contract_address, "authorize", [b.address])
-    b_authorized = (await shrine.get_auth(b.address).invoke()).result.bool
+    await shrine_owner.send_tx(shrine.contract_address, "grant_role", [auth_function, b.address])
+    b_authorized = (await shrine.has_role(auth_function, b.address).invoke()).result.bool
     assert b_authorized == TRUE
 
-    await b.send_tx(shrine.contract_address, "authorize", [c.address])
-    c_authorized = (await shrine.get_auth(c.address).invoke()).result.bool
-    assert c_authorized == TRUE
+    await b.send_tx(shrine.contract_address, "set_ceiling", [WAD_SCALE])
+    new_ceiling = (await shrine.get_ceiling().invoke()).result.wad
+    assert new_ceiling == WAD_SCALE
 
     # Revoking an address
-    await b.send_tx(shrine.contract_address, "revoke", [c.address])
-    c_authorized = (await shrine.get_auth(c.address).invoke()).result.bool
-    assert c_authorized == FALSE
+    await shrine_owner.send_tx(shrine.contract_address, "revoke_role", [auth_function, b.address])
+    b_authorized = (await shrine.has_role(auth_function, c.address).invoke()).result.bool
+    assert b_authorized == FALSE
 
     # Calling an authorized function with an unauthorized address - should fail
     with pytest.raises(StarkException):
-        await c.send_tx(shrine.contract_address, "revoke", [b.address])
+        await c.send_tx(shrine.contract_address, "set_ceiling", [WAD_SCALE])
 
 
 @pytest.mark.asyncio
