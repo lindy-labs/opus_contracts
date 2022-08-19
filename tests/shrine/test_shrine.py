@@ -339,13 +339,11 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> 
 
         price = yang0_feed[i]
         multiplier = MULTIPLIER_FEED[i]
-        # Skip index after timestamp is set
-        if i == idx:
-            price = 0
-            multiplier = 0
 
-        await shrine.advance(yang0_address, price).invoke(caller_address=SHRINE_OWNER)
-        await shrine.update_multiplier(multiplier).invoke(caller_address=SHRINE_OWNER)
+        # Skip index after timestamp is set
+        if i != idx:
+            await shrine.advance(yang0_address, price).invoke(caller_address=SHRINE_OWNER)
+            await shrine.update_multiplier(multiplier).invoke(caller_address=SHRINE_OWNER)
 
     return idx, list(map(from_wad, yang0_feed))
 
@@ -1110,4 +1108,14 @@ async def test_shrine_melt_after_move_yin_fail(shrine, shrine_forge):
     await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT // 2).invoke(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+
+
+@pytest.mark.asyncio
+async def test_shrine_advance_update_multiplier_invalid_fail(shrine_deploy):
+    shrine = shrine_deploy
+    with pytest.raises(StarkException, match="Shrine: cannot set a price value to zero."):
+        await shrine.advance(YANG_0_ADDRESS, 0).invoke(caller_address=SHRINE_OWNER)
+
+    with pytest.raises(StarkException, match="Shrine: cannot set a multiplier value to zero."):
+        await shrine.update_multiplier(0).invoke(caller_address=SHRINE_OWNER)
