@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
-from contracts.lib.openzeppelin.access.accesscontrol.library import AccessControl
+from openzeppelin.access.accesscontrol.library import AccessControl
 
 #
 # Getters
