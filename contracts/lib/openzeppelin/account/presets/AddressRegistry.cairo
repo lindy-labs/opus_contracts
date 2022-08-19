@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# OpenZeppelin Cairo Contracts v0.1.0 (account/AddressRegistry.cairo)
+# OpenZeppelin Contracts for Cairo v0.3.1 (account/presets/AddressRegistry.cairo)
 
 %lang starknet
 

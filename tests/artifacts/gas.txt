@@ -414,3 +414,5 @@ gate/deposit: 6393.95
 gate/deposit: 6393.75
 gate/withdraw: 6393.75
 gate/withdraw: 6394.15
+gate/deposit: 6393.35
+gate/deposit: 6393.55
