@@ -11,7 +11,19 @@ from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
 from tests.account import Account
 from tests.gate.rebasing_yang.constants import INITIAL_AMT
-from tests.shrine.constants import DEBT_CEILING, FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED, TIME_INTERVAL, YANGS
+from tests.shrine.constants import (
+    DEBT_CEILING,
+    FEED_LEN,
+    FORGE_AMT,
+    INITIAL_DEPOSIT,
+    MAX_PRICE_CHANGE,
+    MULTIPLIER_FEED,
+    TIME_INTERVAL,
+    TROVE_1,
+    USER_1,
+    YANG_0_ADDRESS,
+    YANGS,
+)
 from tests.utils import (
     WAD_SCALE,
     Uint256,
@@ -224,6 +236,26 @@ async def shrine_with_feeds(starknet: Starknet, users, shrine_setup) -> Starknet
 async def shrine(shrine_with_feeds) -> StarknetContract:
     shrine, feeds = shrine_with_feeds
     return shrine
+
+
+@pytest.fixture
+async def shrine_deposit(users, shrine) -> StarknetTransactionExecutionInfo:
+    shrine_owner = await users("shrine owner")
+
+    deposit = await shrine_owner.send_tx(
+        shrine.contract_address,
+        "deposit",
+        [YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1],
+    )
+    return deposit
+
+
+@pytest.fixture
+async def shrine_forge(users, shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
+    shrine_owner = await users("shrine owner")
+
+    forge = await shrine_owner.send_tx(shrine.contract_address, "forge", [FORGE_AMT, TROVE_1, USER_1])
+    return forge
 
 
 #

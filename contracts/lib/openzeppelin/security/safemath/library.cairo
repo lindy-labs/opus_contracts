@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: MIT
-# OpenZeppelin Contracts for Cairo v0.2.0 (security/safemath.cairo)
+# OpenZeppelin Contracts for Cairo v0.3.1 (security/safemath/library.cairo)
 
 %lang starknet
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
+from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.bool import TRUE, FALSE
-from starkware.cairo.common.math import assert_not_zero
 from starkware.cairo.common.uint256 import (
     Uint256,
     uint256_check,
