@@ -31,6 +31,9 @@ WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
+# Access control
+DEFAULT_ADMIN_ROLE = 0
+
 # Gas estimation constants
 NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
 WEIGHTS = {

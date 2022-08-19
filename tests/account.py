@@ -23,9 +23,7 @@ class Account:
     to simplify sending TXs in tests.
     """
 
-    compiled_acconut_contract: ContractClass = compile_contract(
-        "contracts/lib/openzeppelin/account/presets/Account.cairo"
-    )
+    compiled_acconut_contract: ContractClass = compile_contract("openzeppelin/account/presets/Account.cairo")
 
     def __init__(self, name):
         self.private_key = abs(hash(name))

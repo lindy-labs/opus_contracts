@@ -12,6 +12,7 @@ from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
 
 from openzeppelin.access.accesscontrol.library import AccessControl
+from openzeppelin.utils.constants.library import DEFAULT_ADMIN_ROLE
 # these imported public functions are part of the contract's interface
 from contracts.lib.acl_external import (
     has_role,
@@ -51,7 +52,6 @@ const RATE_BOUND2 = 75 * 10 ** 25  # 0.75
 const RATE_BOUND3 = 9215 * 10 ** 23  # 0.9215
 
 # Constants for function-level access control
-# eg. const SET_CEILING = keccak256("set_ceiling")[:31]
 const ADD_YANG = 'add_yang'
 const UPDATE_YANG_MAX = 'update_yang_max'
 const SET_CEILING = 'set_ceiling'
@@ -408,32 +408,17 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
-    # Grant both roles and admin for Shrine parameters and `kill`
     AccessControl.initializer()
+
+    # Set authed as admin for all roles
+    AccessControl._grant_role(DEFAULT_ADMIN_ROLE, authed)
+
+    # Grant authed permission
     AccessControl._grant_role(ADD_YANG, authed)
-    AccessControl._set_role_admin(ADD_YANG, authed)
-
     AccessControl._grant_role(UPDATE_YANG_MAX, authed)
-    AccessControl._set_role_admin(UPDATE_YANG_MAX, authed)
-
     AccessControl._grant_role(SET_CEILING, authed)
-    AccessControl._set_role_admin(SET_CEILING, authed)
-
     AccessControl._grant_role(SET_THRESHOLD, authed)
-    AccessControl._set_role_admin(SET_THRESHOLD, authed)
-
     AccessControl._grant_role(KILL, authed)
-    AccessControl._set_role_admin(KILL, authed)
-
-    # Grant admin only for Shrine actions
-    AccessControl._set_role_admin(ADVANCE, authed)
-    AccessControl._set_role_admin(UPDATE_MULTIPLIER, authed)
-    AccessControl._set_role_admin(MOVE_YANG, authed)
-    AccessControl._set_role_admin(DEPOSIT, authed)
-    AccessControl._set_role_admin(WITHDRAW, authed)
-    AccessControl._set_role_admin(FORGE, authed)
-    AccessControl._set_role_admin(MELT, authed)
-    AccessControl._set_role_admin(SEIZE, authed)
 
     shrine_live_storage.write(TRUE)
 
