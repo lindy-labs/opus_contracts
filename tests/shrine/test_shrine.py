@@ -9,8 +9,12 @@ from starkware.starkware_utils.error_handling import StarkException
 
 from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
+    BAD_GUY,
     FALSE,
     RAY_SCALE,
+    SHRINE_OWNER,
+    TROVE1_OWNER,
+    TROVE2_OWNER,
     TRUE,
     WAD_SCALE,
     assert_equalish,
@@ -24,10 +28,6 @@ from tests.utils import (
     str_to_felt,
     to_wad,
 )
-
-#
-# Constants
-#
 
 #
 # Structs
@@ -265,7 +265,7 @@ async def shrine_deposit_trove2(shrine) -> StarknetTransactionExecutionInfo:
 async def shrine_melt(shrine, shrine_forge) -> StarknetTransactionExecutionInfo:
 
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    melt = await shrine.melt(estimated_debt, TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+    melt = await shrine.melt(estimated_debt, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
     return melt
 
 
@@ -274,7 +274,7 @@ async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetTransact
     """
     Replicate forge for another trove.
     """
-    forge = await shrine.forge(FORGE_AMT, TROVE_2, USER_2).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(FORGE_AMT, TROVE_2, TROVE2_OWNER).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -522,7 +522,7 @@ async def test_shrine_forge_pass(shrine, shrine_forge):
     assert_event_emitted(shrine_forge, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, FORGE_AMT])
 
     # Yin Events
-    assert_event_emitted(shrine_forge, shrine.contract_address, "YinUpdated", [USER_1, FORGE_AMT])
+    assert_event_emitted(shrine_forge, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, FORGE_AMT])
     assert_event_emitted(shrine_forge, shrine.contract_address, "YinTotalUpdated", [FORGE_AMT])
 
     system_debt = (await shrine.get_debt().invoke()).result.wad
@@ -555,7 +555,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_event_emitted(shrine_melt, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, 0])
 
     # Yin events
-    assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [USER_1, 0])
+    assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, 0])
     assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
 
     system_debt = (await shrine.get_debt().invoke()).result.wad
@@ -842,7 +842,7 @@ async def test_shrine_forge_zero_deposit_fail(shrine):
 
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(to_wad(1_000), TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(to_wad(1_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -852,7 +852,7 @@ async def test_shrine_forge_unsafe_fail(shrine, update_feeds):
     await shrine.set_ceiling(new_ceiling).invoke(caller_address=SHRINE_OWNER)
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(to_wad(14_000), TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(to_wad(14_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -864,7 +864,7 @@ async def test_shrine_forge_ceiling_fail(shrine, update_feeds):
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
-        await shrine.forge(to_wad(15_000), TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(to_wad(15_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -931,7 +931,6 @@ async def test_add_yang(shrine):
     )
 
     # test calling the func unauthorized
-    bad_guy = str_to_felt("bad guy")
     bad_guy_yang_address = 555
     bad_guy_yang_max = to_wad(10_000)
     bad_guy_yang_threshold = to_wad(Decimal("0.5"))
@@ -940,7 +939,7 @@ async def test_add_yang(shrine):
     with pytest.raises(StarkException):
         await shrine.add_yang(
             bad_guy_yang_address, bad_guy_yang_max, bad_guy_yang_threshold, bad_guy_yang_start_price
-        ).invoke(caller_address=bad_guy)
+        ).invoke(caller_address=BAD_GUY)
 
     # Test adding duplicate Yang
     with pytest.raises(StarkException, match="Shrine: Yang already exists"):
@@ -995,9 +994,8 @@ async def test_update_yang_max(shrine):
         await shrine.update_yang_max(faux_yang_address, new_yang_max).invoke(caller_address=SHRINE_OWNER)
 
     # test calling the func unauthorized
-    bad_guy = str_to_felt("bad guy")
     with pytest.raises(StarkException):
-        await shrine.update_yang_max(YANG_0_ADDRESS, 2**251).invoke(caller_address=bad_guy)
+        await shrine.update_yang_max(YANG_0_ADDRESS, 2**251).invoke(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -1020,9 +1018,9 @@ async def test_set_threshold(shrine):
         await shrine.set_threshold(YANGS[0]["address"], max + 1).invoke(caller_address=SHRINE_OWNER)
 
     # test calling the func unauthorized
-    bad_guy = str_to_felt("bad guy")
+    BAD_GUY = str_to_felt("bad guy")
     with pytest.raises(StarkException):
-        await shrine.set_threshold(YANGS[0]["address"], value).invoke(caller_address=bad_guy)
+        await shrine.set_threshold(YANGS[0]["address"], value).invoke(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -1036,13 +1034,13 @@ async def test_kill(shrine, update_feeds):
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine.forge(to_wad(100), TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
 
     # Test withdraw pass
     await shrine.withdraw(YANG_0_ADDRESS, to_wad(1), TROVE_1).invoke(caller_address=SHRINE_OWNER)
 
     # Test melt pass
-    await shrine.melt(to_wad(100), TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+    await shrine.melt(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -1054,9 +1052,9 @@ async def test_set_ceiling(shrine):
     assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
 
     # test calling func unauthorized
-    bad_guy = str_to_felt("bad guy")
+    BAD_GUY = str_to_felt("bad guy")
     with pytest.raises(StarkException):
-        await shrine.set_ceiling(1).invoke(caller_address=bad_guy)
+        await shrine.set_ceiling(1).invoke(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -1079,12 +1077,12 @@ async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
 @pytest.mark.asyncio
 async def test_shrine_move_yin_pass(shrine, shrine_forge, transfer_amount):
 
-    await shrine.move_yin(USER_1, USER_2, transfer_amount).invoke(caller_address=SHRINE_OWNER)
+    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, transfer_amount).invoke(caller_address=SHRINE_OWNER)
     # Checking the updated balances
-    u1_new_bal = (await shrine.get_yin(USER_1).invoke()).result.wad
+    u1_new_bal = (await shrine.get_yin(TROVE1_OWNER).invoke()).result.wad
     assert u1_new_bal == FORGE_AMT - transfer_amount
 
-    u2_new_bal = (await shrine.get_yin(USER_2).invoke()).result.wad
+    u2_new_bal = (await shrine.get_yin(TROVE2_OWNER).invoke()).result.wad
     assert u2_new_bal == transfer_amount
 
 
@@ -1093,22 +1091,22 @@ async def test_shrine_move_yin_fail(shrine, shrine_forge):
 
     # Trying to transfer more than the user owns
     with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
-        await shrine.move_yin(USER_1, USER_2, FORGE_AMT + 1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT + 1).invoke(caller_address=SHRINE_OWNER)
 
     # Trying to transfer a negative amount
     with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
-        await shrine.move_yin(USER_1, USER_2, signed_int_to_felt(-1)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, signed_int_to_felt(-1)).invoke(caller_address=SHRINE_OWNER)
 
     # Trying to transfer an amount greater than 2**125
     with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
-        await shrine.move_yin(USER_1, USER_2, 2**125 + 1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, 2**125 + 1).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_melt_after_move_yin_fail(shrine, shrine_forge):
 
     # Transfer half of the forge amount to another account
-    await shrine.move_yin(USER_1, USER_2, FORGE_AMT // 2).invoke(caller_address=SHRINE_OWNER)
+    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT // 2).invoke(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(FORGE_AMT, TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)

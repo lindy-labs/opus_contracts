@@ -16,14 +16,15 @@ from tests.shrine.constants import (
     INITIAL_DEPOSIT,
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
-    SHRINE_OWNER,
     TIME_INTERVAL,
     TROVE_1,
-    USER_1,
     YANG_0_ADDRESS,
     YANGS,
 )
 from tests.utils import (
+    SHRINE_OWNER,
+    TROVE1_OWNER,
+    TROVE2_OWNER,
     WAD_SCALE,
     Uint256,
     compile_contract,
@@ -211,7 +212,7 @@ async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
 
 @pytest.fixture
 async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    forge = await shrine.forge(FORGE_AMT, TROVE_1, USER_1).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -222,10 +223,8 @@ async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionIn
 
 @pytest.fixture
 async def rebasing_token(tokens) -> StarknetContract:
-    user1 = str_to_felt("trove 1 owner")
-    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), user1)
+    rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), TROVE1_OWNER)
 
-    user2 = str_to_felt("trove 2 owner")
-    await rebasing_token.mint(user2, (INITIAL_AMT, 0)).invoke(caller_address=user2)
+    await rebasing_token.mint(TROVE2_OWNER, (INITIAL_AMT, 0)).invoke(caller_address=TROVE2_OWNER)
 
     return rebasing_token

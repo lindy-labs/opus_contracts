@@ -27,8 +27,4 @@ COMPOUND_MULTIPLIER = decimal.Decimal("1.1")
 
 
 # Accounts
-ADMIN = str_to_felt("admin")
 TAX_COLLECTOR = str_to_felt("tax collector")
-ABBOT = str_to_felt("abbot")
-TROVE1_OWNER = str_to_felt("trove 1 owner")
-TROVE2_OWNER = str_to_felt("trove 2 owner")

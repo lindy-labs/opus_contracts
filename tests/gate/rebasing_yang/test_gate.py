@@ -6,10 +6,16 @@ from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.shrine.constants import SHRINE_OWNER, TROVE_1, TROVE_2
+from tests.shrine.constants import TROVE_1, TROVE_2
 from tests.utils import (
+    ABBOT,
+    ADMIN,
+    BAD_GUY,
     FALSE,
     MAX_UINT256,
+    SHRINE_OWNER,
+    TROVE1_OWNER,
+    TROVE2_OWNER,
     TRUE,
     ZERO_ADDRESS,
     assert_equalish,
@@ -17,7 +23,6 @@ from tests.utils import (
     compile_contract,
     from_uint,
     from_wad,
-    str_to_felt,
     to_ray,
     to_wad,
 )
@@ -684,16 +689,14 @@ async def test_gate_withdraw_insufficient_fail(shrine_authed, gate, rebasing_tok
 async def test_unauthorized_deposit(rebasing_token, gate):
     """Test third-party initiated"""
 
-    bad_guy = str_to_felt("bad guy")
-
     # Seed unauthorized address with asset
-    await rebasing_token.mint(bad_guy, INITIAL_AMT_UINT).invoke(caller_address=bad_guy)
+    await rebasing_token.mint(BAD_GUY, INITIAL_AMT_UINT).invoke(caller_address=BAD_GUY)
 
     # Sanity check
-    assert from_uint((await rebasing_token.balanceOf(bad_guy).invoke()).result.balance) == INITIAL_AMT
+    assert from_uint((await rebasing_token.balanceOf(BAD_GUY).invoke()).result.balance) == INITIAL_AMT
 
     with pytest.raises(StarkException):
-        await gate.deposit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).invoke(caller_address=bad_guy)
+        await gate.deposit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).invoke(caller_address=BAD_GUY)
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
@@ -788,11 +791,10 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
     with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
         await gate.set_tax(to_ray(TAX_MAX) + 1).invoke(caller_address=ABBOT)
 
-    bad_guy = str_to_felt("bad guy")
     # Fails due to non-authorised address
     with pytest.raises(StarkException, match="Auth: caller not authorized"):
-        await gate.set_tax(TAX_RAY).invoke(caller_address=bad_guy)
-        await gate.set_tax_collector(bad_guy).invoke(caller_address=bad_guy)
+        await gate.set_tax(TAX_RAY).invoke(caller_address=BAD_GUY)
+        await gate.set_tax_collector(BAD_GUY).invoke(caller_address=BAD_GUY)
 
     # Fails due to zero address
     with pytest.raises(StarkException, match="Gate: Invalid tax collector address"):

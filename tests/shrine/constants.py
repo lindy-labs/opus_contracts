@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE, str_to_felt
+from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 LIMIT_RATIO = 95 * RAY_PERCENT
@@ -9,11 +9,6 @@ YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
 
-
-#
-# Admin addresses
-#
-SHRINE_OWNER = str_to_felt("shrine owner")
 
 # Shrine setup constants
 YANGS = [
@@ -95,9 +90,3 @@ FORGE_AMT = 5_000 * WAD_SCALE
 # Troves
 TROVE_1 = 1
 TROVE_2 = 2
-
-# Corresponding user addresses of each trove
-USER_1 = 1
-USER_2 = 2
-USER_3 = 3
-USER_4 = 4
