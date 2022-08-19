@@ -11,7 +11,7 @@ from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
 
-from contracts.lib.openzeppelin.access.accesscontrol.library import AccessControl
+from openzeppelin.access.accesscontrol.library import AccessControl
 # these imported public functions are part of the contract's interface
 from contracts.lib.acl_external import (
     has_role,
@@ -65,6 +65,7 @@ const WITHDRAW = 'withdraw'
 const FORGE = 'forge'
 const MELT = 'melt'
 const SEIZE = 'seize'
+const MOVE_YIN = 'move_yin'
 
 #
 # Events
@@ -555,7 +556,7 @@ end
 func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     src_address, dst_address, amount
 ):
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(MOVE_YIN)
 
     with_attr error_message("Shrine: transfer amount outside the valid range."):
         WadRay.assert_result_valid_unsigned(amount)
