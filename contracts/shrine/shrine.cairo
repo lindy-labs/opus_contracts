@@ -11,9 +11,15 @@ from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
 
-from contracts.lib.auth import Auth
+from contracts.lib.openzeppelin.access.accesscontrol.library import AccessControl
 # these imported public functions are part of the contract's interface
-from contracts.lib.auth_external import authorize, revoke, get_auth
+from contracts.lib.acl_external import (
+    has_role,
+    get_role_admin,
+    grant_role,
+    revoke_role,
+    renounce_role,
+)
 
 #
 # Constants
@@ -43,6 +49,22 @@ const RATE_B4 = (-2651908222) * 10 ** 18  # -2.651908222
 const RATE_BOUND1 = 5 * 10 ** 26  # 0.5
 const RATE_BOUND2 = 75 * 10 ** 25  # 0.75
 const RATE_BOUND3 = 9215 * 10 ** 23  # 0.9215
+
+# Constants for function-level access control
+# eg. const SET_CEILING = keccak256("set_ceiling")[:31]
+const ADD_YANG = 'add_yang'
+const UPDATE_YANG_MAX = 'update_yang_max'
+const SET_CEILING = 'set_ceiling'
+const SET_THRESHOLD = 'set_threshold'
+const KILL = 'kill'
+const ADVANCE = 'advance'
+const UPDATE_MULTIPLIER = 'update_multiplier'
+const MOVE_YANG = 'move_yang'
+const DEPOSIT = 'deposit'
+const WITHDRAW = 'withdraw'
+const FORGE = 'forge'
+const MELT = 'melt'
+const SEIZE = 'seize'
 
 #
 # Events
@@ -251,7 +273,7 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(ADD_YANG)
 
     # Assert that yang is not already added
     let (potential_yang_id) = shrine_yang_id_storage.read(yang_address)
@@ -291,7 +313,7 @@ end
 func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_max
 ):
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(UPDATE_YANG_MAX)
 
     let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
@@ -305,7 +327,7 @@ end
 
 @external
 func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_ceiling):
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(SET_CEILING)
 
     shrine_ceiling_storage.write(new_ceiling)
 
@@ -322,7 +344,7 @@ end
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_threshold
 ):
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(SET_THRESHOLD)
 
     # Check that threshold value is not greater than max threshold
     with_attr error_message("Shrine: Threshold exceeds 100%"):
@@ -339,7 +361,7 @@ end
 
 @external
 func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(KILL)
 
     shrine_live_storage.write(FALSE)
 
@@ -354,7 +376,33 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
-    Auth.authorize(authed)
+    # Grant both roles and admin for Shrine parameters and `kill`
+    AccessControl.initializer()
+    AccessControl._grant_role(ADD_YANG, authed)
+    AccessControl._set_role_admin(ADD_YANG, authed)
+
+    AccessControl._grant_role(UPDATE_YANG_MAX, authed)
+    AccessControl._set_role_admin(UPDATE_YANG_MAX, authed)
+
+    AccessControl._grant_role(SET_CEILING, authed)
+    AccessControl._set_role_admin(SET_CEILING, authed)
+
+    AccessControl._grant_role(SET_THRESHOLD, authed)
+    AccessControl._set_role_admin(SET_THRESHOLD, authed)
+
+    AccessControl._grant_role(KILL, authed)
+    AccessControl._set_role_admin(KILL, authed)
+
+    # Grant admin only for Shrine actions
+    AccessControl._set_role_admin(ADVANCE, authed)
+    AccessControl._set_role_admin(UPDATE_MULTIPLIER, authed)
+    AccessControl._set_role_admin(MOVE_YANG, authed)
+    AccessControl._set_role_admin(DEPOSIT, authed)
+    AccessControl._set_role_admin(WITHDRAW, authed)
+    AccessControl._set_role_admin(FORGE, authed)
+    AccessControl._set_role_admin(MELT, authed)
+    AccessControl._set_role_admin(SEIZE, authed)
+
     shrine_live_storage.write(TRUE)
 
     # Set initial multiplier value
@@ -379,7 +427,7 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(ADVANCE)
 
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -408,7 +456,7 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     new_multiplier
 ):
     alloc_locals
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(UPDATE_MULTIPLIER)
 
     let (interval) = now()
 
@@ -433,7 +481,7 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 ):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(MOVE_YANG)
 
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -479,7 +527,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(DEPOSIT)
 
     # Check system is live
     assert_live()
@@ -519,7 +567,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 ):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(WITHDRAW)
 
     # Retrieve yang info
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -559,7 +607,7 @@ end
 func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(FORGE)
 
     # Check system is live
     assert_live()
@@ -620,7 +668,7 @@ end
 func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
     alloc_locals
 
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(MELT)
 
     # Charge interest
     charge(trove_id)
@@ -656,7 +704,7 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id):
-    Auth.assert_caller_authed()
+    AccessControl.assert_only_role(SEIZE)
 
     # Update Trove information
     let (old_trove_info : Trove) = get_trove(trove_id)
