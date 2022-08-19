@@ -206,13 +206,13 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 @pytest.fixture
 async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
-    deposit = await shrine.deposit(YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).invoke(caller_address=SHRINE_OWNER)
     return deposit
 
 
 @pytest.fixture
 async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    forge = await shrine.forge(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 

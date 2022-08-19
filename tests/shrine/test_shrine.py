@@ -219,7 +219,7 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
 
 @pytest.fixture
 async def shrine_withdraw(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    withdraw = await shrine.withdraw(YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_1).invoke(
+    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).invoke(
         caller_address=SHRINE_OWNER
     )
     return withdraw
@@ -247,9 +247,8 @@ async def update_feeds(starknet, shrine, shrine_forge) -> List[Decimal]:
 
 @pytest.fixture
 async def shrine_deposit_multiple(shrine):
-
     for d in DEPOSITS:
-        await shrine.deposit(d["address"], d["amount"], TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(d["address"], TROVE_1, d["amount"]).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.fixture
@@ -257,7 +256,7 @@ async def shrine_deposit_trove2(shrine) -> StarknetTransactionExecutionInfo:
     """
     Replicate deposit for another trove.
     """
-    deposit = await shrine.deposit(YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT), TROVE_2).invoke(caller_address=SHRINE_OWNER)
+    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_2, to_wad(INITIAL_DEPOSIT)).invoke(caller_address=SHRINE_OWNER)
     return deposit
 
 
@@ -265,7 +264,7 @@ async def shrine_deposit_trove2(shrine) -> StarknetTransactionExecutionInfo:
 async def shrine_melt(shrine, shrine_forge) -> StarknetTransactionExecutionInfo:
 
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    melt = await shrine.melt(estimated_debt, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    melt = await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).invoke(caller_address=SHRINE_OWNER)
     return melt
 
 
@@ -274,7 +273,7 @@ async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetTransact
     """
     Replicate forge for another trove.
     """
-    forge = await shrine.forge(FORGE_AMT, TROVE_2, TROVE2_OWNER).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE2_OWNER, TROVE_2, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -464,7 +463,7 @@ async def test_shrine_deposit(shrine, shrine_deposit, collect_gas_cost):
         shrine_deposit,
         shrine.contract_address,
         "DepositUpdated",
-        [TROVE_1, YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT)],
+        [YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)],
     )
 
     yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
@@ -495,7 +494,7 @@ async def test_shrine_withdraw_pass(shrine, shrine_withdraw, collect_gas_cost):
         shrine_withdraw,
         shrine.contract_address,
         "DepositUpdated",
-        [TROVE_1, YANG_0_ADDRESS, 0],
+        [YANG_0_ADDRESS, TROVE_1, 0],
     )
 
     yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
@@ -604,14 +603,14 @@ async def test_estimate(shrine, estimate):
 @pytest.mark.parametrize(
     "method,calldata",
     [
-        ("deposit", [YANG_0_ADDRESS, 0, 1]),  # yang_address, amount, trove_id
-        ("withdraw", [YANG_0_ADDRESS, 0, 1]),  # yang_address, amount, trove_id
-        ("forge", [0, 1, 1]),  # amount, trove_id, user_address
-        ("melt", [0, 1, 1]),  # amount, trove_id, user_address
+        ("deposit", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
+        ("withdraw", [YANG_0_ADDRESS, 1, 0]),  # yang_address, trove_id, amount
+        ("forge", [1, 1, 0]),  # user_address, trove_id, amount
+        ("melt", [1, 1, 0]),  # user_address, trove_id, amount
         (
             "move_yang",
-            [YANG_0_ADDRESS, 0, 1, 2],
-        ),  # yang_address, amount, src_trove_id, dst_trove_id
+            [YANG_0_ADDRESS, 1, 2, 0],
+        ),  # yang_address, src_trove_id, dst_trove_id, amount
     ],
 )
 async def test_charge(shrine, estimate, method, calldata):
@@ -736,7 +735,7 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
     multiplier_feed[idx + 1] = multiplier_feed[idx]
 
     # Test 'charge' by calling deposit without any value
-    await shrine.deposit(YANG_0_ADDRESS, 0, TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).invoke(caller_address=SHRINE_OWNER)
     updated_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
 
     expected_debt = compound(
@@ -771,7 +770,7 @@ async def test_move_yang_pass(shrine, shrine_forge, collect_gas_cost):
 
     move_amt = 1
 
-    tx = await shrine.move_yang(YANG_0_ADDRESS, to_wad(move_amt), TROVE_1, TROVE_2).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(move_amt)).invoke(caller_address=SHRINE_OWNER)
 
     collect_gas_cost("shrine/move_yang", tx, 6, 1)
 
@@ -779,13 +778,13 @@ async def test_move_yang_pass(shrine, shrine_forge, collect_gas_cost):
         tx,
         shrine.contract_address,
         "DepositUpdated",
-        [TROVE_1, YANG_0_ADDRESS, to_wad(INITIAL_DEPOSIT - move_amt)],
+        [YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT - move_amt)],
     )
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "DepositUpdated",
-        [TROVE_2, YANG_0_ADDRESS, to_wad(move_amt)],
+        [YANG_0_ADDRESS, TROVE_2, to_wad(move_amt)],
     )
 
     src_amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).invoke()).result.wad
@@ -806,7 +805,7 @@ async def test_shrine_deposit_invalid_yang_fail(shrine):
 
     # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.deposit(789, to_wad(1), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(789, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -814,13 +813,13 @@ async def test_shrine_withdraw_invalid_yang_fail(shrine):
 
     # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.withdraw(789, to_wad(1), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(789, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_withdraw_insufficient_yang_fail(shrine, shrine_deposit):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine.withdraw(YANG_0_ADDRESS, to_wad(11), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(11)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -834,7 +833,7 @@ async def test_shrine_withdraw_unsafe_fail(shrine, update_feeds):
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.withdraw(YANG_0_ADDRESS, to_wad(withdraw_amt), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(withdraw_amt)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -842,7 +841,7 @@ async def test_shrine_forge_zero_deposit_fail(shrine):
 
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(to_wad(1_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(1_000)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -852,25 +851,25 @@ async def test_shrine_forge_unsafe_fail(shrine, update_feeds):
     await shrine.set_ceiling(new_ceiling).invoke(caller_address=SHRINE_OWNER)
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(to_wad(14_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(14_000)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_forge_ceiling_fail(shrine, update_feeds):
 
     # Deposit more yang
-    await shrine.deposit(YANG_0_ADDRESS, to_wad(10), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).invoke(caller_address=SHRINE_OWNER)
     updated_deposit = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).invoke()).result.wad
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
-        await shrine.forge(to_wad(15_000), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(15_000)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_move_yang_insufficient_fail(shrine, shrine_forge):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine.move_yang(YANG_0_ADDRESS, to_wad(11), TROVE_1, TROVE_2).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(11)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -883,9 +882,12 @@ async def test_move_yang_unsafe_fail(shrine, shrine_forge):
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.move_yang(YANG_0_ADDRESS, to_wad(withdraw_amt), TROVE_1, TROVE_2).invoke(
-            caller_address=SHRINE_OWNER
-        )
+        await shrine.move_yang(
+            YANG_0_ADDRESS,
+            TROVE_1,
+            TROVE_2,
+            to_wad(withdraw_amt),
+        ).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -974,8 +976,9 @@ async def test_update_yang_max(shrine):
 
     # test decreasing the max below yang.total
     deposit_amt = to_wad(100)
+
     # Deposit 100 yang tokens
-    await shrine.deposit(YANG_0_ADDRESS, deposit_amt, TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).invoke(caller_address=SHRINE_OWNER)
     new_yang_max = deposit_amt - to_wad(1)
     await update_and_assert(
         new_yang_max
@@ -986,7 +989,7 @@ async def test_update_yang_max(shrine):
         StarkException,
         match="Shrine: Exceeds maximum amount of Yang allowed for system",
     ):
-        await shrine.deposit(YANG_0_ADDRESS, deposit_amt, TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).invoke(caller_address=SHRINE_OWNER)
 
     # test calling with a non-existing yang_address
     faux_yang_address = 7890
@@ -1029,17 +1032,17 @@ async def test_kill(shrine, update_feeds):
 
     # Check deposit fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine.deposit(YANG_0_ADDRESS, to_wad(10), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).invoke(caller_address=SHRINE_OWNER)
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine.forge(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(100)).invoke(caller_address=SHRINE_OWNER)
 
     # Test withdraw pass
-    await shrine.withdraw(YANG_0_ADDRESS, to_wad(1), TROVE_1).invoke(caller_address=SHRINE_OWNER)
+    await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
 
     # Test melt pass
-    await shrine.melt(to_wad(100), TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE1_OWNER, TROVE_1, to_wad(100)).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -1107,4 +1110,4 @@ async def test_shrine_melt_after_move_yin_fail(shrine, shrine_forge):
     await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT // 2).invoke(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
