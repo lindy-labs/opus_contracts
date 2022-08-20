@@ -412,6 +412,10 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     Auth.assert_caller_authed()
 
+    with_attr error_message("Shrine: cannot set a price value to zero."):
+        assert_not_zero(price)  # Cannot set a price value to zero
+    end
+
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -440,6 +444,10 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 ):
     alloc_locals
     Auth.assert_caller_authed()
+
+    with_attr error_message("Shrine: cannot set a multiplier value to zero."):
+        assert_not_zero(new_multiplier)  # Cannot set a multiplier value to zero
+    end
 
     let (interval) = now()
 
