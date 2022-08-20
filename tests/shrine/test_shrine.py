@@ -1108,7 +1108,7 @@ async def test_shrine_melt_after_move_yin_fail(shrine, shrine_forge):
     await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT // 2).invoke(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(FORGE_AMT, TROVE_1, TROVE1_OWNER).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
