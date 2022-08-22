@@ -977,8 +977,6 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
     # Get current interval
     let (current_interval) = now()
 
-    # Early termination if trove has just been charged (that is, if
-
     # Get new debt amount
     let (new_debt) = compound(trove_id, trove.debt, trove.charge_from, current_interval)
 
