@@ -9,7 +9,6 @@ from starkware.starkware_utils.error_handling import StarkException
 
 from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
-    DEFAULT_ADMIN_ROLE,
     FALSE,
     RAY_SCALE,
     TRUE,
@@ -450,9 +449,9 @@ async def test_auth(users, shrine_deploy):
     b = await users("2nd owner")
     c = await users("3rd owner")
 
-    auth_function = str_to_felt("set_ceiling")
+    auth_function = SET_CEILING
 
-    assert (await shrine.has_role(DEFAULT_ADMIN_ROLE, shrine_owner.address).invoke()).result.bool == TRUE
+    assert (await shrine.get_admin().invoke()).result.address == shrine_owner.address
 
     # Authorizing an address and testing that it can use authorized functions
     await shrine_owner.send_tx(shrine.contract_address, "grant_role", [auth_function, b.address])

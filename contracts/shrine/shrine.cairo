@@ -1,7 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE, FALSE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, split_felt
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_block_timestamp
@@ -11,16 +11,13 @@ from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
 
-from openzeppelin.access.accesscontrol.library import AccessControl
+from contracts.shrine.shrine_accesscontrol import ShrineAccessControl
+
+# from openzeppelin.access.accesscontrol.library import AccessControl
 from openzeppelin.utils.constants.library import DEFAULT_ADMIN_ROLE
 # these imported public functions are part of the contract's interface
-from contracts.lib.acl_external import (
-    has_role,
-    get_role_admin,
-    grant_role,
-    revoke_role,
-    renounce_role,
-)
+from contracts.lib.acl import AccessControl
+from contracts.lib.acl_external import has_role, get_admin, grant_role, revoke_role, renounce_role
 
 #
 # Constants
@@ -50,22 +47,6 @@ const RATE_B4 = (-2651908222) * 10 ** 18  # -2.651908222
 const RATE_BOUND1 = 5 * 10 ** 26  # 0.5
 const RATE_BOUND2 = 75 * 10 ** 25  # 0.75
 const RATE_BOUND3 = 9215 * 10 ** 23  # 0.9215
-
-# Constants for function-level access control
-const ADD_YANG = 'add_yang'
-const UPDATE_YANG_MAX = 'update_yang_max'
-const SET_CEILING = 'set_ceiling'
-const SET_THRESHOLD = 'set_threshold'
-const KILL = 'kill'
-const ADVANCE = 'advance'
-const UPDATE_MULTIPLIER = 'update_multiplier'
-const MOVE_YANG = 'move_yang'
-const DEPOSIT = 'deposit'
-const WITHDRAW = 'withdraw'
-const FORGE = 'forge'
-const MELT = 'melt'
-const SEIZE = 'seize'
-const MOVE_YIN = 'move_yin'
 
 #
 # Events
@@ -300,12 +281,12 @@ end
 #
 
 @external
-func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, max, threshold, price
-):
+func add_yang{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, max, threshold, price):
     alloc_locals
 
-    AccessControl.assert_only_role(ADD_YANG)
+    AccessControl.assert_has_role(ShrineAccessControl.ADD_YANG)
 
     # Assert that yang is not already added
     let (potential_yang_id) = shrine_yang_id_storage.read(yang_address)
@@ -342,10 +323,11 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 end
 
 @external
-func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, new_max
-):
-    AccessControl.assert_only_role(UPDATE_YANG_MAX)
+func update_yang_max{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, new_max):
+    alloc_locals
+    AccessControl.assert_has_role(ShrineAccessControl.UPDATE_YANG_MAX)
 
     let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
@@ -358,8 +340,10 @@ func update_yang_max{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_che
 end
 
 @external
-func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_ceiling):
-    AccessControl.assert_only_role(SET_CEILING)
+func set_ceiling{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(new_ceiling):
+    AccessControl.assert_has_role(ShrineAccessControl.SET_CEILING)
 
     shrine_ceiling_storage.write(new_ceiling)
 
@@ -373,10 +357,10 @@ end
 # Example 2: 1% = 1 * 10 ** 25
 # Example 3: 1.5% = 15 * 10 ** 24
 @external
-func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, new_threshold
-):
-    AccessControl.assert_only_role(SET_THRESHOLD)
+func set_threshold{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, new_threshold):
+    AccessControl.assert_has_role(ShrineAccessControl.SET_THRESHOLD)
 
     # Check that threshold value is not greater than max threshold
     with_attr error_message("Shrine: Threshold exceeds 100%"):
@@ -392,8 +376,10 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 end
 
 @external
-func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    AccessControl.assert_only_role(KILL)
+func kill{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}():
+    AccessControl.assert_has_role(ShrineAccessControl.KILL)
 
     shrine_live_storage.write(FALSE)
 
@@ -407,18 +393,19 @@ end
 #
 
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(authed):
-    AccessControl.initializer()
+func constructor{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(authed):
+    alloc_locals
 
-    # Set authed as admin for all roles
-    AccessControl._grant_role(DEFAULT_ADMIN_ROLE, authed)
+    AccessControl.initializer(authed)
 
     # Grant authed permission
-    AccessControl._grant_role(ADD_YANG, authed)
-    AccessControl._grant_role(UPDATE_YANG_MAX, authed)
-    AccessControl._grant_role(SET_CEILING, authed)
-    AccessControl._grant_role(SET_THRESHOLD, authed)
-    AccessControl._grant_role(KILL, authed)
+    AccessControl._grant_role(ShrineAccessControl.ADD_YANG, authed)
+    AccessControl._grant_role(ShrineAccessControl.UPDATE_YANG_MAX, authed)
+    AccessControl._grant_role(ShrineAccessControl.SET_CEILING, authed)
+    AccessControl._grant_role(ShrineAccessControl.SET_THRESHOLD, authed)
+    AccessControl._grant_role(ShrineAccessControl.KILL, authed)
 
     shrine_live_storage.write(TRUE)
 
@@ -439,12 +426,12 @@ end
 
 # Set the price of the specified Yang for a given interval
 @external
-func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, price
-):
+func advance{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, price):
     alloc_locals
 
-    AccessControl.assert_only_role(ADVANCE)
+    AccessControl.assert_has_role(ShrineAccessControl.ADVANCE)
 
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -469,11 +456,11 @@ end
 
 # Appends a new multiplier value
 @external
-func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    new_multiplier
-):
+func update_multiplier{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(new_multiplier):
     alloc_locals
-    AccessControl.assert_only_role(UPDATE_MULTIPLIER)
+    AccessControl.assert_has_role(ShrineAccessControl.UPDATE_MULTIPLIER)
 
     let (interval) = now()
 
@@ -493,12 +480,12 @@ end
 # Move Yang between two Troves
 # Checks should be performed beforehand by the module calling this function
 @external
-func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, src_trove_id, dst_trove_id
-):
+func move_yang{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, amount, src_trove_id, dst_trove_id):
     alloc_locals
 
-    AccessControl.assert_only_role(MOVE_YANG)
+    AccessControl.assert_has_role(ShrineAccessControl.MOVE_YANG)
 
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -538,10 +525,10 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 end
 
 @external
-func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    src_address, dst_address, amount
-):
-    AccessControl.assert_only_role(MOVE_YIN)
+func move_yin{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(src_address, dst_address, amount):
+    AccessControl.assert_has_role(ShrineAccessControl.MOVE_YIN)
 
     with_attr error_message("Shrine: transfer amount outside the valid range."):
         WadRay.assert_result_valid_unsigned(amount)
@@ -568,12 +555,12 @@ end
 
 # Deposit a specified amount of a Yang into a Trove
 @external
-func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, trove_id
-):
+func deposit{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, amount, trove_id):
     alloc_locals
 
-    AccessControl.assert_only_role(DEPOSIT)
+    AccessControl.assert_has_role(ShrineAccessControl.DEPOSIT)
 
     # Check system is live
     assert_live()
@@ -608,12 +595,12 @@ end
 
 # Withdraw a specified amount of a Yang from a Trove
 @external
-func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, trove_id
-):
+func withdraw{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, amount, trove_id):
     alloc_locals
 
-    AccessControl.assert_only_role(WITHDRAW)
+    AccessControl.assert_has_role(ShrineAccessControl.WITHDRAW)
 
     # Retrieve yang info
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -650,12 +637,12 @@ end
 
 # Mint a specified amount of synthetic for a Trove
 @external
-func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    amount, trove_id, user_address
-):
+func forge{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(amount, trove_id, user_address):
     alloc_locals
 
-    AccessControl.assert_only_role(FORGE)
+    AccessControl.assert_has_role(ShrineAccessControl.FORGE)
 
     # Check system is live
     assert_live()
@@ -725,12 +712,12 @@ end
 # Repay a specified amount of synthetic for a Trove
 # The module calling this function should ensure that `amount` does not exceed Trove's debt.
 @external
-func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    amount, trove_id, user_address
-):
+func melt{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(amount, trove_id, user_address):
     alloc_locals
 
-    AccessControl.assert_only_role(MELT)
+    AccessControl.assert_has_role(ShrineAccessControl.MELT)
 
     # Charge interest
     charge(trove_id)
@@ -786,8 +773,10 @@ end
 # Seize a Trove for liquidation by transferring the debt and yang to the appropriate module
 # Checks should be performed beforehand by the module calling this function
 @external
-func seize{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id):
-    AccessControl.assert_only_role(SEIZE)
+func seize{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(trove_id):
+    AccessControl.assert_has_role(ShrineAccessControl.SEIZE)
 
     # Update Trove information
     let (old_trove_info : Trove) = get_trove(trove_id)
