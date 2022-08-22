@@ -1405,6 +1405,12 @@ async def test_move_yang_unsafe_fail(shrine):
         ).invoke(caller_address=SHRINE_OWNER)
 
 
+@pytest.mark.asyncio
+async def test_move_yang_invalid_yang(shrine):
+    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
+        await shrine.set_threshold(FAUX_YANG_ADDRESS, to_wad(1000)).invoke(caller_address=SHRINE_OWNER)
+
+
 #
 # Tests - Move yin
 #
