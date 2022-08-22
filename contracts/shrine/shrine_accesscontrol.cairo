@@ -1,6 +1,6 @@
 namespace ShrineAccessControl:
     #
-    # Functions
+    # Constants
     #
     const ADD_YANG = 2 ** 0
     const UPDATE_YANG_MAX = 2 ** 1

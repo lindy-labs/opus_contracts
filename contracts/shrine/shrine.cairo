@@ -13,8 +13,6 @@ from contracts.shared.exp import exp
 
 from contracts.shrine.shrine_accesscontrol import ShrineAccessControl
 
-# from openzeppelin.access.accesscontrol.library import AccessControl
-from openzeppelin.utils.constants.library import DEFAULT_ADMIN_ROLE
 # these imported public functions are part of the contract's interface
 from contracts.lib.acl import AccessControl
 from contracts.lib.acl_external import (

@@ -6,26 +6,23 @@
 from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.bitwise import bitwise_and, bitwise_or, bitwise_xor
-from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math_cmp import is_not_zero
-
-from openzeppelin.introspection.erc165.library import ERC165
-from openzeppelin.utils.constants.library import IACCESSCONTROL_ID
 
 #
 # Events
 #
 
 @event
-func RoleGranted(role : felt, account : felt, sender : felt):
+func RoleGranted(role, account, sender):
 end
 
 @event
-func RoleRevoked(role : felt, account : felt, sender : felt):
+func RoleRevoked(role, account, sender):
 end
 
 @event
-func AdminChanged(previousAdminRole : felt, newAdminRole : felt):
+func AdminChanged(previous_admin, new_admin):
 end
 
 #
@@ -33,11 +30,11 @@ end
 #
 
 @storage_var
-func AccessControl_admin() -> (admin : felt):
+func AccessControl_admin() -> (admin):
 end
 
 @storage_var
-func AccessControl_role(account : felt) -> (role : felt):
+func AccessControl_role(account) -> (role):
 end
 
 namespace AccessControl:
@@ -59,7 +56,7 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt):
+    }(role):
         alloc_locals
         let (caller) = get_caller_address()
         let (authorized) = has_role(role, caller)
@@ -83,10 +80,10 @@ namespace AccessControl:
     # Getters
     #
 
-    func get_role{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        user : felt
-    ) -> (ufelt):
-        let (user_role : felt) = AccessControl_role.read(user)
+    func get_role{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user) -> (
+        ufelt
+    ):
+        let (user_role) = AccessControl_role.read(user)
         return (user_role)
     end
 
@@ -95,8 +92,8 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt, user : felt) -> (has_role : felt):
-        let (user_role : felt) = AccessControl_role.read(user)
+    }(role, user) -> (bool):
+        let (user_role) = AccessControl_role.read(user)
         let (has_role) = bitwise_and(user_role, role)
         let (authorized) = is_not_zero(has_role)
         return (authorized)
@@ -105,7 +102,7 @@ namespace AccessControl:
     func get_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
         address
     ):
-        let (admin : felt) = AccessControl_admin.read()
+        let (admin) = AccessControl_admin.read()
         return (admin)
     end
 
@@ -118,7 +115,7 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt, user : felt):
+    }(role, user):
         assert_admin()
         _grant_role(role, user)
         return ()
@@ -129,7 +126,7 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt, user : felt):
+    }(role, user):
         assert_admin()
         _revoke_role(role, user)
         return ()
@@ -140,8 +137,8 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt, user : felt):
-        let (caller : felt) = get_caller_address()
+    }(role, user):
+        let (caller) = get_caller_address()
         with_attr error_message("AccessControl: can only renounce roles for self"):
             assert user = caller
         end
@@ -158,8 +155,8 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt, user : felt):
-        let (user_role : felt) = AccessControl_role.read(user)
+    }(role, user):
+        let (user_role) = AccessControl_role.read(user)
         let (new_user_role) = bitwise_or(user_role, role)
         AccessControl_role.write(user, new_user_role)
         return ()
@@ -170,17 +167,15 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role : felt, user : felt):
-        let (user_role : felt) = AccessControl_role.read(user)
+    }(role, user):
+        let (user_role) = AccessControl_role.read(user)
         let (new_user_role) = bitwise_xor(user_role, role)
         AccessControl_role.write(user, new_user_role)
         return ()
     end
 
-    func _set_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-        new_admin : felt
-    ):
-        let (previous_admin : felt) = get_admin()
+    func _set_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_admin):
+        let (previous_admin) = get_admin()
         AccessControl_admin.write(new_admin)
         AdminChanged.emit(previous_admin, new_admin)
         return ()
