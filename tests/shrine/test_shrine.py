@@ -367,9 +367,9 @@ async def test_shrine_deploy(shrine_deploy):
 
 
 @pytest.mark.asyncio
-async def test_shrine_setup_only(users, shrine_setup):
+async def test_shrine_setup(shrine_setup):
     shrine = shrine_setup
-    shrine_owner = await users("shrine owner")
+
     # Check debt ceiling
     ceiling = (await shrine.get_ceiling().invoke()).result.wad
     assert ceiling == DEBT_CEILING
@@ -390,9 +390,6 @@ async def test_shrine_setup_only(users, shrine_setup):
     # Check maximum forge amount
     forge_amt = (await shrine.get_max_forge(TROVE_1).invoke()).result.wad
     assert forge_amt == 0
-
-    # Check auth
-    assert (await shrine.get_role_admin(str_to_felt("set_ceiling")).invoke()).result.address == shrine_owner.address
 
 
 @pytest.mark.asyncio
@@ -434,25 +431,25 @@ async def test_auth(shrine_deploy):
 
     auth_function = SET_CEILING
 
-    assert (await shrine.get_admin().invoke()).result.address == shrine_owner.address
+    assert (await shrine.get_admin().invoke()).result.address == SHRINE_OWNER
 
     # Authorizing an address and testing that it can use authorized functions
-    await shrine_owner.send_tx(shrine.contract_address, "grant_role", [auth_function, b.address])
-    b_authorized = (await shrine.has_role(auth_function, b.address).invoke()).result.bool
+    await shrine.grant_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    b_authorized = (await shrine.has_role(auth_function, b).invoke()).result.bool
     assert b_authorized == TRUE
 
-    await b.send_tx(shrine.contract_address, "set_ceiling", [WAD_SCALE])
+    await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=b)
     new_ceiling = (await shrine.get_ceiling().invoke()).result.wad
     assert new_ceiling == WAD_SCALE
 
     # Revoking an address
-    await shrine_owner.send_tx(shrine.contract_address, "revoke_role", [auth_function, b.address])
-    b_authorized = (await shrine.has_role(auth_function, c.address).invoke()).result.bool
+    await shrine.revoke_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    b_authorized = (await shrine.has_role(auth_function, c).invoke()).result.bool
     assert b_authorized == FALSE
 
     # Calling an authorized function with an unauthorized address - should fail
     with pytest.raises(StarkException):
-        await c.send_tx(shrine.contract_address, "set_ceiling", [WAD_SCALE])
+        await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=c)
 
 
 @pytest.mark.asyncio

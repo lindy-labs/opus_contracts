@@ -16,6 +16,7 @@ from tests.shrine.constants import (
     INITIAL_DEPOSIT,
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
+    SHRINE_FULL_ACCESS,
     TIME_INTERVAL,
     TROVE_1,
     YANG_0_ADDRESS,
@@ -158,6 +159,9 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 
+    # Grant shrine owner all roles
+    await shrine.grant_role(SHRINE_FULL_ACCESS, SHRINE_OWNER).invoke(caller_address=SHRINE_OWNER)
+
     return shrine
 
 
@@ -165,9 +169,6 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 @pytest.fixture
 async def shrine_setup(shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
-    # Grant shrine owner all roles
-    await shrine.grant_role(16383, SHRINE_OWNER).invoke(caller_address=SHRINE_OWNER)
-
     # Set debt ceiling
     await shrine.set_ceiling(DEBT_CEILING).invoke(caller_address=SHRINE_OWNER)
     # Creating the yangs

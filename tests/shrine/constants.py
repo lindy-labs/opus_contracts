@@ -106,3 +106,4 @@ FORGE = 2**10
 MELT = 2**11
 SEIZE = 2**12
 MOVE_YIN = 2**13
+SHRINE_FULL_ACCESS = sum([2**i for i in range(14)])
