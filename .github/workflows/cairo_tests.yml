@@ -30,4 +30,4 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Run tests
-        run: pytest -sv -r A tests
+        run: pytest -v -r A --workers auto --tests-per-worker auto tests
