@@ -161,7 +161,7 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     do_deposits(user_address, new_trove_id, yang_addrs_len, yang_addrs, amounts)
-    IShrine.forge(shrine_address, forge_amount, new_trove_id)
+    IShrine.forge(shrine_address, user_address, new_trove_id, forge_amount)
 
     TroveOpened.emit(user_address, new_trove_id)
 
@@ -182,7 +182,7 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     let (shrine_address) = abbot_shrine_address_storage.read()
     let (outstanding_debt) = IShrine.estimate(shrine_address, trove_id)
 
-    IShrine.melt(shrine_address, outstanding_debt, trove_id)
+    IShrine.melt(shrine_address, user_address, trove_id, outstanding_debt)
     let (yang_addresses_count) = abbot_yang_addresses_count_storage.read()
     do_withdrawals_full(shrine_address, user_address, trove_id, 0, yang_addresses_count)
 
@@ -249,7 +249,8 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tr
         assert_trove_owner(user_address, trove_id, 0)
     end
 
-    IShrine.forge(user_address, trove_id, amount)
+    let (shrine_address) = abbot_shrine_address_storage.read()
+    IShrine.forge(shrine_address, user_address, trove_id, amount)
 
     return ()
 end
@@ -263,7 +264,8 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tro
         assert_trove_owner(user_address, trove_id, 0)
     end
 
-    IShrine.melt(user_address, trove_id, amount)
+    let (shrine_address) = abbot_shrine_address_storage.read()
+    IShrine.melt(shrine_address, user_address, trove_id, amount)
 
     return ()
 end

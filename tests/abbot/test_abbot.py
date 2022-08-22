@@ -4,7 +4,7 @@ import pytest
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import assert_event_emitted, compile_contract, to_wad
+from tests.utils import assert_event_emitted, compile_contract, str_to_felt, to_wad
 
 TAX_RAY = 3 * 10**25  # TODO: use RAY_PERCENT const from utils, also elsewhere in this file
 UINT256_MAX = (2**128 - 1, 2**128 - 1)
@@ -12,17 +12,22 @@ STARKNET_ADDR = r"-?\d+"  # addresses are sometimes printed as negative numbers,
 
 YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_wad gate_address")
 
+
 #
 # users
 #
 
-abbot_owner = abs(hash("abbot owner"))
-shrine_owner = abs(hash("shrine owner"))
-steth_owner = abs(hash("steth owner"))
-doge_owner = abs(hash("doge owner"))
-shitcoin_owner = abs(hash("shitcoin owner"))
-aura_user = abs(hash("aura user"))
-other_user = abs(hash("other user"))
+
+ABBOT_OWNER = str_to_felt("abbot owner")
+GATE_OWNER = str_to_felt("gate owner")
+SHRINE_OWNER = str_to_felt("shrine owner")
+STETH_OWNER = str_to_felt("steth owner")
+DOGE_OWNER = str_to_felt("doge owner")
+SHITCOIN_OWNER = str_to_felt("shitcoin owner")
+AURA_USER = str_to_felt("aura user")
+OTHER_USER = str_to_felt("other user")
+TAX_COLLECTOR = str_to_felt("tax collector")
+
 
 #
 # fixtures
@@ -31,75 +36,72 @@ other_user = abs(hash("other user"))
 
 @pytest.fixture
 async def steth_token(tokens) -> StarknetContract:
-    return await tokens("Lido Staked ETH", "stETH", 18, (to_wad(100_000), 0), steth_owner)
+    return await tokens("Lido Staked ETH", "stETH", 18, (to_wad(100_000), 0), STETH_OWNER)
 
 
 @pytest.fixture
 async def doge_token(tokens) -> StarknetContract:
-    return await tokens("Dogecoin", "DOGE", 18, (to_wad(10_000_000), 0), doge_owner)
+    return await tokens("Dogecoin", "DOGE", 18, (to_wad(10_000_000), 0), DOGE_OWNER)
 
 
 @pytest.fixture
 async def shitcoin(tokens) -> StarknetContract:
-    return await tokens("To the moon", "SHIT", 18, (2**128 - 1, 0), shitcoin_owner)
+    return await tokens("To the moon", "SHIT", 18, (2**128 - 1, 0), SHITCOIN_OWNER)
 
 
 @pytest.fixture
 async def shrine(starknet) -> StarknetContract:
     shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
-    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[shrine_owner])
-    await shrine.set_ceiling(to_wad(50_000_000)).invoke(caller_address=shrine_owner)
+    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
+    await shrine.set_ceiling(to_wad(50_000_000)).invoke(caller_address=SHRINE_OWNER)
     return shrine
 
 
 @pytest.fixture
-async def steth_gate(starknet, users, abbot, shrine, steth_token) -> StarknetContract:
+async def steth_gate(starknet, abbot, shrine, steth_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
     """
     contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
-    admin = await users("admin")
-    tax_collector = await users("tax collector")
 
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
-            admin.address,
+            GATE_OWNER,
             shrine.contract_address,
             steth_token.contract_address,
             TAX_RAY,
-            tax_collector.address,
+            TAX_COLLECTOR,
         ],
     )
 
     # auth Abbot in Gate
-    await admin.send_tx(gate.contract_address, "authorize", [abbot.contract_address])
+    await gate.authorize(abbot.contract_address).invoke(caller_address=GATE_OWNER)
     # auth Gate in Shrine
-    await shrine.authorize(gate.contract_address).invoke(caller_address=shrine_owner)
+    await shrine.authorize(gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return gate
 
 
 @pytest.fixture
-async def doge_gate(starknet, users, abbot, shrine, doge_token) -> StarknetContract:
+async def doge_gate(starknet, abbot, shrine, doge_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module, without any autocompounding or tax.
     """
     contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
-    admin = await users("admin")
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
-            admin.address,
+            GATE_OWNER,
             shrine.contract_address,
             doge_token.contract_address,
         ],
     )
 
     # auth Abbot in Gate
-    await admin.send_tx(gate.contract_address, "authorize", [abbot.contract_address])
+    await gate.authorize(abbot.contract_address).invoke(caller_address=GATE_OWNER)
     # auth Gate in Shrine
-    await shrine.authorize(gate.contract_address).invoke(caller_address=shrine_owner)
+    await shrine.authorize(gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return gate
 
@@ -129,10 +131,10 @@ def shitcoin_yang(shitcoin) -> YangConfig:
 async def abbot(starknet, shrine) -> StarknetContract:
     abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
-        contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, abbot_owner]
+        contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, ABBOT_OWNER]
     )
     # auth Abbot in Shrine
-    await shrine.authorize(abbot.contract_address).invoke(caller_address=shrine_owner)
+    await shrine.authorize(abbot.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return abbot
 
@@ -142,18 +144,18 @@ async def abbot_with_yangs(abbot, steth_yang: YangConfig, doge_yang: YangConfig)
     for yang in (steth_yang, doge_yang):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).invoke(caller_address=abbot_owner)
+        ).invoke(caller_address=ABBOT_OWNER)
 
 
 @pytest.fixture
 async def funded_aura_user(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
     # fund the user with bags
-    await steth_token.transfer(aura_user, (to_wad(1_000), 0)).invoke(caller_address=steth_owner)
-    await doge_token.transfer(aura_user, (to_wad(1_000_000), 0)).invoke(caller_address=doge_owner)
+    await steth_token.transfer(AURA_USER, (to_wad(1_000), 0)).invoke(caller_address=STETH_OWNER)
+    await doge_token.transfer(AURA_USER, (to_wad(1_000_000), 0)).invoke(caller_address=DOGE_OWNER)
 
     # user approves Aura gates to spend bags
-    await max_approve(steth_token, aura_user, steth_yang.gate_address)
-    await max_approve(doge_token, aura_user, doge_yang.gate_address)
+    await max_approve(steth_token, AURA_USER, steth_yang.gate_address)
+    await max_approve(doge_token, AURA_USER, doge_yang.gate_address)
 
 
 @pytest.fixture
@@ -164,7 +166,7 @@ async def aura_user_with_first_trove(abbot, steth_yang: YangConfig, doge_yang: Y
 
     await abbot.open_trove(
         forge_amount, [steth_yang.contract_address, doge_yang.contract_address], [steth_deposit, doge_deposit]
-    ).invoke(caller_address=aura_user)
+    ).invoke(caller_address=AURA_USER)
 
 
 #
@@ -203,7 +205,7 @@ async def test_add_yang(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
     for idx, yang in enumerate(yangs):
         tx = await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).invoke(caller_address=abbot_owner)
+        ).invoke(caller_address=ABBOT_OWNER)
 
         assert_event_emitted(tx, abbot.contract_address, "YangAdded", [yang.contract_address, yang.gate_address])
         # this assert on an event emitted from the shrine contract serves as a proxy
@@ -222,7 +224,7 @@ async def test_add_yang(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
 
     # test TX reverts on unathorized actor calling add_yang
     with pytest.raises(StarkException):
-        await abbot.add_yang(0xC0FFEE, 10**30, 10**27, to_wad(1), 0xDEADBEEF).invoke(caller_address=other_user)
+        await abbot.add_yang(0xC0FFEE, 10**30, 10**27, to_wad(1), 0xDEADBEEF).invoke(caller_address=OTHER_USER)
 
 
 @pytest.mark.asyncio
@@ -233,30 +235,30 @@ async def test_add_yang_failures(abbot, steth_yang: YangConfig, doge_yang: YangC
     # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Abbot: address cannot be zero"):
         await abbot.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).invoke(
-            caller_address=abbot_owner
+            caller_address=ABBOT_OWNER
         )
 
     # test reverting on gate address equal 0
     with pytest.raises(StarkException, match="Abbot: address cannot be zero"):
         await abbot.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).invoke(
-            caller_address=abbot_owner
+            caller_address=ABBOT_OWNER
         )
 
     # test reverting on trying to add the same yang / gate combo
     await abbot.add_yang(yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address).invoke(
-        caller_address=abbot_owner
+        caller_address=ABBOT_OWNER
     )
     with pytest.raises(StarkException, match="Abbot: yang already added"):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).invoke(caller_address=abbot_owner)
+        ).invoke(caller_address=ABBOT_OWNER)
 
     # test reverting when the Gate is for a different yang
     yang = doge_yang
     with pytest.raises(StarkException, match="Abbot: yang address does not match Gate's asset"):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address
-        ).invoke(caller_address=abbot_owner)
+        ).invoke(caller_address=ABBOT_OWNER)
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user")
@@ -268,13 +270,13 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
 
     tx = await abbot.open_trove(
         forge_amount, [steth_yang.contract_address, doge_yang.contract_address], [steth_deposit, doge_deposit]
-    ).invoke(caller_address=aura_user)
+    ).invoke(caller_address=AURA_USER)
 
     trove_id = 1  # first trove, hence trove_id=1
 
     # asserts on the Abbot
-    assert_event_emitted(tx, abbot.contract_address, "TroveOpened", [aura_user, trove_id])
-    assert (await abbot.get_user_trove_ids(aura_user).invoke()).result.trove_ids == [trove_id]
+    assert_event_emitted(tx, abbot.contract_address, "TroveOpened", [AURA_USER, trove_id])
+    assert (await abbot.get_user_trove_ids(AURA_USER).invoke()).result.trove_ids == [trove_id]
     assert (await abbot.get_troves_count().invoke()).result.ufelt == trove_id
 
     # asserts on the gates
@@ -282,13 +284,13 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
         tx,
         steth_yang.gate_address,
         "Deposit",
-        lambda d: d[:2] == [aura_user, trove_id] and d[-1] == steth_deposit,
+        lambda d: d[:2] == [AURA_USER, trove_id] and d[-1] == steth_deposit,
     )
     assert_event_emitted(
         tx,
         doge_yang.gate_address,
         "Deposit",
-        lambda d: d[:2] == [aura_user, trove_id] and d[-1] == doge_deposit,
+        lambda d: d[:2] == [AURA_USER, trove_id] and d[-1] == doge_deposit,
     )
 
     # asserts on the shrine
@@ -299,33 +301,33 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
         tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [doge_yang.contract_address, doge_deposit]
     )
     assert_event_emitted(
-        tx, shrine.contract_address, "DepositUpdated", [trove_id, steth_yang.contract_address, steth_deposit]
+        tx, shrine.contract_address, "DepositUpdated", [steth_yang.contract_address, trove_id, steth_deposit]
     )
     assert_event_emitted(
-        tx, shrine.contract_address, "DepositUpdated", [trove_id, doge_yang.contract_address, doge_deposit]
+        tx, shrine.contract_address, "DepositUpdated", [doge_yang.contract_address, trove_id, doge_deposit]
     )
     assert (await shrine.get_trove(trove_id).invoke()).result.trove.debt == forge_amount
 
     # asserts on the tokens
     # the 0 is to conform to Uint256
     assert_event_emitted(
-        tx, steth_yang.contract_address, "Transfer", [aura_user, steth_yang.gate_address, steth_deposit, 0]
+        tx, steth_yang.contract_address, "Transfer", [AURA_USER, steth_yang.gate_address, steth_deposit, 0]
     )
     assert_event_emitted(
-        tx, doge_yang.contract_address, "Transfer", [aura_user, doge_yang.gate_address, doge_deposit, 0]
+        tx, doge_yang.contract_address, "Transfer", [AURA_USER, doge_yang.gate_address, doge_deposit, 0]
     )
 
 
 @pytest.mark.asyncio
 async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match=r"Abbot: input arguments mismatch: \d != \d"):
-        await abbot.open_trove(0, [steth_yang.contract_address], [10, 200]).invoke(caller_address=aura_user)
+        await abbot.open_trove(0, [steth_yang.contract_address], [10, 200]).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match="Abbot: no yangs selected"):
-        await abbot.open_trove(0, [], []).invoke(caller_address=aura_user)
+        await abbot.open_trove(0, [], []).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
-        await abbot.open_trove(0, [shitcoin_yang.contract_address], [10**10]).invoke(caller_address=aura_user)
+        await abbot.open_trove(0, [shitcoin_yang.contract_address], [10**10]).invoke(caller_address=AURA_USER)
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -335,12 +337,12 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
     doge_amount = to_wad(1_000)
     trove_id = 1
 
-    assert (await abbot.get_user_trove_ids(aura_user).invoke()).result.trove_ids == [trove_id]
+    assert (await abbot.get_user_trove_ids(AURA_USER).invoke()).result.trove_ids == [trove_id]
 
-    tx = await abbot.close_trove(trove_id).invoke(caller_address=aura_user)
+    tx = await abbot.close_trove(trove_id).invoke(caller_address=AURA_USER)
 
     # assert the trove still belongs to the user, but has no debt
-    assert (await abbot.get_user_trove_ids(aura_user).invoke()).result.trove_ids == [trove_id]
+    assert (await abbot.get_user_trove_ids(AURA_USER).invoke()).result.trove_ids == [trove_id]
     assert (await shrine.get_trove(trove_id).invoke()).result.trove.debt == 0
 
     # asserts on the gates
@@ -348,13 +350,13 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
         tx,
         steth_yang.gate_address,
         "Withdraw",
-        lambda d: d[:2] == [aura_user, trove_id] and d[-1] == steth_amount,
+        lambda d: d[:2] == [AURA_USER, trove_id] and d[-1] == steth_amount,
     )
     assert_event_emitted(
         tx,
         doge_yang.gate_address,
         "Withdraw",
-        lambda d: d[:2] == [aura_user, trove_id] and d[-1] == doge_amount,
+        lambda d: d[:2] == [AURA_USER, trove_id] and d[-1] == doge_amount,
     )
 
     # asserts on the shrine
@@ -362,18 +364,18 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
         tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [steth_yang.contract_address, 0]
     )
     assert_event_emitted(tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [doge_yang.contract_address, 0])
-    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [trove_id, steth_yang.contract_address, 0])
-    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [trove_id, doge_yang.contract_address, 0])
+    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [steth_yang.contract_address, trove_id, 0])
+    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [doge_yang.contract_address, trove_id, 0])
     assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [0])  # from melt
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [trove_id, 0, 0])
 
     # asserts on the tokens
     # the 0 is to conform to Uint256
     assert_event_emitted(
-        tx, steth_yang.contract_address, "Transfer", [steth_yang.gate_address, aura_user, steth_amount, 0]
+        tx, steth_yang.contract_address, "Transfer", [steth_yang.gate_address, AURA_USER, steth_amount, 0]
     )
     assert_event_emitted(
-        tx, doge_yang.contract_address, "Transfer", [doge_yang.gate_address, aura_user, doge_amount, 0]
+        tx, doge_yang.contract_address, "Transfer", [doge_yang.gate_address, AURA_USER, doge_amount, 0]
     )
 
 
@@ -381,10 +383,10 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
 @pytest.mark.asyncio
 async def test_close_trove_failures(abbot):
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 2"):
-        await abbot.close_trove(2).invoke(caller_address=aura_user)
+        await abbot.close_trove(2).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
-        await abbot.close_trove(1).invoke(caller_address=other_user)
+        await abbot.close_trove(1).invoke(caller_address=OTHER_USER)
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -397,16 +399,16 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
     trove_id = 1
 
     tx1 = await abbot.deposit(steth_yang.contract_address, trove_id, fresh_steth_deposit).invoke(
-        caller_address=aura_user
+        caller_address=AURA_USER
     )
-    tx2 = await abbot.deposit(doge_yang.contract_address, trove_id, fresh_doge_deposit).invoke(caller_address=aura_user)
+    tx2 = await abbot.deposit(doge_yang.contract_address, trove_id, fresh_doge_deposit).invoke(caller_address=AURA_USER)
 
-    # check if gates emitted Deposit from aura_user to trove with the right amount
+    # check if gates emitted Deposit from AURA_USER to trove with the right amount
     assert_event_emitted(
-        tx1, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [aura_user, trove_id, fresh_steth_deposit]
+        tx1, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [AURA_USER, trove_id, fresh_steth_deposit]
     )
     assert_event_emitted(
-        tx2, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [aura_user, trove_id, fresh_doge_deposit]
+        tx2, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [AURA_USER, trove_id, fresh_doge_deposit]
     )
 
     assert (
@@ -423,13 +425,13 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
     trove_id = 1
 
     with pytest.raises(StarkException, match="Abbot: yang address cannot be zero"):
-        await abbot.deposit(0, trove_id, 0).invoke(caller_address=aura_user)
+        await abbot.deposit(0, trove_id, 0).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
-        await abbot.deposit(shitcoin_yang.contract_address, trove_id, to_wad(100_000)).invoke(caller_address=aura_user)
+        await abbot.deposit(shitcoin_yang.contract_address, trove_id, to_wad(100_000)).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
-        await abbot.deposit(steth_yang.contract_address, trove_id, to_wad(1)).invoke(caller_address=other_user)
+        await abbot.deposit(steth_yang.contract_address, trove_id, to_wad(1)).invoke(caller_address=OTHER_USER)
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -442,25 +444,25 @@ async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
     trove_id = 1
 
     tx1 = await abbot.withdraw(steth_yang.contract_address, trove_id, steth_withdraw_amount).invoke(
-        caller_address=aura_user
+        caller_address=AURA_USER
     )
 
     tx2 = await abbot.withdraw(doge_yang.contract_address, trove_id, doge_withdraw_amount).invoke(
-        caller_address=aura_user
+        caller_address=AURA_USER
     )
 
     assert_event_emitted(
         tx1,
         steth_yang.gate_address,
         "Withdraw",
-        lambda d: d[:2] == [aura_user, trove_id] and d[-1] == steth_withdraw_amount,
+        lambda d: d[:2] == [AURA_USER, trove_id] and d[-1] == steth_withdraw_amount,
     )
 
     assert_event_emitted(
         tx2,
         doge_yang.gate_address,
         "Withdraw",
-        lambda d: d[:2] == [aura_user, trove_id] and d[-1] == doge_withdraw_amount,
+        lambda d: d[:2] == [AURA_USER, trove_id] and d[-1] == doge_withdraw_amount,
     )
 
     assert (
@@ -477,13 +479,13 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
     trove_id = 1
 
     with pytest.raises(StarkException, match="Abbot: yang address cannot be zero"):
-        await abbot.withdraw(0, trove_id, 0).invoke(caller_address=aura_user)
+        await abbot.withdraw(0, trove_id, 0).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
-        await abbot.withdraw(shitcoin_yang.contract_address, trove_id, to_wad(100_000)).invoke(caller_address=aura_user)
+        await abbot.withdraw(shitcoin_yang.contract_address, trove_id, to_wad(100_000)).invoke(caller_address=AURA_USER)
 
     with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
-        await abbot.withdraw(steth_yang.contract_address, trove_id, to_wad(10)).invoke(caller_address=other_user)
+        await abbot.withdraw(steth_yang.contract_address, trove_id, to_wad(10)).invoke(caller_address=OTHER_USER)
 
 
 @pytest.mark.asyncio
