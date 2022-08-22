@@ -530,11 +530,32 @@ async def test_forge_failures(abbot):
         await abbot.forge(trove_id, amount).invoke(caller_address=AURA_USER)
 
 
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
-async def test_melt():
-    pass
+async def test_melt(abbot, yin, shrine):
+    trove_id = 1
+    forged_amount = to_wad(4000)
+    melt_amount = to_wad(333)
+    remaining_amount = forged_amount - melt_amount
+
+    tx = await abbot.melt(trove_id, melt_amount).invoke(caller_address=AURA_USER)
+
+    # asserting only events particular to the user
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [trove_id, 0, remaining_amount])
+    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER, remaining_amount])
+
+    assert (await yin.balanceOf(AURA_USER).invoke()).result.wad == remaining_amount
 
 
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
-async def test_melt_failures():
-    pass
+async def test_melt_failures(abbot):
+    trove_id = 1
+
+    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {trove_id}"):
+        amount = to_wad(10)
+        await abbot.forge(trove_id, amount).invoke(caller_address=OTHER_USER)
+
+    with pytest.raises(StarkException, match="Shrine: System debt underflow"):
+        amount = to_wad(8000)
+        await abbot.melt(trove_id, amount).invoke(caller_address=AURA_USER)
