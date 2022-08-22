@@ -67,22 +67,22 @@ namespace IShrine:
     func update_multiplier(new_multiplier):
     end
 
-    func move_yang(yang_address, amount, src_trove_id, dst_trove_id):
+    func move_yang(yang_address, src_trove_id, dst_trove_id, amount):
     end
 
     func move_yin(src_address, dst_address, amount):
     end
 
-    func deposit(yang_address, amount, trove_id):
+    func deposit(yang_address, trove_id, amount):
     end
 
-    func withdraw(yang_address, amount, trove_id):
+    func withdraw(yang_address, trove_id, amount):
     end
 
-    func forge(amount, trove_id):
+    func forge(user_address, trove_id, amount):
     end
 
-    func melt(amount, trove_id):
+    func melt(user_address, trove_id, amount):
     end
 
     func seize(trove_id):

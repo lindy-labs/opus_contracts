@@ -89,7 +89,7 @@ func YinUpdated(user_address, amount):
 end
 
 @event
-func DepositUpdated(trove_id, yang_address, amount):
+func DepositUpdated(yang_address, trove_id, amount):
 end
 
 @event
@@ -433,6 +433,10 @@ func advance{
 
     AccessControl.assert_has_role(ShrineAccessControl.ADVANCE)
 
+    with_attr error_message("Shrine: cannot set a price value to zero."):
+        assert_not_zero(price)  # Cannot set a price value to zero
+    end
+
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -462,6 +466,10 @@ func update_multiplier{
     alloc_locals
     AccessControl.assert_has_role(ShrineAccessControl.UPDATE_MULTIPLIER)
 
+    with_attr error_message("Shrine: cannot set a multiplier value to zero."):
+        assert_not_zero(new_multiplier)  # Cannot set a multiplier value to zero
+    end
+
     let (interval) = now()
 
     let (last_multiplier, last_cumulative_multiplier, last_interval) = get_recent_multiplier_from(
@@ -482,7 +490,7 @@ end
 @external
 func move_yang{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(yang_address, amount, src_trove_id, dst_trove_id):
+}(yang_address, src_trove_id, dst_trove_id, amount):
     alloc_locals
 
     AccessControl.assert_has_role(ShrineAccessControl.MOVE_YANG)
@@ -518,8 +526,8 @@ func move_yang{
     shrine_deposits_storage.write(dst_trove_id, yang_id, new_dst_balance)
 
     # Events
-    DepositUpdated.emit(src_trove_id, yang_address, new_src_balance)
-    DepositUpdated.emit(dst_trove_id, yang_address, new_dst_balance)
+    DepositUpdated.emit(yang_address, src_trove_id, new_src_balance)
+    DepositUpdated.emit(yang_address, dst_trove_id, new_dst_balance)
 
     return ()
 end
@@ -557,7 +565,7 @@ end
 @external
 func deposit{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(yang_address, amount, trove_id):
+}(yang_address, trove_id, amount):
     alloc_locals
 
     AccessControl.assert_has_role(ShrineAccessControl.DEPOSIT)
@@ -588,7 +596,7 @@ func deposit{
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
-    DepositUpdated.emit(trove_id, yang_address, new_trove_balance)
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance)
 
     return ()
 end
@@ -597,7 +605,7 @@ end
 @external
 func withdraw{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(yang_address, amount, trove_id):
+}(yang_address, trove_id, amount):
     alloc_locals
 
     AccessControl.assert_has_role(ShrineAccessControl.WITHDRAW)
@@ -630,7 +638,7 @@ func withdraw{
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
-    DepositUpdated.emit(trove_id, yang_address, new_trove_balance)
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance)
 
     return ()
 end
@@ -639,7 +647,7 @@ end
 @external
 func forge{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(amount, trove_id, user_address):
+}(user_address, trove_id, amount):
     alloc_locals
 
     AccessControl.assert_has_role(ShrineAccessControl.FORGE)
@@ -714,7 +722,7 @@ end
 @external
 func melt{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(amount, trove_id, user_address):
+}(user_address, trove_id, amount):
     alloc_locals
 
     AccessControl.assert_has_role(ShrineAccessControl.MELT)

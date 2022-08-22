@@ -54,6 +54,23 @@ ERROR_MARGIN = Decimal("0.000000001")
 seed(420)
 
 
+def str_to_felt(text: str) -> int:
+    b_text = bytes(text, "ascii")
+    return int.from_bytes(b_text, "big")
+
+
+# Common addresses
+SHRINE_OWNER = str_to_felt("shrine owner")
+ADMIN = str_to_felt("admin")
+ABBOT = str_to_felt("abbot")
+BAD_GUY = str_to_felt("bad guy")
+
+TROVE1_OWNER = str_to_felt("trove 1 owner")
+TROVE2_OWNER = str_to_felt("trove 2 owner")
+TROVE3_OWNER = str_to_felt("trove 3 owner")
+TROVE4_OWNER = str_to_felt("trove 4 owner")
+
+
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
         return value.contract_address
@@ -65,11 +82,6 @@ def signed_int_to_felt(a: int) -> int:
     if a >= 0:
         return a
     return PRIME + a
-
-
-def str_to_felt(text: str) -> int:
-    b_text = bytes(text, "ascii")
-    return int.from_bytes(b_text, "big")
 
 
 def felt_to_str(felt: int) -> str:
