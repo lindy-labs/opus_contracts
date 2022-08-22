@@ -119,6 +119,22 @@ The naming conventions are the following:
 - `packed`: A felt that has had multiple values packed into it
 - Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`.
 
+These names can be used as a standalone value (1) or suffixes if you want to communicate the meaning of a value (2) or in case where there are multiple return values of the same type (3), as illustrated in the following example:
+
+```cairo
+# 1
+func get_price() -> (wad):
+end
+
+# 2
+func get_price() -> (price_wad):
+end
+
+# 3
+func get_price_pair() -> (current_price_wad, previous_price_wad):
+end
+```
+
 ## `*_external.cairo` modules a.k.a. mixins
 
 Cairo doesn't have inheritance, but with a sprinkle of dark magic and exploiting the compiler's behaviour, we can get mixins. When importing anything from a file that contains public functions (`@view`, `@external`, `@l1_handler`), the compiler silently pulls these into scope, even if they are not explicitly imported, so that they become available in the final compiled smart contract. By itself, this behaviour is A Bad Thing, but when used deliberately, it can become An Ok Thing.
