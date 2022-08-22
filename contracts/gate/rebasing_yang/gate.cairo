@@ -107,8 +107,8 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     IShrine.deposit(
         contract_address=shrine_address,
         yang_address=asset_address,
-        amount=yang_wad,
         trove_id=trove_id,
+        amount=yang_wad,
     )
 
     # Transfer asset from `user_address` to Gate
@@ -152,8 +152,8 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     IShrine.withdraw(
         contract_address=shrine_address,
         yang_address=asset_address,
-        amount=yang_wad,
         trove_id=trove_id,
+        amount=yang_wad,
     )
 
     # Transfer asset from Gate to `user_address`

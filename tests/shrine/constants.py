@@ -10,6 +10,7 @@ YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
 FAUX_YANG_ADDRESS = 7890
 
+
 # Shrine setup constants
 YANGS = [
     {
@@ -31,6 +32,10 @@ YANGS = [
         "threshold": LIQUIDATION_THRESHOLD,
     },
 ]
+
+YANG_0_ADDRESS = YANGS[0]["address"]
+YANG_0_CEILING = YANGS[0]["ceiling"]
+YANG_0_THRESHOLD = YANGS[0]["threshold"]
 
 INITIAL_DEPOSIT = 10
 INITIAL_DEPOSIT_WAD = 10 * WAD_SCALE

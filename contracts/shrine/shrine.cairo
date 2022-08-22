@@ -4,7 +4,7 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, split_felt
 from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_caller_address, get_block_timestamp
+from starkware.starknet.common.syscalls import get_block_timestamp
 
 from contracts.shared.convert import pack_felt, pack_125, unpack_125
 from contracts.shared.types import Trove, Yang
@@ -57,7 +57,11 @@ func YangUpdated(yang_address, yang : Yang):
 end
 
 @event
-func DebtTotalUpdated(total):
+func DebtTotalUpdated(total_wad):
+end
+
+@event
+func YinTotalUpdated(total_wad):
 end
 
 @event
@@ -77,7 +81,11 @@ func TroveUpdated(trove_id, trove : Trove):
 end
 
 @event
-func DepositUpdated(trove_id, yang_address, amount):
+func YinUpdated(user_address, amount):
+end
+
+@event
+func DepositUpdated(yang_address, trove_id, amount):
 end
 
 @event
@@ -104,6 +112,12 @@ end
 func shrine_troves_storage(trove_id) -> (packed):
 end
 
+# Stores the amount of the "yin" (synthetic) each user owns.
+# yin can be exchanged for ERC20 synthetic tokens via the yin gate.
+@storage_var
+func shrine_yin_storage(user_address) -> (wad):
+end
+
 # Stores information about each collateral (see Yang struct)
 @storage_var
 func shrine_yangs_storage(yang_id) -> (yang : Yang):
@@ -126,9 +140,14 @@ end
 func shrine_deposits_storage(trove_id, yang_id) -> (wad):
 end
 
-# Total amount of synthetic minted
+# Total amount of debt accrued
 @storage_var
 func shrine_debt_storage() -> (wad):
+end
+
+# Total amount of synthetic forged
+@storage_var
+func shrine_total_yin_storage() -> (wad):
 end
 
 # Keeps track of the price history of each Yang - packed
@@ -172,6 +191,18 @@ func get_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let (charge_from, debt) = split_felt(trove_packed)
     let trove : Trove = Trove(charge_from=charge_from, debt=debt)
     return (trove)
+end
+
+@view
+func get_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user_address) -> (
+    wad
+):
+    return shrine_yin_storage.read(user_address)
+end
+
+@view
+func get_total_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
+    return shrine_total_yin_storage.read()
 end
 
 @view
@@ -377,6 +408,10 @@ func advance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     Auth.assert_caller_authed()
 
+    with_attr error_message("Shrine: cannot set a price value to zero."):
+        assert_not_zero(price)  # Cannot set a price value to zero
+    end
+
     let (interval) = now()
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -406,6 +441,10 @@ func update_multiplier{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     alloc_locals
     Auth.assert_caller_authed()
 
+    with_attr error_message("Shrine: cannot set a multiplier value to zero."):
+        assert_not_zero(new_multiplier)  # Cannot set a multiplier value to zero
+    end
+
     let (interval) = now()
 
     let (last_multiplier, last_cumulative_multiplier, last_interval) = get_recent_multiplier_from(
@@ -425,7 +464,7 @@ end
 # Checks should be performed beforehand by the module calling this function
 @external
 func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, src_trove_id, dst_trove_id
+    yang_address, src_trove_id, dst_trove_id, amount
 ):
     alloc_locals
 
@@ -462,8 +501,37 @@ func move_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     shrine_deposits_storage.write(dst_trove_id, yang_id, new_dst_balance)
 
     # Events
-    DepositUpdated.emit(src_trove_id, yang_address, new_src_balance)
-    DepositUpdated.emit(dst_trove_id, yang_address, new_dst_balance)
+    DepositUpdated.emit(yang_address, src_trove_id, new_src_balance)
+    DepositUpdated.emit(yang_address, dst_trove_id, new_dst_balance)
+
+    return ()
+end
+
+@external
+func move_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    src_address, dst_address, amount
+):
+    Auth.assert_caller_authed()
+
+    with_attr error_message("Shrine: transfer amount outside the valid range."):
+        WadRay.assert_result_valid_unsigned(amount)
+    end
+
+    let (src_balance) = shrine_yin_storage.read(src_address)
+    let (dst_balance) = shrine_yin_storage.read(dst_address)
+
+    # WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
+    with_attr error_message("Shrine: transfer amount exceeds yin balance"):
+        let (new_src_balance) = WadRay.sub_unsigned(src_balance, amount)
+    end
+
+    let (new_dst_balance) = WadRay.add(dst_balance, amount)
+
+    shrine_yin_storage.write(src_address, new_src_balance)
+    shrine_yin_storage.write(dst_address, new_dst_balance)
+
+    # No event emissions - this is because `move-yin` should only be called by an
+    # ERC20 wrapper contract which emits a `Transfer` event on transfers anyway.
 
     return ()
 end
@@ -471,7 +539,7 @@ end
 # Deposit a specified amount of a Yang into a Trove
 @external
 func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, trove_id
+    yang_address, trove_id, amount
 ):
     alloc_locals
 
@@ -503,7 +571,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
-    DepositUpdated.emit(trove_id, yang_address, new_trove_balance)
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance)
 
     return ()
 end
@@ -511,7 +579,7 @@ end
 # Withdraw a specified amount of a Yang from a Trove
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, amount, trove_id
+    yang_address, trove_id, amount
 ):
     alloc_locals
 
@@ -545,14 +613,16 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
-    DepositUpdated.emit(trove_id, yang_address, new_trove_balance)
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance)
 
     return ()
 end
 
 # Mint a specified amount of synthetic for a Trove
 @external
-func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
+func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id, amount
+):
     alloc_locals
 
     Auth.assert_caller_authed()
@@ -603,17 +673,31 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(am
     # Check if Trove is within limits
     assert_within_limits(trove_id)
 
+    # Update the user's yin
+    let (user_yin) = shrine_yin_storage.read(user_address)
+    let (new_user_yin) = WadRay.add(user_yin, amount)
+    shrine_yin_storage.write(user_address, new_user_yin)
+
+    # Update the total yin
+    let (total_yin) = shrine_total_yin_storage.read()
+    let (new_total_yin) = WadRay.add(total_yin, amount)
+    shrine_total_yin_storage.write(new_total_yin)
+
     # Events
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
+    YinTotalUpdated.emit(new_total_yin)
+    YinUpdated.emit(user_address, new_user_yin)
 
     return ()
 end
 
 # Repay a specified amount of synthetic for a Trove
-# The module calling this function should check that `amount` does not exceed Trove's debt.
+# The module calling this function should ensure that `amount` does not exceed Trove's debt.
 @external
-func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount, trove_id):
+func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id, amount
+):
     alloc_locals
 
     Auth.assert_caller_authed()
@@ -627,22 +711,44 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amo
     # Get current interval
     let (current_interval) = now()
 
-    # Update trove information
-    with_attr error_message("Shrine: Trove debt underflow"):
-        let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # WadRay.sub_unsigned contains an underflow check
-    end
-    let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
-    set_trove(trove_id, new_trove_info)
-
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
-    let (new_system_debt) = WadRay.sub(current_system_debt, amount)
+
+    with_attr error_message("Shrine: System debt underflow"):
+        let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, amount)  # WadRay.sub_unsigned contains an underflow check
+    end
 
     shrine_debt_storage.write(new_system_debt)
 
+    # Update trove information
+    with_attr error_message("Shrine: cannot pay back more debt than exists in this trove"):
+        let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # Reverts if amount > old_trove_info.debt
+    end
+
+    let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
+    set_trove(trove_id, new_trove_info)
+
+    # Updating the user's yin
+    let (user_yin) = shrine_yin_storage.read(user_address)
+
+    # Updating the total yin
+    let (total_yin) = shrine_total_yin_storage.read()
+
+    # Reverts if amount > user_yin or amount > total_yin.
+    with_attr error_message("Shrine: not enough yin to melt debt"):
+        let (new_user_yin) = WadRay.sub_unsigned(user_yin, amount)
+        let (new_total_yin) = WadRay.sub_unsigned(total_yin, amount)
+    end
+
+    shrine_yin_storage.write(user_address, new_user_yin)
+    shrine_total_yin_storage.write(new_total_yin)
+
     # Events
+
     DebtTotalUpdated.emit(new_system_debt)
     TroveUpdated.emit(trove_id, new_trove_info)
+    YinTotalUpdated.emit(new_total_yin)
+    YinUpdated.emit(user_address, new_user_yin)
 
     return ()
 end
