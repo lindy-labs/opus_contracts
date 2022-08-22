@@ -58,6 +58,16 @@ async def shrine(starknet) -> StarknetContract:
 
 
 @pytest.fixture
+async def yin(starknet, shrine) -> StarknetContract:
+    yin_contract = compile_contract("contracts/yin/yin.cairo")
+    yin = await starknet.deploy(
+        contract_class=yin_contract,
+        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
+    )
+    return yin
+
+
+@pytest.fixture
 async def steth_gate(starknet, abbot, shrine, steth_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
@@ -488,14 +498,36 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
         await abbot.withdraw(steth_yang.contract_address, trove_id, to_wad(10)).invoke(caller_address=OTHER_USER)
 
 
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user")
 @pytest.mark.asyncio
-async def test_forge():
-    pass
+async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
+    steth_deposit = to_wad(20)
+    await abbot.open_trove(0, [steth_yang.contract_address], [steth_deposit]).invoke(caller_address=AURA_USER)
+
+    trove_id = 1
+    forge_amount = to_wad(55)
+
+    tx = await abbot.forge(trove_id, forge_amount).invoke(caller_address=AURA_USER)
+
+    # asserting only events particular to the user
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [trove_id, 0, forge_amount])
+    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER, forge_amount])
+
+    assert (await yin.balanceOf(AURA_USER).invoke()).result.wad == forge_amount
 
 
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
-async def test_forge_failures():
-    pass
+async def test_forge_failures(abbot):
+    trove_id = 1
+
+    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {trove_id}"):
+        amount = to_wad(10)
+        await abbot.forge(trove_id, amount).invoke(caller_address=OTHER_USER)
+
+    with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
+        amount = to_wad(1_000_000)
+        await abbot.forge(trove_id, amount).invoke(caller_address=AURA_USER)
 
 
 @pytest.mark.asyncio
