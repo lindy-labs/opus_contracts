@@ -165,6 +165,8 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 @pytest.fixture
 async def shrine_setup(shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
+    # Grant shrine owner all roles
+    await shrine.grant_role(16383, SHRINE_OWNER).invoke(caller_address=SHRINE_OWNER)
 
     # Set debt ceiling
     await shrine.set_ceiling(DEBT_CEILING).invoke(caller_address=SHRINE_OWNER)

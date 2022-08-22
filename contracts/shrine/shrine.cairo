@@ -17,7 +17,14 @@ from contracts.shrine.shrine_accesscontrol import ShrineAccessControl
 from openzeppelin.utils.constants.library import DEFAULT_ADMIN_ROLE
 # these imported public functions are part of the contract's interface
 from contracts.lib.acl import AccessControl
-from contracts.lib.acl_external import has_role, get_admin, grant_role, revoke_role, renounce_role
+from contracts.lib.acl_external import (
+    get_role,
+    has_role,
+    get_admin,
+    grant_role,
+    revoke_role,
+    renounce_role,
+)
 
 #
 # Constants

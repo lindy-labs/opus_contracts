@@ -9,6 +9,14 @@ from contracts.lib.acl import AccessControl
 #
 
 @view
+func get_role{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user) -> (ufelt):
+    let (role) = AccessControl.get_role(user)
+    return (role)
+end
+
+@view
 func has_role{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(role, user) -> (bool):

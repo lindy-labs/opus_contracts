@@ -83,6 +83,13 @@ namespace AccessControl:
     # Getters
     #
 
+    func get_role{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        user : felt
+    ) -> (ufelt):
+        let (user_role : felt) = AccessControl_role.read(user)
+        return (user_role)
+    end
+
     func has_role{
         syscall_ptr : felt*,
         pedersen_ptr : HashBuiltin*,
