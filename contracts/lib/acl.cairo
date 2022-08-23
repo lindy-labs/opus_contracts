@@ -5,7 +5,7 @@
 
 from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.bitwise import bitwise_and, bitwise_or, bitwise_xor
+from starkware.cairo.common.bitwise import bitwise_and, bitwise_not, bitwise_or
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math_cmp import is_not_zero
 
@@ -170,7 +170,8 @@ namespace AccessControl:
         bitwise_ptr : BitwiseBuiltin*,
     }(role, user):
         let (user_role) = AccessControl_role.read(user)
-        let (new_user_role) = bitwise_xor(user_role, role)
+        let (revoked_complement) = bitwise_not(role)
+        let (new_user_role) = bitwise_and(user_role, revoked_complement)
         AccessControl_role.write(user, new_user_role)
         RoleRevoked.emit(role, user)
         return ()
