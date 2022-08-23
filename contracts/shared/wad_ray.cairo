@@ -92,7 +92,7 @@ namespace WadRay:
 
     func wsigned_div{range_check_ptr}(a, b) -> (wad):
         alloc_locals
-        # `signed_div_rem` assumes 0 < div <= PRIME / rc_bound
+        # `signed_div_rem` assumes 0 < div <= CAIRO_PRIME / rc_bound
         let (div) = abs_value(b)
         # `sign` assumes -rc_bound < value < rc_bound
         let (div_sign) = sign(b)

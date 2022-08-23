@@ -3,9 +3,8 @@ from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.shrine.constants import FORGE_AMT_WAD, TROVE_1
-from tests.utils import SHRINE_OWNER, TROVE1_OWNER, assert_event_emitted, compile_contract, str_to_felt
+from tests.utils import CAIRO_PRIME, SHRINE_OWNER, TROVE1_OWNER, assert_event_emitted, compile_contract, str_to_felt
 
-CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 INFINITE_ALLOWANCE = CAIRO_PRIME - 1
 
 TRUE = 1
