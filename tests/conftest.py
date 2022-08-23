@@ -155,8 +155,8 @@ async def mrac_controller(starknet: Starknet) -> StarknetContract:
 
 # Returns the deployed shrine module
 @pytest.fixture
-async def shrine_deploy(starknet: Starknet) -> StarknetContract:
-    shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
+async def shrine_deploy(request, starknet: Starknet) -> StarknetContract:
+    shrine_contract = compile_contract("contracts/shrine/shrine.cairo", request)
 
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 
