@@ -14,11 +14,11 @@ from starkware.cairo.common.math_cmp import is_not_zero
 #
 
 @event
-func RoleGranted(role, account, sender):
+func RoleGranted(role, user):
 end
 
 @event
-func RoleRevoked(role, account, sender):
+func RoleRevoked(role, user):
 end
 
 @event
@@ -159,6 +159,7 @@ namespace AccessControl:
         let (user_role) = AccessControl_role.read(user)
         let (new_user_role) = bitwise_or(user_role, role)
         AccessControl_role.write(user, new_user_role)
+        RoleGranted.emit(role, user)
         return ()
     end
 
@@ -171,6 +172,7 @@ namespace AccessControl:
         let (user_role) = AccessControl_role.read(user)
         let (new_user_role) = bitwise_xor(user_role, role)
         AccessControl_role.write(user, new_user_role)
+        RoleRevoked.emit(role, user)
         return ()
     end
 
