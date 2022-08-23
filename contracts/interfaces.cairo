@@ -28,13 +28,13 @@ namespace IShrine:
     func get_total_yin() -> (wad):
     end
 
-    func get_yang_price(yang_address, interval) -> (wad):
+    func get_yang_price(yang_address, interval) -> (price_wad, cumulative_price_wad):
     end
 
     func get_ceiling() -> (wad):
     end
 
-    func get_multiplier(interval) -> (ray):
+    func get_multiplier(interval) -> (multiplier_ray, cumulative_multiplier_ray):
     end
 
     func get_threshold(yang_address) -> (ray):
@@ -97,10 +97,10 @@ namespace IShrine:
     func get_current_trove_ratio(trove_id) -> (ray):
     end
 
-    func get_current_yang_price(yang_address) -> (wad):
+    func get_current_yang_price(yang_address) -> (price_wad, cumulative_price_wad, interval_ufelt):
     end
 
-    func get_current_multiplier() -> (ray):
+    func get_current_multiplier() -> (multiplier_ray, cumulative_multiplier_ray, interval_ufelt):
     end
 
     func estimate(trove_id) -> (wad):

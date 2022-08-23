@@ -12,7 +12,7 @@ from tests.gate.rebasing_yang.constants import INITIAL_AMT
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
-    FORGE_AMT,
+    FORGE_AMT_WAD,
     INITIAL_DEPOSIT,
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
@@ -188,7 +188,7 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
     # Skipping over the first element in `feeds` since the start price is set in `add_yang`
     for i in range(1, FEED_LEN):
         timestamp = i * TIME_INTERVAL
-        set_block_timestamp(starknet.state, timestamp)
+        set_block_timestamp(starknet, timestamp)
 
         for j in range(len(YANGS)):
             await shrine.advance(YANGS[j]["address"], feeds[j][i]).invoke(caller_address=SHRINE_OWNER)
@@ -212,7 +212,7 @@ async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
 
 @pytest.fixture
 async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).invoke(caller_address=SHRINE_OWNER)
     return forge
 
 

@@ -345,10 +345,6 @@ func set_ceiling{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ()
 end
 
-# Threshold value should be a ray between 0 and 1
-# Example: 75% = 75 * 10 ** 25
-# Example 2: 1% = 1 * 10 ** 25
-# Example 3: 1.5% = 15 * 10 ** 24
 @external
 func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, new_threshold
@@ -360,7 +356,7 @@ func set_threshold{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
         assert_le(new_threshold, MAX_THRESHOLD)
     end
 
-    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    let (yang_id) = get_valid_yang_id(yang_address)
     shrine_thresholds_storage.write(yang_id, new_threshold)
 
     ThresholdUpdated.emit(yang_address, new_threshold)
@@ -812,13 +808,12 @@ end
 @view
 func get_current_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address
-) -> (price_wad, cumulative_price_wad):
+) -> (price_wad, cumulative_price_wad, interval_ufelt):
     alloc_locals
 
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
     let (interval) = now()  # Get current interval
-    let (price_wad, cumulative_price_wad, _) = get_recent_price_from(yang_id, interval)
-    return (price_wad, cumulative_price_wad)
+    return get_recent_price_from(yang_id, interval)
 end
 
 # Gets last updated multiplier value
@@ -981,8 +976,6 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
 
     # Get current interval
     let (current_interval) = now()
-
-    # Early termination if trove has just been charged (that is, if
 
     # Get new debt amount
     let (new_debt) = compound(trove_id, trove.debt, trove.charge_from, current_interval)
