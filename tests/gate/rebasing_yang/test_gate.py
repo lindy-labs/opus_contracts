@@ -6,7 +6,7 @@ from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.shrine.constants import TROVE_1, TROVE_2
+from tests.shrine.constants import SHRINE_DEPOSIT, SHRINE_WITHDRAW, TROVE_1, TROVE_2
 from tests.utils import (
     ABBOT,
     ADMIN,
@@ -102,8 +102,9 @@ async def gate_rebasing_tax(starknet, shrine, rebasing_token) -> StarknetContrac
         ],
     )
 
-    # Authorise Abbot
-    await gate.authorize(ABBOT).invoke(caller_address=ADMIN)
+    # Grant `Abbot` access to `deposit` and `withdraw
+    role_value = GATE_DEPOSIT | GATE_WITHDRAW
+    await gate.grant_role(role_value, ABBOT).invoke(caller_address=ADMIN)
     return gate
 
 
@@ -122,8 +123,9 @@ async def gate_rebasing(starknet, shrine, rebasing_token) -> StarknetContract:
         ],
     )
 
-    # Authorise Abbot
-    await gate.authorize(ABBOT).invoke(caller_address=ADMIN)
+    # Grant `Abbot` access to `deposit` and `withdraw
+    role_value = GATE_DEPOSIT | GATE_WITHDRAW
+    await gate.grant_role(role_value, ABBOT).invoke(caller_address=ADMIN)
     return gate
 
 
@@ -133,8 +135,9 @@ async def shrine_authed(shrine, gate, rebasing_token) -> StarknetContract:
     Add Gate as an authorized address of Shrine.
     """
 
-    # Add Gate as authorized
-    await shrine.authorize(gate.contract_address).invoke(caller_address=SHRINE_OWNER)
+    # Grant `Gate` access to `deposit` and `withdraw` in `Shrine`
+    role_value = SHRINE_DEPOSIT | SHRINE_WITHDRAW
+    await shrine.grant_role(role_value, gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     # Add rebasing_token as Yang
     await shrine.add_yang(rebasing_token.contract_address, to_wad(1000), to_ray(Decimal("0.8")), to_wad(1000)).invoke(
@@ -225,9 +228,10 @@ async def test_gate_setup(gate, rebasing_token):
     asset_bal = (await gate.get_total_assets().invoke()).result.wad
     assert asset_bal == 0
 
-    # Check Abbot address is authorized
-    authorized = (await gate.get_auth(ABBOT).invoke()).result.bool
-    assert authorized == TRUE
+    # Check Abbot address is authorized to deposit and withdraw
+    abbot_role = (await gate.get_role(ABBOT).invoke()).result.ufelt
+    expected_abbot_role_value = GATE_DEPOSIT | GATE_WITHDRAW
+    assert abbot_role == expected_abbot_role_value
 
     # Check initial values
     assert (await gate.get_total_yang().invoke()).result.wad == 0
@@ -627,7 +631,7 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
 async def test_kill(shrine_authed, gate, rebasing_token, gate_deposit, rebase):
 
     # Kill
-    await gate.kill().invoke(caller_address=ABBOT)
+    await gate.kill().invoke(caller_address=ADMIN)
     assert (await gate.get_live().invoke()).result.bool == FALSE
 
     # Assert deposit fails
@@ -758,7 +762,7 @@ async def test_gate_constructor_invalid_tax(shrine, starknet, rebasing_token):
 async def test_gate_set_tax_pass(gate_rebasing_tax):
     gate = gate_rebasing_tax
 
-    tx = await gate.set_tax(TAX_RAY // 2).invoke(caller_address=ABBOT)
+    tx = await gate.set_tax(TAX_RAY // 2).invoke(caller_address=ADMIN)
     assert_event_emitted(tx, gate.contract_address, "TaxUpdated", [TAX_RAY, TAX_RAY // 2])
 
     new_tax = (await gate.get_tax().invoke()).result.ray
@@ -770,7 +774,7 @@ async def test_gate_set_tax_collector(gate_rebasing_tax):
     gate = gate_rebasing_tax
 
     new_tax_collector = 9876
-    tx = await gate.set_tax_collector(new_tax_collector).invoke(caller_address=ABBOT)
+    tx = await gate.set_tax_collector(new_tax_collector).invoke(caller_address=ADMIN)
 
     assert_event_emitted(
         tx,
@@ -789,16 +793,16 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
 
     # Fails due to max tax exceeded
     with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
-        await gate.set_tax(to_ray(TAX_MAX) + 1).invoke(caller_address=ABBOT)
+        await gate.set_tax(to_ray(TAX_MAX) + 1).invoke(caller_address=ADMIN)
 
     # Fails due to non-authorised address
-    with pytest.raises(StarkException, match="Auth: caller not authorized"):
+    with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {GATE_SET_TAX}"):
         await gate.set_tax(TAX_RAY).invoke(caller_address=BAD_GUY)
         await gate.set_tax_collector(BAD_GUY).invoke(caller_address=BAD_GUY)
 
     # Fails due to zero address
     with pytest.raises(StarkException, match="Gate: Invalid tax collector address"):
-        await gate.set_tax_collector(ZERO_ADDRESS).invoke(caller_address=ABBOT)
+        await gate.set_tax_collector(ZERO_ADDRESS).invoke(caller_address=ADMIN)
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing_tax"], indirect=["gate"])

@@ -28,3 +28,10 @@ COMPOUND_MULTIPLIER = decimal.Decimal("1.1")
 
 # Accounts
 TAX_COLLECTOR = str_to_felt("tax collector")
+
+# Access Control
+GATE_KILL = 2**0
+GATE_DEPOSIT = 2**1
+GATE_WITHDRAW = 2**2
+GATE_SET_TAX = 2**3
+GATE_SET_TAX_COLLECTOR = 2**4

@@ -1,13 +1,14 @@
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE, FALSE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.gate.gate_tax import GateTax
 from contracts.gate.gate_tax_external import get_tax, get_tax_collector
+from contracts.gate.rebasing_yang.gate_accesscontrol import GateAccessControl
 from contracts.gate.rebasing_yang.library import Gate
 from contracts.gate.rebasing_yang.library_external import (
     get_shrine,
@@ -19,8 +20,16 @@ from contracts.gate.rebasing_yang.library_external import (
     preview_withdraw,
 )
 from contracts.interfaces import IShrine
-from contracts.lib.auth import Auth
-from contracts.lib.auth_external import authorize, revoke, get_auth
+# these imported public functions are part of the contract's interface
+from contracts.lib.acl import AccessControl
+from contracts.lib.acl_external import (
+    get_role,
+    has_role,
+    get_admin,
+    grant_role,
+    revoke_role,
+    renounce_role,
+)
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
 
@@ -62,10 +71,18 @@ end
 #
 
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, shrine_address, asset_address, tax, tax_collector_address
-):
-    Auth.authorize(authed)
+func constructor{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(authed, shrine_address, asset_address, tax, tax_collector_address):
+    alloc_locals
+
+    AccessControl.initializer(authed)
+
+    # Grant permission
+    AccessControl._grant_role(GateAccessControl.KILL, authed)
+    AccessControl._grant_role(GateAccessControl.SET_TAX, authed)
+    AccessControl._grant_role(GateAccessControl.SET_TAX_COLLECTOR, authed)
+
     Gate.initializer(shrine_address, asset_address)
     GateTax.initializer(tax, tax_collector_address)
     gate_live_storage.write(TRUE)
@@ -75,15 +92,19 @@ end
 # Setters
 
 @external
-func set_tax{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tax_ray):
-    Auth.assert_caller_authed()
+func set_tax{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(tax_ray):
+    AccessControl.assert_has_role(GateAccessControl.SET_TAX)
     GateTax.set_tax(tax_ray)
     return ()
 end
 
 @external
-func set_tax_collector{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
-    Auth.assert_caller_authed()
+func set_tax_collector{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(address):
+    AccessControl.assert_has_role(GateAccessControl.SET_TAX_COLLECTOR)
     GateTax.set_tax_collector(address)
     return ()
 end
@@ -93,17 +114,19 @@ end
 #
 
 @external
-func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Auth.assert_caller_authed()
+func kill{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}():
+    AccessControl.assert_has_role(GateAccessControl.KILL)
     gate_live_storage.write(FALSE)
     Killed.emit()
     return ()
 end
 
 @external
-func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, assets_wad
-) -> (wad):
+func deposit{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user_address, trove_id, assets_wad) -> (wad):
     alloc_locals
     # TODO: Revisit whether reentrancy guard should be added here
 
@@ -111,7 +134,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_live()
 
     # Only Abbot can call
-    Auth.assert_caller_authed()
+    AccessControl.assert_has_role(GateAccessControl.DEPOSIT)
 
     let (yang_wad) = Gate.convert_to_yang(assets_wad)
     if yang_wad == 0:
@@ -150,14 +173,14 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 @external
-func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, yang_wad
-) -> (wad):
+func withdraw{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user_address, trove_id, yang_wad) -> (wad):
     alloc_locals
     # TODO: Revisit whether reentrancy guard should be added here
 
     # Only Abbot can call
-    Auth.assert_caller_authed()
+    AccessControl.assert_has_role(GateAccessControl.WITHDRAW)
 
     let (assets_wad) = Gate.convert_to_assets(yang_wad)
     if assets_wad == 0:
