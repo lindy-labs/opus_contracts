@@ -2,7 +2,7 @@ import pytest
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.shrine.constants import FORGE_AMT, TROVE_1
+from tests.shrine.constants import FORGE_AMT, SHRINE_MOVE_YIN, TROVE_1
 from tests.utils import SHRINE_OWNER, TROVE1_OWNER, assert_event_emitted, compile_contract, str_to_felt
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
@@ -29,8 +29,8 @@ async def yin(starknet, shrine) -> StarknetContract:
         constructor_calldata=[str_to_felt("USD Aura"), str_to_felt("USDa"), 18, shrine.contract_address],
     )
 
-    # Authorizing the yin contract in shrine
-    await shrine.authorize(deployed_yin.contract_address).invoke(caller_address=SHRINE_OWNER)
+    # Authorizing the yin contract to call `move_yin` in shrine
+    await shrine.grant_role(SHRINE_MOVE_YIN, deployed_yin.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return deployed_yin
 
