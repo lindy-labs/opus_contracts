@@ -199,13 +199,6 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 # tests
 #
 
-# TODO:
-# deposit - happy path, depositing into foreign trove, depositing 0 amount,
-#           depositing twice the same token in 1 call, depositing a yang that hasn't been added,
-#           yangs & amounts that don't match in length as args
-# test_get_user_trove_ids
-# test_get_yang_addresses
-
 
 @pytest.mark.usefixtures("abbot_with_yangs")
 @pytest.mark.asyncio
@@ -431,6 +424,12 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
         await shrine.get_deposit(TROVE_1, doge_yang.contract_address).invoke()
     ).result.wad == INITIAL_DOGE_DEPOSIT + fresh_doge_deposit
 
+    # depositing 0 should pass, no event on gate (exits early)
+    await abbot.deposit(steth_yang.contract_address, TROVE_1, 0).invoke(caller_address=AURA_USER)
+    assert (
+        await shrine.get_deposit(TROVE_1, steth_yang.contract_address).invoke()
+    ).result.wad == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
+
 
 @pytest.mark.usefixtures("abbot_with_yangs")
 @pytest.mark.asyncio
@@ -441,8 +440,12 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
         await abbot.deposit(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).invoke(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
+    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {TROVE_1}"):
         await abbot.deposit(steth_yang.contract_address, TROVE_1, to_wad(1)).invoke(caller_address=OTHER_USER)
+
+    nope_trove = 2  # trove ID 2 does not exist
+    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {nope_trove}"):
+        await abbot.deposit(steth_yang.contract_address, nope_trove, to_wad(1)).invoke(caller_address=AURA_USER)
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -547,3 +550,24 @@ async def test_melt_failures(abbot):
     with pytest.raises(StarkException, match="Shrine: System debt underflow"):
         amount = INITIAL_FORGED_AMOUNT * 2
         await abbot.melt(TROVE_1, amount).invoke(caller_address=AURA_USER)
+
+
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
+@pytest.mark.asyncio
+async def test_get_user_trove_ids(abbot, steth_yang: YangConfig):
+    assert (await abbot.get_user_trove_ids(AURA_USER).invoke()).result.trove_ids == [TROVE_1]
+    assert (await abbot.get_user_trove_ids(OTHER_USER).invoke()).result.trove_ids == []
+
+    # opening another trove, checking if it gets added to the array
+    await abbot.open_trove(0, [steth_yang.contract_address], [to_wad(2)]).invoke(caller_address=AURA_USER)
+    assert (await abbot.get_user_trove_ids(AURA_USER).invoke()).result.trove_ids == [TROVE_1, 2]
+    assert (await abbot.get_troves_count().invoke()).result.ufelt == 2
+
+
+@pytest.mark.usefixtures("abbot_with_yangs")
+@pytest.mark.asyncio
+async def test_get_yang_addresses(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+    assert (await abbot.get_yang_addresses().invoke()).result.addresses == [
+        steth_yang.contract_address,
+        doge_yang.contract_address,
+    ]
