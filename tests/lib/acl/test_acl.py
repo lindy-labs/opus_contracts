@@ -2,6 +2,7 @@ from itertools import combinations
 from typing import Tuple
 
 import pytest
+from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
@@ -31,7 +32,7 @@ def get_role_value(roles: Tuple[str]) -> int:
 
 
 @pytest.fixture
-async def acl(starknet_session):
+async def acl(starknet_session) -> StarknetContract:
     contract = compile_contract("tests/lib/acl/acl_contract.cairo")
     return await starknet_session.deploy(contract_class=contract, constructor_calldata=[ACL_OWNER])
 
@@ -43,13 +44,13 @@ async def sudo_user(acl):
 
 
 @pytest.fixture
-async def acl_change_admin(acl):
+async def acl_change_admin(acl) -> StarknetTransactionExecutionInfo:
     tx = await acl.change_admin(NEW_ACL_OWNER).invoke(caller_address=ACL_OWNER)
     return tx
 
 
 @pytest.fixture
-async def acl_new_admin(acl, acl_change_admin):
+async def acl_new_admin(acl, acl_change_admin) -> StarknetContract:
     return acl
 
 
