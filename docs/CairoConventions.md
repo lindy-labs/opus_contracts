@@ -119,7 +119,7 @@ The naming conventions are the following:
 - `packed`: A felt that has had multiple values packed into it
 - Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`.
 
-These names can be used as a standalone value (1) or suffixes if you want to communicate the meaning of a value (2) or in case where there are multiple return values of the same type (3), as illustrated in the following example:
+These names can be used as a standalone value (1), or as suffixes if you want to communicate the meaning of a value (2) or multiple return values of the same 'type' (3), as illustrated in the following example:
 
 ```cairo
 # 1
