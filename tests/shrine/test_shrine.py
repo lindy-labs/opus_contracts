@@ -427,29 +427,34 @@ async def test_auth(shrine_deploy):
     # Auth
     #
     b = str_to_felt("2nd owner")
-    c = str_to_felt("3rd owner")
 
     auth_function = SET_CEILING
 
     assert (await shrine.get_admin().invoke()).result.address == SHRINE_OWNER
 
     # Authorizing an address and testing that it can use authorized functions
-    await shrine.grant_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.grant_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    assert_event_emitted(tx, shrine.contract_address, "RoleGranted", [SET_CEILING, b])
     b_authorized = (await shrine.has_role(auth_function, b).invoke()).result.bool
     assert b_authorized == TRUE
+    b_role = (await shrine.get_role(b).invoke()).result.ufelt
+    assert b_role == SET_CEILING
 
     await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=b)
     new_ceiling = (await shrine.get_ceiling().invoke()).result.wad
     assert new_ceiling == WAD_SCALE
 
     # Revoking an address
-    await shrine.revoke_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
-    b_authorized = (await shrine.has_role(auth_function, c).invoke()).result.bool
+    tx = await shrine.revoke_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    assert_event_emitted(tx, shrine.contract_address, "RoleRevoked", [SET_CEILING, b])
+    b_authorized = (await shrine.has_role(auth_function, b).invoke()).result.bool
     assert b_authorized == FALSE
+    b_role = (await shrine.get_role(b).invoke()).result.ufelt
+    assert b_role == 0
 
     # Calling an authorized function with an unauthorized address - should fail
     with pytest.raises(StarkException):
-        await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=c)
+        await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=b)
 
 
 @pytest.mark.asyncio
