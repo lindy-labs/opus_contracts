@@ -8,7 +8,7 @@ from starkware.starknet.testing.starknet import Starknet, StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.utils import (
-    PRIME,
+    CAIRO_PRIME,
     RANGE_CHECK_BOUND,
     RAY_SCALE,
     WAD_RAY_DIFF,
@@ -216,8 +216,8 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
         sign = -1 if right < 0 else 1
         # Convert right to absolute value before converting it to felt
         right = abs(right)
-        # `signed_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
-        assume(right <= PRIME // RANGE_CHECK_BOUND)
+        # `signed_div_rem` assumes 0 < right <= CAIRO_PRIME / RANGE_CHECK_BOUND
+        assume(right <= CAIRO_PRIME // RANGE_CHECK_BOUND)
         # Scale left by wad after converting it to felt for computation of python value
         left *= scale
 
@@ -261,11 +261,11 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 )
 @pytest.mark.asyncio
 async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
-    # `unsigned_div_rem` assumes 0 < right <= PRIME / RANGE_CHECK_BOUND
-    assume(right <= PRIME // RANGE_CHECK_BOUND)
+    # `unsigned_div_rem` assumes 0 < right <= CAIRO_PRIME / RANGE_CHECK_BOUND
+    assume(right <= CAIRO_PRIME // RANGE_CHECK_BOUND)
     scaled_left = left * scale
     # Exclude values greater than felt after scaling
-    assume(scaled_left <= PRIME)
+    assume(scaled_left <= CAIRO_PRIME)
     expected_py = op(scaled_left, right)
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
