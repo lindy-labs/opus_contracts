@@ -361,6 +361,8 @@ end
 func set_threshold{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(yang_address, new_threshold):
+    alloc_locals
+
     AccessControl.assert_has_role(ShrineAccessControl.SET_THRESHOLD)
 
     # Check that threshold value is not greater than max threshold
