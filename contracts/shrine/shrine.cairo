@@ -405,11 +405,7 @@ func constructor{
     AccessControl.initializer(authed)
 
     # Grant authed permission
-    AccessControl._grant_role(ShrineAccessControl.ADD_YANG, authed)
-    AccessControl._grant_role(ShrineAccessControl.UPDATE_YANG_MAX, authed)
-    AccessControl._grant_role(ShrineAccessControl.SET_CEILING, authed)
-    AccessControl._grant_role(ShrineAccessControl.SET_THRESHOLD, authed)
-    AccessControl._grant_role(ShrineAccessControl.KILL, authed)
+    AccessControl._grant_role(ShrineAccessControl.DEFAULT_SHRINE_ADMIN_ROLE, authed)
 
     shrine_live_storage.write(TRUE)
 

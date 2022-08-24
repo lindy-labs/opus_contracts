@@ -1,6 +1,6 @@
 namespace ShrineAccessControl:
     #
-    # Constants
+    # Roles
     #
     const ADD_YANG = 2 ** 0
     const UPDATE_YANG_MAX = 2 ** 1
@@ -16,4 +16,9 @@ namespace ShrineAccessControl:
     const MELT = 2 ** 11
     const SEIZE = 2 ** 12
     const MOVE_YIN = 2 ** 13
+
+    #
+    # Constants
+    #
+    const DEFAULT_SHRINE_ADMIN_ROLE = ADD_YANG + UPDATE_YANG_MAX + SET_CEILING + SET_THRESHOLD + KILL
 end

@@ -75,7 +75,7 @@ func constructor{
     AccessControl.initializer(authed)
 
     # Grant permission
-    AccessControl._grant_role(GateAccessControl.KILL, authed)
+    AccessControl._grant_role(GateAccessControl.DEFAULT_GATE_ADMIN_ROLE, authed)
 
     Gate.initializer(shrine_address, asset_address)
     gate_live_storage.write(TRUE)

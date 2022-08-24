@@ -80,9 +80,7 @@ func constructor{
     AccessControl.initializer(authed)
 
     # Grant permission
-    AccessControl._grant_role(GateAccessControl.KILL, authed)
-    AccessControl._grant_role(GateAccessControl.SET_TAX, authed)
-    AccessControl._grant_role(GateAccessControl.SET_TAX_COLLECTOR, authed)
+    AccessControl._grant_role(GateAccessControl.DEFAULT_GATE_TAXABLE_ADMIN_ROLE, authed)
 
     Gate.initializer(shrine_address, asset_address)
     GateTax.initializer(tax, tax_collector_address)
