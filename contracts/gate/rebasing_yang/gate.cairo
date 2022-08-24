@@ -25,6 +25,7 @@ from contracts.lib.acl_external import (
     grant_role,
     revoke_role,
     renounce_role,
+    change_admin,
 )
 from contracts.interfaces import IShrine
 from contracts.shared.interfaces import IERC20

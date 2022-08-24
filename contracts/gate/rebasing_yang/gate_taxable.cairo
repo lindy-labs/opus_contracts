@@ -29,6 +29,7 @@ from contracts.lib.acl_external import (
     grant_role,
     revoke_role,
     renounce_role,
+    change_admin,
 )
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
