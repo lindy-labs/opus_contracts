@@ -1,20 +1,25 @@
 # SPDX-License-Identifier: MIT
-# OpenZeppelin Cairo Contracts v0.1.0 (account/Account.cairo)
+# OpenZeppelin Contracts for Cairo v0.3.1 (account/presets/Account.cairo)
 
 %lang starknet
 
-from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin
-from openzeppelin.account.library import (
-    AccountCallArray,
-    Account_execute,
-    Account_get_nonce,
-    Account_initializer,
-    Account_get_public_key,
-    Account_set_public_key,
-    Account_is_valid_signature,
-)
+from starkware.cairo.common.cairo_builtins import HashBuiltin, SignatureBuiltin, BitwiseBuiltin
 
-from openzeppelin.introspection.ERC165 import ERC165_supports_interface
+from openzeppelin.account.library import Account, AccountCallArray
+
+from openzeppelin.introspection.erc165.library import ERC165
+
+#
+# Constructor
+#
+
+@constructor
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    public_key : felt
+):
+    Account.initializer(public_key)
+    return ()
+end
 
 #
 # Getters
@@ -24,13 +29,13 @@ from openzeppelin.introspection.ERC165 import ERC165_supports_interface
 func get_public_key{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
     res : felt
 ):
-    let (res) = Account_get_public_key()
+    let (res) = Account.get_public_key()
     return (res=res)
 end
 
 @view
 func get_nonce{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (res : felt):
-    let (res) = Account_get_nonce()
+    let (res) = Account.get_nonce()
     return (res=res)
 end
 
@@ -38,7 +43,7 @@ end
 func supportsInterface{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     interfaceId : felt
 ) -> (success : felt):
-    let (success) = ERC165_supports_interface(interfaceId)
+    let (success) = ERC165.supports_interface(interfaceId)
     return (success)
 end
 
@@ -50,19 +55,7 @@ end
 func set_public_key{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     new_public_key : felt
 ):
-    Account_set_public_key(new_public_key)
-    return ()
-end
-
-#
-# Constructor
-#
-
-@constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    public_key : felt
-):
-    Account_initializer(public_key)
+    Account.set_public_key(new_public_key)
     return ()
 end
 
@@ -73,14 +66,18 @@ end
 @view
 func is_valid_signature{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, ecdsa_ptr : SignatureBuiltin*
-}(hash : felt, signature_len : felt, signature : felt*) -> ():
-    Account_is_valid_signature(hash, signature_len, signature)
-    return ()
+}(hash : felt, signature_len : felt, signature : felt*) -> (is_valid : felt):
+    let (is_valid) = Account.is_valid_signature(hash, signature_len, signature)
+    return (is_valid=is_valid)
 end
 
 @external
 func __execute__{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, ecdsa_ptr : SignatureBuiltin*
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr,
+    ecdsa_ptr : SignatureBuiltin*,
+    bitwise_ptr : BitwiseBuiltin*,
 }(
     call_array_len : felt,
     call_array : AccountCallArray*,
@@ -88,7 +85,7 @@ func __execute__{
     calldata : felt*,
     nonce : felt,
 ) -> (response_len : felt, response : felt*):
-    let (response_len, response) = Account_execute(
+    let (response_len, response) = Account.execute(
         call_array_len, call_array, calldata_len, calldata, nonce
     )
     return (response_len=response_len, response=response)

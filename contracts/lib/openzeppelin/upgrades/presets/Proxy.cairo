@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: MIT
-# OpenZeppelin Cairo Contracts v0.1.0 (upgrades/Proxy.cairo)
+# OpenZeppelin Contracts for Cairo v0.3.1 (upgrades/presets/Proxy.cairo)
 
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.starknet.common.syscalls import delegate_l1_handler, delegate_call
-from openzeppelin.upgrades.library import Proxy_implementation_address, Proxy_set_implementation
+from starkware.starknet.common.syscalls import library_call, library_call_l1_handler
+from openzeppelin.upgrades.library import Proxy
 
 #
 # Constructor
@@ -13,9 +13,9 @@ from openzeppelin.upgrades.library import Proxy_implementation_address, Proxy_se
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    implementation_address : felt
+    implementation_hash : felt
 ):
-    Proxy_set_implementation(implementation_address)
+    Proxy._set_implementation_hash(implementation_hash)
     return ()
 end
 
@@ -29,15 +29,14 @@ end
 func __default__{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     selector : felt, calldata_size : felt, calldata : felt*
 ) -> (retdata_size : felt, retdata : felt*):
-    let (address) = Proxy_implementation_address.read()
+    let (class_hash) = Proxy.get_implementation_hash()
 
-    let (retdata_size : felt, retdata : felt*) = delegate_call(
-        contract_address=address,
+    let (retdata_size : felt, retdata : felt*) = library_call(
+        class_hash=class_hash,
         function_selector=selector,
         calldata_size=calldata_size,
         calldata=calldata,
     )
-
     return (retdata_size=retdata_size, retdata=retdata)
 end
 
@@ -46,14 +45,13 @@ end
 func __l1_default__{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     selector : felt, calldata_size : felt, calldata : felt*
 ):
-    let (address) = Proxy_implementation_address.read()
+    let (class_hash) = Proxy.get_implementation_hash()
 
-    delegate_l1_handler(
-        contract_address=address,
+    library_call_l1_handler(
+        class_hash=class_hash,
         function_selector=selector,
         calldata_size=calldata_size,
         calldata=calldata,
     )
-
     return ()
 end

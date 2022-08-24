@@ -10,6 +10,9 @@ namespace IShrine:
     func get_trove(trove_id) -> (trove : Trove):
     end
 
+    func get_yin(user_address) -> (wad):
+    end
+
     func get_yang(yang_address) -> (yang : Yang):
     end
 
@@ -19,16 +22,19 @@ namespace IShrine:
     func get_deposit(trove_id, yang_address) -> (wad):
     end
 
-    func get_shrine_debt() -> (wad):
+    func get_debt() -> (wad):
     end
 
-    func get_yang_price(yang_address, interval) -> (wad):
+    func get_total_yin() -> (wad):
+    end
+
+    func get_yang_price(yang_address, interval) -> (price_wad, cumulative_price_wad):
     end
 
     func get_ceiling() -> (wad):
     end
 
-    func get_multiplier(interval) -> (ray):
+    func get_multiplier(interval) -> (multiplier_ray, cumulative_multiplier_ray):
     end
 
     func get_threshold(yang_address) -> (ray):
@@ -61,19 +67,22 @@ namespace IShrine:
     func update_multiplier(new_multiplier):
     end
 
-    func move_yang(yang_address, amount, src_trove_id, dst_trove_id):
+    func move_yang(yang_address, src_trove_id, dst_trove_id, amount):
     end
 
-    func deposit(yang_address, amount, trove_id):
+    func move_yin(src_address, dst_address, amount):
     end
 
-    func withdraw(yang_address, amount, trove_id):
+    func deposit(yang_address, trove_id, amount):
     end
 
-    func forge(amount, trove_id):
+    func withdraw(yang_address, trove_id, amount):
     end
 
-    func melt(amount, trove_id):
+    func forge(user_address, trove_id, amount):
+    end
+
+    func melt(user_address, trove_id, amount):
     end
 
     func seize(trove_id):
@@ -88,10 +97,10 @@ namespace IShrine:
     func get_current_trove_ratio(trove_id) -> (ray):
     end
 
-    func get_current_yang_price(yang_address) -> (wad):
+    func get_current_yang_price(yang_address) -> (price_wad, cumulative_price_wad, interval_ufelt):
     end
 
-    func get_current_multiplier() -> (ray):
+    func get_current_multiplier() -> (multiplier_ray, cumulative_multiplier_ray, interval_ufelt):
     end
 
     func estimate(trove_id) -> (wad):

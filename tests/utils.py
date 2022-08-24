@@ -13,11 +13,9 @@ from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
-from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starknet.testing.starknet import Starknet, StarknetContract
 
-PRIME = 2**251 + 17 * 2**192 + 1
 RANGE_CHECK_BOUND = 2**128
-
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
 ZERO_ADDRESS = 0
 TRUE = 1
@@ -54,6 +52,23 @@ ERROR_MARGIN = Decimal("0.000000001")
 seed(420)
 
 
+def str_to_felt(text: str) -> int:
+    b_text = bytes(text, "ascii")
+    return int.from_bytes(b_text, "big")
+
+
+# Common addresses
+SHRINE_OWNER = str_to_felt("shrine owner")
+ADMIN = str_to_felt("admin")
+ABBOT = str_to_felt("abbot")
+BAD_GUY = str_to_felt("bad guy")
+
+TROVE1_OWNER = str_to_felt("trove 1 owner")
+TROVE2_OWNER = str_to_felt("trove 2 owner")
+TROVE3_OWNER = str_to_felt("trove 3 owner")
+TROVE4_OWNER = str_to_felt("trove 4 owner")
+
+
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
         return value.contract_address
@@ -61,15 +76,10 @@ def as_address(value: Addressable) -> int:
 
 
 def signed_int_to_felt(a: int) -> int:
-    """Takes in integer value, returns input if positive, otherwise return PRIME + input"""
+    """Takes in integer value, returns input if positive, otherwise return CAIRO_PRIME + input"""
     if a >= 0:
         return a
-    return PRIME + a
-
-
-def str_to_felt(text: str) -> int:
-    b_text = bytes(text, "ascii")
-    return int.from_bytes(b_text, "big")
+    return CAIRO_PRIME + a
 
 
 def felt_to_str(felt: int) -> str:
@@ -177,8 +187,12 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
     return lo, hi
 
 
-def set_block_timestamp(sn, block_timestamp):
-    sn.state.block_info = BlockInfo.create_for_testing(sn.state.block_info.block_number, block_timestamp)
+def get_block_timestamp(sn: Starknet) -> int:
+    return sn.state.state.block_info.block_timestamp
+
+
+def set_block_timestamp(sn: Starknet, block_timestamp: int):
+    sn.state.state.block_info = BlockInfo.create_for_testing(sn.state.state.block_info.block_number, block_timestamp)
 
 
 #

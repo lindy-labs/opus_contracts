@@ -1,30 +1,41 @@
 # SPDX-License-Identifier: MIT
-# OpenZeppelin Contracts for Cairo v0.2.0 (token/erc20/ERC20_Pausable.cairo)
+# OpenZeppelin Contracts for Cairo v0.3.1 (token/erc20/presets/ERC20Upgradeable.cairo)
 
 %lang starknet
+%builtins pedersen range_check
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.uint256 import Uint256
 
 from openzeppelin.token.erc20.library import ERC20
+from openzeppelin.upgrades.library import Proxy
 
-from openzeppelin.access.ownable import Ownable
+#
+# Initializer
+#
 
-from openzeppelin.security.pausable import Pausable
-
-@constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+@external
+func initializer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     name : felt,
     symbol : felt,
     decimals : felt,
     initial_supply : Uint256,
     recipient : felt,
-    owner : felt,
+    proxy_admin : felt,
 ):
     ERC20.initializer(name, symbol, decimals)
     ERC20._mint(recipient, initial_supply)
-    Ownable.initializer(owner)
+    Proxy.initializer(proxy_admin)
+    return ()
+end
+
+@external
+func upgrade{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    new_implementation : felt
+):
+    Proxy.assert_only_admin()
+    Proxy._set_implementation_hash(new_implementation)
     return ()
 end
 
@@ -76,18 +87,6 @@ func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (remaining)
 end
 
-@view
-func owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (owner : felt):
-    let (owner : felt) = Ownable.owner()
-    return (owner)
-end
-
-@view
-func paused{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (paused : felt):
-    let (paused) = Pausable.is_paused()
-    return (paused)
-end
-
 #
 # Externals
 #
@@ -96,7 +95,6 @@ end
 func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     recipient : felt, amount : Uint256
 ) -> (success : felt):
-    Pausable.assert_not_paused()
     ERC20.transfer(recipient, amount)
     return (TRUE)
 end
@@ -105,7 +103,6 @@ end
 func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     sender : felt, recipient : felt, amount : Uint256
 ) -> (success : felt):
-    Pausable.assert_not_paused()
     ERC20.transfer_from(sender, recipient, amount)
     return (TRUE)
 end
@@ -114,7 +111,6 @@ end
 func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender : felt, amount : Uint256
 ) -> (success : felt):
-    Pausable.assert_not_paused()
     ERC20.approve(spender, amount)
     return (TRUE)
 end
@@ -123,7 +119,6 @@ end
 func increaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender : felt, added_value : Uint256
 ) -> (success : felt):
-    Pausable.assert_not_paused()
     ERC20.increase_allowance(spender, added_value)
     return (TRUE)
 end
@@ -132,35 +127,6 @@ end
 func decreaseAllowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     spender : felt, subtracted_value : Uint256
 ) -> (success : felt):
-    Pausable.assert_not_paused()
     ERC20.decrease_allowance(spender, subtracted_value)
     return (TRUE)
-end
-
-@external
-func transferOwnership{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    newOwner : felt
-):
-    Ownable.transfer_ownership(newOwner)
-    return ()
-end
-
-@external
-func renounceOwnership{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Ownable.renounce_ownership()
-    return ()
-end
-
-@external
-func pause{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Ownable.assert_only_owner()
-    Pausable._pause()
-    return ()
-end
-
-@external
-func unpause{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Ownable.assert_only_owner()
-    Pausable._unpause()
-    return ()
 end
