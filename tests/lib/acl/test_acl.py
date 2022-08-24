@@ -1,5 +1,5 @@
 from itertools import combinations
-from typing import Tuple
+from typing import Callable, List, Tuple
 
 import pytest
 from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
@@ -17,16 +17,17 @@ ROLES = {
     "WRITE": 2,
     "READ": 4,
 }
-SUDO_USER = sum(ROLES.values())
 
-ROLES_COMBINATIONS = []
+SUDO_USER: int = sum(ROLES.values())
+
+ROLES_COMBINATIONS: List[Tuple[str, ...]] = []
 
 for i in range(1, len(ROLES) + 1):
     for j in combinations(ROLES, i):
         ROLES_COMBINATIONS.append(j)
 
 
-def get_role_value(roles: Tuple[str]) -> int:
+def get_role_value(roles: Tuple[str, ...]) -> int:
     """Takes in a list of string values representing the role name and returns the flag value"""
     return sum([ROLES[i] for i in roles])
 
@@ -120,11 +121,18 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
     # Check roles granted
     for r in ROLES:
         role_value = ROLES[r]
+
+        # Check `has_role`
         has_role = (await acl.has_role(role_value, ACL_USER).invoke()).result.bool
+
+        # Check getter
+        getter: Callable = acl.get_contract_function(f"can_{r.lower()}")
+        can_perform_role = (await getter(ACL_USER).invoke()).result.bool
+
         if r in given_roles:
-            assert has_role == TRUE
+            assert has_role == can_perform_role == TRUE
         else:
-            assert has_role == FALSE
+            assert has_role == can_perform_role == FALSE
 
     # Compute value of revoked role
     revoked_role_value = get_role_value(revoked_roles)
@@ -143,12 +151,19 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
     updated_role_list = [i for i in given_roles if i not in revoked_roles]
     for r in ROLES:
         role_value = ROLES[r]
+
+        # Check `has_role`
         has_role = (await acl.has_role(role_value, ACL_USER).invoke()).result.bool
+
+        # Check getter
+        getter: Callable = acl.get_contract_function(f"can_{r.lower()}")
+        can_perform_role = (await getter(ACL_USER).invoke()).result.bool
+
         if r in updated_role_list:
-            assert has_role == TRUE
+            assert has_role == can_perform_role == TRUE
             await acl.assert_has_role(role_value).invoke(caller_address=ACL_USER)
         else:
-            assert has_role == FALSE
+            assert has_role == can_perform_role == FALSE
             with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {role_value}"):
                 await acl.assert_has_role(role_value).invoke(caller_address=ACL_USER)
 
@@ -185,11 +200,18 @@ async def test_renounce_role(acl, renounced_roles):
     updated_role_list = [i for i in given_roles if i not in renounced_roles]
     for r in ROLES:
         role_value = ROLES[r]
+
+        # Check `has_role`
         has_role = (await acl.has_role(role_value, ACL_USER).invoke()).result.bool
+
+        # Check getter
+        getter: Callable = acl.get_contract_function(f"can_{r.lower()}")
+        can_perform_role = (await getter(ACL_USER).invoke()).result.bool
+
         if r in updated_role_list:
-            assert has_role == TRUE
+            assert has_role == can_perform_role == TRUE
             await acl.assert_has_role(role_value).invoke(caller_address=ACL_USER)
         else:
-            assert has_role == FALSE
+            assert has_role == can_perform_role == FALSE
             with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {role_value}"):
                 await acl.assert_has_role(role_value).invoke(caller_address=ACL_USER)

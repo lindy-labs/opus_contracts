@@ -46,3 +46,31 @@ func assert_admin{
     AccessControl.assert_admin()
     return ()
 end
+
+#
+# Access Control - Getters
+#
+
+@view
+func can_execute{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user) -> (bool):
+    let (authorized) = AccessControl.has_role(AclAccessControl.EXECUTE, user)
+    return (authorized)
+end
+
+@view
+func can_write{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user) -> (bool):
+    let (authorized) = AccessControl.has_role(AclAccessControl.WRITE, user)
+    return (authorized)
+end
+
+@view
+func can_read{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user) -> (bool):
+    let (authorized) = AccessControl.has_role(AclAccessControl.READ, user)
+    return (authorized)
+end
