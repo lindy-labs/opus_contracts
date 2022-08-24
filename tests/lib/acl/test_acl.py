@@ -124,10 +124,8 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
         getter: Callable = acl.get_contract_function(f"can_{r.lower()}")
         can_perform_role = (await getter(ACL_USER).invoke()).result.bool
 
-        if r in given_roles:
-            assert has_role == can_perform_role == TRUE
-        else:
-            assert has_role == can_perform_role == FALSE
+        expected = TRUE if r in given_roles else FALSE
+        assert has_role == can_perform_role == expected
 
     # Compute value of revoked role
     revoked_role_value = get_role_value(revoked_roles, ROLES)
