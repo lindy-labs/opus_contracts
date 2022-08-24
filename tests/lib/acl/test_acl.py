@@ -6,7 +6,7 @@ from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import BAD_GUY, FALSE, TRUE, assert_event_emitted, compile_contract, str_to_felt
+from tests.utils import BAD_GUY, FALSE, TRUE, assert_event_emitted, compile_contract, get_role_value, str_to_felt
 
 ACL_OWNER = str_to_felt("acl owner")
 NEW_ACL_OWNER = str_to_felt("new acl owner")
@@ -18,18 +18,13 @@ ROLES = {
     "READ": 4,
 }
 
-SUDO_USER: int = sum(ROLES.values())
+SUDO_USER: int = get_role_value(tuple(ROLES.keys()), ROLES)
 
 ROLES_COMBINATIONS: List[Tuple[str, ...]] = []
 
 for i in range(1, len(ROLES) + 1):
     for j in combinations(ROLES, i):
         ROLES_COMBINATIONS.append(j)
-
-
-def get_role_value(roles: Tuple[str, ...]) -> int:
-    """Takes in a list of string values representing the role name and returns the flag value"""
-    return sum([ROLES[i] for i in roles])
 
 
 @pytest.fixture
@@ -107,7 +102,7 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
     acl, admin = acl_both
 
     # Compute value of given role
-    given_role_value = get_role_value(given_roles)
+    given_role_value = get_role_value(given_roles, ROLES)
 
     tx = await acl.grant_role(given_role_value, ACL_USER).invoke(caller_address=admin)
 
@@ -135,7 +130,7 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
             assert has_role == can_perform_role == FALSE
 
     # Compute value of revoked role
-    revoked_role_value = get_role_value(revoked_roles)
+    revoked_role_value = get_role_value(revoked_roles, ROLES)
 
     tx = await acl.revoke_role(revoked_role_value, ACL_USER).invoke(caller_address=admin)
 
@@ -185,7 +180,7 @@ async def test_role_actions_unauthorized(acl):
 @pytest.mark.usefixtures("sudo_user")
 @pytest.mark.asyncio
 async def test_renounce_role(acl, renounced_roles):
-    renounced_role_value = get_role_value(renounced_roles)
+    renounced_role_value = get_role_value(renounced_roles, ROLES)
     tx = await acl.renounce_role(renounced_role_value, ACL_USER).invoke(caller_address=ACL_USER)
 
     assert_event_emitted(tx, acl.contract_address, "RoleRevoked", [renounced_role_value, ACL_USER])

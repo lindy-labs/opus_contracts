@@ -6,7 +6,7 @@ from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.shrine.constants import SHRINE_DEPOSIT, SHRINE_WITHDRAW, TROVE_1, TROVE_2
+from tests.shrine.constants import SHRINE_ROLES, TROVE_1, TROVE_2
 from tests.utils import (
     ABBOT,
     ADMIN,
@@ -23,6 +23,7 @@ from tests.utils import (
     compile_contract,
     from_uint,
     from_wad,
+    get_role_value,
     to_ray,
     to_wad,
 )
@@ -103,8 +104,7 @@ async def gate_rebasing_tax(starknet, shrine, rebasing_token) -> StarknetContrac
     )
 
     # Grant `Abbot` access to `deposit` and `withdraw
-    role_value = GATE_DEPOSIT | GATE_WITHDRAW
-    await gate.grant_role(role_value, ABBOT).invoke(caller_address=ADMIN)
+    await gate.grant_role(ABBOT_ROLE, ABBOT).invoke(caller_address=ADMIN)
     return gate
 
 
@@ -124,8 +124,7 @@ async def gate_rebasing(starknet, shrine, rebasing_token) -> StarknetContract:
     )
 
     # Grant `Abbot` access to `deposit` and `withdraw
-    role_value = GATE_DEPOSIT | GATE_WITHDRAW
-    await gate.grant_role(role_value, ABBOT).invoke(caller_address=ADMIN)
+    await gate.grant_role(ABBOT_ROLE, ABBOT).invoke(caller_address=ADMIN)
     return gate
 
 
@@ -136,7 +135,8 @@ async def shrine_authed(shrine, gate, rebasing_token) -> StarknetContract:
     """
 
     # Grant `Gate` access to `deposit` and `withdraw` in `Shrine`
-    role_value = SHRINE_DEPOSIT | SHRINE_WITHDRAW
+    given_roles = ("SHRINE_DEPOSIT", "SHRINE_WITHDRAW")
+    role_value = get_role_value(given_roles, SHRINE_ROLES)
     await shrine.grant_role(role_value, gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     # Add rebasing_token as Yang
@@ -230,8 +230,7 @@ async def test_gate_setup(gate, rebasing_token):
 
     # Check Abbot address is authorized to deposit and withdraw
     abbot_role = (await gate.get_role(ABBOT).invoke()).result.ufelt
-    expected_abbot_role_value = GATE_DEPOSIT | GATE_WITHDRAW
-    assert abbot_role == expected_abbot_role_value
+    assert abbot_role == ABBOT_ROLE
 
     # Check initial values
     assert (await gate.get_total_yang().invoke()).result.wad == 0
@@ -796,7 +795,8 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
         await gate.set_tax(to_ray(TAX_MAX) + 1).invoke(caller_address=ADMIN)
 
     # Fails due to non-authorised address
-    with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {GATE_SET_TAX}"):
+    set_tax_role = GATE_ROLES["GATE_SET_TAX"]
+    with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {set_tax_role}"):
         await gate.set_tax(TAX_RAY).invoke(caller_address=BAD_GUY)
         await gate.set_tax_collector(BAD_GUY).invoke(caller_address=BAD_GUY)
 

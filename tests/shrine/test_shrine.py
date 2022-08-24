@@ -428,7 +428,7 @@ async def test_auth(shrine_deploy):
     #
     b = str_to_felt("2nd owner")
 
-    auth_function = SHRINE_SET_CEILING
+    auth_function = SHRINE_ROLES["SHRINE_SET_CEILING"]
 
     assert (await shrine.get_admin().invoke()).result.address == SHRINE_OWNER
 
