@@ -1,5 +1,4 @@
-# SPDX-License-Identifier: MIT
-# OpenZeppelin Contracts for Cairo v0.3.1 (access/accesscontrol/library.cairo)
+# Adapted from OpenZeppelin Contracts for Cairo v0.3.1 (access/accesscontrol/library.cairo)
 
 %lang starknet
 
@@ -14,15 +13,15 @@ from starkware.cairo.common.math_cmp import is_not_zero
 #
 
 @event
-func RoleGranted(role, user):
+func RoleGranted(role, account):
 end
 
 @event
-func RoleRevoked(role, user):
+func RoleRevoked(role, account):
 end
 
 @event
-func AdminChanged(previous_admin, new_admin):
+func AdminChanged(prev_admin, new_admin):
 end
 
 #
@@ -30,11 +29,11 @@ end
 #
 
 @storage_var
-func AccessControl_admin() -> (admin):
+func AccessControl_admin() -> (address):
 end
 
 @storage_var
-func AccessControl_role(account) -> (role):
+func AccessControl_role(account) -> (ufelt):
 end
 
 namespace AccessControl:
@@ -80,11 +79,11 @@ namespace AccessControl:
     # Getters
     #
 
-    func get_role{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(user) -> (
+    func get_role{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
         ufelt
     ):
-        let (user_role) = AccessControl_role.read(user)
-        return (user_role)
+        let (role) = AccessControl_role.read(account)
+        return (role)
     end
 
     func has_role{
@@ -92,9 +91,9 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role, user) -> (bool):
-        let (user_role) = AccessControl_role.read(user)
-        let (has_role) = bitwise_and(user_role, role)
+    }(role, account) -> (bool):
+        let (account_role) = AccessControl_role.read(account)
+        let (has_role) = bitwise_and(account_role, role)
         let (authorized) = is_not_zero(has_role)
         return (authorized)
     end
@@ -115,9 +114,9 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role, user):
+    }(role, account):
         assert_admin()
-        _grant_role(role, user)
+        _grant_role(role, account)
         return ()
     end
 
@@ -126,9 +125,9 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role, user):
+    }(role, account):
         assert_admin()
-        _revoke_role(role, user)
+        _revoke_role(role, account)
         return ()
     end
 
@@ -137,13 +136,18 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role, user):
+    }(role, account):
         let (caller) = get_caller_address()
         with_attr error_message("AccessControl: can only renounce roles for self"):
-            assert user = caller
+            assert account = caller
         end
-        _revoke_role(role, user)
+        _revoke_role(role, account)
         return ()
+    end
+
+    func change_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+        assert_admin()
+        _set_admin(address)
     end
 
     #
@@ -155,11 +159,11 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role, user):
-        let (user_role) = AccessControl_role.read(user)
-        let (new_user_role) = bitwise_or(user_role, role)
-        AccessControl_role.write(user, new_user_role)
-        RoleGranted.emit(role, user)
+    }(role, account):
+        let (role_value) = AccessControl_role.read(account)
+        let (updated_role_value) = bitwise_or(role_value, role)
+        AccessControl_role.write(account, updated_role_value)
+        RoleGranted.emit(role, account)
         return ()
     end
 
@@ -168,19 +172,19 @@ namespace AccessControl:
         pedersen_ptr : HashBuiltin*,
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
-    }(role, user):
-        let (user_role) = AccessControl_role.read(user)
+    }(role, account):
+        let (role_value) = AccessControl_role.read(account)
         let (revoked_complement) = bitwise_not(role)
-        let (new_user_role) = bitwise_and(user_role, revoked_complement)
-        AccessControl_role.write(user, new_user_role)
-        RoleRevoked.emit(role, user)
+        let (updated_role_value) = bitwise_and(role_value, revoked_complement)
+        AccessControl_role.write(account, updated_role_value)
+        RoleRevoked.emit(role, account)
         return ()
     end
 
     func _set_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_admin):
-        let (previous_admin) = get_admin()
+        let (prev_admin) = get_admin()
         AccessControl_admin.write(new_admin)
-        AdminChanged.emit(previous_admin, new_admin)
+        AdminChanged.emit(prev_admin, new_admin)
         return ()
     end
 end

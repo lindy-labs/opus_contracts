@@ -11,16 +11,16 @@ from contracts.lib.acl import AccessControl
 @view
 func get_role{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(user) -> (ufelt):
-    let (role) = AccessControl.get_role(user)
+}(account) -> (ufelt):
+    let (role) = AccessControl.get_role(account)
     return (role)
 end
 
 @view
 func has_role{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(role, user) -> (bool):
-    let (has_role) = AccessControl.has_role(role, user)
+}(role, account) -> (bool):
+    let (has_role) = AccessControl.has_role(role, account)
     return (has_role)
 end
 
@@ -59,10 +59,7 @@ func renounce_role{
 end
 
 @external
-func change_admin{
-    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
-}(new_admin):
-    AccessControl.assert_admin()
-    AccessControl._set_admin(new_admin)
+func change_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_admin):
+    AccessControl.change_admin(new_admin)
     return ()
 end
