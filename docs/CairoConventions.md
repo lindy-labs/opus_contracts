@@ -36,7 +36,6 @@ We follow these conventions when naming things
 | variables, struct members | snake_case                 | `let user_balance = 100`                                         |
 | events                    | CamelCase                  | <pre>@event<br />func ThingHappened():<br />end</pre>            |
 | constants                 | UPPER_SNAKE_CASE           | `const CAP = 10**18`                                             |
-|                           |                            |                                                                  |
 
 See sections below for further specific rules.
 
