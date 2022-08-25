@@ -29,7 +29,7 @@ We follow these conventions when naming things
 | thing                     | convention                 | example                                                          |
 |---------------------------|----------------------------|------------------------------------------------------------------|
 | directories and files     | snake_case                 | `module_name/module.cairo`                                      |
-| functions                 | snake_case                 | `func open_account()`                                            |
+| functions                 | snake_case                 | `func open_account{...}():`                                            |
 | contract interfaces       | CamelCase prepended with I | <pre>@contract_interface<br />namespace IAccount:<br />end</pre> |
 | namespaces                | CamelCase                  | `namespace Engine`                                               |
 | structs                   | CamelCase                  | `struct Loan`                                                    |
