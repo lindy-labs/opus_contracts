@@ -1,10 +1,11 @@
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE, FALSE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
+from contracts.gate.rebasing_yang.roles import GateRoles
 from contracts.gate.rebasing_yang.library import Gate
 from contracts.gate.rebasing_yang.library_external import (
     get_shrine,
@@ -15,8 +16,17 @@ from contracts.gate.rebasing_yang.library_external import (
     preview_deposit,
     preview_withdraw,
 )
-from contracts.lib.auth import Auth
-from contracts.lib.auth_external import authorize, revoke, get_auth
+# these imported public functions are part of the contract's interface
+from contracts.lib.acl import AccessControl
+from contracts.lib.acl_external import (
+    get_role,
+    has_role,
+    get_admin,
+    grant_role,
+    revoke_role,
+    renounce_role,
+    change_admin,
+)
 from contracts.interfaces import IShrine
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
@@ -59,10 +69,14 @@ end
 #
 
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    authed, shrine_address, asset_address
-):
-    Auth.authorize(authed)
+func constructor{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(authed, shrine_address, asset_address):
+    AccessControl.initializer(authed)
+
+    # Grant permission
+    AccessControl._grant_role(GateRoles.DEFAULT_GATE_ADMIN_ROLE, authed)
+
     Gate.initializer(shrine_address, asset_address)
     gate_live_storage.write(TRUE)
     return ()
@@ -73,17 +87,19 @@ end
 #
 
 @external
-func kill{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
-    Auth.assert_caller_authed()
+func kill{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}():
+    AccessControl.assert_has_role(GateRoles.KILL)
     gate_live_storage.write(FALSE)
     Killed.emit()
     return ()
 end
 
 @external
-func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, assets_wad
-) -> (wad):
+func deposit{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user_address, trove_id, assets_wad) -> (wad):
     alloc_locals
     # TODO: Revisit whether reentrancy guard should be added here
 
@@ -91,7 +107,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     assert_live()
 
     # Only Abbot can call
-    Auth.assert_caller_authed()
+    AccessControl.assert_has_role(GateRoles.DEPOSIT)
 
     let (yang_wad) = Gate.convert_to_yang(assets_wad)
     if yang_wad == 0:
@@ -130,14 +146,14 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 end
 
 @external
-func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, yang_wad
-) -> (wad):
+func withdraw{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user_address, trove_id, yang_wad) -> (wad):
     alloc_locals
     # TODO: Revisit whether reentrancy guard should be added here
 
     # Only Abbot can call
-    Auth.assert_caller_authed()
+    AccessControl.assert_has_role(GateRoles.WITHDRAW)
 
     let (assets_wad) = Gate.convert_to_assets(yang_wad)
     if assets_wad == 0:
