@@ -28,10 +28,10 @@ We follow these conventions when naming things
 
 | thing                     | convention                 | example                                                          |
 |---------------------------|----------------------------|------------------------------------------------------------------|
-| directories and files     | snake_case                 | `module_name/module.cairo`                                      |
-| functions                 | snake_case                 | `func open_account{...}():`                                            |
-| contract interfaces       | CamelCase prepended with I | <pre>@contract_interface<br />namespace IAccount:<br />end</pre> |
+| directories and files     | snake_case                 | `module_name/module.cairo`                                       |
+| functions                 | snake_case                 | `func open_account{...}():`                                      |
 | namespaces                | CamelCase                  | `namespace Engine`                                               |
+| contract interfaces       | CamelCase prepended with I | <pre>@contract_interface<br />namespace IAccount:<br />end</pre> |
 | structs                   | CamelCase                  | `struct Loan`                                                    |
 | variables, struct members | snake_case                 | `let user_balance = 100`                                         |
 | events                    | CamelCase                  | <pre>@event<br />func ThingHappened():<br />end</pre>            |
