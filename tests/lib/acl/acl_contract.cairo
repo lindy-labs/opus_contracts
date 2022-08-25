@@ -23,7 +23,7 @@ from tests.lib.acl.roles import AclRoles
 func constructor{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(admin):
-    AccessControl._set_admin(admin)
+    AccessControl.initializer(admin)
     return ()
 end
 

@@ -135,6 +135,11 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
         expected = TRUE if r in given_roles else FALSE
         assert has_role == can_perform_role == expected
 
+    # Grant the role again to confirm behaviour is correct
+    await acl.grant_role(given_role_value, ACL_USER).invoke(caller_address=admin)
+    role = (await acl.get_role(ACL_USER).invoke()).result.ufelt
+    assert role == given_role_value
+
     # Compute value of revoked role
     revoked_role_value = sum([r.value for r in revoked_roles])
 
@@ -171,6 +176,11 @@ async def test_grant_and_revoke_role(acl_both, given_roles, revoked_roles):
                 match=f"AccessControl: caller is missing role {role_value}",
             ):
                 await acl.assert_has_role(role_value).invoke(caller_address=ACL_USER)
+
+    # Revoke the role again to confirm behaviour is as intended
+    await acl.revoke_role(revoked_role_value, ACL_USER).invoke(caller_address=admin)
+    updated_role = (await acl.get_role(ACL_USER).invoke()).result.ufelt
+    assert updated_role == expected_role
 
 
 @pytest.mark.usefixtures("sudo_user")
