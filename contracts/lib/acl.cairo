@@ -57,8 +57,8 @@ namespace AccessControl:
         bitwise_ptr : BitwiseBuiltin*,
     }(role):
         alloc_locals
-        let (caller) = get_caller_address()
-        let (authorized) = has_role(role, caller)
+        let (caller_address) = get_caller_address()
+        let (authorized) = has_role(role, caller_address)
         with_attr error_message("AccessControl: caller is missing role {role}"):
             assert authorized = TRUE
         end
@@ -67,10 +67,10 @@ namespace AccessControl:
 
     func assert_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
         alloc_locals
-        let (caller) = get_caller_address()
-        let (admin) = get_admin()
+        let (caller_address) = get_caller_address()
+        let (admin_address) = get_admin()
         with_attr error_message("AccessControl: caller is not admin"):
-            assert caller = admin
+            assert caller_address = admin_address
         end
         return ()
     end
@@ -101,8 +101,8 @@ namespace AccessControl:
     func get_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
         address
     ):
-        let (admin) = AccessControl_admin.read()
-        return (admin)
+        let (admin_address) = AccessControl_admin.read()
+        return (admin_address)
     end
 
     #
@@ -137,9 +137,9 @@ namespace AccessControl:
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
     }(role, account):
-        let (caller) = get_caller_address()
+        let (caller_address) = get_caller_address()
         with_attr error_message("AccessControl: can only renounce roles for self"):
-            assert account = caller
+            assert account = caller_address
         end
         _revoke_role(role, account)
         return ()
@@ -148,6 +148,7 @@ namespace AccessControl:
     func change_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
         assert_admin()
         _set_admin(address)
+        return ()
     end
 
     #
@@ -181,10 +182,10 @@ namespace AccessControl:
         return ()
     end
 
-    func _set_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_admin):
-        let (prev_admin) = get_admin()
-        AccessControl_admin.write(new_admin)
-        AdminChanged.emit(prev_admin, new_admin)
+    func _set_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+        let (prev_admin_address) = get_admin()
+        AccessControl_admin.write(address)
+        AdminChanged.emit(prev_admin_address, address)
         return ()
     end
 end

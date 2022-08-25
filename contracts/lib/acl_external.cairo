@@ -26,8 +26,8 @@ end
 
 @view
 func get_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (address):
-    let (admin) = AccessControl.get_admin()
-    return (admin)
+    let (admin_address) = AccessControl.get_admin()
+    return (admin_address)
 end
 
 #
@@ -59,7 +59,7 @@ func renounce_role{
 end
 
 @external
-func change_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(new_admin):
-    AccessControl.change_admin(new_admin)
+func change_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
+    AccessControl.change_admin(address)
     return ()
 end
