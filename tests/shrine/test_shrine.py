@@ -443,7 +443,7 @@ async def test_auth(shrine_deploy):
     #
     b = str_to_felt("2nd owner")
 
-    auth_function = SHRINE_ROLES["SHRINE_SET_CEILING"]
+    auth_function = ShrineRoles.SET_CEILING
 
     assert (await shrine.get_admin().invoke()).result.address == SHRINE_OWNER
 
@@ -505,12 +505,9 @@ async def test_add_yang_pass(shrine):
     new_yang_max = to_wad(42_000)
     new_yang_threshold = to_wad(Decimal("0.6"))
     new_yang_start_price = to_wad(5)
-    tx = await shrine.add_yang(
-        new_yang_address,
-        new_yang_max,
-        new_yang_threshold,
-        new_yang_start_price,
-    ).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.add_yang(new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price).invoke(
+        caller_address=SHRINE_OWNER
+    )
     assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
     assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.price_wad == new_yang_start_price
     assert_event_emitted(
@@ -545,9 +542,12 @@ async def test_add_yang_pass(shrine):
 async def test_add_yang_duplicate_fail(shrine):
     # Test adding duplicate Yang
     with pytest.raises(StarkException, match="Shrine: Yang already exists"):
-        await shrine.add_yang(YANG_0_ADDRESS, YANG_0_CEILING, YANG_0_THRESHOLD, to_wad(YANGS[0]["start_price"])).invoke(
-            caller_address=SHRINE_OWNER
-        )
+        await shrine.add_yang(
+            YANG_0_ADDRESS,
+            YANG_0_CEILING,
+            YANG_0_THRESHOLD,
+            to_wad(YANGS[0]["start_price"]),
+        ).invoke(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -786,7 +786,13 @@ async def test_update_multiplier_unauthorized(shrine):
 
 @pytest.mark.parametrize(
     "deposit_amt_wad",
-    [0, to_wad(Decimal("1E-18")), INITIAL_DEPOSIT_WAD // 2, INITIAL_DEPOSIT_WAD - 1, INITIAL_DEPOSIT_WAD],
+    [
+        0,
+        to_wad(Decimal("1E-18")),
+        INITIAL_DEPOSIT_WAD // 2,
+        INITIAL_DEPOSIT_WAD - 1,
+        INITIAL_DEPOSIT_WAD,
+    ],
 )
 @pytest.mark.asyncio
 async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
@@ -837,7 +843,10 @@ async def test_shrine_deposit_unauthorized(shrine):
 async def test_shrine_deposit_exceeds_max(shrine):
     deposit_amt = YANG_0_CEILING - INITIAL_DEPOSIT_WAD + 1
     # Checks for shrine deposit that would exceed the max
-    with pytest.raises(StarkException, match="Shrine: Exceeds maximum amount of Yang allowed for system"):
+    with pytest.raises(
+        StarkException,
+        match="Shrine: Exceeds maximum amount of Yang allowed for system",
+    ):
         await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).invoke(caller_address=SHRINE_OWNER)
 
 
@@ -847,7 +856,14 @@ async def test_shrine_deposit_exceeds_max(shrine):
 
 
 @pytest.mark.parametrize(
-    "withdraw_amt_wad", [0, to_wad(Decimal("1E-18")), to_wad(1), INITIAL_DEPOSIT_WAD - 1, INITIAL_DEPOSIT_WAD]
+    "withdraw_amt_wad",
+    [
+        0,
+        to_wad(Decimal("1E-18")),
+        to_wad(1),
+        INITIAL_DEPOSIT_WAD - 1,
+        INITIAL_DEPOSIT_WAD,
+    ],
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
@@ -979,7 +995,8 @@ async def test_shrine_withdraw_unauthorized(shrine):
 
 
 @pytest.mark.parametrize(
-    "forge_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1, FORGE_AMT_WAD]
+    "forge_amt_wad",
+    [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1, FORGE_AMT_WAD],
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
@@ -987,7 +1004,12 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).invoke(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
-    assert_event_emitted(forge, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, forge_amt_wad])
+    assert_event_emitted(
+        forge,
+        shrine.contract_address,
+        "TroveUpdated",
+        [TROVE_1, FEED_LEN - 1, forge_amt_wad],
+    )
 
     # Yin Events
     assert_event_emitted(forge, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, forge_amt_wad])
@@ -1145,7 +1167,10 @@ async def test_shrine_melt_system_underflow(shrine):
 async def test_shrine_melt_trove_underflow(shrine):
     estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
     excess_debt = estimated_debt + 1
-    with pytest.raises(StarkException, match="Shrine: cannot pay back more debt than exists in this trove"):
+    with pytest.raises(
+        StarkException,
+        match="Shrine: cannot pay back more debt than exists in this trove",
+    ):
         await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).invoke(caller_address=SHRINE_OWNER)
 
 
@@ -1406,12 +1431,9 @@ async def test_move_yang_unsafe_fail(shrine):
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.move_yang(
-            YANG_0_ADDRESS,
-            TROVE_1,
-            TROVE_2,
-            to_wad(withdraw_amt),
-        ).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(withdraw_amt)).invoke(
+            caller_address=SHRINE_OWNER
+        )
 
 
 @pytest.mark.asyncio

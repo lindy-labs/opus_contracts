@@ -4,7 +4,7 @@ from collections import namedtuple
 from decimal import Decimal
 from functools import cache
 from random import seed, uniform
-from typing import Dict, Tuple, Union
+from typing import Union
 
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state import BlockInfo
@@ -231,25 +231,3 @@ def estimate_gas_inner(call_info: FunctionInvocation):
         sum_gas += estimate_gas_inner(call)
 
     return sum_gas
-
-
-#
-# Access Control
-#
-
-
-def get_role_value(given_roles: Tuple[str, ...], all_roles: Dict[str, int]) -> int:
-    """
-    Helper function to calculate a given role's value given a list of roles.
-
-    Arguments
-    ---------
-    given_roles : Tuple[str, ...]
-        A tuple of string values representing the roles
-    all_roles : Dict[str, int]
-        A dictionary of roles to integer value
-
-    Returns:
-        Integer value of the given roles
-    """
-    return sum([all_roles[i] for i in given_roles])

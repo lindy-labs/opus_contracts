@@ -6,7 +6,7 @@ from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.shrine.constants import SHRINE_ROLES, TROVE_1, TROVE_2
+from tests.shrine.constants import TROVE_1, TROVE_2, ShrineRoles
 from tests.utils import (
     ABBOT,
     ADMIN,
@@ -23,7 +23,6 @@ from tests.utils import (
     compile_contract,
     from_uint,
     from_wad,
-    get_role_value,
     to_ray,
     to_wad,
 )
@@ -135,14 +134,16 @@ async def shrine_authed(shrine, gate, rebasing_token) -> StarknetContract:
     """
 
     # Grant `Gate` access to `deposit` and `withdraw` in `Shrine`
-    given_roles = ("SHRINE_DEPOSIT", "SHRINE_WITHDRAW")
-    role_value = get_role_value(given_roles, SHRINE_ROLES)
+    role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
     await shrine.grant_role(role_value, gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     # Add rebasing_token as Yang
-    await shrine.add_yang(rebasing_token.contract_address, to_wad(1000), to_ray(Decimal("0.8")), to_wad(1000)).invoke(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.add_yang(
+        rebasing_token.contract_address,
+        to_wad(1000),
+        to_ray(Decimal("0.8")),
+        to_wad(1000),
+    ).invoke(caller_address=SHRINE_OWNER)
 
     return shrine
 
@@ -310,11 +311,19 @@ async def test_gate_subsequent_deposit_with_rebase(shrine_authed, gate, rebasing
 
     # Check vault yang balance
     after_total_yang = (await gate.get_total_yang().invoke()).result.wad
-    assert_equalish(from_wad(after_total_yang), from_wad(before_total_yang) + expected_yang, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_total_yang),
+        from_wad(before_total_yang) + expected_yang,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check user's yang
     after_user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).invoke()).result.wad
-    assert_equalish(from_wad(after_user_yang), from_wad(before_user_yang) + expected_yang, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_user_yang),
+        from_wad(before_user_yang) + expected_yang,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check event emitted
     assert_event_emitted(
@@ -368,7 +377,11 @@ async def test_gate_subsequent_unique_deposit_after_rebase(
 
     # Check gate yang balance
     after_total_yang = (await gate.get_total_yang().invoke()).result.wad
-    assert_equalish(from_wad(after_total_yang), from_wad(FIRST_DEPOSIT_AMT) + expected_yang, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_total_yang),
+        from_wad(FIRST_DEPOSIT_AMT) + expected_yang,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check user's yang
     after_user_yang = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).invoke()).result.wad
@@ -488,7 +501,11 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_total_bal),
+        from_wad(start_total_bal) - expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check gate yang balance
     after_total_yang = (await gate.get_total_yang().invoke()).result.wad
@@ -499,7 +516,11 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
     assert after_user_yang == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(TROVE2_OWNER).invoke()).result.balance)
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_user_bal),
+        from_wad(start_user_bal) + expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check exchange rate
     after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -527,7 +548,11 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(end_total_bal),
+        from_wad(after_total_bal) - expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check gate yang balance
     end_total_yang = (await gate.get_total_yang().invoke()).result.wad
@@ -538,7 +563,11 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
     assert after_user_yang == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).invoke()).result.balance)
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_user_bal),
+        from_wad(start_user_bal) + expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check exchange rate
     end_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -576,7 +605,11 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
     after_total_bal = (await gate.get_total_assets().invoke()).result.wad
 
     # Using `assert_equalish` due to rounding error
-    assert_equalish(from_wad(after_total_bal), from_wad(start_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_total_bal),
+        from_wad(start_total_bal) - expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check gate yang balance
     after_total_yang = (await gate.get_total_yang().invoke()).result.wad
@@ -589,7 +622,11 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
     after_user_bal = from_uint((await rebasing_token.balanceOf(TROVE2_OWNER).invoke()).result.balance)
 
     # Using `assert_equalish` due to rounding error
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_user_bal),
+        from_wad(start_user_bal) + expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check exchange rate
     after_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -607,7 +644,11 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().invoke()).result.wad
-    assert_equalish(from_wad(end_total_bal), from_wad(after_total_bal) - expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(end_total_bal),
+        from_wad(after_total_bal) - expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check gate yang balance
     end_total_yang = (await gate.get_total_yang().invoke()).result.wad
@@ -618,7 +659,11 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
     assert after_user_yang == 0
 
     after_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).invoke()).result.balance)
-    assert_equalish(from_wad(after_user_bal), from_wad(start_user_bal) + expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_user_bal),
+        from_wad(start_user_bal) + expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     # Check exchange rate
     end_exchange_rate = (await gate.get_exchange_rate().invoke()).result.wad
@@ -660,8 +705,16 @@ async def test_kill(shrine_authed, gate, rebasing_token, gate_deposit, rebase):
     after_gate_yang = (await gate.get_total_yang().invoke()).result.wad
 
     # Assert withdrawal is successful
-    assert_equalish(from_wad(after_user_balance), from_wad(before_user_balance) + expected_assets, CUSTOM_ERROR_MARGIN)
-    assert_equalish(from_wad(after_gate_balance), from_wad(before_gate_balance) - expected_assets, CUSTOM_ERROR_MARGIN)
+    assert_equalish(
+        from_wad(after_user_balance),
+        from_wad(before_user_balance) + expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
+    assert_equalish(
+        from_wad(after_gate_balance),
+        from_wad(before_gate_balance) - expected_assets,
+        CUSTOM_ERROR_MARGIN,
+    )
 
     assert after_user_yang == before_user_yang - withdraw_amt
     assert after_gate_yang == before_gate_yang - withdraw_amt
@@ -795,7 +848,7 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
         await gate.set_tax(to_ray(TAX_MAX) + 1).invoke(caller_address=ADMIN)
 
     # Fails due to non-authorised address
-    set_tax_role = GATE_ROLES["GATE_SET_TAX"]
+    set_tax_role = GateRoles.SET_TAX
     with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {set_tax_role}"):
         await gate.set_tax(TAX_RAY).invoke(caller_address=BAD_GUY)
         await gate.set_tax_collector(BAD_GUY).invoke(caller_address=BAD_GUY)
@@ -838,12 +891,7 @@ async def test_gate_levy(shrine_authed, gate, rebasing_token, gate_deposit):
 
     # Check event emitted
     # Event should be emitted if tax is successfully transferred to tax collector.
-    assert_event_emitted(
-        levy,
-        gate.contract_address,
-        "TaxLevied",
-        [FIRST_TAX_AMT],
-    )
+    assert_event_emitted(levy, gate.contract_address, "TaxLevied", [FIRST_TAX_AMT])
 
     # Check balances before withdraw
     before_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).invoke()).result.balance)

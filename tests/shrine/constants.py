@@ -1,6 +1,7 @@
 from decimal import Decimal
+from enum import IntEnum
 
-from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE, get_role_value
+from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 LIMIT_RATIO = 95 * RAY_PERCENT
@@ -93,22 +94,23 @@ FORGE_AMT_WAD = 5_000 * WAD_SCALE
 TROVE_1 = 1
 TROVE_2 = 2
 
-# Access Control
-SHRINE_ROLES = {
-    "SHRINE_ADD_YANG": 2**0,
-    "SHRINE_UPDATE_YANG_MAX": 2**1,
-    "SHRINE_SET_CEILING": 2**2,
-    "SHRINE_SET_THRESHOLD": 2**3,
-    "SHRINE_KILL": 2**4,
-    "SHRINE_ADVANCE": 2**5,
-    "SHRINE_UPDATE_MULTIPLIER": 2**6,
-    "SHRINE_MOVE_YANG": 2**7,
-    "SHRINE_DEPOSIT": 2**8,
-    "SHRINE_WITHDRAW": 2**9,
-    "SHRINE_FORGE": 2**10,
-    "SHRINE_MELT": 2**11,
-    "SHRINE_SEIZE": 2**12,
-    "SHRINE_MOVE_YIN": 2**13,
-}
 
-SHRINE_FULL_ACCESS = get_role_value(tuple(SHRINE_ROLES.keys()), SHRINE_ROLES)
+# Access Control
+class ShrineRoles(IntEnum):
+    ADD_YANG = 2**0
+    UPDATE_YANG_MAX = 2**1
+    SET_CEILING = 2**2
+    SET_THRESHOLD = 2**3
+    KILL = 2**4
+    ADVANCE = 2**5
+    UPDATE_MULTIPLIER = 2**6
+    MOVE_YANG = 2**7
+    DEPOSIT = 2**8
+    WITHDRAW = 2**9
+    FORGE = 2**10
+    MELT = 2**11
+    SEIZE = 2**12
+    MOVE_YIN = 2**13
+
+
+SHRINE_FULL_ACCESS = sum([r.value for r in ShrineRoles])
