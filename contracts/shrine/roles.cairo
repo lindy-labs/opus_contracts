@@ -1,4 +1,4 @@
-namespace ShrineAccessControl:
+namespace ShrineRoles:
     #
     # Roles
     #

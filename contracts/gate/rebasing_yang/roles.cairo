@@ -1,4 +1,4 @@
-namespace GateAccessControl:
+namespace GateRoles:
     #
     # Roles
     #

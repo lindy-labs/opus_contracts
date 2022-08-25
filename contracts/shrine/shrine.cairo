@@ -11,7 +11,7 @@ from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
 
-from contracts.shrine.shrine_accesscontrol import ShrineAccessControl
+from contracts.shrine.roles import ShrineRoles
 
 # these imported public functions are part of the contract's interface
 from contracts.lib.acl import AccessControl
@@ -292,7 +292,7 @@ func add_yang{
 }(yang_address, max, threshold, price):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.ADD_YANG)
+    AccessControl.assert_has_role(ShrineRoles.ADD_YANG)
 
     # Assert that yang is not already added
     let (potential_yang_id) = shrine_yang_id_storage.read(yang_address)
@@ -333,7 +333,7 @@ func update_yang_max{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(yang_address, new_max):
     alloc_locals
-    AccessControl.assert_has_role(ShrineAccessControl.UPDATE_YANG_MAX)
+    AccessControl.assert_has_role(ShrineRoles.UPDATE_YANG_MAX)
 
     let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
@@ -349,7 +349,7 @@ end
 func set_ceiling{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(new_ceiling):
-    AccessControl.assert_has_role(ShrineAccessControl.SET_CEILING)
+    AccessControl.assert_has_role(ShrineRoles.SET_CEILING)
 
     shrine_ceiling_storage.write(new_ceiling)
 
@@ -364,7 +364,7 @@ func set_threshold{
 }(yang_address, new_threshold):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.SET_THRESHOLD)
+    AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD)
 
     # Check that threshold value is not greater than max threshold
     with_attr error_message("Shrine: Threshold exceeds 100%"):
@@ -383,7 +383,7 @@ end
 func kill{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }():
-    AccessControl.assert_has_role(ShrineAccessControl.KILL)
+    AccessControl.assert_has_role(ShrineRoles.KILL)
 
     shrine_live_storage.write(FALSE)
 
@@ -405,7 +405,7 @@ func constructor{
     AccessControl.initializer(authed)
 
     # Grant authed permission
-    AccessControl._grant_role(ShrineAccessControl.DEFAULT_SHRINE_ADMIN_ROLE, authed)
+    AccessControl._grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, authed)
 
     shrine_live_storage.write(TRUE)
 
@@ -431,7 +431,7 @@ func advance{
 }(yang_address, price):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.ADVANCE)
+    AccessControl.assert_has_role(ShrineRoles.ADVANCE)
 
     with_attr error_message("Shrine: cannot set a price value to zero."):
         assert_not_zero(price)  # Cannot set a price value to zero
@@ -464,7 +464,7 @@ func update_multiplier{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(new_multiplier):
     alloc_locals
-    AccessControl.assert_has_role(ShrineAccessControl.UPDATE_MULTIPLIER)
+    AccessControl.assert_has_role(ShrineRoles.UPDATE_MULTIPLIER)
 
     with_attr error_message("Shrine: cannot set a multiplier value to zero."):
         assert_not_zero(new_multiplier)  # Cannot set a multiplier value to zero
@@ -493,7 +493,7 @@ func move_yang{
 }(yang_address, src_trove_id, dst_trove_id, amount):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.MOVE_YANG)
+    AccessControl.assert_has_role(ShrineRoles.MOVE_YANG)
 
     let (yang_id) = get_valid_yang_id(yang_address)
 
@@ -536,7 +536,7 @@ end
 func move_yin{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(src_address, dst_address, amount):
-    AccessControl.assert_has_role(ShrineAccessControl.MOVE_YIN)
+    AccessControl.assert_has_role(ShrineRoles.MOVE_YIN)
 
     with_attr error_message("Shrine: transfer amount outside the valid range."):
         WadRay.assert_result_valid_unsigned(amount)
@@ -568,7 +568,7 @@ func deposit{
 }(yang_address, trove_id, amount):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.DEPOSIT)
+    AccessControl.assert_has_role(ShrineRoles.DEPOSIT)
 
     # Check system is live
     assert_live()
@@ -608,7 +608,7 @@ func withdraw{
 }(yang_address, trove_id, amount):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.WITHDRAW)
+    AccessControl.assert_has_role(ShrineRoles.WITHDRAW)
 
     # Retrieve yang info
     let (yang_id) = get_valid_yang_id(yang_address)
@@ -650,7 +650,7 @@ func forge{
 }(user_address, trove_id, amount):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.FORGE)
+    AccessControl.assert_has_role(ShrineRoles.FORGE)
 
     # Check system is live
     assert_live()
@@ -725,7 +725,7 @@ func melt{
 }(user_address, trove_id, amount):
     alloc_locals
 
-    AccessControl.assert_has_role(ShrineAccessControl.MELT)
+    AccessControl.assert_has_role(ShrineRoles.MELT)
 
     # Charge interest
     charge(trove_id)
@@ -784,7 +784,7 @@ end
 func seize{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(trove_id):
-    AccessControl.assert_has_role(ShrineAccessControl.SEIZE)
+    AccessControl.assert_has_role(ShrineRoles.SEIZE)
 
     # Update Trove information
     let (old_trove_info : Trove) = get_trove(trove_id)

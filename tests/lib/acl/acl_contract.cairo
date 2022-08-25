@@ -13,7 +13,7 @@ from contracts.lib.acl_external import (
     renounce_role,
     change_admin,
 )
-from tests.lib.acl.acl_accesscontrol import AclAccessControl
+from tests.lib.acl.roles import AclRoles
 
 #
 # Access Control - Constructor
@@ -55,7 +55,7 @@ end
 func can_execute{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(user) -> (bool):
-    let (authorized) = AccessControl.has_role(AclAccessControl.EXECUTE, user)
+    let (authorized) = AccessControl.has_role(AclRoles.EXECUTE, user)
     return (authorized)
 end
 
@@ -63,7 +63,7 @@ end
 func can_write{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(user) -> (bool):
-    let (authorized) = AccessControl.has_role(AclAccessControl.WRITE, user)
+    let (authorized) = AccessControl.has_role(AclRoles.WRITE, user)
     return (authorized)
 end
 
@@ -71,6 +71,6 @@ end
 func can_read{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(user) -> (bool):
-    let (authorized) = AccessControl.has_role(AclAccessControl.READ, user)
+    let (authorized) = AccessControl.has_role(AclRoles.READ, user)
     return (authorized)
 end
