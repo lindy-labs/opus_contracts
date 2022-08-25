@@ -33,11 +33,11 @@ TAX_COLLECTOR = str_to_felt("tax collector")
 
 # Access Control
 class GateRoles(IntEnum):
-    KILL = 2**0
-    DEPOSIT = 2**1
-    WITHDRAW = 2**2
-    SET_TAX = 2**3
-    SET_TAX_COLLECTOR = 2**4
+    DEPOSIT = 2**0
+    KILL = 2**1
+    SET_TAX = 2**2
+    SET_TAX_COLLECTOR = 2**3
+    WITHDRAW = 2**4
 
 
 ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW

@@ -98,19 +98,19 @@ TROVE_2 = 2
 # Access Control
 class ShrineRoles(IntEnum):
     ADD_YANG = 2**0
-    UPDATE_YANG_MAX = 2**1
-    SET_CEILING = 2**2
-    SET_THRESHOLD = 2**3
+    ADVANCE = 2**1
+    DEPOSIT = 2**2
+    FORGE = 2**3
     KILL = 2**4
-    ADVANCE = 2**5
-    UPDATE_MULTIPLIER = 2**6
-    MOVE_YANG = 2**7
-    DEPOSIT = 2**8
-    WITHDRAW = 2**9
-    FORGE = 2**10
-    MELT = 2**11
-    SEIZE = 2**12
-    MOVE_YIN = 2**13
+    MELT = 2**5
+    MOVE_YANG = 2**6
+    MOVE_YIN = 2**7
+    SEIZE = 2**8
+    SET_CEILING = 2**9
+    SET_THRESHOLD = 2**10
+    UPDATE_MULTIPLIER = 2**11
+    UPDATE_YANG_MAX = 2**12
+    WITHDRAW = 2**13
 
 
 SHRINE_FULL_ACCESS = sum([r.value for r in ShrineRoles])
