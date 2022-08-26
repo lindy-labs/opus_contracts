@@ -550,6 +550,13 @@ async def test_melt_failures(abbot):
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
+async def test_get_trove_owner(abbot):
+    assert (await abbot.get_trove_owner(TROVE_1).invoke()).result.address == AURA_USER
+    assert (await abbot.get_trove_owner(789).invoke()).result.address == 0
+
+
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
+@pytest.mark.asyncio
 async def test_get_user_trove_ids(abbot, steth_yang: YangConfig):
     assert (await abbot.get_user_trove_ids(AURA_USER).invoke()).result.trove_ids == [TROVE_1]
     assert (await abbot.get_user_trove_ids(OTHER_USER).invoke()).result.trove_ids == []

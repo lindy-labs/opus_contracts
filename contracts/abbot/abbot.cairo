@@ -97,6 +97,13 @@ end
 #
 
 @view
+func get_trove_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    trove_id
+) -> (address):
+    return abbot_trove_owner_storage.read(trove_id)
+end
+
+@view
 func get_user_trove_ids{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     user_address
 ) -> (trove_ids_len, trove_ids : felt*):
