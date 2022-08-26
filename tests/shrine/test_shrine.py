@@ -784,29 +784,34 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt_wad).invoke(caller_address=SHRINE_OWNER)
 
     collect_gas_cost("shrine/deposit", deposit, 4, 1)
+
+    # Normalizing deposit amount
+    # yang_id = 1 since this is for YANG_0_ADDRESS
+    normalized_deposit_amt_wad = (await shrine.get_normalized_yang(deposit_amt_wad, 1).invoke()).result.wad
+
     assert_event_emitted(
         deposit,
         shrine.contract_address,
         "YangUpdated",
-        [YANG_0_ADDRESS, deposit_amt_wad, YANG_0_CEILING],
+        [YANG_0_ADDRESS, normalized_deposit_amt_wad, YANG_0_CEILING],
     )
     assert_event_emitted(
         deposit,
         shrine.contract_address,
         "DepositUpdated",
-        [YANG_0_ADDRESS, TROVE_1, deposit_amt_wad],
+        [YANG_0_ADDRESS, TROVE_1, normalized_deposit_amt_wad],
     )
 
     yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-    assert yang.total == deposit_amt_wad
+    assert yang.total == normalized_deposit_amt_wad
 
     amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).invoke()).result.wad
-    assert amt == deposit_amt_wad
+    assert amt == normalized_deposit_amt_wad
 
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
-    expected_limit = calculate_max_forge([yang_price], [deposit_amt_wad], [YANG_0_THRESHOLD])
+    expected_limit = calculate_max_forge([yang_price], [normalized_deposit_amt_wad], [YANG_0_THRESHOLD])
     assert_equalish(max_forge_amt, expected_limit)
 
 
@@ -848,26 +853,27 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     collect_gas_cost("shrine/withdraw", withdraw, 4, 1)
 
     remaining_amt_wad = INITIAL_DEPOSIT_WAD - withdraw_amt_wad
+    normalized_remaining_amt_wad = (await shrine.get_normalized_yang(remaining_amt_wad, 1).invoke()).result.wad
 
     assert_event_emitted(
         withdraw,
         shrine.contract_address,
         "YangUpdated",
-        [YANG_0_ADDRESS, remaining_amt_wad, YANG_0_CEILING],
+        [YANG_0_ADDRESS, normalized_remaining_amt_wad, YANG_0_CEILING],
     )
 
     assert_event_emitted(
         withdraw,
         shrine.contract_address,
         "DepositUpdated",
-        [YANG_0_ADDRESS, TROVE_1, remaining_amt_wad],
+        [YANG_0_ADDRESS, TROVE_1, normalized_remaining_amt_wad],
     )
 
     yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-    assert yang.total == remaining_amt_wad
+    assert yang.total == normalized_remaining_amt_wad
 
     amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).invoke()).result.wad
-    assert amt == remaining_amt_wad
+    assert amt == normalized_remaining_amt_wad
 
     ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
     assert ltv == 0

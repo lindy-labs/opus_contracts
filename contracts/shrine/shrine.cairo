@@ -145,6 +145,14 @@ end
 func shrine_debt_storage() -> (wad):
 end
 
+@storage_var
+func shrine_yang_scalar_storage(yang_id) -> (ray):
+end
+
+@storage_var
+func shrine_debt_scalar_storage() -> (ray):
+end
+
 # Total amount of synthetic forged
 @storage_var
 func shrine_total_yin_storage() -> (wad):
@@ -234,6 +242,19 @@ func get_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 end
 
 @view
+func get_debt_scalar{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ray):
+    return shrine_debt_scalar_storage.read()
+end
+
+@view
+func get_yang_scalar{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    yang_address
+) -> (ray):
+    let (yang_id) = shrine_yang_id_storage.read(yang_address)
+    return shrine_yang_scalar_storage.read(yang_id)
+end
+
+@view
 func get_yang_price{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, interval
 ) -> (price_wad, cumulative_price_wad):
@@ -310,6 +331,9 @@ func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
     let (packed) = pack_125(price, price)
     shrine_yang_price_storage.write(yang_id, current_time_interval, packed)
+
+    # Setting the initial scalar for the yang to one
+    shrine_yang_scalar_storage.write(yang_id, WadRay.RAY_ONE)
 
     # Events
     YangAdded.emit(yang_address, yang_id, max, price)
@@ -389,6 +413,9 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     # The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
     let (packed) = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER)
     shrine_multiplier_storage.write(interval, packed)
+
+    # Setting the initial debt scalar
+    shrine_debt_scalar_storage.write(WadRay.RAY_ONE)
 
     # Events
     MultiplierUpdated.emit(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER, interval)
@@ -553,8 +580,9 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update yang balance of system
     let (yang_id) = get_valid_yang_id(yang_address)
+    let (normalized_amount) = get_normalized_yang(amount, yang_id)  # Unscale amount
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
-    let (new_total) = WadRay.add(old_yang_info.total, amount)
+    let (new_total) = WadRay.add(old_yang_info.total, normalized_amount)
 
     # Asserting that the deposit does not cause the total amount of yang deposited to exceed the max.
     with_attr error_message("Shrine: Exceeds maximum amount of Yang allowed for system"):
@@ -566,7 +594,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # Update yang balance of trove
     let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id)
-    let (new_trove_balance) = WadRay.add(trove_yang_balance, amount)
+    let (new_trove_balance) = WadRay.add(trove_yang_balance, normalized_amount)
     shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance)
 
     # Events
@@ -589,19 +617,21 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (yang_id) = get_valid_yang_id(yang_address)
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
 
+    let (normalized_amount) = get_normalized_yang(amount, yang_id)
+
     # Ensure trove has sufficient yang
     let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id)
 
     with_attr error_message("Shrine: Insufficient yang"):
         # WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
-        let (new_trove_balance) = WadRay.sub_unsigned(trove_yang_balance, amount)
+        let (new_trove_balance) = WadRay.sub_unsigned(trove_yang_balance, normalized_amount)
     end
 
     # Charge interest
     charge(trove_id)
 
     # Update yang balance of system
-    let (new_total) = WadRay.sub_unsigned(old_yang_info.total, amount)
+    let (new_total) = WadRay.sub_unsigned(old_yang_info.total, normalized_amount)
     let new_yang_info : Yang = Yang(total=new_total, max=old_yang_info.max)
     shrine_yangs_storage.write(yang_id, new_yang_info)
 
@@ -639,11 +669,14 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Get current interval
     let (current_interval) = now()
 
+    # Normalize `amount`
+    let (normalized_amount) = get_normalized_debt(amount)
+
     # Check that debt ceiling has not been reached
     let (current_system_debt) = shrine_debt_storage.read()
 
     with_attr error_message("Shrine: system debt overflow"):
-        let (new_system_debt) = WadRay.add(current_system_debt, amount)  # WadRay.add checks for overflow
+        let (new_system_debt) = WadRay.add(current_system_debt, normalized_amount)  # WadRay.add checks for overflow
     end
 
     let (debt_ceiling) = shrine_ceiling_storage.read()
@@ -666,7 +699,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     end
 
     # Update trove information
-    let (new_debt) = WadRay.add(old_trove_info.debt, amount)
+    let (new_debt) = WadRay.add(old_trove_info.debt, normalized_amount)
     let new_trove_info : Trove = Trove(charge_from=new_charge_from, debt=new_debt)
     set_trove(trove_id, new_trove_info)
 
@@ -711,18 +744,21 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     # Get current interval
     let (current_interval) = now()
 
+    # Normalize `amount`
+    let (normalized_amount) = get_normalized_debt(amount)
+
     # Update system debt
     let (current_system_debt) = shrine_debt_storage.read()
 
     with_attr error_message("Shrine: System debt underflow"):
-        let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, amount)  # WadRay.sub_unsigned contains an underflow check
+        let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, normalized_amount)  # WadRay.sub_unsigned contains an underflow check
     end
 
     shrine_debt_storage.write(new_system_debt)
 
     # Update trove information
     with_attr error_message("Shrine: cannot pay back more debt than exists in this trove"):
-        let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, amount)  # Reverts if amount > old_trove_info.debt
+        let (new_debt) = WadRay.sub_unsigned(old_trove_info.debt, normalized_amount)  # Reverts if amount > old_trove_info.debt
     end
 
     let new_trove_info : Trove = Trove(charge_from=current_interval, debt=new_debt)
@@ -856,9 +892,10 @@ func is_healthy{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
         return (TRUE)
     end
 
+    let (true_debt) = get_true_debt(trove.debt)
     let (threshold, value) = get_trove_threshold(trove_id)  # Getting the trove's custom threshold and total collateral value
     let (max_debt) = WadRay.rmul(threshold, value)  # Calculating the maximum amount of debt the trove can have
-    let (bool) = is_le(trove.debt, max_debt)
+    let (bool) = is_le(true_debt, max_debt)
 
     return (bool)
 end
@@ -876,10 +913,11 @@ func is_within_limits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_ch
         return (TRUE)
     end
 
+    let (true_debt) = get_true_debt(trove.debt)
     let (threshold, value) = get_trove_threshold(trove_id)
     let (limit) = WadRay.rmul(LIMIT_RATIO, threshold)  # limit = limit_ratio * threshold
     let (max_debt) = WadRay.rmul(limit, value)
-    let (bool) = is_le(trove.debt, max_debt)
+    let (bool) = is_le(true_debt, max_debt)
 
     return (bool)
 end
@@ -905,9 +943,56 @@ func get_max_forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
 
     # Get updated debt with interest
     let (current_debt) = estimate(trove_id)
-    let max_forge_amt = max_debt - current_debt
+    let (true_current_debt) = get_true_debt(current_debt)
+    let max_forge_amt = max_debt - true_current_debt
 
     return (max_forge_amt)
+end
+
+# Returns the debt of a trove scaled by the debt scalar
+@view
+func get_true_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(debt) -> (
+    wad
+):
+    let (scalar) = shrine_debt_scalar_storage.read()
+
+    let (scaled_debt) = WadRay.rmul(debt, scalar)  # rmul on a wad and a ray yields a wad
+    return (scaled_debt)
+end
+
+# Returns the yang balance of a trove scaled by the yang scalar
+@view
+func get_true_yang_bal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    trove_id, yang_id
+) -> (wad):
+    let (scalar) = shrine_yang_scalar_storage.read(yang_id)
+    let (bal) = shrine_deposits_storage.read(trove_id, yang_id)
+
+    let (scaled_bal) = WadRay.rmul(bal, scalar)  # rmul on a wad and a ray yields a wad
+    return (scaled_bal)
+end
+
+# Returns the given debt divided by the debt scalar
+@view
+func get_normalized_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    debt
+) -> (wad):
+    let (scalar) = shrine_debt_scalar_storage.read()
+
+    # runsigned_div with a wad numerator and ray denominator yields a wad
+    let (unscaled_debt) = WadRay.runsigned_div(debt, scalar)
+    return (unscaled_debt)
+end
+
+# Returns the given yang amount divided by the yang scalar
+@view
+func get_normalized_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    amount, yang_id
+) -> (wad):
+    let (scalar) = shrine_yang_scalar_storage.read(yang_id)
+
+    let (unscaled) = WadRay.runsigned_div(amount, scalar)
+    return (unscaled)
 end
 
 #
@@ -1083,15 +1168,19 @@ end
 func trove_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     trove_id, interval, debt
 ) -> (ray):
+    alloc_locals
+
     # Early termination if no debt
     if debt == 0:
         return (0)
     end
 
+    let (true_debt) = get_true_debt(debt)
+
     let (yang_count) = shrine_yangs_count_storage.read()
     let (value) = appraise_internal(trove_id, yang_count, interval, 0)
 
-    let (ratio) = WadRay.runsigned_div(debt, value)  # Using WadRay.runsigned_div on two wads returns a ray
+    let (ratio) = WadRay.runsigned_div(true_debt, value)  # Using WadRay.runsigned_div on two wads returns a ray
     return (ratio)
 end
 
@@ -1110,7 +1199,7 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     end
 
     # Calculate current yang value
-    let (balance) = shrine_deposits_storage.read(trove_id, yang_id)
+    let (balance) = get_true_yang_bal(trove_id, yang_id)
 
     # Skip over the rest of the logic if the user hasn't deposited any
     if balance == 0:
@@ -1192,12 +1281,16 @@ end
 func get_avg_ratio{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     trove_id, debt, start_interval, end_interval
 ) -> (ray):
+    alloc_locals
+
+    let (true_debt) = get_true_debt(debt)  # Converting normalized debt to true debt
+
     # Getting average value of the trove
     let (num_yangs) = shrine_yangs_count_storage.read()
 
     let (avg_val) = get_avg_val_internal(trove_id, start_interval, end_interval, num_yangs, 0)
 
-    let (avg_ratio) = WadRay.runsigned_div(debt, avg_val)  # Dividing two wads with `runsigned_div` yields a ray
+    let (avg_ratio) = WadRay.runsigned_div(true_debt, avg_val)  # Dividing two wads with `runsigned_div` yields a ray
     return (avg_ratio)
 end
 
@@ -1213,7 +1306,7 @@ func get_avg_val_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
         return (cumulative_val)
     end
 
-    let (balance) = shrine_deposits_storage.read(trove_id, current_yang_id)
+    let (balance) = get_true_yang_bal(trove_id, current_yang_id)
 
     # Skipping over the rest of the logic if the user hasn't deposited anything for this yang
     if balance == 0:
@@ -1306,7 +1399,7 @@ func get_trove_threshold_internal{
         end
     end
 
-    let (deposited) = shrine_deposits_storage.read(trove_id, current_yang_id)
+    let (deposited) = get_true_yang_bal(trove_id, current_yang_id)
 
     # Gas optimization - skip over the current yang if the user hasn't deposited any
     if deposited == 0:
