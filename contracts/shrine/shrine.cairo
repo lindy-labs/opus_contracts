@@ -1048,7 +1048,7 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (avg_relative_ratio) = WadRay.runsigned_div(avg_ratio, threshold)
     let (avg_multiplier) = get_avg_multiplier(start_interval, end_interval)
 
-    let (base_rate) = get_base_rate(avg_ratio)
+    let (base_rate) = get_base_rate(avg_relative_ratio)
     let (true_rate) = WadRay.rmul(base_rate, avg_multiplier)  # represents `r` in the compound interest formula
 
     let t = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR  # wad, represents `t` in the compound interest formula
