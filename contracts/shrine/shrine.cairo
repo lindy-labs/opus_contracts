@@ -13,9 +13,9 @@ from contracts.shared.exp import exp
 
 from contracts.shrine.roles import ShrineRoles
 
+from contracts.lib.accesscontrol.library import AccessControl
 # these imported public functions are part of the contract's interface
-from contracts.lib.acl import AccessControl
-from contracts.lib.acl_external import (
+from contracts.lib.accesscontrol.accesscontrol_external import (
     get_role,
     has_role,
     get_admin,

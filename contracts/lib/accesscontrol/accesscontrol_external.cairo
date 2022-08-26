@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 
-from contracts.lib.acl import AccessControl
+from contracts.lib.accesscontrol.library import AccessControl
 
 #
 # Getters
