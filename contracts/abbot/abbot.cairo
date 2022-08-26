@@ -6,11 +6,7 @@ from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.interfaces import IGate, IShrine
-from contracts.lib.auth import Auth
 from contracts.shared.types import Trove, Yang
-
-# these imported public functions are part of the contract's interface
-from contracts.lib.auth_external import authorize, revoke, get_auth
 
 #
 # Constants
@@ -87,7 +83,6 @@ end
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_address, authed
 ):
-    Auth.authorize(authed)
     abbot_shrine_address_storage.write(shrine_address)
     return ()
 end
@@ -271,7 +266,7 @@ end
 func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, yang_max, yang_threshold, yang_price, gate_address
 ):
-    Auth.assert_caller_authed()
+    # TODO: auth using AccessControl, somehow
 
     with_attr error_message("Abbot: address cannot be zero"):
         assert_not_zero(yang_address)
