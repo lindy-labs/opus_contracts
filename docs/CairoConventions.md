@@ -22,6 +22,23 @@ from contracts.module.submodule.file_name import function
 
 This prevents any issues when compiling contracts.
 
+## General naming conventions
+
+We follow these conventions when naming things
+
+| thing                     | convention                 | example                                                          |
+|---------------------------|----------------------------|------------------------------------------------------------------|
+| directories and files     | snake_case                 | `module_name/module.cairo`                                       |
+| functions                 | snake_case                 | `func open_account{...}():`                                      |
+| namespaces                | CamelCase                  | `namespace Engine`                                               |
+| contract interfaces       | CamelCase prepended with I | <pre>@contract_interface<br />namespace IAccount:<br />end</pre> |
+| structs                   | CamelCase                  | `struct Loan`                                                    |
+| variables, struct members | snake_case                 | `let user_balance = 100`                                         |
+| events                    | CamelCase                  | <pre>@event<br />func ThingHappened():<br />end</pre>            |
+| constants                 | UPPER_SNAKE_CASE           | `const CAP = 10**18`                                             |
+
+See sections below for further specific rules.
+
 ## @storage_var naming
 
 To prevent [`@storage_var` conflicts](https://github.com/crytic/amarna/issues/10) and clearly distinguish between a local variable and a storage container, a `@storage_var` should be named using the following template: `ModuleName_variable_name_storage` - that is, the variable name is prefixed by the module name and suffixed by the string `storage`, separated by underscores.
@@ -142,4 +159,3 @@ Cairo doesn't have inheritance, but with a sprinkle of dark magic and exploiting
 You can create files that hold reusable (i.e. useful for distinct smart contracts) functionality. These files must have the `_external.cairo` suffix in their name. When using these mixins in a smart contract, **explicitly** import every public function (even though it's not needed) in the `import` statement.
 
 As an example, have a look at the [`auth_external.cairo`](../contracts/lib/auth_external.cairo) file; to import its functions, do `from contracts.lib.auth_external import authorize, revoke, get_auth`.
-
