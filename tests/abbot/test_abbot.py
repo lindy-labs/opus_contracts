@@ -387,10 +387,10 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_close_trove_failures(abbot):
-    with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 2"):
+    with pytest.raises(StarkException, match=f"Abbot: address {AURA_USER} does not own trove ID 2"):
         await abbot.close_trove(2).invoke(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match="Abbot: caller does not own trove ID 1"):
+    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID 1"):
         await abbot.close_trove(1).invoke(caller_address=OTHER_USER)
 
 
@@ -436,11 +436,11 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
         await abbot.deposit(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).invoke(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
         await abbot.deposit(steth_yang.contract_address, TROVE_1, to_wad(1)).invoke(caller_address=OTHER_USER)
 
     nope_trove = 2  # trove ID 2 does not exist
-    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {nope_trove}"):
+    with pytest.raises(StarkException, match=f"Abbot: address {AURA_USER} does not own trove ID {nope_trove}"):
         await abbot.deposit(steth_yang.contract_address, nope_trove, to_wad(1)).invoke(caller_address=AURA_USER)
 
 
@@ -489,7 +489,7 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
     with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
         await abbot.withdraw(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).invoke(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
         await abbot.withdraw(steth_yang.contract_address, TROVE_1, to_wad(10)).invoke(caller_address=OTHER_USER)
 
 
@@ -512,7 +512,7 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_forge_failures(abbot):
-    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
         amount = to_wad(10)
         await abbot.forge(TROVE_1, amount).invoke(caller_address=OTHER_USER)
 
@@ -539,7 +539,7 @@ async def test_melt(abbot, yin, shrine):
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_melt_failures(abbot):
-    with pytest.raises(StarkException, match=f"Abbot: caller does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
         amount = to_wad(10)
         await abbot.forge(TROVE_1, amount).invoke(caller_address=OTHER_USER)
 

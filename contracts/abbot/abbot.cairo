@@ -75,6 +75,11 @@ end
 func abbot_user_troves_storage(user_address, index) -> (ufelt):
 end
 
+# a mapping between a trove ID and the address that owns it
+@storage_var
+func abbot_trove_owner_storage(trove_id) -> (address):
+end
+
 #
 # Constructor
 #
@@ -152,6 +157,7 @@ func open_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_pt
 
     let new_trove_id = troves_count + 1
     abbot_user_troves_storage.write(user_address, user_troves_count, new_trove_id)
+    abbot_trove_owner_storage.write(new_trove_id, user_address)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     do_deposits(user_address, new_trove_id, yang_addrs_len, yang_addrs, amounts)
@@ -169,9 +175,7 @@ func close_trove{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 
     # don't allow manipulation of foreign troves
     let (user_address) = get_caller_address()
-    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 0)
-    end
+    assert_trove_owner(user_address, trove_id)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     let (outstanding_debt) = IShrine.estimate(shrine_address, trove_id)
@@ -199,9 +203,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     # don't allow depositing to foreign troves
     let (user_address) = get_caller_address()
-    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 0)
-    end
+    assert_trove_owner(user_address, trove_id)
 
     do_deposit(user_address, trove_id, yang_address, amount)
 
@@ -222,9 +224,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 
     # don't allow withdrawing from foreign troves
     let (user_address) = get_caller_address()
-    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 0)
-    end
+    assert_trove_owner(user_address, trove_id)
 
     let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
     IGate.withdraw(gate_address, user_address, trove_id, amount)
@@ -237,9 +237,7 @@ func forge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tr
     alloc_locals
 
     let (user_address) = get_caller_address()
-    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 0)
-    end
+    assert_trove_owner(user_address, trove_id)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     IShrine.forge(shrine_address, user_address, trove_id, amount)
@@ -252,9 +250,7 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tro
     alloc_locals
 
     let (user_address) = get_caller_address()
-    with_attr error_message("Abbot: caller does not own trove ID {trove_id}"):
-        assert_trove_owner(user_address, trove_id, 0)
-    end
+    assert_trove_owner(user_address, trove_id)
 
     let (shrine_address) = abbot_shrine_address_storage.read()
     IShrine.melt(shrine_address, user_address, trove_id, amount)
@@ -301,24 +297,13 @@ end
 #
 
 func assert_trove_owner{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    user_address, trove_id, idx
+    owner_address, trove_id
 ):
-    alloc_locals
-
-    let (idx_trove_id) = abbot_user_troves_storage.read(user_address, idx)
-    if idx_trove_id == 0:
-        # if the trove ID at index idx is 0, it means we reached
-        # then end of the array without finding a user_address
-        # match, hence they are not the owner and the func raises
-        assert 1 = 0
+    let (real_owner_address) = abbot_trove_owner_storage.read(trove_id)
+    with_attr error_message("Abbot: address {owner_address} does not own trove ID {trove_id}"):
+        assert real_owner_address = owner_address
     end
-
-    if idx_trove_id == trove_id:
-        # trove ID match, it belongs to the user, all good
-        return ()
-    end
-
-    return assert_trove_owner(user_address, trove_id, idx + 1)
+    return ()
 end
 
 func assert_valid_yangs{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
