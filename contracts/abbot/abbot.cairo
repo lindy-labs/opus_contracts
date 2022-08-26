@@ -3,7 +3,6 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
-from starkware.cairo.lang.compiler.lib.registers import get_fp_and_pc
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.interfaces import IGate, IShrine
@@ -196,13 +195,12 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_address, trove_id, amount
 ):
     alloc_locals
-    let (__fp__, _) = get_fp_and_pc()
 
     with_attr error_message("Abbot: yang address cannot be zero"):
         assert_not_zero(yang_address)
     end
 
-    assert_valid_yangs(1, &yang_address)
+    assert_valid_yang(yang_address)
 
     # don't allow depositing to foreign troves
     let (user_address) = get_caller_address()
@@ -210,7 +208,7 @@ func deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         assert_trove_owner(user_address, trove_id, 0)
     end
 
-    do_deposits(user_address, trove_id, 1, &yang_address, &amount)
+    do_deposit(user_address, trove_id, yang_address, amount)
 
     return ()
 end
@@ -220,13 +218,12 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     yang_address, trove_id, amount
 ):
     alloc_locals
-    let (__fp__, _) = get_fp_and_pc()
 
     with_attr error_message("Abbot: yang address cannot be zero"):
         assert_not_zero(yang_address)
     end
 
-    assert_valid_yangs(1, &yang_address)
+    assert_valid_yang(yang_address)
 
     # don't allow withdrawing from foreign troves
     let (user_address) = get_caller_address()
@@ -332,19 +329,21 @@ end
 func assert_valid_yangs{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     yang_addresses_len, yang_addresses : felt*
 ):
-    alloc_locals
-
     if yang_addresses_len == 0:
         return ()
     end
+    assert_valid_yang([yang_addresses])
+    return assert_valid_yangs(yang_addresses_len - 1, yang_addresses + 1)
+end
 
-    let yang_address = [yang_addresses]
-    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
+func assert_valid_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    yang_address
+):
     with_attr error_message("Abbot: yang {yang_address} is not approved"):
+        let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
         assert_not_zero(gate_address)
     end
-
-    return assert_valid_yangs(yang_addresses_len - 1, yang_addresses + 1)
+    return ()
 end
 
 func get_yang_addresses_loop{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -366,11 +365,16 @@ func do_deposits{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     if deposits_count == 0:
         return ()
     end
-
-    let (gate_address) = abbot_yang_to_gate_storage.read([yang_addresses])
-    IGate.deposit(gate_address, user_address, trove_id, [amounts])
-
+    do_deposit(user_address, trove_id, [yang_addresses], [amounts])
     return do_deposits(user_address, trove_id, deposits_count - 1, yang_addresses + 1, amounts + 1)
+end
+
+func do_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    user_address, trove_id, yang_address, amount
+):
+    let (gate_address) = abbot_yang_to_gate_storage.read(yang_address)
+    IGate.deposit(gate_address, user_address, trove_id, amount)
+    return ()
 end
 
 # loop through all the yangs of a trove and withdraw full yang amount
