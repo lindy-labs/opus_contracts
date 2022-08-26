@@ -21,6 +21,7 @@ from tests.shrine.constants import (
     TROVE_1,
     YANG_0_ADDRESS,
     YANGS,
+    ShrineRoles,
 )
 from tests.utils import (
     SHRINE_OWNER,
@@ -231,3 +232,24 @@ async def rebasing_token(tokens) -> StarknetContract:
     await rebasing_token.mint(TROVE2_OWNER, (INITIAL_AMT, 0)).invoke(caller_address=TROVE2_OWNER)
 
     return rebasing_token
+
+
+#
+# Yin
+#
+
+
+@pytest.fixture
+async def yin(starknet, shrine) -> StarknetContract:
+
+    # Deploying the yin contract
+    yin_contract = compile_contract("contracts/yin/yin.cairo")
+    deployed_yin = await starknet.deploy(
+        contract_class=yin_contract,
+        constructor_calldata=[str_to_felt("USD Aura"), str_to_felt("USDa"), 18, shrine.contract_address],
+    )
+
+    # Authorizing the yin contract to call `move_yin` in shrine
+    await shrine.grant_role(ShrineRoles.MOVE_YIN, deployed_yin.contract_address).invoke(caller_address=SHRINE_OWNER)
+
+    return deployed_yin

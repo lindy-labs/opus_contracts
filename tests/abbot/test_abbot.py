@@ -4,9 +4,10 @@ import pytest
 from starkware.starknet.testing.starknet import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import RAY_PERCENT, assert_event_emitted, compile_contract, str_to_felt, to_wad
+from tests.gate.rebasing_yang.constants import ABBOT_ROLE
+from tests.shrine.constants import ShrineRoles
+from tests.utils import RAY_PERCENT, SHRINE_OWNER, assert_event_emitted, compile_contract, str_to_felt, to_wad
 
-TAX_RAY = 3 * RAY_PERCENT
 UINT256_MAX = (2**128 - 1, 2**128 - 1)
 STARKNET_ADDR = r"-?\d+"  # addresses are sometimes printed as negative numbers, hence the -?
 
@@ -19,13 +20,11 @@ YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_
 
 ABBOT_OWNER = str_to_felt("abbot owner")
 GATE_OWNER = str_to_felt("gate owner")
-SHRINE_OWNER = str_to_felt("shrine owner")
 STETH_OWNER = str_to_felt("steth owner")
 DOGE_OWNER = str_to_felt("doge owner")
 SHITCOIN_OWNER = str_to_felt("shitcoin owner")
 AURA_USER = str_to_felt("aura user")
 OTHER_USER = str_to_felt("other user")
-TAX_COLLECTOR = str_to_felt("tax collector")
 
 
 #
@@ -59,29 +58,18 @@ async def shitcoin(tokens) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine(starknet) -> StarknetContract:
-    shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
-    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
+async def shrine(shrine_deploy) -> StarknetContract:
+    shrine = shrine_deploy
     await shrine.set_ceiling(to_wad(50_000_000)).invoke(caller_address=SHRINE_OWNER)
     return shrine
 
 
 @pytest.fixture
-async def yin(starknet, shrine) -> StarknetContract:
-    yin_contract = compile_contract("contracts/yin/yin.cairo")
-    yin = await starknet.deploy(
-        contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
-    )
-    return yin
-
-
-@pytest.fixture
 async def steth_gate(starknet, abbot, shrine, steth_token) -> StarknetContract:
     """
-    Deploys an instance of the Gate module with autocompounding and tax.
+    Deploys an instance of the Gate module, without any autocompounding or tax.
     """
-    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
 
     gate = await starknet.deploy(
         contract_class=contract,
@@ -89,15 +77,15 @@ async def steth_gate(starknet, abbot, shrine, steth_token) -> StarknetContract:
             GATE_OWNER,
             shrine.contract_address,
             steth_token.contract_address,
-            TAX_RAY,
-            TAX_COLLECTOR,
         ],
     )
 
     # auth Abbot in Gate
-    await gate.authorize(abbot.contract_address).invoke(caller_address=GATE_OWNER)
+    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).invoke(caller_address=GATE_OWNER)
+
     # auth Gate in Shrine
-    await shrine.authorize(gate.contract_address).invoke(caller_address=SHRINE_OWNER)
+    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
+    await shrine.grant_role(roles, gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return gate
 
@@ -118,9 +106,11 @@ async def doge_gate(starknet, abbot, shrine, doge_token) -> StarknetContract:
     )
 
     # auth Abbot in Gate
-    await gate.authorize(abbot.contract_address).invoke(caller_address=GATE_OWNER)
+    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).invoke(caller_address=GATE_OWNER)
+
     # auth Gate in Shrine
-    await shrine.authorize(gate.contract_address).invoke(caller_address=SHRINE_OWNER)
+    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
+    await shrine.grant_role(roles, gate.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return gate
 
@@ -152,8 +142,12 @@ async def abbot(starknet, shrine) -> StarknetContract:
     abbot = await starknet.deploy(
         contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, ABBOT_OWNER]
     )
+
     # auth Abbot in Shrine
-    await shrine.authorize(abbot.contract_address).invoke(caller_address=SHRINE_OWNER)
+    # TODO: eventually remove ADD_YANG and SET_THRESHOLD from the Abbot
+    #       https://github.com/lindy-labs/aura_contracts/issues/105
+    roles = ShrineRoles.FORGE + ShrineRoles.MELT + ShrineRoles.ADD_YANG + ShrineRoles.SET_THRESHOLD
+    await shrine.grant_role(roles, abbot.contract_address).invoke(caller_address=SHRINE_OWNER)
 
     return abbot
 
@@ -232,15 +226,15 @@ async def test_add_yang(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
     for i in range(len(yangs)):
         assert addrs[i] in (y.contract_address for y in yangs)
 
-    # test TX reverts on unathorized actor calling add_yang
-    with pytest.raises(StarkException):
-        await abbot.add_yang(0xC0FFEE, 10**30, 10**27, to_wad(1), 0xDEADBEEF).invoke(caller_address=OTHER_USER)
-
 
 @pytest.mark.asyncio
 async def test_add_yang_failures(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
 
     yang = steth_yang
+
+    # test reverting on unathorized actor calling add_yang
+    with pytest.raises(StarkException, match="Auth: caller not authorized"):
+        await abbot.add_yang(0xC0FFEE, 10**30, 10**27, to_wad(1), 0xDEADBEEF).invoke(caller_address=OTHER_USER)
 
     # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Abbot: address cannot be zero"):
