@@ -29,11 +29,11 @@ end
 #
 
 @storage_var
-func AccessControl_admin() -> (address):
+func accesscontrol_admin_storage() -> (address):
 end
 
 @storage_var
-func AccessControl_role(account) -> (ufelt):
+func accesscontrol_role_storage(account) -> (ufelt):
 end
 
 namespace AccessControl:
@@ -82,7 +82,7 @@ namespace AccessControl:
     func get_role{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (
         ufelt
     ):
-        let (role) = AccessControl_role.read(account)
+        let (role) = accesscontrol_role_storage.read(account)
         return (role)
     end
 
@@ -92,7 +92,7 @@ namespace AccessControl:
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
     }(role, account) -> (bool):
-        let (account_role) = AccessControl_role.read(account)
+        let (account_role) = accesscontrol_role_storage.read(account)
         let (has_role) = bitwise_and(account_role, role)
         let (authorized) = is_not_zero(has_role)
         return (authorized)
@@ -101,7 +101,7 @@ namespace AccessControl:
     func get_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
         address
     ):
-        let (admin_address) = AccessControl_admin.read()
+        let (admin_address) = accesscontrol_admin_storage.read()
         return (admin_address)
     end
 
@@ -161,9 +161,9 @@ namespace AccessControl:
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
     }(role, account):
-        let (role_value) = AccessControl_role.read(account)
+        let (role_value) = accesscontrol_role_storage.read(account)
         let (updated_role_value) = bitwise_or(role_value, role)
-        AccessControl_role.write(account, updated_role_value)
+        accesscontrol_role_storage.write(account, updated_role_value)
         RoleGranted.emit(role, account)
         return ()
     end
@@ -174,17 +174,17 @@ namespace AccessControl:
         range_check_ptr,
         bitwise_ptr : BitwiseBuiltin*,
     }(role, account):
-        let (role_value) = AccessControl_role.read(account)
+        let (role_value) = accesscontrol_role_storage.read(account)
         let (revoked_complement) = bitwise_not(role)
         let (updated_role_value) = bitwise_and(role_value, revoked_complement)
-        AccessControl_role.write(account, updated_role_value)
+        accesscontrol_role_storage.write(account, updated_role_value)
         RoleRevoked.emit(role, account)
         return ()
     end
 
     func _set_admin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(address):
         let (prev_admin_address) = get_admin()
-        AccessControl_admin.write(address)
+        accesscontrol_admin_storage.write(address)
         AdminChanged.emit(prev_admin_address, address)
         return ()
     end

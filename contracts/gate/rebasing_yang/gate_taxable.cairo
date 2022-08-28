@@ -20,9 +20,9 @@ from contracts.gate.rebasing_yang.library_external import (
     preview_withdraw,
 )
 from contracts.interfaces import IShrine
+from contracts.lib.accesscontrol.library import AccessControl
 # these imported public functions are part of the contract's interface
-from contracts.lib.acl import AccessControl
-from contracts.lib.acl_external import (
+from contracts.lib.accesscontrol.accesscontrol_external import (
     get_role,
     has_role,
     get_admin,

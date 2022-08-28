@@ -3,8 +3,9 @@
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 
-from contracts.lib.acl import AccessControl
-from contracts.lib.acl_external import (
+from contracts.lib.accesscontrol.library import AccessControl
+# these imported public functions are part of the contract's interface
+from contracts.lib.accesscontrol.accesscontrol_external import (
     get_role,
     has_role,
     get_admin,
@@ -13,7 +14,7 @@ from contracts.lib.acl_external import (
     renounce_role,
     change_admin,
 )
-from tests.lib.acl.roles import AclRoles
+from tests.lib.accesscontrol.roles import AccRoles
 
 #
 # Access Control - Constructor
@@ -55,7 +56,7 @@ end
 func can_execute{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(user) -> (bool):
-    let (authorized) = AccessControl.has_role(AclRoles.EXECUTE, user)
+    let (authorized) = AccessControl.has_role(AccRoles.EXECUTE, user)
     return (authorized)
 end
 
@@ -63,7 +64,7 @@ end
 func can_write{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(user) -> (bool):
-    let (authorized) = AccessControl.has_role(AclRoles.WRITE, user)
+    let (authorized) = AccessControl.has_role(AccRoles.WRITE, user)
     return (authorized)
 end
 
@@ -71,6 +72,6 @@ end
 func can_read{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }(user) -> (bool):
-    let (authorized) = AccessControl.has_role(AclRoles.READ, user)
+    let (authorized) = AccessControl.has_role(AccRoles.READ, user)
     return (authorized)
 end
