@@ -1044,9 +1044,11 @@ func compound{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     alloc_locals
 
     let (avg_ratio) = get_avg_ratio(trove_id, current_debt, start_interval, end_interval)
+    let (threshold, _) = get_trove_threshold(trove_id)
+    let (avg_relative_ratio) = WadRay.runsigned_div(avg_ratio, threshold)
     let (avg_multiplier) = get_avg_multiplier(start_interval, end_interval)
 
-    let (base_rate) = get_base_rate(avg_ratio)
+    let (base_rate) = get_base_rate(avg_relative_ratio)
     let (true_rate) = WadRay.rmul(base_rate, avg_multiplier)  # represents `r` in the compound interest formula
 
     let t = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR  # wad, represents `t` in the compound interest formula
@@ -1061,11 +1063,13 @@ end
 
 # base rate function:
 #
+#  rLTV = relative loan-to-value ratio
 #
-#           { 0.02*LTV                   if 0 <= LTV <= 0.5
-#           { 0.1*LTV - 0.04             if 0.5 < LTV <= 0.75
-#  r(LTV) = { LTV - 0.715                if 0.75 < LTV <= 0.9215
-#           { 3.101908*LTV - 2.65190822  if 0.9215 < LTV < \infinity
+#
+#            { 0.02*rLTV                   if 0 <= rLTV <= 0.5
+#            { 0.1*rLTV - 0.04             if 0.5 < rLTV <= 0.75
+#  r(rLTV) = { rLTV - 0.715                if 0.75 < rLTV <= 0.9215
+#            { 3.101908*rLTV - 2.65190822  if 0.9215 < rLTV < \infinity
 #
 #
 

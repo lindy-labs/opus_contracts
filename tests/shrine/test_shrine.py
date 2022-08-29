@@ -60,12 +60,12 @@ def linear(x: Decimal, m: Decimal, b: Decimal) -> Decimal:
 
 def base_rate(ltv: Decimal) -> Decimal:
     """
-    Helper function to calculate base rate given loan-to-value ratio.
+    Helper function to calculate base rate given loan-to-threshold-value ratio.
 
     Arguments
     ---------
     ltv : Decimal
-        Loan-to-value ratio in Decimal
+        Loan-to-threshold-value ratio in Decimal
 
     Returns
     -------
@@ -82,6 +82,7 @@ def base_rate(ltv: Decimal) -> Decimal:
 
 def compound(
     yangs_amt: List[Decimal],
+    yangs_thresholds: List[Decimal],
     yangs_cumulative_prices_start: List[Decimal],
     yangs_cumulative_prices_end: List[Decimal],
     cumulative_multiplier_start: Decimal,
@@ -97,6 +98,8 @@ def compound(
     ---------
     yangs_amt : List[Decimal]
         Ordered list of the amount of each Yang
+    yangs_thresholds : List[Decimal]
+        Ordered list of the threshold for each Yang
     yang_cumulative_prices_start: List[Decimal]
         The cumulative price of each yang at the start of the interest accumulation period
     yang_cumulative_prices_end: List[Decimal]
@@ -114,18 +117,22 @@ def compound(
     """
 
     # Sanity check on input data
-    assert len(yangs_amt) == len(yangs_cumulative_prices_start)
-    assert len(yangs_amt) == len(yangs_cumulative_prices_end)
+    assert (
+        len(yangs_amt)
+        == len(yangs_cumulative_prices_start)
+        == len(yangs_cumulative_prices_end)
+        == len(yangs_thresholds)
+    )
 
     intervals_elapsed = Decimal(end_interval - start_interval)
-    avg_trove_value = Decimal(0)
+    cumulative_weighted_threshold = Decimal("0")
     for i in range(len(yangs_amt)):
         avg_price = (yangs_cumulative_prices_end[i] - yangs_cumulative_prices_start[i]) / intervals_elapsed
-        avg_trove_value += avg_price * yangs_amt[i]
+        cumulative_weighted_threshold += yangs_amt[i] * avg_price * yangs_thresholds[i]
 
-    ltv = debt / avg_trove_value
+    relative_ltv = debt / cumulative_weighted_threshold
 
-    trove_base_rate = base_rate(ltv)
+    trove_base_rate = base_rate(relative_ltv)
     avg_multiplier = (cumulative_multiplier_end - cumulative_multiplier_start) / intervals_elapsed
 
     true_rate = trove_base_rate * avg_multiplier
@@ -321,6 +328,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]
 
     expected_debt = compound(
         [Decimal(INITIAL_DEPOSIT)],
+        [from_ray(YANG_0_THRESHOLD)],
         [from_wad(start_cumulative_price)],
         [from_wad(end_cumulative_price)],
         from_ray(start_cumulative_multiplier),
@@ -1350,6 +1358,7 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
 
     expected_debt = compound(
         [Decimal("10")],
+        [from_ray(YANG_0_THRESHOLD)],
         [yang0_price_feed[0]],
         [sum(yang0_price_feed)],
         multiplier_feed[0],
