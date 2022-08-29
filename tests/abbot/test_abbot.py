@@ -1,4 +1,5 @@
 from collections import namedtuple
+from enum import IntEnum
 
 import pytest
 from starkware.starknet.testing.starknet import StarknetContract
@@ -35,6 +36,10 @@ INITIAL_STETH_DEPOSIT = to_wad(20)
 INITIAL_DOGE_DEPOSIT = to_wad(1000)
 INITIAL_FORGED_AMOUNT = to_wad(4000)
 TROVE_1 = 1  # first trove (and in most cases, only one)
+
+
+class AbbotRoles(IntEnum):
+    ADD_YANG = 2**0
 
 
 #
@@ -149,6 +154,9 @@ async def abbot(starknet, shrine) -> StarknetContract:
     roles = ShrineRoles.FORGE + ShrineRoles.MELT + ShrineRoles.ADD_YANG + ShrineRoles.SET_THRESHOLD
     await shrine.grant_role(roles, abbot.contract_address).invoke(caller_address=SHRINE_OWNER)
 
+    # allow ABBOT_OWNER to call add_yang
+    await abbot.grant_role(AbbotRoles.ADD_YANG.value, ABBOT_OWNER).invoke(caller_address=ABBOT_OWNER)
+
     return abbot
 
 
@@ -197,6 +205,7 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 @pytest.mark.usefixtures("abbot_with_yangs")
 @pytest.mark.asyncio
 async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+    assert (await abbot.get_admin().invoke()).result.address == ABBOT_OWNER
     yang_addrs = (await abbot.get_yang_addresses().invoke()).result.addresses
     assert len(yang_addrs) == 2
     assert steth_yang.contract_address in yang_addrs
@@ -233,10 +242,10 @@ async def test_add_yang_failures(abbot, steth_yang: YangConfig, doge_yang: YangC
     yang = steth_yang
 
     # test reverting on unathorized actor calling add_yang
-    # with pytest.raises(StarkException, match="Auth: caller not authorized"):
-    #     await abbot.add_yang(
-    #         yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-    #     ).invoke(caller_address=OTHER_USER)
+    with pytest.raises(StarkException, match=r"AccessControl: caller is missing role \d+"):
+        await abbot.add_yang(
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+        ).invoke(caller_address=OTHER_USER)
 
     # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Abbot: address cannot be zero"):

@@ -1,16 +1,25 @@
 %lang starknet
 
 from starkware.cairo.common.alloc import alloc
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
+from contracts.abbot.roles import AbbotRoles
 from contracts.interfaces import IGate, IShrine
 from contracts.shared.types import Trove, Yang
 
-#
-# Constants
-#
+from contracts.lib.accesscontrol.library import AccessControl
+# these imported public functions are part of the contract's interface
+from contracts.lib.accesscontrol.accesscontrol_external import (
+    get_role,
+    has_role,
+    get_admin,
+    grant_role,
+    revoke_role,
+    renounce_role,
+    change_admin,
+)
 
 #
 # Events
@@ -88,6 +97,7 @@ end
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     shrine_address, authed
 ):
+    AccessControl.initializer(authed)
     abbot_shrine_address_storage.write(shrine_address)
     return ()
 end
@@ -266,10 +276,10 @@ func melt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(tro
 end
 
 @external
-func add_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    yang_address, yang_max, yang_threshold, yang_price, gate_address
-):
-    # TODO: auth using AccessControl, somehow
+func add_yang{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(yang_address, yang_max, yang_threshold, yang_price, gate_address):
+    AccessControl.assert_has_role(AbbotRoles.ADD_YANG)
 
     with_attr error_message("Abbot: address cannot be zero"):
         assert_not_zero(yang_address)
