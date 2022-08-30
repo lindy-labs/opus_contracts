@@ -7,7 +7,7 @@ from random import seed, uniform
 from typing import Union
 
 from starkware.starknet.business_logic.execution.objects import Event
-from starkware.starknet.business_logic.state.state import BlockInfo
+from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
 from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
