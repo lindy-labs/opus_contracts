@@ -199,3 +199,47 @@ namespace IGate:
     func has_role(role, user) -> (bool):
     end
 end
+
+@contract_interface
+namespace IAbbot:
+    #
+    # getters
+    #
+
+    func get_trove_owner(trove_id) -> (address):
+    end
+
+    func get_user_trove_ids(address) -> (trove_ids_len, trove_ids : felt*):
+    end
+
+    func get_yang_addresses() -> (addresses_len, addresses : felt*):
+    end
+
+    func get_troves_count() -> (ufelt):
+    end
+
+    #
+    # external
+    #
+
+    func open_trove(forge_amount, yang_addrs_len, yang_addrs : felt*, amounts_len, amounts : felt*):
+    end
+
+    func close_trove(trove_id):
+    end
+
+    func deposit(yang_address, trove_id, amount):
+    end
+
+    func withdraw(yang_address, trove_id, amount):
+    end
+
+    func forge(trove_id, amount):
+    end
+
+    func melt(trove_id, amount):
+    end
+
+    func add_yang(yang_address, yang_max, yang_threshold, yang_price, gate_address):
+    end
+end

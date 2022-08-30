@@ -4,7 +4,7 @@ from collections import namedtuple
 from decimal import Decimal
 from functools import cache
 from random import seed, uniform
-from typing import Union
+from typing import Callable, Iterable, List, Union
 
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state import BlockInfo
@@ -97,18 +97,23 @@ def from_uint(uint: Uint256like) -> int:
     return uint[0] + (uint[1] << 128)
 
 
-def assert_event_emitted(tx_exec_info, from_address, name, data=None):
-    if data is not None:
+def assert_event_emitted(
+    tx_exec_info, from_address, name, data: Union[None, Callable[[List[int]], bool], Iterable] = None
+):
+    key = get_selector_from_name(name)
+
+    if isinstance(data, Callable):
+        assert any([data(e.data) for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
+    elif data is not None:
         assert (
             Event(
                 from_address=from_address,
-                keys=[get_selector_from_name(name)],
+                keys=[key],
                 data=data,
             )
             in tx_exec_info.raw_events
         )
-    else:
-        key = get_selector_from_name(name)
+    else:  # data=None
         assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
 
