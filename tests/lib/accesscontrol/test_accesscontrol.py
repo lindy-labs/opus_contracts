@@ -30,8 +30,8 @@ for i in range(1, len(Roles) + 1):
 
 
 @pytest.fixture
-async def acc(starknet_session) -> StarknetContract:
-    contract = compile_contract("tests/lib/accesscontrol/accesscontrol_contract.cairo")
+async def acc(request, starknet_session) -> StarknetContract:
+    contract = compile_contract("tests/lib/accesscontrol/accesscontrol_contract.cairo", request)
     return await starknet_session.deploy(contract_class=contract, constructor_calldata=[ACC_OWNER])
 
 
