@@ -13,13 +13,13 @@ async def auth_contract(starknet_session):
 @pytest.mark.asyncio
 async def test_authorize_and_revoke(auth_contract):
     addr = 123
-    assert (await auth_contract.is_authorized(addr).invoke()).result.bool == FALSE
-    tx = await auth_contract.authorize(addr).invoke()
+    assert (await auth_contract.is_authorized(addr).execute()).result.bool == FALSE
+    tx = await auth_contract.authorize(addr).execute()
     assert_event_emitted(tx, auth_contract.contract_address, "Authorized", [addr])
-    assert (await auth_contract.is_authorized(addr).invoke()).result.bool == TRUE
-    tx = await auth_contract.revoke(addr).invoke()
+    assert (await auth_contract.is_authorized(addr).execute()).result.bool == TRUE
+    tx = await auth_contract.revoke(addr).execute()
     assert_event_emitted(tx, auth_contract.contract_address, "Revoked", [addr])
-    assert (await auth_contract.is_authorized(addr).invoke()).result.bool == FALSE
+    assert (await auth_contract.is_authorized(addr).execute()).result.bool == FALSE
 
 
 @pytest.mark.asyncio
@@ -27,11 +27,11 @@ async def test_assert_caller_authed(auth_contract):
     caller = 999
 
     with pytest.raises(StarkException):
-        await auth_contract.assert_caller_authed().invoke()
+        await auth_contract.assert_caller_authed().execute()
 
-    await auth_contract.authorize(caller).invoke()
-    assert (await auth_contract.is_authorized(caller).invoke()).result.bool == TRUE
-    assert (await auth_contract.assert_caller_authed().invoke(caller_address=caller)).result.bool == TRUE
+    await auth_contract.authorize(caller).execute()
+    assert (await auth_contract.is_authorized(caller).execute()).result.bool == TRUE
+    assert (await auth_contract.assert_caller_authed().execute(caller_address=caller)).result.bool == TRUE
 
 
 @pytest.mark.asyncio
@@ -39,7 +39,7 @@ async def test_assert_address_authed(auth_contract):
     addr = 321
 
     with pytest.raises(StarkException):
-        await auth_contract.assert_address_authed(addr).invoke()
+        await auth_contract.assert_address_authed(addr).execute()
 
-    await auth_contract.authorize(addr).invoke()
-    assert (await auth_contract.assert_address_authed(addr).invoke()).result.bool == TRUE
+    await auth_contract.authorize(addr).execute()
+    assert (await auth_contract.assert_address_authed(addr).execute()).result.bool == TRUE

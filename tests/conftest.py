@@ -5,8 +5,9 @@ from typing import Awaitable, Callable
 
 import pytest
 from filelock import FileLock
-from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
-from starkware.starknet.testing.starknet import Starknet, StarknetContract
+from starkware.starknet.testing.contract import StarknetContract
+from starkware.starknet.testing.objects import StarknetCallInfo
+from starkware.starknet.testing.starknet import Starknet
 
 from tests.gate.rebasing_yang.constants import INITIAL_AMT
 from tests.shrine.constants import (
@@ -58,7 +59,7 @@ def collect_gas_cost():
     # Adds a function call to gas_info
     def add_call(
         func_name: str,
-        tx_info: StarknetTransactionExecutionInfo,
+        tx_info: StarknetCallInfo,
         num_storage_keys: int,
         num_contracts: int,
     ):
@@ -160,7 +161,7 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 
     # Grant shrine owner all roles
-    await shrine.grant_role(SHRINE_FULL_ACCESS, SHRINE_OWNER).invoke(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(SHRINE_FULL_ACCESS, SHRINE_OWNER).execute(caller_address=SHRINE_OWNER)
 
     return shrine
 
@@ -170,12 +171,12 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 async def shrine_setup(shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
     # Set debt ceiling
-    await shrine.set_ceiling(DEBT_CEILING).invoke(caller_address=SHRINE_OWNER)
+    await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
         await shrine.add_yang(
             YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])
-        ).invoke(caller_address=SHRINE_OWNER)
+        ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
 
@@ -194,9 +195,9 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(YANGS)):
-            await shrine.advance(YANGS[j]["address"], feeds[j][i]).invoke(caller_address=SHRINE_OWNER)
+            await shrine.advance(YANGS[j]["address"], feeds[j][i]).execute(caller_address=SHRINE_OWNER)
 
-        await shrine.update_multiplier(MULTIPLIER_FEED[i]).invoke(caller_address=SHRINE_OWNER)
+        await shrine.update_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
     return shrine, feeds
 
@@ -208,14 +209,16 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine_deposit(shrine) -> StarknetTransactionExecutionInfo:
-    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).invoke(caller_address=SHRINE_OWNER)
+async def shrine_deposit(shrine) -> StarknetCallInfo:
+    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).execute(
+        caller_address=SHRINE_OWNER
+    )
     return deposit
 
 
 @pytest.fixture
-async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).invoke(caller_address=SHRINE_OWNER)
+async def shrine_forge(shrine, shrine_deposit) -> StarknetCallInfo:
+    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -228,6 +231,6 @@ async def shrine_forge(shrine, shrine_deposit) -> StarknetTransactionExecutionIn
 async def rebasing_token(tokens) -> StarknetContract:
     rebasing_token = await tokens("Rebasing Token", "RT", 18, (INITIAL_AMT, 0), TROVE1_OWNER)
 
-    await rebasing_token.mint(TROVE2_OWNER, (INITIAL_AMT, 0)).invoke(caller_address=TROVE2_OWNER)
+    await rebasing_token.mint(TROVE2_OWNER, (INITIAL_AMT, 0)).execute(caller_address=TROVE2_OWNER)
 
     return rebasing_token

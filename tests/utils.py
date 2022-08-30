@@ -12,8 +12,9 @@ from starkware.starknet.compiler.compile import compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
-from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
-from starkware.starknet.testing.starknet import Starknet, StarknetContract
+from starkware.starknet.testing.contract import StarknetContract
+from starkware.starknet.testing.objects import StarknetCallInfo
+from starkware.starknet.testing.starknet import Starknet
 
 RANGE_CHECK_BOUND = 2**128
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -201,7 +202,7 @@ def set_block_timestamp(sn: Starknet, block_timestamp: int):
 
 
 def estimate_gas(
-    tx_info: StarknetTransactionExecutionInfo,
+    tx_info: StarknetCallInfo,
     num_storage_keys: int = 0,
     num_contracts: int = 0,
 ):
@@ -210,7 +211,7 @@ def estimate_gas(
 
     Arguments
     ---------
-    tx_info : StarknetTransactionExecutionInfo.
+    tx_info : StarknetCallInfo.
         Transaction receipt
     num_storage_keys : int
         Number of unique keys updated in the transaction.
@@ -224,9 +225,10 @@ def estimate_gas(
 def estimate_gas_inner(call_info: FunctionInvocation):
     steps = call_info.execution_resources.n_steps
     builtins = call_info.execution_resources.builtin_instance_counter
-
+    print(builtins)
     # Sum of all gas consumed across both the call and its internal calls
-    sum_gas = sum(WEIGHTS[name] * builtins[name] for name in NAMES) + steps * WEIGHTS["step"]
+
+    sum_gas = sum(WEIGHTS[name] * builtins[name] for name in NAMES if builtins.get(name)) + steps * WEIGHTS["step"]
     for call in call_info.internal_calls:
         sum_gas += estimate_gas_inner(call)
 
