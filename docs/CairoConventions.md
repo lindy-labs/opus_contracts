@@ -47,7 +47,7 @@ An example of a variable named `balance` inside a module called `Treasury`:
 
 ```cairo
 @storage_var
-func treasury_balance_storage() -> (balance : felt){
+func treasury_balance_storage() -> (balance : felt) {
 }
 ```
 
@@ -78,7 +78,7 @@ Prefer emitting events from `@external`, `@l1_handler` or `@constructor` functio
 When using the `with_attr error_message()` pattern to do a check and raise an error if it fails, prepend the error message itself with the module name. It makes it easier for debugging, etc. An example from the `direct_deposit` module:
 
 ```cairo
-with_attr error_message("direct_deposit: transferFrom failed"){
+with_attr error_message("direct_deposit: transferFrom failed") {
     assert was_transfered = TRUE;
 }
 ```
