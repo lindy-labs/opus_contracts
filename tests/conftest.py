@@ -254,6 +254,6 @@ async def yin(request, starknet, shrine) -> StarknetContract:
     )
 
     # Authorizing the yin contract to call `move_yin` in shrine
-    await shrine.grant_role(ShrineRoles.MOVE_YIN, deployed_yin.contract_address).invoke(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(ShrineRoles.MOVE_YIN, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return deployed_yin
