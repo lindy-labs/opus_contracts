@@ -2,9 +2,8 @@
 import os
 from collections import namedtuple
 from decimal import Decimal
-from functools import cache
 from random import seed, uniform
-from typing import Union
+from typing import Callable, Iterable, List, Union
 
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
@@ -98,18 +97,23 @@ def from_uint(uint: Uint256like) -> int:
     return uint[0] + (uint[1] << 128)
 
 
-def assert_event_emitted(tx_exec_info, from_address, name, data=None):
-    if data is not None:
+def assert_event_emitted(
+    tx_exec_info, from_address, name, data: Union[None, Callable[[List[int]], bool], Iterable] = None
+):
+    key = get_selector_from_name(name)
+
+    if isinstance(data, Callable):
+        assert any([data(e.data) for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
+    elif data is not None:
         assert (
             Event(
                 from_address=from_address,
-                keys=[get_selector_from_name(name)],
+                keys=[key],
                 data=data,
             )
             in tx_exec_info.raw_events
         )
-    else:
-        key = get_selector_from_name(name)
+    else:  # data=None
         assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
 
@@ -121,16 +125,35 @@ def contract_path(rel_contract_path: str) -> str:
     return os.path.join(here(), "..", rel_contract_path)
 
 
-@cache
-def compile_contract(rel_contract_path: str) -> ContractClass:
+def compile_contract(rel_contract_path: str, request) -> ContractClass:
     contract_src = contract_path(rel_contract_path)
+    contract_cache_key = rel_contract_path + "/compiled"
+    ctime_key = rel_contract_path + "/ctime"
+
+    contract_ctime = int(os.path.getctime(contract_src))
+    last_contract_ctime = request.config.cache.get(ctime_key, None)
+
+    if contract_ctime == last_contract_ctime:
+        # if last access time equals current and there's a cache-hit
+        # return the compiled contract from cache
+        serialized_contract = request.config.cache.get(contract_cache_key, None)
+        if serialized_contract is not None:
+            return ContractClass.loads(serialized_contract)
+
     tld = os.path.join(here(), "..")
-    return compile_starknet_files(
+    compiled_contract = compile_starknet_files(
         [contract_src],
         debug_info=True,
         disable_hint_validation=True,
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
     )
+
+    # write compiled contract to cache
+    serialized_contract = ContractClass.dumps(compiled_contract)
+    request.config.cache.set(contract_cache_key, serialized_contract)
+    request.config.cache.set(ctime_key, contract_ctime)
+
+    return compiled_contract
 
 
 #

@@ -2,8 +2,8 @@ import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.shrine.constants import FORGE_AMT_WAD, TROVE_1, ShrineRoles
-from tests.utils import CAIRO_PRIME, SHRINE_OWNER, TROVE1_OWNER, assert_event_emitted, compile_contract, str_to_felt
+from tests.shrine.constants import FORGE_AMT_WAD, TROVE_1
+from tests.utils import CAIRO_PRIME, SHRINE_OWNER, TROVE1_OWNER, assert_event_emitted, str_to_felt
 
 INFINITE_ALLOWANCE = CAIRO_PRIME - 1
 
@@ -16,22 +16,6 @@ USER_3 = str_to_felt("user 3")
 #
 # Fixtures
 #
-
-
-@pytest.fixture
-async def yin(starknet, shrine) -> StarknetContract:
-
-    # Deploying the yin contract
-    yin_contract = compile_contract("contracts/yin/yin.cairo")
-    deployed_yin = await starknet.deploy(
-        contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("USD Aura"), str_to_felt("USDa"), 18, shrine.contract_address],
-    )
-
-    # Authorizing the yin contract to call `move_yin` in shrine
-    await shrine.grant_role(ShrineRoles.MOVE_YIN, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return deployed_yin
 
 
 @pytest.fixture
