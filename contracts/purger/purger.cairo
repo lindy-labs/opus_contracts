@@ -32,7 +32,7 @@ func purger_abbot_storage() -> (address: felt) {
 //
 
 @event
-func Purged(trove_id, purge_amt_wad, liquidation_penalty_ray, funder_address, recipient_address) {
+func Purged(trove_id, purge_amt_wad, purge_penalty_ray, funder_address, recipient_address) {
 }
 
 //
@@ -60,7 +60,7 @@ func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 // Returns the liquidation penalty based on the LTV (ray)
 // Returns 0 if trove is healthy
 @view
-func get_liquidation_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id
 ) -> (ray: felt) {
     alloc_locals;
@@ -78,7 +78,7 @@ func get_liquidation_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     );
 
     // placeholder
-    return get_liquidation_penalty_internal(trove_ltv_ray);
+    return get_purge_penalty_internal(trove_ltv_ray);
 }
 
 // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
@@ -143,14 +143,14 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     // Check purge_amt <= max_close_amt
-    let (max_close_amt) = get_max_close_amount(shrine_address, trove_id, trove_ltv_ray);
+    let (max_close_amt) = get_max_close_amount_internal(shrine_address, trove_id, trove_ltv_ray);
     let (is_valid) = is_le(purge_amt, max_close_amt);
     with_attr error_message("Purger: Maximum close amount exceeded") {
         assert is_valid = TRUE;
     }
 
     // Calculate percentage of `yang` to free
-    let (penalty_ray) = get_liquidation_penalty_internal(trove_ltv_ray);
+    let (penalty_ray) = get_purge_penalty_internal(trove_ltv_ray);
 
     // `rmul` of a wad and a ray returns a wad
     let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
@@ -209,9 +209,9 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     return (close_amt);
 }
 
-func get_liquidation_penalty_internal{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(ltv_ray) -> (ray: felt) {
+func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ltv_ray
+) -> (ray: felt) {
     // placeholder
     let (penalty, _) = WadRay.runsigned_div(ltv_ray, 10);
     return (penalty);
