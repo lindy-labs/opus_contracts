@@ -154,7 +154,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // `rmul` of a wad and a ray returns a wad
     let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
-    let (freed_amt_wad) = WadRay.add(penalty_amt_wad, purge_amt_wad);
+    let (freed_amt_wad) = WadRay.add_unsigned(penalty_amt_wad, purge_amt_wad);
 
     let (_, trove_value_wad) = IShrine.get_trove_threshold(
         contract_address=shrine_address, trove_id=trove_id
