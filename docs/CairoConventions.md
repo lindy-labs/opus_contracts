@@ -31,10 +31,10 @@ We follow these conventions when naming things
 | directories and files     | snake_case                 | `module_name/module.cairo`                                       |
 | functions                 | snake_case                 | `func open_account{...}(){}`                                      |
 | namespaces                | CamelCase                  | `namespace Engine`                                               |
-| contract interfaces       | CamelCase prepended with I | <pre>@contract_interface<br />namespace IAccount:<br />end</pre> |
+| contract interfaces       | CamelCase prepended with I | <pre>@contract_interface<br />namespace IAccount {<br />}</pre> |
 | structs                   | CamelCase                  | `struct Loan`                                                    |
 | variables, struct members | snake_case                 | `let user_balance = 100;`                                         |
-| events                    | CamelCase                  | <pre>@event<br />func ThingHappened():<br />end</pre>            |
+| events                    | CamelCase                  | <pre>@event<br />func ThingHappened() {<br />}</pre>            |
 | constants                 | UPPER_SNAKE_CASE           | `const CAP = 10**18;`                                             |
 
 See sections below for further specific rules.
@@ -141,15 +141,15 @@ The naming conventions are the following:
 These names can be used as a standalone value (1), or as suffixes if you want to communicate the meaning of a value (2) or multiple return values of the same 'type' (3), as illustrated in the following example:
 
 ```cairo
-# 1
+// 1
 func get_price() -> (wad : felt) {
 }
 
-# 2
+// 2
 func get_price() -> (price_wad : felt) {
 }
 
-# 3
+// 3
 func get_price_pair() -> (current_price_wad : felt, previous_price_wad : felt) {
 }
 ```
