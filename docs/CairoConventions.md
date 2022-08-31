@@ -41,7 +41,7 @@ See sections below for further specific rules.
 
 ## @storage_var naming
 
-To prevent [`@storage_var` conflicts](https://github.com/crytic/amarna/issues/10) and clearly distinguish between a local variable and a storage container, a `@storage_var` should be named using the following template: `modulename_variable_name_storage` - that is, the variable name is prefixed by the module name (lowercase, no separation) and suffixed by the string `storage`, separated by underscores.
+To prevent `@storage_var` conflicts and clearly distinguish between a local variable and a storage container, a `@storage_var` should be named using the following template: `modulename_variable_name_storage` - that is, the variable name is prefixed by the module name (lowercase, no separation) and suffixed by the string `storage`, separated by underscores.
 
 An example of a variable named `balance` inside a module called `Treasury`:
 
