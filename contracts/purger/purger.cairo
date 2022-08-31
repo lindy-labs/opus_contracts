@@ -113,6 +113,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 ) {
     purger_shrine_storage.write(shrine_address);
     purger_abbot_storage.write(abbot_address);
+    return ();
 }
 
 //
