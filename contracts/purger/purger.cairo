@@ -90,6 +90,12 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
     let shrine_address = purger_shrine_storage.read();
 
+    let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
+
+    if (is_healthy == TRUE) {
+        return (0);
+    }
+
     let trove_ltv_ray = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
@@ -124,6 +130,13 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     alloc_locals;
 
     let shrine_address = purger_shrine_storage.read();
+
+    let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
+
+    with_attr error_message("Purger: Trove is healthy and cannot be liquidated") {
+        assert is_healthy = FALSE;
+    }
+
     let trove_ltv_ray = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
@@ -131,9 +144,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // Check purge_amt <= max_close_amt
     let (max_close_amt) = get_max_close_amount(shrine_address, trove_id, trove_ltv_ray);
     let (is_valid) = is_le(purge_amt, max_close_amt);
-
-    // This also checks that the trove can be liquidated.
-    // (i.e. `get_max_close_amount` returns a non-zero value)
     with_attr error_message("Purger: Maximum close amount exceeded") {
         assert is_valid = TRUE;
     }
@@ -189,12 +199,6 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     shrine_address, trove_id, trove_ltv_ray
 ) -> (wad: felt) {
     alloc_locals;
-
-    let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
-
-    if (is_healthy == TRUE) {
-        return (0);
-    }
 
     let (close_factor) = get_close_factor(trove_ltv_ray);
 
