@@ -16,7 +16,7 @@ const CF1 = WadRay.WAD_PERCENT * 270;
 const CF2 = WadRay.WAD_PERCENT * 22;
 
 //
-// Storage variables
+// Storage
 //
 
 @storage_var
@@ -189,8 +189,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     return ();
 }
-
-// TODO: do we need a kill() function?
 
 //
 // Internal
