@@ -45,14 +45,14 @@ func Purged(trove_id, purge_amt_wad, liquidation_penalty_ray, funder_address, re
 //               [factor_one] - [ factor_two ] + [CF2]
 @view
 func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(ltv_ray) -> (
-    close_factor_ray: felt
+    ray: felt
 ) {
     let (ltv_ray_squared) = WadRay.rmul(ltv_ray, ltv_ray);
     let (factor_one) = WadRay.rmul(CF1, ltv_ray_squared);
 
-    let (factor_two) = WadRay.rmul(ltv_ray, 2);
-    let (factors_sum) = WadRay.add(factor_one, factor_two);
-    let (close_factor) = WadRay.add(factors_sum, CF2);
+    let (factor_two) = ltv_ray * 2;
+    let (factors_sum) = WadRay.sub_unsigned(factor_one, factor_two);
+    let (close_factor) = WadRay.add_unsigned(factors_sum, CF2);
 
     return (close_factor);
 }
@@ -62,7 +62,7 @@ func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 @view
 func get_liquidation_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id
-) -> (liquidation_penalty_ray: felt) {
+) -> (ray: felt) {
     alloc_locals;
 
     let shrine_address = purger_shrine_storage.read();
@@ -78,15 +78,14 @@ func get_liquidation_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     );
 
     // placeholder
-    let (penalty) = get_liquidation_penalty_internal(trove_ltv_ray);
-    return (penalty);
+    return get_liquidation_penalty_internal(trove_ltv_ray);
 }
 
 // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
 @view
 func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id
-) -> (amt_wad: felt) {
+) -> (wad: felt) {
     alloc_locals;
 
     let shrine_address = purger_shrine_storage.read();
@@ -95,9 +94,7 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         contract_address=shrine_address, trove_id=trove_id
     );
 
-    let (close_amt) = get_max_close_amount_internal(shrine_address, trove_id, trove_ltv_ray);
-
-    return (close_amt);
+    return get_max_close_amount_internal(shrine_address, trove_id, trove_ltv_ray);
 }
 
 //
@@ -143,6 +140,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Calculate percentage of `yang` to free
     let (penalty_ray) = get_liquidation_penalty_internal(trove_ltv_ray);
+
+    // `rmul` of a wad and a ray returns a wad
     let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
     let (freed_amt_wad) = WadRay.add(penalty_amt_wad, purge_amt_wad);
 
@@ -188,7 +187,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine_address, trove_id, trove_ltv_ray
-) -> (amt_wad: felt) {
+) -> (wad: felt) {
     alloc_locals;
 
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
@@ -209,7 +208,7 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 
 func get_liquidation_penalty_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(ltv_ray) -> (liquidation_penalty_ray: felt) {
+}(ltv_ray) -> (ray: felt) {
     // placeholder
     let (penalty, _) = WadRay.runsigned_div(ltv_ray, 10);
     return (penalty);
@@ -275,6 +274,8 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     // Perform transfer
+
+    // `rmul` of a wad and a ray returns a wad
     let (freed_amt_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
     IGate.withdraw(contract_address=gate_address, trove_id=trove_id, yang_wad=freed_amt_wad);
 
