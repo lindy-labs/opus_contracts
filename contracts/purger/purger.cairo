@@ -173,6 +173,9 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         percentage_freed_ray,
     );
 
+    // Events
+    Purged.emit(trove_id, purge_amt_wad, penalty_ray, funder_address, recipient_address);
+
     return ();
 }
 
