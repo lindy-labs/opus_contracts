@@ -144,7 +144,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Check purge_amt <= max_close_amt
     let (max_close_amt) = get_max_close_amount_internal(shrine_address, trove_id, trove_ltv_ray);
-    let (is_valid) = is_le(purge_amt, max_close_amt);
+    let (is_valid) = is_le(purge_amt_wad, max_close_amt);
     with_attr error_message("Purger: Maximum close amount exceeded") {
         assert is_valid = TRUE;
     }
