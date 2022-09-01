@@ -174,14 +174,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (trove_value_ray) = WadRay.wad_to_ray_unchecked(trove_value_wad);
     let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_ray, trove_value_ray);
 
-    %{
-        print("purge amt wad: ", ids.purge_amt_wad)
-        print("penalty ray: ", ids.penalty_ray)
-        print("penalty amd wad: ", ids.penalty_amt_wad)
-        print("freed_amt_ray: ", ids.freed_amt_ray)
-        print("trove_value_ray: ", ids.trove_value_ray)
-    %}
-
     // Transfer close amount from funder to purger
     let (contract_address) = get_contract_address();
     let (yin_address) = purger_yin_storage.read();
@@ -309,7 +301,6 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // `rmul` of a wad and a ray returns a wad
     let (freed_amt_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
 
-    %{ print("percentage freed: ", ids.percentage_freed_ray) %}
     // Perform transfer
     IGate.withdraw(
         contract_address=gate_address,
