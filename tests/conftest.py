@@ -249,7 +249,14 @@ async def abbot(request, starknet, shrine_deploy) -> StarknetContract:
     # auth Abbot in Shrine
     # TODO: eventually remove ADD_YANG and SET_THRESHOLD from the Abbot
     #       https://github.com/lindy-labs/aura_contracts/issues/105
-    roles = ShrineRoles.FORGE + ShrineRoles.MELT + ShrineRoles.ADD_YANG + ShrineRoles.SET_THRESHOLD
+    roles = (
+        ShrineRoles.DEPOSIT
+        + ShrineRoles.WITHDRAW
+        + ShrineRoles.FORGE
+        + ShrineRoles.MELT
+        + ShrineRoles.ADD_YANG
+        + ShrineRoles.SET_THRESHOLD
+    )
     await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # allow ABBOT_OWNER to call add_yang

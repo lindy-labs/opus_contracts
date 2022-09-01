@@ -251,7 +251,23 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     assert_trove_owner(user_address, trove_id);
 
     let (gate_address) = abbot_yang_to_gate_storage.read(yang_address);
-    IGate.withdraw(gate_address, user_address, trove_id, amount);
+
+    // Calculate underlying amount before Shrine is updated
+    let (underlying_amount_wad) = IGate.preview_withdraw(
+        contract_address=gate_address, yang_wad=amount
+    );
+
+    let (shrine_address) = abbot_shrine_address_storage.read();
+    IShrine.withdraw(
+        contract_address=shrine_address, yang_address=yang_address, trove_id=trove_id, amount=amount
+    );
+
+    IGate.withdraw(
+        contract_address=gate_address,
+        user_address=user_address,
+        trove_id=trove_id,
+        assets_wad=underlying_amount_wad,
+    );
 
     return ();
 }
@@ -376,8 +392,30 @@ func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     user_address, trove_id, yang_address, amount
 ) {
+    alloc_locals;
+
     let (gate_address) = abbot_yang_to_gate_storage.read(yang_address);
-    IGate.deposit(gate_address, user_address, trove_id, amount);
+    let (yang_wad) = IGate.preview_deposit(contract_address=gate_address, assets_wad=amount);
+
+    if (yang_wad == 0) {
+        return ();
+    }
+
+    let (shrine_address) = abbot_shrine_address_storage.read();
+    IShrine.deposit(
+        contract_address=shrine_address,
+        yang_address=yang_address,
+        trove_id=trove_id,
+        amount=yang_wad,
+    );
+
+    IGate.deposit(
+        contract_address=gate_address,
+        user_address=user_address,
+        trove_id=trove_id,
+        assets_wad=amount,
+    );
+
     return ();
 }
 
@@ -393,15 +431,35 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     }
 
     let (yang_address) = abbot_yang_addresses_storage.read(yang_idx);
-    let (amount_wad) = IShrine.get_deposit(shrine_address, trove_id, yang_address);
+    let (yang_amount_wad) = IShrine.get_deposit(shrine_address, trove_id, yang_address);
 
-    if (amount_wad == 0) {
+    if (yang_amount_wad == 0) {
         return do_withdrawals_full(
             shrine_address, user_address, trove_id, yang_idx + 1, yang_count
         );
     } else {
         let (gate_address) = abbot_yang_to_gate_storage.read(yang_address);
-        IGate.withdraw(gate_address, user_address, trove_id, amount_wad);
+
+        // Calculate underlying amount before Shrine is updated
+        let (amount_wad) = IGate.preview_withdraw(
+            contract_address=gate_address, yang_wad=yang_amount_wad
+        );
+
+        let (shrine_address) = abbot_shrine_address_storage.read();
+        IShrine.withdraw(
+            contract_address=shrine_address,
+            yang_address=yang_address,
+            trove_id=trove_id,
+            amount=yang_amount_wad,
+        );
+
+        IGate.withdraw(
+            contract_address=gate_address,
+            user_address=user_address,
+            trove_id=trove_id,
+            assets_wad=amount_wad,
+        );
+
         return do_withdrawals_full(
             shrine_address, user_address, trove_id, yang_idx + 1, yang_count
         );
