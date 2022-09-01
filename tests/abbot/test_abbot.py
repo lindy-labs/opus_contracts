@@ -1,60 +1,22 @@
-from collections import namedtuple
-from enum import IntEnum
-
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.gate.rebasing_yang.constants import ABBOT_ROLE
-from tests.shrine.constants import ShrineRoles
-from tests.utils import RAY_PERCENT, SHRINE_OWNER, assert_event_emitted, compile_contract, str_to_felt, to_wad
-
-UINT256_MAX = (2**128 - 1, 2**128 - 1)
-STARKNET_ADDR = r"-?\d+"  # addresses are sometimes printed as negative numbers, hence the -?
-
-YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_wad gate_address")
-
-
-#
-# users
-#
-
-ABBOT_OWNER = str_to_felt("abbot owner")
-GATE_OWNER = str_to_felt("gate owner")
-STETH_OWNER = str_to_felt("steth owner")
-DOGE_OWNER = str_to_felt("doge owner")
-SHITCOIN_OWNER = str_to_felt("shitcoin owner")
-AURA_USER = str_to_felt("aura user")
-OTHER_USER = str_to_felt("other user")
-
-
-#
-# module consts
-#
-
-INITIAL_STETH_DEPOSIT = to_wad(20)
-INITIAL_DOGE_DEPOSIT = to_wad(1000)
-INITIAL_FORGED_AMOUNT = to_wad(4000)
-TROVE_1 = 1  # first trove (and in most cases, only one)
-
-
-class AbbotRoles(IntEnum):
-    ADD_YANG = 2**0
-
+from tests.abbot.constants import *  # noqa: F403
+from tests.utils import (
+    ABBOT_OWNER,
+    AURA_USER,
+    SHRINE_OWNER,
+    STARKNET_ADDR,
+    TROVE_1,
+    YangConfig,
+    assert_event_emitted,
+    to_wad,
+)
 
 #
 # fixtures
 #
-
-
-@pytest.fixture
-async def steth_token(tokens) -> StarknetContract:
-    return await tokens("Lido Staked ETH", "stETH", 18, (to_wad(100_000), 0), STETH_OWNER)
-
-
-@pytest.fixture
-async def doge_token(tokens) -> StarknetContract:
-    return await tokens("Dogecoin", "DOGE", 18, (to_wad(10_000_000), 0), DOGE_OWNER)
 
 
 @pytest.fixture
@@ -70,131 +32,17 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def steth_gate(request, starknet, abbot, shrine, steth_token) -> StarknetContract:
-    """
-    Deploys an instance of the Gate module, without any autocompounding or tax.
-    """
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo", request)
-
-    gate = await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            GATE_OWNER,
-            shrine.contract_address,
-            steth_token.contract_address,
-        ],
-    )
-
-    # auth Abbot in Gate
-    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-
-    # auth Gate in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
-    await shrine.grant_role(roles, gate.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return gate
-
-
-@pytest.fixture
-async def doge_gate(request, starknet, abbot, shrine, doge_token) -> StarknetContract:
-    """
-    Deploys an instance of the Gate module, without any autocompounding or tax.
-    """
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo", request)
-    gate = await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            GATE_OWNER,
-            shrine.contract_address,
-            doge_token.contract_address,
-        ],
-    )
-
-    # auth Abbot in Gate
-    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-
-    # auth Gate in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
-    await shrine.grant_role(roles, gate.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return gate
-
-
-@pytest.fixture
-def steth_yang(steth_token, steth_gate) -> YangConfig:
-    ceiling = to_wad(1_000_000)
-    threshold = 90 * RAY_PERCENT
-    price_wad = to_wad(2000)
-    return YangConfig(steth_token.contract_address, ceiling, threshold, price_wad, steth_gate.contract_address)
-
-
-@pytest.fixture
-def doge_yang(doge_token, doge_gate) -> YangConfig:
-    ceiling = to_wad(100_000_000)
-    threshold = 20 * RAY_PERCENT
-    price_wad = to_wad(0.07)
-    return YangConfig(doge_token.contract_address, ceiling, threshold, price_wad, doge_gate.contract_address)
-
-
-@pytest.fixture
 def shitcoin_yang(shitcoin) -> YangConfig:
     return YangConfig(shitcoin.contract_address, 0, 0, 0, 0)
 
 
 @pytest.fixture
-async def abbot(request, starknet, shrine) -> StarknetContract:
-    abbot_contract = compile_contract("contracts/abbot/abbot.cairo", request)
-    abbot = await starknet.deploy(
-        contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, ABBOT_OWNER]
-    )
-
-    # auth Abbot in Shrine
-    # TODO: eventually remove ADD_YANG and SET_THRESHOLD from the Abbot
-    #       https://github.com/lindy-labs/aura_contracts/issues/105
-    roles = ShrineRoles.FORGE + ShrineRoles.MELT + ShrineRoles.ADD_YANG + ShrineRoles.SET_THRESHOLD
-    await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    # allow ABBOT_OWNER to call add_yang
-    await abbot.grant_role(AbbotRoles.ADD_YANG.value, ABBOT_OWNER).execute(caller_address=ABBOT_OWNER)
-
-    return abbot
-
-
-@pytest.fixture
-async def abbot_with_yangs(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    for yang in (steth_yang, doge_yang):
-        await abbot.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).execute(caller_address=ABBOT_OWNER)
-
-
-@pytest.fixture
-async def funded_aura_user(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
-    # fund the user with bags
-    await steth_token.transfer(AURA_USER, (to_wad(1_000), 0)).execute(caller_address=STETH_OWNER)
-    await doge_token.transfer(AURA_USER, (to_wad(1_000_000), 0)).execute(caller_address=DOGE_OWNER)
-
-    # user approves Aura gates to spend bags
-    await max_approve(steth_token, AURA_USER, steth_yang.gate_address)
-    await max_approve(doge_token, AURA_USER, doge_yang.gate_address)
-
-
-@pytest.fixture
-async def aura_user_with_first_trove(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+async def aura_user_with_first_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
     await abbot.open_trove(
         INITIAL_FORGED_AMOUNT,
         [steth_yang.contract_address, doge_yang.contract_address],
         [INITIAL_STETH_DEPOSIT, INITIAL_DOGE_DEPOSIT],
     ).execute(caller_address=AURA_USER)
-
-
-#
-# helpers
-#
-
-
-async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: int):
-    await token.approve(spender_addr, UINT256_MAX).execute(caller_address=owner_addr)
 
 
 #

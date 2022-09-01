@@ -6,9 +6,10 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.shrine.constants import TROVE_1, TROVE_2, ShrineRoles
+from tests.roles import ShrineRoles
 from tests.utils import (
     ABBOT,
+    ABBOT_ROLE,
     ADMIN,
     BAD_GUY,
     FALSE,
@@ -16,6 +17,8 @@ from tests.utils import (
     SHRINE_OWNER,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE_1,
+    TROVE_2,
     TRUE,
     ZERO_ADDRESS,
     assert_equalish,

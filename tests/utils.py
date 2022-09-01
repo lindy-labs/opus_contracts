@@ -3,7 +3,7 @@ import os
 from collections import namedtuple
 from decimal import Decimal
 from random import seed, uniform
-from typing import Callable, Iterable, List, Union
+from typing import Callable, Iterable, List, Tuple, Union
 
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
@@ -15,9 +15,14 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
+from tests.roles import GateRoles
+
 RANGE_CHECK_BOUND = 2**128
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
+
+STARKNET_ADDR = r"-?\d+"  # addresses are sometimes printed as negative numbers, hence the -?
 ZERO_ADDRESS = 0
+
 TRUE = 1
 FALSE = 0
 
@@ -41,6 +46,8 @@ WEIGHTS = {
 }
 
 Uint256 = namedtuple("Uint256", "low high")
+YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_wad gate_address")
+
 Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]
 Calldata = list[int]  # payload arguments sent with a function call
@@ -59,14 +66,39 @@ def str_to_felt(text: str) -> int:
 
 # Common addresses
 SHRINE_OWNER = str_to_felt("shrine owner")
+ABBOT_OWNER = str_to_felt("abbot owner")
+GATE_OWNER = str_to_felt("gate owner")
+
 ADMIN = str_to_felt("admin")
 ABBOT = str_to_felt("abbot")
 BAD_GUY = str_to_felt("bad guy")
+
+STETH_OWNER = str_to_felt("steth owner")
+DOGE_OWNER = str_to_felt("doge owner")
+
+AURA_USER = str_to_felt("aura user")
+
+# Roles
+ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW
+
+# Troves
+TROVE_1 = 1
+TROVE_2 = 2
 
 TROVE1_OWNER = str_to_felt("trove 1 owner")
 TROVE2_OWNER = str_to_felt("trove 2 owner")
 TROVE3_OWNER = str_to_felt("trove 3 owner")
 TROVE4_OWNER = str_to_felt("trove 4 owner")
+
+# Shrine constants
+LIMIT_RATIO = 95 * RAY_PERCENT
+# Time Interval
+TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
+# 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625)
+TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
+
+# Yin constants
+INFINITE_YIN_ALLOWANCE = CAIRO_PRIME - 1
 
 
 def as_address(value: Addressable) -> int:
@@ -98,21 +130,17 @@ def from_uint(uint: Uint256like) -> int:
 
 
 def assert_event_emitted(
-    tx_exec_info, from_address, name, data: Union[None, Callable[[List[int]], bool], Iterable] = None
+    tx_exec_info,
+    from_address,
+    name,
+    data: Union[None, Callable[[List[int]], bool], Iterable] = None,
 ):
     key = get_selector_from_name(name)
 
     if isinstance(data, Callable):
         assert any([data(e.data) for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
     elif data is not None:
-        assert (
-            Event(
-                from_address=from_address,
-                keys=[key],
-                data=data,
-            )
-            in tx_exec_info.raw_events
-        )
+        assert Event(from_address=from_address, keys=[key], data=data) in tx_exec_info.raw_events
     else:  # data=None
         assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
@@ -186,6 +214,36 @@ def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
 
 
 #
+# Starknet helper functions
+#
+
+
+def get_block_timestamp(sn: Starknet) -> int:
+    return sn.state.state.block_info.block_timestamp
+
+
+def set_block_timestamp(sn: Starknet, block_timestamp: int):
+    sn.state.state.block_info = BlockInfo.create_for_testing(sn.state.state.block_info.block_number, block_timestamp)
+
+
+def get_interval(block_timestamp: int) -> int:
+    """
+    Helper function to calculate the interval by dividing the provided timestamp
+    by the TIME_INTERVAL constant.
+
+    Arguments
+    ---------
+    block_timestamp: int
+        Timestamp value
+
+    Returns
+    -------
+    Interval ID based on the given timestamp.
+    """
+    return block_timestamp // TIME_INTERVAL
+
+
+#
 # Shrine helper functions
 #
 
@@ -211,12 +269,92 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
     return lo, hi
 
 
-def get_block_timestamp(sn: Starknet) -> int:
-    return sn.state.state.block_info.block_timestamp
+def calculate_threshold_and_value(
+    prices: List[int], amounts: List[int], thresholds: List[int]
+) -> Tuple[Decimal, Decimal]:
+    """
+    Helper function to calculate a trove's cumulative weighted threshold and value
+
+    Arguments
+    ---------
+    prices : List[int]
+        Ordered list of the prices of each Yang in wad
+    amounts: List[int]
+        Ordered list of the amount of each Yang deposited in the Trove in wad
+    thresholds: List[Decimal]
+        Ordered list of the threshold for each Yang in ray
+
+    Returns
+    -------
+    A tuple of the cumulative weighted threshold and total trove value, both in Decimal
+    """
+
+    cumulative_weighted_threshold = Decimal("0")
+    total_value = Decimal("0")
+
+    # Sanity check on inputs
+    assert len(prices) == len(amounts) == len(thresholds)
+
+    for p, a, t in zip(prices, amounts, thresholds):
+        p = from_wad(p)
+        a = from_wad(a)
+        t = from_ray(t)
+
+        total_value += p * a
+        cumulative_weighted_threshold += p * a * t
+
+    return cumulative_weighted_threshold, total_value
 
 
-def set_block_timestamp(sn: Starknet, block_timestamp: int):
-    sn.state.state.block_info = BlockInfo.create_for_testing(sn.state.state.block_info.block_number, block_timestamp)
+def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
+    """
+    Helper function to calculate a trove's threshold
+
+    Arguments
+    ---------
+    prices : List[int]
+        Ordered list of the prices of each Yang in wad
+    amounts: List[int]
+        Ordered list of the amount of each Yang deposited in the Trove in wad
+    thresholds: List[Decimal]
+        Ordered list of the threshold for each Yang in ray
+
+    Returns
+    -------
+    Value of the variable threshold in decimal.
+    """
+    cumulative_weighted_threshold, total_value = calculate_threshold_and_value(prices, amounts, thresholds)
+    return cumulative_weighted_threshold / total_value
+
+
+def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
+    """
+    Helper function to calculate the maximum amount of debt a trove can forge
+
+    Arguments
+    ---------
+    prices : List[int]
+        Ordered list of the prices of each Yang in wad
+    amounts: List[int]
+        Ordered list of the amount of each Yang deposited in the Trove in wad
+    thresholds: List[Decimal]
+        Ordered list of the threshold for each Yang in ray
+
+    Returns
+    -------
+    Value of the maximum forge value for a Trove in decimal.
+    """
+    cumulative_weighted_threshold, _ = calculate_threshold_and_value(prices, amounts, thresholds)
+    return cumulative_weighted_threshold * from_ray(LIMIT_RATIO)
+
+
+#
+# Token helpers
+#
+
+
+async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: int):
+    await token.approve(spender_addr, MAX_UINT256).execute(caller_address=owner_addr)
 
 
 #
@@ -224,11 +362,7 @@ def set_block_timestamp(sn: Starknet, block_timestamp: int):
 #
 
 
-def estimate_gas(
-    tx_info: StarknetCallInfo,
-    num_storage_keys: int = 0,
-    num_contracts: int = 0,
-):
+def estimate_gas(tx_info: StarknetCallInfo, num_storage_keys: int = 0, num_contracts: int = 0):
     """
     Helper function to estimate gas for a transaction.
 

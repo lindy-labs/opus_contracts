@@ -2,12 +2,16 @@ import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.shrine.constants import FORGE_AMT_WAD, TROVE_1
-from tests.utils import CAIRO_PRIME, SHRINE_OWNER, TROVE1_OWNER, assert_event_emitted, str_to_felt
-
-INFINITE_ALLOWANCE = CAIRO_PRIME - 1
-
-TRUE = 1
+from tests.shrine.constants import FORGE_AMT_WAD
+from tests.utils import (
+    INFINITE_YIN_ALLOWANCE,
+    SHRINE_OWNER,
+    TROVE1_OWNER,
+    TROVE_1,
+    TRUE,
+    assert_event_emitted,
+    str_to_felt,
+)
 
 # Accounts
 USER_2 = str_to_felt("user 2")
@@ -58,7 +62,12 @@ async def test_yin_transfer_pass(shrine_forge, shrine_both, yin):
     u2_new_bal = (await yin.balanceOf(USER_2).execute()).result.wad
     assert u2_new_bal == FORGE_AMT_WAD
 
-    assert_event_emitted(transfer_tx, yin.contract_address, "Transfer", [TROVE1_OWNER, USER_2, FORGE_AMT_WAD])
+    assert_event_emitted(
+        transfer_tx,
+        yin.contract_address,
+        "Transfer",
+        [TROVE1_OWNER, USER_2, FORGE_AMT_WAD],
+    )
 
     # Attempting to transfer 0 yin when TROVE1_OWNER owns nothing - should pass
     await yin.transfer(USER_2, 0).execute(caller_address=TROVE1_OWNER)
@@ -103,12 +112,12 @@ async def test_yin_transfer_from_pass(shrine_forge, shrine_both, yin):
 
 
 @pytest.mark.asyncio
-async def test_yin_infinite_allowance(shrine_forge, yin):
+async def test_yin_INFINITE_YIN_ALLOWANCE(shrine_forge, yin):
     # infinite allowance test
-    await yin.approve(USER_2, INFINITE_ALLOWANCE).execute(caller_address=TROVE1_OWNER)
+    await yin.approve(USER_2, INFINITE_YIN_ALLOWANCE).execute(caller_address=TROVE1_OWNER)
     await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD).execute(caller_address=USER_2)
     u2_allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.wad
-    assert u2_allowance == INFINITE_ALLOWANCE
+    assert u2_allowance == INFINITE_YIN_ALLOWANCE
 
 
 @pytest.mark.asyncio
@@ -128,7 +137,7 @@ async def test_yin_transfer_from_fail(shrine_forge, yin):
         await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD).execute(caller_address=USER_2)
 
     # TROVE1_OWNER grants USER_2 unlimited allowance
-    await yin.approve(USER_2, INFINITE_ALLOWANCE).execute(caller_address=TROVE1_OWNER)
+    await yin.approve(USER_2, INFINITE_YIN_ALLOWANCE).execute(caller_address=TROVE1_OWNER)
 
     # Should fail since USER_2's tries transferring more than TROVE1_OWNER has in their balance
     with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
@@ -179,11 +188,7 @@ async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin):
         await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
 
     # Trying to melt less than half of `FORGE_AMT_WAD`. Should pass since TROVE1_OWNER has enough yin to do this.
-    await shrine.melt(
-        TROVE1_OWNER,
-        TROVE_1,
-        FORGE_AMT_WAD // 2 - 1,
-    ).execute(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD // 2 - 1).execute(caller_address=SHRINE_OWNER)
 
     # Checking that the user's debt and yin are what we expect them to be
     u1_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove

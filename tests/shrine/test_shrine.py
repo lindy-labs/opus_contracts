@@ -1,7 +1,7 @@
 from collections import namedtuple
 from decimal import Decimal
 from math import exp
-from typing import List, Tuple
+from typing import List
 
 import pytest
 from starkware.starknet.testing.objects import StarknetCallInfo
@@ -11,19 +11,27 @@ from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
     BAD_GUY,
     FALSE,
+    LIMIT_RATIO,
     RAY_PERCENT,
     RAY_SCALE,
     SHRINE_OWNER,
+    TIME_INTERVAL,
+    TIME_INTERVAL_DIV_YEAR,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE_1,
+    TROVE_2,
     TRUE,
     WAD_SCALE,
     assert_equalish,
     assert_event_emitted,
+    calculate_max_forge,
+    calculate_trove_threshold,
     create_feed,
     from_ray,
     from_wad,
     get_block_timestamp,
+    get_interval,
     price_bounds,
     set_block_timestamp,
     signed_int_to_felt,
@@ -139,102 +147,6 @@ def compound(
 
     new_debt = debt * Decimal(exp(true_rate * intervals_elapsed * TIME_INTERVAL_DIV_YEAR))
     return new_debt
-
-
-def calculate_threshold_and_value(
-    prices: List[int], amounts: List[int], thresholds: List[int]
-) -> Tuple[Decimal, Decimal]:
-    """
-    Helper function to calculate a trove's cumulative weighted threshold and value
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in wad
-
-    Returns
-    -------
-    A tuple of the cumulative weighted threshold and total trove value, both in Decimal
-    """
-
-    cumulative_weighted_threshold = Decimal("0")
-    total_value = Decimal("0")
-
-    # Sanity check on inputs
-    assert len(prices) == len(amounts) == len(thresholds)
-
-    for p, a, t in zip(prices, amounts, thresholds):
-        p = from_wad(p)
-        a = from_wad(a)
-        t = from_ray(t)
-
-        total_value += p * a
-        cumulative_weighted_threshold += p * a * t
-
-    return cumulative_weighted_threshold, total_value
-
-
-def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
-    """
-    Helper function to calculate a trove's threshold
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in wad
-
-    Returns
-    -------
-    Value of the variable threshold in decimal.
-    """
-    cumulative_weighted_threshold, total_value = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold / total_value
-
-
-def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
-    """
-    Helper function to calculate the maximum amount of debt a trove can forge
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in wad
-
-    Returns
-    -------
-    Value of the maximum forge value for a Trove in decimal.
-    """
-    cumulative_weighted_threshold, _ = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold * from_ray(LIMIT_RATIO)
-
-
-def get_interval(block_timestamp: int) -> int:
-    """
-    Helper function to calculate the interval by dividing the provided timestamp
-    by the TIME_INTERVAL constant.
-
-    Arguments
-    ---------
-    block_timestamp: int
-        Timestamp value
-
-    Returns
-    -------
-    Interval ID based on the given timestamp.
-    """
-    return block_timestamp // TIME_INTERVAL
 
 
 #
