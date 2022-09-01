@@ -636,7 +636,7 @@ func withdraw{
     shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance);
 
     // Check if Trove is within limits
-    // assert_within_limits(trove_id);
+    assert_within_limits(trove_id);
 
     // Events
     YangUpdated.emit(yang_address, new_yang_info);
