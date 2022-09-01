@@ -55,11 +55,11 @@ const REBASE_RATIO = 10 * WadRay.RAY_PERCENT;  // 10%
 //
 
 @event
-func Deposit(user, trove_id, assets_wad, yang_wad) {
+func Deposit(user, trove_id, assets_wad) {
 }
 
 @event
-func Withdraw(user, trove_id, assets_wad, yang_wad) {
+func Withdraw(user, trove_id, assets_wad) {
 }
 
 @event
@@ -141,7 +141,7 @@ func kill{
 @external
 func deposit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user_address, trove_id, assets_wad) -> (wad: felt) {
+}(user_address, trove_id, assets_wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
@@ -150,11 +150,6 @@ func deposit{
 
     // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.DEPOSIT);
-
-    let (yang_wad) = Gate.convert_to_yang(assets_wad);
-    if (yang_wad == 0) {
-        return (0,);
-    }
 
     // Get asset and gate addresses
     let (asset_address) = get_asset();
@@ -173,25 +168,20 @@ func deposit{
     }
 
     // Emit event
-    Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad);
+    Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad);
 
-    return (yang_wad,);
+    return ();
 }
 
 @external
 func withdraw{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user_address, trove_id, yang_wad) -> (wad: felt) {
+}(user_address, trove_id, assets_wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
     // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.WITHDRAW);
-
-    let (assets_wad) = Gate.convert_to_assets(yang_wad);
-    if (assets_wad == 0) {
-        return (0,);
-    }
 
     // Get asset address
     let (asset_address) = get_asset();
@@ -206,9 +196,9 @@ func withdraw{
     }
 
     // Emit event
-    Withdraw.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad, yang_wad=yang_wad);
+    Withdraw.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad);
 
-    return (assets_wad,);
+    return ();
 }
 
 // Autocompound and charge the admin fee.
