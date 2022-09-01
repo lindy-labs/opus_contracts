@@ -612,35 +612,10 @@ func withdraw{
 
     AccessControl.assert_has_role(ShrineRoles.WITHDRAW);
 
-    // Retrieve yang info
-    let (yang_id) = get_valid_yang_id(yang_address);
-    let (old_yang_info: Yang) = shrine_yangs_storage.read(yang_id);
-
-    // Ensure trove has sufficient yang
-    let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id);
-
-    with_attr error_message("Shrine: Insufficient yang") {
-        // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
-        let (new_trove_balance) = WadRay.sub_unsigned(trove_yang_balance, amount);
-    }
-
-    // Charge interest
-    charge(trove_id);
-
-    // Update yang balance of system
-    let (new_total) = WadRay.sub_unsigned(old_yang_info.total, amount);
-    let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
-    shrine_yangs_storage.write(yang_id, new_yang_info);
-
-    // Update yang balance of trove
-    shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance);
+    withdraw_internal(yang_address, trove_id, amount);
 
     // Check if Trove is within limits
     assert_within_limits(trove_id);
-
-    // Events
-    YangUpdated.emit(yang_address, new_yang_info);
-    DepositUpdated.emit(yang_address, trove_id, new_trove_balance);
 
     return ();
 }
@@ -974,6 +949,42 @@ func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     let (time) = get_block_timestamp();
     let (interval, _) = unsigned_div_rem(time, TIME_INTERVAL);
     return (interval,);
+}
+
+// Withdraw a specified amount of a Yang from a Trove
+func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_address, trove_id, amount
+) {
+    alloc_locals;
+
+    // Retrieve yang info
+    let (yang_id) = get_valid_yang_id(yang_address);
+    let (old_yang_info: Yang) = shrine_yangs_storage.read(yang_id);
+
+    // Ensure trove has sufficient yang
+    let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id);
+
+    with_attr error_message("Shrine: Insufficient yang") {
+        // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
+        let (new_trove_balance) = WadRay.sub_unsigned(trove_yang_balance, amount);
+    }
+
+    // Charge interest
+    charge(trove_id);
+
+    // Update yang balance of system
+    let (new_total) = WadRay.sub_unsigned(old_yang_info.total, amount);
+    let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
+    shrine_yangs_storage.write(yang_id, new_yang_info);
+
+    // Update yang balance of trove
+    shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance);
+
+    // Events
+    YangUpdated.emit(yang_address, new_yang_info);
+    DepositUpdated.emit(yang_address, trove_id, new_trove_balance);
+
+    return ();
 }
 
 // Adds the accumulated interest as debt to the trove
