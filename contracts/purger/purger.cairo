@@ -208,6 +208,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         percentage_freed_ray,
     );
 
+    // TODO get LTV after freeing collateral and assert new LTV < old LTV
+
     // Events
     Purged.emit(trove_id, purge_amt_wad, penalty_ray, funder_address, recipient_address);
 
@@ -299,14 +301,27 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     // `rmul` of a wad and a ray returns a wad
-    let (freed_amt_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
+    let (freed_yang_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
+
+    // Get amount of underlying collateral to free
+    let (freed_underlying_wad) = IGate.preview_withdraw(
+        contract_address=gate_address, yang_wad=freed_yang_wad
+    );
+
+    // Update Shrine
+    IShrine.seize(
+        contract_address=shrine_address,
+        yang_address=yang_address,
+        trove_id=trove_id,
+        amount=freed_yang_wad,
+    );
 
     // Perform transfer
     IGate.withdraw(
         contract_address=gate_address,
         user_address=recipient_address,
         trove_id=trove_id,
-        yang_wad=freed_amt_wad,
+        assets_wad=freed_underlying_wad,
     );
 
     return ();
