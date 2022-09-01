@@ -31,7 +31,6 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     change_admin,
 )
 
-from contracts.interfaces import IShrine
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
 
@@ -161,15 +160,6 @@ func deposit{
     let (asset_address) = get_asset();
     let (gate_address) = get_contract_address();
 
-    // Update Shrine
-    let (shrine_address) = get_shrine();
-    IShrine.deposit(
-        contract_address=shrine_address,
-        yang_address=asset_address,
-        trove_id=trove_id,
-        amount=yang_wad,
-    );
-
     // Transfer asset from `user_address` to Gate
     let (assets_uint) = WadRay.to_uint(assets_wad);
     with_attr error_message("Gate: Transfer of asset failed") {
@@ -205,15 +195,6 @@ func withdraw{
 
     // Get asset address
     let (asset_address) = get_asset();
-
-    // Update Shrine
-    let (shrine_address) = get_shrine();
-    IShrine.withdraw(
-        contract_address=shrine_address,
-        yang_address=asset_address,
-        trove_id=trove_id,
-        amount=yang_wad,
-    );
 
     // Transfer asset from Gate to `user_address`
     let (assets_uint: Uint256) = WadRay.to_uint(assets_wad);
