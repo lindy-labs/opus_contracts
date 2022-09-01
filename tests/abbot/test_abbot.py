@@ -583,3 +583,14 @@ async def test_get_yang_addresses(abbot, steth_yang: YangConfig, doge_yang: Yang
         steth_yang.contract_address,
         doge_yang.contract_address,
     ]
+
+
+@pytest.mark.usefixtures("abbot_with_yangs")
+@pytest.mark.asyncio
+async def test_get_gate_address(abbot, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
+    assert (
+        await abbot.get_gate_address(steth_yang.contract_address).execute()
+    ).result.address == steth_gate.contract_address
+    assert (
+        await abbot.get_gate_address(doge_yang.contract_address).execute()
+    ).result.address == doge_gate.contract_address

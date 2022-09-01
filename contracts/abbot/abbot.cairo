@@ -125,6 +125,13 @@ func get_user_trove_ids{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 @view
+func get_gate_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_address
+) -> (address: felt) {
+    return abbot_yang_to_gate_storage.read(yang_address);
+}
+
+@view
 func get_yang_addresses{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     addresses_len: felt, addresses: felt*
 ) {

@@ -216,6 +216,9 @@ namespace IAbbot {
     func get_user_trove_ids(address) -> (trove_ids_len: felt, trove_ids: felt*) {
     }
 
+    func get_gate_address(yang_address) -> (address: felt) {
+    }
+
     func get_yang_addresses() -> (addresses_len: felt, addresses: felt*) {
     }
 
