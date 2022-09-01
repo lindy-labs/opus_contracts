@@ -243,3 +243,31 @@ namespace IAbbot:
     func add_yang(yang_address, yang_max, yang_threshold, yang_price, gate_address):
     end
 end
+
+@contract_interface
+namespace IStabilityPool:
+
+    #############################################
+    ##                EXTERNAL                 ##
+    #############################################
+    
+    func provide(amount: felt):
+    end
+
+    func withdraw(amount: felt):
+    end
+
+    func liquidate(trove_id: felt):
+    end
+    
+    #############################################
+    ##                GETTERS                  ##
+    #############################################
+    
+    func get_provider_owed_collaterals(provider: felt) -> (collaterals_len : felt, collaterals : felt*):
+    end
+    
+    func get_provider_owed_asset(provider: felt) -> (asset : felt):
+    end
+    
+end
