@@ -19,7 +19,6 @@ from tests.shrine.constants import (
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
     SHRINE_FULL_ACCESS,
-    TIME_INTERVAL,
     YANG_0_ADDRESS,
     YANGS,
 )
@@ -32,6 +31,7 @@ from tests.utils import (
     RAY_PERCENT,
     SHRINE_OWNER,
     STETH_OWNER,
+    TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE_1,
