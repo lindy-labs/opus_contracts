@@ -5,7 +5,7 @@ Guidelines on how to effectively contribute to the project.
 ## Environment setup
 
 We're assuming you already have a Cairo development environment set up. We use
-the latest version of Cairo and Python 3.8 or 3.9 for development. To install
+the latest version of Cairo and Python 3.9 for development. To install
 the necessary libraries, run:
 
 ```sh
