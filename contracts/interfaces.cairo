@@ -91,6 +91,9 @@ namespace IShrine {
     func melt(user_address, trove_id, amount) {
     }
 
+    func seize(yang_address, trove_id, amount) {
+    }
+
     func grant_role(role, address) {
     }
 

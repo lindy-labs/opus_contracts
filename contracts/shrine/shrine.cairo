@@ -755,6 +755,20 @@ func melt{
     return ();
 }
 
+// Withdraw a specified amount of a Yang from a shrine for liquidation
+@external
+func seize{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(yang_address, trove_id, amount) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.WITHDRAW);
+
+    withdraw_internal(yang_address, trove_id, amount);
+
+    return ();
+}
+
 //
 // Core Functions - View
 //
