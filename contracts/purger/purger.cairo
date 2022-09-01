@@ -50,11 +50,11 @@ func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     let (ltv_ray_squared) = WadRay.rmul(ltv_ray, ltv_ray);
     let (factor_one) = WadRay.rmul(CF1, ltv_ray_squared);
 
-    let (factor_two) = ltv_ray * 2;
+    let factor_two = ltv_ray * 2;
     let (factors_sum) = WadRay.sub_unsigned(factor_one, factor_two);
     let (close_factor) = WadRay.add_unsigned(factors_sum, CF2);
 
-    return (close_factor);
+    return (close_factor,);
 }
 
 // Returns the liquidation penalty based on the LTV (ray)
@@ -65,15 +65,15 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 ) -> (ray: felt) {
     alloc_locals;
 
-    let shrine_address = purger_shrine_storage.read();
+    let (shrine_address) = purger_shrine_storage.read();
 
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
 
     if (is_healthy == TRUE) {
-        return (0);
+        return (0,);
     }
 
-    let trove_ltv_ray = IShrine.get_current_trove_ratio(
+    let (trove_ltv_ray) = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
 
@@ -88,15 +88,15 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 ) -> (wad: felt) {
     alloc_locals;
 
-    let shrine_address = purger_shrine_storage.read();
+    let (shrine_address) = purger_shrine_storage.read();
 
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
 
     if (is_healthy == TRUE) {
-        return (0);
+        return (0,);
     }
 
-    let trove_ltv_ray = IShrine.get_current_trove_ratio(
+    let (trove_ltv_ray) = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
 
@@ -130,7 +130,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) {
     alloc_locals;
 
-    let shrine_address = purger_shrine_storage.read();
+    let (shrine_address) = purger_shrine_storage.read();
 
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
 
@@ -138,13 +138,13 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert is_healthy = FALSE;
     }
 
-    let trove_ltv_ray = IShrine.get_current_trove_ratio(
+    let (trove_ltv_ray) = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
 
     // Check purge_amt <= max_close_amt
     let (max_close_amt) = get_max_close_amount_internal(shrine_address, trove_id, trove_ltv_ray);
-    let (is_valid) = is_le(purge_amt_wad, max_close_amt);
+    let is_valid = is_le(purge_amt_wad, max_close_amt);
     with_attr error_message("Purger: Maximum close amount exceeded") {
         assert is_valid = TRUE;
     }
@@ -169,7 +169,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // TODO Update `seize` in Shrine
 
     // Loop through yang addresses and transfer to recipient
-    let abbot_address = purger_abbot_storage.read();
+    let (abbot_address) = purger_abbot_storage.read();
     let (yang_count, yang_addresses: felt*) = IAbbot.get_yang_addresses(
         contract_address=abbot_address
     );
@@ -206,15 +206,15 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     // `rmul` of a wad and a ray returns a wad
     let (close_amt) = WadRay.rmul(trove.debt, close_factor);
 
-    return (close_amt);
+    return (close_amt,);
 }
 
 func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ltv_ray
 ) -> (ray: felt) {
     // placeholder
-    let (penalty, _) = WadRay.runsigned_div(ltv_ray, 10);
-    return (penalty);
+    let (penalty) = WadRay.runsigned_div(ltv_ray, 10);
+    return (penalty,);
 }
 
 // Helper function to loop through yang addresses and transfer freed yang to recipient
@@ -224,7 +224,7 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     recipient_address,
     trove_id,
     yang_count,
-    yang_addresses,
+    yang_addresses: felt*,
     percentage_freed_ray,
 ) {
     alloc_locals;
@@ -263,7 +263,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         contract_address=shrine_address, trove_id=trove_id, yang_address=yang_address
     );
 
-    let (has_deposited) = is_nn(deposited_amt_wad);
+    let has_deposited = is_nn(deposited_amt_wad);
 
     // Early termination if no yang deposited
     if (has_deposited == FALSE) {
@@ -271,7 +271,6 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     // Get gate address from Abbot
-    // TODO Add function to Abbot
     let (gate_address) = IAbbot.get_gate_address(
         contract_address=abbot_address, yang_address=yang_address
     );
@@ -280,7 +279,12 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // `rmul` of a wad and a ray returns a wad
     let (freed_amt_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
-    IGate.withdraw(contract_address=gate_address, trove_id=trove_id, yang_wad=freed_amt_wad);
+    IGate.withdraw(
+        contract_address=gate_address,
+        user_address=recipient_address,
+        trove_id=trove_id,
+        yang_wad=freed_amt_wad,
+    );
 
     return ();
 }
