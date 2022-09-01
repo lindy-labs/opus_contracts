@@ -780,27 +780,6 @@ func melt{
     return ();
 }
 
-// Seize a Trove for liquidation by transferring the debt and yang to the appropriate module
-// Checks should be performed beforehand by the module calling this function
-@external
-func seize{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(trove_id) {
-    AccessControl.assert_has_role(ShrineRoles.SEIZE);
-
-    // Update Trove information
-    let (old_trove_info: Trove) = get_trove(trove_id);
-    let new_trove_info: Trove = Trove(charge_from=old_trove_info.charge_from, debt=0);
-
-    // TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
-
-    // TODO Iterate over yangs and transfer balance to the appropriate module
-
-    // TODO Events?
-
-    return ();
-}
-
 //
 // Core Functions - View
 //
@@ -1294,18 +1273,6 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 //
 // Trove health internal functions
 //
-
-func assert_unhealthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) {
-    alloc_locals;
-
-    let (healthy) = is_healthy(trove_id);
-
-    with_attr error_message("Shrine: Trove is not liquidatable") {
-        assert healthy = FALSE;
-    }
-
-    return ();
-}
 
 func assert_within_limits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id

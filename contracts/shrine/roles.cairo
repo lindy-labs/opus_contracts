@@ -10,7 +10,7 @@ namespace ShrineRoles {
     const MELT = 2 ** 5;
     const MOVE_YANG = 2 ** 6;
     const MOVE_YIN = 2 ** 7;
-    const SEIZE = 2 ** 8;
+    const PURGE = 2 ** 8;
     const SET_CEILING = 2 ** 9;
     const SET_THRESHOLD = 2 ** 10;
     const UPDATE_MULTIPLIER = 2 ** 11;

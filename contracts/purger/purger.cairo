@@ -3,6 +3,7 @@
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math_cmp import is_le, is_nn
+from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.interfaces import IAbbot, IGate, IShrine
 from contracts.shared.types import Trove
@@ -132,9 +133,10 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (shrine_address) = purger_shrine_storage.read();
 
+    // Check that trove can be liquidated
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
 
-    with_attr error_message("Purger: Trove is healthy and cannot be liquidated") {
+    with_attr error_message("Purger: Trove is not liquidatable") {
         assert is_healthy = FALSE;
     }
 
@@ -166,7 +168,13 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_ray, trove_value_ray);
 
     // Pay down close amount of debt in Shrine
-    // TODO Update `seize` in Shrine
+    let (contract_address) = get_contract_address();
+    IShrine.melt(
+        contract_address=shrine_address,
+        user_address=contract_address,
+        trove_id=trove_id,
+        amount=purge_amt_wad,
+    );
 
     // Loop through yang addresses and transfer to recipient
     let (abbot_address) = purger_abbot_storage.read();
