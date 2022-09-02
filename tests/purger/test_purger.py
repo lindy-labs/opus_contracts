@@ -314,6 +314,11 @@ async def test_purge(
     # Get LTV
     before_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
 
+    # Check purge penalty
+    purge_penalty = from_ray((await purger.get_purge_penalty(TROVE_1).execute()).result.ray)
+    expected_purge_penalty = get_penalty(before_ltv)
+    assert_equalish(purge_penalty, expected_purge_penalty)
+
     # Check maximum close amount
     estimated_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
     expected_maximum_close_amt = get_max_close_amount(estimated_debt, before_ltv)
