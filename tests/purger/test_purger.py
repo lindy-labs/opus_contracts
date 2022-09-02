@@ -26,6 +26,7 @@ from tests.utils import (
     compile_contract,
     create_feed,
     from_ray,
+    from_uint,
     from_wad,
     max_approve,
     price_bounds,
@@ -102,6 +103,23 @@ def get_max_close_amount(debt: Decimal, ltv: Decimal) -> Decimal:
         return debt
 
     return maximum_close_amt
+
+
+def get_penalty(ltv: Decimal) -> Decimal:
+    """
+    Returns the penalty given the LTV.
+    """
+    return ltv * Decimal("0.05")
+
+
+def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_value: Decimal) -> Decimal:
+    """
+    Returns the freed percentage based on:
+    (close amount + penalty amount) / debt
+    """
+    penalty = get_penalty(ltv)
+    freed_amt = (Decimal("1") + penalty) * close_amt
+    return freed_amt / trove_value
 
 
 #
@@ -299,6 +317,10 @@ async def test_valid_max_purge(
     shrine,
     purger,
     yin,
+    steth_token,
+    doge_token,
+    steth_gate,
+    doge_gate,
 ):
     # Assert trove is not healthy
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
@@ -317,7 +339,24 @@ async def test_valid_max_purge(
     searcher_yin_balance = (await yin.balanceOf(SEARCHER).execute()).result.wad
     assert searcher_yin_balance > maximum_close_amt_wad
 
-    # Test purge of maximum amount
+    # Get yang balance of searcher
+    before_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
+    before_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
+
+    # Get freed percentage
+    trove_value = from_wad((await shrine.get_trove_threshold(TROVE_1).execute()).result.value_wad)
+    freed_percentage = get_freed_percentage(before_ltv, from_wad(maximum_close_amt_wad), trove_value)
+
+    # Get yang balance of trove
+    before_trove_steth_yang_wad = (await shrine.get_deposit(TROVE_1, steth_token.contract_address).execute()).result.wad
+    before_trove_steth_bal_wad = (await steth_gate.preview_withdraw(before_trove_steth_yang_wad).execute()).result.wad
+    expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
+
+    before_trove_doge_yang_wad = (await shrine.get_deposit(TROVE_1, doge_token.contract_address).execute()).result.wad
+    before_trove_doge_bal_wad = (await doge_gate.preview_withdraw(before_trove_doge_yang_wad).execute()).result.wad
+    expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
+
+    # Purge maximum amount
     purge = await purger.purge(TROVE_1, maximum_close_amt_wad, SEARCHER, SEARCHER).execute()
 
     # Check event
@@ -331,3 +370,10 @@ async def test_valid_max_purge(
     # Check that LTV has improved
     after_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
     assert after_ltv < before_ltv
+
+    # Check yang balance of searcher
+    after_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
+    assert_equalish(after_searcher_steth_bal, before_searcher_steth_bal + expected_freed_steth)
+
+    after_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
+    assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
