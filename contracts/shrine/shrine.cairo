@@ -603,7 +603,7 @@ func deposit{
     return ();
 }
 
-// Withdraw a specified amount of a Yang from a Trove
+// Withdraw a specified amount of a Yang from a Trove with trove safety check
 @external
 func withdraw{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -755,14 +755,14 @@ func melt{
     return ();
 }
 
-// Withdraw a specified amount of a Yang from a shrine for liquidation
+// Withdraw a specified amount of a Yang from a shrine for liquidation without trove safety check
 @external
 func seize{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(yang_address, trove_id, amount) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.WITHDRAW);
+    AccessControl.assert_has_role(ShrineRoles.SEIZE);
 
     withdraw_internal(yang_address, trove_id, amount);
 

@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import unsigned_div_rem
+from starkware.cairo.common.math import assert_lt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le, is_nn
 from starkware.starknet.common.syscalls import get_contract_address
 
@@ -147,19 +147,19 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert is_healthy = FALSE;
     }
 
-    let (trove_ltv_ray) = IShrine.get_current_trove_ratio(
+    let (before_ltv_ray) = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
 
     // Check purge_amt <= max_close_amt
-    let (max_close_amt) = get_max_close_amount_internal(shrine_address, trove_id, trove_ltv_ray);
+    let (max_close_amt) = get_max_close_amount_internal(shrine_address, trove_id, before_ltv_ray);
     let is_valid = is_le(purge_amt_wad, max_close_amt);
     with_attr error_message("Purger: Maximum close amount exceeded") {
         assert is_valid = TRUE;
     }
 
     // Calculate percentage of `yang` to free
-    let (penalty_ray) = get_purge_penalty_internal(trove_ltv_ray);
+    let (penalty_ray) = get_purge_penalty_internal(before_ltv_ray);
 
     // `rmul` of a wad and a ray returns a wad
     let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
@@ -169,10 +169,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         contract_address=shrine_address, trove_id=trove_id
     );
 
-    // Convert wad values to ray to avoid precision loss in percentage
-    let (freed_amt_ray) = WadRay.wad_to_ray_unchecked(freed_amt_wad);
-    let (trove_value_ray) = WadRay.wad_to_ray_unchecked(trove_value_wad);
-    let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_ray, trove_value_ray);
+    let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_wad, trove_value_wad);
 
     // Transfer close amount from funder to purger
     let (contract_address) = get_contract_address();
@@ -208,7 +205,14 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         percentage_freed_ray,
     );
 
-    // TODO get LTV after freeing collateral and assert new LTV < old LTV
+    // Get LTV after freeing collateral and assert new LTV < old LTV
+    let (after_ltv_ray) = IShrine.get_current_trove_ratio(
+        contract_address=shrine_address, trove_id=trove_id
+    );
+
+    with_attr error_message("Purger: Trove's loan-to-value did not improve") {
+        assert_lt(after_ltv_ray, before_ltv_ray);
+    }
 
     // Events
     Purged.emit(trove_id, purge_amt_wad, penalty_ray, funder_address, recipient_address);
@@ -230,6 +234,12 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 
     // `rmul` of a wad and a ray returns a wad
     let (close_amt) = WadRay.rmul(debt, close_factor);
+
+    // Check for instances where close amount is greater than debt (LTV > 100%)
+    let exceeds_debt = is_le(debt, close_amt);
+    if (exceeds_debt == TRUE) {
+        return (debt,);
+    }
 
     return (close_amt,);
 }
