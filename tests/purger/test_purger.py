@@ -228,13 +228,6 @@ async def purger(request, starknet, shrine, abbot, yin, steth_gate, doge_gate) -
     return purger
 
 
-@pytest.fixture
-async def yang_price_decrease(request, starknet, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
-    price_change = request.param
-    yangs = [steth_yang, doge_yang]
-    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
-
-
 #
 # Tests
 #
@@ -302,18 +295,16 @@ async def test_invalid_purge(shrine, purger, aura_user_with_first_trove):
     assert is_healthy == TRUE
 
 
-@pytest.mark.parametrize(
-    "yang_price_decrease", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12")], indirect=["yang_price_decrease"]
-)
+@pytest.mark.parametrize("price_change", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12")])
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
     "aura_user_with_first_trove",
     "funded_searcher",
-    "yang_price_decrease",
 )
 @pytest.mark.asyncio
 async def test_valid_max_purge(
+    starknet,
     shrine,
     purger,
     yin,
@@ -321,7 +312,14 @@ async def test_valid_max_purge(
     doge_token,
     steth_gate,
     doge_gate,
+    steth_yang: YangConfig,
+    doge_yang: YangConfig,
+    price_change,
 ):
+
+    yangs = [steth_yang, doge_yang]
+    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
+
     # Assert trove is not healthy
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert is_healthy == FALSE
