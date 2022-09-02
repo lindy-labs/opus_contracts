@@ -210,7 +210,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         contract_address=shrine_address, trove_id=trove_id
     );
 
-    with_attr error_message("Purger: Trove's loan-to-value did not improve") {
+    with_attr error_message(
+            "Purger: Amount purged is insufficient to improve loan-to-value ratio") {
         assert_lt(after_ltv_ray, before_ltv_ray);
     }
 
