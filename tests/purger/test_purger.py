@@ -397,9 +397,14 @@ async def test_purge(
     assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user")
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove",
+    "funded_searcher",
+)
 @pytest.mark.asyncio
-async def test_purge_fail_trove_healthy(shrine, purger, aura_user_with_first_trove):
+async def test_purge_fail_trove_healthy(shrine, purger):
     # Check close amount is 0
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
     assert max_close_amt == 0
@@ -412,8 +417,11 @@ async def test_purge_fail_trove_healthy(shrine, purger, aura_user_with_first_tro
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert is_healthy == TRUE
 
+    # Get trove debt
+    purge_amt = (await shrine.estimate(TROVE_1).execute()).result.wad // 2
+
     with pytest.raises(StarkException, match="Purger: Trove is not liquidatable"):
-        await purger.purge(TROVE_1, to_wad(1), SEARCHER, SEARCHER).execute()
+        await purger.purge(TROVE_1, purge_amt, SEARCHER, SEARCHER).execute()
 
 
 @pytest.mark.usefixtures(
@@ -427,11 +435,6 @@ async def test_purge_fail_exceed_max_close(
     starknet,
     shrine,
     purger,
-    yin,
-    steth_token,
-    doge_token,
-    steth_gate,
-    doge_gate,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
 ):
@@ -440,8 +443,42 @@ async def test_purge_fail_exceed_max_close(
     price_change = Decimal("-0.1")
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
-    # Check close amount is 0
+    # Assert max close amount is positive
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
+    assert max_close_amt > 0
 
     with pytest.raises(StarkException, match="Purger: Maximum close amount exceeded"):
         await purger.purge(TROVE_1, max_close_amt + 1, SEARCHER, SEARCHER).execute()
+
+
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove",
+    "funded_searcher",
+)
+@pytest.mark.asyncio
+async def test_purge_fail_insufficient_yin(
+    starknet,
+    shrine,
+    purger,
+    yin,
+    steth_yang: YangConfig,
+    doge_yang: YangConfig,
+):
+
+    yangs = [steth_yang, doge_yang]
+    price_change = Decimal("-0.1")
+    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
+
+    # Drain funded searcher's account and leave 10 yin
+    remaining_bal = to_wad(10)
+    searcher_yin_wad = (await yin.balanceOf(SEARCHER).execute()).result.wad
+    await yin.transfer(SHRINE_OWNER, searcher_yin_wad - remaining_bal).execute(caller_address=SEARCHER)
+
+    # Assert max close amount is positive
+    max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
+    assert max_close_amt > 0
+
+    with pytest.raises(StarkException):
+        await purger.purge(TROVE_1, max_close_amt, SEARCHER, SEARCHER).execute()
