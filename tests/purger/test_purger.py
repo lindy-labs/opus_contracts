@@ -6,9 +6,9 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
+from tests.purger.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
-from tests.shrine.test_shrine import calculate_max_forge
 from tests.utils import (
     ABBOT_OWNER,
     AURA_USER,
@@ -24,6 +24,7 @@ from tests.utils import (
     YangConfig,
     assert_equalish,
     assert_event_emitted,
+    calculate_max_forge,
     compile_contract,
     create_feed,
     from_ray,
@@ -32,25 +33,8 @@ from tests.utils import (
     max_approve,
     price_bounds,
     set_block_timestamp,
-    str_to_felt,
     to_wad,
 )
-
-#
-# Constants
-#
-
-DEBT_CEILING_WAD = to_wad(100_000)
-
-# Starting value of USD 20_000
-USER_STETH_DEPOSIT_WAD = to_wad(10)
-
-# Starting value of USD 700
-USER_DOGE_DEPOSIT_WAD = to_wad(10_000)
-
-SEARCHER = str_to_felt("searcher")
-SEARCHER_STETH_WAD = to_wad(1_000)
-SEARCHER_FORGE_AMT_WAD = to_wad(50_000)
 
 #
 # Helpers
