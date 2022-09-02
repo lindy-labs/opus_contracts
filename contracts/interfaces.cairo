@@ -264,10 +264,10 @@ namespace IStabilityPool:
     ##                GETTERS                  ##
     #############################################
     
-    func get_provider_owed_collaterals(provider: felt) -> (collaterals_len : felt, collaterals : felt*):
+    func get_provider_owed_yangs(provider: felt) -> (yangs_len : felt, yangs : felt*):
     end
     
-    func get_provider_owed_asset(provider: felt) -> (asset : felt):
+    func get_provider_owed_yin(provider: felt) -> (yin : felt):
     end
     
 end

@@ -6,4 +6,4 @@ node.json
 # Hypothesis
 .hypothesis
 
-./venv
+venv/
