@@ -4,7 +4,7 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, split_felt
 from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_block_timestamp
+from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.shared.convert import pack_felt, pack_125, unpack_125
 from contracts.shared.types import Trove, Yang
@@ -557,6 +557,29 @@ func move_yin{
 
     # No event emissions - this is because `move-yin` should only be called by an
     # ERC20 wrapper contract which emits a `Transfer` event on transfers anyway.
+
+    return ()
+end
+
+@external
+func burn{
+    syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+}(user : felt, amount : felt):
+    AccessControl.assert_has_role(ShrineRoles.MOVE_YIN)
+    let (balance) = shrine_yin_storage.read(user)
+
+    # WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
+    with_attr error_message("Shrine: burn amount exceeds yin balance"):
+        let (new_balance) = WadRay.sub_unsigned(balance, amount)
+    end
+
+    # update user balance
+    shrine_yin_storage.write(user, new_balance)
+
+    # update total amount of yin
+    let (curr_total_balance) = shrine_total_yin_storage.read()
+    let (new_total_balance) = WadRay.sub_unsigned(curr_total_balance, amount)
+    shrine_total_yin_storage.write(new_total_balance)
 
     return ()
 end

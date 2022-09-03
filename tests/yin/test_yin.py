@@ -110,6 +110,14 @@ async def test_yin_infinite_allowance(shrine_forge, yin):
     u2_allowance = (await yin.allowance(TROVE1_OWNER, USER_2).invoke()).result.wad
     assert u2_allowance == INFINITE_ALLOWANCE
 
+@pytest.mark.asyncio
+async def test_yin_burn(shrine_forge, yin):    
+    # infinite allowance test
+    await yin.burn(FORGE_AMT_WAD // 2).invoke(caller_address=TROVE1_OWNER)
+    nbalance = (await yin.balanceOf(TROVE1_OWNER).invoke()).result.wad
+    assert nbalance == FORGE_AMT_WAD // 2
+    total_supply = (await yin.totalSupply().invoke()).result.wad
+    assert total_supply == FORGE_AMT_WAD // 2
 
 @pytest.mark.asyncio
 async def test_yin_transfer_from_fail(shrine_forge, yin):

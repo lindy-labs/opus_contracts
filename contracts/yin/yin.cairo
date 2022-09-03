@@ -36,6 +36,10 @@ end
 func Approval(owner, spender, value):
 end
 
+@event
+func Burn(sender, value):
+end
+
 #
 # Storage
 #
@@ -168,6 +172,25 @@ func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (caller) = get_caller_address()
     _approve(caller, spender, amount)
+    return (TRUE)
+end
+
+@external
+func burn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    amount
+) -> (bool):
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
+        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
+    end
+
+    let (sender) = get_caller_address()
+
+    let (shrine_address) = yin_shrine_address_storage.read()
+    IShrine.burn(
+        contract_address=shrine_address, user=sender, amount=amount
+    )
+
+    Burn.emit(sender, amount)
     return (TRUE)
 end
 

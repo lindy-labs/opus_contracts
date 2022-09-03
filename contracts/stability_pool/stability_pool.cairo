@@ -52,11 +52,6 @@ end
 func deposits(provider : felt) -> (balance : felt):
 end
 
-# TODO ; remove by a call to Shrine?
-@storage_var
-func total_balance() -> (total_balance : felt):
-end
-
 #############################################
 ##                EVENTS                   ##
 #############################################Ò
@@ -109,8 +104,6 @@ func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     IERC20.transferFrom(contract_address=yin_address, sender=caller, recipient=this, amount=amount)
     # update balance
     deposits.write(caller, curr_balance + amount)
-    let (curr_total_balance) = total_balance.read()
-    total_balance.write(curr_total_balance + amount)
     # update snapshot
     let (curr_P) = P.read()
     snapshots.write(caller, Snapshot(P=curr_P))
@@ -159,18 +152,18 @@ end
 # - Updates P, the running product to help us calculate the compounded deposit
 # - The total balance of yin held by the pool
 func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: felt):
+    let (this) = get_contract_address()
+    let (shrine_address) = shrine.read()
     let (curr_P) = P.read()
     # amount / total_balance
-    let (curr_total_balance) = total_balance.read()
-    let (new_P) = WadRay.wunsigned_div(amount, curr_total_balance)
+    let (this_balance) = IShrine.get_yin(contract_address=shrine_address, user_address=this)
+    let (new_P) = WadRay.wunsigned_div(amount, this_balance)
     tempvar one = WadRay.WAD_ONE
     # 1 - (amount / total_balance)
     new_P = one - new_P
     let (new_P) = WadRay.wmul(curr_P, new_P)
-
-    # update total_balance
-    let (curr_total_balance) = total_balance.read()
-    total_balance.write(curr_total_balance - amount)
+    # burn Yin
+    IShrine.burn(contract_address=shrine_address, user=this, amount=amount)
     return ()
 end
 

@@ -106,6 +106,9 @@ namespace IShrine:
     func change_admin(new_admin):
     end
 
+    func burn(user, amount):
+    end
+
     #
     # view
     #
