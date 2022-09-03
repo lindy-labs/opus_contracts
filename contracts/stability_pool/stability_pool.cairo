@@ -7,6 +7,15 @@ from contracts.interfaces import IShrine
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.types import Trove
 
+# to be removed
+@contract_interface
+namespace IERC20:
+    func transferFrom(sender : felt, recipient : felt, amount : felt) -> (success : felt):
+    end
+    func approve(spender : felt, amount : felt) -> (success : felt):
+    end
+end
+
 #############################################
 ##                STRUCTS                  ##
 #############################################
@@ -20,6 +29,10 @@ end
 #############################################
 
 # Holds the address at which the yin's Shrine is deployed.
+@storage_var
+func yin() -> (yin : felt):
+end
+
 @storage_var
 func shrine() -> (shrine : felt):
 end
@@ -66,8 +79,10 @@ end
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    shrine_address : felt
+    yin_address : felt,
+    shrine_address : felt,
 ):
+    yin.write(yin_address)
     shrine.write(shrine_address)
     P.write(10**18)
     return ()
@@ -84,14 +99,14 @@ end
 # * after *
 # - credit user's balance on pool
 func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: felt):
-    let (shrine_address) = shrine.read()
+    let (yin_address) = yin.read()
     let (this) = get_contract_address()
     let (caller) = get_caller_address()
     # payout user before crediting deposit
     let (curr_balance) = deposits.read(caller)
     # TODO : payout here ...
     # transfer yin from caller to the stability pool
-    IShrine.move_yin(contract_address=shrine_address, src_address=caller, dst_address=this, amount=amount)
+    IERC20.transferFrom(contract_address=yin_address, sender=caller, recipient=this, amount=amount)
     # update balance
     deposits.write(caller, curr_balance + amount)
     let (curr_total_balance) = total_balance.read()
