@@ -8,244 +8,223 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from contracts.interfaces import IShrine
 from contracts.shared.wad_ray import WadRay
 
-# Yin-ERC20
-# -------------------------------
-# This is a modified OpenZeppelin ERC20 contract that allows users to interact with Yin as a standard ERC20 token.
-# Yin has an internal representation inside shrine.cairo (in the storage variable `shrine_yin_storage`), together
-# with minting (`forge`), burning (`melt`), and transfer (`move_yin`) functions.
-#
-# However, this functionality is not enough to make yin usable as a fully-fledged token, and so this modified ERC-20 contract serves
-# as a wrapper for "raw" yin, enabling its use in the broader DeFi ecosystem.
+// Yin-ERC20
+// -------------------------------
+// This is a modified OpenZeppelin ERC20 contract that allows users to interact with Yin as a standard ERC20 token.
+// Yin has an internal representation inside shrine.cairo (in the storage variable `shrine_yin_storage`), together
+// with minting (`forge`), burning (`melt`), and transfer (`move_yin`) functions.
+//
+// However, this functionality is not enough to make yin usable as a fully-fledged token, and so this modified ERC-20 contract serves
+// as a wrapper for "raw" yin, enabling its use in the broader DeFi ecosystem.
 
-#
-# Constants
-#
+//
+// Constants
+//
 
-const INFINITE_ALLOWANCE = -1
-const UINT8_MAX = 255
+const INFINITE_ALLOWANCE = -1;
+const UINT8_MAX = 255;
 
-#
-# Events
-#
-
-@event
-func Transfer(from_, to, value):
-end
+//
+// Events
+//
 
 @event
-func Approval(owner, spender, value):
-end
+func Transfer(from_, to, value) {
+}
 
 @event
-func Burn(sender, value):
-end
+func Approval(owner, spender, value) {
+}
 
-#
-# Storage
-#
-
-@storage_var
-func yin_name_storage() -> (str):
-end
+//
+// Storage
+//
 
 @storage_var
-func yin_symbol_storage() -> (str):
-end
+func yin_name_storage() -> (str: felt) {
+}
 
 @storage_var
-func yin_decimals_storage() -> (ufelt):
-end
+func yin_symbol_storage() -> (str: felt) {
+}
 
 @storage_var
-func yin_shrine_address_storage() -> (address):
-end
+func yin_decimals_storage() -> (ufelt: felt) {
+}
 
 @storage_var
-func yin_allowances_storage(owner, spender) -> (wad):
-end
+func yin_shrine_address_storage() -> (address: felt) {
+}
 
-#
-# Constructor
-#
+@storage_var
+func yin_allowances_storage(owner, spender) -> (wad: felt) {
+}
+
+//
+// Constructor
+//
 
 @constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     name, symbol, decimals, shrine_address
-):
-    yin_name_storage.write(name)
-    yin_symbol_storage.write(symbol)
-    yin_shrine_address_storage.write(shrine_address)
+) {
+    yin_name_storage.write(name);
+    yin_symbol_storage.write(symbol);
+    yin_shrine_address_storage.write(shrine_address);
 
-    with_attr error_message("Yin: decimals exceed 2^8 - 1"):
-        assert_le(decimals, UINT8_MAX)
-    end
+    with_attr error_message("Yin: decimals exceed 2^8 - 1") {
+        assert_le(decimals, UINT8_MAX);
+    }
 
-    yin_decimals_storage.write(decimals)
+    yin_decimals_storage.write(decimals);
 
-    return ()
-end
+    return ();
+}
 
-#
-# View functions
-#
-
-@view
-func name{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (str):
-    return yin_name_storage.read()
-end
+//
+// View functions
+//
 
 @view
-func symbol{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (str):
-    return yin_symbol_storage.read()
-end
+func name{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (str: felt) {
+    return yin_name_storage.read();
+}
 
 @view
-func totalSupply{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
-    let (shrine_address) = yin_shrine_address_storage.read()
-    let (total_supply) = IShrine.get_total_yin(contract_address=shrine_address)
-    return (total_supply)
-end
+func symbol{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (str: felt) {
+    return yin_symbol_storage.read();
+}
 
 @view
-func decimals{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (ufelt):
-    return yin_decimals_storage.read()
-end
+func totalSupply{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (wad: felt) {
+    let (shrine_address) = yin_shrine_address_storage.read();
+    let (total_supply) = IShrine.get_total_yin(contract_address=shrine_address);
+    return (total_supply,);
+}
 
 @view
-func balanceOf{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(account) -> (wad):
-    let (shrine_address) = yin_shrine_address_storage.read()
-    let (balance) = IShrine.get_yin(contract_address=shrine_address, user_address=account)
-    return (balance)
-end
+func decimals{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (ufelt: felt) {
+    return yin_decimals_storage.read();
+}
 
 @view
-func allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    owner, spender
-) -> (wad):
-    return yin_allowances_storage.read(owner, spender)
-end
+func balanceOf{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(account) -> (
+    wad: felt
+) {
+    let (shrine_address) = yin_shrine_address_storage.read();
+    let (balance) = IShrine.get_yin(contract_address=shrine_address, user_address=account);
+    return (balance,);
+}
 
-#
-# External functions
-#
+@view
+func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner, spender) -> (
+    wad: felt
+) {
+    return yin_allowances_storage.read(owner, spender);
+}
+
+//
+// External functions
+//
 
 @external
-func transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     recipient, amount
-) -> (bool):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-    end
+) -> (bool: felt) {
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
+        WadRay.assert_result_valid_unsigned(amount);  // Valid range: [0, 2**125]
+    }
 
-    let (sender) = get_caller_address()
-    _transfer(sender, recipient, amount)
-    return (TRUE)
-end
+    let (sender) = get_caller_address();
+    _transfer(sender, recipient, amount);
+    return (TRUE,);
+}
 
 @external
-func transferFrom{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func transferFrom{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
-) -> (bool):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-    end
+) -> (bool: felt) {
+    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
+        WadRay.assert_result_valid_unsigned(amount);  // Valid range: [0, 2**125]
+    }
 
-    let (caller) = get_caller_address()
-    _spend_allowance(sender, caller, amount)
-    _transfer(sender, recipient, amount)
-    return (TRUE)
-end
-
-@external
-func approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    spender, amount
-) -> (bool):
-    alloc_locals
-    if amount != INFINITE_ALLOWANCE:
-        with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-            WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-        end
-        tempvar range_check_ptr = range_check_ptr
-    else:
-        tempvar range_check_ptr = range_check_ptr
-    end
-
-    let (caller) = get_caller_address()
-    _approve(caller, spender, amount)
-    return (TRUE)
-end
+    let (caller) = get_caller_address();
+    _spend_allowance(sender, caller, amount);
+    _transfer(sender, recipient, amount);
+    return (TRUE,);
+}
 
 @external
-func burn{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    amount
-) -> (bool):
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]"):
-        WadRay.assert_result_valid_unsigned(amount)  # Valid range: [0, 2**125]
-    end
+func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(spender, amount) -> (
+    bool: felt
+) {
+    alloc_locals;
+    if (amount != INFINITE_ALLOWANCE) {
+        with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
+            WadRay.assert_result_valid_unsigned(amount);  // Valid range: [0, 2**125]
+        }
+        tempvar range_check_ptr = range_check_ptr;
+    } else {
+        tempvar range_check_ptr = range_check_ptr;
+    }
 
-    let (sender) = get_caller_address()
+    let (caller) = get_caller_address();
+    _approve(caller, spender, amount);
+    return (TRUE,);
+}
 
-    let (shrine_address) = yin_shrine_address_storage.read()
-    IShrine.burn(
-        contract_address=shrine_address, user=sender, amount=amount
-    )
+//
+// Private functions
+//
 
-    Burn.emit(sender, amount)
-    return (TRUE)
-end
-
-#
-# Private functions
-#
-
-func _transfer{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     sender, recipient, amount
-):
-    with_attr error_message("Yin: cannot transfer to the zero address"):
-        assert_not_zero(recipient)
-    end
+) {
+    with_attr error_message("Yin: cannot transfer to the zero address") {
+        assert_not_zero(recipient);
+    }
 
-    let (shrine_address) = yin_shrine_address_storage.read()
+    let (shrine_address) = yin_shrine_address_storage.read();
 
-    # Calling shrine's `move_yin` function, which handles the rest of the transfer logic
+    // Calling shrine's `move_yin` function, which handles the rest of the transfer logic
     IShrine.move_yin(
         contract_address=shrine_address, src_address=sender, dst_address=recipient, amount=amount
-    )
+    );
 
-    Transfer.emit(sender, recipient, amount)
-    return ()
-end
+    Transfer.emit(sender, recipient, amount);
+    return ();
+}
 
-func _approve{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     owner, spender, amount
-):
-    with_attr error_message("Yin: cannot approve from the zero address"):
-        assert_not_zero(owner)
-    end
+) {
+    with_attr error_message("Yin: cannot approve from the zero address") {
+        assert_not_zero(owner);
+    }
 
-    with_attr error_message("Yin: cannot approve to the zero address"):
-        assert_not_zero(spender)
-    end
+    with_attr error_message("Yin: cannot approve to the zero address") {
+        assert_not_zero(spender);
+    }
 
-    yin_allowances_storage.write(owner, spender, amount)
-    Approval.emit(owner, spender, amount)
-    return ()
-end
+    yin_allowances_storage.write(owner, spender, amount);
+    Approval.emit(owner, spender, amount);
+    return ();
+}
 
-func _spend_allowance{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func _spend_allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     owner, spender, amount
-):
-    alloc_locals
+) {
+    alloc_locals;
 
-    let (current_allowance) = yin_allowances_storage.read(owner, spender)
-    if current_allowance != INFINITE_ALLOWANCE:
-        with_attr error_message("Yin: insufficient allowance"):
-            let (new_allowance) = WadRay.sub_unsigned(current_allowance, amount)  # Reverts if amount > current_allowance
-        end
+    let (current_allowance) = yin_allowances_storage.read(owner, spender);
+    if (current_allowance != INFINITE_ALLOWANCE) {
+        with_attr error_message("Yin: insufficient allowance") {
+            let (new_allowance) = WadRay.sub_unsigned(current_allowance, amount);  // Reverts if amount > current_allowance
+        }
 
-        _approve(owner, spender, new_allowance)
-        return ()
-    end
+        _approve(owner, spender, new_allowance);
+        return ();
+    }
 
-    return ()
-end
+    return ();
+}

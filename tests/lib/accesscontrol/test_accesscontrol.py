@@ -3,8 +3,8 @@ from itertools import combinations
 from typing import Callable, List, Tuple
 
 import pytest
-from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
-from starkware.starknet.testing.starknet import StarknetContract
+from starkware.starknet.testing.contract import StarknetContract
+from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.utils import BAD_GUY, FALSE, TRUE, assert_event_emitted, compile_contract, str_to_felt
@@ -38,12 +38,12 @@ async def acc(request, starknet_session) -> StarknetContract:
 @pytest.fixture
 async def sudo_user(acc):
     # Grant user all permissions
-    await acc.grant_role(SUDO_USER, ACC_USER).invoke(caller_address=ACC_OWNER)
+    await acc.grant_role(SUDO_USER, ACC_USER).execute(caller_address=ACC_OWNER)
 
 
 @pytest.fixture
-async def ACC_change_admin(acc) -> StarknetTransactionExecutionInfo:
-    tx = await acc.change_admin(NEW_ACC_OWNER).invoke(caller_address=ACC_OWNER)
+async def ACC_change_admin(acc) -> StarknetCallInfo:
+    tx = await acc.change_admin(NEW_ACC_OWNER).execute(caller_address=ACC_OWNER)
     return tx
 
 
@@ -66,13 +66,13 @@ def ACC_both(request) -> StarknetContract:
 
 @pytest.mark.asyncio
 async def test_ACC_setup(acc):
-    admin = (await acc.get_admin().invoke()).result.address
+    admin = (await acc.get_admin().execute()).result.address
     assert admin == ACC_OWNER
 
-    await acc.assert_admin().invoke(caller_address=ACC_OWNER)
+    await acc.assert_admin().execute(caller_address=ACC_OWNER)
 
     with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
-        await acc.assert_admin().invoke(caller_address=NEW_ACC_OWNER)
+        await acc.assert_admin().execute(caller_address=NEW_ACC_OWNER)
 
 
 @pytest.mark.asyncio
@@ -86,19 +86,19 @@ async def test_change_admin(acc, ACC_change_admin):
     )
 
     # Check admin
-    admin = (await acc.get_admin().invoke()).result.address
+    admin = (await acc.get_admin().execute()).result.address
     assert admin == NEW_ACC_OWNER
 
-    await acc.assert_admin().invoke(caller_address=NEW_ACC_OWNER)
+    await acc.assert_admin().execute(caller_address=NEW_ACC_OWNER)
 
     with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
-        await acc.assert_admin().invoke(caller_address=ACC_OWNER)
+        await acc.assert_admin().execute(caller_address=ACC_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_change_admin_unauthorized(acc):
     with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
-        await acc.change_admin(BAD_GUY).invoke(caller_address=BAD_GUY)
+        await acc.change_admin(BAD_GUY).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.parametrize("given_roles", ROLES_COMBINATIONS)
@@ -111,13 +111,13 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
     # Compute value of given role
     given_role_value = sum([r.value for r in given_roles])
 
-    tx = await acc.grant_role(given_role_value, ACC_USER).invoke(caller_address=admin)
+    tx = await acc.grant_role(given_role_value, ACC_USER).execute(caller_address=admin)
 
     # Check event
     assert_event_emitted(tx, acc.contract_address, "RoleGranted", [given_role_value, ACC_USER])
 
     # Check role
-    role = (await acc.get_role(ACC_USER).invoke()).result.ufelt
+    role = (await acc.get_role(ACC_USER).execute()).result.ufelt
     assert role == given_role_value
 
     # Check roles granted
@@ -125,31 +125,31 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
         role_value = r.value
 
         # Check `has_role`
-        has_role = (await acc.has_role(role_value, ACC_USER).invoke()).result.bool
+        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.bool
 
         # Check getter
         role_name = r.name.lower()
         getter: Callable = acc.get_contract_function(f"can_{role_name}")
-        can_perform_role = (await getter(ACC_USER).invoke()).result.bool
+        can_perform_role = (await getter(ACC_USER).execute()).result.bool
 
         expected = TRUE if r in given_roles else FALSE
         assert has_role == can_perform_role == expected
 
     # Grant the role again to confirm behaviour is correct
-    await acc.grant_role(given_role_value, ACC_USER).invoke(caller_address=admin)
-    role = (await acc.get_role(ACC_USER).invoke()).result.ufelt
+    await acc.grant_role(given_role_value, ACC_USER).execute(caller_address=admin)
+    role = (await acc.get_role(ACC_USER).execute()).result.ufelt
     assert role == given_role_value
 
     # Compute value of revoked role
     revoked_role_value = sum([r.value for r in revoked_roles])
 
-    tx = await acc.revoke_role(revoked_role_value, ACC_USER).invoke(caller_address=admin)
+    tx = await acc.revoke_role(revoked_role_value, ACC_USER).execute(caller_address=admin)
 
     # Check event
     assert_event_emitted(tx, acc.contract_address, "RoleRevoked", [revoked_role_value, ACC_USER])
 
     # Check role
-    updated_role = (await acc.get_role(ACC_USER).invoke()).result.ufelt
+    updated_role = (await acc.get_role(ACC_USER).execute()).result.ufelt
     expected_role = given_role_value & (~revoked_role_value)
     assert updated_role == expected_role
 
@@ -159,27 +159,27 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
         role_value = r.value
 
         # Check `has_role`
-        has_role = (await acc.has_role(role_value, ACC_USER).invoke()).result.bool
+        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.bool
 
         # Check getter
         role_name = r.name.lower()
         getter: Callable = acc.get_contract_function(f"can_{role_name}")
-        can_perform_role = (await getter(ACC_USER).invoke()).result.bool
+        can_perform_role = (await getter(ACC_USER).execute()).result.bool
 
         if r in updated_role_list:
             assert has_role == can_perform_role == TRUE
-            await acc.assert_has_role(role_value).invoke(caller_address=ACC_USER)
+            await acc.assert_has_role(role_value).execute(caller_address=ACC_USER)
         else:
             assert has_role == can_perform_role == FALSE
             with pytest.raises(
                 StarkException,
                 match=f"AccessControl: caller is missing role {role_value}",
             ):
-                await acc.assert_has_role(role_value).invoke(caller_address=ACC_USER)
+                await acc.assert_has_role(role_value).execute(caller_address=ACC_USER)
 
     # Revoke the role again to confirm behaviour is as intended
-    await acc.revoke_role(revoked_role_value, ACC_USER).invoke(caller_address=admin)
-    updated_role = (await acc.get_role(ACC_USER).invoke()).result.ufelt
+    await acc.revoke_role(revoked_role_value, ACC_USER).execute(caller_address=admin)
+    updated_role = (await acc.get_role(ACC_USER).execute()).result.ufelt
     assert updated_role == expected_role
 
 
@@ -187,13 +187,13 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
 @pytest.mark.asyncio
 async def test_role_actions_unauthorized(acc):
     with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
-        await acc.grant_role(SUDO_USER, BAD_GUY).invoke(caller_address=BAD_GUY)
+        await acc.grant_role(SUDO_USER, BAD_GUY).execute(caller_address=BAD_GUY)
 
     with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
-        await acc.revoke_role(SUDO_USER, ACC_USER).invoke(caller_address=BAD_GUY)
+        await acc.revoke_role(SUDO_USER, ACC_USER).execute(caller_address=BAD_GUY)
 
     with pytest.raises(StarkException, match="AccessControl: can only renounce roles for self"):
-        await acc.renounce_role(SUDO_USER, ACC_USER).invoke(caller_address=BAD_GUY)
+        await acc.renounce_role(SUDO_USER, ACC_USER).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.parametrize("renounced_roles", ROLES_COMBINATIONS)
@@ -201,12 +201,12 @@ async def test_role_actions_unauthorized(acc):
 @pytest.mark.asyncio
 async def test_renounce_role(acc, renounced_roles):
     renounced_role_value = sum([r.value for r in renounced_roles])
-    tx = await acc.renounce_role(renounced_role_value, ACC_USER).invoke(caller_address=ACC_USER)
+    tx = await acc.renounce_role(renounced_role_value, ACC_USER).execute(caller_address=ACC_USER)
 
     assert_event_emitted(tx, acc.contract_address, "RoleRevoked", [renounced_role_value, ACC_USER])
 
     # Check role
-    updated_role = (await acc.get_role(ACC_USER).invoke()).result.ufelt
+    updated_role = (await acc.get_role(ACC_USER).execute()).result.ufelt
     expected_role = SUDO_USER & (~renounced_role_value)
     assert updated_role == expected_role
 
@@ -216,20 +216,20 @@ async def test_renounce_role(acc, renounced_roles):
         role_value = r.value
 
         # Check `has_role`
-        has_role = (await acc.has_role(role_value, ACC_USER).invoke()).result.bool
+        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.bool
 
         # Check getter
         role_name = r.name.lower()
         getter: Callable = acc.get_contract_function(f"can_{role_name}")
-        can_perform_role = (await getter(ACC_USER).invoke()).result.bool
+        can_perform_role = (await getter(ACC_USER).execute()).result.bool
 
         if r in updated_role_list:
             assert has_role == can_perform_role == TRUE
-            await acc.assert_has_role(role_value).invoke(caller_address=ACC_USER)
+            await acc.assert_has_role(role_value).execute(caller_address=ACC_USER)
         else:
             assert has_role == can_perform_role == FALSE
             with pytest.raises(
                 StarkException,
                 match=f"AccessControl: caller is missing role {role_value}",
             ):
-                await acc.assert_has_role(role_value).invoke(caller_address=ACC_USER)
+                await acc.assert_has_role(role_value).execute(caller_address=ACC_USER)

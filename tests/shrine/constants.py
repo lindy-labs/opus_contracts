@@ -1,10 +1,9 @@
 from decimal import Decimal
-from enum import IntEnum
 
+from tests.roles import ShrineRoles
 from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
-LIMIT_RATIO = 95 * RAY_PERCENT
 
 YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
@@ -62,11 +61,6 @@ RATE_BOUND1 = Decimal("0.5")
 RATE_BOUND2 = Decimal("0.75")
 RATE_BOUND3 = Decimal("0.9215")
 
-# Time Interval
-TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
-# 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625)
-TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
-
 
 # Threshold test constants
 DEPOSITS = [
@@ -89,28 +83,5 @@ DEPOSITS = [
 
 # Forge constant
 FORGE_AMT_WAD = 5_000 * WAD_SCALE
-
-# Troves
-TROVE_1 = 1
-TROVE_2 = 2
-
-
-# Access Control
-class ShrineRoles(IntEnum):
-    ADD_YANG = 2**0
-    ADVANCE = 2**1
-    DEPOSIT = 2**2
-    FORGE = 2**3
-    KILL = 2**4
-    MELT = 2**5
-    MOVE_YANG = 2**6
-    MOVE_YIN = 2**7
-    SEIZE = 2**8
-    SET_CEILING = 2**9
-    SET_THRESHOLD = 2**10
-    UPDATE_MULTIPLIER = 2**11
-    UPDATE_YANG_MAX = 2**12
-    WITHDRAW = 2**13
-
 
 SHRINE_FULL_ACCESS = sum([r.value for r in ShrineRoles])

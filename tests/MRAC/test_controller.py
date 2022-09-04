@@ -18,12 +18,12 @@ def to_pyparams(cairo_params: List[Int125]) -> MRACParameters:
 
 @pytest.mark.asyncio
 async def test_constructor(mrac_controller):
-    tx = mrac_controller.deploy_execution_info
+    tx = mrac_controller.deploy_call_info
     assert len(tx.raw_events) == 1
     event = tx.raw_events[0]
     assert event.data == list(DEFAULT_MRAC_PARAMETERS)
 
-    tx = await mrac_controller.get_parameters().invoke()
+    tx = await mrac_controller.get_parameters().execute()
     init_params = to_pyparams(tx.result.parameters)
     assert init_params == DEFAULT_MRAC_PARAMETERS
 
@@ -32,7 +32,7 @@ async def test_constructor(mrac_controller):
 async def test_adjust_parameters(mrac_controller):
     p = to_wad(42)
     params = [p, p, p, p, p]
-    tx = await mrac_controller.adjust_parameters(*params).invoke()
+    tx = await mrac_controller.adjust_parameters(*params).execute()
 
     assert len(tx.raw_events) == 1
     event = tx.raw_events[0]
@@ -43,7 +43,7 @@ async def test_adjust_parameters(mrac_controller):
     assert adjusted.gamma == p
     assert adjusted.T == p
 
-    tx = await mrac_controller.get_parameters().invoke()
+    tx = await mrac_controller.get_parameters().execute()
     params = tx.result.parameters
     params = to_pyparams(params)
 
