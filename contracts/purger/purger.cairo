@@ -319,6 +319,13 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         contract_address=gate_address, yang_wad=freed_yang_wad
     );
 
+    // TO REMOVE!!!
+    %{
+        print(f"deposited_amt_wad : {ids.deposited_amt_wad}")
+        print(f"percentage_freed_ray : {ids.percentage_freed_ray}")
+        print(f"freed_underlying_wad : {ids.freed_underlying_wad}")
+    %}
+
     // Update Shrine
     IShrine.seize(
         contract_address=shrine_address,

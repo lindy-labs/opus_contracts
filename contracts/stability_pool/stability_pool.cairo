@@ -160,21 +160,21 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 // - Updates P, the running product to help us calculate the compounded deposit
 // - The total balance of yin held by the pool
 func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, amount: felt) {
-    let (this) = get_contract_address();
-    let (shrine_address) = shrine.read();
-    let (purger_address) = purger.read();
-    let (curr_P) = P.read();
+    let (this : felt) = get_contract_address();
+    let (shrine_address : felt) = shrine.read();
+    let (purger_address : felt) = purger.read();
+    let (curr_P : felt) = P.read();
     // amount / total_balance
-    let (this_balance) = IShrine.get_yin(contract_address=shrine_address, user_address=this);
-    let (new_P) = WadRay.wunsigned_div(amount, this_balance);
+    let (this_balance : felt) = IShrine.get_yin(contract_address=shrine_address, user_address=this);
+    let (new_P : felt) = WadRay.wunsigned_div(amount, this_balance);
     tempvar one = WadRay.WAD_ONE;
     // 1 - (amount / total_balance)
-    new_P = one - new_P;
+    let new_P = one - new_P;
     let (new_P) = WadRay.wmul(curr_P, new_P);
     // burn Yin
     // Spending approval already done in constructor
     IPurger.purge(
-        contract_address=-purger_address,
+        contract_address=purger_address,
         trove_id=trove_id,
         purge_amt_wad=amount,
         funder_address=this,
