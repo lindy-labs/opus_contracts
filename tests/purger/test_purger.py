@@ -339,7 +339,7 @@ async def test_purge(
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
     # Purge amount
-    purge = await purger.purge(TROVE_1, close_amt_wad, SEARCHER, SEARCHER).execute()
+    purge = await purger.purge(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
     # Check event
     assert_event_emitted(
@@ -385,7 +385,7 @@ async def test_purge_fail_trove_healthy(shrine, purger):
     purge_amt = (await shrine.estimate(TROVE_1).execute()).result.wad // 2
 
     with pytest.raises(StarkException, match="Purger: Trove is not liquidatable"):
-        await purger.purge(TROVE_1, purge_amt, SEARCHER, SEARCHER).execute()
+        await purger.purge(TROVE_1, purge_amt, SEARCHER).execute(caller_address=SEARCHER)
 
 
 @pytest.mark.usefixtures(
@@ -412,7 +412,7 @@ async def test_purge_fail_exceed_max_close(
     assert max_close_amt > 0
 
     with pytest.raises(StarkException, match="Purger: Maximum close amount exceeded"):
-        await purger.purge(TROVE_1, max_close_amt + 1, SEARCHER, SEARCHER).execute()
+        await purger.purge(TROVE_1, max_close_amt + 1, SEARCHER).execute(caller_address=SEARCHER)
 
 
 @pytest.mark.usefixtures(
@@ -445,4 +445,4 @@ async def test_purge_fail_insufficient_yin(
     assert max_close_amt > 0
 
     with pytest.raises(StarkException):
-        await purger.purge(TROVE_1, max_close_amt, SEARCHER, SEARCHER).execute()
+        await purger.purge(TROVE_1, max_close_amt, SEARCHER).execute(caller_address=SEARCHER)
