@@ -244,35 +244,35 @@ namespace IAbbot {
     func forge(trove_id, amount) {
     }
 
-    func add_yang(yang_address, yang_max, yang_threshold, yang_price, gate_address):
-    end
-end
+    func add_yang(yang_address, yang_max, yang_threshold, yang_price, gate_address) {
+    }
+}
 
 @contract_interface
-namespace IStabilityPool:
+namespace IStabilityPool {
 
-    #############################################
-    ##                EXTERNAL                 ##
-    #############################################
+    /////////////////////////////////////////////
+    //                EXTERNAL                 //
+    /////////////////////////////////////////////
     
-    func provide(amount: felt):
-    end
+    func provide(amount: felt) {
+    }
 
-    func withdraw(amount: felt):
-    end
+    func withdraw(amount: felt) {
+    }
 
-    func liquidate(trove_id: felt):
-    end
+    func liquidate(trove_id: felt) {
+    }
     
-    #############################################
-    ##                GETTERS                  ##
-    #############################################
+    /////////////////////////////////////////////
+    //                GETTERS                  //
+    /////////////////////////////////////////////
     
-    func get_provider_owed_yangs(provider: felt) -> (yangs_len : felt, yangs : felt*):
-    end
+    func get_provider_owed_yangs(provider: felt) -> (yangs_len : felt, yangs : felt*) {
+    }
     
-    func get_provider_owed_yin(provider: felt) -> (yin : felt):
-    end
+    func get_provider_owed_yin(provider: felt) -> (yin : felt) {
+    }
 }
 
 @contract_interface

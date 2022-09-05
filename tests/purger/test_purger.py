@@ -141,11 +141,10 @@ async def shrine_feeds(
 
     return feeds
 
-
+@pytest.mark.usefixtures("shrine_feeds")
 @pytest.fixture
 async def aura_user_with_first_trove(
     shrine,
-    shrine_feeds,
     abbot,
     abbot_with_yangs,
     steth_yang: YangConfig,
