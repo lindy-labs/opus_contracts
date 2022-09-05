@@ -19,10 +19,10 @@ namespace IShrine:
     func get_yangs_count() -> (ufelt):
     end
 
-    func get_deposit(trove_id, yang_address) -> (wad):
+    func get_deposit(yang_address, trove_id) -> (wad):
     end
 
-    func get_debt() -> (wad):
+    func get_total_debt() -> (wad):
     end
 
     func get_total_yin() -> (wad):
@@ -41,12 +41,6 @@ namespace IShrine:
     end
 
     func get_live() -> (bool):
-    end
-
-    func get_role(user) -> (ufelt):
-    end
-
-    func get_admin() -> (address):
     end
 
     #
@@ -94,18 +88,6 @@ namespace IShrine:
     func seize(trove_id):
     end
 
-    func grant_role(role, address):
-    end
-
-    func revoke_role(role, address):
-    end
-
-    func renounce_role(role, address):
-    end
-
-    func change_admin(new_admin):
-    end
-
     #
     # view
     #
@@ -129,9 +111,6 @@ namespace IShrine:
 
     func is_within_limits(trove_id) -> (bool):
     end
-
-    func has_role(role, user) -> (bool):
-    end
 end
 
 @contract_interface
@@ -148,12 +127,6 @@ namespace IGate:
     func get_asset() -> (address):
     end
 
-    func get_role(user) -> (ufelt):
-    end
-
-    func get_admin() -> (address):
-    end
-
     #
     # external
     #
@@ -164,18 +137,6 @@ namespace IGate:
     end
 
     func kill():
-    end
-
-    func grant_role(role, address):
-    end
-
-    func revoke_role(role, address):
-    end
-
-    func renounce_role(role, address):
-    end
-
-    func change_admin(new_admin):
     end
 
     #
@@ -194,9 +155,6 @@ namespace IGate:
     end
 
     func preview_withdraw(yang_wad) -> (wad):
-    end
-
-    func has_role(role, user) -> (bool):
     end
 end
 
