@@ -128,8 +128,9 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine_address, abbot_address, yin_address
+    authed, shrine_address, abbot_address, yin_address
 ) {
+    AccessControl.initializer(authed);
     purger_shrine_storage.write(shrine_address);
     purger_abbot_storage.write(abbot_address);
     purger_yin_storage.write(yin_address);
