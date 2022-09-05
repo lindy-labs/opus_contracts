@@ -825,7 +825,7 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == deposit_amt_wad
 
-    amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.wad
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert amt == deposit_amt_wad
 
     # Check max forge amount
@@ -901,7 +901,7 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == remaining_amt_wad
 
-    amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.wad
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert amt == remaining_amt_wad
 
     ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
@@ -945,7 +945,7 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == remaining_amt_wad
 
-    amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.wad
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert amt == remaining_amt_wad
 
     ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
@@ -1025,7 +1025,7 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert_event_emitted(forge, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, forge_amt_wad])
     assert_event_emitted(forge, shrine.contract_address, "YinTotalUpdated", [forge_amt_wad])
 
-    system_debt = (await shrine.get_debt().execute()).result.wad
+    system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert system_debt == forge_amt_wad
 
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
@@ -1072,7 +1072,7 @@ async def test_shrine_forge_unsafe_fail(shrine):
 async def test_shrine_forge_ceiling_fail(shrine):
     # Deposit more yang
     await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
-    updated_deposit = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.wad
+    updated_deposit = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
@@ -1100,7 +1100,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, 0])
     assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
 
-    system_debt = (await shrine.get_debt().execute()).result.wad
+    system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert system_debt == 0
 
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
@@ -1140,7 +1140,7 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
         [TROVE_1, FEED_LEN - 1, outstanding_amt_wad],
     )
 
-    system_debt = (await shrine.get_debt().execute()).result.wad
+    system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert system_debt == outstanding_amt_wad
 
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
@@ -1247,7 +1247,7 @@ async def test_charge(shrine, estimate, method, calldata):
     tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
 
     # Get updated system info
-    new_system_debt = (await shrine.get_debt().execute()).result.wad
+    new_system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert new_system_debt == expected_system_debt
 
     # Get updated trove information for Trove ID 1
@@ -1411,10 +1411,10 @@ async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
         [YANG_0_ADDRESS, TROVE_2, to_wad(move_amt)],
     )
 
-    src_amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.wad
+    src_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert src_amt == to_wad(INITIAL_DEPOSIT - move_amt)
 
-    dst_amt = (await shrine.get_deposit(TROVE_2, YANG_0_ADDRESS).execute()).result.wad
+    dst_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_2).execute()).result.wad
     assert dst_amt == to_wad(move_amt)
 
     # Check max forge amount
@@ -1524,7 +1524,7 @@ async def test_shrine_advance_update_multiplier_invalid_fail(shrine_deploy):
 @pytest.mark.asyncio
 async def test_shrine_unhealthy(shrine):
     # Calculate unsafe yang price
-    yang_balance = from_wad((await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.wad)
+    yang_balance = from_wad((await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad)
     debt = from_wad((await shrine.get_trove(TROVE_1).execute()).result.trove.debt)
     unsafe_price = debt / Decimal("0.85") / yang_balance
 

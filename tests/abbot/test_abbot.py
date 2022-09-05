@@ -423,16 +423,16 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
     )
 
     assert (
-        await shrine.get_deposit(TROVE_1, steth_yang.contract_address).execute()
+        await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
     ).result.wad == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
     assert (
-        await shrine.get_deposit(TROVE_1, doge_yang.contract_address).execute()
+        await shrine.get_deposit(doge_yang.contract_address, TROVE_1).execute()
     ).result.wad == INITIAL_DOGE_DEPOSIT + fresh_doge_deposit
 
     # depositing 0 should pass, no event on gate (exits early)
     await abbot.deposit(steth_yang.contract_address, TROVE_1, 0).execute(caller_address=AURA_USER)
     assert (
-        await shrine.get_deposit(TROVE_1, steth_yang.contract_address).execute()
+        await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
     ).result.wad == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
 
 
@@ -482,10 +482,10 @@ async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
     )
 
     assert (
-        await shrine.get_deposit(TROVE_1, steth_yang.contract_address).execute()
+        await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
     ).result.wad == INITIAL_STETH_DEPOSIT - steth_withdraw_amount
     assert (
-        await shrine.get_deposit(TROVE_1, doge_yang.contract_address).execute()
+        await shrine.get_deposit(doge_yang.contract_address, TROVE_1).execute()
     ).result.wad == INITIAL_DOGE_DEPOSIT - doge_withdraw_amount
 
 
