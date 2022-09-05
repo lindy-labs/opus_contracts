@@ -88,6 +88,7 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 }
 
 // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
+// Returns 0 if trove is healthy
 @view
 func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id
@@ -142,7 +143,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Check that trove can be liquidated
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
-
     with_attr error_message("Purger: Trove is not liquidatable") {
         assert is_healthy = FALSE;
     }
@@ -158,12 +158,12 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert is_valid = TRUE;
     }
 
-    // Get percentage of collateral to free
     let (percentage_freed_ray) = get_percentage_freed(
         shrine_address, trove_id, purge_amt_wad, before_ltv_ray
     );
 
-    // Transfer close amount from funder to purger
+    // Transfer close amount from funder to purger, then melt from purger's contract address
+    // Note: `Shrine.melt` should not be called directly because it does not check for approvals
     let (contract_address) = get_contract_address();
     let (yin_address) = purger_yin_storage.read();
     IYin.transferFrom(
@@ -173,7 +173,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         amount=purge_amt_wad,
     );
 
-    // Pay down close amount of debt in Shrine
     IShrine.melt(
         contract_address=shrine_address,
         user_address=contract_address,
@@ -197,17 +196,15 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         percentage_freed_ray,
     );
 
-    // Get LTV after freeing collateral and assert new LTV < old LTV
+    // Assert new LTV < old LTV
     let (after_ltv_ray) = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
-
     with_attr error_message(
             "Purger: Amount purged is insufficient to improve loan-to-value ratio") {
         assert_lt(after_ltv_ray, before_ltv_ray);
     }
 
-    // Events
     Purged.emit(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recipient_address);
 
     return ();
@@ -228,7 +225,6 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     // `rmul` of a wad and a ray returns a wad
     let (close_amt) = WadRay.rmul(debt, close_factor);
 
-    // Check for instances where close amount is greater than debt (LTV > 100%)
     let exceeds_debt = is_le(debt, close_amt);
     if (exceeds_debt == TRUE) {
         return (debt,);
@@ -253,28 +249,24 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     shrine_address, trove_id, purge_amt_wad, ltv_ray
 ) -> (ray: felt) {
     let is_covered = is_le(ltv_ray, WadRay.RAY_ONE);
-    if (is_covered == TRUE) {
-        // Calculate percentage of `yang` to free
-        let (penalty_ray) = get_purge_penalty_internal(ltv_ray);
-
-        // `rmul` of a wad and a ray returns a wad
-        let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
-        let (freed_amt_wad) = WadRay.add_unsigned(penalty_amt_wad, purge_amt_wad);
-
-        let (_, trove_value_wad) = IShrine.get_trove_threshold(
-            contract_address=shrine_address, trove_id=trove_id
-        );
-
-        // Round freed percent down to 100% if it exceeds
-        let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_wad, trove_value_wad);
-
-        return (percentage_freed_ray,);
-    } else {
+    if (is_covered == FALSE) {
         let (trove_debt) = IShrine.estimate(contract_address=shrine_address, trove_id=trove_id);
-
         let (prorata_percentage_freed_ray) = WadRay.runsigned_div(purge_amt_wad, trove_debt);
         return (prorata_percentage_freed_ray,);
     }
+
+    let (penalty_ray) = get_purge_penalty_internal(ltv_ray);
+
+    // `rmul` of a wad and a ray returns a wad
+    let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
+
+    let (freed_amt_wad) = WadRay.add_unsigned(penalty_amt_wad, purge_amt_wad);
+    let (_, trove_value_wad) = IShrine.get_trove_threshold(
+        contract_address=shrine_address, trove_id=trove_id
+    );
+    let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_wad, trove_value_wad);
+
+    return (percentage_freed_ray,);
 }
 
 // Helper function to loop through yang addresses and transfer freed yang to recipient
@@ -318,11 +310,9 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) {
     alloc_locals;
 
-    // Get amount of yang deposited for trove
     let (deposited_amt_wad) = IShrine.get_deposit(
         contract_address=shrine_address, trove_id=trove_id, yang_address=yang_address
     );
-
     let has_deposited = is_nn(deposited_amt_wad);
 
     // Early termination if no yang deposited
@@ -330,7 +320,6 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return ();
     }
 
-    // Get gate address from Abbot
     let (gate_address) = IAbbot.get_gate_address(
         contract_address=abbot_address, yang_address=yang_address
     );
@@ -338,12 +327,11 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // `rmul` of a wad and a ray returns a wad
     let (freed_yang_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
 
-    // Get amount of underlying collateral to free
+    // Get amount of underlying collateral to free before Shrine is updated
     let (freed_underlying_wad) = IGate.preview_withdraw(
         contract_address=gate_address, yang_wad=freed_yang_wad
     );
 
-    // Update Shrine
     IShrine.seize(
         contract_address=shrine_address,
         yang_address=yang_address,
@@ -351,7 +339,6 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         amount=freed_yang_wad,
     );
 
-    // Perform transfer
     IGate.withdraw(
         contract_address=gate_address,
         user_address=recipient_address,
