@@ -333,11 +333,11 @@ async def test_purge(
     freed_percentage = get_freed_percentage(before_ltv, close_amt, trove_debt, trove_value)
 
     # Get yang balance of trove
-    before_trove_steth_yang_wad = (await shrine.get_deposit(TROVE_1, steth_token.contract_address).execute()).result.wad
+    before_trove_steth_yang_wad = (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.wad
     before_trove_steth_bal_wad = (await steth_gate.preview_withdraw(before_trove_steth_yang_wad).execute()).result.wad
     expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
 
-    before_trove_doge_yang_wad = (await shrine.get_deposit(TROVE_1, doge_token.contract_address).execute()).result.wad
+    before_trove_doge_yang_wad = (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.wad
     before_trove_doge_bal_wad = (await doge_gate.preview_withdraw(before_trove_doge_yang_wad).execute()).result.wad
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 

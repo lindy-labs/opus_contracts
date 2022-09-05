@@ -334,7 +334,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     alloc_locals;
 
     let (deposited_amt_wad) = IShrine.get_deposit(
-        contract_address=shrine_address, trove_id=trove_id, yang_address=yang_address
+        contract_address=shrine_address, yang_address=yang_address, trove_id=trove_id
     );
     let has_deposited = is_nn(deposited_amt_wad);
 
