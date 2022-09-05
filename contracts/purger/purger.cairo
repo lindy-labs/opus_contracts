@@ -38,7 +38,7 @@ func purger_yin_storage() -> (address: felt) {
 //
 
 @event
-func Purged(trove_id, purge_amt_wad, purge_penalty_ray, funder_address, recipient_address) {
+func Purged(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recipient_address) {
 }
 
 //
@@ -158,18 +158,10 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert is_valid = TRUE;
     }
 
-    // Calculate percentage of `yang` to free
-    let (penalty_ray) = get_purge_penalty_internal(before_ltv_ray);
-
-    // `rmul` of a wad and a ray returns a wad
-    let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
-    let (freed_amt_wad) = WadRay.add_unsigned(penalty_amt_wad, purge_amt_wad);
-
-    let (_, trove_value_wad) = IShrine.get_trove_threshold(
-        contract_address=shrine_address, trove_id=trove_id
+    // Get percentage of collateral to free
+    let (percentage_freed_ray) = get_percentage_freed(
+        shrine_address, trove_id, purge_amt_wad, before_ltv_ray
     );
-
-    let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_wad, trove_value_wad);
 
     // Transfer close amount from funder to purger
     let (contract_address) = get_contract_address();
@@ -216,7 +208,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     // Events
-    Purged.emit(trove_id, purge_amt_wad, penalty_ray, funder_address, recipient_address);
+    Purged.emit(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recipient_address);
 
     return ();
 }
@@ -251,6 +243,38 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
     // placeholder
     let (penalty, _) = unsigned_div_rem(ltv_ray, 20);
     return (penalty,);
+}
+
+// Helper function to calculate percentage of collateral freed.
+// If LTV > 100%. pro-rate based on amount paid down divided by total debt.
+// If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided
+// by total trove value.
+func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    shrine_address, trove_id, purge_amt_wad, ltv_ray
+) -> (ray: felt) {
+    let is_covered = is_le(ltv_ray, WadRay.RAY_ONE);
+    if (is_covered == TRUE) {
+        // Calculate percentage of `yang` to free
+        let (penalty_ray) = get_purge_penalty_internal(ltv_ray);
+
+        // `rmul` of a wad and a ray returns a wad
+        let (penalty_amt_wad) = WadRay.rmul(purge_amt_wad, penalty_ray);
+        let (freed_amt_wad) = WadRay.add_unsigned(penalty_amt_wad, purge_amt_wad);
+
+        let (_, trove_value_wad) = IShrine.get_trove_threshold(
+            contract_address=shrine_address, trove_id=trove_id
+        );
+
+        // Round freed percent down to 100% if it exceeds
+        let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_wad, trove_value_wad);
+
+        return (percentage_freed_ray,);
+    } else {
+        let (trove_debt) = IShrine.estimate(contract_address=shrine_address, trove_id=trove_id);
+
+        let (prorata_percentage_freed_ray) = WadRay.runsigned_div(purge_amt_wad, trove_debt);
+        return (prorata_percentage_freed_ray,);
+    }
 }
 
 // Helper function to loop through yang addresses and transfer freed yang to recipient
