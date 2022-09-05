@@ -10,6 +10,7 @@ from contracts.shared.convert import pack_felt, pack_125, unpack_125
 from contracts.shared.types import Trove, Yang
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.exp import exp
+from contracts.shared.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
 
 from contracts.shrine.roles import ShrineRoles
 
@@ -59,51 +60,51 @@ const RATE_BOUND3 = 9215 * 10 ** 23;  // 0.9215
 //
 
 @event
-func YangAdded(yang_address, yang_id, max, start_price) {
+func YangAdded(yang: address, yang_id: ufelt, max: wad, start_price: wad) {
 }
 
 @event
-func YangUpdated(yang_address, yang: Yang) {
+func YangUpdated(yang_addr: address, yang: Yang) {
 }
 
 @event
-func DebtTotalUpdated(total_wad) {
+func DebtTotalUpdated(total: wad) {
 }
 
 @event
-func YinTotalUpdated(total_wad) {
+func YinTotalUpdated(total: wad) {
 }
 
 @event
-func YangsCountUpdated(count) {
+func YangsCountUpdated(count: ufelt) {
 }
 
 @event
-func MultiplierUpdated(multiplier, cumulative_multiplier, interval) {
+func MultiplierUpdated(multiplier: ray, cumulative_multiplier: ray, interval: ufelt) {
 }
 
 @event
-func ThresholdUpdated(yang_address, threshold) {
+func ThresholdUpdated(yang: address, threshold: ray) {
 }
 
 @event
-func TroveUpdated(trove_id, trove: Trove) {
+func TroveUpdated(trove_id: ufelt, trove: Trove) {
 }
 
 @event
-func YinUpdated(user_address, amount) {
+func YinUpdated(user: address, amount: wad) {
 }
 
 @event
-func DepositUpdated(yang_address, trove_id, amount) {
+func DepositUpdated(yang: address, trove_id: ufelt, amount: wad) {
 }
 
 @event
-func YangPriceUpdated(yang_address, price, cumulative_price, interval) {
+func YangPriceUpdated(yang: address, price: wad, cumulative_price: wad, interval: ufelt) {
 }
 
 @event
-func CeilingUpdated(ceiling) {
+func CeilingUpdated(ceiling: wad) {
 }
 
 @event
@@ -119,74 +120,76 @@ func Killed() {
 // The first 128 bits stores the amount of debt in the trove.
 // The last 123 bits stores the start time interval of the next interest accumulation period.
 @storage_var
-func shrine_troves_storage(trove_id) -> (packed: felt) {
+func shrine_troves_storage(trove_id: ufelt) -> (trove: packed) {
 }
 
 // Stores the amount of the "yin" (synthetic) each user owns.
 // yin can be exchanged for ERC20 synthetic tokens via the yin gate.
 @storage_var
-func shrine_yin_storage(user_address) -> (wad: felt) {
+func shrine_yin_storage(user: address) -> (balance: wad) {
 }
 
 // Stores information about each collateral (see Yang struct)
 @storage_var
-func shrine_yangs_storage(yang_id) -> (yang: Yang) {
+func shrine_yangs_storage(yang_id: ufelt) -> (yang: Yang) {
 }
 
 // Number of collateral accepted by the system.
 // The return value is also the ID of the last added collateral.
 @storage_var
-func shrine_yangs_count_storage() -> (ufelt: felt) {
+func shrine_yangs_count_storage() -> (count: ufelt) {
 }
 
 // Mapping from yang address to yang ID.
 // Yang ID starts at 1.
 @storage_var
-func shrine_yang_id_storage(yang_address) -> (ufelt: felt) {
+func shrine_yang_id_storage(yang: address) -> (id: ufelt) {
 }
 
 // Keeps track of how much of each yang has been deposited into each Trove - wad
 @storage_var
-func shrine_deposits_storage(trove_id, yang_id) -> (wad: felt) {
+func shrine_deposits_storage(trove_id: ufelt, yang_id: ufelt) -> (balance: wad) {
 }
 
 // Total amount of debt accrued
 @storage_var
-func shrine_debt_storage() -> (wad: felt) {
+func shrine_debt_storage() -> (debt: wad) {
 }
 
 // Total amount of synthetic forged
 @storage_var
-func shrine_total_yin_storage() -> (wad: felt) {
+func shrine_total_yin_storage() -> (total_yin: wad) {
 }
 
 // Keeps track of the price history of each Yang - packed
 // interval: timestamp divided by TIME_INTERVAL.
-// packed contains both the actual price (high 123 bits) and the cumulative price (low 128 bits) of
+// packed contains both the actual price (high 125 bits) and the cumulative price (low 125 bits) of
 // the yang at each time interval, both as wads
 @storage_var
-func shrine_yang_price_storage(yang_id, interval) -> (packed: felt) {
+func shrine_yang_price_storage(yang_id: ufelt, interval: ufelt) -> (
+    price_and_cumulative_price: packed
+) {
 }
 
 // Total debt ceiling - wad
 @storage_var
-func shrine_ceiling_storage() -> (wad: felt) {
+func shrine_ceiling_storage() -> (ceiling: wad) {
 }
 
 // Global interest rate multiplier - packed
-// packed contains both the actual multiplier (high 123 bits), and the cumulative multiplier (low 128 bits) of
+// packed contains both the actual multiplier (high 125 bits), and the cumulative multiplier (low 125 bits) of
 // the yang at each time interval, both as rays
 @storage_var
-func shrine_multiplier_storage(interval) -> (packed: felt) {
+func shrine_multiplier_storage(interval: ufelt) -> (multiplier_and_cumulative_multiplier: packed) {
 }
 
 // Liquidation threshold per yang (as LTV) - ray
 @storage_var
-func shrine_thresholds_storage(yang_id) -> (ray: felt) {
+func shrine_thresholds_storage(yang_id: ufelt) -> (threshold: ray) {
 }
 
 @storage_var
-func shrine_live_storage() -> (bool: felt) {
+func shrine_live_storage() -> (is_live: bool) {
 }
 
 //
@@ -194,70 +197,72 @@ func shrine_live_storage() -> (bool: felt) {
 //
 
 @view
-func get_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) -> (
-    trove: Trove
-) {
+func get_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt
+) -> (trove: Trove) {
     let (trove_packed) = shrine_troves_storage.read(trove_id);
-    let (charge_from, debt) = split_felt(trove_packed);
+    let (charge_from: ufelt, debt: wad) = split_felt(trove_packed);
     let trove: Trove = Trove(charge_from=charge_from, debt=debt);
     return (trove,);
 }
 
 @view
-func get_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(user_address) -> (
-    wad: felt
+func get_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(user: address) -> (
+    balance: wad
 ) {
-    return shrine_yin_storage.read(user_address);
+    return shrine_yin_storage.read(user);
 }
 
 @view
 func get_total_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    wad: felt
+    total_yin: wad
 ) {
     return shrine_total_yin_storage.read();
 }
 
 @view
-func get_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(yang_address) -> (
+func get_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(yang: address) -> (
     yang: Yang
 ) {
-    let (yang_id) = shrine_yang_id_storage.read(yang_address);
+    let (yang_id: ufelt) = shrine_yang_id_storage.read(yang);
     return shrine_yangs_storage.read(yang_id);
 }
 
 @view
 func get_yangs_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    ufelt: felt
+    count: ufelt
 ) {
     return shrine_yangs_count_storage.read();
 }
 
 @view
 func get_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id, yang_address
-) -> (wad: felt) {
-    let (yang_id) = shrine_yang_id_storage.read(yang_address);
+    trove_id: ufelt, yang: address
+) -> (balance: wad) {
+    let (yang_id: ufelt) = shrine_yang_id_storage.read(yang);
     return shrine_deposits_storage.read(trove_id, yang_id);
 }
 
 @view
-func get_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (wad: felt) {
+func get_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (debt: wad) {
     return shrine_debt_storage.read();
 }
 
 @view
 func get_yang_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yang_address, interval
-) -> (price_wad: felt, cumulative_price_wad: felt) {
+    yang: address, interval: ufelt
+) -> (price: wad, cumulative_price: wad) {
     alloc_locals;
-    let (yang_id) = shrine_yang_id_storage.read(yang_address);
-    let (packed) = shrine_yang_price_storage.read(yang_id, interval);
-    let (price, cumulative_price) = unpack_125(packed);
+    let (yang_id: ufelt) = shrine_yang_id_storage.read(yang);
+    let (price_and_cumulative_price: packed) = shrine_yang_price_storage.read(yang_id, interval);
+    let (price: wad, cumulative_price: wad) = unpack_125(price_and_cumulative_price);
     return (price, cumulative_price);
 }
 
 @view
-func get_ceiling{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (wad: felt) {
+func get_ceiling{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    ceiling: wad
+) {
     return shrine_ceiling_storage.read();
 }
 
@@ -274,13 +279,15 @@ func get_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 @view
 func get_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang_address
-) -> (ray: felt) {
+) -> (threshold: ray) {
     let (yang_id) = get_valid_yang_id(yang_address);
     return shrine_thresholds_storage.read(yang_id);
 }
 
 @view
-func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (bool: felt) {
+func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    is_live: bool
+) {
     return shrine_live_storage.read();
 }
 
@@ -812,7 +819,7 @@ func seize{
 @view
 func get_trove_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id
-) -> (threshold_ray: felt, value_wad: felt) {
+) -> (threshold: ray, value: wad) {
     alloc_locals;
 
     let (yang_count) = shrine_yangs_count_storage.read();
@@ -888,7 +895,7 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         return (TRUE,);
     }
 
-    let (threshold, value) = get_trove_threshold(trove_id);  // Getting the trove's custom threshold and total collateral value
+    let (threshold: ray, value: wad) = get_trove_threshold(trove_id);  // Getting the trove's custom threshold and total collateral value
     let (max_debt) = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
     let bool = is_le(trove.debt, max_debt);
 
@@ -908,7 +915,7 @@ func is_within_limits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
         return (TRUE,);
     }
 
-    let (threshold, value) = get_trove_threshold(trove_id);
+    let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
     let (limit) = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
     let (max_debt) = WadRay.rmul(limit, value);
     let bool = is_le(trove.debt, max_debt);
@@ -931,7 +938,7 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         return (0,);
     }
 
-    let (threshold, value) = get_trove_threshold(trove_id);
+    let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
     let (limit) = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
     let (max_debt) = WadRay.rmul(limit, value);
 
@@ -1050,8 +1057,8 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> (wad: felt) {
     alloc_locals;
 
-    let (avg_ratio) = get_avg_ratio(trove_id, current_debt, start_interval, end_interval);
-    let (threshold, _) = get_trove_threshold(trove_id);
+    let avg_ratio: ray = get_avg_ratio(trove_id, current_debt, start_interval, end_interval);
+    let (threshold: ray, _) = get_trove_threshold(trove_id);
     let (avg_relative_ratio) = WadRay.runsigned_div(avg_ratio, threshold);
     let (avg_multiplier) = get_avg_multiplier(start_interval, end_interval);
 
@@ -1229,26 +1236,26 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 // Returns the average LTV of a trove over the specified time period
 func get_avg_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, debt, start_interval, end_interval
-) -> (ray: felt) {
+) -> ray {
     // Getting average value of the trove
     let (num_yangs) = shrine_yangs_count_storage.read();
 
-    let (avg_val) = get_avg_val_internal(trove_id, start_interval, end_interval, num_yangs, 0);
+    let avg_val: wad = get_avg_val_internal(trove_id, start_interval, end_interval, num_yangs, 0);
 
     let (avg_ratio) = WadRay.runsigned_div(debt, avg_val);  // Dividing two wads with `runsigned_div` yields a ray
-    return (avg_ratio,);
+    return avg_ratio;
 }
 
 // Returns the average value of a trove over the specified period of time
 // Includes the values at `end_interval` but NOT `start_interval` in the average
 func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, start_interval, end_interval, current_yang_id, cumulative_val
-) -> (wad: felt) {
+) -> wad {
     alloc_locals;
 
     // Terminate if all yangs have been iterated over already
     if (current_yang_id == 0) {
-        return (cumulative_val,);
+        return cumulative_val;
     }
 
     let (balance) = shrine_deposits_storage.read(trove_id, current_yang_id);
@@ -1327,7 +1334,7 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     current_yang_id,
     cumulative_weighted_threshold,
     cumulative_trove_value,
-) -> (threshold_ray: felt, value_wad: felt) {
+) -> (threshold: ray, value: wad) {
     alloc_locals;
 
     if (current_yang_id == 0) {
@@ -1336,9 +1343,9 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
             let (threshold) = WadRay.wunsigned_div(
                 cumulative_weighted_threshold, cumulative_trove_value
             );
-            return (threshold_ray=threshold, value_wad=cumulative_trove_value);
+            return (threshold=threshold, value=cumulative_trove_value);
         } else {
-            return (threshold_ray=0, value_wad=0);
+            return (threshold=0, value=0);
         }
     }
 

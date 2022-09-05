@@ -1546,5 +1546,5 @@ async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
     )
 
     # Getting actual threshold
-    actual_threshold = (await shrine.get_trove_threshold(TROVE_1).execute()).result.threshold_ray
+    actual_threshold = (await shrine.get_trove_threshold(TROVE_1).execute()).result.threshold
     assert_equalish(from_ray(actual_threshold), expected_threshold)
