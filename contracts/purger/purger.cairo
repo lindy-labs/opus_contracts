@@ -1,12 +1,24 @@
 %lang starknet
 
 from starkware.cairo.common.bool import FALSE, TRUE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_lt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le, is_nn
-from starkware.starknet.common.syscalls import get_contract_address
+from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+
+from contracts.purger.roles import PurgerRoles
 
 from contracts.interfaces import IAbbot, IGate, IShrine, IYin
+from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.accesscontrol.accesscontrol_external import (
+    get_role,
+    has_role,
+    get_admin,
+    grant_role,
+    revoke_role,
+    renounce_role,
+    change_admin,
+)
 from contracts.shared.types import Trove
 from contracts.shared.wad_ray import WadRay
 
@@ -128,13 +140,36 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // External functions
 //
 
-// `purge` is intended to be called by both searchers and the stability pool
-// to liquidate a trove.
+@external
+func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id, purge_amt_wad, recipient_address
+) {
+    let (funder_address) = get_caller_address();
+    purge_internal(trove_id, purge_amt_wad, funder_address, recipient_address);
+    return ();
+}
+
+@external
+func restricted_purge{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id, purge_amt_wad, funder_address, recipient_address) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(PurgerRoles.RESTRICTED_PURGE);
+    purge_internal(trove_id, purge_amt_wad, funder_address, recipient_address);
+    return ();
+}
+
+//
+// Internal
+//
+
+// `purge_internal` is intended to be called by both searchers (`purge`)
+// and the stability pool (``)
 // The restrictions that apply to stability pool liquidations will not be
 // enforced here - they should be checked in the stability pool module
 // instead before calling this function.
-@external
-func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, purge_amt_wad, funder_address, recipient_address
 ) {
     alloc_locals;
@@ -162,20 +197,11 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         shrine_address, trove_id, purge_amt_wad, before_ltv_ray
     );
 
-    // Transfer close amount from funder to purger, then melt from purger's contract address
-    // Note: `Shrine.melt` should not be called directly because it does not check for approvals
-    let (contract_address) = get_contract_address();
+    // Melt from the funder address directly
     let (yin_address) = purger_yin_storage.read();
-    IYin.transferFrom(
-        contract_address=yin_address,
-        sender=funder_address,
-        recipient=contract_address,
-        amount=purge_amt_wad,
-    );
-
     IShrine.melt(
         contract_address=shrine_address,
-        user_address=contract_address,
+        user_address=funder_address,
         trove_id=trove_id,
         amount=purge_amt_wad,
     );
@@ -209,10 +235,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     return ();
 }
-
-//
-// Internal
-//
 
 func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine_address, trove_id, trove_ltv_ray
