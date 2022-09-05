@@ -232,7 +232,7 @@ end
 
 @view
 func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    trove_id, yang_address
+    yang_address, trove_id
 ) -> (wad):
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
     return shrine_deposits_storage.read(trove_id, yang_id)
