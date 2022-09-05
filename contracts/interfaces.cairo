@@ -22,7 +22,7 @@ namespace IShrine:
     func get_deposit(yang_address, trove_id) -> (wad):
     end
 
-    func get_debt() -> (wad):
+    func get_total_debt() -> (wad):
     end
 
     func get_total_yin() -> (wad):

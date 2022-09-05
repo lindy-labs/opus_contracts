@@ -152,7 +152,7 @@ end
 
 # Total amount of debt accrued
 @storage_var
-func shrine_debt_storage() -> (wad):
+func shrine_total_debt_storage() -> (wad):
 end
 
 # Total amount of synthetic forged
@@ -239,8 +239,8 @@ func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 end
 
 @view
-func get_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
-    return shrine_debt_storage.read()
+func get_total_debt{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (wad):
+    return shrine_total_debt_storage.read()
 end
 
 @view
@@ -665,7 +665,7 @@ func forge{
     let (current_interval) = now()
 
     # Check that debt ceiling has not been reached
-    let (current_system_debt) = shrine_debt_storage.read()
+    let (current_system_debt) = shrine_total_debt_storage.read()
 
     with_attr error_message("Shrine: system debt overflow"):
         let (new_system_debt) = WadRay.add(current_system_debt, amount)  # WadRay.add checks for overflow
@@ -679,7 +679,7 @@ func forge{
     end
 
     # Update system debt
-    shrine_debt_storage.write(new_system_debt)
+    shrine_total_debt_storage.write(new_system_debt)
 
     # Initialise `Trove.charge_from` to current interval if old debt was 0.
     # Otherwise, set `Trove.charge_from` to current interval + 1 because interest has been
@@ -737,13 +737,13 @@ func melt{
     let (current_interval) = now()
 
     # Update system debt
-    let (current_system_debt) = shrine_debt_storage.read()
+    let (current_system_debt) = shrine_total_debt_storage.read()
 
     with_attr error_message("Shrine: System debt underflow"):
         let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, amount)  # WadRay.sub_unsigned contains an underflow check
     end
 
-    shrine_debt_storage.write(new_system_debt)
+    shrine_total_debt_storage.write(new_system_debt)
 
     # Update trove information
     with_attr error_message("Shrine: cannot pay back more debt than exists in this trove"):
@@ -1012,7 +1012,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
     set_trove(trove_id, updated_trove)
 
     # Get old system debt amount
-    let (old_system_debt) = shrine_debt_storage.read()
+    let (old_system_debt) = shrine_total_debt_storage.read()
 
     # Get interest charged
     let (diff) = WadRay.sub_unsigned(new_debt, trove.debt)  # TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
@@ -1020,7 +1020,7 @@ func charge{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(t
     # Get new system debt
     tempvar new_system_debt = old_system_debt + diff
 
-    shrine_debt_storage.write(new_system_debt)
+    shrine_total_debt_storage.write(new_system_debt)
 
     # Events
     DebtTotalUpdated.emit(new_system_debt)
