@@ -147,7 +147,7 @@ end
 
 # Keeps track of how much of each yang has been deposited into each Trove - wad
 @storage_var
-func shrine_deposits_storage(trove_id, yang_id) -> (wad):
+func shrine_deposits_storage(yang_id, trove_id) -> (wad):
 end
 
 # Total amount of debt accrued
@@ -235,7 +235,7 @@ func get_deposit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     yang_address, trove_id
 ) -> (wad):
     let (yang_id) = shrine_yang_id_storage.read(yang_address)
-    return shrine_deposits_storage.read(trove_id, yang_id)
+    return shrine_deposits_storage.read(yang_id, trove_id)
 end
 
 @view
@@ -506,7 +506,7 @@ func move_yang{
     # It depends on starknet handles fees for failed transactions
     charge(dst_trove_id)
 
-    let (src_yang_balance) = shrine_deposits_storage.read(src_trove_id, yang_id)
+    let (src_yang_balance) = shrine_deposits_storage.read(yang_id, src_trove_id)
 
     # Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang"):
@@ -515,15 +515,15 @@ func move_yang{
     end
 
     # Update yang balance of source trove
-    shrine_deposits_storage.write(src_trove_id, yang_id, new_src_balance)
+    shrine_deposits_storage.write(yang_id, src_trove_id, new_src_balance)
 
     # Assert source trove is within limits
     assert_within_limits(src_trove_id)
 
     # Update yang balance of destination trove
-    let (dst_yang_balance) = shrine_deposits_storage.read(dst_trove_id, yang_id)
+    let (dst_yang_balance) = shrine_deposits_storage.read(yang_id, dst_trove_id)
     let (new_dst_balance) = WadRay.add_unsigned(dst_yang_balance, amount)
-    shrine_deposits_storage.write(dst_trove_id, yang_id, new_dst_balance)
+    shrine_deposits_storage.write(yang_id, dst_trove_id, new_dst_balance)
 
     # Events
     DepositUpdated.emit(yang_address, src_trove_id, new_src_balance)
@@ -590,9 +590,9 @@ func deposit{
     shrine_yangs_storage.write(yang_id, new_yang_info)
 
     # Update yang balance of trove
-    let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id)
+    let (trove_yang_balance) = shrine_deposits_storage.read(yang_id, trove_id)
     let (new_trove_balance) = WadRay.add(trove_yang_balance, amount)
-    shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance)
+    shrine_deposits_storage.write(yang_id, trove_id, new_trove_balance)
 
     # Events
     YangUpdated.emit(yang_address, new_yang_info)
@@ -615,7 +615,7 @@ func withdraw{
     let (old_yang_info : Yang) = shrine_yangs_storage.read(yang_id)
 
     # Ensure trove has sufficient yang
-    let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id)
+    let (trove_yang_balance) = shrine_deposits_storage.read(yang_id, trove_id)
 
     with_attr error_message("Shrine: Insufficient yang"):
         # WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
@@ -631,7 +631,7 @@ func withdraw{
     shrine_yangs_storage.write(yang_id, new_yang_info)
 
     # Update yang balance of trove
-    shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance)
+    shrine_deposits_storage.write(yang_id, trove_id, new_trove_balance)
 
     # Check if Trove is within limits
     assert_within_limits(trove_id)
@@ -1141,7 +1141,7 @@ func appraise_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     end
 
     # Calculate current yang value
-    let (balance) = shrine_deposits_storage.read(trove_id, yang_id)
+    let (balance) = shrine_deposits_storage.read(yang_id, trove_id)
 
     # Skip over the rest of the logic if the user hasn't deposited any
     if balance == 0:
@@ -1244,7 +1244,7 @@ func get_avg_val_internal{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, rang
         return (cumulative_val)
     end
 
-    let (balance) = shrine_deposits_storage.read(trove_id, current_yang_id)
+    let (balance) = shrine_deposits_storage.read(current_yang_id, trove_id)
 
     # Skipping over the rest of the logic if the user hasn't deposited anything for this yang
     if balance == 0:
@@ -1337,7 +1337,7 @@ func get_trove_threshold_internal{
         end
     end
 
-    let (deposited) = shrine_deposits_storage.read(trove_id, current_yang_id)
+    let (deposited) = shrine_deposits_storage.read(current_yang_id, trove_id)
 
     # Gas optimization - skip over the current yang if the user hasn't deposited any
     if deposited == 0:
