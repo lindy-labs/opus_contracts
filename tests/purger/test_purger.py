@@ -97,11 +97,14 @@ def get_penalty(ltv: Decimal) -> Decimal:
     return ltv * Decimal("0.05")
 
 
-def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_value: Decimal) -> Decimal:
+def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_debt: Decimal, trove_value: Decimal) -> Decimal:
     """
-    Returns the freed percentage based on:
-    (close amount + penalty amount) / debt
+    If LTV <= 100%, return the freed percentage based on (close amount + penalty amount) / total value of trove
+    If LTV > 100%, return the freed percentage based on close amount / total debt of trove.
     """
+    if ltv > Decimal("1"):
+        return close_amt / trove_debt
+
     penalty = get_penalty(ltv)
     freed_amt = (Decimal("1") + penalty) * close_amt
     return freed_amt / trove_value
@@ -265,7 +268,7 @@ async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12"), Decimal("-0.2")])
-@pytest.mark.parametrize("percentage_max_close", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+@pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -285,7 +288,7 @@ async def test_purge(
     steth_yang: YangConfig,
     doge_yang: YangConfig,
     price_change,
-    percentage_max_close,
+    max_close_percentage,
 ):
 
     yangs = [steth_yang, doge_yang]
@@ -310,22 +313,12 @@ async def test_purge(
     assert_equalish(from_wad(maximum_close_amt_wad), expected_maximum_close_amt)
 
     # Calculate close amount based on parametrization
-    close_amt_wad = int(percentage_max_close * maximum_close_amt_wad)
+    close_amt_wad = int(max_close_percentage * maximum_close_amt_wad)
     close_amt = from_wad(close_amt_wad)
 
     # Sanity check: searcher has sufficient yin
     searcher_yin_balance = (await yin.balanceOf(SEARCHER).execute()).result.wad
     assert searcher_yin_balance > close_amt_wad
-
-    # Check trove value
-    trove_value_wad = (await shrine.get_trove_threshold(TROVE_1).execute()).result.value_wad
-
-    # If close amount exceeds trove value, check that purge reverts due to insufficient yang
-    if close_amt_wad > trove_value_wad:
-        with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-            await purger.purge(TROVE_1, close_amt_wad, SEARCHER, SEARCHER).execute()
-
-        return
 
     # Get yang balance of searcher
     before_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
@@ -333,21 +326,8 @@ async def test_purge(
 
     # Get freed percentage
     trove_value = from_wad((await shrine.get_trove_threshold(TROVE_1).execute()).result.value_wad)
-    freed_percentage = get_freed_percentage(before_ltv, close_amt, trove_value)
-
-    # Calculate expected LTV
-    expected_new_debt = estimated_debt - close_amt
-    expected_new_trove_value = (Decimal("1") - freed_percentage) * trove_value
-    expected_new_ltv = expected_new_debt / expected_new_trove_value
-
-    # If LTV does not improve, check that purge reverts
-    if expected_new_ltv >= before_ltv:
-        with pytest.raises(
-            StarkException, match="Purger: Amount purged is insufficient to improve loan-to-value ratio"
-        ):
-            await purger.purge(TROVE_1, close_amt_wad, SEARCHER, SEARCHER).execute()
-
-        return
+    trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
+    freed_percentage = get_freed_percentage(before_ltv, close_amt, trove_debt, trove_value)
 
     # Get yang balance of trove
     before_trove_steth_yang_wad = (await shrine.get_deposit(TROVE_1, steth_token.contract_address).execute()).result.wad
