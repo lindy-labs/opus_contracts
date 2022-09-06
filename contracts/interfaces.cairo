@@ -281,9 +281,4 @@ namespace IPurger {
 
     func purge(trove_id: felt, purge_amt_wad: felt, recipient_address: felt) {
     }
-
-    func restricted_purge(
-        trove_id: felt, purge_amt_wad: felt, recipient_address: felt, funder_address: felt
-    ) {
-    }
 }
