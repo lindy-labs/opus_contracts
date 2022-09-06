@@ -8,10 +8,11 @@ from tests.purger.constants import DEBT_CEILING_WAD
 from tests.utils import (
     AURA_USER,
     TROVE_1,
+    PURGER_OWNER,
     compile_contract,
 )
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
-from tests.roles import ShrineRoles
+from tests.roles import PurgerRoles
     
 @pytest.fixture
 async def deployed_pool(request, shrine, yin, purger, starknet):
@@ -20,6 +21,7 @@ async def deployed_pool(request, shrine, yin, purger, starknet):
         contract_class=pool_contract,
         constructor_calldata=[yin.contract_address, shrine.contract_address, purger.contract_address],
     )
+    await purger.grant_role(PurgerRoles.RESTRICTED_PURGE, pool.contract_address).execute(caller_address=PURGER_OWNER)
     return pool
 
 @pytest.mark.usefixtures(

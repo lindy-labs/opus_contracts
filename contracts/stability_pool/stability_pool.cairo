@@ -3,17 +3,9 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
 
-from contracts.interfaces import IShrine, IYin
+from contracts.interfaces import IShrine, IYin, IPurger
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.types import Trove
-
-@contract_interface
-namespace IPurger {
-    func purge(trove_id : felt, purge_amt_wad : felt, funder_address : felt, recipient_address : felt) {
-    }
-    func get_max_close_amount(trove_id : felt) -> (wad: felt) {
-    }
-}
 
 /////////////////////////////////////////////
 //                STRUCTS                  //
@@ -173,12 +165,12 @@ func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (new_P) = WadRay.wmul(curr_P, new_P);
     // burn Yin
     // Spending approval already done in constructor
-    IPurger.purge(
+    IPurger.restricted_purge(
         contract_address=purger_address,
         trove_id=trove_id,
         purge_amt_wad=amount,
-        funder_address=this,
-        recipient_address=this
+        recipient_address=this,
+        funder_address=this
     );
     return ();
 }

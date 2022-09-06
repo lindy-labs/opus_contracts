@@ -65,9 +65,11 @@ def str_to_felt(text: str) -> int:
 
 
 # Common addresses
-SHRINE_OWNER = str_to_felt("shrine owner")
 ABBOT_OWNER = str_to_felt("abbot owner")
 GATE_OWNER = str_to_felt("gate owner")
+PURGER_OWNER = str_to_felt("purger owner")
+SHRINE_OWNER = str_to_felt("shrine owner")
+
 
 ADMIN = str_to_felt("admin")
 ABBOT = str_to_felt("abbot")
@@ -362,7 +364,11 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 #
 
 
-def estimate_gas(tx_info: StarknetCallInfo, num_storage_keys: int = 0, num_contracts: int = 0):
+def estimate_gas(
+    tx_info: StarknetCallInfo,
+    num_storage_keys: int = 0,
+    num_contracts: int = 0,
+):
     """
     Helper function to estimate gas for a transaction.
 
@@ -382,9 +388,8 @@ def estimate_gas(tx_info: StarknetCallInfo, num_storage_keys: int = 0, num_contr
 def estimate_gas_inner(call_info: FunctionInvocation):
     steps = call_info.execution_resources.n_steps
     builtins = call_info.execution_resources.builtin_instance_counter
-    print(builtins)
-    # Sum of all gas consumed across both the call and its internal calls
 
+    # Sum of all gas consumed across both the call and its internal calls
     sum_gas = sum(WEIGHTS[name] * builtins[name] for name in NAMES if builtins.get(name)) + steps * WEIGHTS["step"]
     for call in call_info.internal_calls:
         sum_gas += estimate_gas_inner(call)

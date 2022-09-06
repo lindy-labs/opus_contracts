@@ -147,12 +147,12 @@ func shrine_yang_id_storage(yang_address) -> (ufelt: felt) {
 
 // Keeps track of how much of each yang has been deposited into each Trove - wad
 @storage_var
-func shrine_deposits_storage(trove_id, yang_id) -> (wad: felt) {
+func shrine_deposits_storage(yang_id, trove_id) -> (wad: felt) {
 }
 
 // Total amount of debt accrued
 @storage_var
-func shrine_debt_storage() -> (wad: felt) {
+func shrine_total_debt_storage() -> (wad: felt) {
 }
 
 // Total amount of synthetic forged
@@ -234,15 +234,17 @@ func get_yangs_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
 
 @view
 func get_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id, yang_address
+    yang_address, trove_id
 ) -> (wad: felt) {
     let (yang_id) = shrine_yang_id_storage.read(yang_address);
-    return shrine_deposits_storage.read(trove_id, yang_id);
+    return shrine_deposits_storage.read(yang_id, trove_id);
 }
 
 @view
-func get_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (wad: felt) {
-    return shrine_debt_storage.read();
+func get_total_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    wad: felt
+) {
+    return shrine_total_debt_storage.read();
 }
 
 @view
@@ -508,7 +510,7 @@ func move_yang{
     // It depends on starknet handles fees for failed transactions
     charge(dst_trove_id);
 
-    let (src_yang_balance) = shrine_deposits_storage.read(src_trove_id, yang_id);
+    let (src_yang_balance) = shrine_deposits_storage.read(yang_id, src_trove_id);
 
     // Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang") {
@@ -517,15 +519,15 @@ func move_yang{
     }
 
     // Update yang balance of source trove
-    shrine_deposits_storage.write(src_trove_id, yang_id, new_src_balance);
+    shrine_deposits_storage.write(yang_id, src_trove_id, new_src_balance);
 
     // Assert source trove is within limits
     assert_within_limits(src_trove_id);
 
     // Update yang balance of destination trove
-    let (dst_yang_balance) = shrine_deposits_storage.read(dst_trove_id, yang_id);
+    let (dst_yang_balance) = shrine_deposits_storage.read(yang_id, dst_trove_id);
     let (new_dst_balance) = WadRay.add_unsigned(dst_yang_balance, amount);
-    shrine_deposits_storage.write(dst_trove_id, yang_id, new_dst_balance);
+    shrine_deposits_storage.write(yang_id, dst_trove_id, new_dst_balance);
 
     // Events
     DepositUpdated.emit(yang_address, src_trove_id, new_src_balance);
@@ -592,9 +594,9 @@ func deposit{
     shrine_yangs_storage.write(yang_id, new_yang_info);
 
     // Update yang balance of trove
-    let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id);
+    let (trove_yang_balance) = shrine_deposits_storage.read(yang_id, trove_id);
     let (new_trove_balance) = WadRay.add(trove_yang_balance, amount);
-    shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance);
+    shrine_deposits_storage.write(yang_id, trove_id, new_trove_balance);
 
     // Events
     YangUpdated.emit(yang_address, new_yang_info);
@@ -642,7 +644,7 @@ func forge{
     let (current_interval) = now();
 
     // Check that debt ceiling has not been reached
-    let (current_system_debt) = shrine_debt_storage.read();
+    let (current_system_debt) = shrine_total_debt_storage.read();
 
     with_attr error_message("Shrine: system debt overflow") {
         let (new_system_debt) = WadRay.add(current_system_debt, amount);  // WadRay.add checks for overflow
@@ -656,7 +658,7 @@ func forge{
     }
 
     // Update system debt
-    shrine_debt_storage.write(new_system_debt);
+    shrine_total_debt_storage.write(new_system_debt);
 
     // Initialise `Trove.charge_from` to current interval if old debt was 0.
     // Otherwise, set `Trove.charge_from` to current interval + 1 because interest has been
@@ -714,13 +716,13 @@ func melt{
     let (current_interval) = now();
 
     // Update system debt
-    let (current_system_debt) = shrine_debt_storage.read();
+    let (current_system_debt) = shrine_total_debt_storage.read();
 
     with_attr error_message("Shrine: System debt underflow") {
         let (new_system_debt) = WadRay.sub_unsigned(current_system_debt, amount);  // WadRay.sub_unsigned contains an underflow check
     }
 
-    shrine_debt_storage.write(new_system_debt);
+    shrine_total_debt_storage.write(new_system_debt);
 
     // Update trove information
     with_attr error_message("Shrine: cannot pay back more debt than exists in this trove") {
@@ -976,7 +978,7 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (old_yang_info: Yang) = shrine_yangs_storage.read(yang_id);
 
     // Ensure trove has sufficient yang
-    let (trove_yang_balance) = shrine_deposits_storage.read(trove_id, yang_id);
+    let (trove_yang_balance) = shrine_deposits_storage.read(yang_id, trove_id);
 
     with_attr error_message("Shrine: Insufficient yang") {
         // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
@@ -992,7 +994,7 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     shrine_yangs_storage.write(yang_id, new_yang_info);
 
     // Update yang balance of trove
-    shrine_deposits_storage.write(trove_id, yang_id, new_trove_balance);
+    shrine_deposits_storage.write(yang_id, trove_id, new_trove_balance);
 
     // Events
     YangUpdated.emit(yang_address, new_yang_info);
@@ -1023,7 +1025,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     set_trove(trove_id, updated_trove);
 
     // Get old system debt amount
-    let (old_system_debt) = shrine_debt_storage.read();
+    let (old_system_debt) = shrine_total_debt_storage.read();
 
     // Get interest charged
     let (diff) = WadRay.sub_unsigned(new_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
@@ -1031,7 +1033,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // Get new system debt
     tempvar new_system_debt = old_system_debt + diff;
 
-    shrine_debt_storage.write(new_system_debt);
+    shrine_total_debt_storage.write(new_system_debt);
 
     // Events
     DebtTotalUpdated.emit(new_system_debt);
@@ -1152,7 +1154,7 @@ func appraise_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 
     // Calculate current yang value
-    let (balance) = shrine_deposits_storage.read(trove_id, yang_id);
+    let (balance) = shrine_deposits_storage.read(yang_id, trove_id);
 
     // Skip over the rest of the logic if the user hasn't deposited any
     if (balance == 0) {
@@ -1255,7 +1257,7 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return (cumulative_val,);
     }
 
-    let (balance) = shrine_deposits_storage.read(trove_id, current_yang_id);
+    let (balance) = shrine_deposits_storage.read(current_yang_id, trove_id);
 
     // Skipping over the rest of the logic if the user hasn't deposited anything for this yang
     if (balance == 0) {
@@ -1334,7 +1336,7 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
         }
     }
 
-    let (deposited) = shrine_deposits_storage.read(trove_id, current_yang_id);
+    let (deposited) = shrine_deposits_storage.read(current_yang_id, trove_id);
 
     // Gas optimization - skip over the current yang if the user hasn't deposited any
     if (deposited == 0) {

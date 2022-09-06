@@ -19,10 +19,10 @@ namespace IShrine {
     func get_yangs_count() -> (ufelt: felt) {
     }
 
-    func get_deposit(trove_id, yang_address) -> (wad: felt) {
+    func get_deposit(yang_address, trove_id) -> (wad: felt) {
     }
 
-    func get_debt() -> (wad: felt) {
+    func get_total_debt() -> (wad: felt) {
     }
 
     func get_total_yin() -> (wad: felt) {
@@ -41,12 +41,6 @@ namespace IShrine {
     }
 
     func get_live() -> (bool: felt) {
-    }
-
-    func get_role(user) -> (ufelt: felt) {
-    }
-
-    func get_admin() -> (address: felt) {
     }
 
     //
@@ -94,18 +88,6 @@ namespace IShrine {
     func seize(yang_address, trove_id, amount) {
     }
 
-    func grant_role(role, address) {
-    }
-
-    func revoke_role(role, address) {
-    }
-
-    func renounce_role(role, address) {
-    }
-
-    func change_admin(new_admin) {
-    }
-
     //
     // view
     //
@@ -133,9 +115,6 @@ namespace IShrine {
 
     func is_within_limits(trove_id) -> (bool: felt) {
     }
-
-    func has_role(role, user) -> (bool: felt) {
-    }
 }
 
 @contract_interface
@@ -152,12 +131,6 @@ namespace IGate {
     func get_asset() -> (address: felt) {
     }
 
-    func get_role(user) -> (ufelt: felt) {
-    }
-
-    func get_admin() -> (address: felt) {
-    }
-
     //
     // external
     //
@@ -168,18 +141,6 @@ namespace IGate {
     }
 
     func kill() {
-    }
-
-    func grant_role(role, address) {
-    }
-
-    func revoke_role(role, address) {
-    }
-
-    func renounce_role(role, address) {
-    }
-
-    func change_admin(new_admin) {
     }
 
     //
@@ -198,9 +159,6 @@ namespace IGate {
     }
 
     func preview_withdraw(yang_wad) -> (wad: felt) {
-    }
-
-    func has_role(role, user) -> (bool: felt) {
     }
 }
 
@@ -302,5 +260,30 @@ namespace IYin {
     }
 
     func approve(spender: felt, amount: felt) -> (bool: felt) {
+    }
+}
+
+@contract_interface
+namespace IPurger {
+    //
+    // view
+    //
+
+    func get_purge_penalty(trove_id: felt) -> (ray: felt) {
+    }
+
+    func get_max_close_amount(trove_id: felt) -> (wad: felt) {
+    }
+
+    //
+    // external
+    //
+
+    func purge(trove_id: felt, purge_amt_wad: felt, recipient_address: felt) {
+    }
+
+    func restricted_purge(
+        trove_id: felt, purge_amt_wad: felt, recipient_address: felt, funder_address: felt
+    ) {
     }
 }

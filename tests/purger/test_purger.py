@@ -7,14 +7,14 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.purger.constants import *  # noqa: F403
-from tests.roles import GateRoles, ShrineRoles
+from tests.roles import GateRoles, PurgerRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABBOT_OWNER,
     AURA_USER,
     FALSE,
     GATE_OWNER,
-    INFINITE_YIN_ALLOWANCE,
+    PURGER_OWNER,
     RAY_SCALE,
     SHRINE_OWNER,
     STETH_OWNER,
@@ -39,6 +39,8 @@ from tests.utils import (
 #
 # Helpers
 #
+
+PURGE_FUNCTIONS = ("purge", "restricted_purge")
 
 
 async def advance_yang_prices_by_percentage(
@@ -97,11 +99,14 @@ def get_penalty(ltv: Decimal) -> Decimal:
     return ltv * Decimal("0.05")
 
 
-def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_value: Decimal) -> Decimal:
+def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_debt: Decimal, trove_value: Decimal) -> Decimal:
     """
-    Returns the freed percentage based on:
-    (close amount + penalty amount) / debt
+    If LTV <= 100%, return the freed percentage based on (close amount + penalty amount) / total value of trove
+    If LTV > 100%, return the freed percentage based on close amount / total debt of trove.
     """
+    if ltv > Decimal("1"):
+        return close_amt / trove_debt
+
     penalty = get_penalty(ltv)
     freed_amt = (Decimal("1") + penalty) * close_amt
     return freed_amt / trove_value
@@ -192,6 +197,7 @@ async def purger(request, starknet, shrine, abbot, yin, steth_gate, doge_gate) -
     purger = await starknet.deploy(
         contract_class=purger_contract,
         constructor_calldata=[
+            PURGER_OWNER,
             shrine.contract_address,
             abbot.contract_address,
             yin.contract_address,
@@ -206,14 +212,14 @@ async def purger(request, starknet, shrine, abbot, yin, steth_gate, doge_gate) -
     await steth_gate.grant_role(GateRoles.WITHDRAW, purger.contract_address).execute(caller_address=GATE_OWNER)
     await doge_gate.grant_role(GateRoles.WITHDRAW, purger.contract_address).execute(caller_address=GATE_OWNER)
 
-    # Approve purger contract for searcher
-    await yin.approve(purger.contract_address, INFINITE_YIN_ALLOWANCE).execute(caller_address=SEARCHER)
+    # Approve purger contract for `restricted_purge`
+    await purger.grant_role(PurgerRoles.RESTRICTED_PURGE, SEARCHER).execute(caller_address=PURGER_OWNER)
 
     return purger
 
 
 #
-# Tests
+# Tests - Setup
 #
 
 
@@ -257,14 +263,19 @@ async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_y
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user")
 @pytest.mark.asyncio
 async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
-    # Check
     forge_amt = aura_user_with_first_trove
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == forge_amt
 
 
-@pytest.mark.parametrize("price_change", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12"), Decimal("-0.2")])
-@pytest.mark.parametrize("percentage_max_close", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+#
+# Tests - Purger
+#
+
+
+@pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
+@pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -284,9 +295,9 @@ async def test_purge(
     steth_yang: YangConfig,
     doge_yang: YangConfig,
     price_change,
-    percentage_max_close,
+    max_close_percentage,
+    purge_fn,
 ):
-
     yangs = [steth_yang, doge_yang]
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
@@ -303,28 +314,18 @@ async def test_purge(
     assert_equalish(purge_penalty, expected_purge_penalty)
 
     # Check maximum close amount
-    estimated_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
+    estimated_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.wad
+    estimated_debt = from_wad(estimated_debt_wad)
     expected_maximum_close_amt = get_max_close_amount(estimated_debt, before_ltv)
     maximum_close_amt_wad = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
     assert_equalish(from_wad(maximum_close_amt_wad), expected_maximum_close_amt)
 
     # Calculate close amount based on parametrization
-    close_amt_wad = int(percentage_max_close * maximum_close_amt_wad)
-    close_amt = from_wad(close_amt_wad)
+    close_amt_wad = int(max_close_percentage * maximum_close_amt_wad)
 
     # Sanity check: searcher has sufficient yin
     searcher_yin_balance = (await yin.balanceOf(SEARCHER).execute()).result.wad
     assert searcher_yin_balance > close_amt_wad
-
-    # Check trove value
-    trove_value_wad = (await shrine.get_trove_threshold(TROVE_1).execute()).result.value_wad
-
-    # If close amount exceeds trove value, check that purge reverts due to insufficient yang
-    if close_amt_wad > trove_value_wad:
-        with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-            await purger.purge(TROVE_1, close_amt_wad, SEARCHER, SEARCHER).execute()
-
-        return
 
     # Get yang balance of searcher
     before_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
@@ -332,54 +333,64 @@ async def test_purge(
 
     # Get freed percentage
     trove_value = from_wad((await shrine.get_trove_threshold(TROVE_1).execute()).result.value_wad)
-    freed_percentage = get_freed_percentage(before_ltv, close_amt, trove_value)
-
-    # Calculate expected LTV
-    expected_new_debt = estimated_debt - close_amt
-    expected_new_trove_value = (Decimal("1") - freed_percentage) * trove_value
-    expected_new_ltv = expected_new_debt / expected_new_trove_value
-
-    # If LTV does not improve, check that purge reverts
-    if expected_new_ltv >= before_ltv:
-        with pytest.raises(
-            StarkException, match="Purger: Amount purged is insufficient to improve loan-to-value ratio"
-        ):
-            await purger.purge(TROVE_1, close_amt_wad, SEARCHER, SEARCHER).execute()
-
-        return
+    trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
+    freed_percentage = get_freed_percentage(before_ltv, from_wad(close_amt_wad), trove_debt, trove_value)
 
     # Get yang balance of trove
-    before_trove_steth_yang_wad = (await shrine.get_deposit(TROVE_1, steth_token.contract_address).execute()).result.wad
+    before_trove_steth_yang_wad = (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.wad
     before_trove_steth_bal_wad = (await steth_gate.preview_withdraw(before_trove_steth_yang_wad).execute()).result.wad
+    expected_freed_steth_yang = freed_percentage * from_wad(before_trove_steth_yang_wad)
     expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
 
-    before_trove_doge_yang_wad = (await shrine.get_deposit(TROVE_1, doge_token.contract_address).execute()).result.wad
+    before_trove_doge_yang_wad = (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.wad
     before_trove_doge_bal_wad = (await doge_gate.preview_withdraw(before_trove_doge_yang_wad).execute()).result.wad
+    expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
-    # Purge amount
-    purge = await purger.purge(TROVE_1, close_amt_wad, SEARCHER, SEARCHER).execute()
+    # Call purge
+    method = purger.get_contract_function(purge_fn)
+    purge_args = [TROVE_1, close_amt_wad, SEARCHER]
+    if purge_fn == "restricted_purge":
+        purge_args.append(SEARCHER)
+
+    purge = await method(*purge_args).execute(caller_address=SEARCHER)
 
     # Check event
     assert_event_emitted(
         purge,
         purger.contract_address,
         "Purged",
-        lambda d: d[:2] == [TROVE_1, close_amt_wad] and d[3:] == [SEARCHER, SEARCHER],
+        lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER],
     )
 
-    # Check that LTV has improved
+    # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
     after_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
-    assert after_ltv < before_ltv
+    assert after_ltv <= before_ltv
 
-    # Check yang balance of searcher
+    # Check collateral tokens balance of searcher
     after_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
     assert_equalish(after_searcher_steth_bal, before_searcher_steth_bal + expected_freed_steth)
 
     after_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
     assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
 
+    # Get yang balance of trove
+    after_trove_steth_yang = from_wad(
+        (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.wad
+    )
+    assert_equalish(after_trove_steth_yang, from_wad(before_trove_steth_yang_wad) - expected_freed_steth_yang)
 
+    after_trove_doge_yang_wad = from_wad(
+        (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.wad
+    )
+    assert_equalish(after_trove_doge_yang_wad, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
+
+    # Check trove debt
+    after_trove_debt = (await shrine.get_trove(TROVE_1).execute()).result.trove.debt
+    assert_equalish(after_trove_debt, estimated_debt_wad - close_amt_wad)
+
+
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -387,7 +398,7 @@ async def test_purge(
     "funded_searcher",
 )
 @pytest.mark.asyncio
-async def test_purge_fail_trove_healthy(shrine, purger):
+async def test_purge_fail_trove_healthy(shrine, purger, purge_fn):
     # Check close amount is 0
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
     assert max_close_amt == 0
@@ -403,10 +414,16 @@ async def test_purge_fail_trove_healthy(shrine, purger):
     # Get trove debt
     purge_amt = (await shrine.estimate(TROVE_1).execute()).result.wad // 2
 
+    method = purger.get_contract_function(purge_fn)
+    purge_args = [TROVE_1, purge_amt, SEARCHER]
+    if purge_fn == "restricted_purge":
+        purge_args.append(SEARCHER)
+
     with pytest.raises(StarkException, match="Purger: Trove is not liquidatable"):
-        await purger.purge(TROVE_1, purge_amt, SEARCHER, SEARCHER).execute()
+        await method(*purge_args).execute(caller_address=SEARCHER)
 
 
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -420,6 +437,7 @@ async def test_purge_fail_exceed_max_close(
     purger,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    purge_fn,
 ):
 
     yangs = [steth_yang, doge_yang]
@@ -430,15 +448,20 @@ async def test_purge_fail_exceed_max_close(
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
     assert max_close_amt > 0
 
+    method = purger.get_contract_function(purge_fn)
+    purge_args = [TROVE_1, max_close_amt + 1, SEARCHER]
+    if purge_fn == "restricted_purge":
+        purge_args.append(SEARCHER)
+
     with pytest.raises(StarkException, match="Purger: Maximum close amount exceeded"):
-        await purger.purge(TROVE_1, max_close_amt + 1, SEARCHER, SEARCHER).execute()
+        await method(*purge_args).execute(caller_address=SEARCHER)
 
 
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
     "aura_user_with_first_trove",
-    "funded_searcher",
 )
 @pytest.mark.asyncio
 async def test_purge_fail_insufficient_yin(
@@ -448,20 +471,52 @@ async def test_purge_fail_insufficient_yin(
     yin,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    purge_fn,
+):
+    # SEARCHER is not funded because `funded_searcher` fixture was omitted
+    yangs = [steth_yang, doge_yang]
+    price_change = Decimal("-0.1")
+    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
+
+    # Assert max close amount is positive
+    max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
+    assert max_close_amt > 0
+
+    method = purger.get_contract_function(purge_fn)
+    purge_args = [TROVE_1, max_close_amt, SEARCHER]
+    if purge_fn == "restricted_purge":
+        purge_args.append(SEARCHER)
+
+    with pytest.raises(StarkException):
+        await method(*purge_args).execute(caller_address=SEARCHER)
+
+
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove",
+    "funded_searcher",
+)
+@pytest.mark.asyncio
+async def test_restricted_purge_fail_unauthorized(
+    starknet,
+    shrine,
+    purger,
+    steth_yang: YangConfig,
+    doge_yang: YangConfig,
 ):
 
     yangs = [steth_yang, doge_yang]
     price_change = Decimal("-0.1")
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
-    # Drain funded searcher's account and leave 10 yin
-    remaining_bal = to_wad(10)
-    searcher_yin_wad = (await yin.balanceOf(SEARCHER).execute()).result.wad
-    await yin.transfer(SHRINE_OWNER, searcher_yin_wad - remaining_bal).execute(caller_address=SEARCHER)
-
     # Assert max close amount is positive
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
     assert max_close_amt > 0
 
-    with pytest.raises(StarkException):
-        await purger.purge(TROVE_1, max_close_amt, SEARCHER, SEARCHER).execute()
+    # Revoke role
+    await purger.revoke_role(PurgerRoles.RESTRICTED_PURGE, SEARCHER).execute(caller_address=PURGER_OWNER)
+    assert (await purger.has_role(PurgerRoles.RESTRICTED_PURGE, SEARCHER).execute()).result.bool == FALSE
+
+    with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {PurgerRoles.RESTRICTED_PURGE}"):
+        await purger.restricted_purge(TROVE_1, max_close_amt, SEARCHER, SEARCHER).execute(caller_address=SEARCHER)
