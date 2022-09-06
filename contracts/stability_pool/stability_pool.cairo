@@ -165,12 +165,11 @@ func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (new_P) = WadRay.wmul(curr_P, new_P);
     // burn Yin
     // Spending approval already done in constructor
-    IPurger.restricted_purge(
+    IPurger.purge(
         contract_address=purger_address,
         trove_id=trove_id,
         purge_amt_wad=amount,
-        recipient_address=this,
-        funder_address=this
+        recipient_address=this
     );
     return ();
 }
