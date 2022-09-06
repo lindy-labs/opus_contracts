@@ -151,3 +151,19 @@ async def test_liquidate(
     w2d_assert(aura_user_deposit, amount * (1-aura_user_ratio))
     w2d_assert(user2_deposit, user2_forged_amount * (1-aura_user_ratio))
 
+
+    # someone deposit **after** the liquidation
+    await fund_user(USER_3, steth_yang, doge_yang, steth_token, doge_token, USER_3_STETH_DEPOSIT_WAD, USER_3_DOGE_DEPOSIT_WAD)
+    user3_forged_amount = await open_trove(USER_3, shrine, abbot, steth_yang, doge_yang, USER_3_STETH_DEPOSIT_WAD, USER_3_DOGE_DEPOSIT_WAD)
+    await yin.approve(pool.contract_address, user3_forged_amount).execute(caller_address=USER_3)
+    await pool.provide(user3_forged_amount).execute(caller_address=USER_3)
+
+    # previous users deposits shouldn't have changed
+    aura_user_deposit = (await pool.get_provider_owed_yin(AURA_USER).execute()).result.yin
+    user2_deposit = (await pool.get_provider_owed_yin(USER_2).execute()).result.yin
+    w2d_assert(aura_user_deposit, amount * (1-aura_user_ratio))
+    w2d_assert(user2_deposit, user2_forged_amount * (1-aura_user_ratio))
+    user3_deposit = (await pool.get_provider_owed_yin(USER_3).execute()).result.yin
+    w2d_assert(user3_deposit, user3_forged_amount)
+
+    
