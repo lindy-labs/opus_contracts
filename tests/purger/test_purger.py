@@ -315,11 +315,6 @@ async def test_purge(
     expected_purge_penalty = get_penalty(before_ltv)
     assert_equalish(purge_penalty, expected_purge_penalty)
 
-    # Check close factor
-    expected_close_factor = get_close_factor(before_ltv)
-    close_factor = from_ray((await purger.get_close_factor(before_ltv_ray).execute()).result.ray)
-    assert_equalish(close_factor, expected_close_factor)
-
     # Check maximum close amount
     estimated_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
     expected_maximum_close_amt = get_max_close_amount(estimated_debt, before_ltv)

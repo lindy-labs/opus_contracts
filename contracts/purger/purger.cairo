@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_lt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_le, is_nn
+from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.purger.roles import PurgerRoles
@@ -57,24 +57,6 @@ func Purged(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recip
 // View functions
 //
 
-// Returns the close factor based on the LTV (ray)
-// closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22
-//               [CF1]                        [CF2]
-//               [factor_one] - [ factor_two ]
-@view
-func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(ltv_ray) -> (
-    ray: felt
-) {
-    let (ltv_ray_squared) = WadRay.rmul(ltv_ray, ltv_ray);
-    let (factor_one) = WadRay.rmul(CF1, ltv_ray_squared);
-
-    let (factor_two) = WadRay.add_unsigned(ltv_ray, ltv_ray);
-    let (factors_sum) = WadRay.sub(factor_one, factor_two);
-    let (close_factor) = WadRay.add_unsigned(factors_sum, CF2);
-
-    return (close_factor,);
-}
-
 // Returns the liquidation penalty based on the LTV (ray)
 // Returns 0 if trove is healthy
 @view
@@ -86,7 +68,6 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (shrine_address) = purger_shrine_storage.read();
 
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
-
     if (is_healthy == TRUE) {
         return (0,);
     }
@@ -110,7 +91,6 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     let (shrine_address) = purger_shrine_storage.read();
 
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
-
     if (is_healthy == TRUE) {
         return (0,);
     }
@@ -141,6 +121,8 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // External functions
 //
 
+// Unrestricted purge function for searchers that passes the caller address as the
+// `funder_address` argument to `purge_internal`.
 @external
 func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, purge_amt_wad, recipient_address
@@ -150,6 +132,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return ();
 }
 
+// Restricted purge function that allows the caller to provide the `funder_address`
+// as an argument. This is intended for the absorber (stability pool) module.
 @external
 func restricted_purge{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -165,11 +149,8 @@ func restricted_purge{
 // Internal
 //
 
-// `purge_internal` is intended to be called by both searchers (`purge`)
-// and the stability pool (``)
-// The restrictions that apply to stability pool liquidations will not be
-// enforced here - they should be checked in the stability pool module
-// instead before calling this function.
+// `purge_internal` is restricted to an internal function because it modifies the yin balance
+// of `funder_address` without any checks.
 func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, purge_amt_wad, funder_address, recipient_address
 ) {
@@ -235,6 +216,23 @@ func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     Purged.emit(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recipient_address);
 
     return ();
+}
+
+// Returns the close factor based on the LTV (ray)
+// closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22
+//               [CF1]                        [CF2]
+//               [factor_one] - [ factor_two ]
+func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(ltv_ray) -> (
+    ray: felt
+) {
+    let (ltv_ray_squared) = WadRay.rmul(ltv_ray, ltv_ray);
+    let (factor_one) = WadRay.rmul(CF1, ltv_ray_squared);
+
+    let (factor_two) = WadRay.add_unsigned(ltv_ray, ltv_ray);
+    let (factors_sum) = WadRay.sub(factor_one, factor_two);
+    let (close_factor) = WadRay.add_unsigned(factors_sum, CF2);
+
+    return (close_factor,);
 }
 
 func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -336,10 +334,9 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (deposited_amt_wad) = IShrine.get_deposit(
         contract_address=shrine_address, yang_address=yang_address, trove_id=trove_id
     );
-    let has_deposited = is_nn(deposited_amt_wad);
 
     // Early termination if no yang deposited
-    if (has_deposited == FALSE) {
+    if (deposited_amt_wad == 0) {
         return ();
     }
 
