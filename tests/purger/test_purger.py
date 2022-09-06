@@ -40,6 +40,8 @@ from tests.utils import (
 # Helpers
 #
 
+PURGE_FUNCTIONS = ("purge", "restricted_purge")
+
 
 async def advance_yang_prices_by_percentage(
     starknet: Starknet,
@@ -275,7 +277,7 @@ async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12"), Decimal("-0.2")])
 @pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
-@pytest.mark.parametrize("purge_fn", ["purge", "restricted_purge"])
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -307,8 +309,7 @@ async def test_purge(
     assert is_healthy == FALSE
 
     # Get LTV
-    before_ltv_ray = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
-    before_ltv = from_ray(before_ltv_ray)
+    before_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
 
     # Check purge penalty
     purge_penalty = from_ray((await purger.get_purge_penalty(TROVE_1).execute()).result.ray)
@@ -323,7 +324,6 @@ async def test_purge(
 
     # Calculate close amount based on parametrization
     close_amt_wad = int(max_close_percentage * maximum_close_amt_wad)
-    close_amt = from_wad(close_amt_wad)
 
     # Sanity check: searcher has sufficient yin
     searcher_yin_balance = (await yin.balanceOf(SEARCHER).execute()).result.wad
@@ -336,7 +336,7 @@ async def test_purge(
     # Get freed percentage
     trove_value = from_wad((await shrine.get_trove_threshold(TROVE_1).execute()).result.value_wad)
     trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
-    freed_percentage = get_freed_percentage(before_ltv, close_amt, trove_debt, trove_value)
+    freed_percentage = get_freed_percentage(before_ltv, from_wad(close_amt_wad), trove_debt, trove_value)
 
     # Get yang balance of trove
     before_trove_steth_yang_wad = (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.wad
@@ -375,7 +375,7 @@ async def test_purge(
     assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
 
 
-@pytest.mark.parametrize("purge_fn", ["purge", "restricted_purge"])
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -408,7 +408,7 @@ async def test_purge_fail_trove_healthy(shrine, purger, purge_fn):
         await method(*purge_args).execute(caller_address=SEARCHER)
 
 
-@pytest.mark.parametrize("purge_fn", ["purge", "restricted_purge"])
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -442,7 +442,7 @@ async def test_purge_fail_exceed_max_close(
         await method(*purge_args).execute(caller_address=SEARCHER)
 
 
-@pytest.mark.parametrize("purge_fn", ["purge", "restricted_purge"])
+@pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
