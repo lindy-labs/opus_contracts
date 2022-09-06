@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_lt, unsigned_div_rem
+from starkware.cairo.common.math import assert_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address
 
@@ -208,9 +208,8 @@ func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     let (after_ltv_ray) = IShrine.get_current_trove_ratio(
         contract_address=shrine_address, trove_id=trove_id
     );
-    with_attr error_message(
-            "Purger: Amount purged is insufficient to improve loan-to-value ratio") {
-        assert_lt(after_ltv_ray, before_ltv_ray);
+    with_attr error_message("Purger: Loan-to-value ratio increased") {
+        assert_le(after_ltv_ray, before_ltv_ray);
     }
 
     Purged.emit(trove_id, purge_amt_wad, recipient_address, funder_address, percentage_freed_ray);
