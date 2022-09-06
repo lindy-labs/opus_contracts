@@ -264,7 +264,6 @@ async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_y
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user")
 @pytest.mark.asyncio
 async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
-    # Check
     forge_amt = aura_user_with_first_trove
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == forge_amt
@@ -275,7 +274,7 @@ async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
 #
 
 
-@pytest.mark.parametrize("price_change", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12"), Decimal("-0.2")])
+@pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
 @pytest.mark.usefixtures(
@@ -300,7 +299,6 @@ async def test_purge(
     max_close_percentage,
     purge_fn,
 ):
-
     yangs = [steth_yang, doge_yang]
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
@@ -317,7 +315,8 @@ async def test_purge(
     assert_equalish(purge_penalty, expected_purge_penalty)
 
     # Check maximum close amount
-    estimated_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
+    estimated_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.wad
+    estimated_debt = from_wad(estimated_debt_wad)
     expected_maximum_close_amt = get_max_close_amount(estimated_debt, before_ltv)
     maximum_close_amt_wad = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
     assert_equalish(from_wad(maximum_close_amt_wad), expected_maximum_close_amt)
@@ -341,10 +340,12 @@ async def test_purge(
     # Get yang balance of trove
     before_trove_steth_yang_wad = (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.wad
     before_trove_steth_bal_wad = (await steth_gate.preview_withdraw(before_trove_steth_yang_wad).execute()).result.wad
+    expected_freed_steth_yang = freed_percentage * from_wad(before_trove_steth_yang_wad)
     expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
 
     before_trove_doge_yang_wad = (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.wad
     before_trove_doge_bal_wad = (await doge_gate.preview_withdraw(before_trove_doge_yang_wad).execute()).result.wad
+    expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
     # Call purge
@@ -363,16 +364,31 @@ async def test_purge(
         lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER],
     )
 
-    # Check that LTV has improved
+    # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
     after_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
-    assert after_ltv < before_ltv
+    assert after_ltv <= before_ltv
 
-    # Check yang balance of searcher
+    # Check collateral tokens balance of searcher
     after_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
     assert_equalish(after_searcher_steth_bal, before_searcher_steth_bal + expected_freed_steth)
 
     after_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
     assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
+
+    # Get yang balance of trove
+    after_trove_steth_yang = from_wad(
+        (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.wad
+    )
+    assert_equalish(after_trove_steth_yang, from_wad(before_trove_steth_yang_wad) - expected_freed_steth_yang)
+
+    after_trove_doge_yang_wad = from_wad(
+        (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.wad
+    )
+    assert_equalish(after_trove_doge_yang_wad, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
+
+    # Check trove debt
+    after_trove_debt = (await shrine.get_trove(TROVE_1).execute()).result.trove.debt
+    assert_equalish(after_trove_debt, estimated_debt_wad - close_amt_wad)
 
 
 @pytest.mark.parametrize("purge_fn", PURGE_FUNCTIONS)
