@@ -474,3 +474,34 @@ async def test_purge_fail_insufficient_yin(
 
     with pytest.raises(StarkException):
         await method(*purge_args).execute(caller_address=SEARCHER)
+
+
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove",
+    "funded_searcher",
+)
+@pytest.mark.asyncio
+async def test_restricted_purge_fail_unauthorized(
+    starknet,
+    shrine,
+    purger,
+    steth_yang: YangConfig,
+    doge_yang: YangConfig,
+):
+
+    yangs = [steth_yang, doge_yang]
+    price_change = Decimal("-0.1")
+    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
+
+    # Assert max close amount is positive
+    max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
+    assert max_close_amt > 0
+
+    # Revoke role
+    await purger.revoke_role(PurgerRoles.RESTRICTED_PURGE, SEARCHER).execute(caller_address=PURGER_OWNER)
+    assert (await purger.has_role(PurgerRoles.RESTRICTED_PURGE, SEARCHER).execute()).result.bool == FALSE
+
+    with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {PurgerRoles.RESTRICTED_PURGE}"):
+        await purger.restricted_purge(TROVE_1, max_close_amt, SEARCHER, SEARCHER).execute(caller_address=SEARCHER)
