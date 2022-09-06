@@ -364,7 +364,11 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 #
 
 
-def estimate_gas(tx_info: StarknetCallInfo, num_storage_keys: int = 0, num_contracts: int = 0):
+def estimate_gas(
+    tx_info: StarknetCallInfo,
+    num_storage_keys: int = 0,
+    num_contracts: int = 0,
+):
     """
     Helper function to estimate gas for a transaction.
 
