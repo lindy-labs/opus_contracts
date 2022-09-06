@@ -6,19 +6,7 @@ from starkware.cairo.common.math import assert_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.purger.roles import PurgerRoles
-
 from contracts.interfaces import IAbbot, IGate, IShrine
-from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.accesscontrol.accesscontrol_external import (
-    get_role,
-    has_role,
-    get_admin,
-    grant_role,
-    revoke_role,
-    renounce_role,
-    change_admin,
-)
 from contracts.shared.wad_ray import WadRay
 
 //
@@ -107,9 +95,8 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    authed, shrine_address, abbot_address, yin_address
+    shrine_address, abbot_address, yin_address
 ) {
-    AccessControl.initializer(authed);
     purger_shrine_storage.write(shrine_address);
     purger_abbot_storage.write(abbot_address);
     purger_yin_storage.write(yin_address);
@@ -120,42 +107,13 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // External functions
 //
 
-// Unrestricted purge function for searchers that passes the caller address as the
-// `funder_address` argument to `purge_internal`.
 @external
 func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, purge_amt_wad, recipient_address
 ) {
-    let (funder_address) = get_caller_address();
-    purge_internal(trove_id, purge_amt_wad, recipient_address, funder_address);
-    return ();
-}
-
-// Restricted purge function that allows the caller to provide the `funder_address`
-// as an argument. This is intended for the absorber (stability pool) module where the caller is
-// distinct from the funder.
-@external
-func restricted_purge{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(trove_id, purge_amt_wad, recipient_address, funder_address) {
     alloc_locals;
 
-    AccessControl.assert_has_role(PurgerRoles.RESTRICTED_PURGE);
-    purge_internal(trove_id, purge_amt_wad, funder_address, recipient_address);
-    return ();
-}
-
-//
-// Internal
-//
-
-// `purge_internal` is restricted to an internal function because it modifies the yin balance
-// of `funder_address` without any checks.
-func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id, purge_amt_wad, recipient_address, funder_address
-) {
-    alloc_locals;
-
+    let (caller_address) = get_caller_address();
     let (shrine_address) = purger_shrine_storage.read();
 
     // Check that trove can be liquidated
@@ -179,11 +137,11 @@ func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         shrine_address, trove_id, purge_amt_wad, before_ltv_ray
     );
 
-    // Melt from the funder address directly
+    // Melt from the caller address directly
     let (yin_address) = purger_yin_storage.read();
     IShrine.melt(
         contract_address=shrine_address,
-        user_address=funder_address,
+        user_address=caller_address,
         trove_id=trove_id,
         amount=purge_amt_wad,
     );
@@ -212,10 +170,14 @@ func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         assert_le(after_ltv_ray, before_ltv_ray);
     }
 
-    Purged.emit(trove_id, purge_amt_wad, recipient_address, funder_address, percentage_freed_ray);
+    Purged.emit(trove_id, purge_amt_wad, recipient_address, caller_address, percentage_freed_ray);
 
     return ();
 }
+
+//
+// Internal
+//
 
 // Returns the close factor based on the LTV (ray)
 // closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22

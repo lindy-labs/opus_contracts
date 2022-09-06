@@ -13,10 +13,6 @@ class GateRoles(IntEnum):
     WITHDRAW = 2**4
 
 
-class PurgerRoles(IntEnum):
-    RESTRICTED_PURGE = 2**0
-
-
 class ShrineRoles(IntEnum):
     ADD_YANG = 2**0
     ADVANCE = 2**1
