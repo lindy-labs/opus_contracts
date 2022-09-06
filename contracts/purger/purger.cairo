@@ -4,11 +4,11 @@ from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_lt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.purger.roles import PurgerRoles
 
-from contracts.interfaces import IAbbot, IGate, IShrine, IYin
+from contracts.interfaces import IAbbot, IGate, IShrine
 from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.accesscontrol.accesscontrol_external import (
     get_role,
@@ -19,7 +19,6 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     renounce_role,
     change_admin,
 )
-from contracts.shared.types import Trove
 from contracts.shared.wad_ray import WadRay
 
 //
