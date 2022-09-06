@@ -218,7 +218,7 @@ async def purger(request, starknet, shrine, abbot, yin, steth_gate, doge_gate) -
 
 
 #
-# Tests
+# Tests - Setup
 #
 
 
@@ -268,6 +268,11 @@ async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
     assert trove.debt == forge_amt
 
 
+#
+# Tests - Purger
+#
+
+
 @pytest.mark.parametrize("price_change", [Decimal("-0.08"), Decimal("-0.1"), Decimal("-0.12"), Decimal("-0.2")])
 @pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.parametrize("purge_fn", ["purge", "restricted_purge"])
@@ -302,12 +307,18 @@ async def test_purge(
     assert is_healthy == FALSE
 
     # Get LTV
-    before_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
+    before_ltv_ray = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
+    before_ltv = from_ray(before_ltv_ray)
 
     # Check purge penalty
     purge_penalty = from_ray((await purger.get_purge_penalty(TROVE_1).execute()).result.ray)
     expected_purge_penalty = get_penalty(before_ltv)
     assert_equalish(purge_penalty, expected_purge_penalty)
+
+    # Check close factor
+    expected_close_factor = get_close_factor(before_ltv)
+    close_factor = from_ray((await purger.get_close_factor(before_ltv_ray).execute()).result.ray)
+    assert_equalish(close_factor, expected_close_factor)
 
     # Check maximum close amount
     estimated_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
@@ -452,15 +463,10 @@ async def test_purge_fail_insufficient_yin(
     doge_yang: YangConfig,
     purge_fn,
 ):
-
+    # SEARCHER is not funded because `funded_searcher` fixture was omitted
     yangs = [steth_yang, doge_yang]
     price_change = Decimal("-0.1")
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
-
-    # Drain funded searcher's account and leave 10 yin
-    # remaining_bal = to_wad(10)
-    # searcher_yin_wad = (await yin.balanceOf(SEARCHER).execute()).result.wad
-    # await yin.transfer(SHRINE_OWNER, searcher_yin_wad - remaining_bal).execute(caller_address=SEARCHER)
 
     # Assert max close amount is positive
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.wad
