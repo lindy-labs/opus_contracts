@@ -127,7 +127,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, purge_amt_wad, recipient_address
 ) {
     let (funder_address) = get_caller_address();
-    purge_internal(trove_id, purge_amt_wad, funder_address, recipient_address);
+    purge_internal(trove_id, purge_amt_wad, recipient_address, funder_address);
     return ();
 }
 
@@ -136,7 +136,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 @external
 func restricted_purge{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(trove_id, purge_amt_wad, funder_address, recipient_address) {
+}(trove_id, purge_amt_wad, recipient_address, funder_address) {
     alloc_locals;
 
     AccessControl.assert_has_role(PurgerRoles.RESTRICTED_PURGE);
@@ -151,7 +151,7 @@ func restricted_purge{
 // `purge_internal` is restricted to an internal function because it modifies the yin balance
 // of `funder_address` without any checks.
 func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id, purge_amt_wad, funder_address, recipient_address
+    trove_id, purge_amt_wad, recipient_address, funder_address
 ) {
     alloc_locals;
 
