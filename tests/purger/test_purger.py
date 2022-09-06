@@ -360,7 +360,7 @@ async def test_purge(
         purge,
         purger.contract_address,
         "Purged",
-        lambda d: d[:2] == [TROVE_1, close_amt_wad] and d[3:] == [SEARCHER, SEARCHER],
+        lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER],
     )
 
     # Check that LTV has improved

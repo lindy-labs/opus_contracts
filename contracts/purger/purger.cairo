@@ -49,7 +49,7 @@ func purger_yin_storage() -> (address: felt) {
 //
 
 @event
-func Purged(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recipient_address) {
+func Purged(trove_id, purge_amt_wad, recipient_address, funder_address, percentage_freed_ray) {
 }
 
 //
@@ -212,7 +212,7 @@ func purge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         assert_lt(after_ltv_ray, before_ltv_ray);
     }
 
-    Purged.emit(trove_id, purge_amt_wad, percentage_freed_ray, funder_address, recipient_address);
+    Purged.emit(trove_id, purge_amt_wad, recipient_address, funder_address, percentage_freed_ray);
 
     return ();
 }
