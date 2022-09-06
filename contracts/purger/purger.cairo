@@ -132,7 +132,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 // Restricted purge function that allows the caller to provide the `funder_address`
-// as an argument. This is intended for the absorber (stability pool) module.
+// as an argument. This is intended for the absorber (stability pool) module where the caller is
+// distinct from the funder.
 @external
 func restricted_purge{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -271,6 +272,8 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     let is_covered = is_le(ltv_ray, WadRay.RAY_ONE);
     if (is_covered == FALSE) {
         let (trove_debt) = IShrine.estimate(contract_address=shrine_address, trove_id=trove_id);
+
+        // `runsigned_div` of two wads returns a ray
         let (prorata_percentage_freed_ray) = WadRay.runsigned_div(purge_amt_wad, trove_debt);
         return (prorata_percentage_freed_ray,);
     }
@@ -284,6 +287,8 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     let (_, trove_value_wad) = IShrine.get_trove_threshold(
         contract_address=shrine_address, trove_id=trove_id
     );
+
+    // `runsigned_div` of two wads returns a ray
     let (percentage_freed_ray) = WadRay.runsigned_div(freed_amt_wad, trove_value_wad);
 
     return (percentage_freed_ray,);
