@@ -213,6 +213,13 @@ def from_ray(n: int) -> Decimal:
 def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
     assert abs(a - b) <= error
 
+def w2d_assert(wad1, wad2, error=ERROR_MARGIN):
+    """
+    A Wad to Decimal assert helper.
+    Converts the Wad back to a float (as a Decimal) by dividing it by WAD_SCALE.
+    """
+    numerator = Decimal("1E18")
+    assert_equalish(Decimal(wad1) / numerator, Decimal(wad2) / numerator, error)
 
 #
 # Starknet helper functions

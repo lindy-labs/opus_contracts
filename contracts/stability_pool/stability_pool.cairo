@@ -19,6 +19,8 @@ struct Snapshot{
 //                STORAGE                  //
 /////////////////////////////////////////////
 
+using wad = felt;
+
 // Holds the address at which the yin's Shrine is deployed.
 @storage_var
 func yin() -> (yin : felt) {
@@ -44,7 +46,7 @@ func snapshots(provider : felt) -> (snapshot : Snapshot) {
 
 // Tracks the users' deposits.
 @storage_var
-func deposits(provider : felt) -> (balance : felt) {
+func deposits(provider : felt) -> (balance : wad) {
 }
 
 /////////////////////////////////////////////
@@ -52,11 +54,11 @@ func deposits(provider : felt) -> (balance : felt) {
 /////////////////////////////////////////////Ò
 
 @event
-func Provided(provider : felt, amount : felt) {
+func Provided(provider : felt, amount : wad) {
 }
 
 @event
-func Withdrawed(provider : felt, amount : felt) {
+func Withdrawed(provider : felt, amount : wad) {
 }
 
 @event
@@ -92,7 +94,7 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 // * after *
 // - credit user's balance on pool
 @external
-func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: felt) {
+func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: wad) {
     let (yin_address) = yin.read();
     let (this) = get_contract_address();
     let (caller) = get_caller_address();
@@ -121,7 +123,7 @@ func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 // - s}s leftover synth. balance of the user
 // - zero out deposits of user
 @external
-func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: felt) {
+func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: wad) {
     return ();
 }
 
@@ -139,7 +141,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 @external
 func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id: felt) {
     let (purger_address) = purger.read();
-    let (amount) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
+    let (amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
     _update(trove_id, amount);
     return ();
 }
@@ -151,18 +153,19 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 // Update the "internal" storage variables of the pool.
 // - Updates P, the running product to help us calculate the compounded deposit
 // - The total balance of yin held by the pool
-func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, amount: felt) {
+func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, amount: wad) {
     let (this : felt) = get_contract_address();
     let (shrine_address : felt) = shrine.read();
     let (purger_address : felt) = purger.read();
     let (curr_P : felt) = P.read();
     // amount / total_balance
-    let (this_balance : felt) = IShrine.get_yin(contract_address=shrine_address, user_address=this);
+    let (this_balance : wad) = IShrine.get_yin(contract_address=shrine_address, user_address=this);
     let (new_P : felt) = WadRay.wunsigned_div(amount, this_balance);
     tempvar one = WadRay.WAD_ONE;
     // 1 - (amount / total_balance)
     let new_P = one - new_P;
     let (new_P) = WadRay.wmul(curr_P, new_P);
+    P.write(new_P);
     // burn Yin
     // Spending approval already done in constructor
     IPurger.purge(
@@ -185,7 +188,7 @@ func _update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
 // Returns the amount of the synthetic asset the provider is owed.
 @view
-func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt) -> (yin : felt) {
+func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt) -> (yin : wad) {
     let (initial_deposit) = deposits.read(provider);
     let (curr_P) = P.read();
     let (snapshot) = snapshots.read(provider);
