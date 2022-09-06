@@ -43,10 +43,10 @@ async def test_exp_fail(deploy_test_contract, val_r1, val_r2):
     contract = deploy_test_contract
 
     with pytest.raises(StarkException):
-        await contract.get_exp(signed_int_to_felt(val_r1)).invoke()
+        await contract.get_exp(signed_int_to_felt(val_r1)).execute()
 
     with pytest.raises(StarkException):
-        await contract.get_exp(signed_int_to_felt(val_r2)).invoke()
+        await contract.get_exp(signed_int_to_felt(val_r2)).execute()
 
 
 #
@@ -62,7 +62,7 @@ async def test_exp_fail(deploy_test_contract, val_r1, val_r2):
 async def test_exp_pass_lower(deploy_test_contract, val):
     contract = deploy_test_contract
 
-    tx = await contract.get_exp(signed_int_to_felt(val)).invoke()
+    tx = await contract.get_exp(signed_int_to_felt(val)).execute()
 
     result = Decimal(from_wad(tx.result.res))
     expected_result = Decimal(exp(from_wad(val)))
@@ -78,8 +78,8 @@ async def test_exp_pass_lower(deploy_test_contract, val):
 async def test_exp_inversions_lower(deploy_test_contract, val):
     contract = deploy_test_contract
 
-    result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val)).invoke()).result.res))
-    inverse_result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(-val)).invoke()).result.res))
+    result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val)).execute()).result.res))
+    inverse_result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(-val)).execute()).result.res))
 
     # Precision starts getting pretty bad with all these multiplications and divisions
     assert_equalish(result * inverse_result, Decimal(1), Decimal("0.06"))
@@ -97,9 +97,9 @@ async def test_exp_sum_lower(deploy_test_contract, val1, val2):
 
     contract = deploy_test_contract
 
-    result1 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1)).invoke()).result.res))
-    result2 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val2)).invoke()).result.res))
-    result_sum = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1 + val2)).invoke()).result.res))
+    result1 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1)).execute()).result.res))
+    result2 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val2)).execute()).result.res))
+    result_sum = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1 + val2)).execute()).result.res))
 
     assert_equalish(result1 * result2, result_sum, Decimal("0.001"))
 
@@ -117,7 +117,7 @@ async def test_exp_sum_lower(deploy_test_contract, val1, val2):
 async def test_exp_pass_upper(deploy_test_contract, val):
     contract = deploy_test_contract
 
-    tx = await contract.get_exp(signed_int_to_felt(val)).invoke()
+    tx = await contract.get_exp(signed_int_to_felt(val)).execute()
 
     result = Decimal(from_wad(tx.result.res))
     expected_result = Decimal(exp(from_wad(val)))
@@ -133,8 +133,8 @@ async def test_exp_pass_upper(deploy_test_contract, val):
 async def test_exp_inversions_upper(deploy_test_contract, val):
     contract = deploy_test_contract
 
-    result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val)).invoke()).result.res))
-    inverse_result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(-val)).invoke()).result.res))
+    result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val)).execute()).result.res))
+    inverse_result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(-val)).execute()).result.res))
 
     # Precision starts getting pretty bad with all these multiplications and divisions
     assert_equalish(result * inverse_result, Decimal(1), Decimal("0.3"))
@@ -152,8 +152,8 @@ async def test_exp_sum_upper(deploy_test_contract, val1, val2):
 
     contract = deploy_test_contract
 
-    result1 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1)).invoke()).result.res))
-    result2 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val2)).invoke()).result.res))
-    result_sum = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1 + val2)).invoke()).result.res))
+    result1 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1)).execute()).result.res))
+    result2 = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val2)).execute()).result.res))
+    result_sum = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(val1 + val2)).execute()).result.res))
 
     assert_equalish(result1 * result2, result_sum, Decimal("1"))

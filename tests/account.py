@@ -59,7 +59,7 @@ class Account:
         sig_r, sig_s = sign(message_hash, self.private_key)
 
         try:
-            return await self.contract.__execute__(call_array, calldata, nonce).invoke(signature=[sig_r, sig_s])
+            return await self.contract.__execute__(call_array, calldata, nonce).execute(signature=[sig_r, sig_s])
         except:  # noqa: E722
             # when a TX throws, it's not accepted hence the
             # nonce doesn't get incremented in the account

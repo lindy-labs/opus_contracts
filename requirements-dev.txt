@@ -1,6 +1,6 @@
 async-cache==1.1.1
 black==22.*
-cairo-lang==0.9.1
+cairo-lang==0.10.0
 ecdsa==0.17.0
 fastecdsa==2.2.1
 filelock==3.7.1

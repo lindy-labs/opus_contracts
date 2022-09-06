@@ -4,7 +4,7 @@ from math import exp
 from typing import List, Tuple
 
 import pytest
-from starkware.starknet.testing.objects import StarknetTransactionExecutionInfo
+from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.shrine.constants import *  # noqa: F403
@@ -243,8 +243,8 @@ def get_interval(block_timestamp: int) -> int:
 
 
 @pytest.fixture
-async def shrine_withdraw(shrine, shrine_deposit) -> StarknetTransactionExecutionInfo:
-    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).invoke(
+async def shrine_withdraw(shrine, shrine_deposit) -> StarknetCallInfo:
+    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).execute(
         caller_address=SHRINE_OWNER
     )
     return withdraw
@@ -264,8 +264,8 @@ async def update_feeds(starknet, shrine, shrine_forge) -> List[Decimal]:
         timestamp = (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
-        await shrine.advance(yang0_address, yang0_feed[i]).invoke(caller_address=SHRINE_OWNER)
-        await shrine.update_multiplier(MULTIPLIER_FEED[i]).invoke(caller_address=SHRINE_OWNER)
+        await shrine.advance(yang0_address, yang0_feed[i]).execute(caller_address=SHRINE_OWNER)
+        await shrine.update_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
     return list(map(from_wad, yang0_feed))
 
@@ -273,32 +273,34 @@ async def update_feeds(starknet, shrine, shrine_forge) -> List[Decimal]:
 @pytest.fixture
 async def shrine_deposit_multiple(shrine):
     for d in DEPOSITS:
-        await shrine.deposit(d["address"], TROVE_1, d["amount"]).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(d["address"], TROVE_1, d["amount"]).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.fixture
-async def shrine_deposit_trove2(shrine) -> StarknetTransactionExecutionInfo:
+async def shrine_deposit_trove2(shrine) -> StarknetCallInfo:
     """
     Replicate deposit for another trove.
     """
-    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_2, to_wad(INITIAL_DEPOSIT)).invoke(caller_address=SHRINE_OWNER)
+    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_2, to_wad(INITIAL_DEPOSIT)).execute(
+        caller_address=SHRINE_OWNER
+    )
     return deposit
 
 
 @pytest.fixture
-async def shrine_melt(shrine, shrine_forge) -> StarknetTransactionExecutionInfo:
+async def shrine_melt(shrine, shrine_forge) -> StarknetCallInfo:
 
-    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    melt = await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).invoke(caller_address=SHRINE_OWNER)
+    estimated_debt = (await shrine.estimate(TROVE_1).execute()).result.wad
+    melt = await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).execute(caller_address=SHRINE_OWNER)
     return melt
 
 
 @pytest.fixture
-async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetTransactionExecutionInfo:
+async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo:
     """
     Replicate forge for another trove.
     """
-    forge = await shrine.forge(TROVE2_OWNER, TROVE_2, FORGE_AMT_WAD).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE2_OWNER, TROVE_2, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -312,19 +314,19 @@ async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_fee
 
 @pytest.fixture
 async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]:
-    trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
 
     # Get yang price and multiplier value at `trove.charge_from`
     start_cumulative_price = (
-        await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).invoke()
+        await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).execute()
     ).result.cumulative_price_wad
     start_cumulative_multiplier = (
-        await shrine.get_multiplier(trove.charge_from).invoke()
+        await shrine.get_multiplier(trove.charge_from).execute()
     ).result.cumulative_multiplier_ray
 
     # Getting the current yang price and multiplier value
-    end_cumulative_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.cumulative_price_wad
-    end_cumulative_multiplier = (await shrine.get_current_multiplier().invoke()).result.cumulative_multiplier_ray
+    end_cumulative_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.cumulative_price_wad
+    end_cumulative_multiplier = (await shrine.get_current_multiplier().execute()).result.cumulative_multiplier_ray
 
     expected_debt = compound(
         [Decimal(INITIAL_DEPOSIT)],
@@ -339,8 +341,8 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]
     )
 
     # Get estimated debt for troves
-    estimated_trove1_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
-    estimated_trove2_debt = (await shrine.estimate(TROVE_2).invoke()).result.wad
+    estimated_trove1_debt = (await shrine.estimate(TROVE_1).execute()).result.wad
+    estimated_trove2_debt = (await shrine.estimate(TROVE_2).execute()).result.wad
     return estimated_trove1_debt, estimated_trove2_debt, expected_debt
 
 
@@ -368,8 +370,8 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> 
 
         # Skip index after timestamp is set
         if i != idx:
-            await shrine.advance(yang0_address, price).invoke(caller_address=SHRINE_OWNER)
-            await shrine.update_multiplier(multiplier).invoke(caller_address=SHRINE_OWNER)
+            await shrine.advance(yang0_address, price).execute(caller_address=SHRINE_OWNER)
+            await shrine.update_multiplier(multiplier).execute(caller_address=SHRINE_OWNER)
 
     return idx, list(map(from_wad, yang0_feed))
 
@@ -383,11 +385,11 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> 
 @pytest.mark.asyncio
 async def test_shrine_deploy(shrine):
     # Check system is live
-    live = (await shrine.get_live().invoke()).result.bool
+    live = (await shrine.get_live().execute()).result.bool
     assert live == TRUE
 
     # Assert that `get_current_multiplier` terminates
-    multiplier = (await shrine.get_current_multiplier().invoke()).result.multiplier_ray
+    multiplier = (await shrine.get_current_multiplier().execute()).result.multiplier_ray
     assert multiplier == RAY_SCALE
 
 
@@ -396,21 +398,21 @@ async def test_shrine_setup(shrine_setup):
     shrine = shrine_setup
 
     # Check debt ceiling
-    ceiling = (await shrine.get_ceiling().invoke()).result.wad
+    ceiling = (await shrine.get_ceiling().execute()).result.wad
     assert ceiling == DEBT_CEILING
 
     # Check yang count
-    yang_count = (await shrine.get_yangs_count().invoke()).result.ufelt
+    yang_count = (await shrine.get_yangs_count().execute()).result.ufelt
     assert yang_count == len(YANGS)
 
     # Check threshold
     for i in range(len(YANGS)):
         yang_address = YANGS[i]["address"]
-        threshold = (await shrine.get_threshold(yang_address).invoke()).result.ray
+        threshold = (await shrine.get_threshold(yang_address).execute()).result.ray
         assert threshold == YANGS[i]["threshold"]
 
         # Assert that `get_current_yang_price` terminates
-        price = (await shrine.get_current_yang_price(yang_address).invoke()).result.price_wad
+        price = (await shrine.get_current_yang_price(yang_address).execute()).result.price_wad
         assert price == to_wad(YANGS[i]["start_price"])
 
 
@@ -422,21 +424,21 @@ async def test_shrine_setup_with_feed(shrine_with_feeds):
     for i in range(len(YANGS)):
         yang_address = YANGS[i]["address"]
 
-        start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).invoke()).result
+        start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).execute()).result
         assert start_price == to_wad(YANGS[i]["start_price"])
         assert start_cumulative_price == to_wad(YANGS[i]["start_price"])
 
-        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).invoke()).result
+        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).execute()).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
         assert lo <= end_price <= hi
         assert end_cumulative_price == sum(feeds[i])
 
     # Check multiplier feed
-    start_multiplier, start_cumulative_multiplier = (await shrine.get_multiplier(0).invoke()).result
+    start_multiplier, start_cumulative_multiplier = (await shrine.get_multiplier(0).execute()).result
     assert start_multiplier == RAY_SCALE
     assert start_cumulative_multiplier == RAY_SCALE
 
-    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(FEED_LEN - 1).invoke()).result
+    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(FEED_LEN - 1).execute()).result
     assert end_multiplier != 0
     assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
 
@@ -453,31 +455,31 @@ async def test_auth(shrine_deploy):
 
     auth_function = ShrineRoles.SET_CEILING
 
-    assert (await shrine.get_admin().invoke()).result.address == SHRINE_OWNER
+    assert (await shrine.get_admin().execute()).result.address == SHRINE_OWNER
 
     # Authorizing an address and testing that it can use authorized functions
-    tx = await shrine.grant_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.grant_role(auth_function, b).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "RoleGranted", [auth_function, b])
-    b_authorized = (await shrine.has_role(auth_function, b).invoke()).result.bool
+    b_authorized = (await shrine.has_role(auth_function, b).execute()).result.bool
     assert b_authorized == TRUE
-    b_role = (await shrine.get_role(b).invoke()).result.ufelt
+    b_role = (await shrine.get_role(b).execute()).result.ufelt
     assert b_role == auth_function
 
-    await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=b)
-    new_ceiling = (await shrine.get_ceiling().invoke()).result.wad
+    await shrine.set_ceiling(WAD_SCALE).execute(caller_address=b)
+    new_ceiling = (await shrine.get_ceiling().execute()).result.wad
     assert new_ceiling == WAD_SCALE
 
     # Revoking an address
-    tx = await shrine.revoke_role(auth_function, b).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.revoke_role(auth_function, b).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "RoleRevoked", [auth_function, b])
-    b_authorized = (await shrine.has_role(auth_function, b).invoke()).result.bool
+    b_authorized = (await shrine.has_role(auth_function, b).execute()).result.bool
     assert b_authorized == FALSE
-    b_role = (await shrine.get_role(b).invoke()).result.ufelt
+    b_role = (await shrine.get_role(b).execute()).result.ufelt
     assert b_role == 0
 
     # Calling an authorized function with an unauthorized address - should fail
     with pytest.raises(StarkException):
-        await shrine.set_ceiling(WAD_SCALE).invoke(caller_address=b)
+        await shrine.set_ceiling(WAD_SCALE).execute(caller_address=b)
 
 
 #
@@ -488,15 +490,15 @@ async def test_auth(shrine_deploy):
 @pytest.mark.asyncio
 async def test_set_ceiling(shrine):
     new_ceiling = to_wad(20_000_000)
-    tx = await shrine.set_ceiling(new_ceiling).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "CeilingUpdated", [new_ceiling])
-    assert (await shrine.get_ceiling().invoke()).result.wad == new_ceiling
+    assert (await shrine.get_ceiling().execute()).result.wad == new_ceiling
 
 
 @pytest.mark.asyncio
 async def test_set_ceiling_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.set_ceiling(1).invoke(caller_address=BAD_GUY)
+        await shrine.set_ceiling(1).execute(caller_address=BAD_GUY)
 
 
 #
@@ -507,17 +509,17 @@ async def test_set_ceiling_unauthorized(shrine):
 @pytest.mark.asyncio
 async def test_add_yang_pass(shrine):
     g_count = len(YANGS)
-    assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count
+    assert (await shrine.get_yangs_count().execute()).result.ufelt == g_count
 
     new_yang_address = 987
     new_yang_max = to_wad(42_000)
     new_yang_threshold = to_wad(Decimal("0.6"))
     new_yang_start_price = to_wad(5)
-    tx = await shrine.add_yang(new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price).invoke(
+    tx = await shrine.add_yang(new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price).execute(
         caller_address=SHRINE_OWNER
     )
-    assert (await shrine.get_yangs_count().invoke()).result.ufelt == g_count + 1
-    assert (await shrine.get_current_yang_price(new_yang_address).invoke()).result.price_wad == new_yang_start_price
+    assert (await shrine.get_yangs_count().execute()).result.ufelt == g_count + 1
+    assert (await shrine.get_current_yang_price(new_yang_address).execute()).result.price_wad == new_yang_start_price
     assert_event_emitted(
         tx,
         shrine.contract_address,
@@ -533,16 +535,16 @@ async def test_add_yang_pass(shrine):
     )
 
     # Check maximum is correct
-    new_yang_info = (await shrine.get_yang(new_yang_address).invoke()).result.yang
+    new_yang_info = (await shrine.get_yang(new_yang_address).execute()).result.yang
     assert new_yang_info.total == 0
     assert new_yang_info.max == new_yang_max
 
     # Check start price is correct
-    new_yang_price_info = (await shrine.get_current_yang_price(new_yang_address).invoke()).result
+    new_yang_price_info = (await shrine.get_current_yang_price(new_yang_address).execute()).result
     assert new_yang_price_info.price_wad == new_yang_start_price
 
     # Check threshold is correct
-    actual_threshold = (await shrine.get_threshold(new_yang_address).invoke()).result.ray
+    actual_threshold = (await shrine.get_threshold(new_yang_address).execute()).result.ray
     assert actual_threshold == new_yang_threshold
 
 
@@ -555,7 +557,7 @@ async def test_add_yang_duplicate_fail(shrine):
             YANG_0_CEILING,
             YANG_0_THRESHOLD,
             to_wad(YANGS[0]["start_price"]),
-        ).invoke(caller_address=SHRINE_OWNER)
+        ).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -571,22 +573,22 @@ async def test_add_yang_unauthorized(shrine):
             bad_guy_yang_max,
             bad_guy_yang_threshold,
             bad_guy_yang_start_price,
-        ).invoke(caller_address=BAD_GUY)
+        ).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
 async def test_set_threshold(shrine):
     # test setting to normal value
     value = 90 * RAY_PERCENT
-    tx = await shrine.set_threshold(YANG_0_ADDRESS, value).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.set_threshold(YANG_0_ADDRESS, value).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG_0_ADDRESS, value])
-    assert (await shrine.get_threshold(YANG_0_ADDRESS).invoke()).result.ray == value
+    assert (await shrine.get_threshold(YANG_0_ADDRESS).execute()).result.ray == value
 
     # test setting to max value
     max = RAY_SCALE
-    tx = await shrine.set_threshold(YANG_0_ADDRESS, max).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.set_threshold(YANG_0_ADDRESS, max).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG_0_ADDRESS, max])
-    assert (await shrine.get_threshold(YANG_0_ADDRESS).invoke()).result.ray == max
+    assert (await shrine.get_threshold(YANG_0_ADDRESS).execute()).result.ray == max
 
 
 @pytest.mark.asyncio
@@ -594,7 +596,7 @@ async def test_set_threshold_exceeds_max(shrine):
     # test setting over the limit
     max = RAY_SCALE
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
-        await shrine.set_threshold(YANG_0_ADDRESS, max + 1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.set_threshold(YANG_0_ADDRESS, max + 1).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
@@ -602,20 +604,20 @@ async def test_set_threshold_unauthorized(shrine):
     value = 90 * RAY_PERCENT
     # test calling the func unauthorized
     with pytest.raises(StarkException):
-        await shrine.set_threshold(YANG_0_ADDRESS, value).invoke(caller_address=BAD_GUY)
+        await shrine.set_threshold(YANG_0_ADDRESS, value).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
 async def test_set_threshold_invalid_yang(shrine):
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.set_threshold(FAUX_YANG_ADDRESS, to_wad(1000)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.set_threshold(FAUX_YANG_ADDRESS, to_wad(1000)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_update_yang_max(shrine):
     async def update_and_assert(new_yang_max):
-        orig_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
-        tx = await shrine.update_yang_max(YANG_0_ADDRESS, new_yang_max).invoke(caller_address=SHRINE_OWNER)
+        orig_yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
+        tx = await shrine.update_yang_max(YANG_0_ADDRESS, new_yang_max).execute(caller_address=SHRINE_OWNER)
         assert_event_emitted(
             tx,
             shrine.contract_address,
@@ -623,7 +625,7 @@ async def test_update_yang_max(shrine):
             [YANG_0_ADDRESS, orig_yang.total, new_yang_max],
         )
 
-        updated_yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
+        updated_yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
         assert updated_yang.total == orig_yang.total
         assert updated_yang.max == new_yang_max
 
@@ -638,7 +640,7 @@ async def test_update_yang_max(shrine):
     # test decreasing the max below yang.total
     deposit_amt = to_wad(100)
     # Deposit 100 yang tokens
-    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).invoke(caller_address=SHRINE_OWNER)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
 
     new_yang_max = deposit_amt - to_wad(1)
     await update_and_assert(
@@ -650,20 +652,20 @@ async def test_update_yang_max(shrine):
         StarkException,
         match="Shrine: Exceeds maximum amount of Yang allowed for system",
     ):
-        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_update_yang_max_invalid_yang(shrine):
     # test calling with a non-existing yang_address
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.update_yang_max(FAUX_YANG_ADDRESS, YANG_0_CEILING - 1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.update_yang_max(FAUX_YANG_ADDRESS, YANG_0_CEILING - 1).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_update_yang_max_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.update_yang_max(YANG_0_ADDRESS, 2**251).invoke(caller_address=BAD_GUY)
+        await shrine.update_yang_max(YANG_0_ADDRESS, 2**251).execute(caller_address=BAD_GUY)
 
 
 #
@@ -675,36 +677,36 @@ async def test_update_yang_max_unauthorized(shrine):
 @pytest.mark.asyncio
 async def test_kill(shrine):
     # Check shrine is live
-    is_live = (await shrine.get_live().invoke()).result.bool
+    is_live = (await shrine.get_live().execute()).result.bool
     assert is_live == TRUE
 
-    tx = await shrine.kill().invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.kill().execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "Killed")
 
     # Check shrine is not live
-    is_live = (await shrine.get_live().invoke()).result.bool
+    is_live = (await shrine.get_live().execute()).result.bool
     assert is_live == FALSE
 
     # Check deposit fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
 
     # Check forge fails
     with pytest.raises(StarkException, match="Shrine: System is not live"):
-        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(100)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(100)).execute(caller_address=SHRINE_OWNER)
 
     # Test withdraw pass
-    await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
+    await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(1)).execute(caller_address=SHRINE_OWNER)
 
     # Test melt pass
-    await shrine.melt(TROVE1_OWNER, TROVE_1, to_wad(100)).invoke(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE1_OWNER, TROVE_1, to_wad(100)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_unauthorized_kill(shrine):
     # test calling func unauthorized
     with pytest.raises(StarkException):
-        await shrine.kill().invoke(caller_address=BAD_GUY)
+        await shrine.kill().execute(caller_address=BAD_GUY)
 
 
 #
@@ -717,10 +719,10 @@ async def test_unauthorized_kill(shrine):
 async def test_advance(starknet, shrine):
     timestamp = get_block_timestamp(starknet)
     interval = get_interval(timestamp)
-    yang_price_info = (await shrine.get_yang_price(YANG_0_ADDRESS, interval - 1).invoke()).result
+    yang_price_info = (await shrine.get_yang_price(YANG_0_ADDRESS, interval - 1).execute()).result
 
     new_price = to_wad(YANGS[0]["start_price"] + 1)
-    advance = await shrine.advance(YANG_0_ADDRESS, new_price).invoke(caller_address=SHRINE_OWNER)
+    advance = await shrine.advance(YANG_0_ADDRESS, new_price).execute(caller_address=SHRINE_OWNER)
 
     expected_cumulative = int(yang_price_info.cumulative_price_wad + new_price)
 
@@ -733,7 +735,7 @@ async def test_advance(starknet, shrine):
     )
 
     # Test yang price is updated
-    updated_yang_price_info = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result
+    updated_yang_price_info = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result
     assert updated_yang_price_info.price_wad == new_price
     assert updated_yang_price_info.cumulative_price_wad == expected_cumulative
     assert updated_yang_price_info.interval_ufelt == interval
@@ -743,14 +745,14 @@ async def test_advance(starknet, shrine):
 @pytest.mark.asyncio
 async def test_advance_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.advance(YANG_0_ADDRESS, to_wad(YANGS[0]["start_price"])).invoke(caller_address=BAD_GUY)
+        await shrine.advance(YANG_0_ADDRESS, to_wad(YANGS[0]["start_price"])).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_advance_invalid_yang(shrine):
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.advance(FAUX_YANG_ADDRESS, to_wad(YANGS[0]["start_price"])).invoke(caller_address=SHRINE_OWNER)
+        await shrine.advance(FAUX_YANG_ADDRESS, to_wad(YANGS[0]["start_price"])).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds")
@@ -758,10 +760,10 @@ async def test_advance_invalid_yang(shrine):
 async def test_update_multiplier(starknet, shrine):
     timestamp = get_block_timestamp(starknet)
     interval = get_interval(timestamp)
-    multiplier_info = (await shrine.get_multiplier(interval - 1).invoke()).result
+    multiplier_info = (await shrine.get_multiplier(interval - 1).execute()).result
 
     new_multiplier_value = RAY_SCALE + RAY_SCALE // 2
-    update = await shrine.update_multiplier(new_multiplier_value).invoke(caller_address=SHRINE_OWNER)
+    update = await shrine.update_multiplier(new_multiplier_value).execute(caller_address=SHRINE_OWNER)
 
     expected_cumulative = int(multiplier_info.cumulative_multiplier_ray + new_multiplier_value)
 
@@ -774,7 +776,7 @@ async def test_update_multiplier(starknet, shrine):
     )
 
     # Test multiplier is updated
-    updated_multiplier_info = (await shrine.get_current_multiplier().invoke()).result
+    updated_multiplier_info = (await shrine.get_current_multiplier().execute()).result
     assert updated_multiplier_info.multiplier_ray == new_multiplier_value
     assert updated_multiplier_info.cumulative_multiplier_ray == expected_cumulative
     assert updated_multiplier_info.interval_ufelt == interval
@@ -784,7 +786,7 @@ async def test_update_multiplier(starknet, shrine):
 @pytest.mark.asyncio
 async def test_update_multiplier_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.update_multiplier(RAY_SCALE).invoke(caller_address=BAD_GUY)
+        await shrine.update_multiplier(RAY_SCALE).execute(caller_address=BAD_GUY)
 
 
 #
@@ -804,7 +806,7 @@ async def test_update_multiplier_unauthorized(shrine):
 )
 @pytest.mark.asyncio
 async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
-    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt_wad).invoke(caller_address=SHRINE_OWNER)
+    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     collect_gas_cost("shrine/deposit", deposit, 4, 1)
     assert_event_emitted(
@@ -820,15 +822,15 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
         [YANG_0_ADDRESS, TROVE_1, deposit_amt_wad],
     )
 
-    yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
+    yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == deposit_amt_wad
 
-    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).invoke()).result.wad
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert amt == deposit_amt_wad
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [deposit_amt_wad], [YANG_0_THRESHOLD])
     assert_equalish(max_forge_amt, expected_limit)
 
@@ -837,13 +839,13 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
 async def test_shrine_deposit_invalid_yang_fail(shrine):
     # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.deposit(789, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(789, TROVE_1, to_wad(1)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_deposit_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, INITIAL_DEPOSIT_WAD).invoke(caller_address=BAD_GUY)
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, INITIAL_DEPOSIT_WAD).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.usefixtures("shrine_deposit")
@@ -855,7 +857,7 @@ async def test_shrine_deposit_exceeds_max(shrine):
         StarkException,
         match="Shrine: Exceeds maximum amount of Yang allowed for system",
     ):
-        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).invoke(caller_address=SHRINE_OWNER)
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -876,7 +878,7 @@ async def test_shrine_deposit_exceeds_max(shrine):
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
 async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
-    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, withdraw_amt_wad).invoke(caller_address=SHRINE_OWNER)
+    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, withdraw_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     collect_gas_cost("shrine/withdraw", withdraw, 4, 1)
 
@@ -896,21 +898,21 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
         [YANG_0_ADDRESS, TROVE_1, remaining_amt_wad],
     )
 
-    yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
+    yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == remaining_amt_wad
 
-    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).invoke()).result.wad
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert amt == remaining_amt_wad
 
-    ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
+    ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
     assert ltv == 0
 
-    is_healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert is_healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [remaining_amt_wad], [YANG_0_THRESHOLD])
     assert_equalish(max_forge_amt, expected_limit)
 
@@ -919,12 +921,12 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
 @pytest.mark.parametrize("withdraw_amt_wad", [0, to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
 async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
-    price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
+    price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
 
     initial_amt_wad = INITIAL_DEPOSIT_WAD
     remaining_amt_wad = initial_amt_wad - withdraw_amt_wad
 
-    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, withdraw_amt_wad).invoke(caller_address=SHRINE_OWNER)
+    withdraw = await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, withdraw_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(
         withdraw,
@@ -940,25 +942,25 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
         [YANG_0_ADDRESS, TROVE_1, remaining_amt_wad],
     )
 
-    yang = (await shrine.get_yang(YANG_0_ADDRESS).invoke()).result.yang
+    yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == remaining_amt_wad
 
-    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).invoke()).result.wad
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert amt == remaining_amt_wad
 
-    ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
+    ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
     expected_ltv = from_wad(FORGE_AMT_WAD) / (from_wad(price_wad) * from_wad(remaining_amt_wad))
     assert_equalish(from_ray(ltv), expected_ltv)
 
-    is_healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert is_healthy == TRUE
 
     # Check max forge amount
-    yang0_price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
+    yang0_price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
     expected_max_forge_amt = calculate_max_forge([yang0_price_wad], [remaining_amt_wad], [YANG_0_THRESHOLD]) - from_wad(
         FORGE_AMT_WAD
     )
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     assert_equalish(max_forge_amt, expected_max_forge_amt)
 
 
@@ -967,34 +969,34 @@ async def test_shrine_withdraw_invalid_yang_fail(shrine):
 
     # Invalid yang ID that has not been added
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.withdraw(789, TROVE_1, to_wad(1)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(789, TROVE_1, to_wad(1)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_withdraw_insufficient_yang_fail(shrine, shrine_deposit):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(11)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(11)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_shrine_withdraw_unsafe_fail(shrine, update_feeds):
 
     # Get latest price
-    price = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).invoke()).result.price_wad
+    price = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).execute()).result.price_wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(withdraw_amt)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(withdraw_amt)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
 async def test_shrine_withdraw_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, INITIAL_DEPOSIT_WAD).invoke(caller_address=BAD_GUY)
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, INITIAL_DEPOSIT_WAD).execute(caller_address=BAD_GUY)
 
 
 #
@@ -1009,7 +1011,7 @@ async def test_shrine_withdraw_unauthorized(shrine):
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
 async def test_shrine_forge_pass(shrine, forge_amt_wad):
-    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).invoke(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
     assert_event_emitted(
@@ -1023,27 +1025,27 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert_event_emitted(forge, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, forge_amt_wad])
     assert_event_emitted(forge, shrine.contract_address, "YinTotalUpdated", [forge_amt_wad])
 
-    system_debt = (await shrine.get_total_debt().invoke()).result.wad
+    system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert system_debt == forge_amt_wad
 
-    trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == forge_amt_wad
     assert trove.charge_from == FEED_LEN - 1
 
-    yang0_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    trove_ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
+    yang0_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    trove_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
     expected_ltv = Decimal(forge_amt_wad) / Decimal(10 * yang0_price)
     assert_equalish(adjusted_trove_ltv, expected_ltv)
 
-    healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
-    current_debt = from_wad((await shrine.estimate(TROVE_1).invoke()).result.wad)
+    current_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
 
@@ -1051,7 +1053,7 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
 async def test_shrine_forge_zero_deposit_fail(shrine):
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(1_000)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(1_000)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds")
@@ -1059,29 +1061,29 @@ async def test_shrine_forge_zero_deposit_fail(shrine):
 async def test_shrine_forge_unsafe_fail(shrine):
     # Increase debt ceiling
     new_ceiling = to_wad(100_000)
-    await shrine.set_ceiling(new_ceiling).invoke(caller_address=SHRINE_OWNER)
+    await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(14_000)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(14_000)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_shrine_forge_ceiling_fail(shrine):
     # Deposit more yang
-    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).invoke(caller_address=SHRINE_OWNER)
-    updated_deposit = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).invoke()).result.wad
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
+    updated_deposit = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
-        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(15_000)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(15_000)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
 async def test_shrine_forge_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).invoke(caller_address=BAD_GUY)
+        await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=BAD_GUY)
 
 
 #
@@ -1098,22 +1100,22 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, 0])
     assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
 
-    system_debt = (await shrine.get_total_debt().invoke()).result.wad
+    system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert system_debt == 0
 
-    trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == 0
     assert trove.charge_from == FEED_LEN - 1
 
-    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
+    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
     assert shrine_ltv == 0
 
-    healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
     assert_equalish(max_forge_amt, expected_limit)
 
@@ -1122,12 +1124,12 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
 @pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD])
 @pytest.mark.asyncio
 async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
-    price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
+    price_wad = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
 
-    estimated_debt_wad = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    estimated_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.wad
     outstanding_amt_wad = estimated_debt_wad - melt_amt_wad
 
-    melt = await shrine.melt(TROVE1_OWNER, TROVE_1, melt_amt_wad).invoke(caller_address=SHRINE_OWNER)
+    melt = await shrine.melt(TROVE1_OWNER, TROVE_1, melt_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(melt, shrine.contract_address, "DebtTotalUpdated", [outstanding_amt_wad])
 
@@ -1138,23 +1140,23 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
         [TROVE_1, FEED_LEN - 1, outstanding_amt_wad],
     )
 
-    system_debt = (await shrine.get_total_debt().invoke()).result.wad
+    system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert system_debt == outstanding_amt_wad
 
-    trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == outstanding_amt_wad
     assert trove.charge_from == FEED_LEN - 1
 
-    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).invoke()).result.ray
+    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray
     expected_ltv = from_wad(outstanding_amt_wad) / (INITIAL_DEPOSIT * from_wad(price_wad))
     assert_equalish(from_ray(shrine_ltv), expected_ltv)
 
-    healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD]) - from_wad(
         outstanding_amt_wad
     )
@@ -1164,30 +1166,30 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_shrine_melt_system_underflow(shrine):
-    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    estimated_debt = (await shrine.estimate(TROVE_1).execute()).result.wad
     excess_debt = estimated_debt + 1
     with pytest.raises(StarkException, match="Shrine: System debt underflow"):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds_with_trove2")
 @pytest.mark.asyncio
 async def test_shrine_melt_trove_underflow(shrine):
-    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    estimated_debt = (await shrine.estimate(TROVE_1).execute()).result.wad
     excess_debt = estimated_debt + 1
     with pytest.raises(
         StarkException,
         match="Shrine: cannot pay back more debt than exists in this trove",
     ):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_shrine_melt_unauthorized(shrine):
-    estimated_debt = (await shrine.estimate(TROVE_1).invoke()).result.wad
+    estimated_debt = (await shrine.estimate(TROVE_1).execute()).result.wad
     with pytest.raises(StarkException):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).invoke(caller_address=BAD_GUY)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).execute(caller_address=BAD_GUY)
 
 
 #
@@ -1197,13 +1199,13 @@ async def test_shrine_melt_unauthorized(shrine):
 
 @pytest.mark.asyncio
 async def test_estimate(shrine, estimate):
-    trove1 = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove1.charge_from == FEED_LEN - 1
 
-    trove2 = (await shrine.get_trove(TROVE_2).invoke()).result.trove
+    trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
     assert trove2.charge_from == FEED_LEN - 1
 
-    last_updated = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).invoke()).result.price_wad
+    last_updated = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).execute()).result.price_wad
     assert last_updated != 0
 
     estimated_trove1_debt, estimated_trove2_debt, expected_debt = estimate
@@ -1242,14 +1244,14 @@ async def test_charge(shrine, estimate, method, calldata):
         expected_system_debt = estimated_trove1_debt + FORGE_AMT_WAD
 
     # Test `charge` by calling the method without any value
-    tx = await getattr(shrine, method)(*calldata).invoke(caller_address=SHRINE_OWNER)
+    tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
 
     # Get updated system info
-    new_system_debt = (await shrine.get_total_debt().invoke()).result.wad
+    new_system_debt = (await shrine.get_total_debt().execute()).result.wad
     assert new_system_debt == expected_system_debt
 
     # Get updated trove information for Trove ID 1
-    updated_trove1 = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    updated_trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
     adjusted_trove_debt = Decimal(updated_trove1.debt) / WAD_SCALE
 
     assert_equalish(adjusted_trove_debt, expected_debt)
@@ -1264,8 +1266,8 @@ async def test_charge(shrine, estimate, method, calldata):
     )
 
     # `charge` should not have any effect if `Trove.charge_from` is the current interval
-    redundant_tx = await getattr(shrine, method)(*calldata).invoke(caller_address=SHRINE_OWNER)
-    redundant_trove1 = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    redundant_tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
+    redundant_trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert updated_trove1 == redundant_trove1
     assert_event_emitted(
         redundant_tx,
@@ -1283,7 +1285,7 @@ async def test_charge(shrine, estimate, method, calldata):
     # Check Trove ID 2 if method is `move_yang`
     if method == "move_yang":
         # Get updated trove information for Trove ID 2
-        updated_trove2 = (await shrine.get_trove(TROVE_2).invoke()).result.trove
+        updated_trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
         adjusted_trove_debt = Decimal(updated_trove2.debt) / WAD_SCALE
 
         assert_equalish(adjusted_trove_debt, expected_debt)
@@ -1297,8 +1299,8 @@ async def test_charge(shrine, estimate, method, calldata):
         )
 
         # `charge` should not have any effect if `Trove.charge_from` is current interval + 1
-        redundant_tx = await getattr(shrine, method)(*calldata).invoke(caller_address=SHRINE_OWNER)
-        redundant_trove2 = (await shrine.get_trove(TROVE_2).invoke()).result.trove
+        redundant_tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
+        redundant_trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
         assert updated_trove2 == redundant_trove2
         assert_event_emitted(
             redundant_tx,
@@ -1336,13 +1338,13 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
     idx, price_feed = update_feeds_intermittent
 
     # Assert that value for skipped index is set to 0
-    assert (await shrine.get_yang_price(YANG_0_ADDRESS, idx + FEED_LEN).invoke()).result.price_wad == 0
-    assert (await shrine.get_multiplier(idx + FEED_LEN).invoke()).result.multiplier_ray == 0
+    assert (await shrine.get_yang_price(YANG_0_ADDRESS, idx + FEED_LEN).execute()).result.price_wad == 0
+    assert (await shrine.get_multiplier(idx + FEED_LEN).execute()).result.multiplier_ray == 0
 
     # Get yang price and multiplier value at `trove.charge_from`
-    trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
-    start_price = (await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).invoke()).result.price_wad
-    start_multiplier = (await shrine.get_multiplier(trove.charge_from).invoke()).result.multiplier_ray
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    start_price = (await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).execute()).result.price_wad
+    start_multiplier = (await shrine.get_multiplier(trove.charge_from).execute()).result.multiplier_ray
 
     # Modify feeds
     yang0_price_feed = [from_wad(start_price)] + price_feed
@@ -1353,8 +1355,8 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
     multiplier_feed[idx + 1] = multiplier_feed[idx]
 
     # Test 'charge' by calling deposit without any value
-    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).invoke(caller_address=SHRINE_OWNER)
-    updated_trove = (await shrine.get_trove(TROVE_1).invoke()).result.trove
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    updated_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
 
     expected_debt = compound(
         [Decimal("10")],
@@ -1386,13 +1388,13 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
 @pytest.mark.asyncio
 async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
-    current_debt = from_wad((await shrine.estimate(TROVE_1).invoke()).result.wad)
+    current_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.wad)
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
-    tx = await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(move_amt)).invoke(caller_address=SHRINE_OWNER)
+    tx = await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(move_amt)).execute(caller_address=SHRINE_OWNER)
 
     collect_gas_cost("shrine/move_yang", tx, 6, 1)
 
@@ -1409,14 +1411,14 @@ async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
         [YANG_0_ADDRESS, TROVE_2, to_wad(move_amt)],
     )
 
-    src_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).invoke()).result.wad
+    src_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad
     assert src_amt == to_wad(INITIAL_DEPOSIT - move_amt)
 
-    dst_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_2).invoke()).result.wad
+    dst_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_2).execute()).result.wad
     assert dst_amt == to_wad(move_amt)
 
     # Check max forge amount
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).invoke()).result.wad)
+    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.wad)
     move_amt_value = move_amt * from_wad(yang_price) * from_ray(YANG_0_THRESHOLD) * from_ray(LIMIT_RATIO)
     expected_limit -= move_amt_value
     assert_equalish(max_forge_amt, expected_limit - current_debt)
@@ -1426,21 +1428,21 @@ async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
 @pytest.mark.asyncio
 async def test_move_yang_insufficient_fail(shrine):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(11)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(11)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_move_yang_unsafe_fail(shrine):
     # Get latest price
-    price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).invoke()).result.price_wad
+    price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price_wad
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
     withdraw_amt = Decimal("10") - unsafe_amt
 
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(withdraw_amt)).invoke(
+        await shrine.move_yang(YANG_0_ADDRESS, TROVE_1, TROVE_2, to_wad(withdraw_amt)).execute(
             caller_address=SHRINE_OWNER
         )
 
@@ -1448,7 +1450,7 @@ async def test_move_yang_unsafe_fail(shrine):
 @pytest.mark.asyncio
 async def test_move_yang_invalid_yang(shrine):
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.set_threshold(FAUX_YANG_ADDRESS, to_wad(1000)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.set_threshold(FAUX_YANG_ADDRESS, to_wad(1000)).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -1461,12 +1463,12 @@ async def test_move_yang_invalid_yang(shrine):
 @pytest.mark.asyncio
 async def test_shrine_move_yin_pass(shrine, transfer_amount):
 
-    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, transfer_amount).invoke(caller_address=SHRINE_OWNER)
+    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, transfer_amount).execute(caller_address=SHRINE_OWNER)
     # Checking the updated balances
-    u1_new_bal = (await shrine.get_yin(TROVE1_OWNER).invoke()).result.wad
+    u1_new_bal = (await shrine.get_yin(TROVE1_OWNER).execute()).result.wad
     assert u1_new_bal == FORGE_AMT_WAD - transfer_amount
 
-    u2_new_bal = (await shrine.get_yin(TROVE2_OWNER).invoke()).result.wad
+    u2_new_bal = (await shrine.get_yin(TROVE2_OWNER).execute()).result.wad
     assert u2_new_bal == transfer_amount
 
 
@@ -1476,15 +1478,15 @@ async def test_shrine_move_yin_fail(shrine):
 
     # Trying to transfer more than the user owns
     with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
-        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD + 1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD + 1).execute(caller_address=SHRINE_OWNER)
 
     # Trying to transfer a negative amount
     with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
-        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, signed_int_to_felt(-1)).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, signed_int_to_felt(-1)).execute(caller_address=SHRINE_OWNER)
 
     # Trying to transfer an amount greater than 2**125
     with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
-        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, 2**125 + 1).invoke(caller_address=SHRINE_OWNER)
+        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, 2**125 + 1).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_forge")
@@ -1492,10 +1494,10 @@ async def test_shrine_move_yin_fail(shrine):
 async def test_shrine_melt_after_move_yin_fail(shrine):
 
     # Transfer half of the forge amount to another account
-    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD // 2).invoke(caller_address=SHRINE_OWNER)
+    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD // 2).execute(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
     with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).invoke(caller_address=SHRINE_OWNER)
+        await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -1507,10 +1509,10 @@ async def test_shrine_melt_after_move_yin_fail(shrine):
 async def test_shrine_advance_update_multiplier_invalid_fail(shrine_deploy):
     shrine = shrine_deploy
     with pytest.raises(StarkException, match="Shrine: cannot set a price value to zero."):
-        await shrine.advance(YANG_0_ADDRESS, 0).invoke(caller_address=SHRINE_OWNER)
+        await shrine.advance(YANG_0_ADDRESS, 0).execute(caller_address=SHRINE_OWNER)
 
     with pytest.raises(StarkException, match="Shrine: cannot set a multiplier value to zero."):
-        await shrine.update_multiplier(0).invoke(caller_address=SHRINE_OWNER)
+        await shrine.update_multiplier(0).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -1522,13 +1524,13 @@ async def test_shrine_advance_update_multiplier_invalid_fail(shrine_deploy):
 @pytest.mark.asyncio
 async def test_shrine_unhealthy(shrine):
     # Calculate unsafe yang price
-    yang_balance = from_wad((await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).invoke()).result.wad)
-    debt = from_wad((await shrine.get_trove(TROVE_1).invoke()).result.trove.debt)
+    yang_balance = from_wad((await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.wad)
+    debt = from_wad((await shrine.get_trove(TROVE_1).execute()).result.trove.debt)
     unsafe_price = debt / Decimal("0.85") / yang_balance
 
     # Update yang price to unsafe level
-    await shrine.advance(YANG_0_ADDRESS, to_wad(unsafe_price)).invoke(caller_address=SHRINE_OWNER)
-    is_healthy = (await shrine.is_healthy(TROVE_1).invoke()).result.bool
+    await shrine.advance(YANG_0_ADDRESS, to_wad(unsafe_price)).execute(caller_address=SHRINE_OWNER)
+    is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.bool
     assert is_healthy == FALSE
 
 
@@ -1536,7 +1538,7 @@ async def test_shrine_unhealthy(shrine):
 async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
     prices = []
     for d in DEPOSITS:
-        price = (await shrine.get_current_yang_price(d["address"]).invoke()).result.price_wad
+        price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price_wad
         prices.append(price)
 
     expected_threshold = calculate_trove_threshold(
@@ -1544,5 +1546,5 @@ async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
     )
 
     # Getting actual threshold
-    actual_threshold = (await shrine.get_trove_threshold(TROVE_1).invoke()).result.threshold_ray
+    actual_threshold = (await shrine.get_trove_threshold(TROVE_1).execute()).result.threshold_ray
     assert_equalish(from_ray(actual_threshold), expected_threshold)

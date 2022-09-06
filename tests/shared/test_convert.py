@@ -1,5 +1,6 @@
 import pytest
-from starkware.starknet.testing.starknet import Starknet, StarknetContract
+from starkware.starknet.testing.contract import StarknetContract
+from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.utils import compile_contract
@@ -29,7 +30,7 @@ async def convert(request, starknet_session: Starknet) -> StarknetContract:
 )
 @pytest.mark.asyncio
 async def test_pack_felt_pass(convert, a, b):
-    res = (await convert.test_pack_felt(a, b).invoke()).result.packed
+    res = (await convert.test_pack_felt(a, b).execute()).result.packed
     assert res == b + (a * A_UPPER_BOUND)
 
 
@@ -47,4 +48,4 @@ async def test_pack_felt_pass(convert, a, b):
 @pytest.mark.asyncio
 async def test_pack_felt_fail(convert, a, b):
     with pytest.raises(StarkException):
-        (await convert.test_pack_felt(a, b).invoke()).result.packed
+        (await convert.test_pack_felt(a, b).execute()).result.packed
