@@ -238,3 +238,28 @@ namespace IYin {
     func approve(spender: felt, amount: felt) -> (bool: felt) {
     }
 }
+
+@contract_interface
+namespace IPurger {
+    //
+    // view
+    //
+
+    func get_purge_penalty(trove_id: felt) -> (ray: felt) {
+    }
+
+    func get_max_close_amount(trove_id: felt) -> (wad: felt) {
+    }
+
+    //
+    // external
+    //
+
+    func purge(trove_id: felt, purge_amt_wad: felt, recipient_address: felt) {
+    }
+
+    func restricted_purge(
+        trove_id: felt, purge_amt_wad: felt, recipient_address: felt, funder_address: felt
+    ) {
+    }
+}
