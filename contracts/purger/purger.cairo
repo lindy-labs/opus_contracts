@@ -1,5 +1,6 @@
 %lang starknet
 
+from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, unsigned_div_rem
@@ -110,6 +111,11 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 @external
 func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id, purge_amt_wad, recipient_address
+) -> (
+    yang_addresses_len: felt,
+    yang_addresses: felt*,
+    freed_assets_wad_len: felt,
+    freed_assets_wad: felt*,
 ) {
     alloc_locals;
 
@@ -151,6 +157,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (yang_count, yang_addresses: felt*) = IAbbot.get_yang_addresses(
         contract_address=abbot_address
     );
+    let (freed_assets_wad: felt*) = alloc();
 
     free_yangs(
         shrine_address,
@@ -160,6 +167,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         yang_count,
         yang_addresses,
         percentage_freed_ray,
+        freed_assets_wad,
     );
 
     // Assert new LTV < old LTV
@@ -172,7 +180,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     Purged.emit(trove_id, purge_amt_wad, recipient_address, caller_address, percentage_freed_ray);
 
-    return ();
+    return (yang_count, yang_addresses, yang_count, freed_assets_wad);
 }
 
 //
@@ -264,6 +272,7 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     yang_count,
     yang_addresses: felt*,
     percentage_freed_ray,
+    freed_assets_wad: felt*,
 ) {
     alloc_locals;
 
@@ -278,6 +287,7 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         trove_id,
         [yang_addresses],
         percentage_freed_ray,
+        freed_assets_wad,
     );
     return free_yangs(
         shrine_address,
@@ -287,12 +297,19 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         yang_count - 1,
         yang_addresses + 1,
         percentage_freed_ray,
+        freed_assets_wad + 1,
     );
 }
 
 // Helper function to transfer freed yang to recipient for a specific yang
 func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine_address, abbot_address, recipient_address, trove_id, yang_address, percentage_freed_ray
+    shrine_address,
+    abbot_address,
+    recipient_address,
+    trove_id,
+    yang_address,
+    percentage_freed_ray,
+    freed_assets_wad: felt*,
 ) {
     alloc_locals;
 
@@ -302,6 +319,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Early termination if no yang deposited
     if (deposited_amt_wad == 0) {
+        assert [freed_assets_wad] = 0;
         return ();
     }
 
@@ -313,9 +331,10 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (freed_yang_wad) = WadRay.rmul(deposited_amt_wad, percentage_freed_ray);
 
     // Get amount of underlying collateral to free before Shrine is updated
-    let (freed_underlying_wad) = IGate.preview_withdraw(
+    let (freed_asset_wad) = IGate.preview_withdraw(
         contract_address=gate_address, yang_wad=freed_yang_wad
     );
+    assert [freed_assets_wad] = freed_asset_wad;
 
     // Update Shrine
     IShrine.seize(
@@ -329,7 +348,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         contract_address=gate_address,
         user_address=recipient_address,
         trove_id=trove_id,
-        assets_wad=freed_underlying_wad,
+        assets_wad=freed_asset_wad,
     );
 
     return ();
