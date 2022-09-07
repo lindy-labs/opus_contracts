@@ -352,6 +352,11 @@ async def test_purge(
         lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER],
     )
 
+    # Check return data
+    assert purge.result.yang_addresses == [steth_yang.contract_address, doge_yang.contract_address]
+    assert_equalish(from_wad(purge.result.freed_assets_wad[0]), expected_freed_steth)
+    assert_equalish(from_wad(purge.result.freed_assets_wad[1]), expected_freed_doge)
+
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
     after_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
     assert after_ltv <= before_ltv
