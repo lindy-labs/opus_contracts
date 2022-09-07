@@ -13,21 +13,17 @@ jobs:
       !github.event.pull_request.draft &&
       !(contains(toJSON(github.event.commits.*.message), '[skip ci]') ||
         contains(toJSON(github.event.commits.*.message), '[ci skip]'))
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Python setup
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.9'
-          cache: pip
-          cache-dependency-path: '**/requirements-dev.txt'
+      - name: Update PATH
+        run: echo "/home/ec2-user/.local/bin:/usr/local/bin" >> $GITHUB_PATH
 
-      - name: Env setup
-        run: pip install -r requirements-dev.txt
+      - name: Install deps
+        run: pip3.9 install -r requirements-dev.txt
 
       - name: Run tests
         run: pytest -sv -r A --cache-clear tests
