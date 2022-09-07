@@ -63,11 +63,11 @@ async def fund_user(user, steth_yang, doge_yang, steth_token, doge_token, steth_
 
     
 @pytest.fixture
-async def deployed_pool(request, shrine, yin, purger, starknet):
+async def deployed_pool(request, shrine, abbot, yin, purger, starknet):
     pool_contract = compile_contract("contracts/stability_pool/stability_pool.cairo", request)
     pool = await starknet.deploy(
         contract_class=pool_contract,
-        constructor_calldata=[yin.contract_address, shrine.contract_address, purger.contract_address],
+        constructor_calldata=[yin.contract_address, shrine.contract_address, purger.contract_address, abbot.contract_address],
     )
     new_ceiling = to_wad(100_000_000)
     await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
@@ -163,7 +163,63 @@ async def test_liquidate(
     user2_deposit = (await pool.get_provider_owed_yin(USER_2).execute()).result.yin
     w2d_assert(aura_user_deposit, amount * (1-aura_user_ratio))
     w2d_assert(user2_deposit, user2_forged_amount * (1-aura_user_ratio))
+    
     user3_deposit = (await pool.get_provider_owed_yin(USER_3).execute()).result.yin
     w2d_assert(user3_deposit, user3_forged_amount)
 
+
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove"
+)
+@pytest.mark.asyncio
+async def test_withdrawing_collaterals(
+    starknet,
+    shrine,
+    abbot,
+    purger,
+    deployed_pool,
+    yin,
+    steth_yang,
+    doge_yang,
+    steth_token,
+    doge_token,
+    aura_user_with_first_trove):
+    """
+    The SP is used to absorb a Trove's debt and then the providers withdraw their owed collaterals.
+    """
+    pool = deployed_pool
+    amount = aura_user_with_first_trove
+    # Funds an extra user
+    await fund_user(USER_2, steth_yang, doge_yang, steth_token, doge_token, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+    user2_forged_amount = await open_trove(USER_2, shrine, abbot, steth_yang, doge_yang, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+
+    await yin.approve(pool.contract_address, amount).execute(caller_address=AURA_USER)
+    await pool.provide(amount).execute(caller_address=AURA_USER)
+
+    # user2 provides as well
+    await yin.approve(pool.contract_address, user2_forged_amount).execute(caller_address=USER_2)
+    await pool.provide(user2_forged_amount).execute(caller_address=USER_2)
+
+    await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
+    await pool.liquidate(TROVE_1).execute(caller_address=AURA_USER)
+
+    # should be 0
+    pool_steth_balance = (await steth_token.balanceOf(pool.contract_address).execute()).result.balance.low
+
+    # withdraws collaterals
+    await pool.withdraw().execute(caller_address=AURA_USER)
+    await pool.withdraw().execute(caller_address=USER_2)
+
+    ## balances are correct
+    # user 2 should only have 1/3rd of steth
+    user2_post_balance_steth = (await steth_token.balanceOf(USER_2).execute()).result.balance.low
+    w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3)
+    # # pool should be empty of steth
+    # ne = (await yin.balanceOf(AURA_USER).execute()).result.wad
+
+    # #assert user2_post_balance_steth == user2_pre_balance_steth + user2_expected_steth
+    # w2d_assert(user2_post_balance_steth, user2_pre_balance_steth + user2_expected_steth)
+    # # pool is depleted of collaterals
     

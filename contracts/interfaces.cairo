@@ -226,7 +226,7 @@ namespace IStabilityPool {
     //                GETTERS                  //
     /////////////////////////////////////////////
     
-    func get_provider_owed_yangs(provider: felt) -> (yangs_len : felt, yangs : felt*) {
+    func get_provider_owed_yang(provider: felt, yang : felt) -> (amount : felt) {
     }
     
     func get_provider_owed_yin(provider: felt) -> (yin : felt) {
