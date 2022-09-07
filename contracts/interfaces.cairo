@@ -256,7 +256,10 @@ namespace IPurger {
     //
 
     func purge(trove_id: felt, purge_amt_wad: felt, recipient_address: felt) -> (
-        yang_addresses_len: felt, yang_addresses: felt*, freed_amts_len: felt, freed_amts: felt*
+        yang_addresses_len: felt,
+        yang_addresses: felt*,
+        freed_assets_amt_len: felt,
+        freed_assets_amt: felt*,
     ) {
     }
 }
