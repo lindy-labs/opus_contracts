@@ -319,6 +319,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Early termination if no yang deposited
     if (deposited_amt_wad == 0) {
+        assert [freed_assets_wad] = 0;
         return ();
     }
 
