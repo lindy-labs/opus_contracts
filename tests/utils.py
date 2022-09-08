@@ -91,8 +91,6 @@ TROVE2_OWNER = str_to_felt("trove 2 owner")
 TROVE3_OWNER = str_to_felt("trove 3 owner")
 TROVE4_OWNER = str_to_felt("trove 4 owner")
 
-# Shrine constants
-LIMIT_RATIO = 95 * RAY_PERCENT
 # Time Interval
 TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
 # 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625)
@@ -346,7 +344,7 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
     Value of the maximum forge value for a Trove in decimal.
     """
     cumulative_weighted_threshold, _ = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold * from_ray(LIMIT_RATIO)
+    return cumulative_weighted_threshold
 
 
 #
