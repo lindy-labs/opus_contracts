@@ -60,6 +60,10 @@ func snapshots(provider : address) -> (snapshot : Snapshot) {
 func snapshots_S(provider : address, yang : address) -> (S : felt) {
 }
 
+@storage_var
+func total_deposits() -> (balance : wad) {
+}
+
 // Tracks the users' deposits.
 @storage_var
 func deposits(provider : felt) -> (balance : wad) {
@@ -120,10 +124,11 @@ func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     //payout user before crediting deposit
     let (curr_balance) = deposits.read(caller);
     // TODO : payout here ...
-    // transfer yin from caller to the stability pool
+    // transfer yin from caller to the absorber
     IYin.transferFrom(contract_address=yin_address, sender=caller, recipient=this, amount=amount);
     // update balance
     deposits.write(caller, curr_balance + amount);
+    _increase_total_deposits(amount);
     // update snapshot
     let (curr_P) = P.read();
     snapshots.write(caller, Snapshot(P=curr_P));
@@ -151,14 +156,6 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     let (compounded_deposit : wad) = get_provider_owed_yin(caller);
     // send deposit
     let (yin_address : address) = yin.read();
-
-    let (this) = get_contract_address();
-    let (b) = IYin.balanceOf(contract_address=yin_address, account=this);
-    %{
-        print(f"Current balance is : {ids.b}")
-        print(f"Trying to transfer : {ids.compounded_deposit}")
-    %}
-    
     IYin.transfer(contract_address=yin_address, recipient=caller, amount=compounded_deposit);
     // send owed yangs
     let (abbot_address : address) = abbot.read();
@@ -166,6 +163,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     _distribute_owed_yang(caller, len, yangs);
     // update user's deposit
     deposits.write(caller, 0);
+    _decrease_total_deposits(compounded_deposit);
     return ();
 }
 
@@ -218,6 +216,7 @@ func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         recipient_address=this
     );
     assert yangs_len = freed_len;
+    _decrease_total_deposits(amount);
     // updates all S
     _update_all_S(this_balance, curr_P, yangs_len, yangs, freed_len, freed_amounts);
     let (new_P : felt) = WadRay.wunsigned_div(amount, this_balance);
@@ -307,8 +306,42 @@ func _distribute_owed_yang{
         return ();
     }
     let (owed : wad) = get_provider_owed_yang(provider, [yangs]);
+
+    let (this) = get_contract_address();
+    let (b) = IERC20.balanceOf(contract_address=[yangs], account=this);
+    %{
+        print(f"Current balance is : {ids.b.low}")
+        print(f"Trying to transfer : {ids.owed}")
+    %}
+
     IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256(owed, 0));
     return _distribute_owed_yang(provider, len - 1, yangs + 1);
+}
+
+func _increase_total_deposits{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    amount : wad
+) {
+    let (tdeposits : wad) = total_deposits.read();
+    let (new_total_deposits : wad) = WadRay.add_unsigned(tdeposits, amount);
+    total_deposits.write(new_total_deposits);
+    return ();
+}
+
+func _decrease_total_deposits{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    amount : wad
+) {
+    let (tdeposits : wad) = total_deposits.read();
+    let (new_total_deposits : wad) = WadRay.sub_unsigned(tdeposits, amount);
+    total_deposits.write(new_total_deposits);
+    return ();
 }
 
 /////////////////////////////////////////////
@@ -316,6 +349,7 @@ func _distribute_owed_yang{
 /////////////////////////////////////////////
 
 //Returns the amounts of collaterals the provider is owed.
+@view
 func get_provider_owed_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt, yang : address) -> (amount : wad){
     let (initial_deposit : wad) = deposits.read(provider);
     let (snapshot : Snapshot) = snapshots.read(provider);
