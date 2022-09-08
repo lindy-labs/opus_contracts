@@ -94,7 +94,7 @@ namespace IShrine {
     func get_trove_threshold(trove_id) -> (threshold_ray: felt, value_wad: felt) {
     }
 
-    func get_current_trove_ratio(trove_id) -> (ray: felt) {
+    func get_current_trove_ltv(trove_id) -> (ray: felt) {
     }
 
     func get_current_yang_price(yang_address) -> (
@@ -111,9 +111,6 @@ namespace IShrine {
     }
 
     func is_healthy(trove_id) -> (bool: felt) {
-    }
-
-    func is_within_limits(trove_id) -> (bool: felt) {
     }
 }
 
