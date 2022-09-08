@@ -112,9 +112,6 @@ namespace IShrine {
 
     func is_healthy(trove_id) -> (bool: felt) {
     }
-
-    func is_within_limits(trove_id) -> (bool: felt) {
-    }
 }
 
 @contract_interface
