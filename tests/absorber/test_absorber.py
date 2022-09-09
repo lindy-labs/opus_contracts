@@ -132,7 +132,7 @@ async def test_liquidate(
 
     # At this point, AURA_USER and user2 have the same amount of Yin in the Absorber
     aura_user_ratio = amount / (amount + user2_forged_amount)
-    pool_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
+    decrease_ration = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
 
     # prices change, trove becomes totally liquidatable
     await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
@@ -140,16 +140,17 @@ async def test_liquidate(
     assert amount == expected_max_close_amnt
 
     # absorb trove's debt
-    await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)
+    absorbed = (await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)).result.absorbed
     # absorber's liquidity should be decreased by the amount of debt absorbed
     new_pool_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
-    assert new_pool_balance == pool_balance - expected_max_close_amnt
+    assert new_pool_balance == decrease_ration - expected_max_close_amnt
 
     # both users should see their deposits decreased by 66%
+    decrease_ration = absorbed / decrease_ration
     aura_user_deposit = (await absorber.get_provider_owed_yin(AURA_USER).execute()).result.yin
     user2_deposit = (await absorber.get_provider_owed_yin(USER_2).execute()).result.yin
-    w2d_assert(aura_user_deposit, amount * (1-aura_user_ratio))
-    w2d_assert(user2_deposit, user2_forged_amount * (1-aura_user_ratio))
+    w2d_assert(aura_user_deposit, amount * (1-decrease_ration))
+    w2d_assert(user2_deposit, user2_forged_amount * (1-decrease_ration))
 
 
     # someone deposit **after** the liquidation
@@ -168,67 +169,78 @@ async def test_liquidate(
     w2d_assert(user3_deposit, user3_forged_amount)
 
 
-# @pytest.mark.usefixtures(
-#     "abbot_with_yangs",
-#     "funded_aura_user",
-#     "aura_user_with_first_trove"
-# )
-# @pytest.mark.asyncio
-# async def test_withdrawing_collaterals(
-#     starknet,
-#     shrine,
-#     abbot,
-#     purger,
-#     deployed_pool,
-#     yin,
-#     steth_yang,
-#     doge_yang,
-#     steth_token,
-#     doge_token,
-#     aura_user_with_first_trove):
-#     """
-#     The Absorber is used to absorb a Trove's debt and then the providers withdraw their owed collaterals.
-#     """
-#     absorber = deployed_pool
-#     amount = aura_user_with_first_trove
-#     # Funds an extra user
-#     await fund_user(USER_2, steth_yang, doge_yang, steth_token, doge_token, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
-#     user2_forged_amount = await open_trove(USER_2, shrine, abbot, steth_yang, doge_yang, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove"
+)
+@pytest.mark.asyncio
+async def test_withdrawing_collaterals(
+    starknet,
+    shrine,
+    abbot,
+    purger,
+    deployed_pool,
+    yin,
+    steth_yang,
+    doge_yang,
+    steth_token,
+    doge_token,
+    aura_user_with_first_trove):
+    """
+    The Absorber is used to absorb a Trove's debt and then the providers withdraw their owed collaterals.
+    """
+    absorber = deployed_pool
+    amount = aura_user_with_first_trove
+    # Funds an extra user
+    await fund_user(USER_2, steth_yang, doge_yang, steth_token, doge_token, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+    user2_forged_amount = await open_trove(USER_2, shrine, abbot, steth_yang, doge_yang, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
 
-#     await yin.approve(absorber.contract_address, amount).execute(caller_address=AURA_USER)
-#     await absorber.provide(amount).execute(caller_address=AURA_USER)
+    # AURA_USER provides
+    await yin.approve(absorber.contract_address, amount).execute(caller_address=AURA_USER)
+    await absorber.provide(amount).execute(caller_address=AURA_USER)
+    # USER_2 provides
+    await yin.approve(absorber.contract_address, user2_forged_amount).execute(caller_address=USER_2)
+    await absorber.provide(user2_forged_amount).execute(caller_address=USER_2)
 
-#     # user2 provides as well
-#     await yin.approve(absorber.contract_address, user2_forged_amount).execute(caller_address=USER_2)
-#     await absorber.provide(user2_forged_amount).execute(caller_address=USER_2)
+    # At this point, there are only 2 providers to the Absorber ; AURA_USER and USER_2
 
-#     await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
-#     await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)
+    pre_pool_yin_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
+    # Price goes down by 50%, trove becomes totally liquidatable
+    await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
+    absorbed = (await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)).result.absorbed
 
-#     pool_steth_balance = (await steth_token.balanceOf(absorber.contract_address).execute()).result.balance.low
+    pool_steth_balance = (await steth_token.balanceOf(absorber.contract_address).execute()).result.balance.low
 
-#     aura_user_steth = (await absorber.get_provider_owed_yang(AURA_USER, steth_token.contract_address).execute()).result.amount
-#     user2_steth = (await absorber.get_provider_owed_yang(USER_2, steth_token.contract_address).execute()).result.amount
-#     aura_user_doge = (await absorber.get_provider_owed_yang(AURA_USER, doge_token.contract_address).execute()).result.amount
-#     user2_doge = (await absorber.get_provider_owed_yang(USER_2, doge_token.contract_address).execute()).result.amount
+    aura_user_steth = (await absorber.get_provider_owed_yang(AURA_USER, steth_token.contract_address).execute()).result.amount
+    user2_steth = (await absorber.get_provider_owed_yang(USER_2, steth_token.contract_address).execute()).result.amount
+    aura_user_doge = (await absorber.get_provider_owed_yang(AURA_USER, doge_token.contract_address).execute()).result.amount
+    user2_doge = (await absorber.get_provider_owed_yang(USER_2, doge_token.contract_address).execute()).result.amount
 
-#     print(f"aura_user_steth: {aura_user_steth}")
-#     print(f"user2_steth: {user2_steth}")
-#     print(f"aura_user_doge: {aura_user_doge}")
-#     print(f"user2_doge: {user2_doge}")
+    # print(f"aura_user_steth: {aura_user_steth}")
+    # print(f"user2_steth: {user2_steth}")
+    # print(f"aura_user_doge: {aura_user_doge}")
+    # print(f"user2_doge: {user2_doge}")
 
-#     # withdraws collaterals
-#     await absorber.withdraw().execute(caller_address=AURA_USER)
-#     await absorber.withdraw().execute(caller_address=USER_2)
+    # withdraws collaterals and yins
+    await absorber.withdraw().execute(caller_address=AURA_USER)
+    await absorber.withdraw().execute(caller_address=USER_2)
 
-#     ## balances are correct
-#     # user 2 should only have 1/3rd of steth
-#     user2_post_balance_steth = (await steth_token.balanceOf(USER_2).execute()).result.balance.low
-#     w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3)
-#     # # absorber should be empty of steth
-#     # ne = (await yin.balanceOf(AURA_USER).execute()).result.wad
+    # check USER_2 got his owed yin minus the losses incurred by liquidation
+    decrease_ration = absorbed / pre_pool_yin_balance
+    user2_yin_balance = (await yin.balanceOf(USER_2).execute()).result.wad
+    w2d_assert(user2_yin_balance, user2_forged_amount * (1-decrease_ration))
+    auser_yin_balance = (await yin.balanceOf(AURA_USER).execute()).result.wad
+    w2d_assert(auser_yin_balance, amount * (1-decrease_ration))
 
-#     # #assert user2_post_balance_steth == user2_pre_balance_steth + user2_expected_steth
-#     # w2d_assert(user2_post_balance_steth, user2_pre_balance_steth + user2_expected_steth)
-#     # # absorber is depleted of collaterals
+    ## balances are correct
+    # user 2 should only have 1/3rd of steth
+    #user2_post_balance_steth = (await steth_token.balanceOf(USER_2).execute()).result.balance.low
+    #w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3)
+    # # absorber should be empty of steth
+    # ne = (await yin.balanceOf(AURA_USER).execute()).result.wad
+
+    # #assert user2_post_balance_steth == user2_pre_balance_steth + user2_expected_steth
+    # w2d_assert(user2_post_balance_steth, user2_pre_balance_steth + user2_expected_steth)
+    # # absorber is depleted of collaterals
     

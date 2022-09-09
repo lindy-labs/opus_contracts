@@ -69,6 +69,15 @@ func total_deposits() -> (balance : wad) {
 func deposits(provider : felt) -> (balance : wad) {
 }
 
+// errors tracking
+@storage_var
+func last_yin_loss_offset() -> (error : felt) {
+}
+
+@storage_var
+func last_yang_loss_offset(yang : address) -> (error : felt) {
+}
+
 /////////////////////////////////////////////
 //                EVENTS                   //
 /////////////////////////////////////////////Ò
@@ -160,7 +169,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     // send owed yangs
     let (abbot_address : address) = abbot.read();
     let (len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
-    _distribute_owed_yang(caller, len, yangs);
+    //_distribute_owed_yang(caller, len, yangs);
     // update user's deposit
     deposits.write(caller, 0);
     _decrease_total_deposits(compounded_deposit);
@@ -179,29 +188,56 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 // - proper amount of the asset burned
 // - collaterals seized
 @external
-func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id: felt) {
+func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id: felt) -> (absorbed : wad) {
+    alloc_locals;
     let (purger_address) = purger.read();
-    let (amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
+    let (local amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
     _purge_and_update(trove_id, amount);
-    return ();
+    return (amount,);
 }
 
 /////////////////////////////////////////////
 //                INTERNAL                 //
 /////////////////////////////////////////////
 
+
+func _update_loss_and_rewards_units{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    to_absorb : wad,
+    yangs_len : felt,
+    yangs : address*,
+    amounts_len : felt,
+    freed_amounts : felt*,
+) -> (yin_unit_loss : wad, len : felt, yangs_unit_gains : felt*) {
+    let (lylo : felt) = last_yin_loss_offset.read();
+    let (total_deposits_ : felt) = total_deposits.read();
+
+    // What is called the yin loss per unit is actually a part of the running product equation.
+    // In particular, it corresponds to Q_i / D_(i-1)
+    let (yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
+    let (yin_loss_numerator : felt) = WadRay.sub_unsigned(yin_loss_numerator, lylo);
+    let (yin_loss_per_unit : felt) = WadRay.wunsigned_div(yin_loss_numerator, total_deposits_);
+    let (yin_loss_per_unit : felt) = WadRay.add_unsigned(yin_loss_per_unit, 1);
+    let (lylo : felt) = WadRay.wmul(yin_loss_per_unit, total_deposits_);
+    let (lylo : felt) = WadRay.sub_unsigned(lylo, yin_loss_numerator);
+
+    return (yin_loss_per_unit, yangs_len, yangs);
+}
+
 // Update the "internal" storage variables of the pool.
 // - Purges the trove
 // - Updates P, the running product to help us calculate the compounded deposit
 // - The total balance of yin held by the pool
-func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, amount: wad) {
+func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, to_absorb: wad) {
     alloc_locals;
     let (this : felt) = get_contract_address();
     let (shrine_address : felt) = shrine.read();
     let (purger_address : felt) = purger.read();
     let (curr_P : felt) = P.read();
-    // amount / total_balance
-    let (local this_balance : wad) = IShrine.get_yin(contract_address=shrine_address, user_address=this);
+    let (this_balance) = total_deposits.read();
     // burn Yin
     // Spending approval already done in constructor
     let (
@@ -212,18 +248,21 @@ func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     ) = IPurger.purge(
         contract_address=purger_address,
         trove_id=trove_id,
-        purge_amt_wad=amount,
+        purge_amt_wad=to_absorb,
         recipient_address=this
     );
     assert yangs_len = freed_len;
-    _decrease_total_deposits(amount);
+    let (
+        yin_loss_per_unit : felt,
+        len_gains : felt,
+        yangs_unit_gains : felt*
+    ) = _update_loss_and_rewards_units(to_absorb, yangs_len, yangs, freed_len, freed_amounts);
+    _decrease_total_deposits(to_absorb);
     // updates all S
     _update_all_S(this_balance, curr_P, yangs_len, yangs, freed_len, freed_amounts);
-    let (new_P : felt) = WadRay.wunsigned_div(amount, this_balance);
-    tempvar one = WadRay.WAD_ONE;
-    // 1 - (amount / total_balance)
-    let new_P = one - new_P;
-    let (new_P) = WadRay.wmul(curr_P, new_P);
+    let (new_P : felt) = WadRay.sub_unsigned(WadRay.WAD_ONE, yin_loss_per_unit);
+    let (new_P : felt) = WadRay.wmul(new_P, curr_P);
+    let (new_P : felt) = WadRay.wunsigned_div(new_P, WadRay.WAD_SCALE);
     P.write(new_P);
     return ();
 }
@@ -307,12 +346,12 @@ func _distribute_owed_yang{
     }
     let (owed : wad) = get_provider_owed_yang(provider, [yangs]);
 
-    let (this) = get_contract_address();
-    let (b) = IERC20.balanceOf(contract_address=[yangs], account=this);
-    %{
-        print(f"Current balance is : {ids.b.low}")
-        print(f"Trying to transfer : {ids.owed}")
-    %}
+    // let (this) = get_contract_address();
+    // let (b) = IERC20.balanceOf(contract_address=[yangs], account=this);
+    // %{
+    //     print(f"Current balance is : {ids.b.low}")
+    //     print(f"Trying to transfer : {ids.owed}")
+    // %}
 
     IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256(owed, 0));
     return _distribute_owed_yang(provider, len - 1, yangs + 1);

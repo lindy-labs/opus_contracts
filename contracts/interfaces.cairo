@@ -219,7 +219,7 @@ namespace IStabilityPool {
     func withdraw(amount: felt) {
     }
 
-    func liquidate(trove_id: felt) {
+    func liquidate(trove_id: felt) -> (absorbed : felt) {
     }
     
     /////////////////////////////////////////////
