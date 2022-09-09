@@ -212,35 +212,27 @@ async def test_withdrawing(
 
     pool_steth_balance = (await steth_token.balanceOf(absorber.contract_address).execute()).result.balance.low
 
-    aura_user_steth = (await absorber.get_provider_owed_yang(AURA_USER, steth_token.contract_address).execute()).result.amount
-    user2_steth = (await absorber.get_provider_owed_yang(USER_2, steth_token.contract_address).execute()).result.amount
-    aura_user_doge = (await absorber.get_provider_owed_yang(AURA_USER, doge_token.contract_address).execute()).result.amount
-    user2_doge = (await absorber.get_provider_owed_yang(USER_2, doge_token.contract_address).execute()).result.amount
-
-    # print(f"aura_user_steth: {aura_user_steth}")
-    # print(f"user2_steth: {user2_steth}")
-    # print(f"aura_user_doge: {aura_user_doge}")
-    # print(f"user2_doge: {user2_doge}")
-
     # withdraws collaterals and yins
     await absorber.withdraw().execute(caller_address=AURA_USER)
     await absorber.withdraw().execute(caller_address=USER_2)
 
     # check USER_2 got his owed yin minus the losses incurred by liquidation
-    decrease_ration = absorbed / pre_pool_yin_balance
+    decrease_ratio = absorbed / pre_pool_yin_balance
     user2_yin_balance = (await yin.balanceOf(USER_2).execute()).result.wad
-    w2d_assert(user2_yin_balance, user2_forged_amount * (1-decrease_ration))
+    w2d_assert(user2_yin_balance, user2_forged_amount * (1-decrease_ratio))
     auser_yin_balance = (await yin.balanceOf(AURA_USER).execute()).result.wad
-    w2d_assert(auser_yin_balance, amount * (1-decrease_ration))
+    w2d_assert(auser_yin_balance, amount * (1-decrease_ratio))
+
 
     ## balances are correct
     # user 2 should only have 1/3rd of steth
     user2_post_balance_steth = (await steth_token.balanceOf(USER_2).execute()).result.balance.low
-    w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3)
-    # # absorber should be empty of steth
-    # ne = (await yin.balanceOf(AURA_USER).execute()).result.wad
+    # error margin might be too big!!
+    w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3, Decimal("1e-3"))
 
-    # #assert user2_post_balance_steth == user2_pre_balance_steth + user2_expected_steth
-    # w2d_assert(user2_post_balance_steth, user2_pre_balance_steth + user2_expected_steth)
-    # # absorber is depleted of collaterals
+    # absorber should be emptied of any collaterals
+    absorber_post_balance_doge = (await doge_token.balanceOf(absorber.contract_address).execute()).result.balance.low
+    w2d_assert(absorber_post_balance_doge, 0)
+    absorber_post_balance_steth = (await steth_token.balanceOf(absorber.contract_address).execute()).result.balance.low
+    w2d_assert(absorber_post_balance_steth, 0)
     

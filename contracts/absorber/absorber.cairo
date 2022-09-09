@@ -292,7 +292,7 @@ func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 
     // updates all S
     _update_all_S(this_balance, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
-    
+
     let (new_P : felt) = WadRay.sub_unsigned(WadRay.WAD_ONE, yin_loss_per_unit);
     let (new_P : felt) = WadRay.wmul(new_P, curr_P);
     let (new_P : felt) = WadRay.wunsigned_div(new_P, WadRay.WAD_SCALE);
@@ -366,14 +366,6 @@ func _distribute_owed_yang{
         return ();
     }
     let (owed : wad) = get_provider_owed_yang(provider, [yangs]);
-
-    // let (this) = get_contract_address();
-    // let (b) = IERC20.balanceOf(contract_address=[yangs], account=this);
-    // %{
-    //     print(f"Current balance is : {ids.b.low}")
-    //     print(f"Trying to transfer : {ids.owed}")
-    // %}
-
     IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256(owed, 0));
     return _distribute_owed_yang(provider, len - 1, yangs + 1);
 }
