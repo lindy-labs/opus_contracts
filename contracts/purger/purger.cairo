@@ -3,8 +3,8 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_le, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_le
+from starkware.cairo.common.math import assert_nn_le, unsigned_div_rem
+from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.interfaces import IAbbot, IGate, IShrine
@@ -38,7 +38,17 @@ func purger_yin_storage() -> (address: felt) {
 //
 
 @event
-func Purged(trove_id, purge_amt_wad, recipient_address, funder_address, percentage_freed_ray) {
+func Purged(
+    trove_id,
+    purge_amt_wad,
+    recipient_address,
+    funder_address,
+    percentage_freed_ray,
+    yang_addresses_len,
+    yang_addresses: felt*,
+    freed_assets_amt_len,
+    freed_assets_amt: felt*,
+) {
 }
 
 //
@@ -134,9 +144,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Check purge_amt <= max_close_amt
     let (max_close_amt) = get_max_close_amount_internal(shrine_address, trove_id, before_ltv_ray);
-    let is_valid = is_le(purge_amt_wad, max_close_amt);
     with_attr error_message("Purger: Maximum close amount exceeded") {
-        assert is_valid = TRUE;
+        assert_nn_le(purge_amt_wad, max_close_amt);
     }
 
     let (percentage_freed_ray) = get_percentage_freed(
@@ -175,10 +184,20 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         contract_address=shrine_address, trove_id=trove_id
     );
     with_attr error_message("Purger: Loan-to-value ratio increased") {
-        assert_le(after_ltv_ray, before_ltv_ray);
+        assert_nn_le(after_ltv_ray, before_ltv_ray);
     }
 
-    Purged.emit(trove_id, purge_amt_wad, recipient_address, caller_address, percentage_freed_ray);
+    Purged.emit(
+        trove_id,
+        purge_amt_wad,
+        recipient_address,
+        caller_address,
+        percentage_freed_ray,
+        yang_count,
+        &yang_addresses[0],
+        yang_count,
+        &freed_assets_amt[0],
+    );
 
     // The denomination for each value in `freed_assets_amt` will be based on the decimals
     // for the respective asset.
@@ -215,7 +234,7 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     // `rmul` of a wad and a ray returns a wad
     let (close_amt) = WadRay.rmul(debt, close_factor);
 
-    let exceeds_debt = is_le(debt, close_amt);
+    let exceeds_debt = is_nn_le(debt, close_amt);
     if (exceeds_debt == TRUE) {
         return (debt,);
     }
@@ -227,7 +246,13 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
     ltv_ray
 ) -> (ray: felt) {
     // placeholder
-    let (penalty, _) = unsigned_div_rem(ltv_ray, 20);
+    let is_covered = is_nn_le(ltv_ray, WadRay.RAY_ONE);
+    if (is_covered == FALSE) {
+        return (0,);
+    }
+
+    let (rem) = WadRay.sub(WadRay.RAY_ONE, ltv_ray);
+    let (penalty, _) = unsigned_div_rem(rem, 20);
     return (penalty,);
 }
 
@@ -238,7 +263,7 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine_address, trove_id, purge_amt_wad, ltv_ray
 ) -> (ray: felt) {
-    let is_covered = is_le(ltv_ray, WadRay.RAY_ONE);
+    let is_covered = is_nn_le(ltv_ray, WadRay.RAY_ONE);
     if (is_covered == FALSE) {
         let (trove_debt) = IShrine.estimate(contract_address=shrine_address, trove_id=trove_id);
 

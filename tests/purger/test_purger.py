@@ -95,7 +95,9 @@ def get_penalty(ltv: Decimal) -> Decimal:
     """
     Returns the penalty given the LTV.
     """
-    return ltv * Decimal("0.05")
+    if ltv > Decimal("1"):
+        return Decimal("0")
+    return (Decimal("1") - ltv) * Decimal("0.05")
 
 
 def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_debt: Decimal, trove_value: Decimal) -> Decimal:
@@ -344,18 +346,22 @@ async def test_purge(
     # Call purge
     purge = await purger.purge(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
+    # Check return data
+    assert purge.result.yang_addresses == [steth_yang.contract_address, doge_yang.contract_address]
+    freed_steth = purge.result.freed_assets_amt[0]
+    freed_doge = purge.result.freed_assets_amt[1]
+    assert_equalish(from_wad(freed_steth), expected_freed_steth)
+    assert_equalish(from_wad(freed_doge), expected_freed_doge)
+
     # Check event
     assert_event_emitted(
         purge,
         purger.contract_address,
         "Purged",
-        lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER],
+        lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER]
+        and d[5:]
+        == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
     )
-
-    # Check return data
-    assert purge.result.yang_addresses == [steth_yang.contract_address, doge_yang.contract_address]
-    assert_equalish(from_wad(purge.result.freed_assets_amt[0]), expected_freed_steth)
-    assert_equalish(from_wad(purge.result.freed_assets_amt[1]), expected_freed_doge)
 
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
     after_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ray)
