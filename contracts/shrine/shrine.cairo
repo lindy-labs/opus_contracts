@@ -754,7 +754,9 @@ func melt{
     return ();
 }
 
-// Withdraw a specified amount of a Yang from a shrine for liquidation without trove safety check
+// Withdraw a specified amount of a Yang from a Trove without trove safety check.
+// This is intended for liquidations where collateral needs to be withdrawn and transferred to the liquidator
+// even if the trove is still unsafe.
 @external
 func seize{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*

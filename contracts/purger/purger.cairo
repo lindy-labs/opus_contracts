@@ -60,7 +60,7 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return (0,);
     }
 
-    let (trove_ltv_ray) = IShrine.get_current_trove_ratio(
+    let (trove_ltv_ray) = IShrine.get_current_trove_ltv(
         contract_address=shrine_address, trove_id=trove_id
     );
 
@@ -83,7 +83,7 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return (0,);
     }
 
-    let (trove_ltv_ray) = IShrine.get_current_trove_ratio(
+    let (trove_ltv_ray) = IShrine.get_current_trove_ltv(
         contract_address=shrine_address, trove_id=trove_id
     );
 
@@ -124,11 +124,11 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Check that trove can be liquidated
     let (is_healthy) = IShrine.is_healthy(contract_address=shrine_address, trove_id=trove_id);
-    with_attr error_message("Purger: Trove is not liquidatable") {
+    with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
         assert is_healthy = FALSE;
     }
 
-    let (before_ltv_ray) = IShrine.get_current_trove_ratio(
+    let (before_ltv_ray) = IShrine.get_current_trove_ltv(
         contract_address=shrine_address, trove_id=trove_id
     );
 
@@ -171,7 +171,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     // Assert new LTV < old LTV
-    let (after_ltv_ray) = IShrine.get_current_trove_ratio(
+    let (after_ltv_ray) = IShrine.get_current_trove_ltv(
         contract_address=shrine_address, trove_id=trove_id
     );
     with_attr error_message("Purger: Loan-to-value ratio increased") {
@@ -209,8 +209,6 @@ func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine_address, trove_id, trove_ltv_ray
 ) -> (wad: felt) {
-    alloc_locals;
-
     let (close_factor) = get_close_factor(trove_ltv_ray);
     let (debt) = IShrine.estimate(contract_address=shrine_address, trove_id=trove_id);
 
@@ -234,7 +232,7 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 }
 
 // Helper function to calculate percentage of collateral freed.
-// If LTV > 100%. pro-rate based on amount paid down divided by total debt.
+// If LTV > 100%, pro-rate based on amount paid down divided by total debt.
 // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided
 // by total trove value.
 func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -276,8 +274,6 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     percentage_freed_ray,
     freed_assets_amt: felt*,
 ) {
-    alloc_locals;
-
     if (yang_count == 0) {
         return ();
     }
@@ -313,8 +309,6 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     percentage_freed_ray,
     freed_assets_amt: felt*,
 ) {
-    alloc_locals;
-
     let (deposited_amt_wad) = IShrine.get_deposit(
         contract_address=shrine_address, yang_address=yang_address, trove_id=trove_id
     );

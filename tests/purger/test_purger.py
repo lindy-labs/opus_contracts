@@ -300,7 +300,7 @@ async def test_purge(
     assert is_healthy == FALSE
 
     # Get LTV
-    before_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
+    before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ray)
 
     # Check purge penalty
     purge_penalty = from_ray((await purger.get_purge_penalty(TROVE_1).execute()).result.ray)
@@ -358,7 +358,7 @@ async def test_purge(
     assert_equalish(from_wad(purge.result.freed_assets_amt[1]), expected_freed_doge)
 
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
-    after_ltv = from_ray((await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ray)
+    after_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ray)
     assert after_ltv <= before_ltv
 
     # Check collateral tokens balance of searcher
@@ -407,7 +407,7 @@ async def test_purge_fail_trove_healthy(shrine, purger):
     # Get trove debt
     purge_amt = (await shrine.estimate(TROVE_1).execute()).result.wad // 2
 
-    with pytest.raises(StarkException, match="Purger: Trove is not liquidatable"):
+    with pytest.raises(StarkException, match=f"Purger: Trove {TROVE_1} is not liquidatable"):
         await purger.purge(TROVE_1, purge_amt, SEARCHER).execute(caller_address=SEARCHER)
 
 

@@ -131,12 +131,12 @@ async def gate_rebasing(request, starknet, shrine, rebasing_token) -> StarknetCo
 
 
 @pytest.fixture
-async def shrine_authed(shrine, gate, rebasing_token) -> StarknetContract:
+async def shrine_authed(shrine, rebasing_token) -> StarknetContract:
     """
     Add Abbot as an authorized address of Shrine.
     """
 
-    # Grant `Gate` access to `deposit` and `withdraw` in `Shrine`
+    # Grant `Abbot` access to `deposit` and `withdraw` in `Shrine`
     role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
     await shrine.grant_role(role_value, ABBOT).execute(caller_address=SHRINE_OWNER)
 
