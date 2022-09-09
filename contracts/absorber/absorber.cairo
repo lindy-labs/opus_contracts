@@ -169,7 +169,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     // send owed yangs
     let (abbot_address : address) = abbot.read();
     let (len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
-    //_distribute_owed_yang(caller, len, yangs);
+    _distribute_owed_yang(caller, len, yangs);
     // update user's deposit
     deposits.write(caller, 0);
     _decrease_total_deposits(compounded_deposit);
@@ -200,7 +200,6 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 //                INTERNAL                 //
 /////////////////////////////////////////////
 
-
 func _update_loss_and_rewards_units{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -212,19 +211,52 @@ func _update_loss_and_rewards_units{
     amounts_len : felt,
     freed_amounts : felt*,
 ) -> (yin_unit_loss : wad, len : felt, yangs_unit_gains : felt*) {
-    let (lylo : felt) = last_yin_loss_offset.read();
+    alloc_locals;
+    let (last_yin_loss_offset_ : felt) = last_yin_loss_offset.read();
     let (total_deposits_ : felt) = total_deposits.read();
 
     // What is called the yin loss per unit is actually a part of the running product equation.
     // In particular, it corresponds to Q_i / D_(i-1)
-    let (yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
-    let (yin_loss_numerator : felt) = WadRay.sub_unsigned(yin_loss_numerator, lylo);
+    let (local yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
+    let (yin_loss_numerator : felt) = WadRay.sub_unsigned(yin_loss_numerator, last_yin_loss_offset_);
     let (yin_loss_per_unit : felt) = WadRay.wunsigned_div(yin_loss_numerator, total_deposits_);
     let (yin_loss_per_unit : felt) = WadRay.add_unsigned(yin_loss_per_unit, 1);
-    let (lylo : felt) = WadRay.wmul(yin_loss_per_unit, total_deposits_);
-    let (lylo : felt) = WadRay.sub_unsigned(lylo, yin_loss_numerator);
+    let (last_yin_loss_offset_ : felt) = WadRay.wmul(yin_loss_per_unit, total_deposits_);
+    let (last_yin_loss_offset_ : felt) = WadRay.sub_unsigned(last_yin_loss_offset_, yin_loss_numerator);
+    last_yin_loss_offset.write(last_yin_loss_offset_);
 
-    return (yin_loss_per_unit, yangs_len, yangs);
+    let (yangs_unit_gains : felt*) = alloc();
+    _update_yangs_unit_gains(total_deposits_, yangs_len, yangs, amounts_len, freed_amounts, yangs_len, yangs_unit_gains);
+
+    return (yin_loss_per_unit, yangs_len, yangs_unit_gains);
+}
+
+func _update_yangs_unit_gains{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    total_deposits_ : felt,
+    yangs_len : felt,
+    yangs : address*,
+    amounts_len : felt,
+    freed_amounts : felt*,
+    gains_len : felt,
+    gains : felt*
+) {
+    if (yangs_len == 0) {
+        return ();
+    }
+    let (last_yang_loss_offset_ : felt) = last_yang_loss_offset.read([yangs]);
+    let (yang_numerator : felt) = WadRay.wmul([freed_amounts], WadRay.WAD_SCALE);
+    let (yang_numerator : felt) = WadRay.add_unsigned(yang_numerator, last_yang_loss_offset_);
+    let (yang_unit_gain : felt) = WadRay.wunsigned_div(yang_numerator, total_deposits_);
+    let (last_yang_loss_offset_ : felt) = WadRay.sub_unsigned(yang_numerator, yang_unit_gain);
+    let (last_yang_loss_offset_ : felt) = WadRay.wmul(last_yang_loss_offset_, total_deposits_);
+    last_yang_loss_offset.write([yangs], last_yang_loss_offset_);
+    [gains] = yang_unit_gain; //write yang unit gain to array
+
+    return _update_yangs_unit_gains(total_deposits_, yangs_len-1, yangs+1, amounts_len-1, freed_amounts+1, gains_len-1, gains+1);
 }
 
 // Update the "internal" storage variables of the pool.
@@ -254,16 +286,20 @@ func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
     assert yangs_len = freed_len;
     let (
         yin_loss_per_unit : felt,
-        len_gains : felt,
+        gains_len : felt,
         yangs_unit_gains : felt*
     ) = _update_loss_and_rewards_units(to_absorb, yangs_len, yangs, freed_len, freed_amounts);
-    _decrease_total_deposits(to_absorb);
+
     // updates all S
-    _update_all_S(this_balance, curr_P, yangs_len, yangs, freed_len, freed_amounts);
+    _update_all_S(this_balance, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
+    
     let (new_P : felt) = WadRay.sub_unsigned(WadRay.WAD_ONE, yin_loss_per_unit);
     let (new_P : felt) = WadRay.wmul(new_P, curr_P);
     let (new_P : felt) = WadRay.wunsigned_div(new_P, WadRay.WAD_SCALE);
+
     P.write(new_P);
+    _decrease_total_deposits(to_absorb);
+
     return ();
 }
 
@@ -303,33 +339,18 @@ func _update_all_S{
     curr_P : felt,
     yangs_len : felt,
     yangs : address*,
-    freed_len : felt,
-    freed_amounts : felt*
+    gains_len : felt,
+    yangs_unit_gains : felt*
 ) {
     if (yangs_len == 0) {
         return ();
     }
-    _update_single_S(this_balance, curr_P, [yangs], [freed_amounts]);
-    return _update_all_S(this_balance, curr_P, yangs_len - 1, yangs + 1, freed_len - 1, freed_amounts + 1);
-}
-
-// Update the running sum of a single yang.
-func _update_single_S{
-    syscall_ptr : felt*,
-    pedersen_ptr : HashBuiltin*,
-    range_check_ptr
-}(
-    this_balance : wad,
-    curr_P : felt,
-    yang_address : address,
-    freed_amount : felt
-) {
-    let (curr_S : felt) = S.read(yang_address);
-    let (ratio : felt) = WadRay.wunsigned_div(freed_amount, this_balance);
-    let (prod : felt) = WadRay.wmul(curr_P, ratio);
-    let (new_S : felt) = WadRay.add_unsigned(curr_S, prod);
-    S.write(yang_address, new_S);
-    return ();
+    
+    let (curr_S : felt) = S.read([yangs]);
+    let (margin_gain : felt) = WadRay.wmul(curr_P, [yangs_unit_gains]);
+    let (new_S) = WadRay.add_unsigned(curr_S, margin_gain);
+    S.write([yangs], new_S);
+    return _update_all_S(this_balance, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
 }
 
 func _distribute_owed_yang{
@@ -389,15 +410,18 @@ func _decrease_total_deposits{
 
 //Returns the amounts of collaterals the provider is owed.
 @view
-func get_provider_owed_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt, yang : address) -> (amount : wad){
+func get_provider_owed_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt, yang : address) -> (amount : felt){
     let (initial_deposit : wad) = deposits.read(provider);
     let (snapshot : Snapshot) = snapshots.read(provider);
     let (provider_S : felt) = snapshots_S.read(provider, yang);
     let (curr_S : felt) = S.read(yang);
+
     let (S_delta : felt) = WadRay.sub_unsigned(curr_S, provider_S);
-    let (ratio : felt) = WadRay.wunsigned_div(S_delta, snapshot.P);
-    let (amount : wad) = WadRay.wmul(initial_deposit, ratio);
-    return (amount,);
+    let (owed_yang : felt) = WadRay.wmul(initial_deposit, S_delta);
+    let (owed_yang : felt) = WadRay.wunsigned_div(owed_yang, snapshot.P);
+    let (owed_yang : felt) = WadRay.wunsigned_div(owed_yang, WadRay.WAD_SCALE);
+
+    return (owed_yang,);
 }
 
 // Returns the amount of the synthetic asset the provider is owed.

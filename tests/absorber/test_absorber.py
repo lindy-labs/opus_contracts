@@ -175,7 +175,7 @@ async def test_liquidate(
     "aura_user_with_first_trove"
 )
 @pytest.mark.asyncio
-async def test_withdrawing_collaterals(
+async def test_withdrawing(
     starknet,
     shrine,
     abbot,
@@ -235,8 +235,8 @@ async def test_withdrawing_collaterals(
 
     ## balances are correct
     # user 2 should only have 1/3rd of steth
-    #user2_post_balance_steth = (await steth_token.balanceOf(USER_2).execute()).result.balance.low
-    #w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3)
+    user2_post_balance_steth = (await steth_token.balanceOf(USER_2).execute()).result.balance.low
+    w2d_assert(user2_post_balance_steth, pool_steth_balance * 1/3)
     # # absorber should be empty of steth
     # ne = (await yin.balanceOf(AURA_USER).execute()).result.wad
 
