@@ -71,7 +71,6 @@ SHRINE_OWNER = str_to_felt("shrine owner")
 
 
 ADMIN = str_to_felt("admin")
-ABBOT = str_to_felt("abbot")
 BAD_GUY = str_to_felt("bad guy")
 
 STETH_OWNER = str_to_felt("steth owner")
