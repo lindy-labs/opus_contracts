@@ -192,9 +192,7 @@ func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (shrine: address) = yin_shrine_address.read();
 
     // Calling shrine's `move_yin` function, which handles the rest of the transfer logic
-    IShrine.move_yin(
-        contract_address=shrine, src_address=sender, dst_address=recipient, amount=amount
-    );
+    IShrine.move_yin(contract_address=shrine, src=sender, dst=recipient, amount=amount);
 
     Transfer.emit(sender, recipient, amount);
     return ();

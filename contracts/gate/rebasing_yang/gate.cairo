@@ -123,7 +123,7 @@ func deposit{
 
     // Update Shrine
     let shrine: address = Gate.get_shrine();
-    IShrine.deposit(contract_address=shrine, yang_address=asset, trove_id=trove_id, amount=yang);
+    IShrine.deposit(contract_address=shrine, yang=asset, trove_id=trove_id, amount=yang);
 
     // Transfer asset from `user_address` to Gate
     let (assets_uint) = WadRay.to_uint(assets);
@@ -160,7 +160,7 @@ func withdraw{
 
     // Update Shrine
     let shrine: address = Gate.get_shrine();
-    IShrine.withdraw(contract_address=shrine, yang_address=asset, trove_id=trove_id, amount=yang);
+    IShrine.withdraw(contract_address=shrine, yang=asset, trove_id=trove_id, amount=yang);
 
     // Transfer asset from Gate to `user_address`
     let (assets_uint: Uint256) = WadRay.to_uint(assets);
