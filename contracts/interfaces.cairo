@@ -44,12 +44,6 @@ namespace IShrine {
     func get_live() -> (is_live: bool) {
     }
 
-    func get_role(user) -> (role: ufelt) {
-    }
-
-    func get_admin() -> (admin: address) {
-    }
-
     //
     // external
     //
@@ -93,18 +87,6 @@ namespace IShrine {
     }
 
     func seize(trove_id: ufelt) {
-    }
-
-    func grant_role(role: ufelt, account: address) {
-    }
-
-    func revoke_role(role: ufelt, account: address) {
-    }
-
-    func renounce_role(role: ufelt, account: address) {
-    }
-
-    func change_admin(new_admin: address) {
     }
 
     //
@@ -153,12 +135,6 @@ namespace IGate {
     func get_asset() -> (asset: address) {
     }
 
-    func get_role(user) -> (role: ufelt) {
-    }
-
-    func get_admin() -> (admin: address) {
-    }
-
     //
     // external
     //
@@ -169,18 +145,6 @@ namespace IGate {
     }
 
     func kill() {
-    }
-
-    func grant_role(role: ufelt, account: address) {
-    }
-
-    func revoke_role(role: ufelt, account: address) {
-    }
-
-    func renounce_role(role: ufelt, account: address) {
-    }
-
-    func change_admin(new_admin: address) {
     }
 
     //
@@ -199,9 +163,6 @@ namespace IGate {
     }
 
     func preview_withdraw(yang_wad) -> (preview: wad) {
-    }
-
-    func has_role(role, user) -> (has_role: wad) {
     }
 }
 

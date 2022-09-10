@@ -59,6 +59,7 @@ func exp{range_check_ptr}(x: wad) -> wad {
     assert_le(x, MAX_NATURAL_EXPONENT);
 
     // Only positive exponents are handled. e^(-x) is computed as 1 / e^x.
+
     if (is_le(x, -1) == TRUE) {
         let inverted_exp = exp(-x);
         let (exp_x, _) = unsigned_div_rem(ONE_18 * ONE_18, inverted_exp);

@@ -34,9 +34,6 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 const INITIAL_MULTIPLIER = WadRay.RAY_ONE;
 
 const MAX_THRESHOLD = WadRay.RAY_ONE;
-// This is the value of limit divided by threshold
-// If LIMIT_RATIO = 95% and a trove's threshold LTV is 80%, then that trove's limit is (threshold LTV) * LIMIT_RATIO = 76%
-const LIMIT_RATIO = 95 * WadRay.RAY_PERCENT;  // 95%
 
 const TIME_INTERVAL = 30 * 60;  // 30 minutes * 60 seconds per minute
 const TIME_INTERVAL_DIV_YEAR = 57077625570776;  // 1 / (48 30-minute segments per day) / (365 days per year) = 0.000057077625 (wad)
@@ -513,7 +510,7 @@ func move_yang{
 
     // Charge interest for destination trove since its collateral balance will be changed,
     // affecting its personalized interest rate due to the underlying assumption in `appraise_internal`
-    // TODO: maybe move this under `assert_within_limits` call so failed `move_yang` calls are cheaper?
+    // TODO: maybe move this under `assert_healthy` call so failed `move_yang` calls are cheaper?
     // It depends on starknet handles fees for failed transactions
     charge(dst_trove_id);
 
@@ -529,7 +526,7 @@ func move_yang{
     shrine_deposits.write(src_trove_id, yang_id, new_src_balance);
 
     // Assert source trove is within limits
-    assert_within_limits(src_trove_id);
+    assert_healthy(src_trove_id);
 
     // Update yang balance of destination trove
     let (dst_yang_balance: wad) = shrine_deposits.read(dst_trove_id, yang_id);
@@ -645,7 +642,7 @@ func withdraw{
     shrine_deposits.write(trove_id, yang_id, new_trove_balance);
 
     // Check if Trove is within limits
-    assert_within_limits(trove_id);
+    assert_healthy(trove_id);
 
     // Events
     YangUpdated.emit(yang, new_yang_info);
@@ -707,7 +704,7 @@ func forge{
     set_trove(trove_id, new_trove_info);
 
     // Check if Trove is within limits
-    assert_within_limits(trove_id);
+    assert_healthy(trove_id);
 
     // Update the user's yin
     let (user_yin: wad) = shrine_yin.read(user);
@@ -867,7 +864,7 @@ func get_current_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 // Returns the debt a trove owes, including any interest that has accumulated since
 // `Trove.charge_from` but not accrued to `Trove.debt` yet.
 @view
-func estimate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) -> (
+func estimate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
     debt: wad
 ) {
     alloc_locals;
@@ -886,9 +883,9 @@ func estimate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(t
 
 // Returns a bool indicating whether the given trove is healthy or not
 @view
-func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) -> (
-    healthy: bool
-) {
+func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt
+) -> (healthy: bool) {
     alloc_locals;
 
     let (trove: Trove) = get_trove(trove_id);
@@ -905,34 +902,14 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 }
 
 @view
-func is_within_limits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
-) -> (within_limits: bool) {
+) -> (max: wad) {
     alloc_locals;
 
     let (trove: Trove) = get_trove(trove_id);
 
-    // Early terminating if trove has no debt
-    if (trove.debt == 0) {
-        return (TRUE,);
-    }
-
-    let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
-    let limit: ray = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
-    let max_debt: wad = WadRay.rmul(limit, value);  // rmul on a ray and a wad yields a wad
-
-    return (is_le(trove.debt, max_debt),);
-}
-
-@view
-func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) -> (
-    max: wad
-) {
-    alloc_locals;
-
-    let (trove: Trove) = get_trove(trove_id);
-
-    let (can_forge: bool) = is_within_limits(trove_id);
+    let (can_forge: bool) = is_healthy(trove_id);
 
     // Early termination if trove is not within limits
     if (can_forge == FALSE) {
@@ -940,8 +917,7 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     }
 
     let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
-    let limit: ray = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
-    let max_debt: wad = WadRay.rmul(limit, value);
+    let max_debt: wad = WadRay.rmul(threshold, value);
 
     // Get updated debt with interest
     let (current_debt: wad) = estimate(trove_id);
@@ -1310,15 +1286,15 @@ func assert_unhealthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     return ();
 }
 
-func assert_within_limits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) {
     alloc_locals;
 
-    let (within_limits: bool) = is_within_limits(trove_id);
+    let (healthy: bool) = is_healthy(trove_id);
 
     with_attr error_message("Shrine: Trove LTV is too high") {
-        assert within_limits = TRUE;
+        assert healthy = TRUE;
     }
 
     return ();
