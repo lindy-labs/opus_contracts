@@ -555,13 +555,10 @@ func move_yin{
 
     // WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
     with_attr error_message("Shrine: transfer amount exceeds yin balance") {
-        let new_src_balance: wad = WadRay.sub_unsigned(src_balance, amount);
+        shrine_yin.write(src, WadRay.sub_unsigned(src_balance, amount));
     }
 
-    let new_dst_balance: wad = WadRay.add(dst_balance, amount);
-
-    shrine_yin.write(src, new_src_balance);
-    shrine_yin.write(dst, new_dst_balance);
+    shrine_yin.write(dst, WadRay.add(dst_balance, amount));
 
     // No event emissions - this is because `move-yin` should only be called by an
     // ERC20 wrapper contract which emits a `Transfer` event on transfers anyway.
