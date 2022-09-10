@@ -17,7 +17,7 @@ from contracts.shrine.roles import ShrineRoles
 from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
-    get_role,
+    get_roles,
     has_role,
     get_admin,
     grant_role,
@@ -327,7 +327,7 @@ func add_yang{
 
     // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
     // `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
-    let (init_price_and_cumulative_price: packed) = pack_125(initial_price, initial_price);
+    let init_price_and_cumulative_price: packed = pack_125(initial_price, initial_price);
     shrine_yang_price.write(yang_id, current_time_interval, init_price_and_cumulative_price);
 
     // Events
@@ -421,7 +421,7 @@ func constructor{
     // Set initial multiplier value
     let interval: ufelt = now();
     // The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
-    let (init_mul_cumulative_mul: packed) = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER);
+    let init_mul_cumulative_mul: packed = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER);
     shrine_multiplier.write(interval, init_mul_cumulative_mul);
 
     // Events
@@ -459,7 +459,7 @@ func advance{
     // TODO: should there be an overflow check here?
     let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + price;
 
-    let (price_and_cumulative_price: packed) = pack_125(price, new_cumulative);
+    let price_and_cumulative_price: packed = pack_125(price, new_cumulative);
     shrine_yang_price.write(yang_id, interval, price_and_cumulative_price);
 
     YangPriceUpdated.emit(yang, price, new_cumulative, interval);
@@ -488,7 +488,7 @@ func update_multiplier{
     // TODO: should there be an overflow check here?
     let new_cumulative_multiplier: ray = last_cumulative_multiplier + (interval - last_interval - 1) * last_multiplier + new_multiplier;
 
-    let (mul_and_cumulative_mul: packed) = pack_125(new_multiplier, new_cumulative_multiplier);
+    let mul_and_cumulative_mul: packed = pack_125(new_multiplier, new_cumulative_multiplier);
     shrine_multiplier.write(interval, mul_and_cumulative_mul);
 
     MultiplierUpdated.emit(new_multiplier, new_cumulative_multiplier, interval);
@@ -522,7 +522,7 @@ func move_yang{
     // Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang") {
         // WadRay.sub_unsigned asserts (src_yang_balance - amount) >= 0
-        let (new_src_balance: wad) = WadRay.sub_unsigned(src_yang_balance, amount);
+        let new_src_balance: wad = WadRay.sub_unsigned(src_yang_balance, amount);
     }
 
     // Update yang balance of source trove
@@ -533,7 +533,7 @@ func move_yang{
 
     // Update yang balance of destination trove
     let (dst_yang_balance: wad) = shrine_deposits.read(dst_trove_id, yang_id);
-    let (new_dst_balance: wad) = WadRay.add_unsigned(dst_yang_balance, amount);
+    let new_dst_balance: wad = WadRay.add_unsigned(dst_yang_balance, amount);
     shrine_deposits.write(dst_trove_id, yang_id, new_dst_balance);
 
     // Events
@@ -558,10 +558,10 @@ func move_yin{
 
     // WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
     with_attr error_message("Shrine: transfer amount exceeds yin balance") {
-        let (new_src_balance: wad) = WadRay.sub_unsigned(src_balance, amount);
+        let new_src_balance: wad = WadRay.sub_unsigned(src_balance, amount);
     }
 
-    let (new_dst_balance: wad) = WadRay.add(dst_balance, amount);
+    let new_dst_balance: wad = WadRay.add(dst_balance, amount);
 
     shrine_yin.write(src, new_src_balance);
     shrine_yin.write(dst, new_dst_balance);
@@ -590,7 +590,7 @@ func deposit{
     // Update yang balance of system
     let yang_id: ufelt = get_valid_yang_id(yang);
     let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
-    let (new_total: wad) = WadRay.add(old_yang_info.total, amount);
+    let new_total: wad = WadRay.add(old_yang_info.total, amount);
 
     // Asserting that the deposit does not cause the total amount of yang deposited to exceed the max.
     with_attr error_message("Shrine: Exceeds maximum amount of Yang allowed for system") {
@@ -602,7 +602,7 @@ func deposit{
 
     // Update yang balance of trove
     let (trove_yang_balance: wad) = shrine_deposits.read(trove_id, yang_id);
-    let (new_trove_balance: wad) = WadRay.add(trove_yang_balance, amount);
+    let new_trove_balance: wad = WadRay.add(trove_yang_balance, amount);
     shrine_deposits.write(trove_id, yang_id, new_trove_balance);
 
     // Events
@@ -630,14 +630,14 @@ func withdraw{
 
     with_attr error_message("Shrine: Insufficient yang") {
         // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
-        let (new_trove_balance: wad) = WadRay.sub_unsigned(trove_yang_balance, amount);
+        let new_trove_balance: wad = WadRay.sub_unsigned(trove_yang_balance, amount);
     }
 
     // Charge interest
     charge(trove_id);
 
     // Update yang balance of system
-    let (new_total: wad) = WadRay.sub_unsigned(old_yang_info.total, amount);
+    let new_total: wad = WadRay.sub_unsigned(old_yang_info.total, amount);
     let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
     shrine_yangs.write(yang_id, new_yang_info);
 
@@ -679,7 +679,7 @@ func forge{
     let (current_system_debt: wad) = shrine_total_debt.read();
 
     with_attr error_message("Shrine: system debt overflow") {
-        let (new_system_debt: wad) = WadRay.add(current_system_debt, amount);  // WadRay.add checks for overflow
+        let new_system_debt: wad = WadRay.add(current_system_debt, amount);  // WadRay.add checks for overflow
     }
 
     let (debt_ceiling: wad) = shrine_ceiling.read();
@@ -702,7 +702,7 @@ func forge{
     }
 
     // Update trove information
-    let (new_debt: wad) = WadRay.add(old_trove_info.debt, amount);
+    let new_debt: wad = WadRay.add(old_trove_info.debt, amount);
     let new_trove_info: Trove = Trove(charge_from=new_charge_from, debt=new_debt);
     set_trove(trove_id, new_trove_info);
 
@@ -711,12 +711,12 @@ func forge{
 
     // Update the user's yin
     let (user_yin: wad) = shrine_yin.read(user);
-    let (new_user_yin: wad) = WadRay.add(user_yin, amount);
+    let new_user_yin: wad = WadRay.add(user_yin, amount);
     shrine_yin.write(user, new_user_yin);
 
     // Update the total yin
     let (total_yin: wad) = shrine_total_yin.read();
-    let (new_total_yin: wad) = WadRay.add(total_yin, amount);
+    let new_total_yin: wad = WadRay.add(total_yin, amount);
     shrine_total_yin.write(new_total_yin);
 
     // Events
@@ -751,14 +751,14 @@ func melt{
     let (current_system_debt: wad) = shrine_total_debt.read();
 
     with_attr error_message("Shrine: System debt underflow") {
-        let (new_system_debt: wad) = WadRay.sub_unsigned(current_system_debt, amount);  // WadRay.sub_unsigned contains an underflow check
+        let new_system_debt: wad = WadRay.sub_unsigned(current_system_debt, amount);  // WadRay.sub_unsigned contains an underflow check
     }
 
     shrine_total_debt.write(new_system_debt);
 
     // Update trove information
     with_attr error_message("Shrine: cannot pay back more debt than exists in this trove") {
-        let (new_debt: wad) = WadRay.sub_unsigned(old_trove_info.debt, amount);  // Reverts if amount > old_trove_info.debt
+        let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, amount);  // Reverts if amount > old_trove_info.debt
     }
 
     let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
@@ -772,8 +772,8 @@ func melt{
 
     // Reverts if amount > user_yin or amount > total_yin.
     with_attr error_message("Shrine: not enough yin to melt debt") {
-        let (new_user_yin) = WadRay.sub_unsigned(user_yin, amount);
-        let (new_total_yin) = WadRay.sub_unsigned(total_yin, amount);
+        let new_user_yin = WadRay.sub_unsigned(user_yin, amount);
+        let new_total_yin = WadRay.sub_unsigned(total_yin, amount);
     }
 
     shrine_yin.write(user, new_user_yin);
@@ -899,10 +899,9 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     }
 
     let (threshold: ray, value: wad) = get_trove_threshold(trove_id);  // Getting the trove's custom threshold and total collateral value
-    let (max_debt: wad) = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
-    let debt_is_le_max: bool = is_le(trove.debt, max_debt);
+    let max_debt: wad = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
 
-    return (debt_is_le_max,);
+    return (is_le(trove.debt, max_debt),);
 }
 
 @view
@@ -919,16 +918,15 @@ func is_within_limits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     }
 
     let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
-    let (limit: ray) = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
-    let (max_debt: wad) = WadRay.rmul(limit, value);  // rmul on a ray and a wad yields a wad
-    let debt_is_le_max: bool = is_le(trove.debt, max_debt);
+    let limit: ray = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
+    let max_debt: wad = WadRay.rmul(limit, value);  // rmul on a ray and a wad yields a wad
 
-    return (debt_is_le_max,);
+    return (is_le(trove.debt, max_debt),);
 }
 
 @view
 func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) -> (
-    max_forge_amt: wad
+    max: wad
 ) {
     alloc_locals;
 
@@ -942,8 +940,8 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     }
 
     let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
-    let (limit: ray) = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
-    let (max_debt: wad) = WadRay.rmul(limit, value);
+    let limit: ray = WadRay.rmul(LIMIT_RATIO, threshold);  // limit = limit_ratio * threshold
+    let max_debt: wad = WadRay.rmul(limit, value);
 
     // Get updated debt with interest
     let (current_debt: wad) = estimate(trove_id);
@@ -984,7 +982,7 @@ func get_valid_yang_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, trove: Trove
 ) {
-    let (packed_trove: packed) = pack_felt(trove.charge_from, trove.debt);
+    let packed_trove: packed = pack_felt(trove.charge_from, trove.debt);
     shrine_troves.write(trove_id, packed_trove);
     return ();
 }
@@ -1030,7 +1028,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let (old_system_debt: wad) = shrine_total_debt.read();
 
     // Get interest charged
-    let (diff: wad) = WadRay.sub_unsigned(new_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
+    let diff: wad = WadRay.sub_unsigned(new_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
 
     // Get new system debt
     tempvar new_system_debt: wad = old_system_debt + diff;
@@ -1060,20 +1058,17 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let avg_ratio: ray = get_avg_ratio(trove_id, current_debt, start_interval, end_interval);
     let (threshold: ray, _) = get_trove_threshold(trove_id);
-    let (avg_relative_ratio: ray) = WadRay.runsigned_div(avg_ratio, threshold);
+    let avg_relative_ratio: ray = WadRay.runsigned_div(avg_ratio, threshold);
     let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
 
     let base_rate: ray = get_base_rate(avg_relative_ratio);
-    let (true_rate) = WadRay.rmul(base_rate, avg_multiplier);  // represents `r` in the compound interest formula
-
+    let rate: ray = WadRay.rmul(base_rate, avg_multiplier);  // represents `r` in the compound interest formula
     let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
 
     // Using `rmul` on a ray and a wad yields a wad, which we need since `exp` only takes wads
-    let (rt: wad) = WadRay.rmul(true_rate, t);
-    let (e_pow_rt: wad) = exp(rt);
-
-    let (new_debt: wad) = WadRay.wmul(current_debt, e_pow_rt);
-    return new_debt;
+    let compounded_scalar: wad = exp(WadRay.rmul(rate, t));
+    let compounded_debt = WadRay.wmul(current_debt, compounded_scalar);
+    return compounded_debt;
 }
 
 // base rate function:
@@ -1091,33 +1086,24 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func get_base_rate{range_check_ptr}(ratio: ray) -> ray {
     alloc_locals;
 
-    let is_in_first_range: bool = is_le(ratio, RATE_BOUND1);
-    if (is_in_first_range == TRUE) {
-        let rate = linear(ratio, RATE_M1, RATE_B1);
-        return rate;
+    if (is_le(ratio, RATE_BOUND1) == TRUE) {
+        return linear(ratio, RATE_M1, RATE_B1);
     }
 
-    let is_in_second_range: bool = is_le(ratio, RATE_BOUND2);
-    if (is_in_second_range == TRUE) {
-        let rate = linear(ratio, RATE_M2, RATE_B2);
-        return rate;
+    if (is_le(ratio, RATE_BOUND2) == TRUE) {
+        return linear(ratio, RATE_M2, RATE_B2);
     }
 
-    let is_in_third_range: bool = is_le(ratio, RATE_BOUND3);
-    if (is_in_third_range == TRUE) {
-        let rate = linear(ratio, RATE_M3, RATE_B3);
-        return rate;
+    if (is_le(ratio, RATE_BOUND3) == TRUE) {
+        return linear(ratio, RATE_M3, RATE_B3);
     }
 
-    let rate = linear(ratio, RATE_M4, RATE_B4);
-    return rate;
+    return linear(ratio, RATE_M4, RATE_B4);
 }
 
 // y = m*x + b
 func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
-    let (m_x) = WadRay.rmul(m, x);
-    let (y) = WadRay.add(m_x, b);
-    return y;
+    return WadRay.add(WadRay.rmul(m, x), b);
 }
 
 // Calculates the trove's LTV at the given interval.
@@ -1135,7 +1121,7 @@ func trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let value: wad = appraise_internal(trove_id, yang_count, interval, 0);
 
-    let (ratio: ray) = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
+    let ratio: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
     return ratio;
 }
 
@@ -1168,10 +1154,10 @@ func appraise_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         assert_not_zero(price);
     }
 
-    let (value: wad) = WadRay.wmul(balance, price);
+    let value: wad = WadRay.wmul(balance, price);
 
     // Update cumulative value
-    let (updated_cumulative: wad) = WadRay.add_unsigned(cumulative, value);
+    let updated_cumulative: wad = WadRay.add_unsigned(cumulative, value);
 
     // Recursive call
     return appraise_internal(trove_id, yang_id - 1, interval, updated_cumulative);
@@ -1242,7 +1228,7 @@ func get_avg_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (num_yangs: ufelt) = shrine_yangs_count.read();
     let avg_val: wad = get_avg_val_internal(trove_id, start_interval, end_interval, num_yangs, 0);
 
-    let (avg_ratio: ray) = WadRay.runsigned_div(debt, avg_val);  // Dividing two wads with `runsigned_div` yields a ray
+    let avg_ratio: ray = WadRay.runsigned_div(debt, avg_val);  // Dividing two wads with `runsigned_div` yields a ray
     return avg_ratio;
 }
 
@@ -1275,7 +1261,7 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     // `start_interval` (or equally, the price at `end_interval`)
     if (start_interval == end_interval) {
         let (price: wad, _, _) = get_recent_price_from(current_yang_id, start_interval);
-        let (balance_val: wad) = WadRay.wmul(balance, price);
+        let balance_val: wad = WadRay.wmul(balance, price);
         WadRay.assert_result_valid(cumulative_val + balance_val);  // Overflow check
 
         return get_avg_val_internal(
@@ -1298,7 +1284,7 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         end_cumulative_price - start_cumulative_price, end_interval - start_interval
     );
 
-    let (balance_val: wad) = WadRay.wmul(balance, avg_price);
+    let balance_val: wad = WadRay.wmul(balance, avg_price);
     WadRay.assert_result_valid(cumulative_val + balance_val);  // Overflow check
 
     return get_avg_val_internal(
@@ -1350,7 +1336,7 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     if (current_yang_id == 0) {
         if (cumulative_trove_value != 0) {
             // WadRay.wunsigned_div, with the numerator a ray, and the denominator a wad, returns a ray
-            let (threshold: ray) = WadRay.wunsigned_div(
+            let threshold: ray = WadRay.wunsigned_div(
                 cumulative_weighted_threshold, cumulative_trove_value
             );
             return (threshold=threshold, value=cumulative_trove_value);
@@ -1376,14 +1362,14 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
     let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_time_id);
 
-    let (deposited_value: wad) = WadRay.wmul(yang_price, deposited);
+    let deposited_value: wad = WadRay.wmul(yang_price, deposited);
 
     // Since we're using wmul on the product of a wad and a ray, the result is a ray
-    let (weighted_threshold: ray) = WadRay.wmul(yang_threshold, deposited_value);
-    let (cumulative_weighted_threshold: ray) = WadRay.add(
+    let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
+    let cumulative_weighted_threshold: ray = WadRay.add(
         cumulative_weighted_threshold, weighted_threshold
     );
-    let (cumulative_trove_value: wad) = WadRay.add(cumulative_trove_value, deposited_value);
+    let cumulative_trove_value: wad = WadRay.add(cumulative_trove_value, deposited_value);
 
     return get_trove_threshold_internal(
         trove_id,

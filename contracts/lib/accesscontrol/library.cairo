@@ -8,6 +8,8 @@ from starkware.cairo.common.bitwise import bitwise_and, bitwise_not, bitwise_or
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math_cmp import is_not_zero
 
+from contracts.shared.aliases import bool, address, ufelt
+
 //
 // Events
 //
@@ -29,11 +31,11 @@ func AdminChanged(prev_admin, new_admin) {
 //
 
 @storage_var
-func accesscontrol_admin_storage() -> (address: felt) {
+func accesscontrol_admin() -> (admin: address) {
 }
 
 @storage_var
-func accesscontrol_role_storage(account) -> (ufelt: felt) {
+func accesscontrol_roles(account) -> (role: ufelt) {
 }
 
 namespace AccessControl {
@@ -57,8 +59,8 @@ namespace AccessControl {
         bitwise_ptr: BitwiseBuiltin*,
     }(role) {
         alloc_locals;
-        let (caller_address) = get_caller_address();
-        let (authorized) = has_role(role, caller_address);
+        let (caller: address) = get_caller_address();
+        let authorized: bool = has_role(role, caller);
         with_attr error_message("AccessControl: caller is missing role {role}") {
             assert authorized = TRUE;
         }
@@ -67,10 +69,10 @@ namespace AccessControl {
 
     func assert_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
         alloc_locals;
-        let (caller_address) = get_caller_address();
-        let (admin_address) = get_admin();
+        let (caller: address) = get_caller_address();
+        let admin: address = get_admin();
         with_attr error_message("AccessControl: caller is not admin") {
-            assert caller_address = admin_address;
+            assert caller = admin;
         }
         return ();
     }
@@ -79,11 +81,11 @@ namespace AccessControl {
     // Getters
     //
 
-    func get_role{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(account) -> (
-        ufelt: felt
-    ) {
-        let (role) = accesscontrol_role_storage.read(account);
-        return (role,);
+    func get_roles{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        account: address
+    ) -> ufelt {
+        let (roles: ufelt) = accesscontrol_roles.read(account);
+        return roles;
     }
 
     func has_role{
@@ -91,18 +93,17 @@ namespace AccessControl {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(role, account) -> (bool: felt) {
-        let (account_role) = accesscontrol_role_storage.read(account);
-        let (has_role) = bitwise_and(account_role, role);
-        let authorized = is_not_zero(has_role);
-        return (authorized,);
+    }(role: ufelt, account: address) -> bool {
+        let (roles: ufelt) = accesscontrol_roles.read(account);
+        // masks roles such that all bits are zero, except the bit(s) representing `role`, which may be zero or one
+        let (masked_roles: ufelt) = bitwise_and(roles, role);
+        let authorized: bool = is_not_zero(masked_roles);
+        return authorized;
     }
 
-    func get_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-        address: felt
-    ) {
-        let (admin_address) = accesscontrol_admin_storage.read();
-        return (admin_address,);
+    func get_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> address {
+        let (admin: address) = accesscontrol_admin.read();
+        return admin;
     }
 
     //
@@ -114,7 +115,7 @@ namespace AccessControl {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(role, account) {
+    }(role: ufelt, account: address) {
         assert_admin();
         _grant_role(role, account);
         return ();
@@ -136,18 +137,20 @@ namespace AccessControl {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(role, account) {
-        let (caller_address) = get_caller_address();
+    }(role: ufelt, account: address) {
+        let (caller: address) = get_caller_address();
         with_attr error_message("AccessControl: can only renounce roles for self") {
-            assert account = caller_address;
+            assert account = caller;
         }
         _revoke_role(role, account);
         return ();
     }
 
-    func change_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(address) {
+    func change_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        new_admin: address
+    ) {
         assert_admin();
-        _set_admin(address);
+        _set_admin(new_admin);
         return ();
     }
 
@@ -160,10 +163,10 @@ namespace AccessControl {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(role, account) {
-        let (role_value) = accesscontrol_role_storage.read(account);
-        let (updated_role_value) = bitwise_or(role_value, role);
-        accesscontrol_role_storage.write(account, updated_role_value);
+    }(role: ufelt, account: address) {
+        let (roles: ufelt) = accesscontrol_roles.read(account);
+        let (updated_roles: ufelt) = bitwise_or(roles, role);
+        accesscontrol_roles.write(account, updated_roles);
         RoleGranted.emit(role, account);
         return ();
     }
@@ -173,19 +176,21 @@ namespace AccessControl {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(role, account) {
-        let (role_value) = accesscontrol_role_storage.read(account);
-        let (revoked_complement) = bitwise_not(role);
-        let (updated_role_value) = bitwise_and(role_value, revoked_complement);
-        accesscontrol_role_storage.write(account, updated_role_value);
+    }(role: ufelt, account: address) {
+        let (roles: ufelt) = accesscontrol_roles.read(account);
+        let (revoked_complement: ufelt) = bitwise_not(role);
+        let (updated_roles: ufelt) = bitwise_and(roles, revoked_complement);
+        accesscontrol_roles.write(account, updated_roles);
         RoleRevoked.emit(role, account);
         return ();
     }
 
-    func _set_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(address) {
-        let (prev_admin_address) = get_admin();
-        accesscontrol_admin_storage.write(address);
-        AdminChanged.emit(prev_admin_address, address);
+    func _set_admin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        new_admin: address
+    ) {
+        let prev_admin: address = get_admin();
+        accesscontrol_admin.write(new_admin);
+        AdminChanged.emit(prev_admin, new_admin);
         return ();
     }
 }

@@ -66,7 +66,7 @@ def ACC_both(request) -> StarknetContract:
 
 @pytest.mark.asyncio
 async def test_ACC_setup(acc):
-    admin = (await acc.get_admin().execute()).result.address
+    admin = (await acc.get_admin().execute()).result.admin
     assert admin == ACC_OWNER
 
     await acc.assert_admin().execute(caller_address=ACC_OWNER)
@@ -86,7 +86,7 @@ async def test_change_admin(acc, ACC_change_admin):
     )
 
     # Check admin
-    admin = (await acc.get_admin().execute()).result.address
+    admin = (await acc.get_admin().execute()).result.admin
     assert admin == NEW_ACC_OWNER
 
     await acc.assert_admin().execute(caller_address=NEW_ACC_OWNER)
@@ -117,7 +117,7 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
     assert_event_emitted(tx, acc.contract_address, "RoleGranted", [given_role_value, ACC_USER])
 
     # Check role
-    role = (await acc.get_role(ACC_USER).execute()).result.ufelt
+    role = (await acc.get_roles(ACC_USER).execute()).result.roles
     assert role == given_role_value
 
     # Check roles granted
@@ -125,19 +125,19 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
         role_value = r.value
 
         # Check `has_role`
-        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.bool
+        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.has_role
 
         # Check getter
         role_name = r.name.lower()
         getter: Callable = acc.get_contract_function(f"can_{role_name}")
-        can_perform_role = (await getter(ACC_USER).execute()).result.bool
+        can_perform_role = (await getter(ACC_USER).execute()).result.authorized
 
         expected = TRUE if r in given_roles else FALSE
         assert has_role == can_perform_role == expected
 
     # Grant the role again to confirm behaviour is correct
     await acc.grant_role(given_role_value, ACC_USER).execute(caller_address=admin)
-    role = (await acc.get_role(ACC_USER).execute()).result.ufelt
+    role = (await acc.get_roles(ACC_USER).execute()).result.roles
     assert role == given_role_value
 
     # Compute value of revoked role
@@ -149,7 +149,7 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
     assert_event_emitted(tx, acc.contract_address, "RoleRevoked", [revoked_role_value, ACC_USER])
 
     # Check role
-    updated_role = (await acc.get_role(ACC_USER).execute()).result.ufelt
+    updated_role = (await acc.get_roles(ACC_USER).execute()).result.roles
     expected_role = given_role_value & (~revoked_role_value)
     assert updated_role == expected_role
 
@@ -159,12 +159,12 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
         role_value = r.value
 
         # Check `has_role`
-        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.bool
+        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.has_role
 
         # Check getter
         role_name = r.name.lower()
         getter: Callable = acc.get_contract_function(f"can_{role_name}")
-        can_perform_role = (await getter(ACC_USER).execute()).result.bool
+        can_perform_role = (await getter(ACC_USER).execute()).result.authorized
 
         if r in updated_role_list:
             assert has_role == can_perform_role == TRUE
@@ -179,7 +179,7 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
 
     # Revoke the role again to confirm behaviour is as intended
     await acc.revoke_role(revoked_role_value, ACC_USER).execute(caller_address=admin)
-    updated_role = (await acc.get_role(ACC_USER).execute()).result.ufelt
+    updated_role = (await acc.get_roles(ACC_USER).execute()).result.roles
     assert updated_role == expected_role
 
 
@@ -206,7 +206,7 @@ async def test_renounce_role(acc, renounced_roles):
     assert_event_emitted(tx, acc.contract_address, "RoleRevoked", [renounced_role_value, ACC_USER])
 
     # Check role
-    updated_role = (await acc.get_role(ACC_USER).execute()).result.ufelt
+    updated_role = (await acc.get_roles(ACC_USER).execute()).result.roles
     expected_role = SUDO_USER & (~renounced_role_value)
     assert updated_role == expected_role
 
@@ -216,12 +216,12 @@ async def test_renounce_role(acc, renounced_roles):
         role_value = r.value
 
         # Check `has_role`
-        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.bool
+        has_role = (await acc.has_role(role_value, ACC_USER).execute()).result.has_role
 
         # Check getter
         role_name = r.name.lower()
         getter: Callable = acc.get_contract_function(f"can_{role_name}")
-        can_perform_role = (await getter(ACC_USER).execute()).result.bool
+        can_perform_role = (await getter(ACC_USER).execute()).result.authorized
 
         if r in updated_role_list:
             assert has_role == can_perform_role == TRUE
