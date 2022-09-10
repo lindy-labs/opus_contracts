@@ -5,7 +5,7 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import unsigned_div_rem, assert_le, assert_lt
 from starkware.cairo.common.math_cmp import is_le
 
-from contracts.shared.aliases import wad
+from contracts.shared.aliases import wad, bool
 
 // Constants
 const ONE_18 = 10 ** 18;
@@ -59,8 +59,8 @@ func exp{range_check_ptr}(x: wad) -> wad {
     assert_le(x, MAX_NATURAL_EXPONENT);
 
     // Only positive exponents are handled. e^(-x) is computed as 1 / e^x.
-
-    if (is_le(x, -1) == TRUE) {
+    let temp: bool = is_le(x, -1);
+    if (temp == TRUE) {
         let inverted_exp = exp(-x);
         let (exp_x, _) = unsigned_div_rem(ONE_18 * ONE_18, inverted_exp);
         return exp_x;
