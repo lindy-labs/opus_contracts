@@ -6,7 +6,7 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
-    get_role,
+    get_roles,
     has_role,
     get_admin,
     grant_role,
@@ -16,6 +16,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 )
 from tests.lib.accesscontrol.roles import AccRoles
 
+from contracts.shared.aliases import bool, address, ufelt
 //
 // Access Control - Constructor
 //
@@ -23,7 +24,7 @@ from tests.lib.accesscontrol.roles import AccRoles
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin) {
+}(admin: address) {
     AccessControl.initializer(admin);
     return ();
 }
@@ -35,7 +36,7 @@ func constructor{
 @view
 func assert_has_role{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(role) {
+}(role: ufelt) {
     AccessControl.assert_has_role(role);
     return ();
 }
@@ -55,23 +56,23 @@ func assert_admin{
 @view
 func can_execute{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user) -> (bool: felt) {
-    let (authorized) = AccessControl.has_role(AccRoles.EXECUTE, user);
+}(user: address) -> (authorized: bool) {
+    let authorized: bool = AccessControl.has_role(AccRoles.EXECUTE, user);
     return (authorized,);
 }
 
 @view
 func can_write{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user) -> (bool: felt) {
-    let (authorized) = AccessControl.has_role(AccRoles.WRITE, user);
+}(user) -> (authorized: bool) {
+    let authorized: bool = AccessControl.has_role(AccRoles.WRITE, user);
     return (authorized,);
 }
 
 @view
 func can_read{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user) -> (bool: felt) {
-    let (authorized) = AccessControl.has_role(AccRoles.READ, user);
+}(user) -> (authorized: bool) {
+    let authorized: bool = AccessControl.has_role(AccRoles.READ, user);
     return (authorized,);
 }

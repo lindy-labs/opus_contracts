@@ -39,15 +39,62 @@ We follow these conventions when naming things
 
 See sections below for further specific rules.
 
+# Specifying variable and function argument types
+
+Always specify the type of a function argument or return value.
+
+
+## Type Aliases
+
+Cairo lets us create aliases, or custom names, for types, using the `using` key word. This is particularly useful because felts are used to represent many different "types" in Cairo. A felt can contain a boolean (0 or 1), an address, a signed integer, and unsigned integer, a fixed point number, etc. This can make it difficult to determine the "true" type of a given variable, which is why using aliases can help make our code a lot more readable. We currently use the following aliases:
+
+| Alias           | Explanation                                                         |
+|-----------------|---------------------------------------------------------------------|
+| `wad`           | 18-decimal number, in the range [-2**125, 2**125]                   |
+| `ray`           | 27-decimal number, in the range [-2**125, 2**125]                   |
+| `str`           | Cairo short-string                                                  |
+| `bool`          | 0 or 1                                                              |
+| `ufelt`         | 'regular' felt                                                      |
+| `sfelt`         | 'signed' felt, in the range [-2**128 2**128)                        |
+| `address`       | a StarkNet address                                                  |
+| `packed`        | a felt containing multiple values that have been packed together    |
+
+to use these aliases, include the following import in your contract (include aliases in the import statement as needed):
+
+```cairo
+from contracts.shared.aliases import wad, ray, str
+```
+
+#### Examples
+
+Variable Definition:
+```cairo
+let is_le_ten: bool = is_le(4, 10);
+```
+
+Function Definition:
+```cairo
+func foo(eth: address, amount: wad, some_check: bool) -> bool {
+    ...
+}
+
+func bar(values: packed, num_packed: ufelt) -> (first_val: ufelt, second_val: sfelt) {
+    ...
+}
+```
+
+
+
+
 ## @storage_var naming
 
-To prevent `@storage_var` conflicts and clearly distinguish between a local variable and a storage container, a `@storage_var` should be named using the following template: `modulename_variable_name_storage` - that is, the variable name is prefixed by the module name (lowercase, no separation) and suffixed by the string `storage`, separated by underscores.
+To prevent `@storage_var` conflicts and clearly distinguish between a local variable and a storage container, a `@storage_var` should be named using the following template: `modulename_variable_name` - that is, the variable name is prefixed by the module name (lowercase, no separation), separated by an underscore.
 
 An example of a variable named `balance` inside a module called `Treasury`:
 
 ```cairo
 @storage_var
-func treasury_balance_storage() -> (balance : felt) {
+func treasury_balance() -> (balance : felt) {
 }
 ```
 
@@ -80,77 +127,6 @@ When using the `with_attr error_message()` pattern to do a check and raise an er
 ```cairo
 with_attr error_message("direct_deposit: transferFrom failed") {
     assert was_transfered = TRUE;
-}
-```
-
-## Address Variables
-
-Add the `_address` suffix to any variable holding an address. Unlike Solidity, Cairo doesn't yet have an address type, and so adding this suffix makes it clearer to the reader what the variable is and does.
-
-`const usdc = 0x...;` becomes `const usdc_address = 0x...;` and so on.
-
-# Specifying variable and function argument types
-
-If a variable or function type is a felt, don't specify its type with the `: felt` specifier. Return types are an exception to this rule.
-
-If a variable is any type but a felt, always specify its type.
-
-Examples of what to do:
-
-```cairo
-func some_func(a) -> (b : felt) {
-    return (y);
-}
-```
-
-```cairo
-let (output) = some_func(5);
-```
-
-```cairo
-func some_second_func(a : SomeStruct) -> (b : SomeStruct) {
-    return (a);
-}
-```
-
-```cairo
-let (output : SomeStruct) = some_second_func(SomeStruct(4,5));
-```
-
-Example of what NOT to do:
-
-```cairo
-let (output) = some_second_func(SomeStruct(4,5)); # <-- The type of output isn't specified
-```
-
-## Naming of return values for functions and storage variables
-
-Return variables should be named according to their 'type' rather than according to their purpose or function. This is because many different 'types' of variables are all represented by felts: booleans (0 or 1), fixed point numbers, negative numbers, etc.
-
-The naming conventions are the following:
-
-- `bool`: FALSE or TRUE (from bool.cairo, which are equal to 0 and 1 respectively)
-- `wad`: 18 decimal fixed point number
-- `ray`: 27 decimal fixed point number
-- `ufelt`: "regular" felt. Equivalent to `uint` in other languages.
-- `sfelt`: "signed" felt, or a felt that stores the prime-field arithmetic equivalent of negative numbers.
-- `address`: a contract address
-- `packed`: A felt that has had multiple values packed into it
-- Structs: For return variables that are structs, their name should be the struct name in snake case. For example, `SomeStruct` becomes `some_struct`.
-
-These names can be used as a standalone value (1), or as suffixes if you want to communicate the meaning of a value (2) or multiple return values of the same 'type' (3), as illustrated in the following example:
-
-```cairo
-// 1
-func get_price() -> (wad : felt) {
-}
-
-// 2
-func get_price() -> (price_wad : felt) {
-}
-
-// 3
-func get_price_pair() -> (current_price_wad : felt, previous_price_wad : felt) {
 }
 ```
 

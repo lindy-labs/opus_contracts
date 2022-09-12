@@ -7,7 +7,7 @@ from starkware.cairo.common.uint256 import Uint256
 
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
-
+from contracts.shared.aliases import wad, ray, bool, address
 //
 // Constants
 //
@@ -20,15 +20,15 @@ const MAX_TAX = 5 * WadRay.RAY_PERCENT;  // 5%
 //
 
 @event
-func TaxUpdated(prev_tax_ray, new_tax_ray) {
+func TaxUpdated(prev_tax: ray, new_tax: ray) {
 }
 
 @event
-func TaxCollectorUpdated(prev_tax_collector, new_tax_collector) {
+func TaxCollectorUpdated(prev_tax_collector: address, new_tax_collector: address) {
 }
 
 @event
-func TaxLevied(tax_ray) {
+func TaxLevied(tax: wad) {
 }
 
 //
@@ -37,20 +37,20 @@ func TaxLevied(tax_ray) {
 
 // Admin fee charged on yield from underlying - ray
 @storage_var
-func gate_tax_storage() -> (ray: felt) {
+func gate_tax_storage() -> (tax: ray) {
 }
 
 // Address to send admin fees to
 @storage_var
-func gate_tax_collector_storage() -> (address: felt) {
+func gate_tax_collector_storage() -> (tax_collector: address) {
 }
 
 namespace GateTax {
     func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        tax_ray, tax_collector_address
+        tax: ray, tax_collector: address
     ) {
-        set_tax(tax_ray);
-        set_tax_collector(tax_collector_address);
+        set_tax(tax);
+        set_tax_collector(tax_collector);
         return ();
     }
 
@@ -58,45 +58,46 @@ namespace GateTax {
     // Getters
     //
 
-    func get_tax{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (ray: felt) {
-        return gate_tax_storage.read();
+    func get_tax{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> ray {
+        let (tax: ray) = gate_tax_storage.read();
+        return tax;
     }
 
-    func get_tax_collector{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-        address: felt
-    ) {
-        return gate_tax_collector_storage.read();
+    func get_tax_collector{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        ) -> address {
+        let (collector: address) = gate_tax_collector_storage.read();
+        return collector;
     }
 
     //
     // Setters
     //
 
-    func set_tax{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tax_ray) {
+    func set_tax{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tax: ray) {
         // Check that tax is lower than MAX_TAX
         with_attr error_message("Gate: Maximum tax exceeded") {
-            assert_le(tax_ray, MAX_TAX);
+            assert_le(tax, MAX_TAX);
         }
 
-        let (prev_tax_ray) = gate_tax_storage.read();
-        gate_tax_storage.write(tax_ray);
+        let (prev_tax: ray) = gate_tax_storage.read();
+        gate_tax_storage.write(tax);
 
-        TaxUpdated.emit(prev_tax_ray, tax_ray);
+        TaxUpdated.emit(prev_tax, tax);
         return ();
     }
 
     // Update the tax collector address
     func set_tax_collector{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        address
+        new_collector: address
     ) {
         with_attr error_message("Gate: Invalid tax collector address") {
-            assert_not_zero(address);
+            assert_not_zero(new_collector);
         }
 
-        let (prev_tax_collector) = gate_tax_collector_storage.read();
-        gate_tax_collector_storage.write(address);
+        let (prev_collector: address) = gate_tax_collector_storage.read();
+        gate_tax_collector_storage.write(new_collector);
 
-        TaxCollectorUpdated.emit(prev_tax_collector, address);
+        TaxCollectorUpdated.emit(prev_collector, new_collector);
         return ();
     }
 
@@ -106,32 +107,32 @@ namespace GateTax {
 
     // Charge the tax and transfer to the tax collector
     func levy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        asset_address, taxable_wad
+        asset: address, taxable: wad
     ) {
         alloc_locals;
 
         // Get tax
-        let (tax_ray) = gate_tax_storage.read();
+        let (tax: ray) = gate_tax_storage.read();
 
         // Early return if tax is 0
-        if (tax_ray == 0) {
+        if (tax == 0) {
             return ();
         }
 
         // Calculate taxable amount
         // `rmul` on a wad and a ray returns a wad
-        let (chargeable_wad) = WadRay.rmul(taxable_wad, tax_ray);
+        let chargeable: wad = WadRay.rmul(taxable, tax);
 
         // Transfer fees
-        let (tax_collector) = gate_tax_collector_storage.read();
-        let (chargeable_uint256: Uint256) = WadRay.to_uint(chargeable_wad);
-        let (success) = IERC20.transfer(
-            contract_address=asset_address, recipient=tax_collector, amount=chargeable_uint256
+        let (tax_collector: address) = gate_tax_collector_storage.read();
+        let (chargeable_uint256: Uint256) = WadRay.to_uint(chargeable);
+        let (success: bool) = IERC20.transfer(
+            contract_address=asset, recipient=tax_collector, amount=chargeable_uint256
         );
 
         // Events
         if (success == TRUE) {
-            TaxLevied.emit(chargeable_wad);
+            TaxLevied.emit(chargeable);
 
             tempvar syscall_ptr = syscall_ptr;
             tempvar range_check_ptr = range_check_ptr;

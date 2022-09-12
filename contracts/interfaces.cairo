@@ -1,6 +1,7 @@
 %lang starknet
 
 from contracts.shared.types import Trove, Yang
+from contracts.shared.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
 
 @contract_interface
 namespace IShrine {
@@ -10,107 +11,113 @@ namespace IShrine {
     func get_trove(trove_id) -> (trove: Trove) {
     }
 
-    func get_yin(user_address) -> (wad: felt) {
+    func get_yin(user: address) -> (balance: wad) {
     }
 
-    func get_yang(yang_address) -> (yang: Yang) {
+    func get_yang(yang: address) -> (yang: Yang) {
     }
 
-    func get_yangs_count() -> (ufelt: felt) {
+    func get_yangs_count() -> (count: ufelt) {
     }
 
-    func get_deposit(yang_address, trove_id) -> (wad: felt) {
+    func get_deposit(trove_id: ufelt, yang: address) -> (balance: wad) {
     }
 
-    func get_total_debt() -> (wad: felt) {
+    func get_total_debt() -> (total_debt: wad) {
     }
 
-    func get_total_yin() -> (wad: felt) {
+    func get_total_yin() -> (total_yin: wad) {
     }
 
-    func get_yang_price(yang_address, interval) -> (price_wad: felt, cumulative_price_wad: felt) {
+    func get_yang_price(yang_address, interval) -> (price: wad, cumulative_price: wad) {
     }
 
-    func get_ceiling() -> (wad: felt) {
+    func get_ceiling() -> (ceiling: wad) {
     }
 
-    func get_multiplier(interval) -> (multiplier_ray: felt, cumulative_multiplier_ray: felt) {
+    func get_multiplier(interval: ufelt) -> (multiplier: ray, cumulative_multiplier: ray) {
     }
 
-    func get_threshold(yang_address) -> (ray: felt) {
+    func get_threshold(yang: address) -> (threshold: ray) {
     }
 
-    func get_live() -> (bool: felt) {
+    func get_live() -> (is_live: bool) {
     }
 
     //
     // external
     //
-    func add_yang(yang_address, max, threshold, price) {
+    func add_yang(yang: address, max: wad, threshold: ray, price: wad) {
     }
 
-    func update_yang_max(yang_address, new_max) {
+    func update_yang_max(yang: address, new_max: wad) {
     }
 
-    func set_ceiling(new_ceiling) {
+    func set_ceiling(new_ceiling: wad) {
     }
 
-    func set_threshold(yang_address, new_threshold) {
+    func set_threshold(yang: address, new_threshold: wad) {
     }
 
     func kill() {
     }
 
-    func advance(yang_address, price) {
+    func advance(yang: address, price: wad) {
     }
 
-    func update_multiplier(new_multiplier) {
+    func update_multiplier(new_multiplier: ray) {
     }
 
-    func move_yang(yang_address, src_trove_id, dst_trove_id, amount) {
+    func move_yang(yang: address, src_trove_id: ufelt, dst_trove_id: ufelt, amount: wad) {
     }
 
-    func move_yin(src_address, dst_address, amount) {
+    func move_yin(src: address, dst: address, amount: wad) {
     }
 
-    func deposit(yang_address, trove_id, amount) {
+    func deposit(yang: address, trove_id: ufelt, amount: wad) {
     }
 
-    func withdraw(yang_address, trove_id, amount) {
+    func withdraw(yang: address, trove_id: ufelt, amount: wad) {
     }
 
-    func forge(user_address, trove_id, amount) {
+    func forge(user: address, trove_id: ufelt, amount: wad) {
     }
 
-    func melt(user_address, trove_id, amount) {
+    func melt(user: address, trove_id: ufelt, amount: wad) {
     }
 
-    func seize(trove_id) {
+    func seize(trove_id: ufelt) {
     }
 
     //
     // view
     //
-    func get_trove_threshold(trove_id) -> (threshold_ray: felt, value_wad: felt) {
+    func get_trove_threshold(trove_id: ufelt) -> (threshold: ray, value: wad) {
     }
 
-    func get_current_trove_ltv(trove_id) -> (ray: felt) {
+    func get_current_trove_ratio(trove_id: ufelt) -> (ratio: ray) {
     }
 
-    func get_current_yang_price(yang_address) -> (
-        price_wad: felt, cumulative_price_wad: felt, interval_ufelt: felt
+    func get_current_yang_price(yang: address) -> (
+        pric: wad, cumulative_price: wad, interval: ufelt
     ) {
     }
 
     func get_current_multiplier() -> (
-        multiplier_ray: felt, cumulative_multiplier_ray: felt, interval_ufelt: felt
+        multiplier: ray, cumulative_multiplier: ray, interval: ufelt
     ) {
     }
 
-    func estimate(trove_id) -> (wad: felt) {
+    func estimate(trove_id: ufelt) -> (debt: wad) {
     }
 
-    func is_healthy(trove_id) -> (bool: felt) {
+    func is_healthy(trove_id: ufelt) -> (healthy: bool) {
+    }
+
+    func is_within_limits(trove_id: ufelt) -> (within_limits: bool) {
+    }
+
+    func has_role(role: ufelt, user: address) -> (has_role: bool) {
     }
 }
 
@@ -119,22 +126,22 @@ namespace IGate {
     //
     // getters
     //
-    func get_live() -> (bool: felt) {
+    func get_live() -> (is_live: bool) {
     }
 
-    func get_shrine() -> (address: felt) {
+    func get_shrine() -> (shrine: address) {
     }
 
-    func get_asset() -> (address: felt) {
+    func get_asset() -> (asset: address) {
     }
 
     //
     // external
     //
-    func deposit(user_address, trove_id, assets_wad) -> (wad: felt) {
+    func deposit(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
     }
 
-    func withdraw(user_address, trove_id, yang_wad) -> (wad: felt) {
+    func withdraw(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
     }
 
     func kill() {
@@ -143,19 +150,19 @@ namespace IGate {
     //
     // view
     //
-    func get_total_assets() -> (wad: felt) {
+    func get_total_assets() -> (total: wad) {
     }
 
-    func get_total_yang() -> (wad: felt) {
+    func get_total_yang() -> (total: wad) {
     }
 
-    func get_exchange_rate() -> (wad: felt) {
+    func get_exchange_rate() -> (rate: wad) {
     }
 
-    func preview_deposit(assets_wad) -> (wad: felt) {
+    func preview_deposit(assets: wad) -> (preview: wad) {
     }
 
-    func preview_withdraw(yang_wad) -> (wad: felt) {
+    func preview_withdraw(yang_wad) -> (preview: wad) {
     }
 }
 
@@ -165,40 +172,44 @@ namespace IAbbot {
     // getters
     //
 
-    func get_trove_owner(trove_id) -> (address: felt) {
+    func get_trove_owner(trove_id: ufelt) -> (owner: address) {
     }
 
-    func get_user_trove_ids(address) -> (trove_ids_len: felt, trove_ids: felt*) {
+    func get_user_trove_ids(user: address) -> (trove_ids_len: ufelt, trove_ids: ufelt*) {
     }
 
-    func get_yang_addresses() -> (addresses_len: felt, addresses: felt*) {
+    func get_yang_addresses() -> (yangs_len: ufelt, yangs: address*) {
     }
 
-    func get_troves_count() -> (ufelt: felt) {
+    func get_troves_count() -> (count: ufelt) {
     }
 
     //
     // external
     //
 
-    func open_trove(forge_amount, yang_addrs_len, yang_addrs: felt*, amounts_len, amounts: felt*) {
+    func open_trove(
+        forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: wad*
+    ) {
     }
 
-    func close_trove(trove_id) {
+    func close_trove(trove_id: ufelt) {
     }
 
-    func deposit(yang_address, trove_id, amount) {
+    func deposit(yang: address, trove_id: ufelt, amount: wad) {
     }
 
-    func withdraw(yang_address, trove_id, amount) {
+    func withdraw(yang: address, trove_id: ufelt, amount: wad) {
     }
 
-    func forge(trove_id, amount) {
+    func forge(trove_id: ufelt, amount: wad) {
     }
 
-    func melt(trove_id, amount) {
+    func melt(trove_id: ufelt, amount: wad) {
     }
 
-    func add_yang(yang_address, yang_max, yang_threshold, yang_price, gate_address) {
+    func add_yang(
+        yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address
+    ) {
     }
 }
