@@ -134,7 +134,7 @@ async def test_liquidate(
 
     # At this point, AURA_USER and user2 have the same amount of Yin in the Absorber
     aura_user_ratio = amount / (amount + user2_forged_amount)
-    decrease_ration = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
+    absorber_pre_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
 
     # prices change, trove becomes totally liquidatable
     await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
@@ -145,14 +145,14 @@ async def test_liquidate(
     absorbed = (await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)).result.absorbed
     # absorber's liquidity should be decreased by the amount of debt absorbed
     new_pool_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
-    assert new_pool_balance == decrease_ration - expected_max_close_amnt
+    assert new_pool_balance == absorber_pre_balance - expected_max_close_amnt
 
     # both users should see their deposits decreased by 66%
-    decrease_ration = absorbed / decrease_ration
+    decrease_ratio = absorbed / absorber_pre_balance
     aura_user_deposit = (await absorber.get_provider_owed_yin(AURA_USER).execute()).result.yin
     user2_deposit = (await absorber.get_provider_owed_yin(USER_2).execute()).result.yin
-    w2d_assert(aura_user_deposit, amount * (1-decrease_ration))
-    w2d_assert(user2_deposit, user2_forged_amount * (1-decrease_ration))
+    w2d_assert(aura_user_deposit, amount * (1-decrease_ratio))
+    w2d_assert(user2_deposit, user2_forged_amount * (1-decrease_ratio))
 
 
     # someone deposit **after** the liquidation
@@ -272,3 +272,64 @@ async def test_fail_empty_absorber_on_liquidation(
 
     with pytest.raises(StarkException, match="Absorber: liquidation would empty liquidity"):
         await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)
+
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove"
+)
+@pytest.mark.asyncio
+async def test_claim(
+    starknet,
+    shrine,
+    abbot,
+    purger,
+    deployed_pool,
+    yin,
+    steth_yang,
+    doge_yang,
+    steth_token,
+    doge_token,
+    aura_user_with_first_trove):
+    """
+    An user should be able to claim his owed shares of collaterals following a liquidation without having
+    to withdraw his deposit.
+    """
+    absorber = deployed_pool
+    amount = aura_user_with_first_trove
+    
+    # Funds an extra user
+    await fund_user(USER_2, steth_yang, doge_yang, steth_token, doge_token, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+    user2_forged_amount = await open_trove(USER_2, shrine, abbot, steth_yang, doge_yang, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+
+    aura_user_ratio = amount / (amount + user2_forged_amount)
+
+    await yin.approve(absorber.contract_address, amount).execute(caller_address=AURA_USER)
+    await absorber.provide(amount).execute(caller_address=AURA_USER)
+
+    # user2 provides as well
+    await yin.approve(absorber.contract_address, user2_forged_amount).execute(caller_address=USER_2)
+    await absorber.provide(user2_forged_amount).execute(caller_address=USER_2)
+
+    # prices change, trove becomes totally liquidatable
+    await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
+
+    # absorb trove's debt
+    absorbed = (await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)).result.absorbed
+    decrease_ratio = absorbed / (amount + user2_forged_amount)
+
+    absorber_doge_balance = (await doge_token.balanceOf(absorber.contract_address).execute()).result.balance.low
+
+    ## USER_2 claims
+    await absorber.claim().execute(caller_address=USER_2)
+    # yangs claims should be gucci
+    user2_doge_balance = (await doge_token.balanceOf(USER_2).execute()).result.balance.low
+    user2_expected_doge_balance = absorber_doge_balance * (1 - aura_user_ratio)
+    w2d_assert(user2_doge_balance, user2_expected_doge_balance)
+    # deposit should be untouched
+    user2_compounded_deposit = (await absorber.get_provider_owed_yin(USER_2).execute()).result.yin
+    w2d_assert(user2_compounded_deposit, user2_forged_amount * (1-decrease_ratio))
+    # pool should still have user1's (aura user) doge in it
+    absorber_post_doge_balance = (await doge_token.balanceOf(absorber.contract_address).execute()).result.balance.low
+    w2d_assert(absorber_post_doge_balance, absorber_doge_balance - user2_doge_balance)
+

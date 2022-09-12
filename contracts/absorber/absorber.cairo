@@ -131,49 +131,76 @@ func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     let (yin_address : address) = yin.read();
     let (this : address) = get_contract_address();
     let (local caller : address) = get_caller_address();
-    //payout user before crediting deposit
-    let (curr_balance) = deposits.read(caller);
-    // TODO : payout here ...
+    let (current_deposit : wad) = deposits.read(caller);
+
+    // Pre-payout snippet
+    let (abbot_address : address) = abbot.read();
+    let (yangs_len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
+    let (owed : felt*) = alloc();
+    _get_provider_owed_yangs(caller, current_deposit, yangs_len, yangs, yangs_len, owed);
+
+    let (compounded_deposit : wad) = get_provider_owed_yin(caller);
+
     // transfer yin from caller to the absorber
     IYin.transferFrom(contract_address=yin_address, sender=caller, recipient=this, amount=amount);
-    // update balance
-    deposits.write(caller, curr_balance + amount);
     _increase_total_deposits(amount);
-    // update snapshot
-    let (curr_P) = P.read();
-    snapshots.write(caller, Snapshot(P=curr_P));
-    // update all S
-    _update_provider_S(caller);
+
+    // update deposit and snapshots
+    let (new_deposit : wad) = WadRay.add_unsigned(current_deposit, amount);
+    _update_deposit_and_snapshot(caller, new_deposit);
+
+    // payout the owed yangs
+    _distribute_owed_yangs(caller, yangs_len, yangs, yangs_len, owed);
+
     // emit event
     Provided.emit(caller, amount);
     return ();
 }
 
-// Allows user to withdraw his share of collaterals and synth.
-//
-// * before *
-// - re-entrancy check ?
-// - user's balance on pool needs to >= amount
-// * after *
-// - s}s a proportionate share of the seized collaterals to user
-// - s}s leftover synth. balance of the user
-// - zero out deposits of user
+// Allows user to withdraw his share of collaterals and deposit.
+// It withdraws the entire compounded deposit.
 @external
 func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() {
     alloc_locals;
     let (local caller) = get_caller_address();
+    let (deposit : wad) = deposits.read(caller);
+    // get owed yangs
+    let (abbot_address : address) = abbot.read();
+    let (len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
+    let (owed : felt*) = alloc();
+    _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
     // get compounded deposit
     let (compounded_deposit : wad) = get_provider_owed_yin(caller);
     // send deposit
     let (yin_address : address) = yin.read();
     IYin.transfer(contract_address=yin_address, recipient=caller, amount=compounded_deposit);
-    // send owed yangs
-    let (abbot_address : address) = abbot.read();
-    let (len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
-    _distribute_owed_yang(caller, len, yangs);
-    // update user's deposit
-    deposits.write(caller, 0);
     _decrease_total_deposits(compounded_deposit);
+    // update user's deposit
+    _update_deposit_and_snapshot(caller, 0);
+
+    _distribute_owed_yangs(caller, len, yangs, len, owed);
+    return ();
+}
+
+// Allows user to withdraw his owed shares of yangs.
+// It doesn't withdraw any % of the compounded deposit.
+@external
+func claim{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+    let (local caller) = get_caller_address();
+    let (abbot_ : address) = abbot.read();
+    let (deposit : wad) = deposits.read(caller);
+
+    // get yangs gains
+    let (local len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_);
+    let (owed : felt*) = alloc();
+    _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
+    
+    let (compounded_deposit : wad) = get_provider_owed_yin(caller);
+    // update deposit
+    _update_deposit_and_snapshot(caller, compounded_deposit);
+    // send out yangs gains
+    _distribute_owed_yangs(caller, len, yangs, len, owed);
     return ();
 }
 
@@ -205,6 +232,24 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 /////////////////////////////////////////////
 //                INTERNAL                 //
 /////////////////////////////////////////////
+
+func _update_deposit_and_snapshot{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    new_deposit : wad
+) {
+
+    deposits.write(provider, new_deposit);
+    // update P
+    let (curr_P : felt) = P.read();
+    snapshots.write(provider, Snapshot(P=curr_P));
+    // update S
+    _update_provider_S(provider);
+    return ();
+}
 
 func _update_loss_and_rewards_units{
     syscall_ptr : felt*,
@@ -359,21 +404,23 @@ func _update_all_S{
     return _update_all_S(this_balance, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
 }
 
-func _distribute_owed_yang{
+func _distribute_owed_yangs{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
     range_check_ptr
 }(
     provider : address,
-    len : felt,
-    yangs : address*
+    yangs_len : felt,
+    yangs : address*,
+    owed_len : felt,
+    owed : felt*
 ) {
-    if (len == 0) {
+    if (yangs_len == 0) {
         return ();
     }
-    let (owed : wad) = get_provider_owed_yang(provider, [yangs]);
-    IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256(owed, 0));
-    return _distribute_owed_yang(provider, len - 1, yangs + 1);
+
+    IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256([owed], 0));
+    return _distribute_owed_yangs(provider, yangs_len - 1, yangs + 1, owed_len - 1, owed + 1);
 }
 
 func _increase_total_deposits{
@@ -402,33 +449,71 @@ func _decrease_total_deposits{
     return ();
 }
 
+func _get_provider_owed_yangs{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    deposit : wad,
+    yangs_len : felt,
+    yangs : address*,
+    gains_len : felt,
+    gains : felt*
+) {
+    if (yangs_len == 0) {
+        return ();
+    }
+
+    if (deposit == 0) {
+        assert [gains] = 0;
+        return _get_provider_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
+    }
+
+    let (snapshot_S : felt) = snapshots_S.read(provider, [yangs]);
+    let (curr_S : felt) = S.read([yangs]);
+    let (snapshot : Snapshot) = snapshots.read(provider);
+    let (S_delta : felt) = WadRay.sub_unsigned(curr_S, snapshot_S);
+    let (gain : felt) = WadRay.wmul(deposit, S_delta);
+    let (gain : felt) = WadRay.wunsigned_div(gain, snapshot.P);
+    let (gain : felt) = WadRay.wunsigned_div(gain, WadRay.WAD_SCALE);
+    assert [gains] = gain;
+    return _get_provider_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
+
+}
+
 /////////////////////////////////////////////
 //                GETTERS                  //
 /////////////////////////////////////////////
 
-//Returns the amounts of collaterals the provider is owed.
-@view
-func get_provider_owed_yang{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt, yang : address) -> (amount : felt){
-    let (initial_deposit : wad) = deposits.read(provider);
-    let (snapshot : Snapshot) = snapshots.read(provider);
-    let (provider_S : felt) = snapshots_S.read(provider, yang);
-    let (curr_S : felt) = S.read(yang);
-
-    let (S_delta : felt) = WadRay.sub_unsigned(curr_S, provider_S);
-    let (owed_yang : felt) = WadRay.wmul(initial_deposit, S_delta);
-    let (owed_yang : felt) = WadRay.wunsigned_div(owed_yang, snapshot.P);
-    let (owed_yang : felt) = WadRay.wunsigned_div(owed_yang, WadRay.WAD_SCALE);
-
-    return (owed_yang,);
-}
-
 // Returns the amount of the synthetic asset the provider is owed.
 @view
-func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: felt) -> (yin : wad) {
+func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: address) -> (yin : wad) {
     let (initial_deposit : wad) = deposits.read(provider);
+    if (initial_deposit == 0) {
+        return (yin=0,);
+    }
     let (curr_P : felt) = P.read();
     let (snapshot : Snapshot) = snapshots.read(provider);
     let (P_ratio : felt) = WadRay.wunsigned_div(curr_P, snapshot.P);
     let (compounded_deposit : wad) = WadRay.wmul(initial_deposit, P_ratio);
     return (compounded_deposit,);
+}
+
+// Returns the amounts of yangs a given provider (user) can claim.
+//
+// Parameters
+// * provider : the address of the provider 
+//
+// Returns
+// * gains : Array of amounts of claimable yangs
+@view
+func get_provider_owed_yangs{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider : address) -> (owed_len : felt, owed : felt*) {
+    alloc_locals;
+    let (deposit : wad) = deposits.read(provider);
+    let (abbot_ : address) = abbot.read();
+    let (local len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_);
+    let (owed : felt*) = alloc();
+    _get_provider_owed_yangs(provider, deposit, len, yangs, len, owed);
+    return (len, owed);
 }
