@@ -119,12 +119,11 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 //                EXTERNAL                 //
 /////////////////////////////////////////////
 
-// Allows user to provide the synthetic asset allowed by the pool.
+// Allows the user to provide yin and make a deposit.
+// Requires the user to approve absorber spending.
 //
-// * before *
-// - user's balance of synth. needs to be >= amount
-// * after *
-// - credit user's balance on pool
+// Parameters
+// * amount : amount of yin to deposit
 @external
 func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
@@ -195,7 +194,7 @@ func claim{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() 
     let (local len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_);
     let (owed : felt*) = alloc();
     _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
-    
+
     let (compounded_deposit : wad) = get_provider_owed_yin(caller);
     // update deposit
     _update_deposit_and_snapshot(caller, compounded_deposit);
@@ -204,17 +203,13 @@ func claim{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() 
     return ();
 }
 
-// Liquidates a trove ;
-//    - burns an amount of the asset held by the pool equivalent to the trove's debt
-//    - seizes collaterals
+// Liquidates a unhealthy trove by paying off its bad debt and acquiring the collaterals.
 //
-// * before *
-// - re-entrancy check ?
-// - trove id exists
-// - SP has a balance >= trove's debt
-// * after *
-// - proper amount of the asset burned
-// - collaterals seized
+// Parameters
+// * trove_id : id of trove to liquidate
+//
+// Returns
+// * absorbed : amount of debt that was absorbed
 @external
 func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id: felt) -> (absorbed : wad) {
     alloc_locals;
@@ -233,6 +228,11 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 //                INTERNAL                 //
 /////////////////////////////////////////////
 
+// Updates the deposit and snapshot of a provider.
+//
+// Parameters
+// * provider    : address of the provider
+// * new_deposit : new amount of yin to store
 func _update_deposit_and_snapshot{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -251,6 +251,12 @@ func _update_deposit_and_snapshot{
     return ();
 }
 
+// Computes part of the equation of the running products and sums.
+// 
+// Parameters
+// * to_absorb     : debt to absorb
+// * yangs         : array of yangs' addresses
+// * freed_amounts : array of amounts of yangs freed from liquidation
 func _update_loss_and_rewards_units{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -282,6 +288,14 @@ func _update_loss_and_rewards_units{
     return (yin_loss_per_unit, yangs_len, yangs_unit_gains);
 }
 
+// Computes the gain per unit for every yang and updates the error offset.
+// The gains per unit are stored in the gains array passed to the function.
+//
+// Parameters
+// * total_deposits_ : total deposits of yin held by the absorber
+// * yangs           : array of the yangs' addresses
+// * freed_amounts   : array of yangs amounts freed from the trove
+// * gains           : array of the yangs' gains per unit
 func _update_yangs_unit_gains{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -310,10 +324,12 @@ func _update_yangs_unit_gains{
     return _update_yangs_unit_gains(total_deposits_, yangs_len-1, yangs+1, amounts_len-1, freed_amounts+1, gains_len-1, gains+1);
 }
 
-// Update the "internal" storage variables of the pool.
-// - Purges the trove
-// - Updates P, the running product to help us calculate the compounded deposit
-// - The total balance of yin held by the pool
+
+// Purges (liquidates) a unhealthy trove and update the running sums and products.
+//
+// Parameters
+// * trove_id : the id of the trove to liquidate
+// * to_absorb : the trove's bad debt to absorb
 func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, to_absorb: wad) {
     alloc_locals;
     let (this : felt) = get_contract_address();
@@ -355,6 +371,9 @@ func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
 }
 
 // Updates all the S (for every yang) for a given user.
+//
+// Parameters
+// * provider : address of the provider
 func _update_provider_S{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider : address) {
     let (abbot_address : address) = abbot.read();
     let (len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
@@ -363,6 +382,10 @@ func _update_provider_S{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 }
 
 // Updates a single S of a given yang for a given user.
+//
+// Parameters
+// * provider : address of the provider
+// * yangs    : array of yangs' addresses
 func _update_provider_single_S{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -380,7 +403,13 @@ func _update_provider_single_S{
     return _update_provider_single_S(provider, len - 1, yangs + 1);
 }
 
-// Update all the running sums.
+// Update all the running sum for each yang.
+//
+// Parameters
+// * this_balance     : the total balance of yin held by the pool
+// * curr_P           : the running product to help us calculate the compounded deposit
+// * yangs            : array of the yangs' addresses
+// * yangs_unit_gains : array of each yang gain per yin staked
 func _update_all_S{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -404,6 +433,12 @@ func _update_all_S{
     return _update_all_S(this_balance, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
 }
 
+// Transfers owed yangs to a provider.
+//
+// Parameters
+// * provider : address of the provider
+// * yangs    : array of yangs' addresses
+// * owed     : array of owed yangs to send
 func _distribute_owed_yangs{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -423,6 +458,10 @@ func _distribute_owed_yangs{
     return _distribute_owed_yangs(provider, yangs_len - 1, yangs + 1, owed_len - 1, owed + 1);
 }
 
+// Increases the total deposits by the given amount.
+//
+// Parameters
+// * amount : amount to increase total deposits by
 func _increase_total_deposits{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -436,6 +475,10 @@ func _increase_total_deposits{
     return ();
 }
 
+// Decreases the total deposits by the given amount.
+//
+// Parameters
+// * amount : amount to decrease total deposits by
 func _decrease_total_deposits{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -449,6 +492,14 @@ func _decrease_total_deposits{
     return ();
 }
 
+// Sets an array with the amounts of yangs a provider is owed.
+// It does NOT return a new array but relies on an empty array passed as a parameter.
+//
+// Parameters
+// * provider : address of the provider
+// * deposit  : deposit of the provider (yin)
+// * yangs    : array of the yangs' addresses
+// * owed     : array of the amounts of yangs the provider is owed
 func _get_provider_owed_yangs{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -487,6 +538,12 @@ func _get_provider_owed_yangs{
 /////////////////////////////////////////////
 
 // Returns the amount of the synthetic asset the provider is owed.
+//
+// Parameters
+// * provider : the address of the provider
+//
+// Returns
+// * yin : the compounded deposit of the provider
 @view
 func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: address) -> (yin : wad) {
     let (initial_deposit : wad) = deposits.read(provider);
