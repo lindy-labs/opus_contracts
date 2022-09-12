@@ -4,6 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
+from starkware.cairo.common.math import assert_lt
 
 from contracts.interfaces import IShrine, IYin, IPurger, IAbbot
 from contracts.shared.wad_ray import WadRay
@@ -190,8 +191,13 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
 @external
 func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id: felt) -> (absorbed : wad) {
     alloc_locals;
+    let (total_deposits_ : wad) = total_deposits.read();
     let (purger_address) = purger.read();
     let (local amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
+    // cannot empty liquidity of the absorber
+    with_attr error_message("Absorber: liquidation would empty liquidity") {
+        assert_lt(amount, total_deposits_);
+    }
     _purge_and_update(trove_id, amount);
     return (amount,);
 }

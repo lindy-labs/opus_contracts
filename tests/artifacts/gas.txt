@@ -481,3 +481,17 @@ shrine/move_yang: 7524.2
 shrine/move_yang: 7524.2
 shrine/move_yang: 7524.2
 shrine/move_yang: 7524.2
+shrine/deposit: 5185.55
+shrine/deposit: 5185.55
+shrine/withdraw: 5192.7
+shrine/deposit: 5185.55
+shrine/withdraw: 5192.7
+shrine/deposit: 5185.55
+shrine/withdraw: 5192.7
+shrine/withdraw: 5192.7
+shrine/withdraw: 5192.7
+shrine/deposit: 5185.55
+shrine/move_yang: 7524.2
+shrine/move_yang: 7524.2
+shrine/move_yang: 7524.2
+shrine/move_yang: 7524.2
