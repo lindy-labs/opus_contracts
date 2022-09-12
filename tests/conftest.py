@@ -107,7 +107,6 @@ async def starknet() -> Starknet:
 
 @pytest.fixture
 def tokens(
-    request,
     starknet: Starknet,
 ) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
     """
@@ -118,7 +117,7 @@ def tokens(
     initial supply (Uint256) and recipient (int). It returns an instance
     of StarknetContract.
     """
-    contract = compile_contract("tests/mocks/ERC20.cairo", request)
+    contract = compile_contract("tests/mocks/ERC20.cairo")
 
     async def create_token(
         name: str,
@@ -139,15 +138,15 @@ def tokens(
 
 
 @pytest.fixture
-async def usda(request, starknet: Starknet) -> StarknetContract:
+async def usda(starknet: Starknet) -> StarknetContract:
     owner = str_to_felt("usda owner")
-    contract = compile_contract("contracts/USDa/USDa.cairo", request)
+    contract = compile_contract("contracts/USDa/USDa.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[owner])
 
 
 @pytest.fixture
-async def mrac_controller(request, starknet: Starknet) -> StarknetContract:
-    contract = compile_contract("contracts/MRAC/controller.cairo", request)
+async def mrac_controller(starknet: Starknet) -> StarknetContract:
+    contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
 
 
@@ -157,8 +156,8 @@ async def mrac_controller(request, starknet: Starknet) -> StarknetContract:
 
 # Returns the deployed shrine module
 @pytest.fixture
-async def shrine_deploy(request, starknet: Starknet) -> StarknetContract:
-    shrine_contract = compile_contract("contracts/shrine/shrine.cairo", request)
+async def shrine_deploy(starknet: Starknet) -> StarknetContract:
+    shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
 
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 
@@ -244,10 +243,10 @@ async def rebasing_token(tokens) -> StarknetContract:
 
 
 @pytest.fixture
-async def yin(request, starknet, shrine) -> StarknetContract:
+async def yin(starknet, shrine) -> StarknetContract:
 
     # Deploying the yin contract
-    yin_contract = compile_contract("contracts/yin/yin.cairo", request)
+    yin_contract = compile_contract("contracts/yin/yin.cairo")
     deployed_yin = await starknet.deploy(
         contract_class=yin_contract,
         constructor_calldata=[str_to_felt("USD Aura"), str_to_felt("USDa"), 18, shrine.contract_address],

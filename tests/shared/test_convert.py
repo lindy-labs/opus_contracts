@@ -9,8 +9,8 @@ A_UPPER_BOUND = 2**128
 
 
 @pytest.fixture(scope="session")
-async def convert(request, starknet_session: Starknet) -> StarknetContract:
-    contract = compile_contract("tests/shared/test_convert.cairo", request)
+async def convert(starknet_session: Starknet) -> StarknetContract:
+    contract = compile_contract("tests/shared/test_convert.cairo")
     convert = await starknet_session.deploy(contract_class=contract, constructor_calldata=[])
     return convert
 

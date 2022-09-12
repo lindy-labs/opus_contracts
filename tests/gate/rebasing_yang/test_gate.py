@@ -85,11 +85,11 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> D
 
 
 @pytest.fixture
-async def gate_rebasing_tax(request, starknet, shrine, rebasing_token) -> StarknetContract:
+async def gate_rebasing_tax(starknet, shrine, rebasing_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
     """
-    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo", request)
+    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
 
     gate = await starknet.deploy(
         contract_class=contract,
@@ -108,11 +108,11 @@ async def gate_rebasing_tax(request, starknet, shrine, rebasing_token) -> Starkn
 
 
 @pytest.fixture
-async def gate_rebasing(request, starknet, shrine, rebasing_token) -> StarknetContract:
+async def gate_rebasing(starknet, shrine, rebasing_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module, without any autocompounding or tax.
     """
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo", request)
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
@@ -822,8 +822,8 @@ async def test_zero_deposit_withdraw(shrine_authed, gate, rebasing_token, gate_d
 
 
 @pytest.mark.asyncio
-async def test_gate_constructor_invalid_tax(request, shrine, starknet, rebasing_token):
-    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo", request)
+async def test_gate_constructor_invalid_tax(shrine, starknet, rebasing_token):
+    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
 
     with pytest.raises(StarkException):
         await starknet.deploy(

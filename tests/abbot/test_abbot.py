@@ -70,11 +70,11 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def steth_gate(request, starknet, abbot, shrine, steth_token) -> StarknetContract:
+async def steth_gate(starknet, abbot, shrine, steth_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module, without any autocompounding or tax.
     """
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo", request)
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
 
     gate = await starknet.deploy(
         contract_class=contract,
@@ -96,11 +96,11 @@ async def steth_gate(request, starknet, abbot, shrine, steth_token) -> StarknetC
 
 
 @pytest.fixture
-async def doge_gate(request, starknet, abbot, shrine, doge_token) -> StarknetContract:
+async def doge_gate(starknet, abbot, shrine, doge_token) -> StarknetContract:
     """
     Deploys an instance of the Gate module, without any autocompounding or tax.
     """
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo", request)
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
@@ -142,8 +142,8 @@ def shitcoin_yang(shitcoin) -> YangConfig:
 
 
 @pytest.fixture
-async def abbot(request, starknet, shrine) -> StarknetContract:
-    abbot_contract = compile_contract("contracts/abbot/abbot.cairo", request)
+async def abbot(starknet, shrine) -> StarknetContract:
+    abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
         contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, ABBOT_OWNER]
     )
