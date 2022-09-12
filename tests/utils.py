@@ -248,7 +248,6 @@ def estimate_gas(
 def estimate_gas_inner(call_info: FunctionInvocation):
     steps = call_info.execution_resources.n_steps
     builtins = call_info.execution_resources.builtin_instance_counter
-    print(builtins)
 
     # Sum of all gas consumed across both the call and its internal calls
     sum_gas = sum(WEIGHTS[name] * builtins[name] for name in NAMES if builtins.get(name)) + steps * WEIGHTS["step"]

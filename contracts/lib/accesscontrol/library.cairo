@@ -15,15 +15,15 @@ from contracts.shared.aliases import bool, address, ufelt
 //
 
 @event
-func RoleGranted(role, account) {
+func RoleGranted(role: ufelt, account: address) {
 }
 
 @event
-func RoleRevoked(role, account) {
+func RoleRevoked(role: ufelt, account: address) {
 }
 
 @event
-func AdminChanged(prev_admin, new_admin) {
+func AdminChanged(prev_admin: address, new_admin: address) {
 }
 
 //
@@ -35,7 +35,7 @@ func accesscontrol_admin() -> (admin: address) {
 }
 
 @storage_var
-func accesscontrol_roles(account) -> (role: ufelt) {
+func accesscontrol_roles(account: address) -> (role: ufelt) {
 }
 
 namespace AccessControl {
@@ -43,7 +43,9 @@ namespace AccessControl {
     // Initializer
     //
 
-    func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(admin) {
+    func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+        admin: address
+    ) {
         _set_admin(admin);
         return ();
     }
@@ -57,7 +59,7 @@ namespace AccessControl {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(role) {
+    }(role: ufelt) {
         alloc_locals;
         let (caller: address) = get_caller_address();
         let authorized: bool = has_role(role, caller);
