@@ -215,9 +215,10 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     alloc_locals;
     let (total_deposits_ : wad) = total_deposits.read();
     let (purger_address) = purger.read();
-    let (local amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
-    _purge_and_update(trove_id, amount);
-    return (amount,);
+    let (amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
+    let (local to_absorb : felt) = WadRay.min(total_deposits_, amount);
+    _purge_and_update(trove_id, to_absorb);
+    return (to_absorb,);
 }
 
 /////////////////////////////////////////////

@@ -6,6 +6,7 @@ from starkware.cairo.common.math import (
     signed_div_rem,
     unsigned_div_rem,
 )
+from starkware.cairo.common.math_cmp import is_le
 
 from starkware.cairo.common.uint256 import Uint256
 
@@ -36,6 +37,14 @@ namespace WadRay {
             assert_nn_le(n, BOUND);
         }
         return ();
+    }
+
+    func min{range_check_ptr}(a : felt, b : felt) -> (min : felt) {
+        let le = is_le(a, b);
+        if (le == 1) {
+            return (a,);
+        }
+        return (b,);
     }
 
     func floor{range_check_ptr}(n) -> (wad: felt) {
