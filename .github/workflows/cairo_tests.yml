@@ -26,4 +26,4 @@ jobs:
         run: pip3.9 install -r requirements-dev.txt
 
       - name: Run tests
-        run: pytest -sv -r A --cache-clear tests
+        run: pytest -sv -r A tests

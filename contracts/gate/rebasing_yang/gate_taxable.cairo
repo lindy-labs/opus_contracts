@@ -22,7 +22,7 @@ from contracts.gate.rebasing_yang.library_external import (
 from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
-    get_role,
+    get_roles,
     has_role,
     get_admin,
     grant_role,
@@ -32,17 +32,18 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 )
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
+from contracts.shared.aliases import wad, ray, address, ufelt, bool
 
 //
 // Events
 //
 
 @event
-func Deposit(user, trove_id, assets_wad) {
+func Deposit(user: address, trove_id: ufelt, assets: wad) {
 }
 
 @event
-func Withdraw(user, trove_id, assets_wad) {
+func Withdraw(user: address, trove_id: ufelt, assets: wad) {
 }
 
 @event
@@ -54,7 +55,7 @@ func Killed() {
 //
 
 @storage_var
-func gate_live_storage() -> (bool: felt) {
+func gate_live_storage() -> (is_live: bool) {
 }
 
 //
@@ -62,7 +63,9 @@ func gate_live_storage() -> (bool: felt) {
 //
 
 @view
-func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (bool: felt) {
+func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    is_live: bool
+) {
     return gate_live_storage.read();
 }
 
@@ -73,16 +76,16 @@ func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(authed, shrine_address, asset_address, tax, tax_collector_address) {
+}(admin: address, shrine: address, asset: address, tax: ray, tax_collector: address) {
     alloc_locals;
 
-    AccessControl.initializer(authed);
+    AccessControl.initializer(admin);
 
     // Grant permission
-    AccessControl._grant_role(GateRoles.DEFAULT_GATE_TAXABLE_ADMIN_ROLE, authed);
+    AccessControl._grant_role(GateRoles.DEFAULT_GATE_TAXABLE_ADMIN_ROLE, admin);
 
-    Gate.initializer(shrine_address, asset_address);
-    GateTax.initializer(tax, tax_collector_address);
+    Gate.initializer(shrine, asset);
+    GateTax.initializer(tax, tax_collector);
     gate_live_storage.write(TRUE);
     return ();
 }
@@ -92,18 +95,18 @@ func constructor{
 @external
 func set_tax{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(tax_ray) {
+}(tax: ray) {
     AccessControl.assert_has_role(GateRoles.SET_TAX);
-    GateTax.set_tax(tax_ray);
+    GateTax.set_tax(tax);
     return ();
 }
 
 @external
 func set_tax_collector{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(address) {
+}(tax_collector: address) {
     AccessControl.assert_has_role(GateRoles.SET_TAX_COLLECTOR);
-    GateTax.set_tax_collector(address);
+    GateTax.set_tax_collector(tax_collector);
     return ();
 }
 
@@ -124,7 +127,7 @@ func kill{
 @external
 func deposit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user_address, trove_id, assets_wad) {
+}(user: address, trove_id: ufelt, assets: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
@@ -135,23 +138,20 @@ func deposit{
     AccessControl.assert_has_role(GateRoles.DEPOSIT);
 
     // Get asset and gate addresses
-    let (asset_address) = get_asset();
-    let (gate_address) = get_contract_address();
+    let asset: address = get_asset();
+    let gate: address = get_contract_address();
 
     // Transfer asset from `user_address` to Gate
-    let (assets_uint) = WadRay.to_uint(assets_wad);
+    let assets_uint: Uint256 = WadRay.to_uint(assets);
     with_attr error_message("Gate: Transfer of asset failed") {
-        let (success) = IERC20.transferFrom(
-            contract_address=asset_address,
-            sender=user_address,
-            recipient=gate_address,
-            amount=assets_uint,
+        let (success: bool) = IERC20.transferFrom(
+            contract_address=asset, sender=user, recipient=gate, amount=assets_uint
         );
         assert success = TRUE;
     }
 
     // Emit event
-    Deposit.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad);
+    Deposit.emit(user, trove_id, assets);
 
     return ();
 }
@@ -159,7 +159,7 @@ func deposit{
 @external
 func withdraw{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user_address, trove_id, assets_wad) {
+}(user: address, trove_id, assets: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
@@ -167,19 +167,19 @@ func withdraw{
     AccessControl.assert_has_role(GateRoles.WITHDRAW);
 
     // Get asset address
-    let (asset_address) = get_asset();
+    let asset: address = get_asset();
 
     // Transfer asset from Gate to `user_address`
-    let (assets_uint: Uint256) = WadRay.to_uint(assets_wad);
+    let (assets_uint: Uint256) = WadRay.to_uint(assets);
     with_attr error_message("Gate: Transfer of asset failed") {
-        let (success) = IERC20.transfer(
-            contract_address=asset_address, recipient=user_address, amount=assets_uint
+        let (success: bool) = IERC20.transfer(
+            contract_address=asset, recipient=user, amount=assets_uint
         );
         assert success = TRUE;
     }
 
     // Emit events
-    Withdraw.emit(user=user_address, trove_id=trove_id, assets_wad=assets_wad);
+    Withdraw.emit(user, trove_id, assets);
 
     return ();
 }
@@ -190,26 +190,25 @@ func levy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
     // Get asset balance before compound
-    let (before_balance_wad) = Gate.get_total_assets();
+    let before_balance: wad = Gate.get_total_assets();
 
     // Autocompound
     compound();
 
     // Get asset balance after compound
-    let (after_balance_wad) = Gate.get_total_assets();
+    let after_balance: wad = Gate.get_total_assets();
 
     // Assumption: Balance cannot decrease without any user action
-    let unincremented = is_le(after_balance_wad, before_balance_wad);
-    if (unincremented == TRUE) {
+    if (is_le(after_balance, before_balance) == TRUE) {
         return ();
     }
 
     // Get asset address
-    let (asset_address) = Gate.get_asset();
+    let asset: address = Gate.get_asset();
 
     // Charge tax on the taxable amount
-    let taxable_wad = after_balance_wad - before_balance_wad;
-    GateTax.levy(asset_address, taxable_wad);
+    let taxable: wad = after_balance - before_balance;
+    GateTax.levy(asset, taxable);
 
     return ();
 }
@@ -220,9 +219,9 @@ func levy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
 func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     // Check system is live
-    let (live) = gate_live_storage.read();
+    let (is_live: bool) = gate_live_storage.read();
     with_attr error_message("Gate: Gate is not live") {
-        assert live = TRUE;
+        assert is_live = TRUE;
     }
     return ();
 }

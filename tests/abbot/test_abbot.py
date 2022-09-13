@@ -53,7 +53,7 @@ async def aura_user_with_first_trove(abbot, shrine, steth_yang: YangConfig, doge
 @pytest.mark.usefixtures("abbot_with_yangs")
 @pytest.mark.asyncio
 async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_admin().execute()).result.address == ABBOT_OWNER
+    assert (await abbot.get_admin().execute()).result.admin == ABBOT_OWNER
     yang_addrs = (await abbot.get_yang_addresses().execute()).result.addresses
     assert len(yang_addrs) == 2
     assert steth_yang.contract_address in yang_addrs
@@ -137,7 +137,7 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
     # asserts on the Abbot
     assert_event_emitted(tx, abbot.contract_address, "TroveOpened", [AURA_USER, TROVE_1])
     assert (await abbot.get_user_trove_ids(AURA_USER).execute()).result.trove_ids == [TROVE_1]
-    assert (await abbot.get_troves_count().execute()).result.ufelt == TROVE_1
+    assert (await abbot.get_troves_count().execute()).result.count == TROVE_1
 
     # asserts on the gates
     assert_event_emitted(
@@ -272,16 +272,16 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
 
     assert (
         await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
-    ).result.wad == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
+    ).result.balance == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
     assert (
         await shrine.get_deposit(doge_yang.contract_address, TROVE_1).execute()
-    ).result.wad == INITIAL_DOGE_DEPOSIT + fresh_doge_deposit
+    ).result.balance == INITIAL_DOGE_DEPOSIT + fresh_doge_deposit
 
     # depositing 0 should pass, no event on gate (exits early)
     await abbot.deposit(steth_yang.contract_address, TROVE_1, 0).execute(caller_address=AURA_USER)
     assert (
         await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
-    ).result.wad == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
+    ).result.balance == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
 
 
 @pytest.mark.usefixtures("abbot_with_yangs")
@@ -331,10 +331,10 @@ async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
 
     assert (
         await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
-    ).result.wad == INITIAL_STETH_DEPOSIT - steth_withdraw_amount
+    ).result.balance == INITIAL_STETH_DEPOSIT - steth_withdraw_amount
     assert (
         await shrine.get_deposit(doge_yang.contract_address, TROVE_1).execute()
-    ).result.wad == INITIAL_DOGE_DEPOSIT - doge_withdraw_amount
+    ).result.balance == INITIAL_DOGE_DEPOSIT - doge_withdraw_amount
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -363,7 +363,7 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 0, forge_amount])
     assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER, forge_amount])
 
-    assert (await yin.balanceOf(AURA_USER).execute()).result.wad == forge_amount
+    assert (await yin.balanceOf(AURA_USER).execute()).result.balance == forge_amount
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -390,7 +390,7 @@ async def test_melt(abbot, yin, shrine):
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 0, remaining_amount])
     assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER, remaining_amount])
 
-    assert (await yin.balanceOf(AURA_USER).execute()).result.wad == remaining_amount
+    assert (await yin.balanceOf(AURA_USER).execute()).result.balance == remaining_amount
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -408,8 +408,8 @@ async def test_melt_failures(abbot):
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_get_trove_owner(abbot):
-    assert (await abbot.get_trove_owner(TROVE_1).execute()).result.address == AURA_USER
-    assert (await abbot.get_trove_owner(789).execute()).result.address == 0
+    assert (await abbot.get_trove_owner(TROVE_1).execute()).result.owner == AURA_USER
+    assert (await abbot.get_trove_owner(789).execute()).result.owner == 0
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
@@ -421,7 +421,7 @@ async def test_get_user_trove_ids(abbot, steth_yang: YangConfig):
     # opening another trove, checking if it gets added to the array
     await abbot.open_trove(0, [steth_yang.contract_address], [to_wad(2)]).execute(caller_address=AURA_USER)
     assert (await abbot.get_user_trove_ids(AURA_USER).execute()).result.trove_ids == [TROVE_1, 2]
-    assert (await abbot.get_troves_count().execute()).result.ufelt == 2
+    assert (await abbot.get_troves_count().execute()).result.count == 2
 
 
 @pytest.mark.usefixtures("abbot_with_yangs")
@@ -438,7 +438,7 @@ async def test_get_yang_addresses(abbot, steth_yang: YangConfig, doge_yang: Yang
 async def test_get_gate_address(abbot, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
     assert (
         await abbot.get_gate_address(steth_yang.contract_address).execute()
-    ).result.address == steth_gate.contract_address
+    ).result.gate == steth_gate.contract_address
     assert (
         await abbot.get_gate_address(doge_yang.contract_address).execute()
-    ).result.address == doge_gate.contract_address
+    ).result.gate == doge_gate.contract_address

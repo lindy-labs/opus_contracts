@@ -2,6 +2,7 @@
 import os
 from collections import namedtuple
 from decimal import Decimal
+from functools import cache
 from random import seed, uniform
 from typing import Callable, Iterable, List, Tuple, Union
 
@@ -151,35 +152,17 @@ def contract_path(rel_contract_path: str) -> str:
     return os.path.join(here(), "..", rel_contract_path)
 
 
-def compile_contract(rel_contract_path: str, request) -> ContractClass:
+@cache
+def compile_contract(rel_contract_path: str) -> ContractClass:
     contract_src = contract_path(rel_contract_path)
-    contract_cache_key = rel_contract_path + "/compiled"
-    ctime_key = rel_contract_path + "/ctime"
-
-    contract_ctime = int(os.path.getctime(contract_src))
-    last_contract_ctime = request.config.cache.get(ctime_key, None)
-
-    if contract_ctime == last_contract_ctime:
-        # if last access time equals current and there's a cache-hit
-        # return the compiled contract from cache
-        serialized_contract = request.config.cache.get(contract_cache_key, None)
-        if serialized_contract is not None:
-            return ContractClass.loads(serialized_contract)
-
     tld = os.path.join(here(), "..")
-    compiled_contract = compile_starknet_files(
+
+    return compile_starknet_files(
         [contract_src],
         debug_info=True,
         disable_hint_validation=True,
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
     )
-
-    # write compiled contract to cache
-    serialized_contract = ContractClass.dumps(compiled_contract)
-    request.config.cache.set(contract_cache_key, serialized_contract)
-    request.config.cache.set(ctime_key, contract_ctime)
-
-    return compiled_contract
 
 
 #

@@ -5,6 +5,8 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import unsigned_div_rem, assert_le, assert_lt
 from starkware.cairo.common.math_cmp import is_le
 
+from contracts.shared.aliases import wad, bool
+
 // Constants
 const ONE_18 = 10 ** 18;
 
@@ -51,26 +53,24 @@ const a11 = 106449445891785942956;  // eˆ(x11)
 
 // Natural exponential function e^x, with signed 18 decimal fixed point exponent
 
-func exp{range_check_ptr}(x) -> (res: felt) {
+func exp{range_check_ptr}(x: wad) -> wad {
     alloc_locals;
     // Checking that `x` is in the acceptable range for `exp`
     assert_le(x, MAX_NATURAL_EXPONENT);
 
     // Only positive exponents are handled. e^(-x) is computed as 1 / e^x.
-    let x_lt_zero = is_le(x, -1);
-    if (x_lt_zero == TRUE) {
-        let (inverted_exp) = exp(-x);
+    let temp: bool = is_le(x, -1);
+    if (temp == TRUE) {
+        let inverted_exp = exp(-x);
         let (exp_x, _) = unsigned_div_rem(ONE_18 * ONE_18, inverted_exp);
-        return (exp_x,);
+        return exp_x;
     }
 
-    let x_geq_x0 = is_le(x0, x);
-    if (x_geq_x0 == TRUE) {
+    if (is_le(x0, x) == TRUE) {
         tempvar x = x - x0;
         tempvar firstAN = a0;
     } else {
-        let x_geq_x1 = is_le(x1, x);
-        if (x_geq_x1 == TRUE) {
+        if (is_le(x1, x) == TRUE) {
             tempvar x = x - x1;
             tempvar firstAN = a1;
         } else {
@@ -87,9 +87,7 @@ func exp{range_check_ptr}(x) -> (res: felt) {
     // one. Recall that fixed point multiplication requires dividing by ONE_20.
     let product = ONE_20;
 
-    let x_geq_x2 = is_le(x2, x);
-
-    if (x_geq_x2 == TRUE) {
+    if (is_le(x2, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a2, ONE_20);
         tempvar product = product;
         tempvar x = x - x2;
@@ -103,9 +101,7 @@ func exp{range_check_ptr}(x) -> (res: felt) {
     local product = product;
     local x = x;
 
-    let x_geq_x3 = is_le(x3, x);
-
-    if (x_geq_x3 == TRUE) {
+    if (is_le(x3, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a3, ONE_20);
         tempvar product = product;
         tempvar x = x - x3;
@@ -118,9 +114,8 @@ func exp{range_check_ptr}(x) -> (res: felt) {
 
     local product = product;
     local x = x;
-    let x_geq_x4 = is_le(x4, x);
 
-    if (x_geq_x4 == TRUE) {
+    if (is_le(x4, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a4, ONE_20);
         tempvar product = product;
         tempvar x = x - x4;
@@ -133,9 +128,8 @@ func exp{range_check_ptr}(x) -> (res: felt) {
 
     local product = product;
     local x = x;
-    let x_geq_x5 = is_le(x5, x);
 
-    if (x_geq_x5 == TRUE) {
+    if (is_le(x5, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a5, ONE_20);
         tempvar product = product;
         tempvar x = x - x5;
@@ -148,9 +142,8 @@ func exp{range_check_ptr}(x) -> (res: felt) {
 
     local product = product;
     local x = x;
-    let x_geq_x6 = is_le(x6, x);
 
-    if (x_geq_x6 == TRUE) {
+    if (is_le(x6, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a6, ONE_20);
         tempvar product = product;
         tempvar x = x - x6;
@@ -163,9 +156,8 @@ func exp{range_check_ptr}(x) -> (res: felt) {
 
     local product = product;
     local x = x;
-    let x_geq_x7 = is_le(x7, x);
 
-    if (x_geq_x7 == TRUE) {
+    if (is_le(x7, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a7, ONE_20);
         tempvar product = product;
         tempvar x = x - x7;
@@ -178,9 +170,8 @@ func exp{range_check_ptr}(x) -> (res: felt) {
 
     local product = product;
     local x = x;
-    let x_geq_x8 = is_le(x8, x);
 
-    if (x_geq_x8 == TRUE) {
+    if (is_le(x8, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a8, ONE_20);
         tempvar product = product;
         tempvar x = x - x8;
@@ -193,9 +184,8 @@ func exp{range_check_ptr}(x) -> (res: felt) {
 
     local product = product;
     local x = x;
-    let x_geq_x9 = is_le(x9, x);
 
-    if (x_geq_x9 == TRUE) {
+    if (is_le(x9, x) == TRUE) {
         let (product, _) = unsigned_div_rem(product * a9, ONE_20);
         tempvar product = product;
         tempvar x = x - x9;
@@ -265,5 +255,5 @@ func exp{range_check_ptr}(x) -> (res: felt) {
     let (product_times_series_sum, _) = unsigned_div_rem(product * series_sum, ONE_20);
     let (res, _) = unsigned_div_rem(product_times_series_sum * firstAN, 100);
 
-    return (res,);
+    return res;
 }

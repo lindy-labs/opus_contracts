@@ -46,20 +46,20 @@ def shrine_both(request) -> StarknetContract:
 async def test_yin_transfer_pass(shrine_forge, shrine_both, yin):
 
     # Checking TROVE1_OWNER's and USER_2's initial balance
-    u1_bal = (await yin.balanceOf(TROVE1_OWNER).execute()).result.wad
+    u1_bal = (await yin.balanceOf(TROVE1_OWNER).execute()).result.balance
     assert u1_bal == FORGE_AMT_WAD
 
-    u2_bal = (await yin.balanceOf(USER_2).execute()).result.wad
+    u2_bal = (await yin.balanceOf(USER_2).execute()).result.balance
     assert u2_bal == 0
 
     # Transferring all of TROVE1_OWNER's balance to USER_2
     transfer_tx = await yin.transfer(USER_2, FORGE_AMT_WAD).execute(caller_address=TROVE1_OWNER)
-    assert transfer_tx.result.bool == TRUE
+    assert transfer_tx.result.success == TRUE
 
-    u1_new_bal = (await yin.balanceOf(TROVE1_OWNER).execute()).result.wad
+    u1_new_bal = (await yin.balanceOf(TROVE1_OWNER).execute()).result.balance
     assert u1_new_bal == 0
 
-    u2_new_bal = (await yin.balanceOf(USER_2).execute()).result.wad
+    u2_new_bal = (await yin.balanceOf(USER_2).execute()).result.balance
     assert u2_new_bal == FORGE_AMT_WAD
 
     assert_event_emitted(
@@ -90,24 +90,24 @@ async def test_yin_transfer_from_pass(shrine_forge, shrine_both, yin):
 
     # TROVE1_OWNER approves USER_2
     approve_tx = await yin.approve(USER_2, FORGE_AMT_WAD).execute(caller_address=TROVE1_OWNER)
-    assert approve_tx.result.bool == TRUE
+    assert approve_tx.result.success == TRUE
 
     # Checking USER_2's allowance for TROVE1_OWNER
-    allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.wad
+    allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.allowance
     assert allowance == FORGE_AMT_WAD
 
     # USER_2 transfers all of TROVE1_OWNER's funds to USER_3
     await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD).execute(caller_address=USER_2)
 
     # Checking balances
-    u1_bal = (await yin.balanceOf(TROVE1_OWNER).execute()).result.wad
+    u1_bal = (await yin.balanceOf(TROVE1_OWNER).execute()).result.balance
     assert u1_bal == 0
 
-    u3_bal = (await yin.balanceOf(USER_3).execute()).result.wad
+    u3_bal = (await yin.balanceOf(USER_3).execute()).result.balance
     assert u3_bal == FORGE_AMT_WAD
 
     # Checking USER_2's allowance
-    u2_allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.wad
+    u2_allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.allowance
     assert u2_allowance == 0
 
 
@@ -116,7 +116,7 @@ async def test_yin_INFINITE_YIN_ALLOWANCE(shrine_forge, yin):
     # infinite allowance test
     await yin.approve(USER_2, INFINITE_YIN_ALLOWANCE).execute(caller_address=TROVE1_OWNER)
     await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD).execute(caller_address=USER_2)
-    u2_allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.wad
+    u2_allowance = (await yin.allowance(TROVE1_OWNER, USER_2).execute()).result.allowance
     assert u2_allowance == INFINITE_YIN_ALLOWANCE
 
 
@@ -192,7 +192,7 @@ async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin):
 
     # Checking that the user's debt and yin are what we expect them to be
     u1_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    u1_yin = (await shrine.get_yin(TROVE1_OWNER).execute()).result.wad
+    u1_yin = (await shrine.get_yin(TROVE1_OWNER).execute()).result.balance
 
     assert u1_trove.debt == FORGE_AMT_WAD - (FORGE_AMT_WAD // 2 - 1)
 
