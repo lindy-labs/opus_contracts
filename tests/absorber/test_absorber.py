@@ -238,40 +238,6 @@ async def test_withdrawing(
     absorber_post_balance_steth = (await steth_token.balanceOf(absorber.contract_address).execute()).result.balance.low
     w2d_assert(absorber_post_balance_steth, 0)
     
-@pytest.mark.usefixtures(
-    "abbot_with_yangs",
-    "funded_aura_user",
-    "aura_user_with_first_trove"
-)
-@pytest.mark.asyncio
-async def test_fail_empty_absorber_on_liquidation(
-    starknet,
-    shrine,
-    abbot,
-    purger,
-    deployed_pool,
-    yin,
-    steth_yang,
-    doge_yang,
-    steth_token,
-    doge_token,
-    aura_user_with_first_trove):
-    """
-    It's not possible to empty the absorber liquidity with a liquidation.
-    """
-    absorber = deployed_pool
-    amount = aura_user_with_first_trove
-
-    # AURA_USER provides
-    await yin.approve(absorber.contract_address, amount).execute(caller_address=AURA_USER)
-    await absorber.provide(amount).execute(caller_address=AURA_USER)
-
-    pre_pool_yin_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
-    # Price goes down by 50%, trove becomes totally liquidatable
-    await advance_yang_prices_by_percentage(starknet, shrine, [steth_yang, doge_yang], Decimal("-0.5"))
-
-    with pytest.raises(StarkException, match="Absorber: liquidation would empty liquidity"):
-        await absorber.liquidate(TROVE_1).execute(caller_address=AURA_USER)
 
 @pytest.mark.usefixtures(
     "abbot_with_yangs",

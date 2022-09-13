@@ -216,10 +216,6 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let (total_deposits_ : wad) = total_deposits.read();
     let (purger_address) = purger.read();
     let (local amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
-    // cannot empty liquidity of the absorber
-    with_attr error_message("Absorber: liquidation would empty liquidity") {
-        assert_lt(amount, total_deposits_);
-    }
     _purge_and_update(trove_id, amount);
     return (amount,);
 }
