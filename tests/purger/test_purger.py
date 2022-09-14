@@ -194,14 +194,13 @@ async def funded_searcher(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_t
 
 
 @pytest.fixture
-async def purger(starknet, shrine, abbot, yin, steth_gate, doge_gate) -> StarknetContract:
+async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetContract:
     purger_contract = compile_contract("contracts/purger/purger.cairo")
     purger = await starknet.deploy(
         contract_class=purger_contract,
         constructor_calldata=[
             shrine.contract_address,
             abbot.contract_address,
-            yin.contract_address,
         ],
     )
 
@@ -460,7 +459,6 @@ async def test_purge_fail_insufficient_yin(
     starknet,
     shrine,
     purger,
-    yin,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
 ):

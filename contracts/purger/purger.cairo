@@ -30,10 +30,6 @@ func purger_shrine() -> (shrine: address) {
 func purger_abbot() -> (abbot: address) {
 }
 
-@storage_var
-func purger_yin() -> (yin: address) {
-}
-
 //
 // Events
 //
@@ -105,11 +101,10 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, abbot: address, yin: address
+    shrine: address, abbot: address
 ) {
     purger_shrine.write(shrine);
     purger_abbot.write(abbot);
-    purger_yin.write(yin);
     return ();
 }
 
