@@ -4,7 +4,8 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
-from starkware.cairo.common.math import assert_lt
+from starkware.cairo.common.math import assert_lt, assert_le
+from starkware.cairo.common.math_cmp import is_not_zero
 
 from contracts.interfaces import IShrine, IYin, IPurger, IAbbot
 from contracts.shared.wad_ray import WadRay
@@ -17,6 +18,8 @@ from contracts.shared.interfaces import IERC20
 
 struct Snapshot{
     P : felt,
+    // epoch : felt,
+    // scale : felt,
 }
 
 /////////////////////////////////////////////
@@ -52,6 +55,15 @@ func P() -> (P : felt) {
 func S(yang : address) -> (S : felt) {
 }
 
+
+@storage_var
+func current_scale() -> (scale : felt) {
+}
+
+@storage_var
+func current_epoch() -> (epoch : felt) {
+}
+
 // Mapping user => snapshot (of their deposit).
 @storage_var
 func snapshots(provider : address) -> (snapshot : Snapshot) {
@@ -68,6 +80,10 @@ func total_deposits() -> (balance : wad) {
 // Tracks the users' deposits.
 @storage_var
 func deposits(provider : felt) -> (balance : wad) {
+}
+
+@storage_var
+func epoch_to_scale_to_sum(epoch : felt, scale : felt) -> (sum : felt) {
 }
 
 // errors tracking
@@ -216,8 +232,14 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     let (total_deposits_ : wad) = total_deposits.read();
     let (purger_address) = purger.read();
     let (amount : wad) = IPurger.get_max_close_amount(contract_address=purger_address, trove_id=trove_id);
+    if (total_deposits_ == 0) {
+        return (0,);
+    }
+    if (amount == 0) {
+        return (0,);
+    }
     let (local to_absorb : felt) = WadRay.min(total_deposits_, amount);
-    _purge_and_update(trove_id, to_absorb);
+    _purge_and_update(trove_id, total_deposits_, to_absorb);
     return (to_absorb,);
 }
 
@@ -251,33 +273,42 @@ func _update_deposit_and_snapshot{
 // Computes part of the equation of the running products and sums.
 // 
 // Parameters
-// * to_absorb     : debt to absorb
-// * yangs         : array of yangs' addresses
-// * freed_amounts : array of amounts of yangs freed from liquidation
+// * to_absorb       : debt to absorb
+// * total_deposits_ : total deposits absorber holds
+// * yangs           : array of yangs' addresses
+// * freed_amounts   : array of amounts of yangs freed from liquidation
 func _update_loss_and_rewards_units{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
     range_check_ptr
 }(
     to_absorb : wad,
+    total_deposits_ : wad,
     yangs_len : felt,
     yangs : address*,
     amounts_len : felt,
     freed_amounts : felt*,
 ) -> (yin_unit_loss : wad, len : felt, yangs_unit_gains : felt*) {
     alloc_locals;
-    let (last_yin_loss_offset_ : felt) = last_yin_loss_offset.read();
-    let (total_deposits_ : felt) = total_deposits.read();
-
-    // What is called the yin loss per unit is actually a part of the running product equation.
-    // In particular, it corresponds to Q_i / D_(i-1)
-    let (local yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
-    let (yin_loss_numerator : felt) = WadRay.sub_unsigned(yin_loss_numerator, last_yin_loss_offset_);
-    let (yin_loss_per_unit : felt) = WadRay.wunsigned_div(yin_loss_numerator, total_deposits_);
-    let (yin_loss_per_unit : felt) = WadRay.add_unsigned(yin_loss_per_unit, 1);
-    let (last_yin_loss_offset_ : felt) = WadRay.wmul(yin_loss_per_unit, total_deposits_);
-    let (last_yin_loss_offset_ : felt) = WadRay.sub_unsigned(last_yin_loss_offset_, yin_loss_numerator);
-    last_yin_loss_offset.write(last_yin_loss_offset_);
+    with_attr error_message("Absorber: not enough deposits to liquidate") {
+        assert_le(to_absorb, total_deposits_);
+    }
+    if (is_not_zero(total_deposits_ - to_absorb) == 0) {
+        tempvar yin_loss_per_unit = WadRay.WAD_SCALE;
+        last_yin_loss_offset.write(0);
+    } else {
+        let (last_yin_loss_offset_ : felt) = last_yin_loss_offset.read();
+        // What is called the yin loss per unit is actually a part of the running product equation.
+        // In particular, it corresponds to Q_i / D_(i-1)
+        let (local yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
+        let (yin_loss_numerator : felt) = WadRay.sub_unsigned(yin_loss_numerator, last_yin_loss_offset_);
+        let (local _yin_loss_per_unit : felt) = WadRay.wunsigned_div(yin_loss_numerator, total_deposits_);
+        let (_yin_loss_per_unit : felt) = WadRay.add_unsigned(_yin_loss_per_unit, 1);
+        let (last_yin_loss_offset_ : felt) = WadRay.wmul(_yin_loss_per_unit, total_deposits_);
+        let (last_yin_loss_offset_ : felt) = WadRay.sub_unsigned(last_yin_loss_offset_, yin_loss_numerator);
+        tempvar yin_loss_per_unit = _yin_loss_per_unit;
+        last_yin_loss_offset.write(last_yin_loss_offset_);
+    }
 
     let (yangs_unit_gains : felt*) = alloc();
     _update_yangs_unit_gains(total_deposits_, yangs_len, yangs, amounts_len, freed_amounts, yangs_len, yangs_unit_gains);
@@ -327,13 +358,20 @@ func _update_yangs_unit_gains{
 // Parameters
 // * trove_id : the id of the trove to liquidate
 // * to_absorb : the trove's bad debt to absorb
-func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(trove_id : felt, to_absorb: wad) {
+func _purge_and_update{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    trove_id : felt,
+    total_deposits_ : wad,
+    to_absorb: wad
+) {
     alloc_locals;
     let (this : felt) = get_contract_address();
     let (shrine_address : felt) = shrine.read();
     let (purger_address : felt) = purger.read();
     let (curr_P : felt) = P.read();
-    let (this_balance) = total_deposits.read();
     // burn Yin
     // Spending approval already done in constructor
     let (
@@ -352,10 +390,10 @@ func _purge_and_update{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_c
         yin_loss_per_unit : felt,
         gains_len : felt,
         yangs_unit_gains : felt*
-    ) = _update_loss_and_rewards_units(to_absorb, yangs_len, yangs, freed_len, freed_amounts);
+    ) = _update_loss_and_rewards_units(to_absorb, total_deposits_, yangs_len, yangs, freed_len, freed_amounts);
 
     // updates all S
-    _update_all_S(this_balance, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
+    _update_all_S(total_deposits_, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
 
     let (new_P : felt) = WadRay.sub_unsigned(WadRay.WAD_ONE, yin_loss_per_unit);
     let (new_P : felt) = WadRay.wmul(new_P, curr_P);
