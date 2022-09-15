@@ -831,8 +831,8 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [deposit_amt_wad], [YANG_0_THRESHOLD])
-    assert_equalish(max_forge_amt, expected_limit)
+    expected_max_forge_amt = calculate_max_forge([yang_price], [deposit_amt_wad], [YANG_0_THRESHOLD])
+    assert_equalish(max_forge_amt, expected_max_forge_amt)
 
 
 @pytest.mark.asyncio
@@ -913,8 +913,8 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [remaining_amt_wad], [YANG_0_THRESHOLD])
-    assert_equalish(max_forge_amt, expected_limit)
+    expected_max_forge_amt = calculate_max_forge([yang_price], [remaining_amt_wad], [YANG_0_THRESHOLD])
+    assert_equalish(max_forge_amt, expected_max_forge_amt)
 
 
 @pytest.mark.usefixtures("shrine_forge")
@@ -1044,9 +1044,9 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
+    expected_max_forge_amt = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
     current_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.debt)
-    assert_equalish(max_forge_amt, expected_limit - current_debt)
+    assert_equalish(max_forge_amt, expected_max_forge_amt - current_debt)
 
 
 @pytest.mark.asyncio
@@ -1116,8 +1116,8 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     # Check max forge amount
     yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
-    assert_equalish(max_forge_amt, expected_limit)
+    expected_max_forge_amt = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
+    assert_equalish(max_forge_amt, expected_max_forge_amt)
 
 
 @pytest.mark.usefixtures("shrine_forge")
