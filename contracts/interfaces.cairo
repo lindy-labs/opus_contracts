@@ -95,7 +95,7 @@ namespace IShrine {
     func get_trove_threshold(trove_id: ufelt) -> (threshold: ray, value: wad) {
     }
 
-    func get_current_trove_ratio(trove_id: ufelt) -> (ratio: ray) {
+    func get_current_trove_ltv(trove_id: ufelt) -> (ratio: ray) {
     }
 
     func get_current_yang_price(yang: address) -> (

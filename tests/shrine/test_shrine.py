@@ -904,7 +904,7 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
     assert amt == remaining_amt_wad
 
-    ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     assert ltv == 0
 
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
@@ -948,7 +948,7 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
     assert amt == remaining_amt_wad
 
-    ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     expected_ltv = from_wad(FORGE_AMT_WAD) / (from_wad(price) * from_wad(remaining_amt_wad))
     assert_equalish(from_ray(ltv), expected_ltv)
 
@@ -1033,7 +1033,7 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert trove.charge_from == FEED_LEN - 1
 
     yang0_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
-    trove_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    trove_ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
     expected_ltv = Decimal(forge_amt_wad) / Decimal(10 * yang0_price)
     assert_equalish(adjusted_trove_ltv, expected_ltv)
@@ -1107,7 +1107,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert trove.debt == 0
     assert trove.charge_from == FEED_LEN - 1
 
-    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    shrine_ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     assert shrine_ltv == 0
 
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
@@ -1147,7 +1147,7 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
     assert trove.debt == outstanding_amt_wad
     assert trove.charge_from == FEED_LEN - 1
 
-    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    shrine_ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     expected_ltv = from_wad(outstanding_amt_wad) / (INITIAL_DEPOSIT * from_wad(price))
     assert_equalish(from_ray(shrine_ltv), expected_ltv)
 

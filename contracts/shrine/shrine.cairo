@@ -824,17 +824,16 @@ func get_trove_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 }
 
 // Calculate a Trove's current loan-to-value ratio
-// returns a ray
 @view
-func get_current_trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_current_trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
-) -> (ratio: ray) {
+) -> (ltv: ray) {
     alloc_locals;
 
     let (trove: Trove) = get_trove(trove_id);
     let interval: ufelt = now();
-    let ratio = trove_ratio(trove_id, interval, trove.debt);
-    return (ratio,);
+    let ltv = trove_ltv(trove_id, interval, trove.debt);
+    return (ltv,);
 }
 
 // Get the last updated price for a yang
@@ -1029,12 +1028,12 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> wad {
     alloc_locals;
 
-    let avg_ratio: ray = get_avg_ratio(trove_id, current_debt, start_interval, end_interval);
+    let avg_ltv: ray = get_avg_ltv(trove_id, current_debt, start_interval, end_interval);
     let (threshold: ray, _) = get_trove_threshold(trove_id);
-    let avg_relative_ratio: ray = WadRay.runsigned_div(avg_ratio, threshold);
+    let avg_relative_ltv: ray = WadRay.runsigned_div(avg_ltv, threshold);
     let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
 
-    let base_rate: ray = get_base_rate(avg_relative_ratio);
+    let base_rate: ray = get_base_rate(avg_relative_ltv);
     let rate: ray = WadRay.rmul(base_rate, avg_multiplier);  // represents `r` in the compound interest formula
     let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
 
@@ -1056,22 +1055,22 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 //
 //
 
-func get_base_rate{range_check_ptr}(ratio: ray) -> ray {
+func get_base_rate{range_check_ptr}(rltv: ray) -> ray {
     alloc_locals;
 
-    if (is_le(ratio, RATE_BOUND1) == TRUE) {
-        return linear(ratio, RATE_M1, RATE_B1);
+    if (is_le(rltv, RATE_BOUND1) == TRUE) {
+        return linear(rltv, RATE_M1, RATE_B1);
     }
 
-    if (is_le(ratio, RATE_BOUND2) == TRUE) {
-        return linear(ratio, RATE_M2, RATE_B2);
+    if (is_le(rltv, RATE_BOUND2) == TRUE) {
+        return linear(rltv, RATE_M2, RATE_B2);
     }
 
-    if (is_le(ratio, RATE_BOUND3) == TRUE) {
-        return linear(ratio, RATE_M3, RATE_B3);
+    if (is_le(rltv, RATE_BOUND3) == TRUE) {
+        return linear(rltv, RATE_M3, RATE_B3);
     }
 
-    return linear(ratio, RATE_M4, RATE_B4);
+    return linear(rltv, RATE_M4, RATE_B4);
 }
 
 // y = m*x + b
@@ -1083,7 +1082,7 @@ func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
 // See comments above `appraise_internal` for the underlying assumption on which the correctness of the result depends.
 // Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 // Returns a ray.
-func trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, interval: ufelt, debt: wad
 ) -> ray {
     // Early termination if no debt
@@ -1094,8 +1093,8 @@ func trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let value: wad = appraise_internal(trove_id, yang_count, interval, 0);
 
-    let ratio: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
-    return ratio;
+    let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
+    return ltv;
 }
 
 // Gets the value of a trove at the yang prices at the given interval.
@@ -1195,14 +1194,14 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
 // Returns the average LTV of a trove over the specified time period
 // Assumes debt remains constant over this period
-func get_avg_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_avg_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> ray {
     let (num_yangs: ufelt) = shrine_yangs_count.read();
     let avg_val: wad = get_avg_val_internal(trove_id, start_interval, end_interval, num_yangs, 0);
 
-    let avg_ratio: ray = WadRay.runsigned_div(debt, avg_val);  // Dividing two wads with `runsigned_div` yields a ray
-    return avg_ratio;
+    let avg_ltv: ray = WadRay.runsigned_div(debt, avg_val);  // Dividing two wads with `runsigned_div` yields a ray
+    return avg_ltv;
 }
 
 // Returns the average value of a trove over the specified period of time
@@ -1286,8 +1285,6 @@ func assert_unhealthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) {
-    alloc_locals;
-
     let (healthy: bool) = is_healthy(trove_id);
 
     with_attr error_message("Shrine: Trove LTV is too high") {
