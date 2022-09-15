@@ -299,3 +299,87 @@ async def test_claim(
     absorber_post_doge_balance = (await doge_token.balanceOf(absorber.contract_address).execute()).result.balance.low
     w2d_assert(absorber_post_doge_balance, absorber_doge_balance - user2_doge_balance)
 
+
+
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove"
+)
+@pytest.mark.asyncio
+async def test_interests(
+    starknet,
+    shrine,
+    abbot,
+    purger,
+    deployed_pool,
+    yin,
+    steth_yang,
+    doge_yang,
+    steth_token,
+    doge_token,
+    aura_user_with_first_trove):
+    """
+    Tests if the interest paid are correctly distributed to the providers.
+    """
+    absorber = deployed_pool
+    amount = aura_user_with_first_trove
+    aura_user_provided_amount = amount // 2
+    
+    # Funds an extra user
+    await fund_user(USER_2, steth_yang, doge_yang, steth_token, doge_token, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+    user2_forged_amount = await open_trove(USER_2, shrine, abbot, steth_yang, doge_yang, USER_2_STETH_DEPOSIT_WAD, USER_2_DOGE_DEPOSIT_WAD)
+
+    aura_user_ratio = aura_user_provided_amount / (aura_user_provided_amount + user2_forged_amount)
+
+    await yin.approve(absorber.contract_address, aura_user_provided_amount).execute(caller_address=AURA_USER)
+    await absorber.provide(aura_user_provided_amount).execute(caller_address=AURA_USER)
+
+    # user2 provides as well
+    await yin.approve(absorber.contract_address, user2_forged_amount).execute(caller_address=USER_2)
+    await absorber.provide(user2_forged_amount).execute(caller_address=USER_2)
+
+    interests_to_send = amount // 10
+    # yin as interest is sent to the absorber
+    await yin.approve(absorber.contract_address, interests_to_send).execute(caller_address=AURA_USER)
+    await absorber.transfer_interests(yin.contract_address, interests_to_send).execute(caller_address=AURA_USER)
+
+
+    # aura_user and USER_2 claim interests once
+    await absorber.claim().execute(caller_address=AURA_USER)
+    await absorber.claim().execute(caller_address=USER_2)
+
+    ## check that balances are correct
+    # user2 yin balance should be zero before claiming
+    user2_yin_balance = (await yin.balanceOf(USER_2).execute()).result.wad
+    user2_expected_yin_balance = interests_to_send * (1-aura_user_ratio)
+    w2d_assert(user2_yin_balance, user2_expected_yin_balance)
+
+    aura_user_yin_balance = (await yin.balanceOf(AURA_USER).execute()).result.wad
+    aura_user_expected_yin_balance = aura_user_provided_amount - interests_to_send + (interests_to_send) * aura_user_ratio
+    w2d_assert(aura_user_yin_balance, aura_user_expected_yin_balance)
+
+    # yin interests paid shouldn't affect total deposits
+    absorber_yin_balance = (await yin.balanceOf(absorber.contract_address).execute()).result.wad
+    absorber_expected_yin_balance = aura_user_provided_amount + user2_forged_amount
+    w2d_assert(absorber_yin_balance, absorber_expected_yin_balance)
+
+
+    # claiming twice won't transfer anymore yin
+    await absorber.claim().execute(caller_address=USER_2)
+    user2_yin_balance = (await yin.balanceOf(USER_2).execute()).result.wad
+    w2d_assert(user2_yin_balance, user2_expected_yin_balance)
+
+    # Test a second round of interests
+    await yin.approve(absorber.contract_address, interests_to_send).execute(caller_address=AURA_USER)
+    await absorber.transfer_interests(yin.contract_address, interests_to_send).execute(caller_address=AURA_USER)
+
+    await absorber.claim().execute(caller_address=USER_2)
+
+    user2_yin_balance = (await yin.balanceOf(USER_2).execute()).result.wad
+    user2_expected_yin_balance *= 2
+    w2d_assert(user2_yin_balance, user2_expected_yin_balance)
+
+
+
+

@@ -1,11 +1,14 @@
 %lang starknet
 
+
+// Based of Liquity's implementation ; https://github.com/liquity/dev/blob/main/packages/contracts/contracts/StabilityPool.sol
+
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address, get_caller_address
-from starkware.cairo.common.math import assert_lt, assert_le
-from starkware.cairo.common.math_cmp import is_not_zero
+from starkware.cairo.common.math import assert_lt, assert_le, assert_not_zero
+from starkware.cairo.common.math_cmp import is_not_zero, is_le
 
 from contracts.interfaces import IShrine, IYin, IPurger, IAbbot
 from contracts.shared.wad_ray import WadRay
@@ -13,13 +16,18 @@ from contracts.shared.types import Trove
 from contracts.shared.interfaces import IERC20
 
 /////////////////////////////////////////////
+//                CONSTANTS                //
+/////////////////////////////////////////////
+const SCALE_FACTOR = 10**9;
+
+/////////////////////////////////////////////
 //                STRUCTS                  //
 /////////////////////////////////////////////
 
 struct Snapshot{
     P : felt,
-    // epoch : felt,
-    // scale : felt,
+    epoch : felt,
+    scale : felt,
 }
 
 /////////////////////////////////////////////
@@ -52,11 +60,6 @@ func P() -> (P : felt) {
 }
 
 @storage_var
-func S(yang : address) -> (S : felt) {
-}
-
-
-@storage_var
 func current_scale() -> (scale : felt) {
 }
 
@@ -74,6 +77,10 @@ func snapshots_S(provider : address, yang : address) -> (S : felt) {
 }
 
 @storage_var
+func snapshots_G(provider : address, token : address) -> (G : felt) {
+}
+
+@storage_var
 func total_deposits() -> (balance : wad) {
 }
 
@@ -83,8 +90,13 @@ func deposits(provider : felt) -> (balance : wad) {
 }
 
 @storage_var
-func epoch_to_scale_to_sum(epoch : felt, scale : felt) -> (sum : felt) {
+func epoch_to_scale_to_sum(yang : address, epoch : felt, scale : felt) -> (sum : felt) {
 }
+
+@storage_var
+func epoch_to_scale_to_g(token : address, epoch : felt, scale : felt) -> (G : felt) {
+}
+
 
 // errors tracking
 @storage_var
@@ -93,6 +105,10 @@ func last_yin_loss_offset() -> (error : felt) {
 
 @storage_var
 func last_yang_loss_offset(yang : address) -> (error : felt) {
+}
+
+@storage_var
+func last_interest_error(token : address) -> (error : felt) {
 }
 
 /////////////////////////////////////////////
@@ -156,6 +172,8 @@ func provide{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 
     let (compounded_deposit : wad) = get_provider_owed_yin(caller);
 
+    _payout_interests(caller);
+
     // transfer yin from caller to the absorber
     IYin.transferFrom(contract_address=yin_address, sender=caller, recipient=this, amount=amount);
     _increase_total_deposits(amount);
@@ -186,6 +204,7 @@ func withdraw{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
     // get compounded deposit
     let (compounded_deposit : wad) = get_provider_owed_yin(caller);
+    _payout_interests(caller);
     // send deposit
     let (yin_address : address) = yin.read();
     IYin.transfer(contract_address=yin_address, recipient=caller, amount=compounded_deposit);
@@ -212,6 +231,8 @@ func claim{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() 
     _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
 
     let (compounded_deposit : wad) = get_provider_owed_yin(caller);
+    _payout_interests(caller);
+
     // update deposit
     _update_deposit_and_snapshot(caller, compounded_deposit);
     // send out yangs gains
@@ -243,6 +264,30 @@ func liquidate{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     return (to_absorb,);
 }
 
+// This is the entry point for the protocol to distribute interest to the absorber.
+//
+// Parameters
+// * token  : address of the interest token
+// * amount : amount of interest to distribute
+@external
+func transfer_interests{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    token : address,
+    amount : felt
+) {
+    // TODO
+    // [] - check if token is whitelisted by calling some module??
+    // [] - use gate (?) to handle automatically tokens with diff. decimals and uint256 vs felt
+    let (caller : address) = get_caller_address();
+    let (this : address) = get_contract_address();
+    IYin.transferFrom(contract_address=token, sender=caller, recipient=this, amount=amount);
+    _update_G(token, amount);
+    return ();
+}
+
 /////////////////////////////////////////////
 //                INTERNAL                 //
 /////////////////////////////////////////////
@@ -260,13 +305,17 @@ func _update_deposit_and_snapshot{
     provider : address,
     new_deposit : wad
 ) {
-
+    alloc_locals;
     deposits.write(provider, new_deposit);
     // update P
     let (curr_P : felt) = P.read();
-    snapshots.write(provider, Snapshot(P=curr_P));
+    let (local current_epoch_ : felt) = current_epoch.read();
+    let (local current_scale_ : felt) = current_scale.read();
+    snapshots.write(provider, Snapshot(curr_P, current_epoch_, current_scale_));
+    // update G
+    _update_provider_G(provider, current_epoch_, current_scale_);
     // update S
-    _update_provider_S(provider);
+    _update_provider_S(provider, current_epoch_, current_scale_);
     return ();
 }
 
@@ -277,6 +326,10 @@ func _update_deposit_and_snapshot{
 // * total_deposits_ : total deposits absorber holds
 // * yangs           : array of yangs' addresses
 // * freed_amounts   : array of amounts of yangs freed from liquidation
+//
+// Returns
+// * yin_unit_loss    : amount of yin lost per unit staked
+// * yangs_unit_gains : array of amount of yang gained per unit staked
 func _update_loss_and_rewards_units{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -300,16 +353,16 @@ func _update_loss_and_rewards_units{
         let (last_yin_loss_offset_ : felt) = last_yin_loss_offset.read();
         // What is called the yin loss per unit is actually a part of the running product equation.
         // In particular, it corresponds to Q_i / D_(i-1)
-        let (local yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
+        let (yin_loss_numerator : felt) = WadRay.wmul(to_absorb, WadRay.WAD_SCALE);
         let (yin_loss_numerator : felt) = WadRay.sub_unsigned(yin_loss_numerator, last_yin_loss_offset_);
-        let (local _yin_loss_per_unit : felt) = WadRay.wunsigned_div(yin_loss_numerator, total_deposits_);
+        let (_yin_loss_per_unit : felt) = WadRay.wunsigned_div(yin_loss_numerator, total_deposits_);
         let (_yin_loss_per_unit : felt) = WadRay.add_unsigned(_yin_loss_per_unit, 1);
         let (last_yin_loss_offset_ : felt) = WadRay.wmul(_yin_loss_per_unit, total_deposits_);
         let (last_yin_loss_offset_ : felt) = WadRay.sub_unsigned(last_yin_loss_offset_, yin_loss_numerator);
         tempvar yin_loss_per_unit = _yin_loss_per_unit;
         last_yin_loss_offset.write(last_yin_loss_offset_);
     }
-
+    local yin_loss_per_unit = yin_loss_per_unit;
     let (yangs_unit_gains : felt*) = alloc();
     _update_yangs_unit_gains(total_deposits_, yangs_len, yangs, amounts_len, freed_amounts, yangs_len, yangs_unit_gains);
 
@@ -356,8 +409,9 @@ func _update_yangs_unit_gains{
 // Purges (liquidates) a unhealthy trove and update the running sums and products.
 //
 // Parameters
-// * trove_id : the id of the trove to liquidate
-// * to_absorb : the trove's bad debt to absorb
+// * trove_id        : the id of the trove to liquidate
+// * total_deposits_ : total deposits held by the absorber
+// * to_absorb       : the trove's bad debt to absorb
 func _purge_and_update{
     syscall_ptr : felt*,
     pedersen_ptr : HashBuiltin*,
@@ -386,22 +440,82 @@ func _purge_and_update{
         recipient_address=this
     );
     assert yangs_len = freed_len;
+
     let (
         yin_loss_per_unit : felt,
         gains_len : felt,
         yangs_unit_gains : felt*
     ) = _update_loss_and_rewards_units(to_absorb, total_deposits_, yangs_len, yangs, freed_len, freed_amounts);
 
-    // updates all S
-    _update_all_S(total_deposits_, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
+    _update_S_and_P(yin_loss_per_unit, yangs_len, yangs, gains_len, yangs_unit_gains);
 
-    let (new_P : felt) = WadRay.sub_unsigned(WadRay.WAD_ONE, yin_loss_per_unit);
-    let (new_P : felt) = WadRay.wmul(new_P, curr_P);
-    let (new_P : felt) = WadRay.wunsigned_div(new_P, WadRay.WAD_SCALE);
-
-    P.write(new_P);
     _decrease_total_deposits(to_absorb);
 
+    return ();
+}
+
+// Updates the running product and sums.
+//
+// Parameters
+// * yin_loss_per_unit : the amount of yin lost per unit staked
+// * yangs             : array of yangs' addresses
+// * yangs_unit_gains  : array of amount gained per yang
+func _update_S_and_P{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    yin_loss_per_unit : felt,
+    yangs_len : felt,
+    yangs : address*,
+    gains_len : felt,
+    yangs_unit_gains : felt*
+) {
+    alloc_locals;
+    let (curr_P : felt) = P.read();
+    with_attr error_message("Absorber: yin loss superior to decimal precision") {
+        assert_le(yin_loss_per_unit, WadRay.WAD_SCALE);
+    }
+    let (product_factor : felt) = WadRay.sub_unsigned(WadRay.WAD_ONE, yin_loss_per_unit);
+
+    let (current_epoch_ : felt) = current_epoch.read();
+    let (current_scale_ : felt) = current_scale.read();
+
+    _update_all_S(current_epoch_, current_scale_, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
+
+    if (product_factor == 0) {
+        let (new_epoch : felt) = WadRay.add_unsigned(current_epoch_, 1);
+        current_epoch.write(new_epoch);
+        current_scale.write(0);
+        tempvar new_P = WadRay.WAD_SCALE;
+        tempvar syscall_ptr = syscall_ptr;
+        tempvar pedersen_ptr = pedersen_ptr;
+        tempvar range_check_ptr = range_check_ptr;
+    } else {
+        let (potential_new_P : felt) = WadRay.wmul(product_factor, curr_P);
+        let (potential_new_P : felt) = WadRay.wunsigned_div(potential_new_P, WadRay.WAD_SCALE);
+        if (is_le(potential_new_P, SCALE_FACTOR) == 1) {
+            let (new_P_ : felt) = WadRay.wmul(product_factor, curr_P);
+            let (new_P_ : felt) = WadRay.wmul(new_P_, SCALE_FACTOR);
+            let (new_P_ : felt) = WadRay.wunsigned_div(new_P_, WadRay.WAD_SCALE);
+            current_scale.write(current_scale_+1);
+            tempvar new_P = new_P_;
+            tempvar syscall_ptr = syscall_ptr;
+            tempvar pedersen_ptr = pedersen_ptr;
+            tempvar range_check_ptr = range_check_ptr;
+        } else {
+            tempvar new_P = potential_new_P;
+            tempvar syscall_ptr = syscall_ptr;
+            tempvar pedersen_ptr = pedersen_ptr;
+            tempvar range_check_ptr = range_check_ptr;
+        }
+    }
+
+    local new_P = new_P;
+    with_attr error_message("Absorber: P would be 0") {
+        assert_not_zero(new_P);
+    }
+    P.write(new_P);
     return ();
 }
 
@@ -409,10 +523,20 @@ func _purge_and_update{
 //
 // Parameters
 // * provider : address of the provider
-func _update_provider_S{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider : address) {
+// * epoch    : epoch to use for the snapshot
+// * scale    : scale to use for the snapshot
+func _update_provider_S{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    epoch : felt,
+    scale : felt
+) {
     let (abbot_address : address) = abbot.read();
     let (len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
-    _update_provider_single_S(provider, len, yangs);
+    _update_provider_single_S(provider, epoch, scale, len, yangs);
     return ();
 }
 
@@ -420,6 +544,8 @@ func _update_provider_S{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_
 //
 // Parameters
 // * provider : address of the provider
+// * epoch    : epoch to use for the snapshot
+// * scale    : scale to use for the snapshot
 // * yangs    : array of yangs' addresses
 func _update_provider_single_S{
     syscall_ptr : felt*,
@@ -427,21 +553,70 @@ func _update_provider_single_S{
     range_check_ptr
 }(
     provider : address,
-    len : felt,
+    epoch : felt,
+    scale : felt,
+    yangs_len : felt,
     yangs : address*
 ) {
-    if (len == 0) {
+    if (yangs_len == 0) {
         return ();
     }
-    let (curr_S : felt) = S.read([yangs]);
+    
+    let (curr_S : felt) = epoch_to_scale_to_sum.read([yangs], epoch, scale);
     snapshots_S.write(provider, [yangs], curr_S);
-    return _update_provider_single_S(provider, len - 1, yangs + 1);
+    return _update_provider_single_S(provider, epoch, scale, yangs_len - 1, yangs + 1);
+}
+
+// Updates all the G (for every interest token) for a given user.
+//
+// Parameters
+// * provider : address of the provider
+// * epoch    : epoch to use for the snapshot
+// * scale    : scale to use for the snapshot
+func _update_provider_G{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    epoch : felt,
+    scale : felt
+) {
+    let (tokens_len : felt, tokens : address*) = _get_interests_tokens();
+    _update_provider_single_G(provider, epoch, scale, tokens_len, tokens);
+    return ();
+}
+
+// Updates a single G of a given interest-token for a given user.
+//
+// Parameters
+// * provider : address of the provider
+// * epoch    : epoch to use for the snapshot
+// * scale    : scale to use for the snapshot
+// * yangs    : array of tokens' addresses
+func _update_provider_single_G{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    epoch : felt,
+    scale : felt,
+    tokens_len : felt,
+    tokens : address*
+) {
+    if (tokens_len == 0) {
+        return ();
+    }
+    
+    let (curr_G : felt) = epoch_to_scale_to_g.read([tokens], epoch, scale);
+    snapshots_G.write(provider, [tokens], curr_G);
+    return _update_provider_single_S(provider, epoch, scale, tokens_len - 1, tokens + 1);
 }
 
 // Update all the running sum for each yang.
 //
 // Parameters
-// * this_balance     : the total balance of yin held by the pool
 // * curr_P           : the running product to help us calculate the compounded deposit
 // * yangs            : array of the yangs' addresses
 // * yangs_unit_gains : array of each yang gain per yin staked
@@ -450,7 +625,8 @@ func _update_all_S{
     pedersen_ptr : HashBuiltin*,
     range_check_ptr
 }(
-    this_balance : wad,
+    current_epoch_ : felt,
+    current_scale_ : felt,
     curr_P : felt,
     yangs_len : felt,
     yangs : address*,
@@ -461,11 +637,11 @@ func _update_all_S{
         return ();
     }
     
-    let (curr_S : felt) = S.read([yangs]);
+    let (curr_S : felt) = epoch_to_scale_to_sum.read([yangs], current_epoch_, current_scale_);
     let (margin_gain : felt) = WadRay.wmul(curr_P, [yangs_unit_gains]);
     let (new_S) = WadRay.add_unsigned(curr_S, margin_gain);
-    S.write([yangs], new_S);
-    return _update_all_S(this_balance, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
+    epoch_to_scale_to_sum.write([yangs], current_epoch_, current_scale_, new_S);
+    return _update_all_S(current_epoch_, current_scale_, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
 }
 
 // Transfers owed yangs to a provider.
@@ -491,6 +667,50 @@ func _distribute_owed_yangs{
 
     IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256([owed], 0));
     return _distribute_owed_yangs(provider, yangs_len - 1, yangs + 1, owed_len - 1, owed + 1);
+}
+
+// Computes and transfers the owed interests of a provider.
+//
+// Parameters
+// * provider : address of the provider
+func _payout_interests{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(provider : address) {
+    let (
+        tokens_len : felt,
+        tokens : address*,
+        gains_len : felt,
+        gains : felt*
+    ) = get_provider_interests_gains(provider);
+    _distribute_interests(provider, tokens_len, tokens, gains_len, gains);
+    return ();
+} 
+
+// Distributes the interests due to a provider.
+//
+// Parameters
+// * provider : address of the provider
+// * tokens   : array of interest tokens' addresses
+// * gains    : array of gains to distribute
+func _distribute_interests{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    tokens_len : felt,
+    tokens : address*,
+    gains_len : felt,
+    gains : felt*
+) {
+    if (gains_len == 0) {
+        return ();
+    }
+
+    IYin.transfer(contract_address=[tokens], recipient=provider, amount=[gains]);
+    return _distribute_interests(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
 }
 
 // Increases the total deposits by the given amount.
@@ -557,15 +777,118 @@ func _get_provider_owed_yangs{
     }
 
     let (snapshot_S : felt) = snapshots_S.read(provider, [yangs]);
-    let (curr_S : felt) = S.read([yangs]);
     let (snapshot : Snapshot) = snapshots.read(provider);
-    let (S_delta : felt) = WadRay.sub_unsigned(curr_S, snapshot_S);
-    let (gain : felt) = WadRay.wmul(deposit, S_delta);
+    let (S : felt) = epoch_to_scale_to_sum.read([yangs], snapshot.epoch, snapshot.scale);
+    let (first_portion : felt) = WadRay.sub_unsigned(S, snapshot_S);
+    let (second_portion : felt) = epoch_to_scale_to_sum.read([yangs], snapshot.epoch, snapshot.scale+1);
+    let (second_portion : felt) = WadRay.wunsigned_div(second_portion, SCALE_FACTOR);
+    let (gain : felt) = WadRay.add_unsigned(first_portion, second_portion);
+    let (gain : felt) = WadRay.wmul(deposit, gain);
     let (gain : felt) = WadRay.wunsigned_div(gain, snapshot.P);
     let (gain : felt) = WadRay.wunsigned_div(gain, WadRay.WAD_SCALE);
     assert [gains] = gain;
     return _get_provider_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
+}
 
+// Updates all the G factor of a token that is used to pay interests.
+//
+// Parameters
+// * token  : address of the token
+// * amount : amount of interests paid to the absorber
+func _update_G{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    token : address,
+    amount : felt
+) {
+    let (total_deposits_ : felt) = total_deposits.read();
+
+    if (total_deposits_ == 0) {
+        return ();
+    }
+    if (amount == 0) {
+        return ();
+    }
+
+    let (curr_P : felt) = P.read();
+    // compute token per unit staked
+    let (numerator : felt) = WadRay.wmul(amount, WadRay.WAD_SCALE);
+    let (error : felt) = last_interest_error.read(token);
+    let (numerator : felt) = WadRay.add_unsigned(numerator, error);
+    let (interest_per_unit : felt) = WadRay.wunsigned_div(numerator, total_deposits_);
+
+    let (last_interest_error_ : felt) = WadRay.wmul(interest_per_unit, total_deposits_);
+    let (last_interest_error_ : felt) = WadRay.sub_unsigned(numerator, last_interest_error_);
+    last_interest_error.write(token, last_interest_error_);
+
+    let (marginal_gain : felt) = WadRay.wmul(interest_per_unit, curr_P);
+    let (current_epoch_ : felt) = current_epoch.read();
+    let (current_scale_ : felt) = current_scale.read();
+    let (G : felt) = epoch_to_scale_to_g.read(token, current_epoch_, current_scale_);
+    let (new_G : felt) = WadRay.add(G, marginal_gain);
+    epoch_to_scale_to_g.write(token, current_epoch_, current_scale_, new_G);
+
+    return ();
+}
+
+// Sets the interest, for each appropriate token, that is owed to a provider.
+//
+// Parameters
+// * provider : address of the provider
+// * tokens   : array of the tokens' addresses
+// * gains    : array of the amounts of tokens (interests) the provider is owed
+func _get_interests_gains{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(
+    provider : address,
+    tokens_len : felt,
+    tokens : address *,
+    gains_len : felt,
+    gains : felt*
+) {
+    if (tokens_len == 0) {
+        return ();
+    }
+
+    let (initial_deposit : wad) = deposits.read(provider);
+
+    if (initial_deposit == 0) {
+        assert [gains] = 0;
+        return _get_interests_gains(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
+    }
+
+    let (snapshot : Snapshot) = snapshots.read(provider);
+    let (snapshot_G : felt) = snapshots_G.read(provider, [tokens]);
+    let (first_portion : felt) = epoch_to_scale_to_g.read([tokens], snapshot.epoch, snapshot.scale);
+    let (first_portion : felt) = WadRay.sub_unsigned(first_portion, snapshot_G);
+    let (second_portion : felt) = epoch_to_scale_to_g.read([tokens], snapshot.epoch, snapshot.scale+1);
+    let (second_portion : felt) = WadRay.wunsigned_div(second_portion, SCALE_FACTOR);
+
+    let (gain : felt) = WadRay.add_unsigned(first_portion, second_portion);
+    let (gain : felt) = WadRay.wmul(initial_deposit, gain);
+    let (gain : felt) = WadRay.wunsigned_div(gain, snapshot.P);
+    let (gain : felt) = WadRay.wunsigned_div(gain, WadRay.WAD_SCALE);
+
+    assert [gains] = gain;
+    return _get_interests_gains(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
+}
+
+// WARNING ! TEMPORARY FUNCTION THAT SHOULD NOT MAKE IT TO PRODUCTION
+// Returns an array of tokens that are used to pay interest.
+func _get_interests_tokens{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}() -> (tokens_len : felt, tokens : address*) {
+    let (yin_ : address) = yin.read();
+    tempvar len = 1;
+    let (tokens : address*) = alloc();
+    assert tokens[0] = yin_;
+    return (len, tokens);
 }
 
 /////////////////////////////////////////////
@@ -581,14 +904,42 @@ func _get_provider_owed_yangs{
 // * yin : the compounded deposit of the provider
 @view
 func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider: address) -> (yin : wad) {
+    alloc_locals;
+
     let (initial_deposit : wad) = deposits.read(provider);
     if (initial_deposit == 0) {
         return (yin=0,);
     }
+
     let (curr_P : felt) = P.read();
     let (snapshot : Snapshot) = snapshots.read(provider);
-    let (P_ratio : felt) = WadRay.wunsigned_div(curr_P, snapshot.P);
-    let (compounded_deposit : wad) = WadRay.wmul(initial_deposit, P_ratio);
+    let (current_epoch_ : felt) = current_epoch.read();
+    let (current_scale_ : felt) = current_scale.read();
+
+    if (is_le(snapshot.epoch, current_epoch_-1) == 1) {
+        return (yin=0);
+    }
+
+    let (scale_diff : felt) = WadRay.sub_unsigned(current_scale_, snapshot.scale);
+
+    if (scale_diff == 0) {
+        let (compounded_deposit_ : felt) = WadRay.wmul(initial_deposit, curr_P);
+        let (compounded_deposit_ : felt) = WadRay.wunsigned_div(compounded_deposit_, snapshot.P);
+        tempvar compounded_deposit = compounded_deposit_;
+        tempvar range_check_ptr = range_check_ptr;
+    } else {
+        if (scale_diff == 1) {
+            let (compounded_deposit_ : felt) = WadRay.wmul(initial_deposit, curr_P);
+            let (compounded_deposit_ : felt) = WadRay.wunsigned_div(compounded_deposit_, snapshot.P);
+            let (compounded_deposit_ : felt) = WadRay.wunsigned_div(compounded_deposit_, SCALE_FACTOR);
+            tempvar compounded_deposit = compounded_deposit_;
+            tempvar range_check_ptr = range_check_ptr;
+        } else {
+            tempvar compounded_deposit = 0;
+            tempvar range_check_ptr = range_check_ptr;
+        }
+    }
+    local compounded_deposit = compounded_deposit;
     return (compounded_deposit,);
 }
 
@@ -600,12 +951,39 @@ func get_provider_owed_yin{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, ran
 // Returns
 // * gains : Array of amounts of claimable yangs
 @view
-func get_provider_owed_yangs{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(provider : address) -> (owed_len : felt, owed : felt*) {
+func get_provider_owed_yangs{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(provider : address) -> (yangs_len : felt, yangs : address*, owed_len : felt, owed : felt*) {
     alloc_locals;
     let (deposit : wad) = deposits.read(provider);
     let (abbot_ : address) = abbot.read();
     let (local len : felt, yangs : address*) = IAbbot.get_yang_addresses(contract_address=abbot_);
     let (owed : felt*) = alloc();
     _get_provider_owed_yangs(provider, deposit, len, yangs, len, owed);
-    return (len, owed);
+    return (len, yangs, len, owed);
+}
+
+// Returns the interests a provider is owed.
+//
+// Parameters
+// * provider : the address of the provider
+//
+// Returns
+// * tokens : Array of tokens' addresses that are used to pay interest
+// * gains  : Array of amounts of claimable interests
+@view
+func get_provider_interests_gains{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr
+}(provider : address) -> (tokens_len : felt, tokens : address*, gains_len : felt, gains : felt*) {
+    alloc_locals;
+    // get interests tokens somewhere
+    let (tokens_len : felt, tokens : address*) = _get_interests_tokens();
+    //////////////////////////////////
+    let (gains : felt*) = alloc();
+    _get_interests_gains(provider, tokens_len, tokens, tokens_len, gains);
+    return (tokens_len, tokens, tokens_len, gains);
 }
