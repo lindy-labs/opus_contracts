@@ -392,7 +392,7 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     }
 
     let (yang: address) = abbot_yang_addresses.read(yang_idx);
-    let (amount: wad) = IShrine.get_deposit(shrine, trove_id, yang);
+    let (amount: wad) = IShrine.get_deposit(shrine, yang, trove_id);
 
     if (amount == 0) {
         return do_withdrawals_full(shrine, user, trove_id, yang_idx + 1, yang_count);

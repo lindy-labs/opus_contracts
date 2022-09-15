@@ -20,7 +20,7 @@ namespace IShrine {
     func get_yangs_count() -> (count: ufelt) {
     }
 
-    func get_deposit(trove_id: ufelt, yang: address) -> (balance: wad) {
+    func get_deposit(yang: address, trove_id: ufelt) -> (balance: wad) {
     }
 
     func get_total_debt() -> (total_debt: wad) {
