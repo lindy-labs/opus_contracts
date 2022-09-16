@@ -207,7 +207,7 @@ namespace IAbbot {
 }
 
 @contract_interface
-namespace IStabilityPool {
+namespace IAbsorber {
 
     /////////////////////////////////////////////
     //                EXTERNAL                 //
@@ -216,7 +216,7 @@ namespace IStabilityPool {
     func provide(amount: felt) {
     }
 
-    func withdraw(amount: felt) {
+    func withdraw() {
     }
 
     func liquidate(trove_id: felt) -> (absorbed : felt) {
