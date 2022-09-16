@@ -954,7 +954,8 @@ func get_provider_owed_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 // * provider : the address of the provider 
 //
 // Returns
-// * gains : Array of amounts of claimable yangs
+// * yangs : Array of yangs' addresses
+// * owed  : Array of amounts of claimable yangs
 @view
 func get_provider_owed_yangs{
     syscall_ptr: felt*,
