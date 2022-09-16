@@ -238,7 +238,7 @@ namespace IAbsorber {
     func get_provider_owed_yin(provider: felt) -> (yin : felt) {
     }
 
-    func get_provider_interests_gains(provider : address) -> (tokens_len : felt, tokens : felt*, gains_len : felt, gains : felt*) {
+    func get_provider_interests_gains(provider : felt) -> (tokens_len : felt, tokens : felt*, gains_len : felt, gains : felt*) {
     }
 }
 
