@@ -170,22 +170,22 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     let (abbot_address: address) = abbot.read();
     let (yangs_len: felt, yangs: address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
     let (owed: felt*) = alloc();
-    _get_provider_owed_yangs(caller, current_deposit, yangs_len, yangs, yangs_len, owed);
+    get_owed_yangs(caller, current_deposit, yangs_len, yangs, yangs_len, owed);
 
     let (compounded_deposit: wad) = get_provider_owed_yin(caller);
 
-    _payout_interests(caller);
+    payout_interests(caller);
 
     // transfer yin from caller to the absorber
     IYin.transferFrom(contract_address=yin_address, sender=caller, recipient=this, amount=amount);
-    _increase_total_deposits(amount);
+    increase_total_deposits(amount);
 
     // update deposit and snapshots
     let (new_deposit: wad) = WadRay.add_unsigned(current_deposit, amount);
-    _update_deposit_and_snapshot(caller, new_deposit);
+    update_deposit_and_snapshot(caller, new_deposit);
 
     // payout the owed yangs
-    _distribute_owed_yangs(caller, yangs_len, yangs, yangs_len, owed);
+    distribute_owed_yangs(caller, yangs_len, yangs, yangs_len, owed);
 
     // emit event
     Provided.emit(caller, amount);
@@ -203,18 +203,18 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
     let (abbot_address: address) = abbot.read();
     let (len: felt, yangs: address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
     let (owed: felt*) = alloc();
-    _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
+    get_owed_yangs(caller, deposit, len, yangs, len, owed);
     // get compounded deposit
     let (compounded_deposit: wad) = get_provider_owed_yin(caller);
-    _payout_interests(caller);
+    payout_interests(caller);
     // send deposit
     let (yin_address: address) = yin.read();
     IYin.transfer(contract_address=yin_address, recipient=caller, amount=compounded_deposit);
-    _decrease_total_deposits(compounded_deposit);
+    decrease_total_deposits(compounded_deposit);
     // update user's deposit
-    _update_deposit_and_snapshot(caller, 0);
+    update_deposit_and_snapshot(caller, 0);
 
-    _distribute_owed_yangs(caller, len, yangs, len, owed);
+    distribute_owed_yangs(caller, len, yangs, len, owed);
 
     Withdrawn.emit(caller, compounded_deposit);
     return ();
@@ -232,15 +232,15 @@ func claim{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     // get yangs gains
     let (local len: felt, yangs: address*) = IAbbot.get_yang_addresses(contract_address=abbot_);
     let (owed: felt*) = alloc();
-    _get_provider_owed_yangs(caller, deposit, len, yangs, len, owed);
+    get_owed_yangs(caller, deposit, len, yangs, len, owed);
 
     let (compounded_deposit: wad) = get_provider_owed_yin(caller);
-    _payout_interests(caller);
+    payout_interests(caller);
 
     // update deposit
-    _update_deposit_and_snapshot(caller, compounded_deposit);
+    update_deposit_and_snapshot(caller, compounded_deposit);
     // send out yangs gains
-    _distribute_owed_yangs(caller, len, yangs, len, owed);
+    distribute_owed_yangs(caller, len, yangs, len, owed);
     return ();
 }
 
@@ -264,7 +264,7 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return (0,);
     }
     let (local to_absorb: felt) = WadRay.min(total_deposits_, amount);
-    _purge_and_update(trove_id, total_deposits_, to_absorb);
+    purge_and_update(trove_id, total_deposits_, to_absorb);
     Liquidated.emit(trove_id);
     return (to_absorb,);
 }
@@ -289,7 +289,7 @@ func transfer_interests{
     let (caller: address) = get_caller_address();
     let (this: address) = get_contract_address();
     IYin.transferFrom(contract_address=token, sender=caller, recipient=this, amount=amount);
-    _update_G(token, amount);
+    update_G(token, amount);
     return ();
 }
 
@@ -302,7 +302,7 @@ func transfer_interests{
 // Parameters
 // * provider    : address of the provider
 // * new_deposit : new amount of yin to store
-func _update_deposit_and_snapshot{
+func update_deposit_and_snapshot{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -318,9 +318,9 @@ func _update_deposit_and_snapshot{
     let (local current_scale_: felt) = current_scale.read();
     snapshots.write(provider, Snapshot(curr_P, current_epoch_, current_scale_));
     // update G
-    _update_provider_G(provider, current_epoch_, current_scale_);
+    update_provider_G(provider, current_epoch_, current_scale_);
     // update S
-    _update_provider_S(provider, current_epoch_, current_scale_);
+    update_provider_S(provider, current_epoch_, current_scale_);
     return ();
 }
 
@@ -335,7 +335,7 @@ func _update_deposit_and_snapshot{
 // Returns
 // * yin_unit_loss    : amount of yin lost per unit staked
 // * yangs_unit_gains : array of amount of yang gained per unit staked
-func _update_loss_and_rewards_units{
+func update_loss_and_rewards_units{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -369,7 +369,7 @@ func _update_loss_and_rewards_units{
     }
     local yin_loss_per_unit = yin_loss_per_unit;
     let (yangs_unit_gains: felt*) = alloc();
-    _update_yangs_unit_gains(total_deposits_, yangs_len, yangs, amounts_len, freed_amounts, yangs_len, yangs_unit_gains);
+    update_yangs_unit_gains(total_deposits_, yangs_len, yangs, amounts_len, freed_amounts, yangs_len, yangs_unit_gains);
 
     return (yin_loss_per_unit, yangs_len, yangs_unit_gains);
 }
@@ -382,7 +382,7 @@ func _update_loss_and_rewards_units{
 // * yangs           : array of the yangs' addresses
 // * freed_amounts   : array of yangs amounts freed from the trove
 // * gains           : array of the yangs' gains per unit
-func _update_yangs_unit_gains{
+func update_yangs_unit_gains{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -407,7 +407,7 @@ func _update_yangs_unit_gains{
     last_yang_loss_offset.write([yangs], last_yang_loss_offset_);
     [gains] = yang_unit_gain; //write yang unit gain to array
 
-    return _update_yangs_unit_gains(total_deposits_, yangs_len-1, yangs+1, amounts_len-1, freed_amounts+1, gains_len-1, gains+1);
+    return update_yangs_unit_gains(total_deposits_, yangs_len-1, yangs+1, amounts_len-1, freed_amounts+1, gains_len-1, gains+1);
 }
 
 
@@ -417,7 +417,7 @@ func _update_yangs_unit_gains{
 // * trove_id        : the id of the trove to liquidate
 // * total_deposits_ : total deposits held by the absorber
 // * to_absorb       : the trove's bad debt to absorb
-func _purge_and_update{
+func purge_and_update{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -450,11 +450,11 @@ func _purge_and_update{
         yin_loss_per_unit: felt,
         gains_len: felt,
         yangs_unit_gains: felt*
-    ) = _update_loss_and_rewards_units(to_absorb, total_deposits_, yangs_len, yangs, freed_len, freed_amounts);
+    ) = update_loss_and_rewards_units(to_absorb, total_deposits_, yangs_len, yangs, freed_len, freed_amounts);
 
-    _update_S_and_P(yin_loss_per_unit, yangs_len, yangs, gains_len, yangs_unit_gains);
+    update_S_and_P(yin_loss_per_unit, yangs_len, yangs, gains_len, yangs_unit_gains);
 
-    _decrease_total_deposits(to_absorb);
+    decrease_total_deposits(to_absorb);
 
     return ();
 }
@@ -465,7 +465,7 @@ func _purge_and_update{
 // * yin_loss_per_unit : the amount of yin lost per unit staked
 // * yangs             : array of yangs' addresses
 // * yangs_unit_gains  : array of amount gained per yang
-func _update_S_and_P{
+func update_S_and_P{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -486,7 +486,7 @@ func _update_S_and_P{
     let (current_epoch_: felt) = current_epoch.read();
     let (current_scale_: felt) = current_scale.read();
 
-    _update_all_S(current_epoch_, current_scale_, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
+    update_all_S(current_epoch_, current_scale_, curr_P, yangs_len, yangs, gains_len, yangs_unit_gains);
 
     if (product_factor == 0) {
         let (new_epoch: felt) = WadRay.add_unsigned(current_epoch_, 1);
@@ -530,7 +530,7 @@ func _update_S_and_P{
 // * provider : address of the provider
 // * epoch    : epoch to use for the snapshot
 // * scale    : scale to use for the snapshot
-func _update_provider_S{
+func update_provider_S{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -541,7 +541,7 @@ func _update_provider_S{
 ) {
     let (abbot_address: address) = abbot.read();
     let (len: felt, yangs: address*) = IAbbot.get_yang_addresses(contract_address=abbot_address);
-    _update_provider_single_S(provider, epoch, scale, len, yangs);
+    update_provider_single_S(provider, epoch, scale, len, yangs);
     return ();
 }
 
@@ -552,7 +552,7 @@ func _update_provider_S{
 // * epoch    : epoch to use for the snapshot
 // * scale    : scale to use for the snapshot
 // * yangs    : array of yangs' addresses
-func _update_provider_single_S{
+func update_provider_single_S{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -569,7 +569,7 @@ func _update_provider_single_S{
     
     let (curr_S: felt) = epoch_to_scale_to_sum.read([yangs], epoch, scale);
     snapshots_S.write(provider, [yangs], curr_S);
-    return _update_provider_single_S(provider, epoch, scale, yangs_len - 1, yangs + 1);
+    return update_provider_single_S(provider, epoch, scale, yangs_len - 1, yangs + 1);
 }
 
 // Updates all the G (for every interest token) for a given user.
@@ -578,7 +578,7 @@ func _update_provider_single_S{
 // * provider : address of the provider
 // * epoch    : epoch to use for the snapshot
 // * scale    : scale to use for the snapshot
-func _update_provider_G{
+func update_provider_G{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -587,8 +587,8 @@ func _update_provider_G{
     epoch: felt,
     scale: felt
 ) {
-    let (tokens_len: felt, tokens: address*) = _get_interests_tokens();
-    _update_provider_single_G(provider, epoch, scale, tokens_len, tokens);
+    let (tokens_len: felt, tokens: address*) = get_interests_tokens();
+    update_provider_single_G(provider, epoch, scale, tokens_len, tokens);
     return ();
 }
 
@@ -599,7 +599,7 @@ func _update_provider_G{
 // * epoch    : epoch to use for the snapshot
 // * scale    : scale to use for the snapshot
 // * yangs    : array of tokens' addresses
-func _update_provider_single_G{
+func update_provider_single_G{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -616,7 +616,7 @@ func _update_provider_single_G{
     
     let (curr_G: felt) = epoch_to_scale_to_g.read([tokens], epoch, scale);
     snapshots_G.write(provider, [tokens], curr_G);
-    return _update_provider_single_S(provider, epoch, scale, tokens_len - 1, tokens + 1);
+    return update_provider_single_S(provider, epoch, scale, tokens_len - 1, tokens + 1);
 }
 
 // Update all the running sum for each yang.
@@ -625,7 +625,7 @@ func _update_provider_single_G{
 // * curr_P           : the running product to help us calculate the compounded deposit
 // * yangs            : array of the yangs' addresses
 // * yangs_unit_gains : array of each yang gain per yin staked
-func _update_all_S{
+func update_all_S{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -646,7 +646,7 @@ func _update_all_S{
     let (margin_gain: felt) = WadRay.wmul(curr_P, [yangs_unit_gains]);
     let (new_S) = WadRay.add_unsigned(curr_S, margin_gain);
     epoch_to_scale_to_sum.write([yangs], current_epoch_, current_scale_, new_S);
-    return _update_all_S(current_epoch_, current_scale_, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
+    return update_all_S(current_epoch_, current_scale_, curr_P, yangs_len - 1, yangs + 1, gains_len - 1, yangs_unit_gains + 1);
 }
 
 // Transfers owed yangs to a provider.
@@ -655,7 +655,7 @@ func _update_all_S{
 // * provider : address of the provider
 // * yangs    : array of yangs' addresses
 // * owed     : array of owed yangs to send
-func _distribute_owed_yangs{
+func distribute_owed_yangs{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -671,14 +671,14 @@ func _distribute_owed_yangs{
     }
 
     IERC20.transfer(contract_address=[yangs], recipient=provider, amount=Uint256([owed], 0));
-    return _distribute_owed_yangs(provider, yangs_len - 1, yangs + 1, owed_len - 1, owed + 1);
+    return distribute_owed_yangs(provider, yangs_len - 1, yangs + 1, owed_len - 1, owed + 1);
 }
 
 // Computes and transfers the owed interests of a provider.
 //
 // Parameters
 // * provider : address of the provider
-func _payout_interests{
+func payout_interests{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -689,7 +689,7 @@ func _payout_interests{
         gains_len: felt,
         gains: felt*
     ) = get_provider_interests_gains(provider);
-    _distribute_interests(provider, tokens_len, tokens, gains_len, gains);
+    distribute_interests(provider, tokens_len, tokens, gains_len, gains);
     return ();
 } 
 
@@ -699,7 +699,7 @@ func _payout_interests{
 // * provider : address of the provider
 // * tokens   : array of interest tokens' addresses
 // * gains    : array of gains to distribute
-func _distribute_interests{
+func distribute_interests{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -715,14 +715,14 @@ func _distribute_interests{
     }
 
     IYin.transfer(contract_address=[tokens], recipient=provider, amount=[gains]);
-    return _distribute_interests(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
+    return distribute_interests(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
 }
 
 // Increases the total deposits by the given amount.
 //
 // Parameters
 // * amount : amount to increase total deposits by
-func _increase_total_deposits{
+func increase_total_deposits{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -739,7 +739,7 @@ func _increase_total_deposits{
 //
 // Parameters
 // * amount : amount to decrease total deposits by
-func _decrease_total_deposits{
+func decrease_total_deposits{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -760,7 +760,7 @@ func _decrease_total_deposits{
 // * deposit  : deposit of the provider (yin)
 // * yangs    : array of the yangs' addresses
 // * owed     : array of the amounts of yangs the provider is owed
-func _get_provider_owed_yangs{
+func get_owed_yangs{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -778,7 +778,7 @@ func _get_provider_owed_yangs{
 
     if (deposit == 0) {
         assert [gains] = 0;
-        return _get_provider_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
+        return get_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
     }
 
     let (snapshot_S: felt) = snapshots_S.read(provider, [yangs]);
@@ -792,7 +792,7 @@ func _get_provider_owed_yangs{
     let (gain: felt) = WadRay.wunsigned_div(gain, snapshot.P);
     let (gain: felt) = WadRay.wunsigned_div(gain, WadRay.WAD_SCALE);
     assert [gains] = gain;
-    return _get_provider_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
+    return get_owed_yangs(provider, deposit, yangs_len - 1, yangs + 1, gains_len - 1, gains + 1);
 }
 
 // Updates all the G factor of a token that is used to pay interests.
@@ -800,7 +800,7 @@ func _get_provider_owed_yangs{
 // Parameters
 // * token  : address of the token
 // * amount : amount of interests paid to the absorber
-func _update_G{
+func update_G{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -844,7 +844,7 @@ func _update_G{
 // * provider : address of the provider
 // * tokens   : array of the tokens' addresses
 // * gains    : array of the amounts of tokens (interests) the provider is owed
-func _get_interests_gains{
+func get_interests_gains{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -863,7 +863,7 @@ func _get_interests_gains{
 
     if (initial_deposit == 0) {
         assert [gains] = 0;
-        return _get_interests_gains(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
+        return get_interests_gains(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
     }
 
     let (snapshot: Snapshot) = snapshots.read(provider);
@@ -879,12 +879,12 @@ func _get_interests_gains{
     let (gain: felt) = WadRay.wunsigned_div(gain, WadRay.WAD_SCALE);
 
     assert [gains] = gain;
-    return _get_interests_gains(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
+    return get_interests_gains(provider, tokens_len - 1, tokens + 1, gains_len - 1, gains + 1);
 }
 
 // WARNING ! TEMPORARY FUNCTION THAT SHOULD NOT MAKE IT TO PRODUCTION
 // Returns an array of tokens that are used to pay interest.
-func _get_interests_tokens{
+func get_interests_tokens{
     syscall_ptr: felt*,
     pedersen_ptr: HashBuiltin*,
     range_check_ptr
@@ -966,7 +966,7 @@ func get_provider_owed_yangs{
     let (abbot_: address) = abbot.read();
     let (local len: felt, yangs: address*) = IAbbot.get_yang_addresses(contract_address=abbot_);
     let (owed: felt*) = alloc();
-    _get_provider_owed_yangs(provider, deposit, len, yangs, len, owed);
+    get_owed_yangs(provider, deposit, len, yangs, len, owed);
     return (len, yangs, len, owed);
 }
 
@@ -986,9 +986,9 @@ func get_provider_interests_gains{
 }(provider: address) -> (tokens_len: felt, tokens: address*, gains_len: felt, gains: felt*) {
     alloc_locals;
     // get interests tokens somewhere
-    let (tokens_len: felt, tokens: address*) = _get_interests_tokens();
+    let (tokens_len: felt, tokens: address*) = get_interests_tokens();
     //////////////////////////////////
     let (gains: felt*) = alloc();
-    _get_interests_gains(provider, tokens_len, tokens, tokens_len, gains);
+    get_interests_gains(provider, tokens_len, tokens, tokens_len, gains);
     return (tokens_len, tokens, tokens_len, gains);
 }
