@@ -36,15 +36,15 @@ func purger_abbot() -> (abbot: address) {
 
 @event
 func Purged(
-    trove_id,
-    purge_amt_wad,
-    recipient_address,
-    funder_address,
-    percentage_freed_ray,
-    yang_addresses_len,
-    yang_addresses: felt*,
-    freed_assets_amt_len,
-    freed_assets_amt: felt*,
+    trove_id: ufelt,
+    purge_amt: wad,
+    recipient: address,
+    funder: address,
+    percentage_freed: ray,
+    yangs_len: ufelt,
+    yangs: address*,
+    freed_assets_amt_len: ufelt,
+    freed_assets_amt: wad*,
 ) {
 }
 
@@ -70,7 +70,7 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
     // placeholder
-    let penalty = get_purge_penalty_internal(trove_ltv);
+    let penalty: ray = get_purge_penalty_internal(trove_ltv);
     return (penalty,);
 }
 

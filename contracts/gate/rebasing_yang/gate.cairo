@@ -137,7 +137,6 @@ func withdraw{
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.WITHDRAW);
 
     // Get asset address
