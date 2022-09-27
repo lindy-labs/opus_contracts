@@ -78,6 +78,8 @@ func snapshots(provider: address) -> (snapshot: Snapshot) {
 func snapshots_S(provider: address, yang: address) -> (S: felt) {
 }
 
+// For every provider and for every possible token (reward) that is used as interest,
+// we keep track of a running sum of the marginal gains for the reward.
 @storage_var
 func snapshots_G(provider: address, token: address) -> (G: felt) {
 }
@@ -135,17 +137,17 @@ func Liquidated(trove_id: felt) {
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yin_address: felt,
-    shrine_address: felt,
-    purger_address: felt,
-    abbot_address: felt
+    _yin: address,
+    _shrine: address,
+    _purger: address,
+    _abbot: address
 ){
-    yin.write(yin_address);
-    shrine.write(shrine_address);
-    purger.write(purger_address);
-    abbot.write(abbot_address);
-    IYin.approve(contract_address=yin_address, spender=purger_address, amount=2**125);
-    P.write(10**18);
+    yin.write(_yin);
+    shrine.write(_shrine);
+    purger.write(_purger);
+    abbot.write(_abbot);
+    IYin.approve(contract_address=_yin, spender=_purger, amount=-1);
+    P.write(WadRay.WAD_ONE);
     return ();
 }
 
@@ -405,7 +407,7 @@ func update_yangs_unit_gains{
     let (last_yang_loss_offset_: felt) = WadRay.sub_unsigned(yang_numerator, yang_unit_gain);
     let (last_yang_loss_offset_: felt) = WadRay.wmul(last_yang_loss_offset_, total_deposits_);
     last_yang_loss_offset.write([yangs], last_yang_loss_offset_);
-    [gains] = yang_unit_gain; //write yang unit gain to array
+    assert [gains] = yang_unit_gain; //write yang unit gain to array
 
     return update_yangs_unit_gains(total_deposits_, yangs_len-1, yangs+1, amounts_len-1, freed_amounts+1, gains_len-1, gains+1);
 }
