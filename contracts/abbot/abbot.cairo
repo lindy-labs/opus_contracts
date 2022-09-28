@@ -10,6 +10,7 @@ from contracts.interfaces import IGate, IShrine
 from contracts.shared.types import Trove, Yang
 
 from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
     get_roles,
@@ -255,10 +256,10 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (shrine: address) = abbot_shrine_address.read();
     let (gate: address) = abbot_yang_to_gate.read(yang);
 
-    // Calculate underlying amount before Shrine is updated
-    let (underlying_amount: wad) = IGate.preview_withdraw(gate, amount);
+    ReentrancyGuard._start();
+    IGate.withdraw(gate, user, trove_id, amount);
     IShrine.withdraw(shrine, yang, trove_id, amount);
-    IGate.withdraw(gate, user, trove_id, underlying_amount);
+    ReentrancyGuard._end();
 
     return ();
 }
@@ -390,15 +391,13 @@ func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     alloc_locals;
 
     let (gate: address) = abbot_yang_to_gate.read(yang);
-    let (yang_amount: wad) = IGate.preview_deposit(gate, amount);
-
-    if (yang_amount == 0) {
-        return ();
-    }
 
     let (shrine: address) = abbot_shrine_address.read();
+
+    ReentrancyGuard._start();
+    let yang_amount: wad = IGate.deposit(gate, user, trove_id, amount);
     IShrine.deposit(shrine, yang, trove_id, yang_amount);
-    IGate.deposit(gate, user, trove_id, amount);
+    ReentrancyGuard._end();
 
     return ();
 }
@@ -423,10 +422,10 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         let (gate: address) = abbot_yang_to_gate.read(yang);
         let (shrine: address) = abbot_shrine_address.read();
 
-        // Calculate underlying amount before Shrine is updated
-        let (amount: wad) = IGate.preview_withdraw(gate, yang_amount);
+        ReentrancyGuard._start();
+        IGate.withdraw(gate, user, trove_id, yang_amount);
         IShrine.withdraw(shrine, yang, trove_id, yang_amount);
-        IGate.withdraw(gate, user, trove_id, amount);
+        ReentrancyGuard._end();
 
         return do_withdrawals_full(shrine, user, trove_id, yang_idx + 1, yang_count);
     }

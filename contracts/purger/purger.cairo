@@ -8,6 +8,7 @@ from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.interfaces import IAbbot, IGate, IShrine
+from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 from contracts.shared.aliases import address, bool, ray, ufelt, wad
 from contracts.shared.wad_ray import WadRay
 
@@ -304,13 +305,12 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // `rmul` of a wad and a ray returns a wad
     let freed_yang: wad = WadRay.rmul(deposited_amt, percentage_freed);
 
-    // Get amount of underlying collateral to free before Shrine is updated
+    ReentrancyGuard._start();
     // The denomination is based on the number of decimals for the token
-    let (freed_asset_amt: wad) = IGate.preview_withdraw(gate, freed_yang);
+    let (freed_asset_amt: wad) = IGate.withdraw(gate, recipient, trove_id, freed_yang);
     assert [freed_assets_amt] = freed_asset_amt;
-
     IShrine.seize(shrine, yang, trove_id, freed_yang);
-    IGate.withdraw(gate, recipient, trove_id, freed_asset_amt);
+    ReentrancyGuard._end();
 
     return ();
 }

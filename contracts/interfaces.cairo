@@ -138,10 +138,10 @@ namespace IGate {
     //
     // external
     //
-    func deposit(user: address, trove_id: ufelt, assets: wad) {
+    func deposit(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
     }
 
-    func withdraw(user: address, trove_id: ufelt, yang: wad) {
+    func withdraw(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
     }
 
     func kill() {

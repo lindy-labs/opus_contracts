@@ -56,11 +56,11 @@ const REBASE_RATIO = 10 * WadRay.RAY_PERCENT;  // 10%
 //
 
 @event
-func Deposit(user: address, trove_id: ufelt, assets: wad) {
+func Deposit(user: address, trove_id: ufelt, assets: wad, yang: wad) {
 }
 
 @event
-func Withdraw(user: address, trove_id: ufelt, assets: wad) {
+func Withdraw(user: address, trove_id: ufelt, assets: wad, yang: wad) {
 }
 
 @event
@@ -144,15 +144,19 @@ func kill{
 @external
 func deposit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user: address, trove_id: ufelt, assets: wad) {
+}(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
     // Assert live
     assert_live();
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.DEPOSIT);
+
+    let yang: wad = Gate.convert_to_yang(assets);
+    if (yang == 0) {
+        return (0,);
+    }
 
     // Get asset and gate addresses
     let asset: address = get_asset();
@@ -168,20 +172,24 @@ func deposit{
     }
 
     // Emit event
-    Deposit.emit(user, trove_id, assets);
+    Deposit.emit(user, trove_id, assets, yang);
 
-    return ();
+    return (yang,);
 }
 
 @external
 func withdraw{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user: address, trove_id: ufelt, assets: wad) {
+}(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.WITHDRAW);
+
+    let assets: wad = Gate.convert_to_assets(yang);
+    if (assets == 0) {
+        return (0,);
+    }
 
     // Get asset address
     let asset: address = Gate.get_asset();
@@ -196,9 +204,9 @@ func withdraw{
     }
 
     // Emit event
-    Withdraw.emit(user, trove_id, assets);
+    Withdraw.emit(user, trove_id, assets, yang);
 
-    return ();
+    return (assets,);
 }
 
 // Autocompound and charge the admin fee.
