@@ -31,7 +31,6 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     change_admin,
 )
 
-from contracts.interfaces import IShrine
 from contracts.shared.interfaces import IERC20
 from contracts.shared.wad_ray import WadRay
 from contracts.shared.aliases import wad, ray, bool, address, ufelt
@@ -152,7 +151,6 @@ func deposit{
     // Assert live
     assert_live();
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.DEPOSIT);
 
     let yang: wad = Gate.convert_to_yang(assets);
@@ -164,10 +162,6 @@ func deposit{
     let asset: address = get_asset();
     let gate: address = get_contract_address();
 
-    // Update Shrine
-    let shrine: address = get_shrine();
-    IShrine.deposit(contract_address=shrine, yang=asset, trove_id=trove_id, amount=yang);
-
     // Transfer asset from `user_address` to Gate
     let (assets_uint) = WadRay.to_uint(assets);
     with_attr error_message("Gate: Transfer of asset failed") {
@@ -178,7 +172,7 @@ func deposit{
     }
 
     // Emit event
-    Deposit.emit(user=user, trove_id=trove_id, assets=assets, yang=yang);
+    Deposit.emit(user, trove_id, assets, yang);
 
     return (yang,);
 }
@@ -190,7 +184,6 @@ func withdraw{
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.WITHDRAW);
 
     let assets: wad = Gate.convert_to_assets(yang);
@@ -200,11 +193,6 @@ func withdraw{
 
     // Get asset address
     let asset: address = Gate.get_asset();
-
-    // Update Shrine
-    let shrine: address = Gate.get_shrine();
-
-    IShrine.withdraw(contract_address=shrine, yang=asset, trove_id=trove_id, amount=yang);
 
     // Transfer asset from Gate to `user_address`
     let (assets_uint: Uint256) = WadRay.to_uint(assets);
@@ -216,7 +204,7 @@ func withdraw{
     }
 
     // Emit event
-    Withdraw.emit(user=user, trove_id=trove_id, assets=assets, yang=yang);
+    Withdraw.emit(user, trove_id, assets, yang);
 
     return (assets,);
 }

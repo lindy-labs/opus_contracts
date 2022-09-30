@@ -10,6 +10,7 @@ from contracts.interfaces import IGate, IShrine
 from contracts.shared.types import Trove, Yang
 
 from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
     get_roles,
@@ -124,6 +125,13 @@ func get_user_trove_ids{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     let (ids: ufelt*) = alloc();
     get_user_trove_ids_loop(user, count, 0, ids);
     return (count, ids);
+}
+
+@view
+func get_gate_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address
+) -> (gate: address) {
+    return abbot_yang_to_gate.read(yang);
 }
 
 @view
@@ -245,8 +253,13 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (user: address) = get_caller_address();
     assert_trove_owner(user, trove_id);
 
+    let (shrine: address) = abbot_shrine_address.read();
     let (gate: address) = abbot_yang_to_gate.read(yang);
+
+    ReentrancyGuard._start();
     IGate.withdraw(gate, user, trove_id, amount);
+    IShrine.withdraw(shrine, yang, trove_id, amount);
+    ReentrancyGuard._end();
 
     return ();
 }
@@ -375,8 +388,17 @@ func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     user: address, trove_id: ufelt, yang: address, amount: wad
 ) {
+    alloc_locals;
+
     let (gate: address) = abbot_yang_to_gate.read(yang);
-    IGate.deposit(gate, user, trove_id, amount);
+
+    let (shrine: address) = abbot_shrine_address.read();
+
+    ReentrancyGuard._start();
+    let yang_amount: wad = IGate.deposit(gate, user, trove_id, amount);
+    IShrine.deposit(shrine, yang, trove_id, yang_amount);
+    ReentrancyGuard._end();
+
     return ();
 }
 
@@ -392,13 +414,19 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     }
 
     let (yang: address) = abbot_yang_addresses.read(yang_idx);
-    let (amount: wad) = IShrine.get_deposit(shrine, trove_id, yang);
+    let (yang_amount: wad) = IShrine.get_deposit(shrine, yang, trove_id);
 
-    if (amount == 0) {
+    if (yang_amount == 0) {
         return do_withdrawals_full(shrine, user, trove_id, yang_idx + 1, yang_count);
     } else {
         let (gate: address) = abbot_yang_to_gate.read(yang);
-        IGate.withdraw(gate, user, trove_id, amount);
+        let (shrine: address) = abbot_shrine_address.read();
+
+        ReentrancyGuard._start();
+        IGate.withdraw(gate, user, trove_id, yang_amount);
+        IShrine.withdraw(shrine, yang, trove_id, yang_amount);
+        ReentrancyGuard._end();
+
         return do_withdrawals_full(shrine, user, trove_id, yang_idx + 1, yang_count);
     }
 }

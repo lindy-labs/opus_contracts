@@ -20,7 +20,7 @@ namespace IShrine {
     func get_yangs_count() -> (count: ufelt) {
     }
 
-    func get_deposit(trove_id: ufelt, yang: address) -> (balance: wad) {
+    func get_deposit(yang: address, trove_id: ufelt) -> (balance: wad) {
     }
 
     func get_total_debt() -> (total_debt: wad) {
@@ -29,7 +29,7 @@ namespace IShrine {
     func get_total_yin() -> (total_yin: wad) {
     }
 
-    func get_yang_price(yang_address, interval) -> (price: wad, cumulative_price: wad) {
+    func get_yang_price(yang: address, interval) -> (price: wad, cumulative_price: wad) {
     }
 
     func get_ceiling() -> (ceiling: wad) {
@@ -86,7 +86,7 @@ namespace IShrine {
     func melt(user: address, trove_id: ufelt, amount: wad) {
     }
 
-    func seize(trove_id: ufelt) {
+    func seize(yang: address, trove_id: ufelt, amount: wad) {
     }
 
     //
@@ -95,11 +95,11 @@ namespace IShrine {
     func get_trove_threshold(trove_id: ufelt) -> (threshold: ray, value: wad) {
     }
 
-    func get_current_trove_ratio(trove_id: ufelt) -> (ratio: ray) {
+    func get_current_trove_ltv(trove_id: ufelt) -> (ltv: ray) {
     }
 
     func get_current_yang_price(yang: address) -> (
-        pric: wad, cumulative_price: wad, interval: ufelt
+        price: wad, cumulative_price: wad, interval: ufelt
     ) {
     }
 
@@ -162,7 +162,7 @@ namespace IGate {
     func preview_deposit(assets: wad) -> (preview: wad) {
     }
 
-    func preview_withdraw(yang_wad) -> (preview: wad) {
+    func preview_withdraw(yang: wad) -> (preview: wad) {
     }
 }
 
@@ -176,6 +176,9 @@ namespace IAbbot {
     }
 
     func get_user_trove_ids(user: address) -> (trove_ids_len: ufelt, trove_ids: ufelt*) {
+    }
+
+    func get_gate_address(yang: address) -> (gate: address) {
     }
 
     func get_yang_addresses() -> (yangs_len: ufelt, yangs: address*) {
@@ -210,6 +213,61 @@ namespace IAbbot {
 
     func add_yang(
         yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address
+    ) {
+    }
+}
+
+@contract_interface
+namespace IYin {
+    func name() -> (str: felt) {
+    }
+
+    func symbol() -> (str: felt) {
+    }
+
+    func decimals() -> (ufelt: felt) {
+    }
+
+    func totalSupply() -> (totalSupply: felt) {
+    }
+
+    func balanceOf(account: felt) -> (wad: felt) {
+    }
+
+    func allowance(owner: felt, spender: felt) -> (wad: felt) {
+    }
+
+    func transfer(recipient: felt, amount: felt) -> (bool: felt) {
+    }
+
+    func transferFrom(sender: felt, recipient: felt, amount: felt) -> (bool: felt) {
+    }
+
+    func approve(spender: felt, amount: felt) -> (bool: felt) {
+    }
+}
+
+@contract_interface
+namespace IPurger {
+    //
+    // view
+    //
+
+    func get_purge_penalty(trove_id: felt) -> (ray: felt) {
+    }
+
+    func get_max_close_amount(trove_id: felt) -> (wad: felt) {
+    }
+
+    //
+    // external
+    //
+
+    func purge(trove_id: felt, purge_amt_wad: felt, recipient_address: felt) -> (
+        yang_addresses_len: felt,
+        yang_addresses: felt*,
+        freed_assets_amt_len: felt,
+        freed_assets_amt: felt*,
     ) {
     }
 }

@@ -19,8 +19,6 @@ from contracts.gate.rebasing_yang.library_external import (
     preview_deposit,
     preview_withdraw,
 )
-
-from contracts.interfaces import IShrine
 from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
@@ -136,7 +134,6 @@ func deposit{
     // Assert live
     assert_live();
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.DEPOSIT);
 
     let yang: wad = Gate.convert_to_yang(assets);
@@ -148,10 +145,6 @@ func deposit{
     let asset: address = get_asset();
     let gate: address = get_contract_address();
 
-    // Update Shrine
-    let shrine: address = get_shrine();
-    IShrine.deposit(contract_address=shrine, yang=asset, trove_id=trove_id, amount=yang);
-
     // Transfer asset from `user_address` to Gate
     let assets_uint: Uint256 = WadRay.to_uint(assets);
     with_attr error_message("Gate: Transfer of asset failed") {
@@ -162,7 +155,7 @@ func deposit{
     }
 
     // Emit event
-    Deposit.emit(user=user, trove_id=trove_id, assets=assets, yang=yang);
+    Deposit.emit(user, trove_id, assets, yang);
 
     return (yang,);
 }
@@ -170,11 +163,10 @@ func deposit{
 @external
 func withdraw{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user: address, trove_id, yang: wad) -> (wad: felt) {
+}(user: address, trove_id, yang: wad) -> (assets: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
-    // Only Abbot can call
     AccessControl.assert_has_role(GateRoles.WITHDRAW);
 
     let assets: wad = Gate.convert_to_assets(yang);
@@ -184,10 +176,6 @@ func withdraw{
 
     // Get asset address
     let asset: address = get_asset();
-
-    // Update Shrine
-    let shrine: address = get_shrine();
-    IShrine.withdraw(contract_address=shrine, yang=asset, trove_id=trove_id, amount=yang);
 
     // Transfer asset from Gate to `user_address`
     let (assets_uint: Uint256) = WadRay.to_uint(assets);
@@ -199,7 +187,7 @@ func withdraw{
     }
 
     // Emit events
-    Withdraw.emit(user=user, trove_id=trove_id, assets=assets, yang=yang);
+    Withdraw.emit(user, trove_id, assets, yang);
 
     return (assets,);
 }

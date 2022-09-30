@@ -6,9 +6,9 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.shrine.constants import TROVE_1, TROVE_2, ShrineRoles
+from tests.roles import ShrineRoles
 from tests.utils import (
-    ABBOT,
+    ABBOT_ROLE,
     ADMIN,
     BAD_GUY,
     FALSE,
@@ -16,6 +16,8 @@ from tests.utils import (
     SHRINE_OWNER,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE_1,
+    TROVE_2,
     TRUE,
     ZERO_ADDRESS,
     assert_equalish,
@@ -23,6 +25,7 @@ from tests.utils import (
     compile_contract,
     from_uint,
     from_wad,
+    str_to_felt,
     to_ray,
     to_wad,
 )
@@ -32,6 +35,8 @@ from tests.utils import (
 #
 
 CUSTOM_ERROR_MARGIN = Decimal("10e-18")
+MOCK_ABBOT = str_to_felt("abbot")
+
 
 #
 # Helper functions
@@ -103,7 +108,7 @@ async def gate_rebasing_tax(starknet, shrine, rebasing_token) -> StarknetContrac
     )
 
     # Grant `Abbot` access to `deposit` and `withdraw
-    await gate.grant_role(ABBOT_ROLE, ABBOT).execute(caller_address=ADMIN)
+    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=ADMIN)
     return gate
 
 
@@ -123,19 +128,19 @@ async def gate_rebasing(starknet, shrine, rebasing_token) -> StarknetContract:
     )
 
     # Grant `Abbot` access to `deposit` and `withdraw
-    await gate.grant_role(ABBOT_ROLE, ABBOT).execute(caller_address=ADMIN)
+    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=ADMIN)
     return gate
 
 
 @pytest.fixture
-async def shrine_authed(shrine, gate, rebasing_token) -> StarknetContract:
+async def shrine_authed(shrine, rebasing_token) -> StarknetContract:
     """
-    Add Gate as an authorized address of Shrine.
+    Add Abbot as an authorized address of Shrine.
     """
 
-    # Grant `Gate` access to `deposit` and `withdraw` in `Shrine`
+    # Grant `Abbot` access to `deposit` and `withdraw` in `Shrine`
     role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
-    await shrine.grant_role(role_value, gate.contract_address).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(role_value, MOCK_ABBOT).execute(caller_address=SHRINE_OWNER)
 
     # Add rebasing_token as Yang
     await shrine.add_yang(
@@ -158,13 +163,15 @@ async def gate_deposit(shrine_authed, gate, rebasing_token) -> StarknetCallInfo:
     await rebasing_token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE1_OWNER)
 
     # Call deposit
-    deposit = await gate.deposit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).execute(caller_address=ABBOT)
+    yang_wad = (await gate.preview_deposit(FIRST_DEPOSIT_AMT).execute()).result.preview
+    gate_deposit = await gate.deposit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.deposit(rebasing_token.contract_address, TROVE_1, yang_wad).execute(caller_address=MOCK_ABBOT)
 
-    return deposit
+    return gate_deposit
 
 
 @pytest.fixture
-async def gate_deposit_alt(gate, rebasing_token, gate_deposit) -> StarknetCallInfo:
+async def gate_deposit_alt(shrine_authed, gate, rebasing_token, gate_deposit) -> StarknetCallInfo:
     """
     Deposit by user 2 after user 1 has deposited but before rebase.
     """
@@ -173,13 +180,15 @@ async def gate_deposit_alt(gate, rebasing_token, gate_deposit) -> StarknetCallIn
     await rebasing_token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE2_OWNER)
 
     # Call deposit
-    deposit = await gate.deposit(TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT).execute(caller_address=ABBOT)
+    yang_wad = (await gate.preview_deposit(FIRST_DEPOSIT_AMT).execute()).result.preview
+    gate_deposit = await gate.deposit(TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.deposit(rebasing_token.contract_address, TROVE_2, yang_wad).execute(caller_address=MOCK_ABBOT)
 
-    return deposit
+    return gate_deposit
 
 
 @pytest.fixture
-async def gate_deposit_alt_with_rebase(gate, rebasing_token, gate_deposit, rebase) -> StarknetCallInfo:
+async def gate_deposit_alt_with_rebase(shrine_authed, gate, rebasing_token, gate_deposit, rebase) -> StarknetCallInfo:
     """
     Deposit by user 2 after user 1 has deposited and after rebase.
     """
@@ -188,8 +197,11 @@ async def gate_deposit_alt_with_rebase(gate, rebasing_token, gate_deposit, rebas
     await rebasing_token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE2_OWNER)
 
     # Call deposit
-    deposit = await gate.deposit(TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT).execute(caller_address=ABBOT)
-    return deposit
+    yang_wad = (await gate.preview_deposit(FIRST_DEPOSIT_AMT).execute()).result.preview
+    gate_deposit = await gate.deposit(TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.deposit(rebasing_token.contract_address, TROVE_2, yang_wad).execute(caller_address=MOCK_ABBOT)
+
+    return gate_deposit
 
 
 @pytest.fixture
@@ -230,7 +242,7 @@ async def test_gate_setup(gate, rebasing_token):
     assert asset_bal == 0
 
     # Check Abbot address is authorized to deposit and withdraw
-    abbot_role = (await gate.get_roles(ABBOT).execute()).result.roles
+    abbot_role = (await gate.get_roles(MOCK_ABBOT).execute()).result.roles
     assert abbot_role == ABBOT_ROLE
 
     # Check initial values
@@ -259,11 +271,7 @@ async def test_gate_setup(gate, rebasing_token):
 @pytest.mark.asyncio
 async def test_gate_deposit_pass(shrine_authed, gate, rebasing_token, gate_deposit, collect_gas_cost):
     # 2 unique key updated for ERC20 transfer (Gate's balance, user's balance)
-    # 2 keys updated for Shrine (`shrine_yangs_storage`, `shrine_deposits_storage`)
-    #
-    # Note that ReentrancyGuard updates 1 key but storage is not charged because value is reset
-    # at the end of the transaction.
-    collect_gas_cost("gate/deposit", gate_deposit, 4, 2)
+    collect_gas_cost("gate/deposit", gate_deposit, 2, 1)
 
     # Check gate asset balance
     total_bal = (await gate.get_total_assets().execute()).result.total
@@ -271,7 +279,7 @@ async def test_gate_deposit_pass(shrine_authed, gate, rebasing_token, gate_depos
 
     # Check gate yang balance
     total_yang = (await gate.get_total_yang().execute()).result.total
-    user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()).result.balance
+    user_yang = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()).result.balance
     assert total_yang == user_yang == FIRST_DEPOSIT_AMT
 
     # Check exchange rate
@@ -300,11 +308,13 @@ async def test_gate_subsequent_deposit_with_rebase(shrine_authed, gate, rebasing
 
     # Get user's yang before subsequent deposit
     before_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
 
     # Call deposit
-    deposit = await gate.deposit(TROVE1_OWNER, TROVE_1, SECOND_DEPOSIT_AMT).execute(caller_address=ABBOT)
+    yang_wad = (await gate.preview_deposit(FIRST_DEPOSIT_AMT).execute()).result.preview
+    gate_deposit = await gate.deposit(TROVE1_OWNER, TROVE_1, SECOND_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.deposit(rebasing_token.contract_address, TROVE_1, yang_wad).execute(caller_address=MOCK_ABBOT)
 
     # Check gate asset balance
     total_assets = (await gate.get_total_assets().execute()).result.total
@@ -321,7 +331,7 @@ async def test_gate_subsequent_deposit_with_rebase(shrine_authed, gate, rebasing
 
     # Check user's yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     assert_equalish(
         from_wad(after_user_yang),
@@ -331,7 +341,7 @@ async def test_gate_subsequent_deposit_with_rebase(shrine_authed, gate, rebasing
 
     # Check event emitted
     assert_event_emitted(
-        deposit,
+        gate_deposit,
         gate.contract_address,
         "Deposit",
         [TROVE1_OWNER, TROVE_1, SECOND_DEPOSIT_AMT, to_wad(expected_yang)],
@@ -354,7 +364,7 @@ async def test_gate_subsequent_unique_deposit_before_rebase(shrine_authed, gate,
     # Check user's yang
     expected_yang = FIRST_DEPOSIT_AMT
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_2).execute()
     ).result.balance
     assert after_user_yang == expected_yang
 
@@ -391,7 +401,7 @@ async def test_gate_subsequent_unique_deposit_after_rebase(
 
     # Check user's yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_2).execute()
     ).result.balance
     assert_equalish(from_wad(after_user_yang), expected_yang, CUSTOM_ERROR_MARGIN)
 
@@ -411,14 +421,13 @@ async def test_gate_withdraw_before_rebase(shrine_authed, gate, rebasing_token, 
     Withdraw all yang before rebase.
     """
     # 2 unique key updated for ERC20 transfer (Gate's balance, user's balance)
-    # 2 keys updated for Shrine (`shrine_yangs_storage`, `shrine_deposits_storage`)
-    #
-    # Note that ReentrancyGuard updates 1 key but storage is not charged because value is reset
-    # at the end of the transaction.
-    collect_gas_cost("gate/withdraw", gate_deposit, 4, 2)
+    collect_gas_cost("gate/withdraw", gate_deposit, 2, 1)
 
     # Withdraw
-    withdraw = await gate.withdraw(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).execute(caller_address=ABBOT)
+    gate_withdraw = await gate.withdraw(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_1, FIRST_DEPOSIT_AMT).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Fetch post-withdrawal balances
     after_user_balance = (await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance
@@ -430,7 +439,7 @@ async def test_gate_withdraw_before_rebase(shrine_authed, gate, rebasing_token, 
 
     # Fetch post-withdrawal yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     total_yang = (await gate.get_total_yang().execute()).result.total
 
@@ -442,7 +451,7 @@ async def test_gate_withdraw_before_rebase(shrine_authed, gate, rebasing_token, 
 
     # Check event
     assert_event_emitted(
-        withdraw,
+        gate_withdraw,
         gate.contract_address,
         "Withdraw",
         [TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
@@ -457,7 +466,10 @@ async def test_gate_withdraw_after_rebase_pass(shrine_authed, gate, rebasing_tok
     """
 
     # withdraw
-    withdraw = await gate.withdraw(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).execute(caller_address=ABBOT)
+    gate_withdraw = await gate.withdraw(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_1, FIRST_DEPOSIT_AMT).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Fetch post-withdrawal balances
     after_user_balance = (await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance
@@ -470,7 +482,7 @@ async def test_gate_withdraw_after_rebase_pass(shrine_authed, gate, rebasing_tok
 
     # Fetch post-withdrawal yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     total_yang = (await gate.get_total_yang().execute()).result.total
 
@@ -483,7 +495,7 @@ async def test_gate_withdraw_after_rebase_pass(shrine_authed, gate, rebasing_tok
     expected_withdrawn_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
     # Check event
     assert_event_emitted(
-        withdraw,
+        gate_withdraw,
         gate.contract_address,
         "Withdraw",
         [TROVE1_OWNER, TROVE_1, expected_withdrawn_assets, FIRST_DEPOSIT_AMT],
@@ -498,7 +510,7 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
     start_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
 
     # Get initial balance for trove 2
-    trove_2_yang = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).execute()).result.balance
+    trove_2_yang = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_2).execute()).result.balance
 
     # Check gate asset balance
     start_total_bal = (await gate.get_total_assets().execute()).result.total
@@ -506,7 +518,10 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
     start_user_bal = from_uint((await rebasing_token.balanceOf(TROVE2_OWNER).execute()).result.balance)
 
     # Withdraw trove 2
-    trove_2_withdraw = await gate.withdraw(TROVE2_OWNER, TROVE_2, trove_2_yang).execute(caller_address=ABBOT)
+    trove_2_gate_withdraw = await gate.withdraw(TROVE2_OWNER, TROVE_2, trove_2_yang).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_2, trove_2_yang).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Calculate expected assets
     expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang)
@@ -525,7 +540,7 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
 
     # Check user's yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_2).execute()
     ).result.balance
     assert after_user_yang == 0
 
@@ -542,7 +557,7 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
 
     # Check event emitted
     assert_event_emitted(
-        trove_2_withdraw,
+        trove_2_gate_withdraw,
         gate.contract_address,
         "Withdraw",
         [TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
@@ -552,10 +567,13 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
     start_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
 
     # Get initial balance for trove 2
-    trove_1_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()).result.balance
+    trove_1_yang = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()).result.balance
 
     # Withdraw from trove 1
-    trove_1_withdraw = await gate.withdraw(TROVE1_OWNER, TROVE_1, trove_1_yang).execute(caller_address=ABBOT)
+    trove_1_gate_withdraw = await gate.withdraw(TROVE1_OWNER, TROVE_1, trove_1_yang).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_1, trove_1_yang).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Calculate expected assets
     expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang)
@@ -574,7 +592,7 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
 
     # Check user's yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     assert after_user_yang == 0
 
@@ -591,7 +609,7 @@ async def test_gate_multi_user_withdraw_without_rebase(shrine_authed, gate, reba
 
     # Check event emitted
     assert_event_emitted(
-        trove_1_withdraw,
+        trove_1_gate_withdraw,
         gate.contract_address,
         "Withdraw",
         [TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_AMT],
@@ -609,10 +627,13 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
     start_total_bal = (await gate.get_total_assets().execute()).result.total
     start_total_yang = (await gate.get_total_yang().execute()).result.total
     start_user_bal = from_uint((await rebasing_token.balanceOf(TROVE2_OWNER).execute()).result.balance)
-    trove_2_yang = (await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).execute()).result.balance
+    trove_2_yang = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_2).execute()).result.balance
 
     # Withdraw from trove 2
-    await gate.withdraw(TROVE2_OWNER, TROVE_2, trove_2_yang).execute(caller_address=ABBOT)
+    await gate.withdraw(TROVE2_OWNER, TROVE_2, trove_2_yang).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_2, trove_2_yang).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Calculate expected assets
     expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang)
@@ -633,7 +654,7 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
 
     # Check user's yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_2, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_2).execute()
     ).result.balance
     assert after_user_yang == 0
 
@@ -652,13 +673,16 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
 
     # Get user balance
     start_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
-    trove_1_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()).result.balance
+    trove_1_yang = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()).result.balance
 
     # Calculate expected assets
     expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang)
 
     # Withdraw from trove 1
-    await gate.withdraw(TROVE1_OWNER, TROVE_1, trove_1_yang).execute(caller_address=ABBOT)
+    await gate.withdraw(TROVE1_OWNER, TROVE_1, trove_1_yang).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_1, trove_1_yang).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().execute()).result.total
@@ -674,7 +698,7 @@ async def test_gate_multi_user_withdraw_with_rebase(shrine_authed, gate, rebasin
 
     # Check user's yang
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     assert after_user_yang == 0
 
@@ -700,7 +724,7 @@ async def test_kill(shrine_authed, gate, rebasing_token, gate_deposit, rebase):
 
     # Assert deposit fails
     with pytest.raises(StarkException, match="Gate: Gate is not live"):
-        await gate.deposit(TROVE1_OWNER, TROVE_1, SECOND_DEPOSIT_AMT).execute(caller_address=ABBOT)
+        await gate.deposit(TROVE1_OWNER, TROVE_1, SECOND_DEPOSIT_AMT).execute(caller_address=MOCK_ABBOT)
 
     # Assert withdraw succeeds
     withdraw_amt = to_wad(5)
@@ -710,21 +734,24 @@ async def test_kill(shrine_authed, gate, rebasing_token, gate_deposit, rebase):
     before_gate_balance = (await gate.get_total_assets().execute()).result.total
 
     before_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     before_gate_yang = (await gate.get_total_yang().execute()).result.total
 
     expected_assets = get_assets_from_yang(before_gate_yang, before_gate_balance, withdraw_amt)
 
     # Withdraw
-    await gate.withdraw(TROVE1_OWNER, TROVE_1, withdraw_amt).execute(caller_address=ABBOT)
+    await gate.withdraw(TROVE1_OWNER, TROVE_1, withdraw_amt).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_1, withdraw_amt).execute(
+        caller_address=MOCK_ABBOT
+    )
 
     # Get user's and gate's asset and share balances after withdraw
     after_user_balance = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
     after_gate_balance = (await gate.get_total_assets().execute()).result.total
 
     after_user_yang = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     after_gate_yang = (await gate.get_total_yang().execute()).result.total
 
@@ -752,7 +779,7 @@ async def test_gate_deposit_insufficient_fail(shrine_authed, gate, rebasing_toke
     await rebasing_token.approve(gate.contract_address, MAX_UINT256).execute(TROVE1_OWNER)
     # Call deposit with more asset than user has
     with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
-        await gate.deposit(TROVE1_OWNER, TROVE_1, INITIAL_AMT + 1).execute(caller_address=ABBOT)
+        await gate.deposit(TROVE1_OWNER, TROVE_1, INITIAL_AMT + 1).execute(caller_address=MOCK_ABBOT)
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
@@ -760,8 +787,8 @@ async def test_gate_deposit_insufficient_fail(shrine_authed, gate, rebasing_toke
 async def test_gate_withdraw_insufficient_fail(shrine_authed, gate, rebasing_token, gate_deposit):
 
     # Call withdraw with more gate yang than user has
-    with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
-        await gate.withdraw(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT + 1).execute(caller_address=ABBOT)
+    with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
+        await gate.withdraw(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT + 1).execute(caller_address=MOCK_ABBOT)
 
 
 @pytest.mark.parametrize("gate", ["gate_rebasing", "gate_rebasing_tax"], indirect=["gate"])
@@ -785,7 +812,7 @@ async def test_unauthorized_withdraw(shrine_authed, gate, rebasing_token, gate_d
     """Test user-initiated"""
 
     # Sanity check
-    bal = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()).result.balance
+    bal = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()).result.balance
     assert bal == INITIAL_AMT - FIRST_DEPOSIT_AMT
 
     with pytest.raises(StarkException):
@@ -799,16 +826,16 @@ async def test_zero_deposit_withdraw(shrine_authed, gate, rebasing_token, gate_d
 
     # Get balance before
     before_yang_bal = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     before_asset_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
 
     # Call deposit
-    await getattr(gate, fn)(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=ABBOT)
+    await getattr(gate, fn)(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=MOCK_ABBOT)
 
     # Get balance after
     after_yang_bal = (
-        await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()
+        await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()
     ).result.balance
     after_asset_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
 
@@ -829,7 +856,7 @@ async def test_gate_constructor_invalid_tax(shrine, starknet, rebasing_token):
         await starknet.deploy(
             contract_class=contract,
             constructor_calldata=[
-                ABBOT,
+                MOCK_ABBOT,
                 shrine.contract_address,
                 rebasing_token.contract_address,
                 to_ray(TAX_MAX) + 1,
@@ -896,7 +923,7 @@ async def test_gate_levy(shrine_authed, gate, rebasing_token, gate_deposit):
     before_gate_bal = (await gate.get_total_assets().execute()).result.total
 
     # Update Gate's balance and charge tax
-    levy = await gate.levy().execute(caller_address=ABBOT)
+    levy = await gate.levy().execute(caller_address=MOCK_ABBOT)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().execute()).result.total
@@ -904,7 +931,7 @@ async def test_gate_levy(shrine_authed, gate, rebasing_token, gate_deposit):
     assert after_gate_bal == before_gate_bal * COMPOUND_MULTIPLIER - FIRST_TAX_AMT
 
     # Check that user's withdrawable balance has increased
-    user_yang = (await shrine_authed.get_deposit(TROVE_1, rebasing_token.contract_address).execute()).result.balance
+    user_yang = (await shrine_authed.get_deposit(rebasing_token.contract_address, TROVE_1).execute()).result.balance
     expected_user_assets = (await gate.preview_withdraw(user_yang).execute()).result.preview
     assert expected_user_assets == after_gate_bal
 
@@ -925,7 +952,8 @@ async def test_gate_levy(shrine_authed, gate, rebasing_token, gate_deposit):
     before_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
 
     # Withdraw
-    await gate.withdraw(TROVE1_OWNER, TROVE_1, user_yang).execute(caller_address=ABBOT)
+    await gate.withdraw(TROVE1_OWNER, TROVE_1, user_yang).execute(caller_address=MOCK_ABBOT)
+    await shrine_authed.withdraw(rebasing_token.contract_address, TROVE_1, user_yang).execute(caller_address=MOCK_ABBOT)
 
     # Get balances after withdraw
     after_user_bal = from_uint((await rebasing_token.balanceOf(TROVE1_OWNER).execute()).result.balance)

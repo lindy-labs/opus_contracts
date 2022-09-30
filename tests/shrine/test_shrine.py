@@ -1,7 +1,7 @@
 from collections import namedtuple
 from decimal import Decimal
 from math import exp
-from typing import List, Tuple
+from typing import List
 
 import pytest
 from starkware.starknet.testing.objects import StarknetCallInfo
@@ -14,16 +14,23 @@ from tests.utils import (
     RAY_PERCENT,
     RAY_SCALE,
     SHRINE_OWNER,
+    TIME_INTERVAL,
+    TIME_INTERVAL_DIV_YEAR,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE_1,
+    TROVE_2,
     TRUE,
     WAD_SCALE,
     assert_equalish,
     assert_event_emitted,
+    calculate_max_forge,
+    calculate_trove_threshold,
     create_feed,
     from_ray,
     from_wad,
     get_block_timestamp,
+    get_interval,
     price_bounds,
     set_block_timestamp,
     signed_int_to_felt,
@@ -139,102 +146,6 @@ def compound(
 
     new_debt = debt * Decimal(exp(true_rate * intervals_elapsed * TIME_INTERVAL_DIV_YEAR))
     return new_debt
-
-
-def calculate_threshold_and_value(
-    prices: List[int], amounts: List[int], thresholds: List[int]
-) -> Tuple[Decimal, Decimal]:
-    """
-    Helper function to calculate a trove's cumulative weighted threshold and value
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in wad
-
-    Returns
-    -------
-    A tuple of the cumulative weighted threshold and total trove value, both in Decimal
-    """
-
-    cumulative_weighted_threshold = Decimal("0")
-    total_value = Decimal("0")
-
-    # Sanity check on inputs
-    assert len(prices) == len(amounts) == len(thresholds)
-
-    for p, a, t in zip(prices, amounts, thresholds):
-        p = from_wad(p)
-        a = from_wad(a)
-        t = from_ray(t)
-
-        total_value += p * a
-        cumulative_weighted_threshold += p * a * t
-
-    return cumulative_weighted_threshold, total_value
-
-
-def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
-    """
-    Helper function to calculate a trove's threshold
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in wad
-
-    Returns
-    -------
-    Value of the variable threshold in decimal.
-    """
-    cumulative_weighted_threshold, total_value = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold / total_value
-
-
-def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
-    """
-    Helper function to calculate the maximum amount of debt a trove can forge
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in wad
-
-    Returns
-    -------
-    Value of the maximum forge value for a Trove in decimal.
-    """
-    cumulative_weighted_threshold, _ = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold
-
-
-def get_interval(block_timestamp: int) -> int:
-    """
-    Helper function to calculate the interval by dividing the provided timestamp
-    by the TIME_INTERVAL constant.
-
-    Arguments
-    ---------
-    block_timestamp: int
-        Timestamp value
-
-    Returns
-    -------
-    Interval ID based on the given timestamp.
-    """
-    return block_timestamp // TIME_INTERVAL
 
 
 #
@@ -825,7 +736,7 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == deposit_amt_wad
 
-    amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance
     assert amt == deposit_amt_wad
 
     # Check max forge amount
@@ -901,10 +812,10 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == remaining_amt_wad
 
-    amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance
     assert amt == remaining_amt_wad
 
-    ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     assert ltv == 0
 
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
@@ -945,10 +856,10 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     yang = (await shrine.get_yang(YANG_0_ADDRESS).execute()).result.yang
     assert yang.total == remaining_amt_wad
 
-    amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
+    amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance
     assert amt == remaining_amt_wad
 
-    ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     expected_ltv = from_wad(FORGE_AMT_WAD) / (from_wad(price) * from_wad(remaining_amt_wad))
     assert_equalish(from_ray(ltv), expected_ltv)
 
@@ -1033,7 +944,7 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert trove.charge_from == FEED_LEN - 1
 
     yang0_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
-    trove_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    trove_ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
     expected_ltv = Decimal(forge_amt_wad) / Decimal(10 * yang0_price)
     assert_equalish(adjusted_trove_ltv, expected_ltv)
@@ -1072,7 +983,7 @@ async def test_shrine_forge_unsafe_fail(shrine):
 async def test_shrine_forge_ceiling_fail(shrine):
     # Deposit more yang
     await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
-    updated_deposit = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
+    updated_deposit = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance
     assert updated_deposit == to_wad(20)
 
     with pytest.raises(StarkException, match="Shrine: Debt ceiling reached"):
@@ -1107,7 +1018,7 @@ async def test_shrine_melt_pass(shrine, shrine_melt):
     assert trove.debt == 0
     assert trove.charge_from == FEED_LEN - 1
 
-    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    shrine_ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     assert shrine_ltv == 0
 
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
@@ -1147,7 +1058,7 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
     assert trove.debt == outstanding_amt_wad
     assert trove.charge_from == FEED_LEN - 1
 
-    shrine_ltv = (await shrine.get_current_trove_ratio(TROVE_1).execute()).result.ratio
+    shrine_ltv = (await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv
     expected_ltv = from_wad(outstanding_amt_wad) / (INITIAL_DEPOSIT * from_wad(price))
     assert_equalish(from_ray(shrine_ltv), expected_ltv)
 
@@ -1411,10 +1322,10 @@ async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
         [YANG_0_ADDRESS, TROVE_2, to_wad(move_amt)],
     )
 
-    src_amt = (await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance
+    src_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance
     assert src_amt == to_wad(INITIAL_DEPOSIT - move_amt)
 
-    dst_amt = (await shrine.get_deposit(TROVE_2, YANG_0_ADDRESS).execute()).result.balance
+    dst_amt = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_2).execute()).result.balance
     assert dst_amt == to_wad(move_amt)
 
     # Check max forge amount
@@ -1524,7 +1435,7 @@ async def test_shrine_advance_update_multiplier_invalid_fail(shrine_deploy):
 @pytest.mark.asyncio
 async def test_shrine_unhealthy(shrine):
     # Calculate unsafe yang price
-    yang_balance = from_wad((await shrine.get_deposit(TROVE_1, YANG_0_ADDRESS).execute()).result.balance)
+    yang_balance = from_wad((await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance)
     debt = from_wad((await shrine.get_trove(TROVE_1).execute()).result.trove.debt)
     unsafe_price = debt / Decimal("0.85") / yang_balance
 

@@ -61,7 +61,7 @@ func YangAdded(yang: address, yang_id: ufelt, max: wad, start_price: wad) {
 }
 
 @event
-func YangUpdated(yang_addr: address, yang: Yang) {
+func YangUpdated(yang: address, yang_info: Yang) {
 }
 
 @event
@@ -145,7 +145,7 @@ func shrine_yang_id(yang: address) -> (id: ufelt) {
 
 // Keeps track of how much of each yang has been deposited into each Trove - wad
 @storage_var
-func shrine_deposits(trove_id: ufelt, yang_id: ufelt) -> (balance: wad) {
+func shrine_deposits(yang_id: ufelt, trove_id: ufelt) -> (balance: wad) {
 }
 
 // Total amount of debt accrued
@@ -232,10 +232,10 @@ func get_yangs_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
 
 @view
 func get_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, yang: address
+    yang: address, trove_id: ufelt
 ) -> (balance: wad) {
     let (yang_id: ufelt) = shrine_yang_id.read(yang);
-    return shrine_deposits.read(trove_id, yang_id);
+    return shrine_deposits.read(yang_id, trove_id);
 }
 
 @view
@@ -514,7 +514,7 @@ func move_yang{
     // It depends on starknet handles fees for failed transactions
     charge(dst_trove_id);
 
-    let (src_yang_balance: wad) = shrine_deposits.read(src_trove_id, yang_id);
+    let (src_yang_balance: wad) = shrine_deposits.read(yang_id, src_trove_id);
 
     // Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang") {
@@ -523,15 +523,15 @@ func move_yang{
     }
 
     // Update yang balance of source trove
-    shrine_deposits.write(src_trove_id, yang_id, new_src_balance);
+    shrine_deposits.write(yang_id, src_trove_id, new_src_balance);
 
     // Assert source trove is within limits
     assert_healthy(src_trove_id);
 
     // Update yang balance of destination trove
-    let (dst_yang_balance: wad) = shrine_deposits.read(dst_trove_id, yang_id);
+    let (dst_yang_balance: wad) = shrine_deposits.read(yang_id, dst_trove_id);
     let new_dst_balance: wad = WadRay.add_unsigned(dst_yang_balance, amount);
-    shrine_deposits.write(dst_trove_id, yang_id, new_dst_balance);
+    shrine_deposits.write(yang_id, dst_trove_id, new_dst_balance);
 
     // Events
     DepositUpdated.emit(yang, src_trove_id, new_src_balance);
@@ -595,9 +595,9 @@ func deposit{
     shrine_yangs.write(yang_id, new_yang_info);
 
     // Update yang balance of trove
-    let (trove_yang_balance: wad) = shrine_deposits.read(trove_id, yang_id);
+    let (trove_yang_balance: wad) = shrine_deposits.read(yang_id, trove_id);
     let new_trove_balance: wad = WadRay.add(trove_yang_balance, amount);
-    shrine_deposits.write(trove_id, yang_id, new_trove_balance);
+    shrine_deposits.write(yang_id, trove_id, new_trove_balance);
 
     // Events
     YangUpdated.emit(yang, new_yang_info);
@@ -606,7 +606,7 @@ func deposit{
     return ();
 }
 
-// Withdraw a specified amount of a Yang from a Trove
+// Withdraw a specified amount of a Yang from a Trove with trove safety check
 @external
 func withdraw{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -615,35 +615,10 @@ func withdraw{
 
     AccessControl.assert_has_role(ShrineRoles.WITHDRAW);
 
-    // Retrieve yang info
-    let yang_id: ufelt = get_valid_yang_id(yang);
-    let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
-
-    // Ensure trove has sufficient yang
-    let (trove_yang_balance: wad) = shrine_deposits.read(trove_id, yang_id);
-
-    with_attr error_message("Shrine: Insufficient yang") {
-        // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
-        let new_trove_balance: wad = WadRay.sub_unsigned(trove_yang_balance, amount);
-    }
-
-    // Charge interest
-    charge(trove_id);
-
-    // Update yang balance of system
-    let new_total: wad = WadRay.sub_unsigned(old_yang_info.total, amount);
-    let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
-    shrine_yangs.write(yang_id, new_yang_info);
-
-    // Update yang balance of trove
-    shrine_deposits.write(trove_id, yang_id, new_trove_balance);
+    withdraw_internal(yang, trove_id, amount);
 
     // Check if Trove is within limits
     assert_healthy(trove_id);
-
-    // Events
-    YangUpdated.emit(yang, new_yang_info);
-    DepositUpdated.emit(yang, trove_id, new_trove_balance);
 
     return ();
 }
@@ -783,23 +758,18 @@ func melt{
     return ();
 }
 
-// Seize a Trove for liquidation by transferring the debt and yang to the appropriate module
-// Checks should be performed beforehand by the module calling this function
+// Withdraw a specified amount of a Yang from a Trove without trove safety check.
+// This is intended for liquidations where collateral needs to be withdrawn and transferred to the liquidator
+// even if the trove is still unsafe.
 @external
 func seize{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(trove_id: ufelt) {
+}(yang: address, trove_id: ufelt, amount: wad) {
+    alloc_locals;
+
     AccessControl.assert_has_role(ShrineRoles.SEIZE);
 
-    // Update Trove information
-    let (old_trove_info: Trove) = get_trove(trove_id);
-    let new_trove_info: Trove = Trove(charge_from=old_trove_info.charge_from, debt=0);
-
-    // TODO Transfer outstanding debt (old_trove_info.debt) to the appropriate module
-
-    // TODO Iterate over yangs and transfer balance to the appropriate module
-
-    // TODO Events?
+    withdraw_internal(yang, trove_id, amount);
 
     return ();
 }
@@ -826,15 +796,15 @@ func get_trove_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 // Calculate a Trove's current loan-to-value ratio
 // returns a ray
 @view
-func get_current_trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_current_trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
-) -> (ratio: ray) {
+) -> (ltv: ray) {
     alloc_locals;
 
     let (trove: Trove) = get_trove(trove_id);
     let interval: ufelt = now();
-    let ratio = trove_ratio(trove_id, interval, trove.debt);
-    return (ratio,);
+    let ltv = trove_ltv(trove_id, interval, trove.debt);
+    return (ltv,);
 }
 
 // Get the last updated price for a yang
@@ -976,6 +946,42 @@ func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> u
     return interval;
 }
 
+// Withdraw a specified amount of a Yang from a Trove
+func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address, trove_id: ufelt, amount: wad
+) {
+    alloc_locals;
+
+    // Retrieve yang info
+    let yang_id: ufelt = get_valid_yang_id(yang);
+    let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
+
+    // Ensure trove has sufficient yang
+    let (trove_yang_balance: wad) = shrine_deposits.read(yang_id, trove_id);
+
+    with_attr error_message("Shrine: Insufficient yang") {
+        // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
+        let new_trove_balance: wad = WadRay.sub_unsigned(trove_yang_balance, amount);
+    }
+
+    // Charge interest
+    charge(trove_id);
+
+    // Update yang balance of system
+    let new_total: wad = WadRay.sub_unsigned(old_yang_info.total, amount);
+    let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
+    shrine_yangs.write(yang_id, new_yang_info);
+
+    // Update yang balance of trove
+    shrine_deposits.write(yang_id, trove_id, new_trove_balance);
+
+    // Events
+    YangUpdated.emit(yang, new_yang_info);
+    DepositUpdated.emit(yang, trove_id, new_trove_balance);
+
+    return ();
+}
+
 // Adds the accumulated interest as debt to the trove
 func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) {
     alloc_locals;
@@ -1083,7 +1089,7 @@ func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
 // See comments above `appraise_internal` for the underlying assumption on which the correctness of the result depends.
 // Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 // Returns a ray.
-func trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, interval: ufelt, debt: wad
 ) -> ray {
     // Early termination if no debt
@@ -1094,8 +1100,8 @@ func trove_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let value: wad = appraise_internal(trove_id, yang_count, interval, 0);
 
-    let ratio: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
-    return ratio;
+    let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
+    return ltv;
 }
 
 // Gets the value of a trove at the yang prices at the given interval.
@@ -1113,7 +1119,7 @@ func appraise_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 
     // Calculate current yang value
-    let (balance: wad) = shrine_deposits.read(trove_id, yang_id);
+    let (balance: wad) = shrine_deposits.read(yang_id, trove_id);
 
     // Skip over the rest of the logic if the user hasn't deposited any
     if (balance == 0) {
@@ -1221,7 +1227,7 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return cumulative_val;
     }
 
-    let (balance: wad) = shrine_deposits.read(trove_id, current_yang_id);
+    let (balance: wad) = shrine_deposits.read(current_yang_id, trove_id);
 
     // Skipping over the rest of the logic if the user hasn't deposited anything for this yang
     if (balance == 0) {
@@ -1269,20 +1275,6 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 // Trove health internal functions
 //
 
-func assert_unhealthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt
-) {
-    alloc_locals;
-
-    let (healthy: bool) = is_healthy(trove_id);
-
-    with_attr error_message("Shrine: Trove is not liquidatable") {
-        assert healthy = FALSE;
-    }
-
-    return ();
-}
-
 func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) {
@@ -1318,7 +1310,7 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
         }
     }
 
-    let (deposited: wad) = shrine_deposits.read(trove_id, current_yang_id);
+    let (deposited: wad) = shrine_deposits.read(current_yang_id, trove_id);
 
     // Gas optimization - skip over the current yang if the user hasn't deposited any
     if (deposited == 0) {
