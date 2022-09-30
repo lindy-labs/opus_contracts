@@ -10,7 +10,7 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
 from tests.gate.rebasing_yang.constants import INITIAL_AMT
-from tests.roles import AbbotRoles, ShrineRoles
+from tests.roles import ShrineRoles
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
@@ -257,9 +257,6 @@ async def abbot(starknet, shrine_deploy) -> StarknetContract:
         + ShrineRoles.SET_THRESHOLD
     )
     await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    # allow ABBOT_OWNER to call add_yang
-    await abbot.grant_role(AbbotRoles.ADD_YANG.value, ABBOT_OWNER).execute(caller_address=ABBOT_OWNER)
 
     return abbot
 
