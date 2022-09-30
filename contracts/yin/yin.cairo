@@ -5,9 +5,9 @@ from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.math import assert_not_zero, assert_le
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
-from contracts.interfaces import IShrine
 from contracts.shared.wad_ray import WadRay
-from contracts.shared.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
+from contracts.shared.aliases import wad, str, bool, ufelt, address
+from contracts.shrine.interface import IShrine
 
 // Yin-ERC20
 // -------------------------------
