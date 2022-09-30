@@ -242,7 +242,7 @@ async def abbot(starknet, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
     abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
-        contract_class=abbot_contract, constructor_calldata=[shrine.contract_address, ABBOT_OWNER]
+        contract_class=abbot_contract, constructor_calldata=[ABBOT_OWNER, shrine.contract_address]
     )
 
     # auth Abbot in Shrine
