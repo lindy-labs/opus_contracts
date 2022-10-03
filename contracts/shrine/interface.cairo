@@ -1,7 +1,7 @@
 %lang starknet
 
 from contracts.shared.types import Trove, Yang
-from contracts.shared.aliases import wad, ray, bool, ufelt, address
+from contracts.shared.aliases import address, bool, ray, ufelt, wad
 
 @contract_interface
 namespace IShrine {

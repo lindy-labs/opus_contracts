@@ -2,17 +2,9 @@
 
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div_rem, split_felt
+from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_block_timestamp
-
-from contracts.shared.convert import pack_felt, pack_125, unpack_125
-from contracts.shared.types import Trove, Yang
-from contracts.shared.wad_ray import WadRay
-from contracts.shared.exp import exp
-from contracts.shared.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
-
-from contracts.shrine.roles import ShrineRoles
 
 from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
@@ -25,6 +17,12 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     renounce_role,
     change_admin,
 )
+from contracts.shared.aliases import address, bool, packed, ray, sfelt, str, ufelt, wad
+from contracts.shared.convert import pack_felt, pack_125, unpack_125
+from contracts.shared.exp import exp
+from contracts.shared.types import Trove, Yang
+from contracts.shared.wad_ray import WadRay
+from contracts.shrine.roles import ShrineRoles
 
 //
 // Constants

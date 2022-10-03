@@ -1,12 +1,12 @@
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE
-from starkware.starknet.common.syscalls import get_caller_address
-from starkware.cairo.common.math import assert_not_zero, assert_le
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.math import assert_le, assert_not_zero
+from starkware.starknet.common.syscalls import get_caller_address
 
+from contracts.shared.aliases import address, bool, str, ufelt, wad
 from contracts.shared.wad_ray import WadRay
-from contracts.shared.aliases import wad, str, bool, ufelt, address
 from contracts.shrine.interface import IShrine
 
 // Yin-ERC20

@@ -1,15 +1,14 @@
 from starkware.cairo.common.math import (
+    abs_value,
     assert_le,
     assert_nn_le,
     sign,
-    abs_value,
     signed_div_rem,
     unsigned_div_rem,
 )
-
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.shared.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
+from contracts.shared.aliases import address, bool, packed, ray, sfelt, str, ufelt, wad
 
 // Adapted from Influence's 64x61 fixed-point math library (https://github.com/influenceth/cairo-math-64x61/blob/master/contracts/Math64x61.cairo).
 

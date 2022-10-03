@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.shared.aliases import wad, ufelt
+from contracts.shared.aliases import ufelt, wad
 
 struct Trove {
     charge_from: ufelt,  // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
