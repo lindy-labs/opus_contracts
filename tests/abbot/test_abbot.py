@@ -3,6 +3,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
+from tests.roles import AbbotRoles
 from tests.utils import (
     ABBOT_OWNER,
     AURA_USER,
@@ -54,6 +55,7 @@ async def aura_user_with_first_trove(abbot, shrine, steth_yang: YangConfig, doge
 @pytest.mark.asyncio
 async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
     assert (await abbot.get_admin().execute()).result.admin == ABBOT_OWNER
+    assert (await abbot.has_role(AbbotRoles.ADD_YANG, ABBOT_OWNER).execute()).result.has_role == 1
     yang_addrs = (await abbot.get_yang_addresses().execute()).result.addresses
     assert len(yang_addrs) == 2
     assert steth_yang.contract_address in yang_addrs

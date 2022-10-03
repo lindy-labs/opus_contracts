@@ -6,7 +6,8 @@ from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.abbot.roles import AbbotRoles
-from contracts.interfaces import IGate, IShrine
+from contracts.gate.interface import IGate
+from contracts.shrine.interface import IShrine
 from contracts.shared.types import Trove, Yang
 
 from contracts.lib.accesscontrol.library import AccessControl
@@ -97,10 +98,11 @@ func abbot_trove_owner(trove_id: ufelt) -> (owner: address) {
 //
 
 @constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, admin: address
-) {
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, shrine: address) {
     AccessControl.initializer(admin);
+    AccessControl._grant_role(AbbotRoles.ADD_YANG, admin);
     abbot_shrine_address.write(shrine);
     return ();
 }
