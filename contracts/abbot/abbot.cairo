@@ -6,7 +6,8 @@ from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.abbot.roles import AbbotRoles
-from contracts.interfaces import IGate, IShrine
+from contracts.gate.interface import IGate
+from contracts.shrine.interface import IShrine
 from contracts.shared.types import Trove, Yang
 
 from contracts.lib.accesscontrol.library import AccessControl

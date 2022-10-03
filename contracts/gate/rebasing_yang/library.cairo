@@ -4,7 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
-from contracts.interfaces import IShrine
+from contracts.shrine.interface import IShrine
 from contracts.shared.interfaces import IERC20
 from contracts.shared.types import Yang
 from contracts.shared.wad_ray import WadRay
