@@ -97,10 +97,11 @@ func abbot_trove_owner(trove_id: ufelt) -> (owner: address) {
 //
 
 @constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, admin: address
-) {
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, shrine: address) {
     AccessControl.initializer(admin);
+    AccessControl._grant_role(AbbotRoles.ADD_YANG, admin);
     abbot_shrine_address.write(shrine);
     return ();
 }

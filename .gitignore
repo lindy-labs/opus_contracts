@@ -2,6 +2,9 @@ __pycache__
 accounts.json
 node.json
 .python-version
+gas.txt
+gas.txt.lock
+workspace.code-workspace
 
 # Hypothesis
 .hypothesis

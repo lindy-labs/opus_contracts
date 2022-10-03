@@ -405,13 +405,13 @@ func kill{
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(authed: address) {
+}(admin: address) {
     alloc_locals;
 
-    AccessControl.initializer(authed);
+    AccessControl.initializer(admin);
 
-    // Grant authed permission
-    AccessControl._grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, authed);
+    // Grant admin permission
+    AccessControl._grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, admin);
 
     shrine_live.write(TRUE);
 
