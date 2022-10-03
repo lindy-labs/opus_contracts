@@ -140,7 +140,7 @@ async def test_ceil(wad_ray, val):
 
 
 @settings(max_examples=50, deadline=None)
-@given(left=st_int, right=st_int)
+@given(left=st_int125, right=st_int125)
 @example(left=0, right=-1)
 @example(left=-1, right=0)
 @example(left=0, right=1)
