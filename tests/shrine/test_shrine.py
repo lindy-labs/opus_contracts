@@ -1446,7 +1446,7 @@ async def test_shrine_unhealthy(shrine):
 
 
 @pytest.mark.asyncio
-async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
+async def test_get_trove_threshold_and_value(shrine, shrine_deposit_multiple):
     prices = []
     for d in DEPOSITS:
         price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price
@@ -1457,5 +1457,5 @@ async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
     )
 
     # Getting actual threshold
-    actual_threshold = (await shrine.get_trove_threshold(TROVE_1).execute()).result.threshold
+    actual_threshold = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.threshold
     assert_equalish(from_ray(actual_threshold), expected_threshold)
