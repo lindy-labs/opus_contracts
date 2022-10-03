@@ -167,7 +167,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 
 
 @settings(max_examples=50, deadline=None)
-@given(left=st_uint, right=st_uint)
+@given(left=st_uint125, right=st_uint125)
 @example(left=0, right=1)
 @example(left=0, right=0)
 @example(left=1, right=0)
@@ -244,7 +244,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 
 
 @settings(max_examples=50, deadline=None)
-@given(left=st_uint128, right=st_uint128)
+@given(left=st_uint125, right=st_uint125)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
 @example(left=to_wad(2), right=to_wad(2))  # Test wad values
 @example(left=to_wad(1), right=to_wad(1) // 2)  # Test percentage
