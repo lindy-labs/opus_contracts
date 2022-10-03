@@ -410,7 +410,7 @@ func constructor{
 
     AccessControl.initializer(admin);
 
-    // Grant authed permission
+    // Grant admin permission
     AccessControl._grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, admin);
 
     shrine_live.write(TRUE);
