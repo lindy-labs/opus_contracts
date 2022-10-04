@@ -22,6 +22,18 @@ from contracts.module.submodule.file_name import function
 
 This prevents any issues when compiling contracts.
 
+Order imports alphabetically, both the import paths and imported elements:
+
+```cairo
+// bad
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.bool import TRUE, FALSE
+
+// good
+from starkware.cairo.common.bool import FALSE, TRUE
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+```
+
 ## General naming conventions
 
 We follow these conventions when naming things
@@ -42,7 +54,6 @@ See sections below for further specific rules.
 # Specifying variable and function argument types
 
 Always specify the type of a function argument or return value.
-
 
 ## Type Aliases
 
@@ -68,11 +79,13 @@ from contracts.shared.aliases import wad, ray, str
 #### Examples
 
 Variable Definition:
+
 ```cairo
 let is_le_ten: bool = is_le(4, 10);
 ```
 
 Function Definition:
+
 ```cairo
 func foo(eth: address, amount: wad, some_check: bool) -> bool {
     ...
@@ -82,9 +95,6 @@ func bar(values: packed, num_packed: ufelt) -> (first_val: ufelt, second_val: sf
     ...
 }
 ```
-
-
-
 
 ## @storage_var naming
 
