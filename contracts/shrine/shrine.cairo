@@ -274,7 +274,7 @@ func get_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 @view
-func get_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address
 ) -> (threshold: ray) {
     let yang_id: ufelt = get_valid_yang_id(yang);
