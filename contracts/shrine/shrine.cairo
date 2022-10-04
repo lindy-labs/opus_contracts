@@ -1086,7 +1086,6 @@ func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let interval: ufelt = now();
     let (_, value: wad) = get_trove_threshold_and_value_internal(
         trove_id, interval, yang_count, 0, 0
     );
