@@ -61,19 +61,19 @@ Cairo lets us create aliases, or custom names, for types, using the `using` key 
 
 | Alias           | Explanation                                                         |
 |-----------------|---------------------------------------------------------------------|
+| `address`       | a StarkNet address                                                  |
+| `bool`          | 0 or 1                                                              |
+| `packed`        | a felt containing multiple values that have been packed together    |
+| `str`           | Cairo short-string                                                  |
+| `sfelt`         | 'signed' felt, in the range [-2**128 2**128)                        |
+| `ufelt`         | 'regular' felt                                                      |
 | `wad`           | 18-decimal number, in the range [-2**125, 2**125]                   |
 | `ray`           | 27-decimal number, in the range [-2**125, 2**125]                   |
-| `str`           | Cairo short-string                                                  |
-| `bool`          | 0 or 1                                                              |
-| `ufelt`         | 'regular' felt                                                      |
-| `sfelt`         | 'signed' felt, in the range [-2**128 2**128)                        |
-| `address`       | a StarkNet address                                                  |
-| `packed`        | a felt containing multiple values that have been packed together    |
 
 to use these aliases, include the following import in your contract (include aliases in the import statement as needed):
 
 ```cairo
-from contracts.shared.aliases import wad, ray, str
+from contracts.shared.aliases import str, ray, wad
 ```
 
 #### Examples
