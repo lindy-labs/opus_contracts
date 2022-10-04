@@ -320,12 +320,12 @@ func add_yang{
     set_threshold(yang, threshold);
 
     // Seed initial price to ensure `get_recent_price_from` terminates
-    let current_time_interval: ufelt = now();
+    let current_interval: ufelt = now();
 
     // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
     // `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
     let init_price_and_cumulative_price: packed = pack_125(initial_price, initial_price);
-    shrine_yang_price.write(yang_id, current_time_interval, init_price_and_cumulative_price);
+    shrine_yang_price.write(yang_id, current_interval, init_price_and_cumulative_price);
 
     // Events
     YangAdded.emit(yang, yang_id, max, initial_price);
@@ -787,8 +787,8 @@ func get_trove_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     alloc_locals;
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let current_time_id: ufelt = now();
-    return get_trove_threshold_and_value_internal(trove_id, current_time_id, yang_count, 0, 0);
+    let interval: ufelt = now();
+    return get_trove_threshold_and_value_internal(trove_id, interval, yang_count, 0, 0);
 }
 
 // Calculate a Trove's current loan-to-value ratio
@@ -1086,9 +1086,9 @@ func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let current_time_id: ufelt = now();
+    let interval: ufelt = now();
     let (_, value: wad) = get_trove_threshold_and_value_internal(
-        trove_id, current_time_id, yang_count, 0, 0
+        trove_id, interval, yang_count, 0, 0
     );
 
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
@@ -1250,7 +1250,7 @@ func get_trove_threshold_and_value_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     trove_id: ufelt,
-    current_time_id: ufelt,
+    current_interval: ufelt,
     current_yang_id: ufelt,
     cumulative_weighted_threshold: ray,
     cumulative_trove_value: wad,
@@ -1275,7 +1275,7 @@ func get_trove_threshold_and_value_internal{
     if (deposited == 0) {
         return get_trove_threshold_and_value_internal(
             trove_id,
-            current_time_id,
+            current_interval,
             current_yang_id - 1,
             cumulative_weighted_threshold,
             cumulative_trove_value,
@@ -1284,7 +1284,7 @@ func get_trove_threshold_and_value_internal{
 
     let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
 
-    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_time_id);
+    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);
 
     let deposited_value: wad = WadRay.wmul(yang_price, deposited);
 
@@ -1297,7 +1297,7 @@ func get_trove_threshold_and_value_internal{
 
     return get_trove_threshold_and_value_internal(
         trove_id,
-        current_time_id,
+        current_interval,
         current_yang_id - 1,
         cumulative_weighted_threshold,
         cumulative_trove_value,
