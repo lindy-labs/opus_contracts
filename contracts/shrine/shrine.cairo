@@ -547,7 +547,7 @@ func move_yin{
     AccessControl.assert_has_role(ShrineRoles.MOVE_YIN);
 
     with_attr error_message("Shrine: transfer amount outside the valid range.") {
-        WadRay.assert_result_valid_unsigned(amount);
+        WadRay.assert_valid_unsigned(amount);
     }
 
     let (src_balance: wad) = shrine_yin.read(src);
@@ -1193,7 +1193,7 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     if (start_interval == end_interval) {
         let (price: wad, _, _) = get_recent_price_from(current_yang_id, start_interval);
         let balance_val: wad = WadRay.wmul(balance, price);
-        WadRay.assert_result_valid(cumulative_val + balance_val);  // Overflow check
+        WadRay.assert_valid(cumulative_val + balance_val);  // Overflow check
 
         return get_avg_val_internal(
             trove_id,
@@ -1216,7 +1216,7 @@ func get_avg_val_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     );
 
     let balance_val: wad = WadRay.wmul(balance, avg_price);
-    WadRay.assert_result_valid(cumulative_val + balance_val);  // Overflow check
+    WadRay.assert_valid(cumulative_val + balance_val);  // Overflow check
 
     return get_avg_val_internal(
         trove_id, start_interval, end_interval, current_yang_id - 1, cumulative_val + balance_val
