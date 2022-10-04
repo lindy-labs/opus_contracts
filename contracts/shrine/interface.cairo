@@ -92,7 +92,7 @@ namespace IShrine {
     //
     // view
     //
-    func get_trove_threshold(trove_id: ufelt) -> (threshold: ray, value: wad) {
+    func get_trove_threshold_and_value(trove_id: ufelt) -> (threshold: ray, value: wad) {
     }
 
     func get_current_trove_ltv(trove_id: ufelt) -> (ltv: ray) {

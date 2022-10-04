@@ -327,7 +327,7 @@ async def test_purge(
     before_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
 
     # Get freed percentage
-    trove_value = from_wad((await shrine.get_trove_threshold(TROVE_1).execute()).result.value)
+    trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
     trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.debt)
     freed_percentage = get_freed_percentage(before_ltv, from_wad(close_amt_wad), trove_debt, trove_value)
 

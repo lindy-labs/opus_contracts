@@ -249,7 +249,7 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     // `rmul` of a wad and a ray returns a wad
     let penalty_amt: wad = WadRay.rmul(purge_amt, penalty);
     let freed_amt: wad = WadRay.add_unsigned(penalty_amt, purge_amt);
-    let (_, trove_value: wad) = IShrine.get_trove_threshold(shrine, trove_id);
+    let (_, trove_value: wad) = IShrine.get_trove_threshold_and_value(shrine, trove_id);
 
     // `runsigned_div` of two wads returns a ray
     let percentage_freed: ray = WadRay.runsigned_div(freed_amt, trove_value);

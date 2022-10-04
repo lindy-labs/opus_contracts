@@ -319,7 +319,7 @@ async def test_shrine_setup(shrine_setup):
     # Check threshold
     for i in range(len(YANGS)):
         yang_address = YANGS[i]["address"]
-        threshold = (await shrine.get_threshold(yang_address).execute()).result.threshold
+        threshold = (await shrine.get_yang_threshold(yang_address).execute()).result.threshold
         assert threshold == YANGS[i]["threshold"]
 
         # Assert that `get_current_yang_price` terminates
@@ -455,7 +455,7 @@ async def test_add_yang_pass(shrine):
     assert new_yang_price_info.price == new_yang_start_price
 
     # Check threshold is correct
-    actual_threshold = (await shrine.get_threshold(new_yang_address).execute()).result.threshold
+    actual_threshold = (await shrine.get_yang_threshold(new_yang_address).execute()).result.threshold
     assert actual_threshold == new_yang_threshold
 
 
@@ -493,13 +493,13 @@ async def test_set_threshold(shrine):
     value = 90 * RAY_PERCENT
     tx = await shrine.set_threshold(YANG_0_ADDRESS, value).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG_0_ADDRESS, value])
-    assert (await shrine.get_threshold(YANG_0_ADDRESS).execute()).result.threshold == value
+    assert (await shrine.get_yang_threshold(YANG_0_ADDRESS).execute()).result.threshold == value
 
     # test setting to max value
     max = RAY_SCALE
     tx = await shrine.set_threshold(YANG_0_ADDRESS, max).execute(caller_address=SHRINE_OWNER)
     assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG_0_ADDRESS, max])
-    assert (await shrine.get_threshold(YANG_0_ADDRESS).execute()).result.threshold == max
+    assert (await shrine.get_yang_threshold(YANG_0_ADDRESS).execute()).result.threshold == max
 
 
 @pytest.mark.asyncio
@@ -1446,7 +1446,7 @@ async def test_shrine_unhealthy(shrine):
 
 
 @pytest.mark.asyncio
-async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
+async def test_get_trove_threshold_and_value(shrine, shrine_deposit_multiple):
     prices = []
     for d in DEPOSITS:
         price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price
@@ -1457,5 +1457,5 @@ async def test_get_trove_threshold(shrine, shrine_deposit_multiple):
     )
 
     # Getting actual threshold
-    actual_threshold = (await shrine.get_trove_threshold(TROVE_1).execute()).result.threshold
+    actual_threshold = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.threshold
     assert_equalish(from_ray(actual_threshold), expected_threshold)

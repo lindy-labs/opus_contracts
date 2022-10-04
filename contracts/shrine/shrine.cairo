@@ -274,7 +274,7 @@ func get_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 @view
-func get_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address
 ) -> (threshold: ray) {
     let yang_id: ufelt = get_valid_yang_id(yang);
@@ -320,12 +320,12 @@ func add_yang{
     set_threshold(yang, threshold);
 
     // Seed initial price to ensure `get_recent_price_from` terminates
-    let current_time_interval: ufelt = now();
+    let current_interval: ufelt = now();
 
     // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
     // `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
     let init_price_and_cumulative_price: packed = pack_125(initial_price, initial_price);
-    shrine_yang_price.write(yang_id, current_time_interval, init_price_and_cumulative_price);
+    shrine_yang_price.write(yang_id, current_interval, init_price_and_cumulative_price);
 
     // Events
     YangAdded.emit(yang, yang_id, max, initial_price);
@@ -509,7 +509,7 @@ func move_yang{
     charge(src_trove_id);
 
     // Charge interest for destination trove since its collateral balance will be changed,
-    // affecting its personalized interest rate due to the underlying assumption in `appraise_internal`
+    // affecting its personalized interest rate due to the underlying assumption in `get_trove_threshold_and_value_internal`
     // TODO: maybe move this under `assert_healthy` call so failed `move_yang` calls are cheaper?
     // It depends on starknet handles fees for failed transactions
     charge(dst_trove_id);
@@ -778,19 +778,17 @@ func seize{
 // Core Functions - View
 //
 
-// Gets the custom threshold (maximum LTV before liquidation) of a trove
-// Also returns the total trove value.
-// This is because it needs to calculate the trove value anyway, and `is_healthy` needs the trove value, so it
-// saves some gas to just return it rather than having to calculate it again with `appraise`.
+// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value.
+// This is because it needs to calculate the trove value anyway, and `is_healthy` needs the trove value.
 @view
-func get_trove_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_trove_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (threshold: ray, value: wad) {
     alloc_locals;
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let current_time_id: ufelt = now();
-    return get_trove_threshold_internal(trove_id, current_time_id, yang_count, 0, 0);
+    let interval: ufelt = now();
+    return get_trove_threshold_and_value_internal(trove_id, interval, yang_count, 0, 0);
 }
 
 // Calculate a Trove's current loan-to-value ratio
@@ -862,7 +860,7 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         return (TRUE,);
     }
 
-    let (threshold: ray, value: wad) = get_trove_threshold(trove_id);  // Getting the trove's custom threshold and total collateral value
+    let (threshold: ray, value: wad) = get_trove_threshold_and_value(trove_id);  // Getting the trove's custom threshold and total collateral value
     let max_debt: wad = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
 
     return (is_le(trove.debt, max_debt),);
@@ -883,7 +881,7 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         return (0,);
     }
 
-    let (threshold: ray, value: wad) = get_trove_threshold(trove_id);
+    let (threshold: ray, value: wad) = get_trove_threshold_and_value(trove_id);
     let max_debt: wad = WadRay.rmul(threshold, value);
 
     // Get updated debt with interest
@@ -928,16 +926,6 @@ func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let packed_trove: packed = pack_felt(trove.charge_from, trove.debt);
     shrine_troves.write(trove_id, packed_trove);
     return ();
-}
-
-// Wrapper function for the recursive `appraise_internal` function that gets the most recent trove value
-func appraise{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) -> wad {
-    alloc_locals;
-
-    let (yang_count: ufelt) = shrine_yangs_count.read();
-    let interval: ufelt = now();
-    let value: wad = appraise_internal(trove_id, yang_count, interval, 0);
-    return value;
 }
 
 func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> ufelt {
@@ -1036,7 +1024,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     alloc_locals;
 
     let avg_ratio: ray = get_avg_ratio(trove_id, current_debt, start_interval, end_interval);
-    let (threshold: ray, _) = get_trove_threshold(trove_id);
+    let (threshold: ray, _) = get_trove_threshold_and_value(trove_id);
     let avg_relative_ratio: ray = WadRay.runsigned_div(avg_ratio, threshold);
     let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
 
@@ -1086,7 +1074,7 @@ func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
 }
 
 // Calculates the trove's LTV at the given interval.
-// See comments above `appraise_internal` for the underlying assumption on which the correctness of the result depends.
+// See comments above `get_trove_threshold_and_value` for the underlying assumption on which the correctness of the result depends.
 // Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
 // Returns a ray.
 func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -1098,48 +1086,12 @@ func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let value: wad = appraise_internal(trove_id, yang_count, interval, 0);
+    let (_, value: wad) = get_trove_threshold_and_value_internal(
+        trove_id, interval, yang_count, 0, 0
+    );
 
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
     return ltv;
-}
-
-// Gets the value of a trove at the yang prices at the given interval.
-// For any yang that returns a price of 0 for the given interval, it uses the most recent available price before that interval.
-// This function uses historical prices but the currently deposited yang amounts to calculate value.
-// The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
-func appraise_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, yang_id: ufelt, interval: ufelt, cumulative: wad
-) -> wad {
-    alloc_locals;
-
-    // Terminate when yang ID reaches 0
-    if (yang_id == 0) {
-        return cumulative;
-    }
-
-    // Calculate current yang value
-    let (balance: wad) = shrine_deposits.read(yang_id, trove_id);
-
-    // Skip over the rest of the logic if the user hasn't deposited any
-    if (balance == 0) {
-        return appraise_internal(trove_id, yang_id - 1, interval, cumulative);
-    }
-
-    let (price: wad, _, _) = get_recent_price_from(yang_id, interval);
-
-    // Reverts if price is zero
-    with_attr error_message("Shrine: Yang price can never be zero") {
-        assert_not_zero(price);
-    }
-
-    let value: wad = WadRay.wmul(balance, price);
-
-    // Update cumulative value
-    let updated_cumulative: wad = WadRay.add_unsigned(cumulative, value);
-
-    // Recursive call
-    return appraise_internal(trove_id, yang_id - 1, interval, updated_cumulative);
 }
 
 // Returns the price for `yang_id` at `interval` if it is non-zero.
@@ -1289,9 +1241,15 @@ func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return ();
 }
 
-func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value at the given interval.
+// For any yang that returns a price of 0 for the given interval, it uses the most recent available price before that interval.
+// This function uses historical prices but the currently deposited yang amounts to calculate value.
+// The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
+func get_trove_threshold_and_value_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(
     trove_id: ufelt,
-    current_time_id: ufelt,
+    current_interval: ufelt,
     current_yang_id: ufelt,
     cumulative_weighted_threshold: ray,
     cumulative_trove_value: wad,
@@ -1314,9 +1272,9 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
     // Gas optimization - skip over the current yang if the user hasn't deposited any
     if (deposited == 0) {
-        return get_trove_threshold_internal(
+        return get_trove_threshold_and_value_internal(
             trove_id,
-            current_time_id,
+            current_interval,
             current_yang_id - 1,
             cumulative_weighted_threshold,
             cumulative_trove_value,
@@ -1325,7 +1283,7 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
     let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
 
-    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_time_id);
+    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);
 
     let deposited_value: wad = WadRay.wmul(yang_price, deposited);
 
@@ -1336,9 +1294,9 @@ func get_trove_threshold_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     );
     let cumulative_trove_value: wad = WadRay.add(cumulative_trove_value, deposited_value);
 
-    return get_trove_threshold_internal(
+    return get_trove_threshold_and_value_internal(
         trove_id,
-        current_time_id,
+        current_interval,
         current_yang_id - 1,
         cumulative_weighted_threshold,
         cumulative_trove_value,
