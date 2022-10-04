@@ -137,7 +137,7 @@ func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     recipient: address, amount: wad
 ) -> (success: bool) {
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
-        WadRay.assert_result_valid_unsigned(amount);  // Valid range: [0, 2**125]
+        WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
     }
 
     let (sender: address) = get_caller_address();
@@ -150,7 +150,7 @@ func transferFrom{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     sender: address, recipient: address, amount: wad
 ) -> (success: bool) {
     with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
-        WadRay.assert_result_valid_unsigned(amount);  // Valid range: [0, 2**125]
+        WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
     }
 
     let (caller: address) = get_caller_address();
@@ -166,7 +166,7 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     alloc_locals;
     if (amount != INFINITE_ALLOWANCE) {
         with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
-            WadRay.assert_result_valid_unsigned(amount);  // Valid range: [0, 2**125]
+            WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
         }
         tempvar range_check_ptr = range_check_ptr;
     } else {

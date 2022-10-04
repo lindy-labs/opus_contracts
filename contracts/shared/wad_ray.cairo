@@ -25,16 +25,16 @@ namespace WadRay {
     const WAD_ONE = WAD_SCALE;
 
     // Reverts if `n` overflows or underflows
-    func assert_result_valid{range_check_ptr}(n) {
-        with_attr error_message("WadRay: Result is out of bounds") {
+    func assert_valid{range_check_ptr}(n) {
+        with_attr error_message("WadRay: out of bounds") {
             assert_le(n, BOUND);
             assert_le(-BOUND, n);
         }
         return ();
     }
 
-    func assert_result_valid_unsigned{range_check_ptr}(n) {
-        with_attr error_message("WadRay: Result is out of bounds") {
+    func assert_valid_unsigned{range_check_ptr}(n) {
+        with_attr error_message("WadRay: out of bounds") {
             assert_nn_le(n, BOUND);
         }
         return ();
@@ -43,7 +43,7 @@ namespace WadRay {
     func floor{range_check_ptr}(n) -> wad {
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND);
         let floored = n - mod_val;
-        assert_result_valid(floored);
+        assert_valid(floored);
         return floored;
     }
 
@@ -57,49 +57,49 @@ namespace WadRay {
             tempvar ceiled = (int_val + 1) * WAD_ONE;
             tempvar range_check_ptr = range_check_ptr;
         }
-        assert_result_valid(ceiled);
+        assert_valid(ceiled);
         return ceiled;
     }
 
     func add{range_check_ptr}(a, b) -> wad {
-        assert_result_valid(a);
-        assert_result_valid(b);
+        assert_valid(a);
+        assert_valid(b);
 
         let sum = a + b;
-        assert_result_valid(sum);
+        assert_valid(sum);
         return sum;
     }
 
     func add_unsigned{range_check_ptr}(a, b) -> wad {
-        assert_result_valid_unsigned(a);
-        assert_result_valid_unsigned(b);
+        assert_valid_unsigned(a);
+        assert_valid_unsigned(b);
 
         let sum = a + b;
-        assert_result_valid_unsigned(sum);
+        assert_valid_unsigned(sum);
         return sum;
     }
 
     func sub{range_check_ptr}(a, b) -> wad {
-        assert_result_valid(a);
-        assert_result_valid(b);
+        assert_valid(a);
+        assert_valid(b);
 
         let diff = a - b;
-        assert_result_valid(diff);
+        assert_valid(diff);
         return diff;
     }
 
     func sub_unsigned{range_check_ptr}(a, b) -> wad {
-        assert_result_valid_unsigned(a);
-        assert_result_valid_unsigned(b);
+        assert_valid_unsigned(a);
+        assert_valid_unsigned(b);
 
         let diff = a - b;
-        assert_result_valid_unsigned(diff);
+        assert_valid_unsigned(diff);
         return diff;
     }
 
     func wmul{range_check_ptr}(a, b) -> wad {
-        assert_result_valid(a);
-        assert_result_valid(b);
+        assert_valid(a);
+        assert_valid(b);
 
         tempvar prod = a * b;
         // `signed_div_rem` asserts -BOUND <= `scaled_prod` < BOUND
@@ -110,8 +110,8 @@ namespace WadRay {
     func wsigned_div{range_check_ptr}(a, b) -> wad {
         alloc_locals;
 
-        assert_result_valid(a);
-        assert_result_valid(b);
+        assert_valid(a);
+        assert_valid(b);
 
         // `signed_div_rem` assumes 0 < div <= CAIRO_PRIME / rc_bound
         let div = abs_value(b);
@@ -125,12 +125,12 @@ namespace WadRay {
 
     // Assumes both a and b are positive integers
     func wunsigned_div{range_check_ptr}(a, b) -> wad {
-        assert_result_valid_unsigned(a);
-        assert_result_valid_unsigned(b);
+        assert_valid_unsigned(a);
+        assert_valid_unsigned(b);
 
         tempvar product = a * WAD_SCALE;
         let (q, _) = unsigned_div_rem(product, b);
-        assert_result_valid(q);
+        assert_valid(q);
         return q;
     }
 
@@ -144,8 +144,8 @@ namespace WadRay {
 
     // Operations with rays
     func rmul{range_check_ptr}(a, b) -> ray {
-        assert_result_valid(a);
-        assert_result_valid(b);
+        assert_valid(a);
+        assert_valid(b);
 
         tempvar prod = a * b;
         // `signed_div_rem` asserts -BOUND <= `scaled_prod` < BOUND
@@ -156,8 +156,8 @@ namespace WadRay {
     func rsigned_div{range_check_ptr}(a, b) -> ray {
         alloc_locals;
 
-        assert_result_valid(a);
-        assert_result_valid(b);
+        assert_valid(a);
+        assert_valid(b);
 
         let div = abs_value(b);
         let div_sign = sign(b);
@@ -169,12 +169,12 @@ namespace WadRay {
 
     // Assumes both a and b are positive integers
     func runsigned_div{range_check_ptr}(a, b) -> ray {
-        assert_result_valid_unsigned(a);
-        assert_result_valid_unsigned(b);
+        assert_valid_unsigned(a);
+        assert_valid_unsigned(b);
 
         tempvar product = a * RAY_SCALE;
         let (q, _) = unsigned_div_rem(product, b);
-        assert_result_valid(q);
+        assert_valid(q);
         return q;
     }
 
@@ -196,13 +196,13 @@ namespace WadRay {
 
     func from_uint{range_check_ptr}(n: Uint256) -> wad {
         assert n.high = 0;
-        assert_result_valid(n.low);
+        assert_valid(n.low);
         return n.low;
     }
 
     func to_wad{range_check_ptr}(n) -> wad {
         let n_wad = n * WAD_SCALE;
-        assert_result_valid(n_wad);
+        assert_valid(n_wad);
         return n_wad;
     }
 
@@ -214,7 +214,7 @@ namespace WadRay {
 
     func wad_to_ray{range_check_ptr}(n) -> ray {
         let converted = n * DIFF;
-        assert_result_valid(converted);
+        assert_valid(converted);
         return converted;
     }
 
