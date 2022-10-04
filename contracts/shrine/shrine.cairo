@@ -306,6 +306,14 @@ func add_yang{
         assert potential_yang_id = 0;
     }
 
+    // Assert validity of max arguments
+    with_attr error_message("Shrine: Value {max} of max is out of bounds") {
+        WadRay.assert_valid_unsigned(max);
+    }
+
+    // `threshold` is asserted in set_threshold
+    // `initial_price` is asserted in pack_125
+
     // Assign ID to yang and add yang struct
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let yang_id = yang_count + 1;
@@ -341,6 +349,10 @@ func update_yang_max{
     alloc_locals;
     AccessControl.assert_has_role(ShrineRoles.UPDATE_YANG_MAX);
 
+    with_attr error_message("Shrine: Value {new_max} of new_max is out of bounds") {
+        WadRay.assert_valid_unsigned(new_max);
+    }
+
     let yang_id: ufelt = get_valid_yang_id(yang);
     let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
     let new_yang_info: Yang = Yang(old_yang_info.total, new_max);
@@ -356,6 +368,10 @@ func set_ceiling{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(new_ceiling: wad) {
     AccessControl.assert_has_role(ShrineRoles.SET_CEILING);
+
+    with_attr error_message("Shrine: Value {new_ceiling} of new_ceiling is out of bounds") {
+        WadRay.assert_valid_unsigned(new_ceiling);
+    }
 
     shrine_ceiling.write(new_ceiling);
 
@@ -578,6 +594,10 @@ func deposit{
     // Check system is live
     assert_live();
 
+    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
+
     // Charge interest
     charge(trove_id);
 
@@ -634,6 +654,10 @@ func forge{
 
     // Check system is live
     assert_live();
+
+    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
 
     // Charge interest
     charge(trove_id);  // TODO: Maybe move this under the debt ceiling check to save gas in case of failed tx
@@ -706,6 +730,10 @@ func melt{
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.MELT);
+
+    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
 
     // Charge interest
     charge(trove_id);
@@ -939,6 +967,10 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     yang: address, trove_id: ufelt, amount: wad
 ) {
     alloc_locals;
+
+    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
 
     // Retrieve yang info
     let yang_id: ufelt = get_valid_yang_id(yang);

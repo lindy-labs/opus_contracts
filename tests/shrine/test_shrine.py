@@ -412,6 +412,12 @@ async def test_set_ceiling_unauthorized(shrine):
         await shrine.set_ceiling(1).execute(caller_address=BAD_GUY)
 
 
+@pytest.mark.asyncio
+async def test_set_ceiling_out_of_bounds(shrine):
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of new_ceiling is out of bounds"):
+        await shrine.set_ceiling(2**128).execute(caller_address=SHRINE_OWNER)
+
+
 #
 # Tests - Yang onboarding and parameters
 #
@@ -485,6 +491,14 @@ async def test_add_yang_unauthorized(shrine):
             bad_guy_yang_threshold,
             bad_guy_yang_start_price,
         ).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_add_yang_max_out_of_bounds(shrine):
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of max is out of bounds"):
+        await shrine.add_yang(123, 2**128, YANG_0_THRESHOLD, to_wad(YANGS[0]["start_price"])).execute(
+            caller_address=SHRINE_OWNER
+        )
 
 
 @pytest.mark.asyncio
@@ -577,6 +591,12 @@ async def test_update_yang_max_invalid_yang(shrine):
 async def test_update_yang_max_unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.update_yang_max(YANG_0_ADDRESS, 2**251).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_update_yang_max_out_of_bounds(shrine):
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of new_max is out of bounds"):
+        await shrine.update_yang_max(YANG_0_ADDRESS, 2**128).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -771,6 +791,12 @@ async def test_shrine_deposit_exceeds_max(shrine):
         await shrine.deposit(YANG_0_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
 
 
+@pytest.mark.asyncio
+async def test_shrine_deposit_amount_out_of_bounds(shrine):
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of amount is out of bounds"):
+        await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 2**128).execute(caller_address=SHRINE_OWNER)
+
+
 #
 # Tests - Trove withdraw
 #
@@ -889,8 +915,9 @@ async def test_shrine_withdraw_insufficient_yang_fail(shrine, shrine_deposit):
         await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, to_wad(11)).execute(caller_address=SHRINE_OWNER)
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_withdraw_unsafe_fail(shrine, update_feeds):
+async def test_shrine_withdraw_unsafe_fail(shrine):
 
     # Get latest price
     price = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).execute()).result.price
@@ -908,6 +935,14 @@ async def test_shrine_withdraw_unsafe_fail(shrine, update_feeds):
 async def test_shrine_withdraw_unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, INITIAL_DEPOSIT_WAD).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_shrine_withdraw_amount_out_of_bounds(shrine):
+    # no need to have an actual deposit in this test, the
+    # amount check happens before checking balances
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of amount is out of bounds"):
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_1, 2**128).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -995,6 +1030,14 @@ async def test_shrine_forge_ceiling_fail(shrine):
 async def test_shrine_forge_unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_shrine_forge_amount_out_of_bounds(shrine):
+    # no need to have any setup for the test,
+    # amount check happens before checking balances
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of amount is out of bounds"):
+        await shrine.forge(TROVE1_OWNER, TROVE_1, 2**128).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -1101,6 +1144,14 @@ async def test_shrine_melt_unauthorized(shrine):
     estimated_debt = (await shrine.estimate(TROVE_1).execute()).result.debt
     with pytest.raises(StarkException):
         await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_shrine_melt_amount_out_of_bounds(shrine):
+    # no need to have any setup for the test,
+    # amount check happens before checking balances
+    with pytest.raises(StarkException, match=r"Shrine: Value \d+ of amount is out of bounds"):
+        await shrine.melt(TROVE1_OWNER, TROVE_1, 2**128).execute(caller_address=SHRINE_OWNER)
 
 
 #
