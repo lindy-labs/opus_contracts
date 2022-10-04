@@ -1,24 +1,24 @@
 %lang starknet
 
-from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
-from contracts.gate.rebasing_yang.roles import GateRoles
 from contracts.gate.gate_tax import GateTax
 from contracts.gate.gate_tax_external import get_tax, get_tax_collector
 from contracts.gate.rebasing_yang.library import Gate
 from contracts.gate.rebasing_yang.library_external import (
-    get_shrine,
     get_asset,
+    get_exchange_rate,
     get_total_assets,
     get_total_yang,
-    get_exchange_rate,
+    get_shrine,
     preview_deposit,
     preview_withdraw,
 )
+from contracts.gate.rebasing_yang.roles import GateRoles
 from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
