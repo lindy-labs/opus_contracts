@@ -22,6 +22,18 @@ from contracts.module.submodule.file_name import function
 
 This prevents any issues when compiling contracts.
 
+Order imports alphabetically, both the import paths and imported elements:
+
+```cairo
+// bad
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.bool import TRUE, FALSE
+
+// good
+from starkware.cairo.common.bool import FALSE, TRUE
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+```
+
 ## General naming conventions
 
 We follow these conventions when naming things
@@ -43,36 +55,37 @@ See sections below for further specific rules.
 
 Always specify the type of a function argument or return value.
 
-
 ## Type Aliases
 
 Cairo lets us create aliases, or custom names, for types, using the `using` key word. This is particularly useful because felts are used to represent many different "types" in Cairo. A felt can contain a boolean (0 or 1), an address, a signed integer, and unsigned integer, a fixed point number, etc. This can make it difficult to determine the "true" type of a given variable, which is why using aliases can help make our code a lot more readable. We currently use the following aliases:
 
 | Alias           | Explanation                                                         |
 |-----------------|---------------------------------------------------------------------|
+| `address`       | a StarkNet address                                                  |
+| `bool`          | 0 or 1                                                              |
+| `packed`        | a felt containing multiple values that have been packed together    |
+| `str`           | Cairo short-string                                                  |
+| `sfelt`         | 'signed' felt, in the range [-2**128 2**128)                        |
+| `ufelt`         | 'regular' felt                                                      |
 | `wad`           | 18-decimal number, in the range [-2**125, 2**125]                   |
 | `ray`           | 27-decimal number, in the range [-2**125, 2**125]                   |
-| `str`           | Cairo short-string                                                  |
-| `bool`          | 0 or 1                                                              |
-| `ufelt`         | 'regular' felt                                                      |
-| `sfelt`         | 'signed' felt, in the range [-2**128 2**128)                        |
-| `address`       | a StarkNet address                                                  |
-| `packed`        | a felt containing multiple values that have been packed together    |
 
 to use these aliases, include the following import in your contract (include aliases in the import statement as needed):
 
 ```cairo
-from contracts.shared.aliases import wad, ray, str
+from contracts.shared.aliases import str, ray, wad
 ```
 
 #### Examples
 
 Variable Definition:
+
 ```cairo
 let is_le_ten: bool = is_le(4, 10);
 ```
 
 Function Definition:
+
 ```cairo
 func foo(eth: address, amount: wad, some_check: bool) -> bool {
     ...
@@ -82,9 +95,6 @@ func bar(values: packed, num_packed: ufelt) -> (first_val: ufelt, second_val: sf
     ...
 }
 ```
-
-
-
 
 ## @storage_var naming
 
