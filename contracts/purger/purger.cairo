@@ -7,13 +7,13 @@ from starkware.cairo.common.math import assert_nn_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
-
 from contracts.abbot.interface import IAbbot
 from contracts.gate.interface import IGate
-from contracts.lib.aliases import address, bool, ray, ufelt, wad
-from contracts.lib.wad_ray import WadRay
 from contracts.shrine.interface import IShrine
+
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
+from contracts.lib.wad_ray import WadRay
 
 //
 // Constants
