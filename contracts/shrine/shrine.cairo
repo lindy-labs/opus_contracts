@@ -306,13 +306,13 @@ func add_yang{
         assert potential_yang_id = 0;
     }
 
-    // Assert validity of max arguments
-    with_attr error_message("Shrine: Value {max} of max is out of bounds") {
+    // Assert validity of `max` argument
+    with_attr error_message("Shrine: Value of `max` ({max}) is out of bounds") {
         WadRay.assert_valid_unsigned(max);
     }
 
-    // `threshold` is asserted in set_threshold
-    // `initial_price` is asserted in pack_125
+    // Validity of `threshold` is asserted in set_threshold
+    // Validity of `initial_price` is asserted in pack_125
 
     // Assign ID to yang and add yang struct
     let (yang_count: ufelt) = shrine_yangs_count.read();
@@ -349,7 +349,7 @@ func update_yang_max{
     alloc_locals;
     AccessControl.assert_has_role(ShrineRoles.UPDATE_YANG_MAX);
 
-    with_attr error_message("Shrine: Value {new_max} of new_max is out of bounds") {
+    with_attr error_message("Shrine: Value of `new_max` ({new_max}) is out of bounds") {
         WadRay.assert_valid_unsigned(new_max);
     }
 
@@ -369,7 +369,7 @@ func set_ceiling{
 }(new_ceiling: wad) {
     AccessControl.assert_has_role(ShrineRoles.SET_CEILING);
 
-    with_attr error_message("Shrine: Value {new_ceiling} of new_ceiling is out of bounds") {
+    with_attr error_message("Shrine: Value of `new_ceiling` ({new_ceiling}) is out of bounds") {
         WadRay.assert_valid_unsigned(new_ceiling);
     }
 
@@ -594,7 +594,7 @@ func deposit{
     // Check system is live
     assert_live();
 
-    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
@@ -655,7 +655,7 @@ func forge{
     // Check system is live
     assert_live();
 
-    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
@@ -731,7 +731,7 @@ func melt{
 
     AccessControl.assert_has_role(ShrineRoles.MELT);
 
-    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
@@ -968,7 +968,7 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 ) {
     alloc_locals;
 
-    with_attr error_message("Shrine: Value {amount} of amount is out of bounds") {
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
