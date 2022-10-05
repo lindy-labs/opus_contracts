@@ -35,8 +35,8 @@ from starkware.cairo.common.uint256 import (
 )
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
-from contracts.shared.interfaces import IERC20, IERC20Mintable, IERC20Burnable, IUSDa
-from contracts.shared.convert import felt_to_uint, uint_to_felt_unchecked
+from contracts.lib.convert import felt_to_uint, uint_to_felt_unchecked
+from contracts.lib.interfaces import IERC20, IERC20Burnable, IERC20Mintable, IUSDa
 from contracts.lib.openzeppelin.access.ownable.ownable import Ownable
 
 const HUNDRED_PERCENT_BPS = 10000;  // 100%

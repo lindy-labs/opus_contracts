@@ -8,7 +8,7 @@ from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math_cmp import is_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.shared.aliases import address, bool, ufelt
+from contracts.lib.aliases import address, bool, ufelt
 
 //
 // Events

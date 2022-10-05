@@ -34,6 +34,28 @@ from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 ```
 
+Group imports by sections and in the following order, and leave an empty line between each section:
+1. Imports from the `cairo-lang` package
+2. Imports from `contracts/*` other than `contracts/lib`
+3. Imports from `contracts/lib`
+
+```cairo
+// bad
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.bool import TRUE, FALSE
+from contracts.lib.wad_ray import WadRay
+from contracts.shrine.interface import IShrine
+
+// good
+from starkware.cairo.common.bool import FALSE, TRUE
+from starkware.cairo.common.cairo_builtins import HashBuiltin
+
+from contracts.shrine.interface import IShrine
+
+from contracts.lib.wad_ray import WadRay
+```
+
+
 ## General naming conventions
 
 We follow these conventions when naming things
@@ -73,7 +95,7 @@ Cairo lets us create aliases, or custom names, for types, using the `using` key 
 to use these aliases, include the following import in your contract (include aliases in the import statement as needed):
 
 ```cairo
-from contracts.shared.aliases import str, ray, wad
+from contracts.lib.aliases import str, ray, wad
 ```
 
 #### Examples

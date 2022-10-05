@@ -3,8 +3,7 @@
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 
 from contracts.lib.accesscontrol.library import AccessControl
-
-from contracts.shared.aliases import address, bool, ufelt
+from contracts.lib.aliases import address, bool, ufelt
 
 //
 // Getters

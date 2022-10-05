@@ -2,7 +2,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.math import assert_in_range, split_felt, split_int
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.shared.aliases import packed
+from contracts.lib.aliases import packed
 
 const LOW_UPPER_BOUND = 2 ** 128;
 const HIGH_UPPER_BOUND = 2 ** 123;

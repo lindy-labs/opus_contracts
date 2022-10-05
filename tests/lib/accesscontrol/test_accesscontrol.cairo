@@ -3,20 +3,21 @@
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 
-from contracts.lib.accesscontrol.library import AccessControl
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
-    get_roles,
-    has_role,
-    get_admin,
-    grant_role,
-    revoke_role,
-    renounce_role,
     change_admin,
+    get_admin,
+    get_roles,
+    grant_role,
+    has_role,
+    renounce_role,
+    revoke_role,
 )
+from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.aliases import address, bool, ufelt
+
 from tests.lib.accesscontrol.roles import AccRoles
 
-from contracts.shared.aliases import bool, address, ufelt
 //
 // Access Control - Constructor
 //

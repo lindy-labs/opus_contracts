@@ -16,7 +16,7 @@ from contracts.gate.rebasing_yang.library_external import (
     preview_withdraw,
 )
 from contracts.gate.rebasing_yang.roles import GateRoles
-from contracts.lib.accesscontrol.library import AccessControl
+
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
     change_admin,
@@ -27,9 +27,10 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     renounce_role,
     revoke_role,
 )
-from contracts.shared.aliases import address, bool, ray, ufelt, wad
-from contracts.shared.interfaces import IERC20
-from contracts.shared.wad_ray import WadRay
+from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.interfaces import IERC20
+from contracts.lib.wad_ray import WadRay
 
 //
 // Events
