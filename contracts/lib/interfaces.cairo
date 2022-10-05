@@ -53,3 +53,11 @@ namespace IUSDa {
     func get_total_collateral() -> (total: felt) {
     }
 }
+
+@contract_interface
+namespace IEmpiricOracle {
+    func get_value(key: felt, aggregation_mode: felt) -> (
+        value: felt, decimals: felt, last_updated_timestamp: felt, num_sources_aggregated: felt
+    ) {
+    }
+}
