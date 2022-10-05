@@ -8,10 +8,7 @@ from starkware.starknet.common.syscalls import get_caller_address
 from contracts.abbot.roles import AbbotRoles
 from contracts.gate.interface import IGate
 from contracts.shrine.interface import IShrine
-from contracts.shared.types import Trove, Yang
 
-from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
     get_roles,
@@ -22,8 +19,10 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     renounce_role,
     change_admin,
 )
-
-from contracts.shared.aliases import wad, ray, bool, address, ufelt
+from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.aliases import wad, ray, bool, address, ufelt
+from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
+from contracts.lib.types import Trove, Yang
 
 //
 // Events

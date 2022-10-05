@@ -6,11 +6,11 @@ from starkware.cairo.common.math import assert_not_zero, assert_le, unsigned_div
 from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_block_timestamp
 
-from contracts.shared.convert import pack_felt, pack_125, unpack_125
-from contracts.shared.types import Trove, Yang
-from contracts.shared.wad_ray import WadRay
-from contracts.shared.exp import exp
-from contracts.shared.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
+from contracts.lib.convert import pack_felt, pack_125, unpack_125
+from contracts.lib.types import Trove, Yang
+from contracts.lib.wad_ray import WadRay
+from contracts.lib.exp import exp
+from contracts.lib.aliases import wad, ray, str, bool, ufelt, sfelt, address, packed
 
 from contracts.shrine.roles import ShrineRoles
 

@@ -11,8 +11,8 @@ from contracts.lib.openzeppelin.security.reentrancyguard.library import Reentran
 
 from contracts.abbot.interface import IAbbot
 from contracts.gate.interface import IGate
-from contracts.shared.aliases import address, bool, ray, ufelt, wad
-from contracts.shared.wad_ray import WadRay
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.wad_ray import WadRay
 from contracts.shrine.interface import IShrine
 
 //

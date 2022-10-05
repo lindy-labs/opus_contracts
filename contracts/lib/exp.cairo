@@ -5,7 +5,7 @@ from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import unsigned_div_rem, assert_le, assert_lt
 from starkware.cairo.common.math_cmp import is_le
 
-from contracts.shared.aliases import wad, bool
+from contracts.lib.aliases import wad, bool
 
 // Constants
 const ONE_18 = 10 ** 18;

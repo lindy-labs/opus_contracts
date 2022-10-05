@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.shared.aliases import bool, address, ufelt
+from contracts.lib.aliases import bool, address, ufelt
 
 @contract_interface
 namespace IAccessControl {

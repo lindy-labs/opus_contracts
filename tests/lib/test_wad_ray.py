@@ -34,7 +34,7 @@ st_uint = st.integers(min_value=0, max_value=2 * 200)
 
 @pytest.fixture(scope="session")
 async def wad_ray(starknet_session: Starknet) -> StarknetContract:
-    contract = compile_contract("tests/shared/test_wad_ray.cairo")
+    contract = compile_contract("tests/lib/test_wad_ray.cairo")
     wad_ray = await starknet_session.deploy(contract_class=contract, constructor_calldata=[])
     return wad_ray
 

@@ -5,10 +5,11 @@ from starkware.cairo.common.uint256 import Uint256
 from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.shrine.interface import IShrine
-from contracts.shared.interfaces import IERC20
-from contracts.shared.types import Yang
-from contracts.shared.wad_ray import WadRay
-from contracts.shared.aliases import wad, address
+
+from contracts.lib.aliases import wad, address
+from contracts.lib.interfaces import IERC20
+from contracts.lib.types import Yang
+from contracts.lib.wad_ray import WadRay
 
 //
 // Storage

@@ -2,8 +2,8 @@
 
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.shared.wad_ray import WadRay
-from contracts.shared.aliases import wad, ray
+from contracts.lib.aliases import wad, ray
+from contracts.lib.wad_ray import WadRay
 
 @view
 func test_assert_valid{range_check_ptr}(n) {
