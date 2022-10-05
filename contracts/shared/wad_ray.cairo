@@ -8,7 +8,7 @@ from starkware.cairo.common.math import (
 )
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.shared.aliases import address, bool, packed, ray, sfelt, str, ufelt, wad
+from contracts.shared.aliases import ray, ufelt, wad
 
 // Adapted from Influence's 64x61 fixed-point math library (https://github.com/influenceth/cairo-math-64x61/blob/master/contracts/Math64x61.cairo).
 
