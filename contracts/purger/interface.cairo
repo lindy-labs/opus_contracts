@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import wad, ray, ufelt, address
+from contracts.lib.aliases import address, ray, ufelt, wad
 
 @contract_interface
 namespace IPurger {

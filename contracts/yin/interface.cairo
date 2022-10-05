@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import wad, str, bool, ufelt
+from contracts.lib.aliases import bool, str, ufelt, wad
 
 @contract_interface
 namespace IYin {

@@ -3,6 +3,7 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.gate.gate_tax import GateTax
+
 from contracts.lib.aliases import address, ray
 
 //

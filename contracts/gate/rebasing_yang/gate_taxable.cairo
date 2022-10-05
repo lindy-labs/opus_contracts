@@ -1,6 +1,6 @@
 %lang starknet
 
-from starkware.cairo.common.bool import TRUE, FALSE
+from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
@@ -8,30 +8,30 @@ from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.gate.gate_tax import GateTax
 from contracts.gate.gate_tax_external import get_tax, get_tax_collector
-from contracts.gate.rebasing_yang.roles import GateRoles
 from contracts.gate.rebasing_yang.library import Gate
 from contracts.gate.rebasing_yang.library_external import (
-    get_shrine,
     get_asset,
+    get_exchange_rate,
+    get_shrine,
     get_total_assets,
     get_total_yang,
-    get_exchange_rate,
     preview_deposit,
     preview_withdraw,
 )
+from contracts.gate.rebasing_yang.roles import GateRoles
 
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
-    get_roles,
-    has_role,
-    get_admin,
-    grant_role,
-    revoke_role,
-    renounce_role,
     change_admin,
+    get_admin,
+    get_roles,
+    grant_role,
+    has_role,
+    renounce_role,
+    revoke_role,
 )
 from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.aliases import wad, ray, address, ufelt, bool
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.interfaces import IERC20
 from contracts.lib.wad_ray import WadRay
 

@@ -1,6 +1,6 @@
-from starkware.cairo.common.math import split_felt, split_int, assert_in_range
-from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
+from starkware.cairo.common.math import assert_in_range, split_felt, split_int
+from starkware.cairo.common.uint256 import Uint256
 
 from contracts.lib.aliases import packed
 

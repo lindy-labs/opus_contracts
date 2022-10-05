@@ -6,7 +6,7 @@ from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.shrine.interface import IShrine
 
-from contracts.lib.aliases import wad, address
+from contracts.lib.aliases import address, wad
 from contracts.lib.interfaces import IERC20
 from contracts.lib.types import Yang
 from contracts.lib.wad_ray import WadRay

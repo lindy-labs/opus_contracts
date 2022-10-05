@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import wad, bool, ufelt, address
+from contracts.lib.aliases import address, bool, ufelt, wad
 
 @contract_interface
 namespace IGate {

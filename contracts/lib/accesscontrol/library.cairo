@@ -2,13 +2,13 @@
 
 %lang starknet
 
-from starkware.starknet.common.syscalls import get_caller_address
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.bitwise import bitwise_and, bitwise_not, bitwise_or
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math_cmp import is_not_zero
+from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.lib.aliases import bool, address, ufelt
+from contracts.lib.aliases import address, bool, ufelt
 
 //
 // Events

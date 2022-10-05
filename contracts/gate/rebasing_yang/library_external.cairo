@@ -4,7 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.gate.rebasing_yang.library import Gate
 
-from contracts.lib.aliases import wad, address
+from contracts.lib.aliases import address, wad
 
 //
 // Getters

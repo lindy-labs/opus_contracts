@@ -1,11 +1,11 @@
 // Ported to Cairo from https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 %lang starknet
 
-from starkware.cairo.common.bool import TRUE, FALSE
-from starkware.cairo.common.math import unsigned_div_rem, assert_le, assert_lt
+from starkware.cairo.common.bool import FALSE, TRUE
+from starkware.cairo.common.math import assert_le, assert_lt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
 
-from contracts.lib.aliases import wad, bool
+from contracts.lib.aliases import bool, wad
 
 // Constants
 const ONE_18 = 10 ** 18;
