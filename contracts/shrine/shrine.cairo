@@ -1236,6 +1236,8 @@ func get_avg_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
 
     // If start_interval == end_interval, then the average price is simply the price at
     // `start_interval` (or equally, the price at `end_interval`)
+    // Note: refactoring the calculation of `avg_price` where start_interval != end_interval as a `else` condition
+    // results in revoked references as of 0.10.0
     if (start_interval == end_interval) {
         let (price: wad, _, _) = get_recent_price_from(current_yang_id, start_interval);
         let balance_val: wad = WadRay.wmul(balance, price);
