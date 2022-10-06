@@ -1196,14 +1196,12 @@ func get_avg_relative_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     trove_id: ufelt, debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> ray {
     let (num_yangs: ufelt) = shrine_yangs_count.read();
-    let (cumulative_threshold: ray, avg_val: wad) = get_avg_threshold_and_value(
+    let (avg_threshold: ray, avg_val: wad) = get_avg_threshold_and_value(
         trove_id, start_interval, end_interval, num_yangs, 0, 0
     );
 
-    let avg_threshold: ray = WadRay.wunsigned_div(cumulative_threshold, avg_val);
-
-    let avg_max_debt: wad = WadRay.rmul(avg_threshold, avg_val);
-    let avg_relative_ratio: ray = WadRay.runsigned_div(debt, avg_max_debt);
+    let avg_ratio: ray = WadRay.runsigned_div(debt, avg_val);
+    let avg_relative_ratio: ray = WadRay.runsigned_div(avg_ratio, avg_threshold);
 
     return avg_relative_ratio;
 }
@@ -1222,7 +1220,10 @@ func get_avg_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
 
     // Terminate if all yangs have been iterated over already
     if (current_yang_id == 0) {
-        return (cumulative_weighted_threshold, cumulative_trove_value);
+        let threshold: ray = WadRay.wunsigned_div(
+            cumulative_weighted_threshold, cumulative_trove_value
+        );
+        return (threshold, cumulative_trove_value);
     }
 
     let (balance: wad) = shrine_deposits.read(current_yang_id, trove_id);
