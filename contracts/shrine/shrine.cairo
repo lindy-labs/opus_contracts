@@ -887,8 +887,7 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         return (TRUE,);
     }
 
-    let (threshold: ray, value: wad) = get_trove_threshold_and_value(trove_id);  // Getting the trove's custom threshold and total collateral value
-    let max_debt: wad = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
+    let max_debt: wad = get_trove_max_debt(trove_id);
 
     return (is_le(trove.debt, max_debt),);
 }
@@ -908,8 +907,7 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         return (0,);
     }
 
-    let (threshold: ray, value: wad) = get_trove_threshold_and_value(trove_id);
-    let max_debt: wad = WadRay.rmul(threshold, value);
+    let max_debt: wad = get_trove_max_debt(trove_id);
 
     // Get updated debt with interest
     let (current_debt: wad) = estimate(trove_id);
@@ -1103,6 +1101,15 @@ func get_base_rate{range_check_ptr}(ratio: ray) -> ray {
 // y = m*x + b
 func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
     return WadRay.add(WadRay.rmul(m, x), b);
+}
+
+// Returns the maximum debt for a trove as a wad
+func get_trove_max_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt
+) -> wad {
+    let (threshold: ray, value: wad) = get_trove_threshold_and_value(trove_id);  // Getting the trove's custom threshold and total collateral value
+    let max_debt: wad = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
+    return (max_debt);
 }
 
 // Calculates the trove's LTV at the given interval.
