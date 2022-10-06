@@ -805,7 +805,7 @@ func seize{
 // Core Functions - View
 //
 
-// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value.
+// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value at the current interval.
 // This is because it needs to calculate the trove value anyway, and `is_healthy` needs the trove value.
 @view
 func get_trove_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -815,7 +815,7 @@ func get_trove_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let interval: ufelt = now();
-    return get_trove_threshold_and_value_internal(trove_id, interval, yang_count, 0, 0);
+    return get_trove_threshold_and_value_internal(trove_id, interval, interval, yang_count, 0, 0);
 }
 
 // Calculate a Trove's current loan-to-value ratio
@@ -1126,7 +1126,7 @@ func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let (_, value: wad) = get_trove_threshold_and_value_internal(
-        trove_id, interval, yang_count, 0, 0
+        trove_id, interval, interval, yang_count, 0, 0
     );
 
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
@@ -1196,7 +1196,7 @@ func get_avg_relative_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     trove_id: ufelt, debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> ray {
     let (num_yangs: ufelt) = shrine_yangs_count.read();
-    let (avg_threshold: ray, avg_val: wad) = get_avg_threshold_and_value(
+    let (avg_threshold: ray, avg_val: wad) = get_trove_threshold_and_value_internal(
         trove_id, start_interval, end_interval, num_yangs, 0, 0
     );
 
@@ -1204,99 +1204,6 @@ func get_avg_relative_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     let avg_relative_ratio: ray = WadRay.runsigned_div(avg_ratio, avg_threshold);
 
     return avg_relative_ratio;
-}
-
-// Returns the average value of a trove over the specified period of time
-// Includes the values at `end_interval` but NOT `start_interval` in the average
-func get_avg_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt,
-    start_interval: ufelt,
-    end_interval: ufelt,
-    current_yang_id: ufelt,
-    cumulative_weighted_threshold: ray,
-    cumulative_trove_value: wad,
-) -> (threshold: ray, value: wad) {
-    alloc_locals;
-
-    // Terminate if all yangs have been iterated over already
-    if (current_yang_id == 0) {
-        let threshold: ray = WadRay.wunsigned_div(
-            cumulative_weighted_threshold, cumulative_trove_value
-        );
-        return (threshold, cumulative_trove_value);
-    }
-
-    let (balance: wad) = shrine_deposits.read(current_yang_id, trove_id);
-
-    // Skipping over the rest of the logic if the user hasn't deposited anything for this yang
-    if (balance == 0) {
-        return get_avg_threshold_and_value(
-            trove_id,
-            start_interval,
-            end_interval,
-            current_yang_id - 1,
-            cumulative_weighted_threshold,
-            cumulative_trove_value,
-        );
-    }
-
-    let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
-
-    // If start_interval == end_interval, then the average price is simply the price at
-    // `start_interval` (or equally, the price at `end_interval`)
-    // Note: refactoring the calculation of `avg_price` where start_interval != end_interval as a `else` condition
-    // results in revoked references as of 0.10.0
-    if (start_interval == end_interval) {
-        let (price: wad, _, _) = get_recent_price_from(current_yang_id, start_interval);
-        let balance_val: wad = WadRay.wmul(balance, price);
-        let weighted_threshold: ray = WadRay.wmul(yang_threshold, balance_val);
-
-        // Includes overflow check on result
-        let new_cumulative_trove_value: wad = WadRay.add_unsigned(
-            cumulative_trove_value, balance_val
-        );
-        let new_cumulative_weighted_threshold: ray = WadRay.add_unsigned(
-            cumulative_weighted_threshold, weighted_threshold
-        );
-
-        return get_avg_threshold_and_value(
-            trove_id,
-            start_interval,
-            end_interval,
-            current_yang_id - 1,
-            new_cumulative_weighted_threshold,
-            new_cumulative_trove_value,
-        );
-    }
-
-    let (_, end_cumulative_price: wad, _) = get_recent_price_from(current_yang_id, end_interval);
-    let (_, start_cumulative_price: wad, _) = get_recent_price_from(
-        current_yang_id, start_interval
-    );
-
-    // subtraction operations can be unchecked since the `end_` vars are
-    // guaranteed to be greater than or equal to the `start_` variables
-    let (avg_price: wad, _) = unsigned_div_rem(
-        end_cumulative_price - start_cumulative_price, end_interval - start_interval
-    );
-
-    let balance_val: wad = WadRay.wmul(balance, avg_price);
-    let weighted_threshold: ray = WadRay.wmul(yang_threshold, balance_val);
-
-    // Includes overflow check on result
-    let new_cumulative_trove_value: wad = WadRay.add_unsigned(cumulative_trove_value, balance_val);
-    let new_cumulative_weighted_threshold: ray = WadRay.add_unsigned(
-        cumulative_weighted_threshold, weighted_threshold
-    );
-
-    return get_avg_threshold_and_value(
-        trove_id,
-        start_interval,
-        end_interval,
-        current_yang_id - 1,
-        new_cumulative_weighted_threshold,
-        new_cumulative_trove_value,
-    );
 }
 
 //
@@ -1317,7 +1224,9 @@ func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return ();
 }
 
-// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value at the given interval.
+// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value.
+// - If `start_interval` is the same as `end_interval`, then the values are calculated based on the price of each yang at that interval.
+// - If `start_interval` is different from `end_interval`, then the values are calculated based on the average price of each yang.
 // For any yang that returns a price of 0 for the given interval, it uses the most recent available price before that interval.
 // This function uses historical prices but the currently deposited yang amounts to calculate value.
 // The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
@@ -1325,7 +1234,8 @@ func get_trove_threshold_and_value_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     trove_id: ufelt,
-    current_interval: ufelt,
+    start_interval: ufelt,
+    end_interval: ufelt,
     current_yang_id: ufelt,
     cumulative_weighted_threshold: ray,
     cumulative_trove_value: wad,
@@ -1350,7 +1260,8 @@ func get_trove_threshold_and_value_internal{
     if (deposited == 0) {
         return get_trove_threshold_and_value_internal(
             trove_id,
-            current_interval,
+            start_interval,
+            end_interval,
             current_yang_id - 1,
             cumulative_weighted_threshold,
             cumulative_trove_value,
@@ -1358,21 +1269,59 @@ func get_trove_threshold_and_value_internal{
     }
 
     let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
+    let (start_yang_price: wad, start_cumulative_yang_price: wad, _) = get_recent_price_from(
+        current_yang_id, start_interval
+    );
 
-    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);
+    // If `start_interval` == `end_interval`, then the average price is simply the price at
+    // `start_interval` (or equally, the price at `end_interval`)
+    if (start_interval == end_interval) {
+        let deposited_value: wad = WadRay.wmul(start_yang_price, deposited);
 
-    let deposited_value: wad = WadRay.wmul(yang_price, deposited);
+        // Since we're using wmul on the product of a wad and a ray, the result is a ray
+        let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
+        let cumulative_weighted_threshold: ray = WadRay.add(
+            cumulative_weighted_threshold, weighted_threshold
+        );
 
-    // Since we're using wmul on the product of a wad and a ray, the result is a ray
+        // WadRay.add_unsigned includes overflow check on result
+        let cumulative_trove_value: wad = WadRay.add_unsigned(
+            cumulative_trove_value, deposited_value
+        );
+
+        return get_trove_threshold_and_value_internal(
+            trove_id,
+            start_interval,
+            end_interval,
+            current_yang_id - 1,
+            cumulative_weighted_threshold,
+            cumulative_trove_value,
+        );
+    }
+
+    let (_, end_cumulative_yang_price: wad, _) = get_recent_price_from(
+        current_yang_id, end_interval
+    );
+
+    // subtraction operations can be unchecked since the `end_` vars are
+    // guaranteed to be greater than or equal to the `start_` variables
+    let (avg_price: wad, _) = unsigned_div_rem(
+        end_cumulative_yang_price - start_cumulative_yang_price, end_interval - start_interval
+    );
+
+    let deposited_value: wad = WadRay.wmul(deposited, avg_price);
     let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
-    let cumulative_weighted_threshold: ray = WadRay.add(
+
+    // WadRay.add_unsigned includes overflow check on result
+    let cumulative_trove_value: wad = WadRay.add_unsigned(cumulative_trove_value, deposited_value);
+    let cumulative_weighted_threshold: ray = WadRay.add_unsigned(
         cumulative_weighted_threshold, weighted_threshold
     );
-    let cumulative_trove_value: wad = WadRay.add(cumulative_trove_value, deposited_value);
 
     return get_trove_threshold_and_value_internal(
         trove_id,
-        current_interval,
+        start_interval,
+        end_interval,
         current_yang_id - 1,
         cumulative_weighted_threshold,
         cumulative_trove_value,
