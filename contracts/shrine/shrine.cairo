@@ -1052,13 +1052,13 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> wad {
     alloc_locals;
 
-    let avg_relative_ratio: ray = get_avg_relative_ratio(
+    let avg_relative_ltv: ray = get_avg_relative_ltv(
         trove_id, current_debt, start_interval, end_interval
     );
 
     let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
 
-    let base_rate: ray = get_base_rate(avg_relative_ratio);
+    let base_rate: ray = get_base_rate(avg_relative_ltv);
     let rate: ray = WadRay.rmul(base_rate, avg_multiplier);  // represents `r` in the compound interest formula
     let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
 
@@ -1080,22 +1080,22 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 //
 //
 
-func get_base_rate{range_check_ptr}(ratio: ray) -> ray {
+func get_base_rate{range_check_ptr}(ltv: ray) -> ray {
     alloc_locals;
 
-    if (is_le(ratio, RATE_BOUND1) == TRUE) {
-        return linear(ratio, RATE_M1, RATE_B1);
+    if (is_le(ltv, RATE_BOUND1) == TRUE) {
+        return linear(ltv, RATE_M1, RATE_B1);
     }
 
-    if (is_le(ratio, RATE_BOUND2) == TRUE) {
-        return linear(ratio, RATE_M2, RATE_B2);
+    if (is_le(ltv, RATE_BOUND2) == TRUE) {
+        return linear(ltv, RATE_M2, RATE_B2);
     }
 
-    if (is_le(ratio, RATE_BOUND3) == TRUE) {
-        return linear(ratio, RATE_M3, RATE_B3);
+    if (is_le(ltv, RATE_BOUND3) == TRUE) {
+        return linear(ltv, RATE_M3, RATE_B3);
     }
 
-    return linear(ratio, RATE_M4, RATE_B4);
+    return linear(ltv, RATE_M4, RATE_B4);
 }
 
 // y = m*x + b
@@ -1192,7 +1192,7 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
 // Returns the average relative LTV of a trove over the specified time period
 // Assumes debt remains constant over this period
-func get_avg_relative_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_avg_relative_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> ray {
     let (num_yangs: ufelt) = shrine_yangs_count.read();
@@ -1200,10 +1200,10 @@ func get_avg_relative_ratio{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
         trove_id, start_interval, end_interval, num_yangs, 0, 0
     );
 
-    let avg_ratio: ray = WadRay.runsigned_div(debt, avg_val);
-    let avg_relative_ratio: ray = WadRay.runsigned_div(avg_ratio, avg_threshold);
+    let avg_ltv: ray = WadRay.runsigned_div(debt, avg_val);
+    let avg_relative_ltv: ray = WadRay.runsigned_div(avg_ltv, avg_threshold);
 
-    return avg_relative_ratio;
+    return avg_relative_ltv;
 }
 
 //
