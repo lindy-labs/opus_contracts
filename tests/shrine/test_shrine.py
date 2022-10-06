@@ -132,12 +132,12 @@ def compound(
     )
 
     intervals_elapsed = Decimal(end_interval - start_interval)
-    cumulative_weighted_threshold = Decimal("0")
+    avg_max_debt = Decimal("0")
     for i in range(len(yangs_amt)):
         avg_price = (yangs_cumulative_prices_end[i] - yangs_cumulative_prices_start[i]) / intervals_elapsed
-        cumulative_weighted_threshold += yangs_amt[i] * avg_price * yangs_thresholds[i]
+        avg_max_debt += yangs_amt[i] * avg_price * yangs_thresholds[i]
 
-    relative_ltv = debt / cumulative_weighted_threshold
+    relative_ltv = debt / avg_max_debt
 
     trove_base_rate = base_rate(relative_ltv)
     avg_multiplier = (cumulative_multiplier_end - cumulative_multiplier_start) / intervals_elapsed
