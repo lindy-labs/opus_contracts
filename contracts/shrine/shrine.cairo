@@ -1278,38 +1278,27 @@ func get_trove_threshold_and_value_internal{
     if (start_interval == end_interval) {
         let deposited_value: wad = WadRay.wmul(start_yang_price, deposited);
 
-        // Since we're using wmul on the product of a wad and a ray, the result is a ray
-        let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
-        let cumulative_weighted_threshold: ray = WadRay.add(
-            cumulative_weighted_threshold, weighted_threshold
+        // Handle revoked references
+        tempvar syscall_ptr = syscall_ptr;
+        tempvar pedersen_ptr = pedersen_ptr;
+    } else {
+        let (_, end_cumulative_yang_price: wad, _) = get_recent_price_from(
+            current_yang_id, end_interval
         );
 
-        // WadRay.add_unsigned includes overflow check on result
-        let cumulative_trove_value: wad = WadRay.add_unsigned(
-            cumulative_trove_value, deposited_value
+        // subtraction operations can be unchecked since the `end_` vars are
+        // guaranteed to be greater than or equal to the `start_` variables
+        let (avg_price: wad, _) = unsigned_div_rem(
+            end_cumulative_yang_price - start_cumulative_yang_price, end_interval - start_interval
         );
 
-        return get_trove_threshold_and_value_internal(
-            trove_id,
-            start_interval,
-            end_interval,
-            current_yang_id - 1,
-            cumulative_weighted_threshold,
-            cumulative_trove_value,
-        );
+        let deposited_value: wad = WadRay.wmul(deposited, avg_price);
+
+        // Handle revoked references
+        tempvar syscall_ptr = syscall_ptr;
+        tempvar pedersen_ptr = pedersen_ptr;
     }
 
-    let (_, end_cumulative_yang_price: wad, _) = get_recent_price_from(
-        current_yang_id, end_interval
-    );
-
-    // subtraction operations can be unchecked since the `end_` vars are
-    // guaranteed to be greater than or equal to the `start_` variables
-    let (avg_price: wad, _) = unsigned_div_rem(
-        end_cumulative_yang_price - start_cumulative_yang_price, end_interval - start_interval
-    );
-
-    let deposited_value: wad = WadRay.wmul(deposited, avg_price);
     let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
 
     // WadRay.add_unsigned includes overflow check on result
