@@ -1205,9 +1205,9 @@ func get_avg_relative_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         trove_id, start_interval, end_interval, num_yangs, 0, 0
     );
 
-    // Early termination if trove is empty
+    // Catch troves with zero value
     if (avg_val == 0) {
-        return (0);
+        return 0;
     }
 
     let avg_ltv: ray = WadRay.runsigned_div(debt, avg_val);
