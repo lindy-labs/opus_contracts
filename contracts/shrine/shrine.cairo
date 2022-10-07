@@ -828,7 +828,8 @@ func get_current_trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 
     let (trove: Trove) = get_trove(trove_id);
     let interval: ufelt = now();
-    let ltv = trove_ltv(trove_id, interval, trove.debt);
+    let debt: wad = estimate(trove_id);
+    let ltv = trove_ltv(trove_id, interval, debt);
     return (ltv,);
 }
 
@@ -880,16 +881,16 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 ) -> (healthy: bool) {
     alloc_locals;
 
-    let (trove: Trove) = get_trove(trove_id);
+    let (debt: wad) = estimate(trove_id);
 
     // Early termination if trove has no debt
-    if (trove.debt == 0) {
+    if (debt == 0) {
         return (TRUE,);
     }
 
     let max_debt: wad = get_trove_max_debt(trove_id);
 
-    return (is_le(trove.debt, max_debt),);
+    return (is_le(debt, max_debt),);
 }
 
 @view
@@ -1207,6 +1208,11 @@ func get_avg_relative_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     let (avg_threshold: ray, avg_val: wad) = get_trove_threshold_and_value_internal(
         trove_id, start_interval, end_interval, num_yangs, 0, 0
     );
+
+    // Early termination if trove is empty
+    if (avg_val == 0) {
+        return (0);
+    }
 
     let avg_ltv: ray = WadRay.runsigned_div(debt, avg_val);
     let avg_relative_ltv: ray = WadRay.runsigned_div(avg_ltv, avg_threshold);
