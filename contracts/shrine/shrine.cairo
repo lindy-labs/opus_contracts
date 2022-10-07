@@ -899,21 +899,23 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) -> (max: wad) {
     alloc_locals;
 
-    let (trove: Trove) = get_trove(trove_id);
+    let (debt: wad) = estimate(trove_id);
 
-    let (can_forge: bool) = is_healthy(trove_id);
-
-    // Early termination if trove is not within limits
-    if (can_forge == FALSE) {
-        return (0,);
+    // Early termination if trove has no debt
+    if (debt == 0) {
+        return (TRUE,);
     }
 
     let max_debt: wad = get_trove_max_debt(trove_id);
 
-    // Get updated debt with interest
-    let (current_debt: wad) = estimate(trove_id);
-    let max_forge_amt: wad = max_debt - current_debt;
+    let can_forge: bool = is_le(debt, max_debt);
 
+    // Early termination if trove cannot forge new debt
+    if (can_forge == FALSE) {
+        return (0,);
+    }
+
+    let max_forge_amt: wad = max_debt - debt;
     return (max_forge_amt,);
 }
 
