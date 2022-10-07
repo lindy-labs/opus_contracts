@@ -85,6 +85,7 @@ ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW
 # Troves
 TROVE_1 = 1
 TROVE_2 = 2
+TROVE_3 = 3
 
 TROVE1_OWNER = str_to_felt("trove 1 owner")
 TROVE2_OWNER = str_to_felt("trove 2 owner")

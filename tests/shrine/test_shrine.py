@@ -18,8 +18,10 @@ from tests.utils import (
     TIME_INTERVAL_DIV_YEAR,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE3_OWNER,
     TROVE_1,
     TROVE_2,
+    TROVE_3,
     TRUE,
     WAD_SCALE,
     assert_equalish,
@@ -1050,11 +1052,12 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
 
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_shrine_forge_zero_deposit_fail(shrine):
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
-        await shrine.forge(TROVE1_OWNER, TROVE_1, to_wad(1_000)).execute(caller_address=SHRINE_OWNER)
+        await shrine.forge(TROVE3_OWNER, TROVE_3, to_wad(1_000)).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds")
