@@ -99,7 +99,7 @@ def compound(
     debt: Decimal,
 ) -> Decimal:
     """
-    Helper function to calculate the compounded debt.
+    Helper function to calculate the compound debt using average price between two intervals.
 
     Arguments
     ---------
@@ -115,6 +115,10 @@ def compound(
         The cumulative multiplier at the start of the interest accumulation period
     cumulative_multiplier_end : Decimal
         The cumulative multiplier at the end of the interest accumulation period
+    start_interval: int
+        Start interval ID
+    end_interval: int
+        End interval ID
     debt : Decimal
         Amount of debt at the start interval
 
@@ -143,6 +147,57 @@ def compound(
     avg_multiplier = (cumulative_multiplier_end - cumulative_multiplier_start) / intervals_elapsed
 
     true_rate = trove_base_rate * avg_multiplier
+
+    new_debt = debt * Decimal(exp(true_rate * intervals_elapsed * TIME_INTERVAL_DIV_YEAR))
+    return new_debt
+
+
+def compound_without_updates(
+    yangs_amt: List[Decimal],
+    yangs_thresholds: List[Decimal],
+    yang_prices: List[Decimal],
+    multiplier: Decimal,
+    start_interval: int,
+    end_interval: int,
+    debt: Decimal,
+) -> Decimal:
+    """
+    Helper function to calculate the compound debt using a single price and multiplier values.
+
+    Arguments
+    ---------
+    yangs_amt : List[Decimal]
+        Ordered list of the amount of each Yang
+    yangs_thresholds : List[Decimal]
+        Ordered list of the threshold for each Yang
+    yang_prices: List[Decimal]
+        The price of each yang
+    multiplier : Decimal
+        The multiplier value
+    start_interval: int
+        Start interval ID
+    end_interval: int
+        End interval ID
+    debt : Decimal
+        Amount of debt at the start interval
+
+    Returns
+    -------
+    Value of the compounded debt from start interval to end interval in Decimal
+    """
+
+    # Sanity check on input data
+    assert len(yangs_amt) == len(yang_prices) == len(yangs_thresholds)
+
+    intervals_elapsed = Decimal(end_interval - start_interval)
+    avg_max_debt = Decimal("0")
+    for i in range(len(yangs_amt)):
+        avg_max_debt += yangs_amt[i] * yang_prices[i] * yangs_thresholds[i]
+
+    relative_ltv = debt / avg_max_debt
+
+    trove_base_rate = base_rate(relative_ltv)
+    true_rate = trove_base_rate * multiplier
 
     new_debt = debt * Decimal(exp(true_rate * intervals_elapsed * TIME_INTERVAL_DIV_YEAR))
     return new_debt
@@ -1285,7 +1340,7 @@ async def test_charge(shrine, estimate, method, calldata):
     [0, 1, FEED_LEN - 2, FEED_LEN - 1],
     indirect=["update_feeds_intermittent"],
 )
-async def test_intermittent_charge(shrine, update_feeds_intermittent):
+async def test_intermittent_charge(starknet, shrine, update_feeds_intermittent):
     """
     Test for `charge` with "missed" price and multiplier updates at the given index.
 
@@ -1305,16 +1360,19 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
 
     # Get yang price and multiplier value at `trove.charge_from`
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    start_price = (await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).execute()).result.price
-    start_multiplier = (await shrine.get_multiplier(trove.charge_from).execute()).result.multiplier
 
-    # Modify feeds
-    yang0_price_feed = [from_wad(start_price)] + price_feed
-    multiplier_feed = [from_ray(start_multiplier)] + [Decimal("1")] * FEED_LEN
+    start_cumulative_price = (
+        await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).execute()
+    ).result.cumulative_price
+    start_cumulative_multiplier = (
+        await shrine.get_multiplier(trove.charge_from).execute()
+    ).result.cumulative_multiplier
 
-    # Add offset of 1 to account for last price of first set of feeds being appended as first value
-    yang0_price_feed[idx + 1] = yang0_price_feed[idx]
-    multiplier_feed[idx + 1] = multiplier_feed[idx]
+    # Getting the current yang price and multiplier value
+    end_cumulative_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.cumulative_price
+    end_cumulative_multiplier = (await shrine.get_current_multiplier().execute()).result.cumulative_multiplier
+
+    end_interval = get_interval(get_block_timestamp(starknet))
 
     # Test 'charge' by calling deposit without any value
     await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
@@ -1323,21 +1381,60 @@ async def test_intermittent_charge(shrine, update_feeds_intermittent):
     expected_debt = compound(
         [Decimal("10")],
         [from_ray(YANG_0_THRESHOLD)],
-        [yang0_price_feed[0]],
-        [sum(yang0_price_feed)],
-        multiplier_feed[0],
-        sum(multiplier_feed),
-        0,
-        FEED_LEN * 2 - 1,
-        Decimal("5000"),
+        [from_wad(start_cumulative_price)],
+        [from_wad(end_cumulative_price)],
+        from_ray(start_cumulative_multiplier),
+        from_ray(end_cumulative_multiplier),
+        trove.charge_from,
+        end_interval,
+        from_wad(trove.debt),
     )
 
     adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
-    # Precision loss gets quite bad for the interest accumulation calculations due
-    # to the several multiplications and divisions, as well the `exp` function.
-    assert_equalish(adjusted_trove_debt, expected_debt, Decimal("0.1"))
+    assert_equalish(adjusted_trove_debt, expected_debt)
 
     assert updated_trove.charge_from == FEED_LEN * 2 - 1
+
+
+@pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
+@pytest.mark.usefixtures("estimate")
+@pytest.mark.asyncio
+async def test_charge_without_updates(starknet, shrine, interval_count):
+    """
+    Test for corner case: `charge` with "missed" price updates since `trove.charge_from`.
+    """
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+
+    # Charge trove after initial set of price feeds by calling deposit with 0
+    await shrine.deposit(YANG_0_ADDRESS, 1, 0).execute(caller_address=SHRINE_OWNER)
+
+    # Get yang price and multiplier value at `trove.charge_from`
+    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+
+    start_price = (await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).execute()).result.price
+
+    # Advance timestamp by given intervals
+    current_timestamp = get_block_timestamp(starknet)
+    new_timestamp = current_timestamp + interval_count * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
+
+    # Charge trove again
+    await shrine.deposit(YANG_0_ADDRESS, 1, 0).execute(caller_address=SHRINE_OWNER)
+
+    # Assert charge is based on start interval, which is `trove.charge_from`
+    expected_debt = compound_without_updates(
+        [Decimal(INITIAL_DEPOSIT)],
+        [from_ray(YANG_0_THRESHOLD)],
+        [from_wad(start_price)],
+        Decimal("1"),
+        trove.charge_from,
+        trove.charge_from + interval_count,
+        from_wad(trove.debt),
+    )
+
+    updated_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
+    assert_equalish(expected_debt, adjusted_trove_debt)
 
 
 #
