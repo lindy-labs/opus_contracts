@@ -1065,6 +1065,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // Using `rmul` on a ray and a wad yields a wad, which we need since `exp` only takes wads
     let compounded_scalar: wad = exp(WadRay.rmul(rate, t));
     let compounded_debt = WadRay.wmul(current_debt, compounded_scalar);
+
     return compounded_debt;
 }
 
@@ -1181,11 +1182,18 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         return end_multiplier;
     }
 
-    let (_, start_cumulative_multiplier: ray, _) = get_recent_multiplier_from(start_interval);
+    let (multiplier: ray, start_cumulative_multiplier: ray, _) = get_recent_multiplier_from(
+        start_interval
+    );
 
     let (avg_multiplier: ray, _) = unsigned_div_rem(
         end_cumulative_multiplier - start_cumulative_multiplier, end_interval - start_interval
     );
+
+    // Corner case where there are no updates since `start_interval`
+    if (avg_multiplier == 0) {
+        return multiplier;
+    }
 
     return avg_multiplier;
 }
@@ -1292,7 +1300,14 @@ func get_trove_threshold_and_value_internal{
             end_cumulative_yang_price - start_cumulative_yang_price, end_interval - start_interval
         );
 
-        let deposited_value: wad = WadRay.wmul(deposited, avg_price);
+        // Corner case where there are no updates since `start_interval`
+        if (avg_price == 0) {
+            tempvar price: wad = start_yang_price;
+        } else {
+            tempvar price: wad = avg_price;
+        }
+
+        let deposited_value: wad = WadRay.wmul(deposited, price);
 
         // Handle revoked references
         tempvar syscall_ptr = syscall_ptr;
