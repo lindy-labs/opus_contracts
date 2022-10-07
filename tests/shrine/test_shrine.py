@@ -974,6 +974,13 @@ async def test_shrine_withdraw_insufficient_yang_fail(shrine, shrine_deposit):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
+async def test_shrine_withdraw_zero_yang_fail(shrine):
+    with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
+        await shrine.withdraw(YANG_0_ADDRESS, TROVE_3, to_wad(1)).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.mark.usefixtures("update_feeds")
+@pytest.mark.asyncio
 async def test_shrine_withdraw_unsafe_fail(shrine):
 
     # Get latest price
@@ -1622,3 +1629,11 @@ async def test_get_trove_threshold_and_value(shrine, shrine_deposit_multiple):
     # Getting actual threshold
     actual_threshold = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.threshold
     assert_equalish(from_ray(actual_threshold), expected_threshold)
+
+
+@pytest.mark.usefixtures("update_feeds")
+@pytest.mark.asyncio
+async def test_get_current_trove_ltv(shrine):
+    # Trove with zero value
+    trove_ltv = (await shrine.get_current_trove_ltv(TROVE_3).execute()).result.ltv
+    assert trove_ltv == 0
