@@ -1271,6 +1271,7 @@ async def test_charge(shrine, estimate, method, calldata):
         expected_system_debt = estimated_trove1_debt + FORGE_AMT_WAD
 
     old_trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    old_trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
 
     # Test `charge` by calling the method without any value
     tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
@@ -1284,7 +1285,7 @@ async def test_charge(shrine, estimate, method, calldata):
     adjusted_trove_debt = Decimal(updated_trove1.debt) / WAD_SCALE
 
     # Sanity check
-    assert expected_debt > from_wad(old_trove1.debt)
+    assert estimated_trove1_debt > from_wad(old_trove1.debt)
 
     assert_equalish(adjusted_trove_debt, expected_debt)
     assert updated_trove1.charge_from == FEED_LEN * 2 - 1
@@ -1319,6 +1320,7 @@ async def test_charge(shrine, estimate, method, calldata):
         # Get updated trove information for Trove ID 2
         updated_trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
         adjusted_trove_debt = Decimal(updated_trove2.debt) / WAD_SCALE
+        assert estimated_trove2_debt > from_wad(old_trove2.debt)
 
         assert_equalish(adjusted_trove_debt, expected_debt)
         assert updated_trove2.charge_from == FEED_LEN * 2 - 1
