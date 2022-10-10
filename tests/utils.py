@@ -251,11 +251,11 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
     return lo, hi
 
 
-def calculate_threshold_and_value(
+def calculate_trove_threshold_and_value(
     prices: List[int], amounts: List[int], thresholds: List[int]
 ) -> Tuple[Decimal, Decimal]:
     """
-    Helper function to calculate a trove's cumulative weighted threshold and value
+    Helper function to calculate a trove's threshold and value
 
     Arguments
     ---------
@@ -285,28 +285,11 @@ def calculate_threshold_and_value(
         total_value += p * a
         cumulative_weighted_threshold += p * a * t
 
-    return cumulative_weighted_threshold, total_value
+    threshold = 0
+    if total_value > 0:
+        threshold = cumulative_weighted_threshold / total_value
 
-
-def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
-    """
-    Helper function to calculate a trove's threshold
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in ray
-
-    Returns
-    -------
-    Value of the variable threshold in decimal.
-    """
-    cumulative_weighted_threshold, total_value = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold / total_value
+    return threshold, total_value
 
 
 def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
@@ -326,8 +309,8 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
     -------
     Value of the maximum forge value for a Trove in decimal.
     """
-    cumulative_weighted_threshold, _ = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold
+    threshold, value = calculate_trove_threshold_and_value(prices, amounts, thresholds)
+    return threshold * value
 
 
 #

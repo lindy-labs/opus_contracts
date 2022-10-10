@@ -27,7 +27,7 @@ from tests.utils import (
     assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
-    calculate_trove_threshold,
+    calculate_trove_threshold_and_value,
     create_feed,
     from_ray,
     from_wad,
@@ -1622,13 +1622,17 @@ async def test_get_trove_threshold_and_value(shrine, shrine_deposit_multiple):
         price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price
         prices.append(price)
 
-    expected_threshold = calculate_trove_threshold(
+    expected_threshold, expected_value = calculate_trove_threshold_and_value(
         prices, [d["amount"] for d in DEPOSITS], [d["threshold"] for d in DEPOSITS]
     )
 
     # Getting actual threshold
-    actual_threshold = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.threshold
+    res = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result
+    actual_threshold = res.threshold
+    actual_value = res.value
+
     assert_equalish(from_ray(actual_threshold), expected_threshold)
+    assert_equalish(from_wad(actual_value), expected_value)
 
 
 @pytest.mark.usefixtures("update_feeds")
