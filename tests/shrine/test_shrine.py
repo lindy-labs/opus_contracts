@@ -1420,7 +1420,8 @@ async def test_intermittent_charge(starknet, shrine, update_feeds_intermittent):
 @pytest.mark.asyncio
 async def test_charge_without_updates_since_start(starknet, shrine, interval_count):
     """
-    Test for `charge` with "missed" price updates since `trove.charge_from`.
+    Test for `charge` with "missed" price updates since `trove.charge_from`,
+    with the interval at `trove.charge_from` having a price update.
 
     T+0                    T+LAST_CHARGED/LAST_UPDATED-------------T+NOW
     """
@@ -1465,7 +1466,8 @@ async def test_charge_without_updates_since_start(starknet, shrine, interval_cou
 @pytest.mark.asyncio
 async def test_charge_without_update_before_start(starknet, shrine, interval_count):
     """
-    Test for `charge` with "missed" price updates since before `trove.charge_from`.
+    Test for `charge` with "missed" price updates since before `trove.charge_from`,
+    with the interval at `trove.charge_from` missing a price update.
 
     T+0             T+LAST_UPDATED       T+LAST_CHARGED-------------T+NOW
     """
@@ -1503,6 +1505,66 @@ async def test_charge_without_update_before_start(starknet, shrine, interval_cou
         [from_wad(available_start_price)],
         Decimal("1"),
         interval_count,
+        original_trove_debt,
+    )
+    assert_equalish(expected_debt, updated_trove_debt)
+
+
+@pytest.mark.parametrize("last_interval_after_start", [2, 5, 10])
+@pytest.mark.parametrize("intervals_after_last_update", [1, 5, 10, 50])
+@pytest.mark.usefixtures("estimate")
+@pytest.mark.asyncio
+async def test_charge_without_update_after_start(
+    starknet, shrine, last_interval_after_start, intervals_after_last_update
+):
+    """
+    Test for `charge` with "missed" price updates from an interval after `trove.charge_from`,
+    with the interval at `trove.charge_from` having a price update.
+
+    T+0                   T+LAST_CHARGED-------T+LAST_UPDATED------T+NOW
+    """
+
+    # Charge with zero deposit
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+
+    original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    original_trove_debt = from_wad(original_trove.debt)
+
+    start_price, start_cumulative_price, _ = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result
+    assert start_price > 0
+
+    # Advance timestamp by `last_interval_after_start` intervals and set price
+    current_timestamp = get_block_timestamp(starknet)
+    new_timestamp = current_timestamp + last_interval_after_start * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
+
+    available_end_price = int(Decimal(start_price) * Decimal("1.1"))
+    await shrine.advance(YANG_0_ADDRESS, available_end_price).execute(caller_address=SHRINE_OWNER)
+
+    end_price, end_cumulative_price, _ = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result
+    assert end_price > 0
+
+    # Advnce timestamp by `intervals_after_last_update` intervals and charge using a zero deposit
+    new_timestamp = new_timestamp + intervals_after_last_update * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
+
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    updated_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    updated_trove_debt = from_wad(updated_trove.debt)
+
+    intervals_lapsed = last_interval_after_start + intervals_after_last_update
+
+    average_price = (
+        (from_wad(end_cumulative_price) - from_wad(start_cumulative_price))
+        + from_wad(end_price) * intervals_after_last_update
+    ) / intervals_lapsed
+
+    expected_debt = compound_without_updates(
+        [Decimal(INITIAL_DEPOSIT)],
+        [from_ray(YANG_0_THRESHOLD)],
+        [average_price],
+        Decimal("1"),
+        intervals_lapsed,
         original_trove_debt,
     )
     assert_equalish(expected_debt, updated_trove_debt)
