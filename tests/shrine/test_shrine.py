@@ -159,8 +159,7 @@ def compound_without_updates(
     yangs_thresholds: List[Decimal],
     yang_prices: List[Decimal],
     multiplier: Decimal,
-    start_interval: int,
-    end_interval: int,
+    intervals: int,
     debt: Decimal,
 ) -> Decimal:
     """
@@ -191,7 +190,6 @@ def compound_without_updates(
     # Sanity check on input data
     assert len(yangs_amt) == len(yang_prices) == len(yangs_thresholds)
 
-    intervals_elapsed = Decimal(end_interval - start_interval)
     avg_max_debt = Decimal("0")
     for i in range(len(yangs_amt)):
         avg_max_debt += yangs_amt[i] * yang_prices[i] * yangs_thresholds[i]
@@ -201,7 +199,7 @@ def compound_without_updates(
     trove_base_rate = base_rate(relative_ltv)
     true_rate = trove_base_rate * multiplier
 
-    new_debt = debt * Decimal(exp(true_rate * intervals_elapsed * TIME_INTERVAL_DIV_YEAR))
+    new_debt = debt * Decimal(exp(true_rate * intervals * TIME_INTERVAL_DIV_YEAR))
     return new_debt
 
 
@@ -1238,8 +1236,8 @@ async def test_estimate(shrine, estimate):
     estimated_trove1_debt, estimated_trove2_debt, expected_debt = estimate
 
     # Convert wad values to decimal
-    adjusted_estimated_trove1_debt = Decimal(estimated_trove1_debt) / WAD_SCALE
-    adjusted_estimated_trove2_debt = Decimal(estimated_trove2_debt) / WAD_SCALE
+    adjusted_estimated_trove1_debt = from_wad(estimated_trove1_debt)
+    adjusted_estimated_trove2_debt = from_wad(estimated_trove2_debt)
 
     # Check values
     assert_equalish(adjusted_estimated_trove1_debt, expected_debt)
@@ -1282,7 +1280,7 @@ async def test_charge(shrine, estimate, method, calldata):
 
     # Get updated trove information for Trove ID 1
     updated_trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    adjusted_trove_debt = Decimal(updated_trove1.debt) / WAD_SCALE
+    adjusted_trove_debt = from_wad(updated_trove1.debt)
 
     # Sanity check
     assert estimated_trove1_debt > from_wad(old_trove1.debt)
@@ -1319,7 +1317,7 @@ async def test_charge(shrine, estimate, method, calldata):
     if method == "move_yang":
         # Get updated trove information for Trove ID 2
         updated_trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
-        adjusted_trove_debt = Decimal(updated_trove2.debt) / WAD_SCALE
+        adjusted_trove_debt = from_wad(updated_trove2.debt)
         assert estimated_trove2_debt > from_wad(old_trove2.debt)
 
         assert_equalish(adjusted_trove_debt, expected_debt)
@@ -1354,12 +1352,13 @@ async def test_charge(shrine, estimate, method, calldata):
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "update_feeds_intermittent",
-    [0, 1, FEED_LEN - 2, FEED_LEN - 1],
+    [0, 1, FEED_LEN - 2],
     indirect=["update_feeds_intermittent"],
 )
 async def test_intermittent_charge(starknet, shrine, update_feeds_intermittent):
     """
-    Test for `charge` with "missed" price and multiplier updates at the given index.
+    Test for `charge` with "missed" price and multiplier updates at the given index
+    between start and end intervals.
 
     The `update_feeds_intermittent` fixture returns a tuple of the index that is skipped,
     and a list for the price feed.
@@ -1410,7 +1409,7 @@ async def test_intermittent_charge(starknet, shrine, update_feeds_intermittent):
     # Sanity check
     assert expected_debt > from_wad(trove.debt)
 
-    adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
+    adjusted_trove_debt = from_wad(updated_trove.debt)
     assert_equalish(adjusted_trove_debt, expected_debt)
 
     assert updated_trove.charge_from == FEED_LEN * 2 - 1
@@ -1419,17 +1418,20 @@ async def test_intermittent_charge(starknet, shrine, update_feeds_intermittent):
 @pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
 @pytest.mark.usefixtures("estimate")
 @pytest.mark.asyncio
-async def test_charge_without_updates(starknet, shrine, interval_count):
+async def test_charge_without_updates_since_start(starknet, shrine, interval_count):
     """
-    Test for corner case: `charge` with "missed" price updates since `trove.charge_from`.
+    Test for `charge` with "missed" price updates since `trove.charge_from`.
+
+    T+0                    T+LAST_CHARGED/LAST_UPDATED-------------T+NOW
     """
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
 
     # Charge trove after initial set of price feeds by calling deposit with 0
-    await shrine.deposit(YANG_0_ADDRESS, 1, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
 
     # Get yang price and multiplier value at `trove.charge_from`
-    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    original_trove_debt = from_wad(original_trove.debt)
 
     start_price = (await shrine.get_yang_price(YANG_0_ADDRESS, trove.charge_from).execute()).result.price
 
@@ -1439,7 +1441,7 @@ async def test_charge_without_updates(starknet, shrine, interval_count):
     set_block_timestamp(starknet, new_timestamp)
 
     # Charge trove again
-    await shrine.deposit(YANG_0_ADDRESS, 1, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
 
     # Assert charge is based on start interval, which is `trove.charge_from`
     expected_debt = compound_without_updates(
@@ -1447,18 +1449,63 @@ async def test_charge_without_updates(starknet, shrine, interval_count):
         [from_ray(YANG_0_THRESHOLD)],
         [from_wad(start_price)],
         Decimal("1"),
-        trove.charge_from,
-        trove.charge_from + interval_count,
-        from_wad(trove.debt),
+        interval_count,
+        original_trove_debt,
     )
 
     updated_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    adjusted_trove_debt = Decimal(updated_trove.debt) / WAD_SCALE
+    updated_trove_debt = from_wad(updated_trove.debt)
+    assert updated_trove_debt > original_trove_debt
 
-    # Sanity check
-    assert expected_debt > from_wad(trove.debt)
+    assert_equalish(expected_debt, updated_trove_debt)
 
-    assert_equalish(expected_debt, adjusted_trove_debt)
+
+@pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
+@pytest.mark.usefixtures("estimate")
+@pytest.mark.asyncio
+async def test_charge_without_update_before_start(starknet, shrine, interval_count):
+    """
+    Test for `charge` with "missed" price updates since before `trove.charge_from`.
+
+    T+0             T+LAST_UPDATED       T+LAST_CHARGED-------------T+NOW
+    """
+
+    price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
+    assert price > 0
+
+    # Advance timestamp by 2 intervals and set price
+    current_timestamp = get_block_timestamp(starknet)
+    new_timestamp = current_timestamp + 2 * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
+
+    available_start_price = int(Decimal(price) * Decimal("1.1"))
+    await shrine.advance(YANG_0_ADDRESS, available_start_price).execute(caller_address=SHRINE_OWNER)
+
+    # Advnce timestamp by 3 intervals and charge using a zero deposit
+    new_timestamp = new_timestamp + 3 * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+
+    original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    original_trove_debt = from_wad(original_trove.debt)
+
+    # Advance timestamp by `interval_count` and charge
+    new_timestamp = new_timestamp + interval_count * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
+
+    await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    updated_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    updated_trove_debt = from_wad(updated_trove.debt)
+
+    expected_debt = compound_without_updates(
+        [Decimal(INITIAL_DEPOSIT)],
+        [from_ray(YANG_0_THRESHOLD)],
+        [from_wad(available_start_price)],
+        Decimal("1"),
+        interval_count,
+        original_trove_debt,
+    )
+    assert_equalish(expected_debt, updated_trove_debt)
 
 
 #
