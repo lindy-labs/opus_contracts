@@ -1147,6 +1147,56 @@ func get_recent_price_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     return get_recent_price_from(yang_id, interval - 1);
 }
 
+// Returns the average price for a yang between two intervals
+func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_id: ufelt, start_interval: ufelt, end_interval: ufelt
+) -> wad {
+    alloc_locals;
+
+    let (
+        start_yang_price: wad, start_cumulative_yang_price: wad, available_start_interval: ufelt
+    ) = get_recent_price_from(yang_id, start_interval);
+
+    let (
+        end_yang_price: wad, end_cumulative_yang_price: wad, available_end_interval
+    ) = get_recent_price_from(yang_id, end_interval);
+
+    // subtraction operations can be unchecked since the `end_` vars are
+    // guaranteed to be greater than or equal to the `start_` variables
+    let cumulative_diff: wad = end_cumulative_yang_price - start_cumulative_yang_price;
+
+    // If the cumulative difference is 0 (i.e. the last available price for both start and end intervals are the same),
+    // return that last available price
+    if (cumulative_diff == 0) {
+        return (start_yang_price);
+    }
+
+    // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
+    // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
+    let start_interval_updated = is_le(start_interval, available_start_interval);
+    if (start_interval_updated == FALSE) {
+        let neg_cumulative_offset: wad = (start_interval - available_start_interval) * start_yang_price;
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - neg_cumulative_offset;
+    } else {
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
+    }
+
+    // If the end interval is not updated, adjust the cumulative difference by adding
+    // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
+    let end_interval_updated = is_le(end_interval, available_end_interval);
+    if (end_interval_updated == FALSE) {
+        let pos_cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + pos_cumulative_offset;
+    } else {
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
+    }
+
+    let (avg_price: wad, _) = unsigned_div_rem(
+        final_adjusted_cumulative_diff, start_interval - end_interval
+    );
+    return (avg_price);
+}
+
 // Returns the multiplier at `interval` if it is non-zero.
 // Otherwise, check `interval` - 1 recursively for the last available value.
 func get_recent_multiplier_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -1279,42 +1329,9 @@ func get_trove_threshold_and_value_internal{
     }
 
     let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
-    let (start_yang_price: wad, start_cumulative_yang_price: wad, _) = get_recent_price_from(
-        current_yang_id, start_interval
-    );
 
-    // If `start_interval` == `end_interval`, then the average price is simply the price at
-    // `start_interval` (or equally, the price at `end_interval`)
-    if (start_interval == end_interval) {
-        let deposited_value: wad = WadRay.wmul(start_yang_price, deposited);
-
-        // Handle revoked references
-        tempvar syscall_ptr = syscall_ptr;
-        tempvar pedersen_ptr = pedersen_ptr;
-    } else {
-        let (_, end_cumulative_yang_price: wad, _) = get_recent_price_from(
-            current_yang_id, end_interval
-        );
-
-        // subtraction operations can be unchecked since the `end_` vars are
-        // guaranteed to be greater than or equal to the `start_` variables
-        let (avg_price: wad, _) = unsigned_div_rem(
-            end_cumulative_yang_price - start_cumulative_yang_price, end_interval - start_interval
-        );
-
-        // Corner case where there are no updates since `start_interval`
-        if (avg_price == 0) {
-            tempvar price: wad = start_yang_price;
-        } else {
-            tempvar price: wad = avg_price;
-        }
-
-        let deposited_value: wad = WadRay.wmul(deposited, price);
-
-        // Handle revoked references
-        tempvar syscall_ptr = syscall_ptr;
-        tempvar pedersen_ptr = pedersen_ptr;
-    }
+    let price: wad = get_avg_price(current_yang_id, start_interval, end_interval);
+    let deposited_value: wad = WadRay.wmul(price, deposited);
 
     let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
 
