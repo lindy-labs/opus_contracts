@@ -1148,9 +1148,10 @@ func get_recent_price_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 }
 
 // Returns the average price for a yang between two intervals
+// Return value is a tuple so that function can be modified as an external view for testing
 func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang_id: ufelt, start_interval: ufelt, end_interval: ufelt
-) -> wad {
+) -> (price: wad) {
     alloc_locals;
 
     let (
@@ -1169,7 +1170,7 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // return that last available price
     // This also catches `start_interval == end_interval`
     if (cumulative_diff == 0) {
-        return start_yang_price;
+        return (start_yang_price,);
     }
 
     // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
@@ -1195,7 +1196,7 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (avg_price: wad, _) = unsigned_div_rem(
         final_adjusted_cumulative_diff, end_interval - start_interval
     );
-    return avg_price;
+    return (avg_price,);
 }
 
 // Returns the multiplier at `interval` if it is non-zero.
@@ -1215,9 +1216,10 @@ func get_recent_multiplier_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 }
 
 // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
+// Return value is a tuple so that function can be modified as an external view for testing
 func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     start_interval: ufelt, end_interval: ufelt
-) -> ray {
+) -> (multiplier: ray) {
     alloc_locals;
 
     let (
@@ -1234,7 +1236,7 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     // return that last available price
     // This also catches `start_interval == end_interval`
     if (cumulative_diff == 0) {
-        return start_multiplier;
+        return (start_multiplier,);
     }
 
     // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
@@ -1260,7 +1262,7 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     let (avg_multiplier: wad, _) = unsigned_div_rem(
         final_adjusted_cumulative_diff, end_interval - start_interval
     );
-    return avg_multiplier;
+    return (avg_multiplier,);
 }
 
 // Returns the average relative LTV of a trove over the specified time period
