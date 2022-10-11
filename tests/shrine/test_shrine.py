@@ -1361,7 +1361,7 @@ async def test_charge_scenario_1(starknet, shrine, update_feeds_intermittent):
     Start interval has a price update.
     End interval has a price update.
 
-    T+0                    T+START/LAST_CHARGED------X-------T+END
+    T+0                    T+START------X-------T+END
 
     The `update_feeds_intermittent` fixture returns a tuple of the index that is skipped,
     and a list for the price feed.
@@ -1424,11 +1424,11 @@ async def test_charge_scenario_1(starknet, shrine, update_feeds_intermittent):
 @pytest.mark.asyncio
 async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge, intervals_after_last_charge):
     """
-    Test for `charge` with "missed" price updates since before the start interval,
-    Start_interval does not have a price update.
-    End interval does not have a price update.
+    Test for `charge` with "missed" price and multiplier updates since before the start interval,
+    Start_interval does not have a price or multiplier update.
+    End interval does not have a price or multiplier update.
 
-    T+0             T+LAST_UPDATED       T+START/LAST_CHARGED-------------T+END
+    T+0             T+LAST_UPDATED       T+START-------------T+END
     """
 
     price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
@@ -1441,8 +1441,9 @@ async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge,
 
     available_start_price = int(Decimal(price) * Decimal("1.1"))
     await shrine.advance(YANG_0_ADDRESS, available_start_price).execute(caller_address=SHRINE_OWNER)
+    await shrine.update_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
-    # Advnce timestamp by 3 intervals and charge using a zero deposit - `T+START/LAST_CHARGED`
+    # Advnce timestamp by 3 intervals and charge using a zero deposit - `T+START`
     new_timestamp = new_timestamp + intervals_before_last_charge * TIME_INTERVAL
     set_block_timestamp(starknet, new_timestamp)
     await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
@@ -1474,13 +1475,13 @@ async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge,
 @pytest.mark.asyncio
 async def test_charge_scenario_3(starknet, shrine, interval_count):
     """
-    Test for `charge` with "missed" price updates after the start interval,
-    Start interval has a price update.
-    End interval does not have a price update.
+    Test for `charge` with "missed" price and multiplier updates after the start interval,
+    Start interval has a price and multiplier update.
+    End interval does not have a price or multiplier update.
 
-    T+0                    T+LAST_CHARGED/LAST_UPDATED-------------T+END
+    T+0                    T+START/LAST_UPDATED-------------T+END
     """
-    # Charge trove after initial set of price feeds by calling deposit with 0 - `T+LAST_CHARGED/LAST_UPDATED`
+    # Charge trove after initial set of price feeds by calling deposit with 0 - `T+START/LAST_UPDATED`
     await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
 
     # Get yang price and multiplier value at `trove.charge_from`
@@ -1520,14 +1521,15 @@ async def test_charge_scenario_3(starknet, shrine, interval_count):
 @pytest.mark.asyncio
 async def test_charge_scenario_4(starknet, shrine, last_interval_after_start, intervals_after_last_update):
     """
-    Test for `charge` with "missed" price updates from `intervals_after_last_update` intervals after start interval.
-    Start interval has a price update.
-    End interval does not have a price update.
+    Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update` intervals
+    after start interval.
+    Start interval has a price and multiplier update.
+    End interval does not have a price or multiplier update.
 
-    T+0                   T+START/LAST_CHARGED-------T+LAST_UPDATED------T+END
+    T+0                   T+START-------T+LAST_UPDATED------T+END
     """
 
-    # Charge with zero deposit - `T+START/LAST_CHARGED`
+    # Charge with zero deposit - `T+START`
     await shrine.deposit(YANG_0_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
 
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
@@ -1543,6 +1545,7 @@ async def test_charge_scenario_4(starknet, shrine, last_interval_after_start, in
 
     available_end_price = int(Decimal(start_price) * Decimal("1.1"))
     await shrine.advance(YANG_0_ADDRESS, available_end_price).execute(caller_address=SHRINE_OWNER)
+    await shrine.update_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     end_price, end_cumulative_price, _ = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result
     assert end_price > 0
@@ -1582,10 +1585,10 @@ async def test_charge_scenario_5(
     starknet, shrine, intervals_before_start, intervals_after_start, intervals_after_last_update
 ):
     """
-    Test for `charge` with "missed" price updates from `intervals_after_last_update` intervals after
-    start interval onwards.
-    Start interval does not have a price update.
-    End interval does not have a price update.
+    Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update`
+    intervals after start interval onwards.
+    Start interval does not have a price or multiplier update.
+    End interval does not have a price or multiplier update.
 
     T+0             T+LAST_UPDATED_BEFORE_START       T+START----T+LAST_UPDATED---------T+END
     """
@@ -1600,6 +1603,8 @@ async def test_charge_scenario_5(
 
     next_price = int(Decimal(price) * Decimal("1.1"))
     await shrine.advance(YANG_0_ADDRESS, next_price).execute(caller_address=SHRINE_OWNER)
+    await shrine.update_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
+
     available_start_price, available_start_cumulative_price, _ = (
         await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()
     ).result
@@ -1612,12 +1617,13 @@ async def test_charge_scenario_5(
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     original_trove_debt = from_wad(original_trove.debt)
 
-    # Advance timestamp by `intervals_after_start` and set price - `T+LAST_CHARGED`
+    # Advance timestamp by `intervals_after_start` and set price - `T+LAST_UPDATED`
     new_timestamp = new_timestamp + intervals_after_start * TIME_INTERVAL
     set_block_timestamp(starknet, new_timestamp)
 
     available_end_price = int(Decimal(available_start_price) * Decimal("1.1"))
     await shrine.advance(YANG_0_ADDRESS, available_end_price).execute(caller_address=SHRINE_OWNER)
+    await shrine.update_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     available_end_price, available_end_cumulative_price, _ = (
         await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()
@@ -1657,9 +1663,9 @@ async def test_charge_scenario_5(
 @pytest.mark.asyncio
 async def test_charge_scenario_6(starknet, shrine, intervals_before_start, interval_count):
     """
-    Test for `charge` with "missed" price update at the start interval.
-    Start interval does not have a price update.
-    End interval does not have a price update.
+    Test for `charge` with "missed" price and multiplier update at the start interval.
+    Start interval does not have a price or multiplier update.
+    End interval has both price and multiplier update.
 
     T+0             T+LAST_UPDATED_BEFORE_START       T+START-------------T+END/LAST_UPDATED
     """
@@ -1674,6 +1680,8 @@ async def test_charge_scenario_6(starknet, shrine, intervals_before_start, inter
 
     next_price = int(Decimal(price) * Decimal("1.1"))
     await shrine.advance(YANG_0_ADDRESS, next_price).execute(caller_address=SHRINE_OWNER)
+    await shrine.update_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
+
     available_start_price, available_start_cumulative_price, _ = (
         await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()
     ).result
@@ -1686,12 +1694,13 @@ async def test_charge_scenario_6(starknet, shrine, intervals_before_start, inter
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     original_trove_debt = from_wad(original_trove.debt)
 
-    # Advance timestamp by `interval_count` and charge - `T+END/LAST_CHARGED`
+    # Advance timestamp by `interval_count` and charge - `T+END/LAST_UPDATED`
     new_timestamp = new_timestamp + interval_count * TIME_INTERVAL
     set_block_timestamp(starknet, new_timestamp)
 
     available_end_price = int(Decimal(available_start_price) * Decimal("1.1"))
     await shrine.advance(YANG_0_ADDRESS, available_end_price).execute(caller_address=SHRINE_OWNER)
+    await shrine.update_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     available_end_price, available_end_cumulative_price, _ = (
         await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()
