@@ -38,9 +38,11 @@ from tests.utils import (
     WAD_SCALE,
     Uint256,
     YangConfig,
+    compile_code,
     compile_contract,
     create_feed,
     estimate_gas,
+    get_contract_code_with_replacement,
     max_approve,
     set_block_timestamp,
     str_to_felt,
@@ -166,7 +168,16 @@ async def mrac_controller(starknet: Starknet) -> StarknetContract:
 # Returns the deployed shrine module
 @pytest.fixture
 async def shrine_deploy(starknet: Starknet) -> StarknetContract:
-    shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
+    shrine_code = get_contract_code_with_replacement(
+        "contracts/shrine/shrine.cairo",
+        # Append `@view` decorator to internal functions for testing
+        {
+            "func get_avg_price": "@view\nfunc get_avg_price",
+            "func get_avg_multiplier": "@view\nfunc get_avg_multiplier",
+        },
+    )
+
+    shrine_contract = compile_code(shrine_code)
 
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 

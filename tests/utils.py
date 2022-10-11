@@ -4,11 +4,12 @@ from collections import namedtuple
 from decimal import Decimal
 from functools import cache
 from random import seed, uniform
-from typing import Callable, Iterable, List, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Tuple, Union
 
+from starkware.cairo.lang.compiler.cairo_compile import get_codes
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
-from starkware.starknet.compiler.compile import compile_starknet_files
+from starkware.starknet.compiler.compile import compile_starknet_codes, compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
@@ -160,6 +161,42 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
 
     return compile_starknet_files(
         [contract_src],
+        debug_info=True,
+        disable_hint_validation=True,
+        cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
+    )
+
+
+def get_contract_code_with_replacement(rel_contract_path: str, replacements: Dict[str, str]) -> Tuple[str, str]:
+    """
+    Modify the source code of a contract by passing in a dictionary with the string to be replaced as the key
+    and the new string as the value.
+
+    Returns a tuple of the source code and the filename.
+    """
+    code = get_codes([rel_contract_path])
+
+    contract = code[0][0]
+    filename = code[0][1]
+
+    for k, v in replacements.items():
+        contract = contract.replace(k, v)
+
+    code = (contract, filename)
+    return code
+
+
+@cache
+def compile_code(code: Tuple[str, str]) -> StarknetContract:
+    """
+    Compile the source code of a contract.
+
+    Takes in a tuple of the source code and the contract filename.
+    """
+    tld = os.path.join(here(), "..")
+
+    return compile_starknet_codes(
+        [code],
         debug_info=True,
         disable_hint_validation=True,
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
