@@ -230,11 +230,11 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 
     let exceeds_max_penalty_ltv: bool = is_nn_le(ltv, MAX_PENALTY_LTV);
     if (exceeds_max_penalty_ltv == TRUE) {
+        let penalty: ray = WadRay.sub_unsigned(WadRay.rmul(PENALTY_M1, ltv), PENALTY_B1);
+    } else {
         let penalty: ray = WadRay.runsigned_div(
             WadRay.sub_unsigned(trove_value, trove_debt), trove_debt
         );
-    } else {
-        let penalty: ray = WadRay.sub_unsigned(WadRay.rmul(PENALTY_M1, ltv), PENALTY_B1);
     }
 
     return penalty;
