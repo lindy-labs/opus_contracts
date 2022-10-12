@@ -1148,6 +1148,8 @@ func get_recent_price_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 }
 
 // Returns the average price for a yang between two intervals, including `end_interval` but NOT including `start_interval`
+// - If `start_interval` is the same as `end_interval`, return the price at that interval.
+// - If `start_interval` is different from `end_interval`, return the average price.
 // Return value is a tuple so that function can be modified as an external view for testing
 func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang_id: ufelt, start_interval: ufelt, end_interval: ufelt
@@ -1220,6 +1222,8 @@ func get_recent_multiplier_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 }
 
 // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
+// - If `start_interval` is the same as `end_interval`, return the multiplier value at that interval.
+// - If `start_interval` is different from `end_interval`, return the average.
 // Return value is a tuple so that function can be modified as an external view for testing
 func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     start_interval: ufelt, end_interval: ufelt
@@ -1234,8 +1238,8 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         end_multiplier: ray, end_cumulative_multiplier: ray, available_end_interval
     ) = get_recent_multiplier_from(end_interval);
 
-    // If the last available price for both start and end intervals are the same,
-    // return that last available price
+    // If the last available multiplier for both start and end intervals are the same,
+    // return that last available multiplier
     // This also catches `start_interval == end_interval`
     if (available_start_interval == available_end_interval) {
         return (start_multiplier,);
@@ -1317,9 +1321,6 @@ func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 // Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value.
-// - If `start_interval` is the same as `end_interval`, then the values are calculated based on the price of each yang at that interval.
-// - If `start_interval` is different from `end_interval`, then the values are calculated based on the average price of each yang.
-// For any yang that returns a price of 0 for the given interval, it uses the most recent available price before that interval.
 // This function uses historical prices but the currently deposited yang amounts to calculate value.
 // The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
 func get_trove_threshold_and_value_internal{
