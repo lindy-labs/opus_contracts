@@ -1198,7 +1198,12 @@ async def test_estimate(shrine, estimate):
         ),  # yang_address, src_trove_id, dst_trove_id, amount
     ],
 )
-async def test_charge(shrine, estimate, method, calldata):
+async def test_charge_scenario_1(shrine, estimate, method, calldata):
+    """
+    Test for `charge` with all intervals between start and end inclusive updated.
+
+    T+START--------------T+END
+    """
 
     estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price = estimate
 
@@ -1302,11 +1307,12 @@ async def test_charge(shrine, estimate, method, calldata):
     [0, 1, FEED_LEN - 2],
     indirect=["update_feeds_intermittent"],
 )
-async def test_charge_scenario_1(starknet, shrine, update_feeds_intermittent):
+async def test_charge_scenario_1b(starknet, shrine, update_feeds_intermittent):
     """
-    Test for `charge` with an interval without a price update between start and end intervals,
-    Start interval has a price update.
-    End interval has a price update.
+    Slight variation of `test_charge_scenario_1` where there is an interval between start and end
+    that does not have a price update.
+
+    `X` in the diagram below indicates a missed interval.
 
     T+START------X-------T+END
 
