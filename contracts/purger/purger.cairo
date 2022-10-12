@@ -220,12 +220,13 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 }
 
 // Assumption: Trove's LTV has exceeded its threshold
+// Return value is a tuple so that function can be modified as an external view for testing
 func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ltv: ray, trove_value: wad, trove_debt: wad
-) -> ray {
+) -> (penalty: ray) {
     let is_covered = is_nn_le(ltv, WadRay.RAY_ONE);
     if (is_covered == FALSE) {
-        return 0;
+        return (0,);
     }
 
     let exceeds_max_penalty_ltv: bool = is_nn_le(ltv, MAX_PENALTY_LTV);
@@ -237,7 +238,7 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
         );
     }
 
-    return penalty;
+    return (penalty,);
 }
 
 // Helper function to calculate percentage of collateral freed.

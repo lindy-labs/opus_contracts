@@ -24,11 +24,12 @@ from tests.utils import (
     assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
-    compile_contract,
+    compile_code,
     create_feed,
     from_ray,
     from_uint,
     from_wad,
+    get_contract_code_with_replacement,
     max_approve,
     price_bounds,
     set_block_timestamp,
@@ -201,7 +202,12 @@ async def funded_searcher(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_t
 
 @pytest.fixture
 async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetContract:
-    purger_contract = compile_contract("contracts/purger/purger.cairo")
+    purger_code = get_contract_code_with_replacement(
+        "contracts/purger/purger.cairo",
+        {"func get_purge_penalty_internal": "@view\nfunc get_purge_penalty_internal"},
+    )
+    print("purger code: ", purger_code)
+    purger_contract = compile_code(purger_code)
     purger = await starknet.deploy(
         contract_class=purger_contract,
         constructor_calldata=[
