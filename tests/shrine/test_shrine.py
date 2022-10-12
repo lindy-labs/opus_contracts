@@ -89,67 +89,6 @@ def base_rate(ltv: Decimal) -> Decimal:
     return linear(ltv, RATE_M4, RATE_B4)
 
 
-def compound(
-    yangs_amt: List[Decimal],
-    yangs_thresholds: List[Decimal],
-    yangs_cumulative_prices_start: List[Decimal],
-    yangs_cumulative_prices_end: List[Decimal],
-    cumulative_multiplier_start: Decimal,
-    cumulative_multiplier_end: Decimal,
-    intervals: int,
-    debt: Decimal,
-) -> Decimal:
-    """
-    Helper function to calculate the compound debt using average price between two intervals.
-
-    Arguments
-    ---------
-    yangs_amt : List[Decimal]
-        Ordered list of the amount of each Yang
-    yangs_thresholds : List[Decimal]
-        Ordered list of the threshold for each Yang
-    yang_cumulative_prices_start: List[Decimal]
-        The cumulative price of each yang at the start of the interest accumulation period
-    yang_cumulative_prices_end: List[Decimal]
-        The cumulative price of each yang at the end of the interest accumulation period
-    cumulative_multiplier_start : Decimal
-        The cumulative multiplier at the start of the interest accumulation period
-    cumulative_multiplier_end : Decimal
-        The cumulative multiplier at the end of the interest accumulation period
-    intervals: int
-        Number of intervals to compound
-    debt : Decimal
-        Amount of debt at the start interval
-
-    Returns
-    -------
-    Value of the compounded debt from start interval to end interval in Decimal
-    """
-
-    # Sanity check on input data
-    assert (
-        len(yangs_amt)
-        == len(yangs_cumulative_prices_start)
-        == len(yangs_cumulative_prices_end)
-        == len(yangs_thresholds)
-    )
-
-    avg_max_debt = Decimal("0")
-    for i in range(len(yangs_amt)):
-        avg_price = (yangs_cumulative_prices_end[i] - yangs_cumulative_prices_start[i]) / intervals
-        avg_max_debt += yangs_amt[i] * avg_price * yangs_thresholds[i]
-
-    relative_ltv = debt / avg_max_debt
-
-    trove_base_rate = base_rate(relative_ltv)
-    avg_multiplier = (cumulative_multiplier_end - cumulative_multiplier_start) / intervals
-
-    true_rate = trove_base_rate * avg_multiplier
-
-    new_debt = debt * Decimal(exp(true_rate * intervals * TIME_INTERVAL_DIV_YEAR))
-    return new_debt
-
-
 def compound_with_avg_price(
     yangs_amt: List[Decimal],
     yangs_thresholds: List[Decimal],
@@ -273,7 +212,7 @@ async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_fee
 
 
 @pytest.fixture
-async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]:
+async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal, Decimal]:
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
 
     # Get yang price and multiplier value at `trove.charge_from`
@@ -288,13 +227,14 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]
     end_cumulative_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.cumulative_price
     end_cumulative_multiplier = (await shrine.get_current_multiplier().execute()).result.cumulative_multiplier
 
-    expected_debt = compound(
+    expected_avg_price = from_wad(end_cumulative_price - start_cumulative_price) / FEED_LEN
+    expected_avg_multiplier = from_ray(end_cumulative_multiplier - start_cumulative_multiplier) / FEED_LEN
+
+    expected_debt = compound_with_avg_price(
         [Decimal(INITIAL_DEPOSIT)],
         [from_ray(YANG_0_THRESHOLD)],
-        [from_wad(start_cumulative_price)],
-        [from_wad(end_cumulative_price)],
-        from_ray(start_cumulative_multiplier),
-        from_ray(end_cumulative_multiplier),
+        [expected_avg_price],
+        expected_avg_multiplier,
         FEED_LEN,
         from_wad(trove.debt),
     )
@@ -302,7 +242,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal]
     # Get estimated debt for troves
     estimated_trove1_debt = (await shrine.estimate(TROVE_1).execute()).result.debt
     estimated_trove2_debt = (await shrine.estimate(TROVE_2).execute()).result.debt
-    return estimated_trove1_debt, estimated_trove2_debt, expected_debt
+    return estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price
 
 
 @pytest.fixture(scope="function")
@@ -1253,7 +1193,10 @@ async def test_estimate(shrine, estimate):
 )
 async def test_charge(shrine, estimate, method, calldata):
 
-    estimated_trove1_debt, estimated_trove2_debt, expected_debt = estimate
+    estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price = estimate
+
+    start_interval = FEED_LEN - 1
+    end_interval = start_interval + FEED_LEN
 
     # Calculate expected system debt
     if method == "move_yang":
@@ -1279,7 +1222,7 @@ async def test_charge(shrine, estimate, method, calldata):
     assert estimated_trove1_debt > from_wad(old_trove1.debt)
 
     assert_equalish(adjusted_trove_debt, expected_debt)
-    assert updated_trove1.charge_from == FEED_LEN * 2 - 1
+    assert updated_trove1.charge_from == end_interval
 
     assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [expected_system_debt])
     assert_event_emitted(
@@ -1306,6 +1249,10 @@ async def test_charge(shrine, estimate, method, calldata):
         [TROVE_1, updated_trove1.charge_from, updated_trove1.debt],
     )
 
+    # Check average price
+    avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
+    assert_equalish(avg_price, expected_avg_price)
+
     # Check Trove ID 2 if method is `move_yang`
     if method == "move_yang":
         # Get updated trove information for Trove ID 2
@@ -1314,7 +1261,7 @@ async def test_charge(shrine, estimate, method, calldata):
         assert estimated_trove2_debt > from_wad(old_trove2.debt)
 
         assert_equalish(adjusted_trove_debt, expected_debt)
-        assert updated_trove2.charge_from == FEED_LEN * 2 - 1
+        assert updated_trove2.charge_from == end_interval
 
         assert_event_emitted(
             tx,
@@ -1366,9 +1313,13 @@ async def test_charge_scenario_1(starknet, shrine, update_feeds_intermittent):
 
     idx, price_feed = update_feeds_intermittent
 
+    start_interval = FEED_LEN - 1
+    end_interval = FEED_LEN * 2 - 1
+    skipped_interval = idx + FEED_LEN
+
     # Assert that value for skipped index is set to 0
-    assert (await shrine.get_yang_price(YANG_0_ADDRESS, idx + FEED_LEN).execute()).result.price == 0
-    assert (await shrine.get_multiplier(idx + FEED_LEN).execute()).result.multiplier == 0
+    assert (await shrine.get_yang_price(YANG_0_ADDRESS, skipped_interval).execute()).result.price == 0
+    assert (await shrine.get_multiplier(skipped_interval).execute()).result.multiplier == 0
 
     # Get yang price and multiplier value at `trove.charge_from`
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
@@ -1406,12 +1357,9 @@ async def test_charge_scenario_1(starknet, shrine, update_feeds_intermittent):
     )
 
     assert_equalish(from_wad(updated_trove_debt), expected_debt)
-
-    end_interval = FEED_LEN * 2 - 1
     assert updated_trove.charge_from == end_interval
 
     # Check average price
-    start_interval = FEED_LEN - 1
     avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
     assert_equalish(avg_price, expected_avg_price)
 
