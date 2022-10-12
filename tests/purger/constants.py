@@ -1,8 +1,12 @@
+from decimal import Decimal
+
 from tests.utils import str_to_felt, to_wad
 
 #
 # Constants
 #
+
+MAX_PENALTY_LTV = Decimal("0.8888")
 
 DEBT_CEILING_WAD = to_wad(100_000)
 

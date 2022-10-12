@@ -91,16 +91,22 @@ def get_max_close_amount(debt: Decimal, ltv: Decimal) -> Decimal:
     return maximum_close_amt
 
 
-def get_penalty(ltv: Decimal) -> Decimal:
+def get_penalty(ltv: Decimal, trove_value: Decimal, trove_debt: Decimal) -> Decimal:
     """
     Returns the penalty given the LTV.
     """
-    if ltv > Decimal("1"):
-        return Decimal("0")
-    return (Decimal("1") - ltv) * Decimal("0.05")
+    print("ltv: ", ltv)
+    print("trove value: ", trove_value)
+    print("trove debt: ", trove_debt)
+    if ltv <= MAX_PENALTY_LTV:
+        return Decimal("1.06875") * ltv - Decimal("0.825")
+    elif MAX_PENALTY_LTV < ltv <= Decimal("1"):
+        return (trove_value - trove_debt) / trove_debt
+
+    return 0
 
 
-def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_debt: Decimal, trove_value: Decimal) -> Decimal:
+def get_freed_percentage(ltv: Decimal, trove_value: Decimal, trove_debt: Decimal, close_amt: Decimal) -> Decimal:
     """
     If LTV <= 100%, return the freed percentage based on (close amount + penalty amount) / total value of trove
     If LTV > 100%, return the freed percentage based on close amount / total debt of trove.
@@ -108,7 +114,7 @@ def get_freed_percentage(ltv: Decimal, close_amt: Decimal, trove_debt: Decimal, 
     if ltv > Decimal("1"):
         return close_amt / trove_debt
 
-    penalty = get_penalty(ltv)
+    penalty = get_penalty(ltv, trove_value, trove_debt)
     freed_amt = (Decimal("1") + penalty) * close_amt
     return freed_amt / trove_value
 
@@ -302,11 +308,14 @@ async def test_purge(
 
     # Get LTV
     before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
+    trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.debt)
+    trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
 
     # Check purge penalty
     purge_penalty = from_ray((await purger.get_purge_penalty(TROVE_1).execute()).result.penalty)
-    expected_purge_penalty = get_penalty(before_ltv)
-    assert_equalish(purge_penalty, expected_purge_penalty)
+    if before_ltv > Decimal("1"):
+        expected_purge_penalty = get_penalty(before_ltv, trove_value, trove_debt)
+        assert_equalish(purge_penalty, expected_purge_penalty)
 
     # Check maximum close amount
     estimated_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.debt
@@ -328,8 +337,7 @@ async def test_purge(
 
     # Get freed percentage
     trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
-    trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.debt)
-    freed_percentage = get_freed_percentage(before_ltv, from_wad(close_amt_wad), trove_debt, trove_value)
+    freed_percentage = get_freed_percentage(before_ltv, trove_value, trove_debt, from_wad(close_amt_wad))
 
     # Get yang balance of trove
     before_trove_steth_yang_wad = (
