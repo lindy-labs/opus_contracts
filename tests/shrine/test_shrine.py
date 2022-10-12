@@ -1157,16 +1157,19 @@ async def test_shrine_melt_amount_out_of_bounds(shrine):
 
 @pytest.mark.asyncio
 async def test_estimate(shrine, estimate):
+    start_interval = FEED_LEN - 1
+    end_interval = start_interval + FEED_LEN
+
     trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove1.charge_from == FEED_LEN - 1
 
     trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
     assert trove2.charge_from == FEED_LEN - 1
 
-    last_updated = (await shrine.get_yang_price(YANG_0_ADDRESS, 2 * FEED_LEN - 1).execute()).result.price
+    last_updated = (await shrine.get_yang_price(YANG_0_ADDRESS, end_interval).execute()).result.price
     assert last_updated != 0
 
-    estimated_trove1_debt, estimated_trove2_debt, expected_debt = estimate
+    estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price = estimate
 
     # Convert wad values to decimal
     adjusted_estimated_trove1_debt = from_wad(estimated_trove1_debt)
@@ -1175,6 +1178,10 @@ async def test_estimate(shrine, estimate):
     # Check values
     assert_equalish(adjusted_estimated_trove1_debt, expected_debt)
     assert_equalish(adjusted_estimated_trove2_debt, expected_debt)
+
+    # Check average price
+    avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
+    assert_equalish(avg_price, expected_avg_price)
 
 
 @pytest.mark.asyncio
