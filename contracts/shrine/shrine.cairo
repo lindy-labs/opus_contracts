@@ -1147,7 +1147,7 @@ func get_recent_price_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     return get_recent_price_from(yang_id, interval - 1);
 }
 
-// Returns the average price for a yang between two intervals
+// Returns the average price for a yang between two intervals, including `end_interval` but NOT including `start_interval`
 // Return value is a tuple so that function can be modified as an external view for testing
 func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang_id: ufelt, start_interval: ufelt, end_interval: ufelt
@@ -1162,35 +1162,39 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         end_yang_price: wad, end_cumulative_yang_price: wad, available_end_interval
     ) = get_recent_price_from(yang_id, end_interval);
 
+    // If the last available price for both start and end intervals are the same,
+    // return that last available price
+    // This also catches `start_interval == end_interval`
+    if (available_start_interval == available_end_interval) {
+        return (start_yang_price,);
+    }
+
     // subtraction operations can be unchecked since the `end_` vars are
     // guaranteed to be greater than or equal to the `start_` variables
     let cumulative_diff: wad = end_cumulative_yang_price - start_cumulative_yang_price;
 
-    // If the cumulative difference is 0 (i.e. the last available price for both start and end intervals are the same),
-    // return that last available price
-    // This also catches `start_interval == end_interval`
-    if (cumulative_diff == 0) {
-        return (start_yang_price,);
+    // Early termination if `start_interval` and `end_interval` are updated
+    if (start_interval == available_start_interval and end_interval == available_end_interval) {
+        let (avg_price: wad, _) = unsigned_div_rem(cumulative_diff, end_interval - start_interval);
+        return (avg_price,);
     }
 
     // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
     // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
-    let start_interval_updated = is_le(start_interval, available_start_interval);
-    if (start_interval_updated == FALSE) {
+    if (start_interval == available_start_interval) {
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
+    } else {
         let neg_cumulative_offset: wad = (start_interval - available_start_interval) * start_yang_price;
         tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - neg_cumulative_offset;
-    } else {
-        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
     }
 
     // If the end interval is not updated, adjust the cumulative difference by adding
     // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
-    let end_interval_updated = is_le(end_interval, available_end_interval);
-    if (end_interval_updated == FALSE) {
+    if (end_interval == available_end_interval) {
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
+    } else {
         let pos_cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
         tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + pos_cumulative_offset;
-    } else {
-        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
     }
 
     let (avg_price: wad, _) = unsigned_div_rem(
@@ -1230,33 +1234,41 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         end_multiplier: ray, end_cumulative_multiplier: ray, available_end_interval
     ) = get_recent_multiplier_from(end_interval);
 
-    let cumulative_diff: ray = end_cumulative_multiplier - start_cumulative_multiplier;
-
-    // If the cumulative difference is 0 (i.e. the last available price for both start and end intervals are the same),
+    // If the last available price for both start and end intervals are the same,
     // return that last available price
     // This also catches `start_interval == end_interval`
-    if (cumulative_diff == 0) {
+    if (available_start_interval == available_end_interval) {
         return (start_multiplier,);
+    }
+
+    // subtraction operations can be unchecked since the `end_` vars are
+    // guaranteed to be greater than or equal to the `start_` variables
+    let cumulative_diff: ray = end_cumulative_multiplier - start_cumulative_multiplier;
+
+    // Early termination if `start_interval` and `end_interval` are updated
+    if (start_interval == available_start_interval and end_interval == available_end_interval) {
+        let (avg_multiplier: wad, _) = unsigned_div_rem(
+            cumulative_diff, end_interval - start_interval
+        );
+        return (avg_multiplier,);
     }
 
     // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
     // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
-    let start_interval_updated = is_le(start_interval, available_start_interval);
-    if (start_interval_updated == FALSE) {
+    if (start_interval == available_start_interval) {
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
+    } else {
         let neg_cumulative_offset: wad = (start_interval - available_start_interval) * start_multiplier;
         tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - neg_cumulative_offset;
-    } else {
-        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
     }
 
     // If the end interval is not updated, adjust the cumulative difference by adding
     // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
-    let end_interval_updated = is_le(end_interval, available_end_interval);
-    if (end_interval_updated == FALSE) {
+    if (end_interval == available_end_interval) {
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
+    } else {
         let pos_cumulative_offset: wad = (end_interval - available_end_interval) * end_multiplier;
         tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + pos_cumulative_offset;
-    } else {
-        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
     }
 
     let (avg_multiplier: wad, _) = unsigned_div_rem(
