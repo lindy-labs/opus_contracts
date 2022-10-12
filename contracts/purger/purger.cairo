@@ -22,6 +22,10 @@ from contracts.lib.wad_ray import WadRay
 const CF1 = WadRay.RAY_PERCENT * 270;
 const CF2 = WadRay.RAY_PERCENT * 22;
 
+const PENALTY_M1 = 106875 * 10 ** 22;  // 1.06875
+const PENALTY_B1 = 825 * 10 ** 23;  // 0.825
+const MAX_PENALTY_LTV = 8888 * 10 ** 22;  // 0.8888
+
 //
 // Storage
 //
@@ -71,10 +75,11 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return (0,);
     }
 
+    let (_, trove_value: wad) = IShrine.get_trove_threshold_and_value(shrine, trove_id);
+    let (trove_debt: wad) = IShrine.estimate(shrine, trove_id);
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
-    // placeholder
-    let penalty: ray = get_purge_penalty_internal(trove_ltv);
+    let penalty: ray = get_purge_penalty_internal(trove_ltv, trove_value, trove_debt);
     return (penalty,);
 }
 
@@ -214,17 +219,24 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     return close_amt;
 }
 
+// Assumption: Trove's LTV has exceeded its threshold
 func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ltv: ray
+    ltv: ray, trove_value: wad, trove_debt: wad
 ) -> ray {
-    // placeholder
     let is_covered = is_nn_le(ltv, WadRay.RAY_ONE);
     if (is_covered == FALSE) {
         return 0;
     }
 
-    let rem: ray = WadRay.sub(WadRay.RAY_ONE, ltv);
-    let (penalty, _) = unsigned_div_rem(rem, 20);
+    let exceeds_max_penalty_ltv: bool = is_nn_le(ltv, MAX_PENALTY_LTV);
+    if (exceeds_max_penalty_ltv == TRUE) {
+        let penalty: ray = WadRay.runsigned_div(
+            WadRay.sub_unsigned(trove_value, trove_debt), trove_debt
+        );
+    } else {
+        let penalty: ray = WadRay.sub_unsigned(WadRay.rmul(PENALTY_M1, ltv), PENALTY_B1);
+    }
+
     return penalty;
 }
 
@@ -235,21 +247,23 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine: address, trove_id: ufelt, purge_amt: wad, ltv: ray
 ) -> ray {
-    let is_covered = is_nn_le(ltv, WadRay.RAY_ONE);
-    if (is_covered == FALSE) {
-        let (trove_debt) = IShrine.estimate(shrine, trove_id);
+    alloc_locals;
 
+    let (_, trove_value: wad) = IShrine.get_trove_threshold_and_value(shrine, trove_id);
+    let (trove_debt: wad) = IShrine.estimate(shrine, trove_id);
+
+    let is_covered: bool = is_nn_le(ltv, WadRay.RAY_ONE);
+    if (is_covered == FALSE) {
         // `runsigned_div` of two wads returns a ray
         let prorata_percentage_freed: ray = WadRay.runsigned_div(purge_amt, trove_debt);
         return prorata_percentage_freed;
     }
 
-    let penalty: ray = get_purge_penalty_internal(ltv);
+    let penalty: ray = get_purge_penalty_internal(ltv, trove_value, trove_debt);
 
     // `rmul` of a wad and a ray returns a wad
     let penalty_amt: wad = WadRay.rmul(purge_amt, penalty);
     let freed_amt: wad = WadRay.add_unsigned(penalty_amt, purge_amt);
-    let (_, trove_value: wad) = IShrine.get_trove_threshold_and_value(shrine, trove_id);
 
     // `runsigned_div` of two wads returns a ray
     let percentage_freed: ray = WadRay.runsigned_div(freed_amt, trove_value);
