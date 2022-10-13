@@ -21,3 +21,5 @@ USER_DOGE_DEPOSIT_WAD = to_wad(10_000)
 SEARCHER = str_to_felt("searcher")
 SEARCHER_STETH_WAD = to_wad(1_000)
 SEARCHER_FORGE_AMT_WAD = to_wad(50_000)
+
+MOCK_ABSORBER = str_to_felt("absorber")

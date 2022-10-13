@@ -224,6 +224,7 @@ async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetCont
         constructor_calldata=[
             shrine.contract_address,
             abbot.contract_address,
+            MOCK_ABSORBER,
         ],
     )
 
