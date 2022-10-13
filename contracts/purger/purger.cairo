@@ -125,7 +125,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 //
 
 @external
-func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
     alloc_locals;
