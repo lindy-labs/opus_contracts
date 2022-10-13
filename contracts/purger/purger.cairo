@@ -134,15 +134,29 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+    alloc_locals;
+
     let (shrine: address) = purger_shrine.read();
+
+    // Check purge_amt <= max_close_amt
+    let (debt: wad) = IShrine.estimate(shrine, trove_id);
+    let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
+
+    let max_close_amt: wad = get_max_close_amount_internal(trove_ltv, debt);
+    with_attr error_message("Purger: Maximum close amount exceeded") {
+        assert_nn_le(purge_amt, max_close_amt);
+    }
+
     let (funder: address) = get_caller_address();
-    return purge(shrine, trove_id, purge_amt, funder, recipient);
+    return purge(shrine, trove_id, trove_ltv, debt, purge_amt, funder, recipient);
 }
 
 @external
-func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, purge_amt: wad, recipient: address
-) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
+    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+) {
+    alloc_locals;
+
     let (shrine: address) = purger_shrine.read();
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
@@ -152,8 +166,13 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert below_max_penalty_ltv = FALSE;
     }
 
-    let (funder: address) = purger_absorber.read();
-    return purge(shrine, trove_id, purge_amt, funder, recipient);
+    let (debt: wad) = IShrine.estimate(shrine, trove_id);
+
+    // TODO: Check if `purge_amt` is greater than absorber's balance
+    // and redistribute if required
+
+    let (absorber: address) = purger_absorber.read();
+    return purge(shrine, trove_id, trove_ltv, debt, debt, absorber, absorber);
 }
 
 //
@@ -161,26 +180,29 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 //
 
 func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, trove_id: ufelt, purge_amt: wad, funder: address, recipient: address
+    shrine: address,
+    trove_id: ufelt,
+    before_ltv: ray,
+    debt: wad,
+    purge_amt: wad,
+    funder: address,
+    recipient: address,
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
     alloc_locals;
 
+    let (trove_threshold: ray, trove_value: wad) = IShrine.get_trove_threshold_and_value(
+        shrine, trove_id
+    );
+
     // Check that trove can be liquidated
-    let (is_healthy: bool) = IShrine.is_healthy(shrine, trove_id);
+    let is_healthy: bool = is_nn_le(before_ltv, trove_threshold);
     with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
         assert is_healthy = FALSE;
     }
 
-    let (before_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
-
-    // Check purge_amt <= max_close_amt
-    let (debt: wad) = IShrine.estimate(shrine, trove_id);
-    let max_close_amt: wad = get_max_close_amount_internal(before_ltv, debt);
-    with_attr error_message("Purger: Maximum close amount exceeded") {
-        assert_nn_le(purge_amt, max_close_amt);
-    }
-
-    let percentage_freed: ray = get_percentage_freed(shrine, trove_id, before_ltv, debt, purge_amt);
+    let percentage_freed: ray = get_percentage_freed(
+        trove_threshold, before_ltv, trove_value, debt, purge_amt
+    );
 
     // Melt from the funder address directly
     IShrine.melt(shrine, funder, trove_id, purge_amt);
@@ -294,13 +316,9 @@ func get_penalty_fn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided
 // by total trove value.
 func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, trove_id: ufelt, trove_ltv: ray, trove_debt: wad, purge_amt: wad
+    trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad, purge_amt: wad
 ) -> ray {
     alloc_locals;
-
-    let (trove_threshold: ray, trove_value: wad) = IShrine.get_trove_threshold_and_value(
-        shrine, trove_id
-    );
 
     let is_covered: bool = is_nn_le(trove_ltv, WadRay.RAY_ONE);
     if (is_covered == FALSE) {
