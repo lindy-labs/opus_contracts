@@ -2,6 +2,8 @@ from decimal import Decimal
 from typing import List
 
 import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
@@ -33,6 +35,7 @@ from tests.utils import (
     max_approve,
     price_bounds,
     set_block_timestamp,
+    to_ray,
     to_wad,
 )
 
@@ -92,15 +95,22 @@ def get_max_close_amount(debt: Decimal, ltv: Decimal) -> Decimal:
     return maximum_close_amt
 
 
-def get_penalty(ltv: Decimal, trove_value: Decimal, trove_debt: Decimal) -> Decimal:
+def get_penalty_fn(threshold: Decimal) -> tuple[Decimal, Decimal]:
+    """
+    Returns `m` and `b` for y = mx + b
+    """
+    m = (MAX_PENALTY - MIN_PENALTY) / (MAX_PENALTY_LTV - threshold)
+    b = MIN_PENALTY - (threshold * m)
+    return (m, b)
+
+
+def get_penalty(threshold: Decimal, ltv: Decimal, trove_value: Decimal, trove_debt: Decimal) -> Decimal:
     """
     Returns the penalty given the LTV.
     """
-    print("ltv: ", ltv)
-    print("trove value: ", trove_value)
-    print("trove debt: ", trove_debt)
     if ltv <= MAX_PENALTY_LTV:
-        return Decimal("1.06875") * ltv - Decimal("0.825")
+        m, b = get_penalty_fn(threshold)
+        return m * ltv + b
     elif MAX_PENALTY_LTV < ltv <= Decimal("1"):
         return (trove_value - trove_debt) / trove_debt
 
@@ -206,7 +216,6 @@ async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetCont
         "contracts/purger/purger.cairo",
         {"func get_purge_penalty_internal": "@view\nfunc get_purge_penalty_internal"},
     )
-    print("purger code: ", purger_code)
     purger_contract = compile_code(purger_code)
     purger = await starknet.deploy(
         contract_class=purger_contract,
@@ -280,6 +289,58 @@ async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
 #
 # Tests - Purger
 #
+
+
+@pytest.mark.parametrize(
+    "threshold, ltv, expected",
+    [
+        (Decimal("0.5"), Decimal("0.5"), MIN_PENALTY),
+        (Decimal("0.5"), Decimal("0.8888"), MAX_PENALTY),
+        (Decimal("0.5"), Decimal("0.95"), Decimal("0.05") / Decimal("0.95")),
+        (Decimal("0.5"), Decimal("1"), Decimal("0")),
+        (Decimal("0.5"), Decimal("1.1"), Decimal("0")),
+        (Decimal("0.8"), Decimal("0.8"), MIN_PENALTY),
+        (Decimal("0.8"), Decimal("0.8888"), MAX_PENALTY),
+        (Decimal("0.7654321"), Decimal("0.7654321"), MIN_PENALTY),
+        (Decimal("0.7654321"), Decimal("0.8888"), MAX_PENALTY),
+    ],
+)
+@pytest.mark.asyncio
+async def test_purge_penalty_parametrized(purger, threshold, ltv, expected):
+    value = Decimal("1_000")
+    debt = ltv * value
+
+    penalty = from_ray(
+        (
+            await purger.get_purge_penalty_internal(
+                to_ray(threshold), to_ray(ltv), to_wad(value), to_wad(debt)
+            ).execute()
+        ).result.penalty
+    )
+    assert_equalish(penalty, expected)
+
+
+# HealthCheck is suppressed as a view function is being tested
+@settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(
+    threshold=st.decimals(min_value=Decimal("0.5"), max_value=Decimal("0.9"), places=27),
+    ltv_offset=st.decimals(min_value=Decimal("0"), max_value=Decimal("1"), places=27),
+)
+@pytest.mark.asyncio
+async def test_purge_penalty_fuzzing(purger, threshold, ltv_offset):
+    ltv = threshold + (Decimal("1") - threshold) * ltv_offset
+    trove_value = Decimal("1_000")
+    trove_debt = ltv * trove_value
+
+    expected_penalty = get_penalty(threshold, ltv, trove_value, trove_debt)
+    penalty = from_ray(
+        (
+            await purger.get_purge_penalty_internal(
+                to_ray(threshold), to_ray(ltv), to_wad(trove_value), to_wad(trove_debt)
+            ).execute()
+        ).result.penalty
+    )
+    assert_equalish(penalty, expected_penalty)
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])

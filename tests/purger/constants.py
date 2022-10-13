@@ -6,6 +6,8 @@ from tests.utils import str_to_felt, to_wad
 # Constants
 #
 
+MIN_PENALTY = Decimal("0.03")
+MAX_PENALTY = Decimal("0.125")
 MAX_PENALTY_LTV = Decimal("0.8888")
 
 DEBT_CEILING_WAD = to_wad(100_000)
