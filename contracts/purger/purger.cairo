@@ -39,6 +39,10 @@ func purger_shrine() -> (shrine: address) {
 func purger_abbot() -> (abbot: address) {
 }
 
+@storage_var
+func purger_absorber() -> (absorber: address) {
+}
+
 //
 // Events
 //
@@ -113,10 +117,11 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, abbot: address
+    shrine: address, abbot: address, absorber: address
 ) {
     purger_shrine.write(shrine);
     purger_abbot.write(abbot);
+    purger_absorber.write(absorber);
     return ();
 }
 
@@ -128,9 +133,6 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
-    alloc_locals;
-
-    let (caller: address) = get_caller_address();
     let (shrine: address) = purger_shrine.read();
 
     // Check that trove can be liquidated
@@ -138,6 +140,36 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
         assert is_healthy = FALSE;
     }
+
+    let (funder: address) = get_caller_address();
+    return purge(shrine, trove_id, purge_amt, funder, recipient);
+}
+
+@external
+func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt, purge_amt: wad, recipient: address
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+    let (shrine: address) = purger_shrine.read();
+    let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
+
+    // Check that max LTV is exceeded
+    let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
+    with_attr error_message("Purger: Trove {trove_id} is not absorbable") {
+        assert below_max_penalty_ltv = FALSE;
+    }
+
+    let (funder: address) = purger_absorber.read();
+    return purge(shrine, trove_id, purge_amt, funder, recipient);
+}
+
+//
+// Internal
+//
+
+func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    shrine: address, trove_id: ufelt, purge_amt: wad, funder: address, recipient: address
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+    alloc_locals;
 
     let (before_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
@@ -149,8 +181,8 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let percentage_freed: ray = get_percentage_freed(shrine, trove_id, before_ltv, purge_amt);
 
-    // Melt from the caller address directly
-    IShrine.melt(shrine, caller, trove_id, purge_amt);
+    // Melt from the funder address directly
+    IShrine.melt(shrine, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
     let (abbot: address) = purger_abbot.read();
@@ -171,7 +203,7 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         trove_id,
         purge_amt,
         recipient,
-        caller,
+        funder,
         percentage_freed,
         yang_count,
         &yangs[0],
@@ -183,10 +215,6 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // for the respective asset.
     return (yang_count, yangs, yang_count, freed_assets_amt);
 }
-
-//
-// Internal
-//
 
 // Returns the close factor based on the LTV (ray)
 // closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22
