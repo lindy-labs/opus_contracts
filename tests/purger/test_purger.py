@@ -117,7 +117,9 @@ def get_penalty(threshold: Decimal, ltv: Decimal, trove_value: Decimal, trove_de
     return 0
 
 
-def get_freed_percentage(ltv: Decimal, trove_value: Decimal, trove_debt: Decimal, close_amt: Decimal) -> Decimal:
+def get_freed_percentage(
+    threshold: Decimal, ltv: Decimal, trove_value: Decimal, trove_debt: Decimal, close_amt: Decimal
+) -> Decimal:
     """
     If LTV <= 100%, return the freed percentage based on (close amount + penalty amount) / total value of trove
     If LTV > 100%, return the freed percentage based on close amount / total debt of trove.
@@ -125,7 +127,7 @@ def get_freed_percentage(ltv: Decimal, trove_value: Decimal, trove_debt: Decimal
     if ltv > Decimal("1"):
         return close_amt / trove_debt
 
-    penalty = get_penalty(ltv, trove_value, trove_debt)
+    penalty = get_penalty(threshold, ltv, trove_value, trove_debt)
     freed_amt = (Decimal("1") + penalty) * close_amt
     return freed_amt / trove_value
 
@@ -214,7 +216,7 @@ async def funded_searcher(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_t
 async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetContract:
     purger_code = get_contract_code_with_replacement(
         "contracts/purger/purger.cairo",
-        {"func get_purge_penalty_internal": "@view\nfunc get_purge_penalty_internal"},
+        {"func get_penalty_internal": "@view\nfunc get_penalty_internal"},
     )
     purger_contract = compile_code(purger_code)
     purger = await starknet.deploy(
@@ -306,15 +308,13 @@ async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
     ],
 )
 @pytest.mark.asyncio
-async def test_purge_penalty_parametrized(purger, threshold, ltv, expected):
+async def test_penalty_parametrized(purger, threshold, ltv, expected):
     value = Decimal("1_000")
     debt = ltv * value
 
     penalty = from_ray(
         (
-            await purger.get_purge_penalty_internal(
-                to_ray(threshold), to_ray(ltv), to_wad(value), to_wad(debt)
-            ).execute()
+            await purger.get_penalty_internal(to_ray(threshold), to_ray(ltv), to_wad(value), to_wad(debt)).execute()
         ).result.penalty
     )
     assert_equalish(penalty, expected)
@@ -327,7 +327,7 @@ async def test_purge_penalty_parametrized(purger, threshold, ltv, expected):
     ltv_offset=st.decimals(min_value=Decimal("0"), max_value=Decimal("1"), places=27),
 )
 @pytest.mark.asyncio
-async def test_purge_penalty_fuzzing(purger, threshold, ltv_offset):
+async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     ltv = threshold + (Decimal("1") - threshold) * ltv_offset
     trove_value = Decimal("1_000")
     trove_debt = ltv * trove_value
@@ -335,7 +335,7 @@ async def test_purge_penalty_fuzzing(purger, threshold, ltv_offset):
     expected_penalty = get_penalty(threshold, ltv, trove_value, trove_debt)
     penalty = from_ray(
         (
-            await purger.get_purge_penalty_internal(
+            await purger.get_penalty_internal(
                 to_ray(threshold), to_ray(ltv), to_wad(trove_value), to_wad(trove_debt)
             ).execute()
         ).result.penalty
@@ -376,13 +376,15 @@ async def test_purge(
     # Get LTV
     before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
     trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.debt)
-    trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
+    res = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result
+    trove_value = from_wad(res.value)
+    trove_threshold = from_ray(res.threshold)
 
     # Check purge penalty
-    purge_penalty = from_ray((await purger.get_purge_penalty(TROVE_1).execute()).result.penalty)
+    penalty = from_ray((await purger.get_penalty(TROVE_1).execute()).result.penalty)
     if before_ltv > Decimal("1"):
-        expected_purge_penalty = get_penalty(before_ltv, trove_value, trove_debt)
-        assert_equalish(purge_penalty, expected_purge_penalty)
+        expected_penalty = get_penalty(trove_threshold, before_ltv, trove_value, trove_debt)
+        assert_equalish(penalty, expected_penalty)
 
     # Check maximum close amount
     estimated_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.debt
@@ -404,7 +406,9 @@ async def test_purge(
 
     # Get freed percentage
     trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
-    freed_percentage = get_freed_percentage(before_ltv, trove_value, trove_debt, from_wad(close_amt_wad))
+    freed_percentage = get_freed_percentage(
+        trove_threshold, before_ltv, trove_value, trove_debt, from_wad(close_amt_wad)
+    )
 
     # Get yang balance of trove
     before_trove_steth_yang_wad = (
@@ -483,8 +487,8 @@ async def test_purge_fail_trove_healthy(shrine, purger):
     assert max_close_amt == 0
 
     # Check purge penalty is 0
-    purge_penalty = (await purger.get_purge_penalty(TROVE_1).execute()).result.penalty
-    assert purge_penalty == 0
+    penalty = (await purger.get_penalty(TROVE_1).execute()).result.penalty
+    assert penalty == 0
 
     # Check trove is healthy
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy

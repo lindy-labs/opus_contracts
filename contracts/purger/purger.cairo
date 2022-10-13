@@ -64,7 +64,7 @@ func Purged(
 // Returns the liquidation penalty based on the LTV (ray)
 // Returns 0 if trove is healthy
 @view
-func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (penalty: ray) {
     alloc_locals;
@@ -82,9 +82,7 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (trove_debt: wad) = IShrine.estimate(shrine, trove_id);
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
-    let penalty: ray = get_purge_penalty_internal(
-        trove_threshold, trove_ltv, trove_value, trove_debt
-    );
+    let penalty: ray = get_penalty_internal(trove_threshold, trove_ltv, trove_value, trove_debt);
     return (penalty,);
 }
 
@@ -226,7 +224,7 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 
 // Assumption: Trove's LTV has exceeded its threshold
 // Return value is a tuple so that function can be modified as an external view for testing
-func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad
 ) -> (penalty: ray) {
     let is_covered = is_nn_le(trove_ltv, WadRay.RAY_ONE);
@@ -236,7 +234,7 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 
     let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
     if (below_max_penalty_ltv == TRUE) {
-        let (m: ray, b: ray) = get_purge_penalty_fn(trove_threshold);
+        let (m: ray, b: ray) = get_penalty_fn(trove_threshold);
         let penalty: ray = WadRay.add(WadRay.rmul(m, trove_ltv), b);
         return (penalty,);
     }
@@ -249,7 +247,7 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 
 // Determine the function for calculating purge penalty based on the threshold
 // Returns the `m` coefficient and `b` constant for the penalty in the form of liqPenalty = m * LTV + b
-func get_purge_penalty_fn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_penalty_fn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_threshold: ray
 ) -> (m: ray, b: ray) {
     // Derive the `m` coefficient
@@ -284,9 +282,7 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return prorata_percentage_freed;
     }
 
-    let penalty: ray = get_purge_penalty_internal(
-        trove_threshold, trove_ltv, trove_value, trove_debt
-    );
+    let penalty: ray = get_penalty_internal(trove_threshold, trove_ltv, trove_value, trove_debt);
 
     // `rmul` of a wad and a ray returns a wad
     let penalty_amt: wad = WadRay.rmul(purge_amt, penalty);
