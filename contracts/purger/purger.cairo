@@ -301,6 +301,11 @@ func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 }
 
 // Determine the function for calculating purge penalty based on the threshold
+//
+//                    maxLiqPenalty - minLiqPenalty
+// liqPenalty = LTV * ----------------------------- + b
+//                    maxPenaltyLTV - liqThreshold
+//
 // Returns the `m` coefficient and `b` constant for the penalty in the form of liqPenalty = m * LTV + b
 func get_penalty_fn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_threshold: ray
