@@ -4,11 +4,12 @@ from collections import namedtuple
 from decimal import Decimal
 from functools import cache
 from random import seed, uniform
-from typing import Callable, Iterable, List, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Tuple, Union
 
+from starkware.cairo.lang.compiler.cairo_compile import get_codes
 from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
-from starkware.starknet.compiler.compile import compile_starknet_files
+from starkware.starknet.compiler.compile import compile_starknet_codes, compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
 from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
@@ -85,6 +86,7 @@ ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW
 # Troves
 TROVE_1 = 1
 TROVE_2 = 2
+TROVE_3 = 3
 
 TROVE1_OWNER = str_to_felt("trove 1 owner")
 TROVE2_OWNER = str_to_felt("trove 2 owner")
@@ -159,6 +161,42 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
 
     return compile_starknet_files(
         [contract_src],
+        debug_info=True,
+        disable_hint_validation=True,
+        cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
+    )
+
+
+def get_contract_code_with_replacement(rel_contract_path: str, replacements: Dict[str, str]) -> Tuple[str, str]:
+    """
+    Modify the source code of a contract by passing in a dictionary with the string to be replaced as the key
+    and the new string as the value.
+
+    Returns a tuple of the source code and the filename.
+    """
+    code = get_codes([rel_contract_path])
+
+    contract = code[0][0]
+    filename = code[0][1]
+
+    for k, v in replacements.items():
+        contract = contract.replace(k, v)
+
+    code = (contract, filename)
+    return code
+
+
+@cache
+def compile_code(code: Tuple[str, str]) -> StarknetContract:
+    """
+    Compile the source code of a contract.
+
+    Takes in a tuple of the source code and the contract filename.
+    """
+    tld = os.path.join(here(), "..")
+
+    return compile_starknet_codes(
+        [code],
         debug_info=True,
         disable_hint_validation=True,
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
@@ -250,11 +288,11 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
     return lo, hi
 
 
-def calculate_threshold_and_value(
+def calculate_trove_threshold_and_value(
     prices: List[int], amounts: List[int], thresholds: List[int]
 ) -> Tuple[Decimal, Decimal]:
     """
-    Helper function to calculate a trove's cumulative weighted threshold and value
+    Helper function to calculate a trove's threshold and value
 
     Arguments
     ---------
@@ -284,28 +322,11 @@ def calculate_threshold_and_value(
         total_value += p * a
         cumulative_weighted_threshold += p * a * t
 
-    return cumulative_weighted_threshold, total_value
+    threshold = 0
+    if total_value > 0:
+        threshold = cumulative_weighted_threshold / total_value
 
-
-def calculate_trove_threshold(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
-    """
-    Helper function to calculate a trove's threshold
-
-    Arguments
-    ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
-    thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in ray
-
-    Returns
-    -------
-    Value of the variable threshold in decimal.
-    """
-    cumulative_weighted_threshold, total_value = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold / total_value
+    return threshold, total_value
 
 
 def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
@@ -325,8 +346,8 @@ def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[
     -------
     Value of the maximum forge value for a Trove in decimal.
     """
-    cumulative_weighted_threshold, _ = calculate_threshold_and_value(prices, amounts, thresholds)
-    return cumulative_weighted_threshold
+    threshold, value = calculate_trove_threshold_and_value(prices, amounts, thresholds)
+    return threshold * value
 
 
 #
