@@ -138,6 +138,12 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (shrine: address) = purger_shrine.read();
 
+    // Check that trove can be liquidated
+    let (is_healthy: bool) = IShrine.is_healthy(shrine, trove_id);
+    with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
+        assert is_healthy = FALSE;
+    }
+
     // Check purge_amt <= max_close_amt
     let (debt: wad) = IShrine.estimate(shrine, trove_id);
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
@@ -160,7 +166,13 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let (shrine: address) = purger_shrine.read();
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
-    // Check that max LTV is exceeded
+    // Check that trove can be liquidated
+    let (is_healthy: bool) = IShrine.is_healthy(shrine, trove_id);
+    with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
+        assert is_healthy = FALSE;
+    }
+
+    // Check that max penalty LTV is exceeded
     let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
     with_attr error_message("Purger: Trove {trove_id} is not absorbable") {
         assert below_max_penalty_ltv = FALSE;
@@ -198,12 +210,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (trove_threshold: ray, trove_value: wad) = IShrine.get_trove_threshold_and_value(
         shrine, trove_id
     );
-
-    // Check that trove can be liquidated
-    let is_healthy: bool = is_nn_le(before_ltv, trove_threshold);
-    with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
-        assert is_healthy = FALSE;
-    }
 
     let percentage_freed: ray = get_percentage_freed(
         trove_threshold, before_ltv, trove_value, debt, purge_amt

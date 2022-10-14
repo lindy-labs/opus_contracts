@@ -568,7 +568,7 @@ async def test_liquidate_fail_insufficient_yin(
         await purger.liquidate(TROVE_1, max_close_amt, SEARCHER).execute(caller_address=SEARCHER)
 
 
-@pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
+@pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
