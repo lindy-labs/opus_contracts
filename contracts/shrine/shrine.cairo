@@ -1013,6 +1013,11 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // Get new debt amount
     let new_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
 
+    // Catch troves with zero value
+    if (new_debt == trove.debt) {
+        return ();
+    }
+
     // Update trove
     let updated_trove: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, updated_trove);
@@ -1052,6 +1057,11 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let avg_relative_ltv: ray = get_avg_relative_ltv(
         trove_id, current_debt, start_interval, end_interval
     );
+
+    // Catch troves with zero value
+    if (avg_relative_ltv == 0) {
+        return current_debt;
+    }
 
     let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
 
@@ -1186,8 +1196,8 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     if (start_interval == available_start_interval) {
         tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
     } else {
-        let neg_cumulative_offset: wad = (start_interval - available_start_interval) * start_yang_price;
-        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - neg_cumulative_offset;
+        let cumulative_offset: wad = (start_interval - available_start_interval) * start_yang_price;
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - cumulative_offset;
     }
 
     // If the end interval is not updated, adjust the cumulative difference by adding
@@ -1195,8 +1205,8 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     if (end_interval == available_end_interval) {
         tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
     } else {
-        let pos_cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
-        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + pos_cumulative_offset;
+        let cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + cumulative_offset;
     }
 
     let (avg_price: wad, _) = unsigned_div_rem(

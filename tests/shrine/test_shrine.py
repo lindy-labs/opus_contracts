@@ -1245,21 +1245,13 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
     )
 
     # `charge` should not have any effect if `Trove.charge_from` is the current interval
-    redundant_tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
+    await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
     redundant_trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert updated_trove1 == redundant_trove1
-    assert_event_emitted(
-        redundant_tx,
-        shrine.contract_address,
-        "DebtTotalUpdated",
-        [expected_system_debt],
-    )
-    assert_event_emitted(
-        redundant_tx,
-        shrine.contract_address,
-        "TroveUpdated",
-        [TROVE_1, updated_trove1.charge_from, updated_trove1.debt],
-    )
+
+    # Check average price
+    avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
+    assert_equalish(avg_price, expected_avg_price)
 
     # Check average price
     avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
@@ -1283,21 +1275,9 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
         )
 
         # `charge` should not have any effect if `Trove.charge_from` is current interval + 1
-        redundant_tx = await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
+        await getattr(shrine, method)(*calldata).execute(caller_address=SHRINE_OWNER)
         redundant_trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
         assert updated_trove2 == redundant_trove2
-        assert_event_emitted(
-            redundant_tx,
-            shrine.contract_address,
-            "DebtTotalUpdated",
-            [expected_system_debt],
-        )
-        assert_event_emitted(
-            redundant_tx,
-            shrine.contract_address,
-            "TroveUpdated",
-            [TROVE_2, updated_trove2.charge_from, updated_trove2.debt],
-        )
 
 
 # Skip index 0 because initial price is set in `add_yang`
