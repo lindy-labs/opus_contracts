@@ -167,12 +167,17 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     }
 
     let (debt: wad) = IShrine.estimate(shrine, trove_id);
-
-    // TODO: Check if `purge_amt` is greater than absorber's balance
-    // and redistribute if required
-
     let (absorber: address) = purger_absorber.read();
-    return purge(shrine, trove_id, trove_ltv, debt, debt, absorber, absorber);
+
+    let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
+    let purge_amt: wad = WadRay.min_unsigned(debt, absorber_yin_balance);
+
+    // If absorber's balance cannot cover the trove's debt, redistribute
+    if (purge_amt != debt) {
+        // TODO: Redistribute
+    }
+
+    return purge(shrine, trove_id, trove_ltv, debt, purge_amt, absorber, absorber);
 }
 
 //
