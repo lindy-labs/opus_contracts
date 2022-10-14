@@ -1186,8 +1186,8 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     if (start_interval == available_start_interval) {
         tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
     } else {
-        let neg_cumulative_offset: wad = (start_interval - available_start_interval) * start_yang_price;
-        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - neg_cumulative_offset;
+        let cumulative_offset: wad = (start_interval - available_start_interval) * start_yang_price;
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - cumulative_offset;
     }
 
     // If the end interval is not updated, adjust the cumulative difference by adding
@@ -1195,8 +1195,8 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     if (end_interval == available_end_interval) {
         tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
     } else {
-        let pos_cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
-        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + pos_cumulative_offset;
+        let cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + cumulative_offset;
     }
 
     let (avg_price: wad, _) = unsigned_div_rem(
