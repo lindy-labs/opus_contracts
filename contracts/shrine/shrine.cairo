@@ -1013,6 +1013,11 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // Get new debt amount
     let new_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
 
+    // Catch troves with zero value
+    if (new_debt == trove.debt) {
+        return ();
+    }
+
     // Update trove
     let updated_trove: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, updated_trove);
@@ -1052,6 +1057,11 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let avg_relative_ltv: ray = get_avg_relative_ltv(
         trove_id, current_debt, start_interval, end_interval
     );
+
+    // Catch troves with zero value
+    if (avg_relative_ltv == 0) {
+        return current_debt;
+    }
 
     let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
 
