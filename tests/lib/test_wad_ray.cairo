@@ -29,6 +29,18 @@ func test_ceil{range_check_ptr}(n) -> (res: wad) {
 }
 
 @view
+func test_max{range_check_ptr}(a, b) -> (res: felt) {
+    let res: felt = WadRay.max(a, b);
+    return (res,);
+}
+
+@view
+func test_min{range_check_ptr}(a, b) -> (res: felt) {
+    let res: felt = WadRay.min(a, b);
+    return (res,);
+}
+
+@view
 func test_add{range_check_ptr}(a, b) -> (res: wad) {
     return (WadRay.add(a, b),);
 }

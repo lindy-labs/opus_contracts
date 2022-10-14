@@ -170,7 +170,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let (absorber: address) = purger_absorber.read();
 
     let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
-    let purge_amt: wad = WadRay.min_unsigned(debt, absorber_yin_balance);
+    let purge_amt: wad = WadRay.min(debt, absorber_yin_balance);
 
     // If absorber's balance cannot cover the trove's debt, redistribute
     if (purge_amt != debt) {
