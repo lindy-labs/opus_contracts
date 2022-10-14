@@ -312,7 +312,7 @@ async def doge_token(tokens) -> StarknetContract:
 @pytest.fixture
 def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
-    threshold = 90 * RAY_PERCENT
+    threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
     return YangConfig(steth_token.contract_address, ceiling, threshold, price_wad, steth_gate.contract_address)
 

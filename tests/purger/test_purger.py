@@ -569,7 +569,6 @@ async def test_liquidate_fail_insufficient_yin(
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -577,7 +576,7 @@ async def test_liquidate_fail_insufficient_yin(
     "funded_absorber",
 )
 @pytest.mark.asyncio
-async def test_absorb(
+async def test_absorb_pass(
     starknet,
     shrine,
     purger,
@@ -589,7 +588,6 @@ async def test_absorb(
     steth_yang: YangConfig,
     doge_yang: YangConfig,
     price_change,
-    max_close_percentage,
 ):
     yangs = [steth_yang, doge_yang]
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
@@ -611,10 +609,6 @@ async def test_absorb(
     if before_ltv > Decimal("1"):
         expected_penalty = get_penalty(trove_threshold, before_ltv, trove_value, trove_debt)
         assert_equalish(penalty, expected_penalty)
-
-    if before_ltv <= MAX_PENALTY_LTV:
-        with pytest.raises(StarkException, match=f"Purger: Trove {TROVE_1} is not absorbable"):
-            await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
 
     # Sanity check: absorber has sufficient yin
     absorber_yin_balance = (await yin.balanceOf(MOCK_ABSORBER).execute()).result.balance
@@ -694,3 +688,39 @@ async def test_absorb(
     # Check trove debt
     after_trove_debt = (await shrine.get_trove(TROVE_1).execute()).result.trove.debt
     assert after_trove_debt == 0
+
+
+@pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
+@pytest.mark.usefixtures(
+    "abbot_with_yangs",
+    "funded_aura_user",
+    "aura_user_with_first_trove",
+    "funded_absorber",
+)
+@pytest.mark.asyncio
+async def test_absorb_fail_ltv_too_low(
+    starknet,
+    shrine,
+    purger,
+    yin,
+    steth_token,
+    doge_token,
+    steth_gate,
+    doge_gate,
+    steth_yang: YangConfig,
+    doge_yang: YangConfig,
+    price_change,
+):
+    yangs = [steth_yang, doge_yang]
+    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
+
+    # Assert trove is not healthy
+    is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
+    assert is_healthy == FALSE
+
+    # Get LTV
+    before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
+    assert before_ltv <= MAX_PENALTY_LTV
+
+    with pytest.raises(StarkException, match=f"Purger: Trove {TROVE_1} is not absorbable"):
+        await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
