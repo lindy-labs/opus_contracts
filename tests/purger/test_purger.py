@@ -488,6 +488,7 @@ async def test_liquidate(
     assert_equalish(after_trove_debt, estimated_debt_wad - close_amt_wad)
 
 
+@pytest.mark.parametrize("fn", ["liquidate", "absorb"])
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user",
@@ -495,7 +496,10 @@ async def test_liquidate(
     "funded_searcher",
 )
 @pytest.mark.asyncio
-async def test_liquidate_fail_trove_healthy(shrine, purger):
+async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
+    """
+    Failing tests for `absorb` and `liquidate` when LTV < threshold
+    """
     # Check close amount is 0
     max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.amount
     assert max_close_amt == 0
@@ -512,7 +516,10 @@ async def test_liquidate_fail_trove_healthy(shrine, purger):
     purge_amt = (await shrine.estimate(TROVE_1).execute()).result.debt // 2
 
     with pytest.raises(StarkException, match=f"Purger: Trove {TROVE_1} is not liquidatable"):
-        await purger.liquidate(TROVE_1, purge_amt, SEARCHER).execute(caller_address=SEARCHER)
+        if fn == "liquidate":
+            await purger.liquidate(TROVE_1, purge_amt, SEARCHER).execute(caller_address=SEARCHER)
+        elif fn == "absorb":
+            await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
 
 
 @pytest.mark.usefixtures(
@@ -711,6 +718,9 @@ async def test_absorb_fail_ltv_too_low(
     doge_yang: YangConfig,
     price_change,
 ):
+    """
+    Failing tests for `absorb` when threshold <= LTV <= max penalty LTV
+    """
     yangs = [steth_yang, doge_yang]
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
