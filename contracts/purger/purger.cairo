@@ -284,6 +284,11 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 }
 
 // Assumption: Trove's LTV has exceeded its threshold
+// - If LTV <= MAX_PENALTY_LTV, penalty = m * LTV + b (see `get_penalty_fn`)
+//                                               (trove_value - trove_debt)
+// - If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
+//                                                      trove_debt
+// - If 100% < LTV, penalty = 0
 // Return value is a tuple so that function can be modified as an external view for testing
 func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad
