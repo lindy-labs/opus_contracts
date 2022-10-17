@@ -366,7 +366,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     "funded_searcher",
 )
 @pytest.mark.asyncio
-async def test_liquidate(
+async def test_liquidate_pass(
     starknet,
     shrine,
     purger,
@@ -663,9 +663,9 @@ async def test_absorb_pass(
         purge,
         purger.contract_address,
         "Purged",
-        # lambda d: d[:4] == [TROVE_1, trove_debt, MOCK_ABSORBER, MOCK_ABSORBER]
-        # and d[5:]
-        # == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
+        lambda d: d[:4] == [TROVE_1, trove_debt_wad, MOCK_ABSORBER, MOCK_ABSORBER]
+        and d[5:]
+        == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
     )
 
     # Check that LTV is 0 after all debt is repaid

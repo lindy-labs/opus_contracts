@@ -51,8 +51,8 @@ func purger_absorber() -> (absorber: address) {
 func Purged(
     trove_id: ufelt,
     purge_amt: wad,
-    recipient: address,
     funder: address,
+    recipient: address,
     percentage_freed: ray,
     yangs_len: ufelt,
     yangs: address*,
@@ -236,8 +236,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     Purged.emit(
         trove_id,
         purge_amt,
-        recipient,
         funder,
+        recipient,
         percentage_freed,
         yang_count,
         &yangs[0],
