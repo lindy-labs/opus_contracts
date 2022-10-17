@@ -1253,10 +1253,6 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
     avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
     assert_equalish(avg_price, expected_avg_price)
 
-    # Check average price
-    avg_price = from_wad((await shrine.get_avg_price(YANG_0_ID, start_interval, end_interval).execute()).result.price)
-    assert_equalish(avg_price, expected_avg_price)
-
     # Check Trove ID 2 if method is `move_yang`
     if method == "move_yang":
         # Get updated trove information for Trove ID 2
