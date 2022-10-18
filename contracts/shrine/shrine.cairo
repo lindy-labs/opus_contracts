@@ -828,7 +828,7 @@ func redistribute{
 }(trove_id: ufelt) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.DISTRIBUTE);
+    AccessControl.assert_has_role(ShrineRoles.REDISTRIBUTE);
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let interval: ufelt = now();
