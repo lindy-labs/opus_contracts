@@ -923,24 +923,21 @@ func redistribute_internal{
     );
 }
 
-func pull_pending_debt_for_yangs{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(trove_id: ufelt) {
+func pull_pending_debt_for_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt, trove_debt: wad, update_state: bool
+) -> (new_debt: wad) {
     alloc_locals;
 
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let (old_trove_info: Trove) = get_trove(trove_id);
-    let new_debt: wad = pull_pending_debt_for_yang(trove_id, old_trove_info.debt, yang_count);
-
-    let new_trove_info: Trove = Trove(old_trove_info.charge_from, new_debt);
-    set_trove(trove_id, new_trove_info);
-
-    return ();
+    let new_debt: wad = pull_pending_debt_for_trove_internal(
+        trove_id, trove_debt, yang_count, update_state
+    );
+    return (new_debt,);
 }
 
-func pull_pending_debt_for_yang{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(trove_id: ufelt, trove_debt: wad, current_yang_id: ufelt) -> (new_debt: wad) {
+func pull_pending_debt_for_trove_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(trove_id: ufelt, trove_debt: wad, current_yang_id: ufelt, update_state: bool) -> (new_debt: wad) {
     alloc_locals;
 
     if (current_yang_id == 0) {
@@ -950,21 +947,35 @@ func pull_pending_debt_for_yang{
     let trove_yang_snapshot: wad = shrine_trove_yang_pending_debt_snapshot.read(
         current_yang_id, trove_id
     );
-    let yang_pending_debt: YangPendingDebt = get_pending_debt_internal(current_yang_id);
+    let old_yang_pending_debt: YangPendingDebt = get_pending_debt_internal(current_yang_id);
 
     // Early termination if no debt was redistributed for yang
-    if (trove_yang_snapshot == yang_pending_debt.debt_per_yang) {
-        return pull_pending_debt_for_yang(trove_id, trove_debt, current_yang_id - 1);
+    if (trove_yang_snapshot == old_yang_pending_debt.debt_per_yang) {
+        return pull_pending_debt_for_trove_internal(
+            trove_id, trove_debt, current_yang_id - 1, update_state
+        );
     }
 
     let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
     let debt_increment: wad = WadRay.wmul(
-        deposited, yang_pending_debt.debt_per_yang - trove_yang_snapshot
+        deposited, old_yang_pending_debt.debt_per_yang - trove_yang_snapshot
     );
 
     let trove_debt: wad = trove_debt + debt_increment;
 
-    return pull_pending_debt_for_yang(trove_id, trove_debt, current_yang_id - 1);
+    if (update_state == TRUE) {
+        let new_yang_pending_debt: YangPendingDebt = YangPendingDebt(
+            old_yang_pending_debt.total - debt_increment, old_yang_pending_debt.debt_per_yang
+        );
+        set_pending_debt(current_yang_id, new_yang_pending_debt);
+        return pull_pending_debt_for_trove_internal(
+            trove_id, trove_debt, current_yang_id - 1, update_state
+        );
+    }
+
+    return pull_pending_debt_for_trove_internal(
+        trove_id, trove_debt, current_yang_id - 1, update_state
+    );
 }
 
 //
@@ -1194,9 +1205,15 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let current_interval = now();
 
     // Get new debt amount
-    let new_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+    let compounded_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+    // Get interest charged
+    let interest: wad = WadRay.sub_unsigned(compounded_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
+
+    // Pull undistributed debt and update state
+    let new_debt: wad = pull_pending_debt_for_trove(trove_id, compounded_debt, TRUE);
 
     // Catch troves with zero value
+    // Note: a Trove with collateral but no debt will receive debt if there were redistributions
     if (new_debt == trove.debt) {
         return ();
     }
@@ -1208,12 +1225,8 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // Get old system debt amount
     let (old_system_debt: wad) = shrine_total_debt.read();
 
-    // Get interest charged
-    let diff: wad = WadRay.sub_unsigned(new_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
-
     // Get new system debt
-    tempvar new_system_debt: wad = old_system_debt + diff;
-
+    let new_system_debt: wad = old_system_debt + interest;
     shrine_total_debt.write(new_system_debt);
 
     // Events
