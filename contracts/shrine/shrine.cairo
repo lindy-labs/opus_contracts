@@ -885,13 +885,13 @@ func redistribute_internal{
     shrine_deposits.write(current_yang_id, trove_id, 0);
 
     // Update yang balance of system
-    let old_yang_info: Yang = get_yang(current_yang_id);
+    let old_yang_info: Yang = shrine_yangs.read(current_yang_id);
     let new_yang_total: wad = WadRay.sub_unsigned(old_yang_info.total, deposited);
     let new_yang_info: Yang = Yang(total=new_yang_total, max=old_yang_info.max);
     shrine_yangs.write(current_yang_id, new_yang_info);
 
     // Calculate (value of yang / trove value) * debt and assign pending debt to yang
-    let yang_price: wad = get_recent_price_from(current_yang_id, current_interval);
+    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);
     let yang_value: wad = WadRay.wmul(deposited, yang_price);
     let debt_to_distribute: wad = WadRay.wmul(
         WadRay.wunsigned_div(yang_value, trove_value), trove_debt
@@ -907,10 +907,9 @@ func redistribute_internal{
 
     // Update pending debt info for yang
     let current_pending_debt: YangPendingDebt = get_pending_debt_internal(current_yang_id);
-    let updated_pending_debt: YangPendingDebt = YangPendingDebt(
-        current_pending_debt.total + adjusted_debt_to_distribute,
-        current_pending_debt.debt_per_yang + debt_increment_per_yang,
-    );
+    let new_total: wad = current_pending_debt.total + adjusted_debt_to_distribute;
+    let new_debt_per_yang: wad = current_pending_debt.debt_per_yang + debt_increment_per_yang;
+    let updated_pending_debt: YangPendingDebt = YangPendingDebt(new_total, new_debt_per_yang);
     set_pending_debt(current_yang_id, updated_pending_debt);
 
     // Update error
@@ -1118,6 +1117,17 @@ func get_valid_yang_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 
     return yang_id;
+}
+
+@view
+func get_pending_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address
+) -> (pending_debt: YangPendingDebt) {
+    let (yang_id: ufelt) = shrine_yang_id.read(yang);
+    let (pending_debt_packed) = shrine_yang_pending_debt.read(yang_id);
+    let (total: wad, debt_per_yang: wad) = split_felt(pending_debt_packed);
+    let pending_debt: YangPendingDebt = YangPendingDebt(total=total, debt_per_yang=debt_per_yang);
+    return (pending_debt,);
 }
 
 func get_pending_debt_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
