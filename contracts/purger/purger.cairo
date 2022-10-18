@@ -164,7 +164,6 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     alloc_locals;
 
     let (shrine: address) = purger_shrine.read();
-    let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
     // Check that trove can be liquidated
     let (is_healthy: bool) = IShrine.is_healthy(shrine, trove_id);
@@ -172,6 +171,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         assert is_healthy = FALSE;
     }
 
+    let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
     // Check that max penalty LTV is exceeded
     let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
     with_attr error_message("Purger: Trove {trove_id} is not absorbable") {
@@ -182,14 +182,20 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let (absorber: address) = purger_absorber.read();
 
     let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
-    let purge_amt: wad = WadRay.min(debt, absorber_yin_balance);
 
-    // If absorber's balance cannot cover the trove's debt, redistribute
-    if (purge_amt != debt) {
+    let fully_absorbable: bool = is_nn_le(debt, absorber_yin_balance);
+    if (fully_absorbable == TRUE) {
+        let (
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+        ) = purge(shrine, trove_id, trove_ltv, debt, debt, absorber, absorber);
+    } else {
+        let (
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+        ) = purge(shrine, trove_id, trove_ltv, debt, absorber_yin_balance, absorber, absorber);
         // TODO: Redistribute
     }
 
-    return purge(shrine, trove_id, trove_ltv, debt, purge_amt, absorber, absorber);
+    return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
 //
@@ -285,9 +291,11 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 
 // Assumption: Trove's LTV has exceeded its threshold
 // - If LTV <= MAX_PENALTY_LTV, penalty = m * LTV + b (see `get_penalty_fn`)
+//
 //                                               (trove_value - trove_debt)
 // - If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
 //                                                      trove_debt
+//
 // - If 100% < LTV, penalty = 0
 // Return value is a tuple so that function can be modified as an external view for testing
 func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
