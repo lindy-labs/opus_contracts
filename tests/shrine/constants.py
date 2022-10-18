@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from tests.roles import ShrineRoles
-from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
+from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE, str_to_felt
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 
@@ -89,3 +89,6 @@ DEPOSITS = [
 FORGE_AMT_WAD = 5_000 * WAD_SCALE
 
 SHRINE_FULL_ACCESS = sum([r.value for r in ShrineRoles])
+
+# Redistribute constants
+MOCK_PURGER = str_to_felt("purger")
