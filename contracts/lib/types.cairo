@@ -11,3 +11,8 @@ struct Yang {
     total: wad,  // Total amount of the Yang currently deposited
     max: wad,  // Maximum amount of the Yang that can be deposited
 }
+
+struct YangPendingDebt {
+    total: wad,
+    debt_per_yang: wad,
+}

@@ -22,7 +22,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, sfelt, str, ufelt, wad
 from contracts.lib.convert import pack_felt, pack_125, unpack_125
 from contracts.lib.exp import exp
-from contracts.lib.types import Trove, Yang
+from contracts.lib.types import Trove, Yang, YangPendingDebt
 from contracts.lib.wad_ray import WadRay
 
 //
@@ -186,16 +186,21 @@ func shrine_multiplier(interval: ufelt) -> (mul_and_cumulative_mul: packed) {
 func shrine_thresholds(yang_id: ufelt) -> (threshold: ray) {
 }
 
-// Amount of pending debt to be redistributed per yang
+// Amount of pending debt to be redistributed for a yang
 @storage_var
-func shrine_yang_pending_debt(yang_id: ufelt) -> (debt: wad) {
+func shrine_yang_pending_debt(yang_id: ufelt) -> (pending_debt: packed) {
 }
 
-// Snapshot value of the cumulative pending debt per yang for a given trove
+// Snapshot value of the cumulative pending debt per wad of yang for a given trove
 @storage_var
 func shrine_trove_yang_pending_debt_snapshot(yang_id: ufelt, trove_id: ufelt) -> (
     debt_snapshot: wad
 ) {
+}
+
+// Error for the last debt redistribution per yang
+@storage_var
+func shrine_yang_pending_debt_error(yang_id: ufelt) -> (error: wad) {
 }
 
 @storage_var
@@ -833,7 +838,7 @@ func redistribute{
     let (trove_debt: wad) = estimate(trove_id);
 
     // Perform redistribution
-    redistribute_internal(trove_id, trove_value, trove_debt, yang_count);
+    redistribute_internal(trove_id, trove_value, trove_debt, yang_count, interval);
 
     let trove: Trove = get_trove(trove_id);
     // Any rounding overflow or underflow of the trove's debt in `redistribute_internal`
@@ -870,22 +875,82 @@ func redistribute_internal{
     let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
 
     if (deposited == 0) {
-        return redistribute_internal(trove_id, current_yang_id - 1);
+        return redistribute_internal(
+            trove_id, trove_value, trove_debt, current_yang_id - 1, current_interval
+        );
     }
 
     // Set the yang amount to 0, causing the exchange rate from yang to the underlying asset
     // to automatically rebase
     shrine_deposits.write(current_yang_id, trove_id, 0);
 
+    // Update yang balance of system
+    let old_yang_info: Yang = get_yang(current_yang_id);
+    let new_yang_total: wad = WadRay.sub_unsigned(old_yang_info.total, deposited);
+    let new_yang_info: Yang = Yang(total=new_yang_total, max=old_yang_info.max);
+    shrine_yangs.write(current_yang_id, new_yang_info);
+
     // Calculate (value of yang / trove value) * debt and assign pending debt to yang
     let yang_price: wad = get_recent_price_from(current_yang_id, current_interval);
-    let yang_value: wad = WadRay.wmul(deposited * yang_price);
-    let debt_to_distribute = WadRay.wmul(WadRay.wunsigned_div(yang_value, trove_value), trove_debt);
+    let yang_value: wad = WadRay.wmul(deposited, yang_price);
+    let debt_to_distribute: wad = WadRay.wmul(
+        WadRay.wunsigned_div(yang_value, trove_value), trove_debt
+    );
 
-    let yang_current_pending_debt: wad = shrine_yang_pending_debt.read(current_yang_id);
-    shrine_yang_pending_debt.write(current_yang_id, yang_current_pending_debt + debt_to_distribute);
+    // Adjust debt to distribute by adding the error from the last redistribution
+    let last_error: wad = shrine_yang_pending_debt_error.read(current_yang_id);
+    let adjusted_debt_to_distribute: wad = WadRay.add_unsigned(debt_to_distribute, last_error);
 
-    return redistribute_internal(trove_id, current_yang_id - 1);
+    let debt_increment_per_yang: wad = WadRay.wunsigned_div(
+        adjusted_debt_to_distribute, new_yang_total
+    );
+
+    // Update pending debt info for yang
+    let current_pending_debt: YangPendingDebt = get_pending_debt_internal(current_yang_id);
+    let updated_pending_debt: YangPendingDebt = YangPendingDebt(
+        current_pending_debt.total + adjusted_debt_to_distribute,
+        current_pending_debt.debt_per_yang + debt_increment_per_yang,
+    );
+    set_pending_debt(current_yang_id, updated_pending_debt);
+
+    // Update error
+    let new_error: wad = WadRay.sub_unsigned(
+        adjusted_debt_to_distribute, WadRay.wmul(debt_increment_per_yang, new_yang_total)
+    );
+
+    return redistribute_internal(
+        trove_id, trove_value, trove_debt, current_yang_id - 1, current_interval
+    );
+}
+
+func pull_pending_debt_for_yangs{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt) {
+    alloc_locals;
+
+    // Loop through yangs and check each snapshot
+    return ();
+}
+
+func pull_pending_debt_for_yang{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt, trove_debt: wad, current_yang_id: ufelt) -> (new_debt: wad) {
+    alloc_locals;
+
+    if (current_yang_id == 0) {
+        return (trove_debt,);
+    }
+
+    let trove_yang_snapshot: wad = shrine_trove_yang_pending_debt_snapshot.read(
+        current_yang_id, trove_id
+    );
+    let current_yang_snapshot: wad = shrine_yang_pending_debt.read(current_yang_id);
+
+    if (trove_yang_snapshot == current_yang_snapshot) {
+        return pull_pending_debt_for_yang(trove_id, trove_debt, current_yang_id - 1);
+    }
+
+    return pull_pending_debt_for_yang(trove_id, trove_debt, current_yang_id - 1);
 }
 
 //
@@ -1027,6 +1092,23 @@ func get_valid_yang_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 
     return yang_id;
+}
+
+func get_pending_debt_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_id: ufelt
+) -> (pending_debt: YangPendingDebt) {
+    let (pending_debt_packed) = shrine_yang_pending_debt.read(yang_id);
+    let (total: wad, debt_per_yang: wad) = split_felt(pending_debt_packed);
+    let pending_debt: YangPendingDebt = YangPendingDebt(total=total, debt_per_yang=debt_per_yang);
+    return (pending_debt,);
+}
+
+func set_pending_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_id: ufelt, pending_debt: YangPendingDebt
+) {
+    let packed_pending_debt: packed = pack_felt(pending_debt.total, pending_debt.debt_per_yang);
+    shrine_yang_pending_debt.write(yang_id, packed_pending_debt);
+    return ();
 }
 
 func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(

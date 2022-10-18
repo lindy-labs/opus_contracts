@@ -5,7 +5,7 @@ namespace ShrineRoles {
     const ADD_YANG = 2 ** 0;
     const ADVANCE = 2 ** 1;
     const DEPOSIT = 2 ** 2;
-    const DISTRIBTUE = 2 ** 3;
+    const DISTRIBUTE = 2 ** 3;
     const FORGE = 2 ** 4;
     const KILL = 2 ** 5;
     const MELT = 2 ** 6;
