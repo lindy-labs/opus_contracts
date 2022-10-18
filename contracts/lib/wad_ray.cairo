@@ -1,3 +1,4 @@
+from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.math import (
     abs_value,
     assert_le,
@@ -66,7 +67,7 @@ namespace WadRay {
         assert_valid(b);
 
         let le = is_le(a, b);
-        if (le == 1) {
+        if (le == TRUE) {
             return b;
         }
         return a;
@@ -77,7 +78,7 @@ namespace WadRay {
         assert_valid(b);
 
         let le = is_le(a, b);
-        if (le == 1) {
+        if (le == TRUE) {
             return a;
         }
         return b;
