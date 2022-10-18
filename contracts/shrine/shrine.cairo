@@ -928,7 +928,13 @@ func pull_pending_debt_for_yangs{
 }(trove_id: ufelt) {
     alloc_locals;
 
-    // Loop through yangs and check each snapshot
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    let (old_trove_info: Trove) = get_trove(trove_id);
+    let new_debt: wad = pull_pending_debt_for_yang(trove_id, old_trove_info.debt, yang_count);
+
+    let new_trove_info: Trove = Trove(old_trove_info.charge_from, new_debt);
+    set_trove(trove_id, new_trove_info);
+
     return ();
 }
 
@@ -944,11 +950,19 @@ func pull_pending_debt_for_yang{
     let trove_yang_snapshot: wad = shrine_trove_yang_pending_debt_snapshot.read(
         current_yang_id, trove_id
     );
-    let current_yang_snapshot: wad = shrine_yang_pending_debt.read(current_yang_id);
+    let yang_pending_debt: YangPendingDebt = get_pending_debt_internal(current_yang_id);
 
-    if (trove_yang_snapshot == current_yang_snapshot) {
+    // Early termination if no debt was redistributed for yang
+    if (trove_yang_snapshot == yang_pending_debt.debt_per_yang) {
         return pull_pending_debt_for_yang(trove_id, trove_debt, current_yang_id - 1);
     }
+
+    let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
+    let debt_increment: wad = WadRay.wmul(
+        deposited, yang_pending_debt.debt_per_yang - trove_yang_snapshot
+    );
+
+    let trove_debt: wad = trove_debt + debt_increment;
 
     return pull_pending_debt_for_yang(trove_id, trove_debt, current_yang_id - 1);
 }
