@@ -298,7 +298,10 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 }
 
 // Assumption: Trove's LTV has exceeded its threshold
-// - If LTV <= MAX_PENALTY_LTV, penalty = m * LTV + b (see `get_penalty_fn`)
+//
+//                                              maxLiqPenalty - minLiqPenalty
+// - If LTV <= MAX_PENALTY_LTV, penalty = LTV * ----------------------------- + b
+//                                              maxPenaltyLTV - liqThreshold
 //
 //                                               (trove_value - trove_debt)
 // - If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
@@ -316,7 +319,13 @@ func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
     let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
     if (below_max_penalty_ltv == TRUE) {
-        let (m: ray, b: ray) = get_penalty_fn(trove_threshold);
+        let denominator: ray = WadRay.sub(MAX_PENALTY_LTV, trove_threshold);
+        let m: ray = WadRay.rsigned_div(PENALTY_DIFF, denominator);
+
+        // Derive the `b` constant
+        let m_ltv: ray = WadRay.rmul(trove_threshold, m);
+        let b: ray = WadRay.sub(MIN_PENALTY, m_ltv);
+
         let penalty: ray = WadRay.add(WadRay.rmul(m, trove_ltv), b);
         return (penalty,);
     }
@@ -325,27 +334,6 @@ func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         WadRay.sub_unsigned(trove_value, trove_debt), trove_debt
     );
     return (penalty,);
-}
-
-// Determine the function for calculating purge penalty based on the threshold
-//
-//                    maxLiqPenalty - minLiqPenalty
-// liqPenalty = LTV * ----------------------------- + b
-//                    maxPenaltyLTV - liqThreshold
-//
-// Returns the `m` coefficient and `b` constant for the penalty in the form of liqPenalty = m * LTV + b
-func get_penalty_fn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_threshold: ray
-) -> (m: ray, b: ray) {
-    // Derive the `m` coefficient
-    let denominator: ray = WadRay.sub(MAX_PENALTY_LTV, trove_threshold);
-    let m: ray = WadRay.rsigned_div(PENALTY_DIFF, denominator);
-
-    // Derive the `b` constant
-    let m_ltv: ray = WadRay.rmul(trove_threshold, m);
-    let b: ray = WadRay.sub(MIN_PENALTY, m_ltv);
-
-    return (m, b);
 }
 
 // Helper function to calculate percentage of collateral freed.
