@@ -19,12 +19,20 @@ from contracts.lib.wad_ray import WadRay
 // Constants
 //
 
+// Close factor function parameters
 const CF1 = WadRay.RAY_PERCENT * 270;
 const CF2 = WadRay.RAY_PERCENT * 22;
 
+// Maximum liquidation penalty
 const MAX_PENALTY = 125 * 10 ** 24;  // 0.125
+
+// Minimum liquidation penalty
 const MIN_PENALTY = 3 * 10 ** 25;  // 0.03
+
+// Difference between minimum and maximum liquidation penalty
 const PENALTY_DIFF = MAX_PENALTY - MIN_PENALTY;
+
+// LTV at the maximum liquidation penalty
 const MAX_PENALTY_LTV = 8888 * 10 ** 23;  // 0.8888
 
 //
@@ -246,9 +254,9 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         recipient,
         percentage_freed,
         yang_count,
-        &yangs[0],
+        yangs,
         yang_count,
-        &freed_assets_amt[0],
+        freed_assets_amt,
     );
 
     // The denomination for each value in `freed_assets_amt` will be based on the decimals
