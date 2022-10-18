@@ -88,6 +88,10 @@ func TroveUpdated(trove_id: ufelt, trove: Trove) {
 }
 
 @event
+func TroveRedistributed(trove_id: ufelt, amount: wad) {
+}
+
+@event
 func YinUpdated(user: address, amount: wad) {
 }
 
@@ -180,6 +184,18 @@ func shrine_multiplier(interval: ufelt) -> (mul_and_cumulative_mul: packed) {
 // Liquidation threshold per yang (as LTV) - ray
 @storage_var
 func shrine_thresholds(yang_id: ufelt) -> (threshold: ray) {
+}
+
+// Amount of pending debt to be redistributed per yang
+@storage_var
+func shrine_yang_pending_debt(yang_id: ufelt) -> (debt: wad) {
+}
+
+// Snapshot value of the cumulative pending debt per yang for a given trove
+@storage_var
+func shrine_trove_yang_pending_debt_snapshot(yang_id: ufelt, trove_id: ufelt) -> (
+    debt_snapshot: wad
+) {
 }
 
 @storage_var
@@ -799,6 +815,77 @@ func seize{
     withdraw_internal(yang, trove_id, amount);
 
     return ();
+}
+
+@external
+func redistribute{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.DISTRIBUTE);
+
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    let interval: ufelt = now();
+    let (_, trove_value: wad) = get_trove_threshold_and_value_internal(
+        trove_id, interval, interval, yang_count, 0, 0
+    );
+    let (trove_debt: wad) = estimate(trove_id);
+
+    // Perform redistribution
+    redistribute_internal(trove_id, trove_value, trove_debt, yang_count);
+
+    let trove: Trove = get_trove(trove_id);
+    // Any rounding overflow or underflow of the trove's debt in `redistribute_internal`
+    //  are borne by the redistributed troves
+    let updated_trove: Trove = Trove(charge_from=trove.charge_from, debt=0);
+    set_trove(trove_id, updated_trove);
+
+    // Sanity check that trove is healthy
+    assert_healthy(trove_id);
+
+    TroveRedistributed.emit(trove_id, trove_debt);
+
+    return ();
+}
+
+// Loop through yang for the trove:
+// 1. set the deposit to 0
+// 2. calculate the pending debt for that yang, then update the storage variable
+func redistribute_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(
+    trove_id: ufelt,
+    trove_value: wad,
+    trove_debt: wad,
+    current_yang_id: ufelt,
+    current_interval: ufelt,
+) {
+    alloc_locals;
+
+    if (current_yang_id == 0) {
+        return ();
+    }
+
+    let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
+
+    if (deposited == 0) {
+        return redistribute_internal(trove_id, current_yang_id - 1);
+    }
+
+    // Set the yang amount to 0, causing the exchange rate from yang to the underlying asset
+    // to automatically rebase
+    shrine_deposits.write(current_yang_id, trove_id, 0);
+
+    // Calculate (value of yang / trove value) * debt and assign pending debt to yang
+    let yang_price: wad = get_recent_price_from(current_yang_id, current_interval);
+    let yang_value: wad = WadRay.wmul(deposited * yang_price);
+    let debt_to_distribute = WadRay.wmul(WadRay.wunsigned_div(yang_value, trove_value), trove_debt);
+
+    let yang_current_pending_debt: wad = shrine_yang_pending_debt.read(current_yang_id);
+    shrine_yang_pending_debt.write(current_yang_id, yang_current_pending_debt + debt_to_distribute);
+
+    return redistribute_internal(trove_id, current_yang_id - 1);
 }
 
 //
