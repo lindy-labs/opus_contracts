@@ -1047,7 +1047,8 @@ func estimate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(t
     }
 
     let current_interval: ufelt = now();
-    let debt = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+    let debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+    let debt: wad = pull_pending_debt_for_trove(trove_id, debt, FALSE);
     return (debt,);
 }
 
