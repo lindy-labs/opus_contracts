@@ -842,8 +842,6 @@ func redistribute{
     redistribute_internal(trove_id, trove_value, old_trove_info.debt, yang_count, interval);
 
     let trove: Trove = get_trove(trove_id);
-    // Any rounding overflow or underflow of the trove's debt in `redistribute_internal`
-    //  are borne by the redistributed troves
     let updated_trove_info: Trove = Trove(charge_from=trove.charge_from, debt=0);
     set_trove(trove_id, updated_trove_info);
 
@@ -882,7 +880,7 @@ func redistribute_internal{
     }
 
     // Set the yang amount to 0, causing the exchange rate from yang to the underlying asset
-    // to automatically rebase
+    // in Gate to automatically rebase
     shrine_deposits.write(current_yang_id, trove_id, 0);
 
     // Update yang balance of system
@@ -964,10 +962,14 @@ func pull_pending_debt_for_trove_internal{
     let trove_debt: wad = trove_debt + debt_increment;
 
     if (update_state == TRUE) {
+        let updated_total_pending_debt: wad = old_yang_pending_debt.total - debt_increment;
         let new_yang_pending_debt: YangPendingDebt = YangPendingDebt(
-            old_yang_pending_debt.total - debt_increment, old_yang_pending_debt.debt_per_yang
+            updated_total_pending_debt, old_yang_pending_debt.debt_per_yang
         );
         set_pending_debt(current_yang_id, new_yang_pending_debt);
+        shrine_trove_yang_pending_debt_snapshot.write(
+            current_yang_id, trove_id, updated_total_pending_debt
+        );
         return pull_pending_debt_for_trove_internal(
             trove_id, trove_debt, current_yang_id - 1, update_state
         );

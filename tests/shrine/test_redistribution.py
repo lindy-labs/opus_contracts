@@ -271,8 +271,9 @@ async def test_shrine_single_yang_one_redistribution(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt
+    # - shrine_trove_yang_pending_debt_snapshot
     print(f"\nRedistribute (1 yang, 1 trove) - pull: \n{get_resources(update_trove2)}")
-    print(estimate_gas(update_trove2, 3, 1))
+    print(estimate_gas(update_trove2, 4, 1))
 
 
 @pytest.mark.usefixtures("redistribution_setup", "update_feeds_single_yang")
@@ -315,8 +316,9 @@ async def test_shrine_single_yang_two_redistribution(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt
+    # - shrine_trove_yang_pending_debt_snapshot
     print(f"\nRedistribute (1 yang, 2 troves) - pull: \n{get_resources(update_trove3)}")
-    print(estimate_gas(update_trove3, 3, 1))
+    print(estimate_gas(update_trove3, 4, 1))
 
 
 #
@@ -401,8 +403,9 @@ async def test_shrine_double_yang_one_redistribution(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt * 2
+    # - shrine_trove_yang_pending_debt_snapshot
     print(f"\nRedistribute (2 yangs, 1 trove) - pull: \n{get_resources(update_trove2)}")
-    print(estimate_gas(update_trove2, 4, 1))
+    print(estimate_gas(update_trove2, 6, 1))
 
 
 @pytest.mark.usefixtures("redistribution_setup", "update_feeds_double_yang")
@@ -509,8 +512,9 @@ async def test_shrine_double_yang_two_redistributions(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt * 2
+    # - shrine_trove_yang_pending_debt_snapshot * 2
     print(f"\nRedistribute (2 yangs, 2 troves) - pull: \n{get_resources(update_trove3)}")
-    print(estimate_gas(update_trove3, 4, 1))
+    print(estimate_gas(update_trove3, 6, 1))
 
 
 #
@@ -614,8 +618,9 @@ async def test_shrine_triple_yang_one_redistribution(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt * 3
+    # - shrine_trove_yang_pending_debt_snapshot * 3
     print(f"\nRedistribute (3 yangs, 1 trove) - pull: \n{get_resources(update_trove2)}")
-    print(estimate_gas(update_trove2, 5, 1))
+    print(estimate_gas(update_trove2, 8, 1))
 
 
 @pytest.mark.usefixtures("redistribution_setup", "update_feeds_triple_yang")
@@ -757,5 +762,6 @@ async def test_shrine_triple_yang_two_redistributions(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt * 3
+    # - shrine_trove_yang_pending_debt_snapshot * 3
     print(f"\nRedistribute (3 yangs, 2 troves) - pull: \n{get_resources(update_trove3)}")
-    print(estimate_gas(update_trove3, 5, 1))
+    print(estimate_gas(update_trove3, 8, 1))
