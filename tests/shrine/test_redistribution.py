@@ -730,7 +730,7 @@ async def test_shrine_triple_yang_two_redistributions(shrine):
     expected_debt_per_yang2 = expected_yang2_debt / expected_remaining_yang2
     assert_equalish(from_wad(yang2_pending_debt.debt_per_yang), expected_debt_per_yang2)
 
-    # Check yang 2
+    # Check yang 3
     yang3_pending_debt = (await shrine.get_pending_debt(YANG3_ADDRESS).execute()).result.pending_debt
     expected_trove1_yang3_debt = (before_trove1_yang3_val / before_trove1_val) * from_wad(
         estimated_trove1_debt
