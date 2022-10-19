@@ -307,6 +307,17 @@ func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 @view
+func get_yang_pending_debt_per_redistribution{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(yang: address, redistribution_id: ufelt) -> (debt_per_yang: wad) {
+    let yang_id: ufelt = get_valid_yang_id(yang);
+    let debt_per_yang: wad = shrine_yang_pending_debt_per_redistribution.read(
+        yang_id, redistribution_id
+    );
+    return (debt_per_yang,);
+}
+
+@view
 func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     is_live: bool
 ) {
@@ -915,7 +926,9 @@ func redistribute_internal{
     );
 
     // Adjust debt to distribute by adding the error from the last redistribution
-    let pending_debt_info: YangPendingDebtInfo = get_pending_debt_info_internal(current_yang_id);
+    let pending_debt_info: YangPendingDebtInfo = get_yang_pending_debt_info_internal(
+        current_yang_id
+    );
     let adjusted_debt_to_distribute: wad = WadRay.add_unsigned(
         debt_to_distribute, pending_debt_info.last_error
     );
@@ -930,7 +943,7 @@ func redistribute_internal{
     );
 
     // Update pending debt info for yang and error
-    let current_pending_debt_info: YangPendingDebtInfo = get_pending_debt_info_internal(
+    let current_pending_debt_info: YangPendingDebtInfo = get_yang_pending_debt_info_internal(
         current_yang_id
     );
     let new_total: wad = current_pending_debt_info.total + adjusted_debt_to_distribute;
@@ -998,7 +1011,7 @@ func pull_pending_debt_for_trove_internal{
     );
     let trove_debt: wad = trove_debt + debt_increment;
 
-    let old_yang_pending_debt_info: YangPendingDebtInfo = get_pending_debt_info_internal(
+    let old_yang_pending_debt_info: YangPendingDebtInfo = get_yang_pending_debt_info_internal(
         current_yang_id
     );
     if (update_state == TRUE) {
@@ -1207,14 +1220,14 @@ func get_valid_yang_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 }
 
 @view
-func get_pending_debt_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_yang_pending_debt_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address
 ) -> (info: YangPendingDebtInfo) {
     let (yang_id: ufelt) = shrine_yang_id.read(yang);
-    return get_pending_debt_info_internal(yang_id);
+    return get_yang_pending_debt_info_internal(yang_id);
 }
 
-func get_pending_debt_info_internal{
+func get_yang_pending_debt_info_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(yang_id: ufelt) -> (info: YangPendingDebtInfo) {
     let (pending_debt_info_packed) = shrine_yang_pending_debt_info.read(yang_id);
