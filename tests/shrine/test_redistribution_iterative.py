@@ -35,16 +35,19 @@ DEPOSITS = {
         YANG1_ADDRESS: Decimal("5"),
         YANG2_ADDRESS: Decimal("100"),
         YANG3_ADDRESS: Decimal("100_000"),
+        YANG4_ADDRESS: Decimal("1_500"),
     },
     TROVE_2: {
         YANG1_ADDRESS: Decimal("15"),
         YANG2_ADDRESS: Decimal("500"),
         YANG3_ADDRESS: Decimal("250_000"),
+        YANG4_ADDRESS: Decimal("2_500"),
     },
     TROVE_3: {
         YANG1_ADDRESS: Decimal("7.5"),
         YANG2_ADDRESS: Decimal("277"),
         YANG3_ADDRESS: Decimal("123_456"),
+        YANG4_ADDRESS: Decimal("3_678"),
     },
 }
 
@@ -136,8 +139,9 @@ async def update_feeds(starknet, shrine):
     yang1_start_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
     yang2_start_price = from_wad((await shrine.get_current_yang_price(YANG2_ADDRESS).execute()).result.price)
     yang3_start_price = from_wad((await shrine.get_current_yang_price(YANG3_ADDRESS).execute()).result.price)
+    yang4_start_price = from_wad((await shrine.get_current_yang_price(YANG4_ADDRESS).execute()).result.price)
 
-    start_prices = [yang1_start_price, yang2_start_price, yang3_start_price]
+    start_prices = [yang1_start_price, yang2_start_price, yang3_start_price, yang4_start_price]
     feeds = [create_feed(p, FEED_LEN, MAX_PRICE_CHANGE) for p in start_prices]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
@@ -277,6 +281,51 @@ async def shrine_triple_yang_trove3(shrine):
 @pytest.fixture
 async def update_feeds_triple_yang(
     shrine_triple_yang_trove1, shrine_triple_yang_trove2, shrine_triple_yang_trove3, update_feeds
+):
+    return
+
+
+#
+# Fixtures for 4 yang
+#
+
+
+QUAD_YANG_ADDRESSES = [YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS]
+
+
+@pytest.fixture
+async def shrine_quad_yang_trove1(shrine):
+    for a in QUAD_YANG_ADDRESSES:
+        deposit_amt = to_wad(DEPOSITS[TROVE_1][a])
+        await shrine.deposit(a, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
+    max_forge_amt = (await shrine.get_max_forge(TROVE_1).execute()).result.max
+    forge_amt = max_forge_amt // 2
+    await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.fixture
+async def shrine_quad_yang_trove2(shrine):
+    for a in QUAD_YANG_ADDRESSES:
+        deposit_amt = to_wad(DEPOSITS[TROVE_2][a])
+        await shrine.deposit(a, TROVE_2, deposit_amt).execute(caller_address=SHRINE_OWNER)
+    max_forge_amt = (await shrine.get_max_forge(TROVE_2).execute()).result.max
+    forge_amt = max_forge_amt // 2
+    await shrine.forge(TROVE2_OWNER, TROVE_2, forge_amt).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.fixture
+async def shrine_quad_yang_trove3(shrine):
+    for a in QUAD_YANG_ADDRESSES:
+        deposit_amt = to_wad(DEPOSITS[TROVE_3][a])
+        await shrine.deposit(a, TROVE_3, deposit_amt).execute(caller_address=SHRINE_OWNER)
+    max_forge_amt = (await shrine.get_max_forge(TROVE_3).execute()).result.max
+    forge_amt = max_forge_amt // 2
+    await shrine.forge(TROVE3_OWNER, TROVE_3, forge_amt).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.fixture
+async def update_feeds_quad_yang(
+    shrine_quad_yang_trove1, shrine_quad_yang_trove2, shrine_quad_yang_trove3, update_feeds
 ):
     return
 
@@ -828,3 +877,67 @@ async def test_shrine_triple_yang_two_redistributions(shrine):
     # - shrine_trove_redistribution
     print(f"\nRedistribute (3 yangs, 2 troves) - pull: \n{get_resources(update_trove3)}")
     print(estimate_gas(update_trove3, 6, 1))
+
+
+#
+# Quad yang
+#
+
+
+@pytest.mark.usefixtures("redistribution_setup", "update_feeds_quad_yang")
+@pytest.mark.asyncio
+async def test_shrine_quad_yang_one_redistribution(shrine):
+
+    estimated_trove1_debt = (await shrine.estimate(TROVE_1).execute()).result.debt
+
+    # Simulate purge with 0 yin
+    await shrine.melt(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    redistribute_trove_1 = await shrine.redistribute(TROVE_1).execute(caller_address=MOCK_PURGER)
+    assert_event_emitted(
+        redistribute_trove_1,
+        shrine.contract_address,
+        "TroveRedistributed",
+        [TROVE_1, estimated_trove1_debt],
+    )
+    # Storage keys updated:
+    # - shrine_troves
+    # - shrine_deposits * 4
+    # - shrine_yangs * 4
+    # - shrine_yang_pending_debt * 4
+    # - shrine_yang_pending_debt_error * 4
+    print(f"\nRedistribute (4 yang, 1 trove) - redistribute: \n{get_resources(redistribute_trove_1)}")
+    print(estimate_gas(redistribute_trove_1, 17, 1))
+
+    # Check cost of update
+    update_trove2 = await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+
+    # Storage keys updated
+    # - shrine_total_debt (via `estimate`)
+    # - shrine_troves (via `estimate`)
+    # - shrine_yang_pending_debt_info * 4
+    # - shrine_trove_redistribution
+    print(f"\nRedistribute (4 yangs, 1 trove) - pull: \n{get_resources(update_trove2)}")
+    print(estimate_gas(update_trove2, 7, 1))
+
+
+@pytest.mark.usefixtures("redistribution_setup", "update_feeds_quad_yang")
+@pytest.mark.asyncio
+async def test_shrine_quad_yang_two_redistributions(shrine):
+
+    # Simulate purge with 0 yin
+    await shrine.melt(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.redistribute(TROVE_1).execute(caller_address=MOCK_PURGER)
+
+    await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.redistribute(TROVE_2).execute(caller_address=MOCK_PURGER)
+
+    # Check cost of update
+    update_trove3 = await shrine.melt(TROVE3_OWNER, TROVE_3, 0).execute(caller_address=SHRINE_OWNER)
+
+    # Storage keys updated
+    # - shrine_total_debt (via `estimate`)
+    # - shrine_troves (via `estimate`)
+    # - shrine_yang_pending_debt_info * 4
+    # - shrine_trove_redistribution
+    print(f"\nRedistribute (4 yangs, 2 troves) - pull: \n{get_resources(update_trove3)}")
+    print(estimate_gas(update_trove3, 7, 1))

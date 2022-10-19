@@ -8,6 +8,7 @@ LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
+YANG4_ADDRESS = 4567
 FAUX_YANG_ADDRESS = 7890
 
 
@@ -31,6 +32,13 @@ YANGS = [
         "id": 3,
         "address": YANG3_ADDRESS,
         "start_price": Decimal("1.25"),
+        "ceiling": 10_000_000 * WAD_SCALE,
+        "threshold": LIQUIDATION_THRESHOLD,
+    },
+    {
+        "id": 4,
+        "address": YANG4_ADDRESS,
+        "start_price": Decimal("17.5"),
         "ceiling": 10_000_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
