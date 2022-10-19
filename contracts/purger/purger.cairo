@@ -138,6 +138,10 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // External functions
 //
 
+// Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
+// and the recipient address to send the freed collateral to.
+// Reverts if the trove is not liquidatable (i.e. LTV > threshold)
+// Reverts if the repayment amount exceeds the maximum amount as determined by the close factor.
 @external
 func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
@@ -165,6 +169,12 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return purge(shrine, trove_id, trove_ltv, debt, purge_amt, funder, recipient);
 }
 
+// Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
+// to the stability pool. If the stability pool does not have sufficient yin, the trove's debt and collateral
+// will be proportionally redistributed among all troves containing the trove's collateral.
+// - The amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
+// Reverts if the trove's LTV is not above the max penalty LTV
+// - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
 @external
 func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
     yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
@@ -203,6 +213,8 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         // TODO: Redistribute
     }
 
+    // TODO: Call Absorber to update its internal accounting
+
     return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
@@ -210,6 +222,10 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 // Internal
 //
 
+// Internal function to handle the paying down of a trove's debt in return for the
+// corresponding freed collateral to be sent to the recipient address
+// Reverts if the trove's LTV is worse off than before the purge
+// - This should not be possible, but is added in for safety.
 func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine: address,
     trove_id: ufelt,
@@ -312,19 +328,17 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad
 ) -> (penalty: ray) {
-    let is_covered = is_nn_le(trove_ltv, WadRay.RAY_ONE);
-    if (is_covered == FALSE) {
+    let is_penalizable: bool = is_nn_le(trove_ltv, WadRay.RAY_ONE);
+    if (is_penalizable == FALSE) {
         return (0,);
     }
 
     let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
     if (below_max_penalty_ltv == TRUE) {
-        let denominator: ray = WadRay.sub(MAX_PENALTY_LTV, trove_threshold);
-        let m: ray = WadRay.rsigned_div(PENALTY_DIFF, denominator);
+        let m: ray = WadRay.rsigned_div(PENALTY_DIFF, WadRay.sub(MAX_PENALTY_LTV, trove_threshold));
 
         // Derive the `b` constant
-        let m_ltv: ray = WadRay.rmul(trove_threshold, m);
-        let b: ray = WadRay.sub(MIN_PENALTY, m_ltv);
+        let b: ray = WadRay.sub(MIN_PENALTY, WadRay.rmul(trove_threshold, m));
 
         let penalty: ray = WadRay.add(WadRay.rmul(m, trove_ltv), b);
         return (penalty,);
@@ -345,8 +359,8 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 ) -> ray {
     alloc_locals;
 
-    let is_covered: bool = is_nn_le(trove_ltv, WadRay.RAY_ONE);
-    if (is_covered == FALSE) {
+    let is_penalizable: bool = is_nn_le(trove_ltv, WadRay.RAY_ONE);
+    if (is_penalizable == FALSE) {
         // `runsigned_div` of two wads returns a ray
         let prorata_percentage_freed: ray = WadRay.runsigned_div(purge_amt, trove_debt);
         return prorata_percentage_freed;
