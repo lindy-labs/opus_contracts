@@ -403,7 +403,7 @@ async def test_shrine_double_yang_one_redistribution(shrine):
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
     # - shrine_yang_pending_debt * 2
-    # - shrine_trove_yang_pending_debt_snapshot
+    # - shrine_trove_yang_pending_debt_snapshot * 2
     print(f"\nRedistribute (2 yangs, 1 trove) - pull: \n{get_resources(update_trove2)}")
     print(estimate_gas(update_trove2, 6, 1))
 
