@@ -835,21 +835,22 @@ func redistribute{
     let (_, trove_value: wad) = get_trove_threshold_and_value_internal(
         trove_id, interval, interval, yang_count, 0, 0
     );
-    let (trove_debt: wad) = estimate(trove_id);
+    // Assumption: Trove's debt is updated to the current interval
+    let (old_trove_info: Trove) = get_trove(trove_id);
 
     // Perform redistribution
-    redistribute_internal(trove_id, trove_value, trove_debt, yang_count, interval);
+    redistribute_internal(trove_id, trove_value, old_trove_info.debt, yang_count, interval);
 
     let trove: Trove = get_trove(trove_id);
     // Any rounding overflow or underflow of the trove's debt in `redistribute_internal`
     //  are borne by the redistributed troves
-    let updated_trove: Trove = Trove(charge_from=trove.charge_from, debt=0);
-    set_trove(trove_id, updated_trove);
+    let updated_trove_info: Trove = Trove(charge_from=trove.charge_from, debt=0);
+    set_trove(trove_id, updated_trove_info);
 
     // Sanity check that trove is healthy
     assert_healthy(trove_id);
 
-    TroveRedistributed.emit(trove_id, trove_debt);
+    TroveRedistributed.emit(trove_id, old_trove_info.debt);
 
     return ();
 }
