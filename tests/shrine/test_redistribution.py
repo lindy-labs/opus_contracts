@@ -15,6 +15,7 @@ from tests.utils import (
     assert_equalish,
     assert_event_emitted,
     create_feed,
+    estimate_gas,
     from_wad,
     get_block_timestamp,
     set_block_timestamp,
@@ -43,6 +44,16 @@ DEPOSITS = {
         YANG3_ADDRESS: Decimal("123_456"),
     },
 }
+
+
+#
+# Helpers
+#
+
+
+def get_resources(tx):
+    return tx.call_info.execution_resources
+
 
 #
 # Fixtures
@@ -113,22 +124,48 @@ async def test_shrine_single_yang_one_redistribution(shrine):
 
     before_yang_bal = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
     assert before_yang_bal > 0
-    estimated_debt = (await shrine.estimate(TROVE_1).execute()).result.debt
+    estimated_trove1_debt = (await shrine.estimate(TROVE_1).execute()).result.debt
+    estimated_trove2_debt = (await shrine.estimate(TROVE_2).execute()).result.debt
 
+    # Simulate purge with 0 yin
+    await shrine.melt(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
     redistribute_trove_1 = await shrine.redistribute(TROVE_1).execute(caller_address=MOCK_PURGER)
     assert_event_emitted(
         redistribute_trove_1,
         shrine.contract_address,
         "TroveRedistributed",
-        [TROVE_1, estimated_debt],
+        [TROVE_1, estimated_trove1_debt],
     )
+    # Storage keys updated:
+    # - shrine_troves
+    # - shrine_deposits
+    # - shrine_yangs
+    # - shrine_yang_pending_debt
+    # - shrine_yang_pending_debt_error
+    print(f"\nRedistribute (single trove) - redistribute: \n{get_resources(redistribute_trove_1)}")
+    print(estimate_gas(redistribute_trove_1, 5, 1))
 
     after_yang_bal = (await shrine.get_deposit(YANG_0_ADDRESS, TROVE_1).execute()).result.balance
     assert after_yang_bal == 0
 
     yang_pending_debt = (await shrine.get_pending_debt(YANG_0_ADDRESS).execute()).result.pending_debt
-    assert yang_pending_debt.total == estimated_debt
+    assert yang_pending_debt.total == estimated_trove1_debt
 
     expected_remaining_yang = DEPOSITS[TROVE_2][YANG1_ADDRESS] + DEPOSITS[TROVE_3][YANG1_ADDRESS]
-    expected_debt_per_yang = from_wad(estimated_debt) / expected_remaining_yang
+    expected_debt_per_yang = from_wad(estimated_trove1_debt) / expected_remaining_yang
     assert_equalish(from_wad(yang_pending_debt.debt_per_yang), expected_debt_per_yang)
+
+    # Check trove 2 debt
+    expected_trove2_debt = from_wad(estimated_trove2_debt) + (DEPOSITS[TROVE_2][YANG1_ADDRESS] * expected_debt_per_yang)
+    trove2_debt = from_wad((await shrine.estimate(TROVE_2).execute()).result.debt)
+    assert_equalish(trove2_debt, expected_trove2_debt)
+
+    # Check cost of update
+    update_trove2 = await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+
+    # Storage keys updated
+    # - shrine_total_debt (via `estimate`)
+    # - shrine_troves (via `estimate`)
+    # - shrine_yang_pending_debt
+    print(f"\nRedistribute (single trove) - pull: \n{get_resources(update_trove2)}")
+    print(estimate_gas(update_trove2, 3, 1))
