@@ -16,3 +16,8 @@ struct YangPendingDebt {
     total: wad,
     debt_per_yang: wad,
 }
+
+struct YangPendingDebtInfo {
+    total: wad,
+    last_error: wad,
+}
