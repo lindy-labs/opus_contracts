@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_le
+from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp
 
 from contracts.shrine.roles import ShrineRoles
@@ -190,6 +190,7 @@ func shrine_live() -> (is_live: bool) {
 // Getters
 //
 
+// Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
 @view
 func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
@@ -207,11 +208,14 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     let (trove: Trove) = get_trove(trove_id);
     let debt = compound(trove_id, trove.debt, trove.charge_from, interval);
 
-    // TODO: Do we need to catch trove value == 0 but debt > 0?
-
-    // If debt is 0, return LTV as 0
-    if (debt == 0) {
-        return (threshold, 0, value, debt);
+    // Catch troves with no value (e.g. forging debt without any collateral)
+    if (value == 0) {
+        let has_debt: bool = is_not_zero(debt);
+        if (has_debt == TRUE) {
+            return (threshold, WadRay.BOUND, value, debt);
+        } else {
+            return (threshold, 0, value, debt);
+        }
     }
 
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
@@ -823,34 +827,6 @@ func seize{
 // Core Functions - View
 //
 
-// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value at the current interval.
-// This is because it needs to calculate the trove value anyway, and `is_healthy` needs the trove value.
-@view
-func get_trove_threshold_and_value{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt
-) -> (threshold: ray, value: wad) {
-    alloc_locals;
-
-    let (yang_count: ufelt) = shrine_yangs_count.read();
-    let interval: ufelt = now();
-    return get_trove_threshold_and_value_internal(trove_id, interval, interval, yang_count, 0, 0);
-}
-
-// Calculate a Trove's current loan-to-value ratio
-// returns a ray
-@view
-func get_current_trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt
-) -> (ltv: ray) {
-    alloc_locals;
-
-    let (trove: Trove) = get_trove(trove_id);
-    let interval: ufelt = now();
-    let debt: wad = estimate(trove_id);
-    let ltv = trove_ltv(trove_id, interval, debt);
-    return (ltv,);
-}
-
 // Get the last updated price for a yang
 @view
 func get_current_yang_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -872,43 +848,14 @@ func get_current_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     return get_recent_multiplier_from(interval);
 }
 
-// Returns the debt a trove owes, including any interest that has accumulated since
-// `Trove.charge_from` but not accrued to `Trove.debt` yet.
-@view
-func estimate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
-    debt: wad
-) {
-    alloc_locals;
-
-    let (trove: Trove) = get_trove(trove_id);
-
-    // Early termination if no debt
-    if (trove.debt == 0) {
-        return (trove.debt,);
-    }
-
-    let current_interval: ufelt = now();
-    let debt = compound(trove_id, trove.debt, trove.charge_from, current_interval);
-    return (debt,);
-}
-
 // Returns a bool indicating whether the given trove is healthy or not
 @view
 func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (healthy: bool) {
     alloc_locals;
-
-    let (debt: wad) = estimate(trove_id);
-
-    // Early termination if trove has no debt
-    if (debt == 0) {
-        return (TRUE,);
-    }
-
-    let max_debt: wad = get_trove_max_debt(trove_id);
-
-    return (is_le(debt, max_debt),);
+    let (threshold: ray, ltv: ray, _, _) = get_trove_info(trove_id);
+    return (is_le(ltv, threshold),);
 }
 
 @view
@@ -917,9 +864,10 @@ func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) -> (max: wad) {
     alloc_locals;
 
-    let (debt: wad) = estimate(trove_id);
-    let max_debt: wad = get_trove_max_debt(trove_id);
+    let (threshold: ray, _, value: wad, debt: wad) = get_trove_info(trove_id);
 
+    // f Calculating the maximum amount of debt the trove can have
+    let max_debt: wad = WadRay.rmul(threshold, value);
     let can_forge: bool = is_le(debt, max_debt);
 
     // Early termination if trove cannot forge new debt
@@ -1136,36 +1084,6 @@ func get_base_rate{range_check_ptr}(ltv: ray) -> ray {
 // y = m*x + b
 func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
     return WadRay.add(WadRay.rmul(m, x), b);
-}
-
-// Returns the maximum debt for a trove as a wad
-func get_trove_max_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt
-) -> wad {
-    let (threshold: ray, value: wad) = get_trove_threshold_and_value(trove_id);  // Getting the trove's custom threshold and total collateral value
-    let max_debt: wad = WadRay.rmul(threshold, value);  // Calculating the maximum amount of debt the trove can have
-    return (max_debt);
-}
-
-// Calculates the trove's LTV at the given interval.
-// See comments above `get_trove_threshold_and_value` for the underlying assumption on which the correctness of the result depends.
-// Another assumption here is that if trove debt is non-zero, then there is collateral in the trove
-// Returns a ray.
-func trove_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, interval: ufelt, debt: wad
-) -> ray {
-    // Early termination if no debt
-    if (debt == 0) {
-        return 0;
-    }
-
-    let (yang_count: ufelt) = shrine_yangs_count.read();
-    let (_, value: wad) = get_trove_threshold_and_value_internal(
-        trove_id, interval, interval, yang_count, 0, 0
-    );
-
-    let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
-    return ltv;
 }
 
 // Returns the price for `yang_id` at `interval` if it is non-zero.
