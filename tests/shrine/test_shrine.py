@@ -188,7 +188,6 @@ async def shrine_deposit_trove2(shrine) -> StarknetCallInfo:
 
 @pytest.fixture
 async def shrine_melt(shrine, shrine_forge) -> StarknetCallInfo:
-
     estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
     melt = await shrine.melt(TROVE1_OWNER, TROVE_1, estimated_debt).execute(caller_address=SHRINE_OWNER)
     return melt
@@ -973,20 +972,19 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert trove.debt == forge_amt_wad
     assert trove.charge_from == FEED_LEN - 1
 
-    yang0_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
-    trove_ltv = (await shrine.get_trove_info(TROVE_1).execute()).result.ltv
-    adjusted_trove_ltv = Decimal(trove_ltv) / RAY_SCALE
-    expected_ltv = Decimal(forge_amt_wad) / Decimal(10 * yang0_price)
-    assert_equalish(adjusted_trove_ltv, expected_ltv)
+    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
+    trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    trove_ltv = from_ray(trove_info.ltv)
+    expected_ltv = Decimal(forge_amt_wad) / Decimal(10 * yang_price)
+    assert_equalish(trove_ltv, expected_ltv)
 
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
     assert is_healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG_0_ADDRESS).execute()).result.price
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
     expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG_0_THRESHOLD])
-    current_debt = from_wad((await shrine.get_trove_info(TROVE_1).execute()).result.debt)
+    current_debt = from_wad(trove_info.debt)
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
 
