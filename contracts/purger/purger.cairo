@@ -19,8 +19,21 @@ from contracts.lib.wad_ray import WadRay
 // Constants
 //
 
+// Close factor function parameters
 const CF1 = WadRay.RAY_PERCENT * 270;
 const CF2 = WadRay.RAY_PERCENT * 22;
+
+// Maximum liquidation penalty
+const MAX_PENALTY = 125 * 10 ** 24;  // 0.125
+
+// Minimum liquidation penalty
+const MIN_PENALTY = 3 * 10 ** 25;  // 0.03
+
+// Difference between minimum and maximum liquidation penalty
+const PENALTY_DIFF = MAX_PENALTY - MIN_PENALTY;
+
+// LTV at the maximum liquidation penalty
+const MAX_PENALTY_LTV = 8888 * 10 ** 23;  // 0.8888
 
 //
 // Storage
@@ -34,6 +47,10 @@ func purger_shrine() -> (shrine: address) {
 func purger_abbot() -> (abbot: address) {
 }
 
+@storage_var
+func purger_absorber() -> (absorber: address) {
+}
+
 //
 // Events
 //
@@ -42,8 +59,8 @@ func purger_abbot() -> (abbot: address) {
 func Purged(
     trove_id: ufelt,
     purge_amt: wad,
-    recipient: address,
     funder: address,
+    recipient: address,
     percentage_freed: ray,
     yangs_len: ufelt,
     yangs: address*,
@@ -59,7 +76,7 @@ func Purged(
 // Returns the liquidation penalty based on the LTV (ray)
 // Returns 0 if trove is healthy
 @view
-func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (penalty: ray) {
     alloc_locals;
@@ -71,10 +88,13 @@ func get_purge_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return (0,);
     }
 
+    let (trove_threshold: ray, trove_value: wad) = IShrine.get_trove_threshold_and_value(
+        shrine, trove_id
+    );
+    let (trove_debt: wad) = IShrine.estimate(shrine, trove_id);
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
-    // placeholder
-    let penalty: ray = get_purge_penalty_internal(trove_ltv);
+    let penalty: ray = get_penalty_internal(trove_threshold, trove_ltv, trove_value, trove_debt);
     return (penalty,);
 }
 
@@ -94,8 +114,9 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     }
 
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
+    let (debt: wad) = IShrine.estimate(shrine, trove_id);
 
-    let close_amount = get_max_close_amount_internal(shrine, trove_id, trove_ltv);
+    let close_amount = get_max_close_amount_internal(trove_ltv, debt);
     return (close_amount,);
 }
 
@@ -105,10 +126,11 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, abbot: address
+    shrine: address, abbot: address, absorber: address
 ) {
     purger_shrine.write(shrine);
     purger_abbot.write(abbot);
+    purger_absorber.write(absorber);
     return ();
 }
 
@@ -116,13 +138,16 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // External functions
 //
 
+// Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
+// and the recipient address to send the freed collateral to.
+// Reverts if the trove is not liquidatable (i.e. LTV > threshold)
+// Reverts if the repayment amount exceeds the maximum amount as determined by the close factor.
 @external
-func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
     alloc_locals;
 
-    let (caller: address) = get_caller_address();
     let (shrine: address) = purger_shrine.read();
 
     // Check that trove can be liquidated
@@ -131,18 +156,99 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert is_healthy = FALSE;
     }
 
-    let (before_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
-
     // Check purge_amt <= max_close_amt
-    let max_close_amt: wad = get_max_close_amount_internal(shrine, trove_id, before_ltv);
+    // Since the value of `max_close_amt` cannot exceed `debt`, this also checks that 0 < `purge_amt` < `debt`
+    let (debt: wad) = IShrine.estimate(shrine, trove_id);
+    let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
+
+    let max_close_amt: wad = get_max_close_amount_internal(trove_ltv, debt);
     with_attr error_message("Purger: Maximum close amount exceeded") {
         assert_nn_le(purge_amt, max_close_amt);
     }
 
-    let percentage_freed: ray = get_percentage_freed(shrine, trove_id, purge_amt, before_ltv);
+    let (funder: address) = get_caller_address();
+    return purge(shrine, trove_id, trove_ltv, debt, purge_amt, funder, recipient);
+}
 
-    // Melt from the caller address directly
-    IShrine.melt(shrine, caller, trove_id, purge_amt);
+// Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
+// to the stability pool. If the stability pool does not have sufficient yin, the trove's debt and collateral
+// will be proportionally redistributed among all troves containing the trove's collateral.
+// - The amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
+// Reverts if the trove's LTV is not above the max penalty LTV
+// - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
+@external
+func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
+    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+) {
+    alloc_locals;
+
+    let (shrine: address) = purger_shrine.read();
+
+    // Check that trove can be liquidated
+    let (is_healthy: bool) = IShrine.is_healthy(shrine, trove_id);
+    with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
+        assert is_healthy = FALSE;
+    }
+
+    let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
+    // Check that max penalty LTV is exceeded
+    let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
+    with_attr error_message("Purger: Trove {trove_id} is not absorbable") {
+        assert below_max_penalty_ltv = FALSE;
+    }
+
+    let (debt: wad) = IShrine.estimate(shrine, trove_id);
+    let (absorber: address) = purger_absorber.read();
+
+    let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
+
+    // This also checks that the value that is passed as `purge_amt` to `purge` cannot exceed `debt`.
+    let fully_absorbable: bool = is_nn_le(debt, absorber_yin_balance);
+    if (fully_absorbable == TRUE) {
+        let (
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+        ) = purge(shrine, trove_id, trove_ltv, debt, debt, absorber, absorber);
+    } else {
+        let (
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+        ) = purge(shrine, trove_id, trove_ltv, debt, absorber_yin_balance, absorber, absorber);
+        // TODO: Redistribute
+    }
+
+    // TODO: Call Absorber to update its internal accounting
+
+    return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
+}
+
+//
+// Internal
+//
+
+// Internal function to handle the paying down of a trove's debt in return for the
+// corresponding freed collateral to be sent to the recipient address
+// Reverts if the trove's LTV is worse off than before the purge
+// - This should not be possible, but is added in for safety.
+func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    shrine: address,
+    trove_id: ufelt,
+    before_ltv: ray,
+    debt: wad,
+    purge_amt: wad,
+    funder: address,
+    recipient: address,
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+    alloc_locals;
+
+    let (trove_threshold: ray, trove_value: wad) = IShrine.get_trove_threshold_and_value(
+        shrine, trove_id
+    );
+
+    let percentage_freed: ray = get_percentage_freed(
+        trove_threshold, before_ltv, trove_value, debt, purge_amt
+    );
+
+    // Melt from the funder address directly
+    IShrine.melt(shrine, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
     let (abbot: address) = purger_abbot.read();
@@ -162,23 +268,19 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     Purged.emit(
         trove_id,
         purge_amt,
+        funder,
         recipient,
-        caller,
         percentage_freed,
         yang_count,
-        &yangs[0],
+        yangs,
         yang_count,
-        &freed_assets_amt[0],
+        freed_assets_amt,
     );
 
     // The denomination for each value in `freed_assets_amt` will be based on the decimals
     // for the respective asset.
     return (yang_count, yangs, yang_count, freed_assets_amt);
 }
-
-//
-// Internal
-//
 
 // Returns the close factor based on the LTV (ray)
 // closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22
@@ -198,10 +300,9 @@ func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 }
 
 func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, trove_id: ufelt, trove_ltv: ray
+    trove_ltv: ray, debt: wad
 ) -> wad {
     let close_factor: ray = get_close_factor(trove_ltv);
-    let (debt: wad) = IShrine.estimate(shrine, trove_id);
 
     // `rmul` of a wad and a ray returns a wad
     let close_amt: wad = WadRay.rmul(debt, close_factor);
@@ -214,18 +315,45 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
     return close_amt;
 }
 
-func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ltv: ray
-) -> ray {
-    // placeholder
-    let is_covered = is_nn_le(ltv, WadRay.RAY_ONE);
-    if (is_covered == FALSE) {
-        return 0;
+// Assumption: Trove's LTV has exceeded its threshold
+//
+//                                              maxLiqPenalty - minLiqPenalty
+// - If LTV <= MAX_PENALTY_LTV, penalty = LTV * ----------------------------- + b
+//                                              maxPenaltyLTV - liqThreshold
+//
+//                                      = LTV * m + b
+//
+//
+//                                               (trove_value - trove_debt)
+// - If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
+//                                                      trove_debt
+//
+// - If 100% < LTV, penalty = 0
+// Return value is a tuple so that function can be modified as an external view for testing
+func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad
+) -> (penalty: ray) {
+    let is_penalizable: bool = is_nn_le(trove_ltv, WadRay.RAY_ONE);
+    if (is_penalizable == FALSE) {
+        return (0,);
     }
 
-    let rem: ray = WadRay.sub(WadRay.RAY_ONE, ltv);
-    let (penalty, _) = unsigned_div_rem(rem, 20);
-    return penalty;
+    let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
+    if (below_max_penalty_ltv == TRUE) {
+        // Derive the 'm' term
+        let m: ray = WadRay.rsigned_div(PENALTY_DIFF, WadRay.sub(MAX_PENALTY_LTV, trove_threshold));
+
+        // Derive the `b` constant
+        let b: ray = WadRay.sub(MIN_PENALTY, WadRay.rmul(trove_threshold, m));
+
+        let penalty: ray = WadRay.add(WadRay.rmul(m, trove_ltv), b);
+        return (penalty,);
+    }
+
+    let penalty: ray = WadRay.runsigned_div(
+        WadRay.sub_unsigned(trove_value, trove_debt), trove_debt
+    );
+    return (penalty,);
 }
 
 // Helper function to calculate percentage of collateral freed.
@@ -233,23 +361,22 @@ func get_purge_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided
 // by total trove value.
 func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, trove_id: ufelt, purge_amt: wad, ltv: ray
+    trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad, purge_amt: wad
 ) -> ray {
-    let is_covered = is_nn_le(ltv, WadRay.RAY_ONE);
-    if (is_covered == FALSE) {
-        let (trove_debt) = IShrine.estimate(shrine, trove_id);
+    alloc_locals;
 
+    let is_penalizable: bool = is_nn_le(trove_ltv, WadRay.RAY_ONE);
+    if (is_penalizable == FALSE) {
         // `runsigned_div` of two wads returns a ray
         let prorata_percentage_freed: ray = WadRay.runsigned_div(purge_amt, trove_debt);
         return prorata_percentage_freed;
     }
 
-    let penalty: ray = get_purge_penalty_internal(ltv);
+    let penalty: ray = get_penalty_internal(trove_threshold, trove_ltv, trove_value, trove_debt);
 
     // `rmul` of a wad and a ray returns a wad
     let penalty_amt: wad = WadRay.rmul(purge_amt, penalty);
     let freed_amt: wad = WadRay.add_unsigned(penalty_amt, purge_amt);
-    let (_, trove_value: wad) = IShrine.get_trove_threshold_and_value(shrine, trove_id);
 
     // `runsigned_div` of two wads returns a ray
     let percentage_freed: ray = WadRay.runsigned_div(freed_amt, trove_value);
