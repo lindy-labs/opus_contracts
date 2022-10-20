@@ -191,13 +191,31 @@ func shrine_live() -> (is_live: bool) {
 //
 
 @view
-func get_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
-) -> (trove: Trove) {
-    let (trove_packed) = shrine_troves.read(trove_id);
-    let (charge_from: ufelt, debt: wad) = split_felt(trove_packed);
-    let trove: Trove = Trove(charge_from=charge_from, debt=debt);
-    return (trove,);
+) -> (threshold: ray, ltv: ray, value: wad, debt: wad) {
+    alloc_locals;
+
+    // Get threshold and trove value
+    let interval: ufelt = now();
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    let (threshold: ray, value: wad) = get_trove_threshold_and_value_internal(
+        trove_id, interval, interval, yang_count, 0, 0
+    );
+
+    // Calculate debt
+    let (trove: Trove) = get_trove(trove_id);
+    let debt = compound(trove_id, trove.debt, trove.charge_from, interval);
+
+    // TODO: Do we need to catch trove value == 0 but debt > 0?
+
+    // If debt is 0, return LTV as 0
+    if (debt == 0) {
+        return (threshold, 0, value, debt);
+    }
+
+    let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
+    return (threshold, ltv, value, debt);
 }
 
 @view
@@ -940,6 +958,15 @@ func get_valid_yang_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 
     return yang_id;
+}
+
+func get_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt
+) -> (trove: Trove) {
+    let (trove_packed: packed) = shrine_troves.read(trove_id);
+    let (charge_from: ufelt, debt: wad) = split_felt(trove_packed);
+    let trove: Trove = Trove(charge_from=charge_from, debt=debt);
+    return (trove,);
 }
 
 func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
