@@ -319,6 +319,9 @@ func get_max_close_amount_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin
 // - If LTV <= MAX_PENALTY_LTV, penalty = LTV * ----------------------------- + b
 //                                              maxPenaltyLTV - liqThreshold
 //
+//                                      = LTV * m + b
+//
+//
 //                                               (trove_value - trove_debt)
 // - If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
 //                                                      trove_debt
@@ -335,6 +338,7 @@ func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
     let below_max_penalty_ltv: bool = is_nn_le(trove_ltv, MAX_PENALTY_LTV);
     if (below_max_penalty_ltv == TRUE) {
+        // Derive the 'm' term
         let m: ray = WadRay.rsigned_div(PENALTY_DIFF, WadRay.sub(MAX_PENALTY_LTV, trove_threshold));
 
         // Derive the `b` constant
