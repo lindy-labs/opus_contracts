@@ -157,18 +157,13 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert_nn_le(purge_amt, max_close_amt);
     }
 
-    let (funder: address) = get_caller_address();
-    return purge(
-        shrine,
-        trove_id,
-        trove_threshold,
-        trove_ltv,
-        trove_value,
-        trove_debt,
-        purge_amt,
-        funder,
-        recipient,
+    // Get percentage freed
+    let percentage_freed: ray = get_percentage_freed(
+        trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
     );
+
+    let (funder: address) = get_caller_address();
+    return purge(shrine, trove_id, trove_ltv, purge_amt, percentage_freed, funder, recipient);
 }
 
 // Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
@@ -206,32 +201,18 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // This also checks that the value that is passed as `purge_amt` to `purge` cannot exceed `debt`.
     let fully_absorbable: bool = is_nn_le(trove_debt, absorber_yin_balance);
     if (fully_absorbable == TRUE) {
+        // Call purge with `percentage_freed` set to 100%
         let (
             yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
-        ) = purge(
-            shrine,
-            trove_id,
-            trove_threshold,
-            trove_ltv,
-            trove_value,
-            trove_debt,
-            trove_debt,
-            absorber,
-            absorber,
-        );
+        ) = purge(shrine, trove_id, trove_ltv, trove_debt, WadRay.RAY_ONE, absorber, absorber);
     } else {
+        let percentage_freed: ray = get_percentage_freed(
+            trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_balance
+        );
         let (
             yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
         ) = purge(
-            shrine,
-            trove_id,
-            trove_threshold,
-            trove_ltv,
-            trove_value,
-            trove_debt,
-            absorber_yin_balance,
-            absorber,
-            absorber,
+            shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
         );
         // TODO: Redistribute
     }
@@ -252,19 +233,13 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine: address,
     trove_id: ufelt,
-    trove_threshold: ray,
     trove_ltv: ray,
-    trove_value: ray,
-    trove_debt: wad,
     purge_amt: wad,
+    percentage_freed: ray,
     funder: address,
     recipient: address,
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
     alloc_locals;
-
-    let percentage_freed: ray = get_percentage_freed(
-        trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
-    );
 
     // Melt from the funder address directly
     IShrine.melt(shrine, funder, trove_id, purge_amt);
