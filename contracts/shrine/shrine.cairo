@@ -326,13 +326,18 @@ func add_yang{
     // Set threshold
     set_threshold(yang, threshold);
 
-    // Seed initial price to ensure `get_recent_price_from` terminates
-    let current_interval: ufelt = now();
-
     // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
-    // `advance` cannot be called here since it relies on `get_recent_price_from` which needs an initial price or else it runs forever
     let init_price_and_cumulative_price: packed = pack_125(initial_price, initial_price);
-    shrine_yang_price.write(yang_id, current_interval, init_price_and_cumulative_price);
+
+    let current_interval: ufelt = now();
+    let previous_interval: ufelt = current_interval - 1;
+    // seeding initial price to the previous interval to ensure `get_recent_price_from` terminates
+    // new prices are pushed to Shrine from an oracle via `advance` and are always set on the current
+    // interval (`now()`); if we wouldn't set this initial price to `now() - 1` and oracle could
+    // update a price still in the current interval (as oracle update times are independent of
+    // Shrine's intervals, a price can be updated multiple times in a single interval) which would
+    // result in an endless loop of `get_recent_price_from` since it wouldn't find the initial price
+    shrine_yang_price.write(yang_id, previous_interval, init_price_and_cumulative_price);
 
     // Events
     YangAdded.emit(yang, yang_id, max, initial_price);
