@@ -157,6 +157,7 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     // Check purge_amt <= max_close_amt
+    // Since the value of `max_close_amt` cannot exceed `debt`, this also checks that 0 < `purge_amt` < `debt`
     let (debt: wad) = IShrine.estimate(shrine, trove_id);
     let (trove_ltv: ray) = IShrine.get_current_trove_ltv(shrine, trove_id);
 
@@ -201,6 +202,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 
     let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
 
+    // This also checks that the value that is passed as `purge_amt` to `purge` cannot exceed `debt`.
     let fully_absorbable: bool = is_nn_le(debt, absorber_yin_balance);
     if (fully_absorbable == TRUE) {
         let (
