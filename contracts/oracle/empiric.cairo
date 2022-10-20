@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_in_range, assert_le, assert_not_zero
 from starkware.cairo.common.math_cmp import is_le, is_le_felt
 from starkware.starknet.common.syscalls import get_block_timestamp
 
@@ -25,6 +25,14 @@ from contracts.lib.interfaces import IEmpiricOracle
 from contracts.shrine.interface import IShrine
 
 const WAD_DECIMALS = 18;
+// TODO: comment
+// [lower, upper)
+const LOWER_FRESHNESS_BOUND = 60;  // 1 minute
+const UPPER_FRESHNESS_BOUND = 60 * 60 * 4 + 1;  // 4 hours
+const LOWER_SOURCES_BOUND = 1;
+const UPPER_SOURCES_BOUND = 13;
+const LOWER_UPDATE_INTERVAL_BOUND = 15;  // seconds (SN tx goal)
+const UPPER_UPDATE_INTERVAL_BOUND = 60 * 60 * 4 + 1;
 
 struct PriceValidityThresholds {
     freshness: ufelt,
@@ -135,6 +143,8 @@ func constructor{
     freshness_threshold: ufelt,
     sources_threshold: ufelt,
 ) {
+    alloc_locals;
+
     AccessControl.initializer(admin);
 
     // grant admin permissions
@@ -143,16 +153,12 @@ func constructor{
     empiric_oracle.write(oracle);
     empiric_shrine.write(shrine);
     empiric_update_interval.write(update_interval);
-    empiric_price_validity_thresholds.write(
-        PriceValidityThresholds(freshness_threshold, sources_threshold)
-    );
+    let validity_thresholds = PriceValidityThresholds(freshness_threshold, sources_threshold);
+    empiric_price_validity_thresholds.write(validity_thresholds);
 
     OracleAddressUpdated.emit(0, oracle);
     UpdateIntervalUpdated.emit(0, update_interval);
-    PriceValidityThresholdsUpdated.emit(
-        PriceValidityThresholds(0, 0),
-        PriceValidityThresholds(freshness_threshold, sources_threshold),
-    );
+    PriceValidityThresholdsUpdated.emit(PriceValidityThresholds(0, 0), validity_thresholds);
 
     return ();
 }
@@ -161,22 +167,26 @@ func constructor{
 // Setters
 //
 
-// TODO: should we have getters? for all that are settable?
-
 @external
 func set_price_validity_thresholds{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(freshness: ufelt, sources: ufelt) {
+    alloc_locals;
+
     AccessControl.assert_has_role(EmpiricRoles.SET_PRICE_VALIDITY_THRESHOLDS);
-    with_attr error_message("Empiric: threshold values cannot be zero") {
-        assert_not_zero(freshness);
-        assert_not_zero(sources);
+
+    with_attr error_message("Empiric: freshness threshold out of bounds") {
+        assert_in_range(freshness, LOWER_FRESHNESS_BOUND, UPPER_FRESHNESS_BOUND);
     }
 
-    let (old: PriceValidityThresholds) = empiric_price_validity_thresholds.read();
-    empiric_price_validity_thresholds.write(PriceValidityThresholds(freshness, sources));
+    with_attr error_message("Empiric: sources threshold out of bounds") {
+        assert_in_range(sources, LOWER_SOURCES_BOUND, UPPER_SOURCES_BOUND);
+    }
 
-    PriceValidityThresholdsUpdated.emit(old, PriceValidityThresholds(freshness, sources));
+    let (old_thresholds: PriceValidityThresholds) = empiric_price_validity_thresholds.read();
+    let new_thresholds: PriceValidityThresholds = PriceValidityThresholds(freshness, sources);
+    empiric_price_validity_thresholds.write(new_thresholds);
+    PriceValidityThresholdsUpdated.emit(old_thresholds, new_thresholds);
 
     return ();
 }
@@ -186,6 +196,7 @@ func set_oracle_address{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(oracle: address) {
     AccessControl.assert_has_role(EmpiricRoles.SET_ORACLE_ADDRESS);
+
     with_attr error_message("Empiric: address cannot be zero") {
         assert_not_zero(oracle);
     }
@@ -203,8 +214,9 @@ func set_update_interval{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(new_interval: ufelt) {
     AccessControl.assert_has_role(EmpiricRoles.SET_UPDATE_INTERVAL);
-    with_attr error_message("Empiric: update interval cannot be zero") {
-        assert_not_zero(new_interval);
+
+    with_attr error_message("Empiric: update interval out of bounds") {
+        assert_in_range(new_interval, LOWER_UPDATE_INTERVAL_BOUND, UPPER_UPDATE_INTERVAL_BOUND);
     }
 
     let (old_interval: ufelt) = empiric_update_interval.read();
@@ -231,8 +243,15 @@ func add_yang{
         assert_not_zero(yang);
     }
 
-    // TODO: do a sanity check - if Empiric actually responds to using the
-    //       empiric_id and if the return decimals are <= 18?
+    // doing a sanity check if Empiric actually offers a price feed
+    // on the requested asset and if it's suitable for our needs
+    let (oracle: address) = empiric_oracle.read();
+    with_attr error_message("Empiric: problem fetching oracle price") {
+        let (_, decimals: ufelt, _, _) = IEmpiricOracle.get_spot_median(oracle, empiric_id);
+    }
+    with_attr error_message("Empiric: feed with too many decimals") {
+        assert_le(decimals, WAD_DECIMALS);
+    }
 
     let settings: YangSettings = YangSettings(empiric_id, yang);
     let (index) = empiric_yangs_count.read();
@@ -270,7 +289,7 @@ func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 }
 
 //
-// YAGI keepers / ITask
+// ITask (Yagi keepers)
 //
 
 @view
@@ -308,18 +327,18 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
     let (settings: YangSettings) = empiric_yang_settings.read(index);
 
-    // TODO: use get_spot_median_multi !!!
     let (
         value: ufelt, decimals: ufelt, last_updated_ts: ufelt, num_sources: ufelt
     ) = IEmpiricOracle.get_spot_median(oracle, settings.empiric_id);
 
-    // TODO: should we trust Empiric that decimals <= WAD_DECIMALS will always be true?
     // convert the price to wad
     let (mul: ufelt) = pow10(WAD_DECIMALS - decimals);
     let price: wad = value * mul;
 
     let (is_valid) = is_valid_price_update(block_timestamp, last_updated_ts, num_sources);
     if (is_valid == TRUE) {
+        // TODO: once we have a single gate, this call to advance will have to be updated, see:
+        //       https://github.com/lindy-labs/aura_contracts/pull/152#issuecomment-1282143697
         IShrine.advance(shrine, settings.yang, price);
     } else {
         InvalidPriceUpdate.emit(settings.yang, price, last_updated_ts, num_sources);
