@@ -189,8 +189,13 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 
 # Same as above but also comes with ready-to-use yangs and price feeds
 @pytest.fixture
-async def shrine_setup(shrine_deploy) -> StarknetContract:
+async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
+
+    # Setting block timestamp to interval 1, because add_yang assigns the initial
+    # price to current interval - 1 (i.e. 0 in this case)
+    set_block_timestamp(starknet, TIME_INTERVAL)
+
     # Set debt ceiling
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
@@ -273,7 +278,11 @@ async def abbot(starknet, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def abbot_with_yangs(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+async def abbot_with_yangs(starknet: Starknet, abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+    # Setting block timestamp to interval 1, because add_yang assigns the initial
+    # price to current interval - 1 (i.e. 0 in this case)
+    set_block_timestamp(starknet, TIME_INTERVAL)
+
     for yang in (steth_yang, doge_yang):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
