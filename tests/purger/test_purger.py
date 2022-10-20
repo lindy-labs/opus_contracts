@@ -439,19 +439,19 @@ async def test_liquidate_pass(
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
-    # Call purge
-    purge = await purger.liquidate(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
+    # Call liquidate
+    liquidate = await purger.liquidate(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
     # Check return data
-    assert purge.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
-    freed_steth = purge.result.freed_assets_amt[0]
-    freed_doge = purge.result.freed_assets_amt[1]
+    assert liquidate.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
+    freed_steth = liquidate.result.freed_assets_amt[0]
+    freed_doge = liquidate.result.freed_assets_amt[1]
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
 
     # Check event
     assert_event_emitted(
-        purge,
+        liquidate,
         purger.contract_address,
         "Purged",
         lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER]
@@ -647,19 +647,19 @@ async def test_absorb_pass(
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
-    # Call purge
-    purge = await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
+    # Call absorb
+    absorb = await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
 
     # Check return data
-    assert purge.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
-    freed_steth = purge.result.freed_assets_amt[0]
-    freed_doge = purge.result.freed_assets_amt[1]
+    assert absorb.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
+    freed_steth = absorb.result.freed_assets_amt[0]
+    freed_doge = absorb.result.freed_assets_amt[1]
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
 
     # Check event
     assert_event_emitted(
-        purge,
+        absorb,
         purger.contract_address,
         "Purged",
         lambda d: d[:4] == [TROVE_1, before_trove_info.debt, MOCK_ABSORBER, MOCK_ABSORBER]
