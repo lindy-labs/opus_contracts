@@ -298,8 +298,8 @@ async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_y
 @pytest.mark.asyncio
 async def test_aura_user_setup(shrine, purger, aura_user_with_first_trove):
     forge_amt = aura_user_with_first_trove
-    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    assert trove.debt == forge_amt
+    trove_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
+    assert trove_debt == forge_amt
 
 
 #
@@ -388,11 +388,12 @@ async def test_liquidate_pass(
     assert is_healthy == FALSE
 
     # Get LTV
-    before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
-    trove_debt = from_wad((await shrine.estimate(TROVE_1).execute()).result.debt)
-    res = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result
-    trove_value = from_wad(res.value)
-    trove_threshold = from_ray(res.threshold)
+    trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    trove_value = from_wad(trove_info.value)
+    trove_threshold = from_ray(trove_info.threshold)
+    trove_debt_wad = trove_info.debt
+    trove_debt = from_wad(trove_debt_wad)
+    before_ltv = from_ray(trove_info.ltv)
 
     # Check purge penalty
     penalty = from_ray((await purger.get_penalty(TROVE_1).execute()).result.penalty)
@@ -401,9 +402,7 @@ async def test_liquidate_pass(
         assert_equalish(penalty, expected_penalty)
 
     # Check maximum close amount
-    estimated_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.debt
-    estimated_debt = from_wad(estimated_debt_wad)
-    expected_maximum_close_amt = get_max_close_amount(estimated_debt, before_ltv)
+    expected_maximum_close_amt = get_max_close_amount(trove_debt, before_ltv)
     maximum_close_amt_wad = (await purger.get_max_close_amount(TROVE_1).execute()).result.amount
     assert_equalish(from_wad(maximum_close_amt_wad), expected_maximum_close_amt)
 
@@ -419,7 +418,7 @@ async def test_liquidate_pass(
     before_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
 
     # Get freed percentage
-    trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
+    trove_value = from_wad((await shrine.get_trove_info(TROVE_1).execute()).result.value)
     freed_percentage = get_freed_percentage(
         trove_threshold, before_ltv, trove_value, trove_debt, from_wad(close_amt_wad)
     )
@@ -462,7 +461,7 @@ async def test_liquidate_pass(
     )
 
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
-    after_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
+    after_ltv = from_ray((await shrine.get_trove_info(TROVE_1).execute()).result.ltv)
     assert after_ltv <= before_ltv
 
     # Check collateral tokens balance of searcher
@@ -484,8 +483,8 @@ async def test_liquidate_pass(
     assert_equalish(after_trove_doge_yang_wad, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
 
     # Check trove debt
-    after_trove_debt = (await shrine.get_trove(TROVE_1).execute()).result.trove.debt
-    assert_equalish(after_trove_debt, estimated_debt_wad - close_amt_wad)
+    after_trove_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
+    assert_equalish(after_trove_debt, trove_debt_wad - close_amt_wad)
 
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
@@ -513,7 +512,7 @@ async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
     assert is_healthy == TRUE
 
     # Get trove debt
-    purge_amt = (await shrine.estimate(TROVE_1).execute()).result.debt // 2
+    purge_amt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt // 2
 
     with pytest.raises(StarkException, match=f"Purger: Trove {TROVE_1} is not liquidatable"):
         if fn == "liquidate":
@@ -604,12 +603,12 @@ async def test_absorb_pass(
     assert is_healthy == FALSE
 
     # Get LTV
-    before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
-    res = (await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result
-    trove_value = from_wad(res.value)
-    trove_threshold = from_ray(res.threshold)
-    trove_debt_wad = (await shrine.estimate(TROVE_1).execute()).result.debt
+    trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    trove_value = from_wad(trove_info.value)
+    trove_threshold = from_ray(trove_info.threshold)
+    trove_debt_wad = trove_info.debt
     trove_debt = from_wad(trove_debt_wad)
+    before_ltv = from_ray(trove_info.ltv)
 
     # Check purge penalty
     penalty = from_ray((await purger.get_penalty(TROVE_1).execute()).result.penalty)
@@ -628,7 +627,7 @@ async def test_absorb_pass(
     before_absorber_doge_bal = from_wad(from_uint((await doge_token.balanceOf(MOCK_ABSORBER).execute()).result.balance))
 
     # Get freed percentage
-    trove_value = from_wad((await shrine.get_trove_threshold_and_value(TROVE_1).execute()).result.value)
+    trove_value = from_wad((await shrine.get_trove_info(TROVE_1).execute()).result.value)
     freed_percentage = get_freed_percentage(trove_threshold, before_ltv, trove_value, trove_debt, trove_debt)
 
     # Get yang balance of trove
@@ -669,7 +668,7 @@ async def test_absorb_pass(
     )
 
     # Check that LTV is 0 after all debt is repaid
-    after_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
+    after_ltv = from_ray((await shrine.get_trove_info(TROVE_1).execute()).result.ltv)
     assert after_ltv == 0
 
     # Check collateral tokens balance of absorber
@@ -693,7 +692,7 @@ async def test_absorb_pass(
     assert_equalish(after_trove_doge_yang_wad, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
 
     # Check trove debt
-    after_trove_debt = (await shrine.get_trove(TROVE_1).execute()).result.trove.debt
+    after_trove_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
     assert after_trove_debt == 0
 
 
@@ -729,7 +728,7 @@ async def test_absorb_fail_ltv_too_low(
     assert is_healthy == FALSE
 
     # Get LTV
-    before_ltv = from_ray((await shrine.get_current_trove_ltv(TROVE_1).execute()).result.ltv)
+    before_ltv = from_ray((await shrine.get_trove_info(TROVE_1).execute()).result.ltv)
     assert before_ltv <= MAX_PENALTY_LTV
 
     with pytest.raises(StarkException, match=f"Purger: Trove {TROVE_1} is not absorbable"):
