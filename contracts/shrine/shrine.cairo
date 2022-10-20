@@ -853,7 +853,6 @@ func get_current_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (healthy: bool) {
-    alloc_locals;
     let (threshold: ray, ltv: ray, _, _) = get_trove_info(trove_id);
     return (is_le(ltv, threshold),);
 }
@@ -862,15 +861,13 @@ func is_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 func get_max_forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (max: wad) {
-    alloc_locals;
-
     let (threshold: ray, _, value: wad, debt: wad) = get_trove_info(trove_id);
 
-    // f Calculating the maximum amount of debt the trove can have
+    // Calculate the maximum amount of debt the trove can have
     let max_debt: wad = WadRay.rmul(threshold, value);
-    let can_forge: bool = is_le(debt, max_debt);
 
     // Early termination if trove cannot forge new debt
+    let can_forge: bool = is_le(debt, max_debt);
     if (can_forge == FALSE) {
         return (0,);
     }

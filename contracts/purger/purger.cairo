@@ -79,14 +79,12 @@ func Purged(
 func get_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (penalty: ray) {
-    alloc_locals;
-
     let (shrine: address) = purger_shrine.read();
     let (threshold: ray, ltv: ray, value: wad, debt: wad) = IShrine.get_trove_info(
         shrine, trove_id
     );
 
-    let (is_healthy: bool) = is_nn_le(ltv, threshold);
+    let is_healthy: bool = is_nn_le(ltv, threshold);
     if (is_healthy == TRUE) {
         return (0,);
     }
@@ -101,10 +99,7 @@ func get_penalty{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (amount: wad) {
-    alloc_locals;
-
     let (shrine: address) = purger_shrine.read();
-
     let (threshold: ray, ltv: ray, _, debt: wad) = IShrine.get_trove_info(shrine, trove_id);
 
     let is_healthy: bool = is_nn_le(ltv, threshold);
