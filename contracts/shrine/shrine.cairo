@@ -197,8 +197,9 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 ) -> (threshold: ray, ltv: ray, value: wad, debt: wad) {
     alloc_locals;
 
-    // Get threshold and trove value
     let interval: ufelt = now();
+
+    // Get threshold and trove value
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let (threshold: ray, value: wad) = get_trove_threshold_and_value_internal(
         trove_id, interval, interval, yang_count, 0, 0
@@ -208,10 +209,11 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     let (trove: Trove) = get_trove(trove_id);
     let debt = compound(trove_id, trove.debt, trove.charge_from, interval);
 
-    // Catch troves with no value (e.g. forging debt without any collateral)
+    // Catch troves with no value
     if (value == 0) {
         let has_debt: bool = is_not_zero(debt);
         if (has_debt == TRUE) {
+            // Handles corner case: forging non-zero debt for a trove with zero value
             return (threshold, WadRay.BOUND, value, debt);
         } else {
             return (threshold, 0, value, debt);
