@@ -45,9 +45,11 @@ from tests.utils import (
     WAD_SCALE,
     Uint256,
     YangConfig,
+    compile_code,
     compile_contract,
     create_feed,
     estimate_gas,
+    get_contract_code_with_replacement,
     max_approve,
     set_block_timestamp,
     str_to_felt,
@@ -173,7 +175,16 @@ async def mrac_controller(starknet: Starknet) -> StarknetContract:
 # Returns the deployed shrine module
 @pytest.fixture
 async def shrine_deploy(starknet: Starknet) -> StarknetContract:
-    shrine_contract = compile_contract("contracts/shrine/shrine.cairo")
+    shrine_code = get_contract_code_with_replacement(
+        "contracts/shrine/shrine.cairo",
+        # Append `@view` decorator to internal functions for testing
+        {
+            "func get_avg_price": "@view\nfunc get_avg_price",
+            "func get_avg_multiplier": "@view\nfunc get_avg_multiplier",
+        },
+    )
+
+    shrine_contract = compile_code(shrine_code)
 
     shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
 
@@ -185,8 +196,13 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 
 # Same as above but also comes with ready-to-use yangs and price feeds
 @pytest.fixture
-async def shrine_setup(shrine_deploy) -> StarknetContract:
+async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
+
+    # Setting block timestamp to interval 1, because add_yang assigns the initial
+    # price to current interval - 1 (i.e. 0 in this case)
+    set_block_timestamp(starknet, TIME_INTERVAL)
+
     # Set debt ceiling
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
@@ -269,7 +285,11 @@ async def abbot(starknet, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def abbot_with_yangs(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+async def abbot_with_yangs(starknet: Starknet, abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+    # Setting block timestamp to interval 1, because add_yang assigns the initial
+    # price to current interval - 1 (i.e. 0 in this case)
+    set_block_timestamp(starknet, TIME_INTERVAL)
+
     for yang in (steth_yang, doge_yang):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
@@ -308,7 +328,7 @@ async def doge_token(tokens) -> StarknetContract:
 @pytest.fixture
 def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
-    threshold = 90 * RAY_PERCENT
+    threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
     return YangConfig(steth_token.contract_address, ceiling, threshold, price_wad, steth_gate.contract_address)
 

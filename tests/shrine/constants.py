@@ -14,18 +14,21 @@ FAUX_YANG_ADDRESS = 7890
 # Shrine setup constants
 YANGS = [
     {
+        "id": 1,
         "address": YANG1_ADDRESS,
         "start_price": Decimal("2000"),
         "ceiling": 10_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
+        "id": 2,
         "address": YANG2_ADDRESS,
         "start_price": Decimal("500"),
         "ceiling": 100_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
+        "id": 3,
         "address": YANG3_ADDRESS,
         "start_price": Decimal("1.25"),
         "ceiling": 10_000_000 * WAD_SCALE,
@@ -36,6 +39,7 @@ YANGS = [
 YANG_0_ADDRESS = YANGS[0]["address"]
 YANG_0_CEILING = YANGS[0]["ceiling"]
 YANG_0_THRESHOLD = YANGS[0]["threshold"]
+YANG_0_ID = YANGS[0]["id"]
 
 INITIAL_DEPOSIT = 10
 INITIAL_DEPOSIT_WAD = 10 * WAD_SCALE
