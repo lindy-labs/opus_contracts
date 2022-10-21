@@ -231,7 +231,7 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
     assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [steth_yang.contract_address, TROVE_1, 0])
     assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [doge_yang.contract_address, TROVE_1, 0])
     assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [0])  # from melt
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 0, 0])
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, 0])
 
     # asserts on the tokens
     # the 0 is to conform to Uint256
@@ -362,7 +362,7 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
     tx = await abbot.forge(TROVE_1, forge_amount).execute(caller_address=AURA_USER)
 
     # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 0, forge_amount])
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, forge_amount])
     assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER, forge_amount])
 
     assert (await yin.balanceOf(AURA_USER).execute()).result.balance == forge_amount
@@ -389,7 +389,7 @@ async def test_melt(abbot, yin, shrine):
     tx = await abbot.melt(TROVE_1, melt_amount).execute(caller_address=AURA_USER)
 
     # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 0, remaining_amount])
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
     assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER, remaining_amount])
 
     assert (await yin.balanceOf(AURA_USER).execute()).result.balance == remaining_amount
