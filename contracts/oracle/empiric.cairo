@@ -2,9 +2,14 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_in_range, assert_le, assert_not_zero
-from starkware.cairo.common.math_cmp import is_le, is_le_felt
-from starkware.starknet.common.syscalls import get_block_timestamp
+from starkware.cairo.common.math import (
+    assert_in_range,
+    assert_le,
+    assert_not_equal,
+    assert_not_zero,
+)
+from starkware.cairo.common.math_cmp import is_le
+from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.oracle.roles import EmpiricRoles
 
@@ -33,6 +38,7 @@ const LOWER_SOURCES_BOUND = 1;
 const UPPER_SOURCES_BOUND = 13;
 const LOWER_UPDATE_INTERVAL_BOUND = 15;  // seconds (SN tx goal)
 const UPPER_UPDATE_INTERVAL_BOUND = 60 * 60 * 4 + 1;
+const MAX_FUTURE_TS_DIFF = 5 * 60;  // 5 minutes; SN is targeting 15s blocks; TODO: find a better name
 
 struct PriceValidityThresholds {
     freshness: ufelt,
@@ -111,7 +117,7 @@ func OracleAddressUpdated(old_address: address, new_address: address) {
 }
 
 @event
-func PricesUpdated(timestamp: ufelt) {
+func PricesUpdated(timestamp: ufelt, caller: address) {
 }
 
 @event
@@ -238,9 +244,17 @@ func add_yang{
     alloc_locals;
 
     AccessControl.assert_has_role(EmpiricRoles.ADD_YANG);
+
     with_attr error_message("Empiric: invalid values") {
         assert_not_zero(empiric_id);
         assert_not_zero(yang);
+    }
+
+    let (index) = empiric_yangs_count.read();
+
+    // check if adding a yang that's already in the system
+    with_attr error_message("Empiric: yang already present") {
+        assert_new_yang(0, index, yang);
     }
 
     // doing a sanity check if Empiric actually offers a price feed
@@ -283,7 +297,8 @@ func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // record update timestamp
     empiric_last_price_update.write(block_timestamp);
 
-    PricesUpdated.emit(block_timestamp);
+    let (caller: address) = get_caller_address();
+    PricesUpdated.emit(block_timestamp, caller);
 
     return ();
 }
@@ -301,7 +316,7 @@ func probeTask{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (update_interval: ufelt) = empiric_update_interval.read();
 
     let seconds_since_last_update = block_timestamp - last_updated_ts;
-    let is_task_ready: bool = is_le_felt(update_interval, seconds_since_last_update);
+    let is_task_ready: bool = is_le(update_interval, seconds_since_last_update);
 
     return (is_task_ready,);
 }
@@ -315,6 +330,19 @@ func executeTask{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 //
 // Internal
 //
+
+func assert_new_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    index: ufelt, max: ufelt, yang: address
+) {
+    if (index == max) {
+        return ();
+    }
+
+    let (settings: YangSettings) = empiric_yang_settings.read(index);
+    assert_not_equal(settings.yang, yang);
+
+    return assert_new_yang(index + 1, max, yang);
+}
 
 func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     index: ufelt, count: ufelt, oracle: address, shrine: address, block_timestamp: ufelt
@@ -357,9 +385,23 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     // check if the update is from enough sources
     let has_enough_sources: bool = is_le(required.sources, num_sources);
 
-    // check if the update is fresh enough
-    let is_fresh: bool = is_le(block_timestamp - required.freshness, block_timestamp);
+    // it is possible that he last_updates_ts is greater than the block_timestamp (in other words,
+    // it is from the future from the chain's perspective), because the update timestamp is coming
+    // from a data publisher while the block timestamp from the sequencer, they can be out of sync
+    //
+    // in such a case, we base the whole validity check only on the number of sources and we trust
+    // Empiric with regards to data freshness - they have a check in place where they discards
+    // updates that are too far in the future
+    //
+    // we considered having our own "too far in the future" check but that could lead to us
+    // discarding updates in cases where just a single publisher would push updates with future
+    // timestamp; that could be disasterous as we would have stale prices
+    let is_from_future: bool = is_le(block_timestamp, last_updated_ts);
+    if (is_from_future == TRUE) {
+        return (has_enough_sources,);
+    }
 
+    let is_fresh: bool = is_le(block_timestamp - last_updated_ts, required.freshness);
     // multiplication simulates boolean AND
     return (has_enough_sources * is_fresh,);
 }

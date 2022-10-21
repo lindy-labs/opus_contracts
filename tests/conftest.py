@@ -10,7 +10,12 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
 from tests.gate.rebasing_yang.constants import INITIAL_AMT
-from tests.oracle.constants import EMPIRIC_FRESHNESS_THRESHOLD, EMPIRIC_SOURCES_THRESHOLD, EMPIRIC_UPDATE_INTERVAL
+from tests.oracle.constants import (
+    EMPIRIC_FRESHNESS_THRESHOLD,
+    EMPIRIC_SOURCES_THRESHOLD,
+    EMPIRIC_UPDATE_INTERVAL,
+    INIT_BLOCK_TS,
+)
 from tests.roles import ShrineRoles
 from tests.shrine.constants import (
     DEBT_CEILING,
@@ -410,6 +415,7 @@ async def mock_empiric_impl(starknet) -> StarknetContract:
 
 @pytest.fixture
 async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
+    set_block_timestamp(starknet, INIT_BLOCK_TS)
     contract = compile_contract("contracts/oracle/empiric.cairo")
     empiric = await starknet.deploy(
         contract_class=contract,

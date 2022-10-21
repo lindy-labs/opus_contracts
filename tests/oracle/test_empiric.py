@@ -13,6 +13,7 @@ from tests.oracle.constants import (
     EMPIRIC_UPPER_FRESHNESS_BOUND,
     EMPIRIC_UPPER_SOURCES_BOUND,
     EMPIRIC_UPPER_UPDATE_INTERVAL_BOUND,
+    INIT_BLOCK_TS,
 )
 from tests.roles import EmpiricRoles
 from tests.utils import (
@@ -26,6 +27,14 @@ from tests.utils import (
     to_wad,
 )
 
+BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
+BTC_YANG = str_to_felt("btc")
+BTC_INIT_PRICE = 19520
+
+ETH_EMPIRIC_ID = str_to_felt("ETH/USD")
+ETH_YANG = str_to_felt("eth")
+ETH_INIT_PRICE = 1283
+
 
 def to_empiric(value: int) -> int:
     """
@@ -34,6 +43,19 @@ def to_empiric(value: int) -> int:
     one, i.e. as if it was returned from Empiric.
     """
     return value * (10**8)
+
+
+@pytest.fixture
+async def with_yangs(shrine, empiric):
+    await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
+    await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
+
+    await shrine.add_yang(ETH_YANG, 100_000_000, to_wad(Decimal("0.9")), to_wad(ETH_INIT_PRICE)).execute(
+        caller_address=SHRINE_OWNER
+    )
+    await shrine.add_yang(BTC_YANG, 100_000_000, to_wad(Decimal("0.85")), to_wad(BTC_INIT_PRICE)).execute(
+        caller_address=SHRINE_OWNER
+    )
 
 
 @pytest.mark.asyncio
@@ -133,120 +155,141 @@ async def test_set_update_interval_failures(empiric):
 
 @pytest.mark.asyncio
 async def test_add_yang(empiric):
-    empiric_id = str_to_felt("ETH/USD")
-    yang = str_to_felt("eth")
-
-    tx = await empiric.add_yang(empiric_id, yang).execute(caller_address=EMPIRIC_OWNER)
-    assert_event_emitted(tx, empiric.contract_address, "YangAdded", [0, empiric_id, yang])
+    tx = await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
+    assert_event_emitted(tx, empiric.contract_address, "YangAdded", [0, ETH_EMPIRIC_ID, ETH_YANG])
 
 
 @pytest.mark.asyncio
 async def test_add_yang_failures(empiric, mock_empiric_impl):
     with pytest.raises(StarkException, match="Empiric: invalid values"):
-        await empiric.add_yang(0, str_to_felt("eth")).execute(caller_address=EMPIRIC_OWNER)
-
-    pair_id = str_to_felt("ETH/USD")
+        await empiric.add_yang(0, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
     with pytest.raises(StarkException, match="Empiric: invalid values"):
-        await empiric.add_yang(pair_id, 0).execute(caller_address=EMPIRIC_OWNER)
+        await empiric.add_yang(ETH_EMPIRIC_ID, 0).execute(caller_address=EMPIRIC_OWNER)
 
     with pytest.raises(StarkException):
-        await empiric.add_yang(pair_id, str_to_felt("eth")).execute(caller_address=BAD_GUY)
+        await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=BAD_GUY)
 
-    await mock_empiric_impl.next_get_spot_median(pair_id, 100, 20, 5000, 3).execute()
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 20, 5000, 3).execute()
     with pytest.raises(StarkException, match="Empiric: feed with too many decimals"):
-        await empiric.add_yang(pair_id, str_to_felt("eth")).execute(caller_address=EMPIRIC_OWNER)
+        await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
+
+    await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
+    with pytest.raises(StarkException, match="Empiric: yang already present"):
+        await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
 
 
-# TODO: parametrize - have values go up only or down only
+@pytest.mark.usefixtures("with_yangs")
 @pytest.mark.asyncio
 async def test_update_prices(empiric, mock_empiric_impl, shrine, starknet):
-    init_block_ts = 1666000000
-    set_block_timestamp(starknet, init_block_ts)
-    oracle_update_ts = init_block_ts + TIME_INTERVAL + 1  # ensuring the update is in the next interval
+    oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
     oracle_update_interval = oracle_update_ts // TIME_INTERVAL
 
-    eth_addr = str_to_felt("eth")
-    eth_pair_id = str_to_felt("ETH/USD")
-    init_eth_price = 1283
+    # the multiplying by 2 here is because add_yang sets the
+    # sentinel value in the interval _previous_ to current
     new_eth_price = 1293
-    eth_cumulative_price = init_eth_price + new_eth_price
-
-    btc_addr = str_to_felt("btc")
-    btc_pair_id = str_to_felt("BTC/USD")
-    init_btc_price = 19520
-    new_btc_price = 19600
-    btc_cumulative_price = init_btc_price + new_btc_price
-
-    await empiric.add_yang(eth_pair_id, eth_addr).execute(caller_address=EMPIRIC_OWNER)
-    await empiric.add_yang(btc_pair_id, btc_addr).execute(caller_address=EMPIRIC_OWNER)
-
-    await shrine.add_yang(eth_addr, 100_000_000, to_wad(Decimal("0.9")), to_wad(init_eth_price)).execute(
-        caller_address=SHRINE_OWNER
-    )
-    await shrine.add_yang(btc_addr, 100_000_000, to_wad(Decimal("0.85")), to_wad(init_btc_price)).execute(
-        caller_address=SHRINE_OWNER
-    )
+    eth_cumulative_price = ETH_INIT_PRICE * 2 + new_eth_price
+    new_btc_price = 19330
+    btc_cumulative_price = BTC_INIT_PRICE * 2 + new_btc_price
 
     await mock_empiric_impl.next_get_spot_median(
-        eth_pair_id, to_empiric(new_eth_price), 8, oracle_update_ts, 3
+        ETH_EMPIRIC_ID, to_empiric(new_eth_price), 8, oracle_update_ts, 3
     ).execute()
     await mock_empiric_impl.next_get_spot_median(
-        btc_pair_id, to_empiric(new_btc_price), 8, oracle_update_ts, 4
+        BTC_EMPIRIC_ID, to_empiric(new_btc_price), 8, oracle_update_ts, 4
     ).execute()
 
     set_block_timestamp(starknet, oracle_update_ts)
-    tx = await empiric.update_prices().execute()
-    assert_event_emitted(tx, empiric.contract_address, "PricesUpdated", [oracle_update_ts])
+    caller = str_to_felt("yagi")
+    tx = await empiric.update_prices().execute(caller_address=caller)
+    assert_event_emitted(tx, empiric.contract_address, "PricesUpdated", [oracle_update_ts, caller])
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "YangPriceUpdated",
-        [eth_addr, to_wad(new_eth_price), to_wad(eth_cumulative_price), oracle_update_interval],
+        [ETH_YANG, to_wad(new_eth_price), to_wad(eth_cumulative_price), oracle_update_interval],
     )
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "YangPriceUpdated",
-        [btc_addr, to_wad(new_btc_price), to_wad(btc_cumulative_price), oracle_update_interval],
+        [BTC_YANG, to_wad(new_btc_price), to_wad(btc_cumulative_price), oracle_update_interval],
     )
 
-    assert (await shrine.get_yang_price(eth_addr, oracle_update_interval).execute()).result.price == to_wad(
+    assert (await shrine.get_yang_price(ETH_YANG, oracle_update_interval).execute()).result.price == to_wad(
         new_eth_price
     )
-    assert (await shrine.get_yang_price(btc_addr, oracle_update_interval).execute()).result.price == to_wad(
+    assert (await shrine.get_yang_price(BTC_YANG, oracle_update_interval).execute()).result.price == to_wad(
         new_btc_price
     )
 
 
 @pytest.mark.asyncio
-async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl, shrine, starknet):
-    init_block_ts = 1666000000
-    set_block_timestamp(starknet, init_block_ts)
-    next_block_ts = init_block_ts + 1
+async def test_update_prices_without_yangs(empiric):
+    # just to test the module works well even if no yangs were added yet
+    caller = str_to_felt("yagi")
+    tx = await empiric.update_prices().execute(caller_address=caller)
+    assert_event_emitted(tx, empiric.contract_address, "PricesUpdated", [INIT_BLOCK_TS, caller])
 
-    eth_addr = str_to_felt("eth")
-    eth_pair_id = str_to_felt("ETH/USD")
-    init_eth_price = 1283
 
-    await empiric.add_yang(eth_pair_id, eth_addr).execute(caller_address=EMPIRIC_OWNER)
-    await shrine.add_yang(eth_addr, 100_000_000, to_wad(Decimal("0.9")), to_wad(init_eth_price)).execute(
-        caller_address=SHRINE_OWNER
-    )
+@pytest.mark.usefixtures("with_yangs")
+@pytest.mark.asyncio
+async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl, starknet):
     await mock_empiric_impl.next_get_spot_median(
-        eth_pair_id, to_empiric(init_eth_price + 1), 8, next_block_ts, 3
+        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE), 8, INIT_BLOCK_TS, 3
     ).execute()
 
-    set_block_timestamp(starknet, next_block_ts)
+    # first update should pass
+    await empiric.update_prices().execute()
+
+    # second update that's happening too soon should not pass
+    set_block_timestamp(starknet, INIT_BLOCK_TS + 1)
     with pytest.raises(StarkException, match="Empiric: too soon to update prices"):
         await empiric.update_prices().execute()
 
 
+# first parametrization check for insufficient number of sources,
+# second for stale price update (too much in the past)
+@pytest.mark.parametrize("ts_diff, num_sources", [(0, 1), (24 * 3600, 4)])
 @pytest.mark.asyncio
-async def test_udpate_prices_invalid_price_updates():
-    pass
+async def test_update_prices_invalid_price_updates(empiric, mock_empiric_impl, starknet, ts_diff, num_sources):
+    update_price = 1300
+    update_ts = INIT_BLOCK_TS - ts_diff
+
+    await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
+
+    await mock_empiric_impl.next_get_spot_median(
+        ETH_EMPIRIC_ID, to_empiric(update_price), 8, update_ts, num_sources
+    ).execute()
+
+    tx = await empiric.update_prices().execute()
+    assert_event_emitted(
+        tx,
+        empiric.contract_address,
+        "InvalidPriceUpdate",
+        [ETH_YANG, to_wad(update_price), update_ts, num_sources],
+    )
 
 
-# test_probeTask - for yes and no
+@pytest.mark.usefixtures("with_yangs")
+@pytest.mark.asyncio
+async def test_probeTask(empiric, mock_empiric_impl, starknet):
+    # initially, empiric_last_price_update is 0, so probeTask should return true
+    assert (await empiric.probeTask().execute()).result.is_task_ready == 1
 
-# test for trying to update a price of a just added yang within the same Shrine's interval
+    new_ts = INIT_BLOCK_TS + 1
+    set_block_timestamp(starknet, new_ts)
+    await mock_empiric_impl.next_get_spot_median(
+        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE + 30), 8, new_ts, 3
+    ).execute()
+    await empiric.update_prices().execute()
+
+    # after update_prices, the last update ts is moved to current block ts
+    # as well, so calling probeTask in the same block afterwards should
+    # return false
+    assert (await empiric.probeTask().execute()).result.is_task_ready == 0
+
+    # moving the block time forward to the next time interval, probeTask
+    # should again return true
+    set_block_timestamp(starknet, new_ts + TIME_INTERVAL + 1)
+    assert (await empiric.probeTask().execute()).result.is_task_ready == 1
