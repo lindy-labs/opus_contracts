@@ -523,6 +523,10 @@ func move_yang{
 
     AccessControl.assert_has_role(ShrineRoles.MOVE_YANG);
 
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
+
     let yang_id: ufelt = get_valid_yang_id(yang);
 
     // Charge interest for source trove to ensure it remains safe

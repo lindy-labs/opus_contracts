@@ -150,6 +150,11 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (shrine: address) = purger_shrine.read();
 
+    // Assert validity of `purge_amt` argument
+    with_attr error_message("Purger: Value of `purge_amt` ({purge_amt}) is out of bounds") {
+        WadRay.assert_valid_unsigned(purge_amt);
+    }
+
     // Check that trove can be liquidated
     let (is_healthy: bool) = IShrine.is_healthy(shrine, trove_id);
     with_attr error_message("Purger: Trove {trove_id} is not liquidatable") {
