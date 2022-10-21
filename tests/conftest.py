@@ -223,7 +223,7 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
         for j in range(len(YANGS)):
             await shrine.advance(YANGS[j]["address"], feeds[j][i]).execute(caller_address=SHRINE_OWNER)
 
-        await shrine.update_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
+        await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
     return shrine, feeds
 

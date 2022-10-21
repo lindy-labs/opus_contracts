@@ -347,11 +347,11 @@ func add_yang{
 }
 
 @external
-func update_yang_max{
+func set_yang_max{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(yang: address, new_max: wad) {
     alloc_locals;
-    AccessControl.assert_has_role(ShrineRoles.UPDATE_YANG_MAX);
+    AccessControl.assert_has_role(ShrineRoles.SET_YANG_MAX);
 
     with_attr error_message("Shrine: Value of `new_max` ({new_max}) is out of bounds") {
         WadRay.assert_valid_unsigned(new_max);
@@ -486,11 +486,11 @@ func advance{
 
 // Appends a new multiplier value
 @external
-func update_multiplier{
+func set_multiplier{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(new_multiplier: ray) {
     alloc_locals;
-    AccessControl.assert_has_role(ShrineRoles.UPDATE_MULTIPLIER);
+    AccessControl.assert_has_role(ShrineRoles.SET_MULTIPLIER);
 
     with_attr error_message("Shrine: cannot set a multiplier value to zero.") {
         assert_not_zero(new_multiplier);  // Cannot set a multiplier value to zero

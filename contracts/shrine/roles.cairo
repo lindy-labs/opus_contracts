@@ -12,13 +12,13 @@ namespace ShrineRoles {
     const MOVE_YIN = 2 ** 7;
     const SEIZE = 2 ** 8;
     const SET_CEILING = 2 ** 9;
-    const SET_THRESHOLD = 2 ** 10;
-    const UPDATE_MULTIPLIER = 2 ** 11;
-    const UPDATE_YANG_MAX = 2 ** 12;
+    const SET_MULTIPLIER = 2 ** 10;
+    const SET_THRESHOLD = 2 ** 11;
+    const SET_YANG_MAX = 2 ** 12;
     const WITHDRAW = 2 ** 13;
 
     //
     // Constants
     //
-    const DEFAULT_SHRINE_ADMIN_ROLE = ADD_YANG + UPDATE_YANG_MAX + SET_CEILING + SET_THRESHOLD + KILL;
+    const DEFAULT_SHRINE_ADMIN_ROLE = ADD_YANG + SET_YANG_MAX + SET_CEILING + SET_THRESHOLD + KILL;
 }
