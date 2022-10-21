@@ -85,7 +85,7 @@ async def test_set_price_validity_thresholds(empiric):
     new_freshness = 5 * 60
     new_sources = 8
 
-    tx = await empiric.set_price_validity_thresholds(new_freshness, new_sources).execute()
+    tx = await empiric.set_price_validity_thresholds(new_freshness, new_sources).execute(caller_address=EMPIRIC_OWNER)
 
     assert_event_emitted(
         tx,
