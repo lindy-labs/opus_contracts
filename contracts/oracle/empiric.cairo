@@ -175,6 +175,24 @@ func constructor{
 //
 
 @external
+func set_oracle_address{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(oracle: address) {
+    AccessControl.assert_has_role(EmpiricRoles.SET_ORACLE_ADDRESS);
+
+    with_attr error_message("Empiric: address cannot be zero") {
+        assert_not_zero(oracle);
+    }
+
+    let (old: address) = empiric_oracle.read();
+    empiric_oracle.write(oracle);
+
+    OracleAddressUpdated.emit(old, oracle);
+
+    return ();
+}
+
+@external
 func set_price_validity_thresholds{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(freshness: ufelt, sources: ufelt) {
@@ -194,24 +212,6 @@ func set_price_validity_thresholds{
     let new_thresholds: PriceValidityThresholds = PriceValidityThresholds(freshness, sources);
     empiric_price_validity_thresholds.write(new_thresholds);
     PriceValidityThresholdsUpdated.emit(old_thresholds, new_thresholds);
-
-    return ();
-}
-
-@external
-func set_oracle_address{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(oracle: address) {
-    AccessControl.assert_has_role(EmpiricRoles.SET_ORACLE_ADDRESS);
-
-    with_attr error_message("Empiric: address cannot be zero") {
-        assert_not_zero(oracle);
-    }
-
-    let (old: address) = empiric_oracle.read();
-    empiric_oracle.write(oracle);
-
-    OracleAddressUpdated.emit(old, oracle);
 
     return ();
 }
