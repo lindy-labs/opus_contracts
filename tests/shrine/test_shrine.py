@@ -480,11 +480,11 @@ async def test_add_yang_unauthorized(shrine):
         ).execute(caller_address=BAD_GUY)
 
 
-@pytest.mark.parametrize("val", WAD_RAY_OOB_VALUES)
+@pytest.mark.parametrize("max_amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
 async def test_add_yang_out_of_bounds(shrine, max_amt):
     with pytest.raises(StarkException, match=r"Shrine: Value of `max` \(-?\d+\) is out of bounds"):
-        await shrine.add_yang(123, val, YANG1_THRESHOLD, to_wad(YANGS[0]["start_price"])).execute(
+        await shrine.add_yang(123, max_amt, YANG1_THRESHOLD, to_wad(YANGS[0]["start_price"])).execute(
             caller_address=SHRINE_OWNER
         )
 
@@ -510,6 +510,13 @@ async def test_set_threshold_exceeds_max(shrine):
     max = RAY_SCALE
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
         await shrine.set_threshold(YANG1_ADDRESS, max + 1).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.mark.parametrize("threshold", WAD_RAY_OOB_VALUES)
+@pytest.mark.asyncio
+async def test_set_threshold_out_of_bounds(shrine, threshold):
+    with pytest.raises(StarkException, match=r"Shrine: Value of `new_threshold` \(-?\d+\) is out of bounds"):
+        await shrine.set_threshold(YANG1_ADDRESS, threshold).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.asyncio

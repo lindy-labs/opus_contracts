@@ -392,6 +392,10 @@ func set_threshold{
 
     AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD);
 
+    with_attr error_message("Shrine: Value of `new_threshold` ({new_threshold}) is out of bounds") {
+        WadRay.assert_valid_unsigned(new_threshold);
+    }
+
     // Check that threshold value is not greater than max threshold
     with_attr error_message("Shrine: Threshold exceeds 100%") {
         assert_le(new_threshold, MAX_THRESHOLD);
