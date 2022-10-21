@@ -33,6 +33,7 @@ RAY_PERCENT = 10**25
 WAD_SCALE = 10**18
 RAY_SCALE = 10**27
 WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
+WADRAY_BOUND = 2**125
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
@@ -113,6 +114,10 @@ def signed_int_to_felt(a: int) -> int:
     if a >= 0:
         return a
     return CAIRO_PRIME + a
+
+
+# Out of bound values for WadRay
+WAD_RAY_OOB_VALUES = [signed_int_to_felt(-1), WADRAY_BOUND + 1]
 
 
 def felt_to_str(felt: int) -> str:
