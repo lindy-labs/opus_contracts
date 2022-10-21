@@ -30,15 +30,16 @@ from contracts.lib.interfaces import IEmpiricOracle
 from contracts.shrine.interface import IShrine
 
 const WAD_DECIMALS = 18;
-// TODO: comment
-// [lower, upper)
+
+// there are sanity bounds for settable values, i.e. they can never
+// be set outside of this hardcoded range
+// the range is [lower, upper)
 const LOWER_FRESHNESS_BOUND = 60;  // 1 minute
 const UPPER_FRESHNESS_BOUND = 60 * 60 * 4 + 1;  // 4 hours
 const LOWER_SOURCES_BOUND = 1;
 const UPPER_SOURCES_BOUND = 13;
-const LOWER_UPDATE_INTERVAL_BOUND = 15;  // seconds (SN tx goal)
-const UPPER_UPDATE_INTERVAL_BOUND = 60 * 60 * 4 + 1;
-const MAX_FUTURE_TS_DIFF = 5 * 60;  // 5 minutes; SN is targeting 15s blocks; TODO: find a better name
+const LOWER_UPDATE_INTERVAL_BOUND = 15;  // seconds (StarkNet block prod goal)
+const UPPER_UPDATE_INTERVAL_BOUND = 60 * 60 * 4 + 1;  // 4 hours
 
 struct PriceValidityThresholds {
     freshness: ufelt,
