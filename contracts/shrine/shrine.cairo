@@ -207,7 +207,7 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
     // Calculate debt
     let (trove: Trove) = get_trove(trove_id);
-    let debt = compound(trove_id, trove.debt, trove.charge_from, interval);
+    let debt: wad = compound(trove_id, trove.debt, trove.charge_from, interval);
 
     // Catch troves with no value
     if (value == 0) {

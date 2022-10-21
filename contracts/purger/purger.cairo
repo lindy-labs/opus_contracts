@@ -107,7 +107,7 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return (0,);
     }
 
-    let close_amount = get_max_close_amount_internal(ltv, debt);
+    let close_amount: wad = get_max_close_amount_internal(ltv, debt);
     return (close_amount,);
 }
 
