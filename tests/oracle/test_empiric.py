@@ -39,14 +39,17 @@ ETH_INIT_PRICE = 1283
 def to_empiric(value: int) -> int:
     """
     Empiric reports the pairs used in this test suite with 8 decimals.
-    This function converts a "regular" numeric value to an Emipric native
+    This function converts a "regular" numeric value to an Empiric native
     one, i.e. as if it was returned from Empiric.
     """
     return value * (10**8)
 
 
 @pytest.fixture
-async def with_yangs(shrine, empiric):
+async def with_yangs(shrine, empiric, mock_empiric_impl):
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, 8, 5000, 6).execute()
+
     await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
     await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
 
@@ -154,26 +157,32 @@ async def test_set_update_interval_failures(empiric):
 
 
 @pytest.mark.asyncio
-async def test_add_yang(empiric):
+async def test_add_yang(empiric, mock_empiric_impl):
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 8, 5000, 3).execute()
     tx = await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
     assert_event_emitted(tx, empiric.contract_address, "YangAdded", [0, ETH_EMPIRIC_ID, ETH_YANG])
 
 
 @pytest.mark.asyncio
 async def test_add_yang_failures(empiric, mock_empiric_impl):
+    with pytest.raises(StarkException):
+        await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=BAD_GUY)
+
     with pytest.raises(StarkException, match="Empiric: invalid values"):
         await empiric.add_yang(0, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
     with pytest.raises(StarkException, match="Empiric: invalid values"):
         await empiric.add_yang(ETH_EMPIRIC_ID, 0).execute(caller_address=EMPIRIC_OWNER)
 
-    with pytest.raises(StarkException):
-        await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=BAD_GUY)
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 0, 5000, 3).execute()
+    with pytest.raises(StarkException, match="Empiric: unknown pair ID"):
+        await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
     await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 20, 5000, 3).execute()
     with pytest.raises(StarkException, match="Empiric: feed with too many decimals"):
         await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
+    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 100, 8, 5000, 3).execute()
     await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
     with pytest.raises(StarkException, match="Empiric: yang already present"):
         await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
@@ -251,12 +260,11 @@ async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl,
 # first parametrization check for insufficient number of sources,
 # second for stale price update (too much in the past)
 @pytest.mark.parametrize("ts_diff, num_sources", [(0, 1), (24 * 3600, 4)])
+@pytest.mark.usefixtures("with_yangs")
 @pytest.mark.asyncio
-async def test_update_prices_invalid_price_updates(empiric, mock_empiric_impl, starknet, ts_diff, num_sources):
+async def test_update_prices_invalid_price_updates(empiric, mock_empiric_impl, ts_diff, num_sources):
     update_price = 1300
     update_ts = INIT_BLOCK_TS - ts_diff
-
-    await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
     await mock_empiric_impl.next_get_spot_median(
         ETH_EMPIRIC_ID, to_empiric(update_price), 8, update_ts, num_sources

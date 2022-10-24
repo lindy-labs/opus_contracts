@@ -14,6 +14,8 @@ from contracts.lib.aliases import ray, ufelt, wad
 
 // Wad: signed felt scaled by 10**18 (meaning 10**18 = 1)
 namespace WadRay {
+    const WAD_DECIMALS = 18;
+    const RAY_DECIMALS = 27;
     const BOUND = 2 ** 125;
     const WAD_SCALE = 10 ** 18;
     const RAY_SCALE = 10 ** 27;

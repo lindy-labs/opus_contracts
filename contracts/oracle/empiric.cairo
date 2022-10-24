@@ -12,6 +12,7 @@ from starkware.cairo.common.math_cmp import is_le
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.oracle.roles import EmpiricRoles
+from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
@@ -25,18 +26,16 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 )
 from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, ufelt, wad
-from contracts.lib.pow import pow10
 from contracts.lib.interfaces import IEmpiricOracle
-from contracts.shrine.interface import IShrine
-
-const WAD_DECIMALS = 18;
+from contracts.lib.pow import pow10
+from contracts.lib.wad_ray import WadRay
 
 // there are sanity bounds for settable values, i.e. they can never
 // be set outside of this hardcoded range
 // the range is [lower, upper)
 const LOWER_FRESHNESS_BOUND = 60;  // 1 minute
 const UPPER_FRESHNESS_BOUND = 60 * 60 * 4 + 1;  // 4 hours
-const LOWER_SOURCES_BOUND = 1;
+const LOWER_SOURCES_BOUND = 3;
 const UPPER_SOURCES_BOUND = 13;
 const LOWER_UPDATE_INTERVAL_BOUND = 15;  // seconds (StarkNet block prod goal)
 const UPPER_UPDATE_INTERVAL_BOUND = 60 * 60 * 4 + 1;  // 4 hours
@@ -255,7 +254,7 @@ func add_yang{
 
     // check if adding a yang that's already in the system
     with_attr error_message("Empiric: yang already present") {
-        assert_new_yang(0, index, yang);
+        assert_new_yang(index - 1, yang);
     }
 
     // doing a sanity check if Empiric actually offers a price feed
@@ -264,12 +263,15 @@ func add_yang{
     with_attr error_message("Empiric: problem fetching oracle price") {
         let (_, decimals: ufelt, _, _) = IEmpiricOracle.get_spot_median(oracle, empiric_id);
     }
+    with_attr error_message("Empiric: unknown pair ID") {
+        // Empirict returns 0 decimals for an unknown pair ID
+        assert_not_zero(decimals);
+    }
     with_attr error_message("Empiric: feed with too many decimals") {
-        assert_le(decimals, WAD_DECIMALS);
+        assert_le(decimals, WadRay.WAD_DECIMALS);
     }
 
     let settings: YangSettings = YangSettings(empiric_id, yang);
-    let (index) = empiric_yangs_count.read();
     empiric_yang_settings.write(index, settings);
     empiric_yangs_count.write(index + 1);
 
@@ -283,8 +285,8 @@ func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     alloc_locals;
 
     with_attr error_message("Empiric: too soon to update prices") {
-        let (can_proceed_with_udpate: bool) = probeTask();
-        assert can_proceed_with_udpate = TRUE;
+        let (can_proceed_with_update: bool) = probeTask();
+        assert can_proceed_with_update = TRUE;
     }
     // TODO: this func will be open to anyone, do we need any other asserts here?
 
@@ -293,7 +295,7 @@ func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (shrine: address) = empiric_shrine.read();
     let (block_timestamp: ufelt) = get_block_timestamp();
 
-    update_prices_loop(0, yangs_count, oracle, shrine, block_timestamp);
+    update_prices_loop(yangs_count - 1, oracle, shrine, block_timestamp);
 
     // record update timestamp
     empiric_last_price_update.write(block_timestamp);
@@ -333,24 +335,24 @@ func executeTask{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 //
 
 func assert_new_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    index: ufelt, max: ufelt, yang: address
+    index: ufelt, yang: address
 ) {
-    if (index == max) {
+    if (index == -1) {
         return ();
     }
 
     let (settings: YangSettings) = empiric_yang_settings.read(index);
     assert_not_equal(settings.yang, yang);
 
-    return assert_new_yang(index + 1, max, yang);
+    return assert_new_yang(index - 1, yang);
 }
 
 func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    index: ufelt, count: ufelt, oracle: address, shrine: address, block_timestamp: ufelt
+    index: ufelt, oracle: address, shrine: address, block_timestamp: ufelt
 ) {
     alloc_locals;
 
-    if (index == count) {
+    if (index == -1) {
         return ();
     }
 
@@ -361,7 +363,7 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     ) = IEmpiricOracle.get_spot_median(oracle, settings.empiric_id);
 
     // convert the price to wad
-    let (mul: ufelt) = pow10(WAD_DECIMALS - decimals);
+    let (mul: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
     let price: wad = value * mul;
 
     let (is_valid) = is_valid_price_update(block_timestamp, last_updated_ts, num_sources);
@@ -373,7 +375,7 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         InvalidPriceUpdate.emit(settings.yang, price, last_updated_ts, num_sources);
     }
 
-    return update_prices_loop(index + 1, count, oracle, shrine, block_timestamp);
+    return update_prices_loop(index - 1, oracle, shrine, block_timestamp);
 }
 
 func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -386,23 +388,26 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     // check if the update is from enough sources
     let has_enough_sources: bool = is_le(required.sources, num_sources);
 
-    // it is possible that he last_updates_ts is greater than the block_timestamp (in other words,
+    // it is possible that the last_updates_ts is greater than the block_timestamp (in other words,
     // it is from the future from the chain's perspective), because the update timestamp is coming
     // from a data publisher while the block timestamp from the sequencer, they can be out of sync
     //
     // in such a case, we base the whole validity check only on the number of sources and we trust
-    // Empiric with regards to data freshness - they have a check in place where they discards
+    // Empiric with regards to data freshness - they have a check in place where they discard
     // updates that are too far in the future
     //
     // we considered having our own "too far in the future" check but that could lead to us
     // discarding updates in cases where just a single publisher would push updates with future
-    // timestamp; that could be disasterous as we would have stale prices
+    // timestamp; that could be disastrous as we would have stale prices
     let is_from_future: bool = is_le(block_timestamp, last_updated_ts);
     if (is_from_future == TRUE) {
         return (has_enough_sources,);
     }
 
+    // use of is_le here is intentional because the result of the first argument
+    // block_timestamp - last_updates_ts can never be negative if the code reaches here
     let is_fresh: bool = is_le(block_timestamp - last_updated_ts, required.freshness);
+
     // multiplication simulates boolean AND
     return (has_enough_sources * is_fresh,);
 }
