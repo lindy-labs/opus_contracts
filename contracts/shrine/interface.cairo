@@ -92,10 +92,7 @@ namespace IShrine {
     //
     // view
     //
-    func get_trove_threshold_and_value(trove_id: ufelt) -> (threshold: ray, value: wad) {
-    }
-
-    func get_current_trove_ltv(trove_id: ufelt) -> (ltv: ray) {
+    func get_trove_info(trove_id: ufelt) -> (threshold: ray, ltv: ray, value: wad, debt: wad) {
     }
 
     func get_current_yang_price(yang: address) -> (
@@ -108,15 +105,9 @@ namespace IShrine {
     ) {
     }
 
-    func estimate(trove_id: ufelt) -> (debt: wad) {
-    }
-
     func is_healthy(trove_id: ufelt) -> (healthy: bool) {
     }
 
-    func is_within_limits(trove_id: ufelt) -> (within_limits: bool) {
-    }
-
-    func has_role(role: ufelt, user: address) -> (has_role: bool) {
+    func get_max_forge(trove_id: ufelt) -> (max: wad) {
     }
 }

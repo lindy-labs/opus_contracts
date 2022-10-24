@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
+from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
@@ -14,6 +15,7 @@ from tests.utils import (
     FALSE,
     MAX_UINT256,
     SHRINE_OWNER,
+    TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE_1,
@@ -25,6 +27,7 @@ from tests.utils import (
     compile_contract,
     from_uint,
     from_wad,
+    set_block_timestamp,
     str_to_felt,
     to_ray,
     to_wad,
@@ -133,7 +136,7 @@ async def gate_rebasing(starknet, shrine, rebasing_token) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine_authed(shrine, rebasing_token) -> StarknetContract:
+async def shrine_authed(starknet: Starknet, shrine, rebasing_token) -> StarknetContract:
     """
     Add Abbot as an authorized address of Shrine.
     """
@@ -141,6 +144,10 @@ async def shrine_authed(shrine, rebasing_token) -> StarknetContract:
     # Grant `Abbot` access to `deposit` and `withdraw` in `Shrine`
     role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
     await shrine.grant_role(role_value, MOCK_ABBOT).execute(caller_address=SHRINE_OWNER)
+
+    # Setting block timestamp to interval 1, because add_yang assigns the initial
+    # price to current interval - 1 (i.e. 0 in this case)
+    set_block_timestamp(starknet, TIME_INTERVAL)
 
     # Add rebasing_token as Yang
     await shrine.add_yang(
