@@ -50,7 +50,7 @@ namespace IShrine {
     func add_yang(yang: address, max: wad, threshold: ray, price: wad) {
     }
 
-    func update_yang_max(yang: address, new_max: wad) {
+    func set_yang_max(yang: address, new_max: wad) {
     }
 
     func set_ceiling(new_ceiling: wad) {
@@ -65,7 +65,7 @@ namespace IShrine {
     func advance(yang: address, price: wad) {
     }
 
-    func update_multiplier(new_multiplier: ray) {
+    func set_multiplier(new_multiplier: ray) {
     }
 
     func move_yang(yang: address, src_trove_id: ufelt, dst_trove_id: ufelt, amount: wad) {

@@ -339,7 +339,7 @@ func add_yang{
 
     // Assign ID to yang and add yang struct
     let (yang_count: ufelt) = shrine_yangs_count.read();
-    let yang_id = yang_count + 1;
+    let yang_id: ufelt = yang_count + 1;
 
     shrine_yang_id.write(yang, yang_id);
     shrine_yangs.write(yang_id, Yang(0, max));
@@ -371,11 +371,11 @@ func add_yang{
 }
 
 @external
-func update_yang_max{
+func set_yang_max{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(yang: address, new_max: wad) {
     alloc_locals;
-    AccessControl.assert_has_role(ShrineRoles.UPDATE_YANG_MAX);
+    AccessControl.assert_has_role(ShrineRoles.SET_YANG_MAX);
 
     with_attr error_message("Shrine: Value of `new_max` ({new_max}) is out of bounds") {
         WadRay.assert_valid_unsigned(new_max);
@@ -510,11 +510,11 @@ func advance{
 
 // Appends a new multiplier value
 @external
-func update_multiplier{
+func set_multiplier{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(new_multiplier: ray) {
     alloc_locals;
-    AccessControl.assert_has_role(ShrineRoles.UPDATE_MULTIPLIER);
+    AccessControl.assert_has_role(ShrineRoles.SET_MULTIPLIER);
 
     with_attr error_message("Shrine: cannot set a multiplier value to zero.") {
         assert_not_zero(new_multiplier);  // Cannot set a multiplier value to zero
@@ -797,8 +797,8 @@ func melt{
 
     // Reverts if amount > user_yin or amount > total_yin.
     with_attr error_message("Shrine: not enough yin to melt debt") {
-        let new_user_yin = WadRay.sub_unsigned(user_yin, amount);
-        let new_total_yin = WadRay.sub_unsigned(total_yin, amount);
+        let new_user_yin: wad = WadRay.sub_unsigned(user_yin, amount);
+        let new_total_yin: wad = WadRay.sub_unsigned(total_yin, amount);
     }
 
     shrine_yin.write(user, new_user_yin);
@@ -930,8 +930,8 @@ func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> ufelt {
-    let (time) = get_block_timestamp();
-    let (interval, _) = unsigned_div_rem(time, TIME_INTERVAL);
+    let (time: ufelt) = get_block_timestamp();
+    let (interval: ufelt, _) = unsigned_div_rem(time, TIME_INTERVAL);
     return interval;
 }
 
@@ -987,7 +987,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     }
 
     // Get current interval
-    let current_interval = now();
+    let current_interval: ufelt = now();
 
     // Get new debt amount
     let new_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
@@ -1050,7 +1050,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Using `rmul` on a ray and a wad yields a wad, which we need since `exp` only takes wads
     let compounded_scalar: wad = exp(WadRay.rmul(rate, t));
-    let compounded_debt = WadRay.wmul(current_debt, compounded_scalar);
+    let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
 
     return compounded_debt;
 }
@@ -1099,7 +1099,7 @@ func get_recent_price_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     let (price_and_cumulative_price: packed) = shrine_yang_price.read(yang_id, interval);
 
     if (price_and_cumulative_price != 0) {
-        let (price, cumulative_price) = unpack_125(price_and_cumulative_price);
+        let (price: wad, cumulative_price: wad) = unpack_125(price_and_cumulative_price);
         return (price, cumulative_price, interval);
     }
 
@@ -1173,7 +1173,7 @@ func get_recent_multiplier_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
     let (mul_and_cumulative_mul: packed) = shrine_multiplier.read(interval);
 
     if (mul_and_cumulative_mul != 0) {
-        let (multiplier, cumulative_multiplier) = unpack_125(mul_and_cumulative_mul);
+        let (multiplier: ray, cumulative_multiplier: ray) = unpack_125(mul_and_cumulative_mul);
         return (multiplier, cumulative_multiplier, interval);
     }
 

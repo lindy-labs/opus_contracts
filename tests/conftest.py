@@ -19,7 +19,7 @@ from tests.shrine.constants import (
     MAX_PRICE_CHANGE,
     MULTIPLIER_FEED,
     SHRINE_FULL_ACCESS,
-    YANG_0_ADDRESS,
+    YANG1_ADDRESS,
     YANGS,
 )
 from tests.utils import (
@@ -224,7 +224,7 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
         for j in range(len(YANGS)):
             await shrine.advance(YANGS[j]["address"], feeds[j][i]).execute(caller_address=SHRINE_OWNER)
 
-        await shrine.update_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
+        await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
     return shrine, feeds
 
@@ -237,9 +237,7 @@ async def shrine(shrine_with_feeds) -> StarknetContract:
 
 @pytest.fixture
 async def shrine_deposit(shrine) -> StarknetCallInfo:
-    deposit = await shrine.deposit(YANG_0_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).execute(
-        caller_address=SHRINE_OWNER
-    )
+    deposit = await shrine.deposit(YANG1_ADDRESS, TROVE_1, to_wad(INITIAL_DEPOSIT)).execute(caller_address=SHRINE_OWNER)
     return deposit
 
 

@@ -36,10 +36,9 @@ YANGS = [
     },
 ]
 
-YANG_0_ADDRESS = YANGS[0]["address"]
-YANG_0_CEILING = YANGS[0]["ceiling"]
-YANG_0_THRESHOLD = YANGS[0]["threshold"]
-YANG_0_ID = YANGS[0]["id"]
+YANG1_CEILING = YANGS[0]["ceiling"]
+YANG1_THRESHOLD = YANGS[0]["threshold"]
+YANG1_ID = YANGS[0]["id"]
 
 INITIAL_DEPOSIT = 10
 INITIAL_DEPOSIT_WAD = 10 * WAD_SCALE
