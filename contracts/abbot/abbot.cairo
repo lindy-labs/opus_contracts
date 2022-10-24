@@ -206,7 +206,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert_trove_owner(user, trove_id);
 
     let (shrine: address) = abbot_shrine_address.read();
-    let (outstanding_debt: wad) = IShrine.estimate(shrine, trove_id);
+    let (_, _, _, outstanding_debt: wad) = IShrine.get_trove_info(shrine, trove_id);
 
     IShrine.melt(shrine, user, trove_id, outstanding_debt);
     let (yang_addresses_count: ufelt) = abbot_yang_addresses_count.read();
