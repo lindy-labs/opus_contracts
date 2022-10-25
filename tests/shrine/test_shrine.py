@@ -1818,7 +1818,7 @@ async def test_shrine_move_yin_fail_insufficient(shrine):
 @pytest.mark.parametrize("move_amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
 async def test_shrine_move_yin_fail_out_of_bounds(shrine, move_amt):
-    with pytest.raises(StarkException, match="Shrine: transfer amount outside the valid range."):
+    with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
         await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, move_amt).execute(caller_address=SHRINE_OWNER)
 
 

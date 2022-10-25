@@ -598,7 +598,7 @@ func move_yin{
 }(src: address, dst: address, amount: wad) {
     AccessControl.assert_has_role(ShrineRoles.MOVE_YIN);
 
-    with_attr error_message("Shrine: transfer amount outside the valid range.") {
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
