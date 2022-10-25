@@ -144,6 +144,11 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         trove_threshold: ray, trove_ltv: ray, trove_value: wad, trove_debt: wad
     ) = IShrine.get_trove_info(shrine, trove_id);
 
+    // Assert validity of `purge_amt` argument
+    with_attr error_message("Purger: Value of `purge_amt` ({purge_amt}) is out of bounds") {
+        WadRay.assert_valid_unsigned(purge_amt);
+    }
+
     assert_liquidatable(trove_id, trove_threshold, trove_ltv);
 
     // Check purge_amt <= max_close_amt

@@ -22,6 +22,7 @@ from tests.utils import (
     TIME_INTERVAL,
     TROVE_1,
     TRUE,
+    WAD_RAY_OOB_VALUES,
     YangConfig,
     assert_equalish,
     assert_event_emitted,
@@ -546,6 +547,13 @@ async def test_liquidate_fail_exceed_max_close(
 
     with pytest.raises(StarkException, match="Purger: Maximum close amount exceeded"):
         await purger.liquidate(TROVE_1, max_close_amt + 1, SEARCHER).execute(caller_address=SEARCHER)
+
+
+@pytest.mark.parametrize("liquidate_amt", WAD_RAY_OOB_VALUES)
+@pytest.mark.asyncio
+async def test_liquidate_fail_out_of_bounds(purger, liquidate_amt):
+    with pytest.raises(StarkException, match=r"Purger: Value of `purge_amt` \(-?\d+\) is out of bounds"):
+        await purger.liquidate(TROVE_1, liquidate_amt, SEARCHER).execute(caller_address=SEARCHER)
 
 
 @pytest.mark.usefixtures(

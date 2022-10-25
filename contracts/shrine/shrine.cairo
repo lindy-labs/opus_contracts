@@ -416,6 +416,10 @@ func set_threshold{
 
     AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD);
 
+    with_attr error_message("Shrine: Value of `new_threshold` ({new_threshold}) is out of bounds") {
+        WadRay.assert_valid_unsigned(new_threshold);
+    }
+
     // Check that threshold value is not greater than max threshold
     with_attr error_message("Shrine: Threshold exceeds 100%") {
         assert_le(new_threshold, MAX_THRESHOLD);
@@ -547,6 +551,10 @@ func move_yang{
 
     AccessControl.assert_has_role(ShrineRoles.MOVE_YANG);
 
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
+
     let yang_id: ufelt = get_valid_yang_id(yang);
 
     // Charge interest for source trove to ensure it remains safe
@@ -590,7 +598,7 @@ func move_yin{
 }(src: address, dst: address, amount: wad) {
     AccessControl.assert_has_role(ShrineRoles.MOVE_YIN);
 
-    with_attr error_message("Shrine: transfer amount outside the valid range.") {
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
