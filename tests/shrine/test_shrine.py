@@ -481,7 +481,7 @@ async def test_add_yang_unauthorized(shrine):
 
 @pytest.mark.parametrize("max_amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
-async def test_add_yang_out_of_bounds(shrine, max_amt):
+async def test_add_yang_max_out_of_bounds(shrine, max_amt):
     with pytest.raises(StarkException, match=r"Shrine: Value of `max` \(-?\d+\) is out of bounds"):
         await shrine.add_yang(123, max_amt, YANG1_THRESHOLD, to_wad(YANGS[0]["start_price"])).execute(
             caller_address=SHRINE_OWNER
