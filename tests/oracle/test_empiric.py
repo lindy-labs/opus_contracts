@@ -23,6 +23,7 @@ from tests.utils import (
     TIME_INTERVAL,
     assert_event_emitted,
     set_block_timestamp,
+    signed_int_to_felt,
     str_to_felt,
     to_wad,
 )
@@ -257,25 +258,23 @@ async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl,
         await empiric.update_prices().execute()
 
 
-# first parametrization check for insufficient number of sources,
-# second for stale price update (too much in the past)
-@pytest.mark.parametrize("ts_diff, num_sources", [(0, 1), (24 * 3600, 4)])
+# first parametrization checks for negative value price udpate
+# second for insufficient number of sources,
+# third for stale price update (too much in the past)
+@pytest.mark.parametrize("price, ts_diff, num_sources", [(-20, 0, 5), (1300, 0, 1), (1300, 24 * 3600, 4)])
 @pytest.mark.usefixtures("with_yangs")
 @pytest.mark.asyncio
-async def test_update_prices_invalid_price_updates(empiric, mock_empiric_impl, ts_diff, num_sources):
-    update_price = 1300
+async def test_update_prices_invalid_price_updates(empiric, mock_empiric_impl, price, ts_diff, num_sources):
     update_ts = INIT_BLOCK_TS - ts_diff
 
-    await mock_empiric_impl.next_get_spot_median(
-        ETH_EMPIRIC_ID, to_empiric(update_price), 8, update_ts, num_sources
-    ).execute()
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, to_empiric(price), 8, update_ts, num_sources).execute()
 
     tx = await empiric.update_prices().execute()
     assert_event_emitted(
         tx,
         empiric.contract_address,
         "InvalidPriceUpdate",
-        [ETH_YANG, to_wad(update_price), update_ts, num_sources],
+        [ETH_YANG, signed_int_to_felt(to_wad(price)), update_ts, num_sources],
     )
 
 

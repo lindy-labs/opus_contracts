@@ -8,7 +8,7 @@ from starkware.cairo.common.math import (
     assert_not_equal,
     assert_not_zero,
 )
-from starkware.cairo.common.math_cmp import is_le
+from starkware.cairo.common.math_cmp import is_le, is_nn
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.oracle.roles import EmpiricRoles
@@ -366,7 +366,7 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     let (mul: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
     let price: wad = value * mul;
 
-    let (is_valid) = is_valid_price_update(block_timestamp, last_updated_ts, num_sources);
+    let (is_valid) = is_valid_price_update(value, block_timestamp, last_updated_ts, num_sources);
     if (is_valid == TRUE) {
         // TODO: once we have a single gate, this call to advance will have to be updated, see:
         //       https://github.com/lindy-labs/aura_contracts/pull/152#issuecomment-1282143697
@@ -379,9 +379,14 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    block_timestamp: ufelt, last_updated_ts: ufelt, num_sources: ufelt
+    value: ufelt, block_timestamp: ufelt, last_updated_ts: ufelt, num_sources: ufelt
 ) -> (is_valid: bool) {
     alloc_locals;
+
+    let is_positive_value: bool = is_nn(value);
+    if (is_positive_value == FALSE) {
+        return (FALSE,);
+    }
 
     let (required: PriceValidityThresholds) = empiric_price_validity_thresholds.read();
 
