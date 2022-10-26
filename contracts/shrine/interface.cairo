@@ -89,6 +89,14 @@ namespace IShrine {
     func seize(yang: address, trove_id: ufelt, amount: wad) {
     }
 
+    // TODO: better names for these?
+    // setup & teardown?
+    func start_flash_loan(receiver: address, amount: wad) {
+    }
+
+    func end_flash_loan(receiver: address, amount: wad) {
+    }
+
     //
     // view
     //

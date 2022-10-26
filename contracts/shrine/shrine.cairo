@@ -2,7 +2,13 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math import (
+    assert_le,
+    assert_nn,
+    assert_not_zero,
+    split_felt,
+    unsigned_div_rem,
+)
 from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp
 
@@ -155,6 +161,15 @@ func shrine_total_debt() -> (total_debt: wad) {
 // Total amount of synthetic forged
 @storage_var
 func shrine_total_yin() -> (total_yin: wad) {
+}
+
+// Used to temporarily store the balance of a flash loan receiver. The
+// variable is updated with the Yin balance of the receiver, before they
+// are granted the loan. After the flash loan is done, this storage var
+// is reset back to 0 to lower TX fees. So in effect it acts as a
+// temporary global variable.
+@storage_var
+func shrine_flash_loan_receiver_balance() -> (balance: wad) {
 }
 
 // Keeps track of the price history of each Yang - packed
@@ -834,6 +849,60 @@ func seize{
     AccessControl.assert_has_role(ShrineRoles.SEIZE);
 
     withdraw_internal(yang, trove_id, amount);
+
+    return ();
+}
+
+@external
+func start_flash_loan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    receiver: address, loan_amount: wad
+) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.FLASH_LOAN);
+
+    with_attr error_message("Shrine: Value of `loan_amount` ({loan_amount}) is out of bounds") {
+        WadRay.assert_valid_unsigned(loan_amount);
+    }
+
+    let (current_balance: wad) = shrine_yin.read(receiver);
+    let new_balance: wad = current_balance + loan_amount;
+
+    with_attr error_message("Shrine: New balance value ({new_balance}) overflow") {
+        WadRay.assert_valid_unsigned(new_balance);
+    }
+
+    shrine_yin.write(receiver, new_balance);
+    shrine_flash_loan_receiver_balance.write(current_balance);
+
+    return ();
+}
+
+@external
+func end_flash_loan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    receiver: address, loan_amount: wad
+) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.FLASH_LOAN);
+
+    // skipping loan_amount validation because it already had to pass validation
+    // in start_flash_loan
+
+    let (pre_loan_balance: wad) = shrine_flash_loan_receiver_balance.read();
+    let (current_balance: wad) = shrine_yin.read(receiver);
+    let post_loan_balance: wad = current_balance - loan_amount;
+
+    with_attr error_message("Shrine: Invalid post flash loan state") {
+        assert_nn(post_loan_balance);
+        // post flash loan balance cannot be less than pre flash loan balance
+        assert_le(pre_loan_balance, post_loan_balance);
+    }
+
+    shrine_yin.write(receiver, post_loan_balance);
+
+    // reseting back to 0 for a cheaper TX (no storage update)
+    shrine_flash_loan_receiver_balance.write(0);
 
     return ();
 }
