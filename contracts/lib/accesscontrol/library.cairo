@@ -63,7 +63,7 @@ namespace AccessControl {
         alloc_locals;
         let (caller: address) = get_caller_address();
         let authorized: bool = has_role(role, caller);
-        with_attr error_message("AccessControl: caller is missing role {role}") {
+        with_attr error_message("AccessControl: Caller is missing role {role}") {
             assert authorized = TRUE;
         }
         return ();
@@ -73,7 +73,7 @@ namespace AccessControl {
         alloc_locals;
         let (caller: address) = get_caller_address();
         let admin: address = get_admin();
-        with_attr error_message("AccessControl: caller is not admin") {
+        with_attr error_message("AccessControl: Caller is not admin") {
             assert caller = admin;
         }
         return ();
@@ -141,7 +141,7 @@ namespace AccessControl {
         bitwise_ptr: BitwiseBuiltin*,
     }(role: ufelt, account: address) {
         let (caller: address) = get_caller_address();
-        with_attr error_message("AccessControl: can only renounce roles for self") {
+        with_attr error_message("AccessControl: Can only renounce roles for self") {
             assert account = caller;
         }
         _revoke_role(role, account);

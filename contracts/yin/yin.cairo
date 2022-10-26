@@ -74,7 +74,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     yin_symbol.write(symbol);
     yin_shrine_address.write(shrine);
 
-    with_attr error_message("Yin: decimals exceed 2^8 - 1") {
+    with_attr error_message("Yin: Decimals exceed 2^8 - 1") {
         assert_le(decimals, UINT8_MAX);
     }
 
@@ -137,7 +137,7 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     recipient: address, amount: wad
 ) -> (success: bool) {
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
+    with_attr error_message("Yin: Amount is not in the valid range [0, 2**125]") {
         WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
     }
 
@@ -150,7 +150,7 @@ func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func transferFrom{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     sender: address, recipient: address, amount: wad
 ) -> (success: bool) {
-    with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
+    with_attr error_message("Yin: Amount is not in the valid range [0, 2**125]") {
         WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
     }
 
@@ -166,7 +166,7 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> (success: bool) {
     alloc_locals;
     if (amount != INFINITE_ALLOWANCE) {
-        with_attr error_message("Yin: amount is not in the valid range [0, 2**125]") {
+        with_attr error_message("Yin: Amount is not in the valid range [0, 2**125]") {
             WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
         }
         tempvar range_check_ptr = range_check_ptr;
@@ -186,7 +186,7 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     sender: address, recipient: address, amount: wad
 ) {
-    with_attr error_message("Yin: cannot transfer to the zero address") {
+    with_attr error_message("Yin: Cannot transfer to the zero address") {
         assert_not_zero(recipient);
     }
 
@@ -202,11 +202,11 @@ func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func _approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     owner: address, spender: address, amount: wad
 ) {
-    with_attr error_message("Yin: cannot approve from the zero address") {
+    with_attr error_message("Yin: Cannot approve from the zero address") {
         assert_not_zero(owner);
     }
 
-    with_attr error_message("Yin: cannot approve to the zero address") {
+    with_attr error_message("Yin: Cannot approve to the zero address") {
         assert_not_zero(spender);
     }
 
@@ -222,7 +222,7 @@ func _spend_allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 
     let (current_allowance: wad) = yin_allowances.read(owner, spender);
     if (current_allowance != INFINITE_ALLOWANCE) {
-        with_attr error_message("Yin: insufficient allowance") {
+        with_attr error_message("Yin: Insufficient allowance") {
             _approve(owner, spender, WadRay.sub_unsigned(current_allowance, amount));  // Reverts if amount > current_allowance
         }
 

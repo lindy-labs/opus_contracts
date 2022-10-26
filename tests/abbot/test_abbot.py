@@ -92,19 +92,19 @@ async def test_add_yang_failures(abbot, steth_yang: YangConfig, doge_yang: YangC
     yang = steth_yang
 
     # test reverting on unathorized actor calling add_yang
-    with pytest.raises(StarkException, match=r"AccessControl: caller is missing role \d+"):
+    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=OTHER_USER)
 
     # test reverting on yang address equal 0
-    with pytest.raises(StarkException, match="Abbot: address cannot be zero"):
+    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
         await abbot.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
             caller_address=ABBOT_OWNER
         )
 
     # test reverting on gate address equal 0
-    with pytest.raises(StarkException, match="Abbot: address cannot be zero"):
+    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
         await abbot.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
             caller_address=ABBOT_OWNER
         )
@@ -113,14 +113,14 @@ async def test_add_yang_failures(abbot, steth_yang: YangConfig, doge_yang: YangC
     await abbot.add_yang(
         yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
     ).execute(caller_address=ABBOT_OWNER)
-    with pytest.raises(StarkException, match="Abbot: yang already added"):
+    with pytest.raises(StarkException, match="Abbot: Yang already added"):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=ABBOT_OWNER)
 
     # test reverting when the Gate is for a different yang
     yang = doge_yang
-    with pytest.raises(StarkException, match="Abbot: yang address does not match Gate's asset"):
+    with pytest.raises(StarkException, match="Abbot: Yang address does not match Gate's asset"):
         await abbot.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address
         ).execute(caller_address=ABBOT_OWNER)
@@ -188,13 +188,13 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
 
 @pytest.mark.asyncio
 async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
-    with pytest.raises(StarkException, match=r"Abbot: input arguments mismatch: \d != \d"):
+    with pytest.raises(StarkException, match=r"Abbot: Input arguments mismatch: \d != \d"):
         await abbot.open_trove(0, [steth_yang.contract_address], [10, 200]).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match="Abbot: no yangs selected"):
+    with pytest.raises(StarkException, match="Abbot: No yangs selected"):
         await abbot.open_trove(0, [], []).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
+    with pytest.raises(StarkException, match=rf"Abbot: Yang {STARKNET_ADDR} is not approved"):
         await abbot.open_trove(0, [shitcoin_yang.contract_address], [10**10]).execute(caller_address=AURA_USER)
 
 
@@ -246,10 +246,10 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_close_trove_failures(abbot):
-    with pytest.raises(StarkException, match=f"Abbot: address {AURA_USER} does not own trove ID 2"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {AURA_USER} does not own trove ID 2"):
         await abbot.close_trove(2).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID 1"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID 1"):
         await abbot.close_trove(1).execute(caller_address=OTHER_USER)
 
 
@@ -289,17 +289,17 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
 @pytest.mark.usefixtures("abbot_with_yangs")
 @pytest.mark.asyncio
 async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
-    with pytest.raises(StarkException, match="Abbot: yang address cannot be zero"):
+    with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
         await abbot.deposit(0, TROVE_1, 0).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
+    with pytest.raises(StarkException, match=rf"Abbot: Yang {STARKNET_ADDR} is not approved"):
         await abbot.deposit(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
         await abbot.deposit(steth_yang.contract_address, TROVE_1, to_wad(1)).execute(caller_address=OTHER_USER)
 
     nope_trove = 2  # trove ID 2 does not exist
-    with pytest.raises(StarkException, match=f"Abbot: address {AURA_USER} does not own trove ID {nope_trove}"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {AURA_USER} does not own trove ID {nope_trove}"):
         await abbot.deposit(steth_yang.contract_address, nope_trove, to_wad(1)).execute(caller_address=AURA_USER)
 
 
@@ -342,13 +342,13 @@ async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
-    with pytest.raises(StarkException, match="Abbot: yang address cannot be zero"):
+    with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
         await abbot.withdraw(0, TROVE_1, 0).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=rf"Abbot: yang {STARKNET_ADDR} is not approved"):
+    with pytest.raises(StarkException, match=rf"Abbot: Yang {STARKNET_ADDR} is not approved"):
         await abbot.withdraw(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).execute(caller_address=AURA_USER)
 
-    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
         await abbot.withdraw(steth_yang.contract_address, TROVE_1, to_wad(10)).execute(caller_address=OTHER_USER)
 
 
@@ -371,7 +371,7 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_forge_failures(abbot):
-    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
         amount = to_wad(10)
         await abbot.forge(TROVE_1, amount).execute(caller_address=OTHER_USER)
 
@@ -398,7 +398,7 @@ async def test_melt(abbot, yin, shrine):
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user", "aura_user_with_first_trove")
 @pytest.mark.asyncio
 async def test_melt_failures(abbot):
-    with pytest.raises(StarkException, match=f"Abbot: address {OTHER_USER} does not own trove ID {TROVE_1}"):
+    with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
         amount = to_wad(10)
         await abbot.forge(TROVE_1, amount).execute(caller_address=OTHER_USER)
 

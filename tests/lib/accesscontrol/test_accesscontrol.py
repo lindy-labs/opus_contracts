@@ -71,7 +71,7 @@ async def test_ACC_setup(acc):
 
     await acc.assert_admin().execute(caller_address=ACC_OWNER)
 
-    with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
+    with pytest.raises(StarkException, match="AccessControl: Caller is not admin"):
         await acc.assert_admin().execute(caller_address=NEW_ACC_OWNER)
 
 
@@ -91,13 +91,13 @@ async def test_change_admin(acc, ACC_change_admin):
 
     await acc.assert_admin().execute(caller_address=NEW_ACC_OWNER)
 
-    with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
+    with pytest.raises(StarkException, match="AccessControl: Caller is not admin"):
         await acc.assert_admin().execute(caller_address=ACC_OWNER)
 
 
 @pytest.mark.asyncio
 async def test_change_admin_unauthorized(acc):
-    with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
+    with pytest.raises(StarkException, match="AccessControl: Caller is not admin"):
         await acc.change_admin(BAD_GUY).execute(caller_address=BAD_GUY)
 
 
@@ -173,7 +173,7 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
             assert has_role == can_perform_role == FALSE
             with pytest.raises(
                 StarkException,
-                match=f"AccessControl: caller is missing role {role_value}",
+                match=f"AccessControl: Caller is missing role {role_value}",
             ):
                 await acc.assert_has_role(role_value).execute(caller_address=ACC_USER)
 
@@ -186,13 +186,13 @@ async def test_grant_and_revoke_role(ACC_both, given_roles, revoked_roles):
 @pytest.mark.usefixtures("sudo_user")
 @pytest.mark.asyncio
 async def test_role_actions_unauthorized(acc):
-    with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
+    with pytest.raises(StarkException, match="AccessControl: Caller is not admin"):
         await acc.grant_role(SUDO_USER, BAD_GUY).execute(caller_address=BAD_GUY)
 
-    with pytest.raises(StarkException, match="AccessControl: caller is not admin"):
+    with pytest.raises(StarkException, match="AccessControl: Caller is not admin"):
         await acc.revoke_role(SUDO_USER, ACC_USER).execute(caller_address=BAD_GUY)
 
-    with pytest.raises(StarkException, match="AccessControl: can only renounce roles for self"):
+    with pytest.raises(StarkException, match="AccessControl: Can only renounce roles for self"):
         await acc.renounce_role(SUDO_USER, ACC_USER).execute(caller_address=BAD_GUY)
 
 
@@ -230,6 +230,6 @@ async def test_renounce_role(acc, renounced_roles):
             assert has_role == can_perform_role == FALSE
             with pytest.raises(
                 StarkException,
-                match=f"AccessControl: caller is missing role {role_value}",
+                match=f"AccessControl: Caller is missing role {role_value}",
             ):
                 await acc.assert_has_role(role_value).execute(caller_address=ACC_USER)

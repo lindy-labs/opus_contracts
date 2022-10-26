@@ -154,11 +154,15 @@ Prefer emitting events from `@external`, `@l1_handler` or `@constructor` functio
 
 ## Use module names in error messages
 
-When using the `with_attr error_message()` pattern to do a check and raise an error if it fails, prepend the error message itself with the module name. It makes it easier for debugging, etc. An example from the `direct_deposit` module:
+When using the `with_attr error_message()` pattern to do a check and raise an error if it fails, prepend the error message itself with the module name. It makes it easier for debugging, etc.
+
+The error message should start with a capital letter and end without a period.
+
+An example from the `shrine` module:
 
 ```cairo
-with_attr error_message("direct_deposit: transferFrom failed") {
-    assert was_transfered = TRUE;
+with_attr error_message("Shrine: System is not live") {
+    assert live = TRUE;
 }
 ```
 

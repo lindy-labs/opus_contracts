@@ -23,7 +23,7 @@ namespace Auth {
     func assert_caller_authed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
         let (c) = get_caller_address();
         let (is_authed) = auth_authorization_storage.read(c);
-        with_attr error_message("Auth: caller not authorized") {
+        with_attr error_message("Auth: Caller not authorized") {
             assert is_authed = TRUE;
         }
         return ();
@@ -34,7 +34,7 @@ namespace Auth {
         address
     ) {
         let (is_authed) = auth_authorization_storage.read(address);
-        with_attr error_message("Auth: address {address} not authorized") {
+        with_attr error_message("Auth: Address {address} not authorized") {
             assert is_authed = TRUE;
         }
         return ();

@@ -1136,7 +1136,7 @@ async def test_shrine_melt_trove_underflow(shrine):
     excess_debt = estimated_debt + 1
     with pytest.raises(
         StarkException,
-        match="Shrine: cannot pay back more debt than exists in this trove",
+        match="Shrine: Cannot pay back more debt than exists in this trove",
     ):
         await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).execute(caller_address=SHRINE_OWNER)
 
@@ -1811,7 +1811,7 @@ async def test_shrine_move_yin_pass(shrine, transfer_amount):
 @pytest.mark.asyncio
 async def test_shrine_move_yin_fail_insufficient(shrine):
     # Trying to transfer more than the user owns
-    with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
+    with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
         await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD + 1).execute(caller_address=SHRINE_OWNER)
 
 
@@ -1829,7 +1829,7 @@ async def test_shrine_melt_after_move_yin_fail(shrine):
     # Transfer half of the forge amount to another account
     await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD // 2).execute(caller_address=SHRINE_OWNER)
     # Attempt to melt all debt - should fail since not enough yin
-    with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
+    with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
         await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
 
 
@@ -1841,10 +1841,10 @@ async def test_shrine_melt_after_move_yin_fail(shrine):
 @pytest.mark.asyncio
 async def test_shrine_advance_set_multiplier_invalid_fail(shrine_deploy):
     shrine = shrine_deploy
-    with pytest.raises(StarkException, match="Shrine: cannot set a price value to zero."):
+    with pytest.raises(StarkException, match="Shrine: Cannot set a price value to zero"):
         await shrine.advance(YANG1_ADDRESS, 0).execute(caller_address=SHRINE_OWNER)
 
-    with pytest.raises(StarkException, match="Shrine: cannot set a multiplier value to zero."):
+    with pytest.raises(StarkException, match="Shrine: Cannot set a multiplier value to zero"):
         await shrine.set_multiplier(0).execute(caller_address=SHRINE_OWNER)
 
 
