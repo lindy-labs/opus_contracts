@@ -25,7 +25,7 @@ namespace WadRay {
 
     // Reverts if `n` overflows or underflows
     func assert_valid{range_check_ptr}(n) {
-        with_attr error_message("WadRay: out of bounds") {
+        with_attr error_message("WadRay: Out of bounds") {
             assert_le(n, BOUND);
             assert_le(-BOUND, n);
         }
@@ -33,7 +33,7 @@ namespace WadRay {
     }
 
     func assert_valid_unsigned{range_check_ptr}(n) {
-        with_attr error_message("WadRay: out of bounds") {
+        with_attr error_message("WadRay: Out of bounds") {
             assert_nn_le(n, BOUND);
         }
         return ();

@@ -90,7 +90,7 @@ async def test_floor(wad_ray, val):
         with pytest.raises(StarkException):
             await wad_ray.test_floor(input_val).execute()
     elif abs(expected_py) > BOUND:
-        with pytest.raises(StarkException, match="WadRay: out of bounds"):
+        with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await wad_ray.test_floor(input_val).execute()
     else:
         res = (await wad_ray.test_floor(input_val).execute()).result.res
@@ -132,7 +132,7 @@ async def test_ceil(wad_ray, val):
         with pytest.raises(StarkException):
             await wad_ray.test_ceil(input_val).execute()
     elif abs(expected_py) > BOUND:
-        with pytest.raises(StarkException, match="WadRay: out of bounds"):
+        with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await wad_ray.test_ceil(input_val).execute()
     else:
         res = (await wad_ray.test_ceil(input_val).execute()).result.res
@@ -158,7 +158,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
     method = wad_ray.get_contract_function(fn)
 
     if abs(expected_py) > BOUND:
-        with pytest.raises(StarkException, match="WadRay: out of bounds"):
+        with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(left_input_val, right_input_val).execute()
 
     else:
@@ -180,7 +180,7 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
     method = wad_ray.get_contract_function(fn)
 
     if expected_py < 0 or expected_py > BOUND:
-        with pytest.raises(StarkException, match="WadRay: out of bounds"):
+        with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(left, right).execute()
 
     else:
@@ -313,7 +313,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
 
     if fn in ("test_to_wad", "test_wad_to_ray") and abs(expected_py) > BOUND:
         # Test `assert_valid`
-        with pytest.raises(StarkException, match="WadRay: out of bounds"):
+        with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(input_val).execute()
     elif fn == "test_wad_to_felt" and not (-BOUND <= expected_py < BOUND):
         # Exception for `signed_div_rem`
@@ -345,7 +345,7 @@ async def test_uint_conversion_pass(wad_ray, val, fn, input_op, output_op, ret):
 @pytest.mark.asyncio
 async def test_from_uint_fail(wad_ray, val):
     val = to_uint(val)
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await wad_ray.test_from_uint(val).execute()
 
 
@@ -354,16 +354,16 @@ async def test_from_uint_fail(wad_ray, val):
 async def test_out_of_bounds_unsigned(wad_ray, func):
     test_func = getattr(wad_ray, "test_" + func)
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(2**125 + 1, 0).execute()
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(-1, 0).execute()
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(0, 2**125 + 1).execute()
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(0, -1).execute()
 
 
@@ -372,14 +372,14 @@ async def test_out_of_bounds_unsigned(wad_ray, func):
 async def test_out_of_bounds_signed(wad_ray, func):
     test_func = getattr(wad_ray, "test_" + func)
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(2**125 + 1, 0).execute()
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(-(2**125) - 1, 0).execute()
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(0, 2**125 + 1).execute()
 
-    with pytest.raises(StarkException, match="WadRay: out of bounds"):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await test_func(0, -(2**125) - 1).execute()
