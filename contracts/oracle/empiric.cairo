@@ -179,7 +179,7 @@ func set_oracle_address{
 }(oracle: address) {
     AccessControl.assert_has_role(EmpiricRoles.SET_ORACLE_ADDRESS);
 
-    with_attr error_message("Empiric: address cannot be zero") {
+    with_attr error_message("Empiric: Address cannot be zero") {
         assert_not_zero(oracle);
     }
 
@@ -199,11 +199,11 @@ func set_price_validity_thresholds{
 
     AccessControl.assert_has_role(EmpiricRoles.SET_PRICE_VALIDITY_THRESHOLDS);
 
-    with_attr error_message("Empiric: freshness threshold out of bounds") {
+    with_attr error_message("Empiric: Freshness threshold out of bounds") {
         assert_in_range(freshness, LOWER_FRESHNESS_BOUND, UPPER_FRESHNESS_BOUND);
     }
 
-    with_attr error_message("Empiric: sources threshold out of bounds") {
+    with_attr error_message("Empiric: Sources threshold out of bounds") {
         assert_in_range(sources, LOWER_SOURCES_BOUND, UPPER_SOURCES_BOUND);
     }
 
@@ -221,7 +221,7 @@ func set_update_interval{
 }(new_interval: ufelt) {
     AccessControl.assert_has_role(EmpiricRoles.SET_UPDATE_INTERVAL);
 
-    with_attr error_message("Empiric: update interval out of bounds") {
+    with_attr error_message("Empiric: Update interval out of bounds") {
         assert_in_range(new_interval, LOWER_UPDATE_INTERVAL_BOUND, UPPER_UPDATE_INTERVAL_BOUND);
     }
 
@@ -245,7 +245,7 @@ func add_yang{
 
     AccessControl.assert_has_role(EmpiricRoles.ADD_YANG);
 
-    with_attr error_message("Empiric: invalid values") {
+    with_attr error_message("Empiric: Invalid values") {
         assert_not_zero(empiric_id);
         assert_not_zero(yang);
     }
@@ -253,21 +253,21 @@ func add_yang{
     let (index) = empiric_yangs_count.read();
 
     // check if adding a yang that's already in the system
-    with_attr error_message("Empiric: yang already present") {
+    with_attr error_message("Empiric: Yang already present") {
         assert_new_yang(index - 1, yang);
     }
 
     // doing a sanity check if Empiric actually offers a price feed
     // on the requested asset and if it's suitable for our needs
     let (oracle: address) = empiric_oracle.read();
-    with_attr error_message("Empiric: problem fetching oracle price") {
+    with_attr error_message("Empiric: Problem fetching oracle price") {
         let (_, decimals: ufelt, _, _) = IEmpiricOracle.get_spot_median(oracle, empiric_id);
     }
-    with_attr error_message("Empiric: unknown pair ID") {
+    with_attr error_message("Empiric: Unknown pair ID") {
         // Empirict returns 0 decimals for an unknown pair ID
         assert_not_zero(decimals);
     }
-    with_attr error_message("Empiric: feed with too many decimals") {
+    with_attr error_message("Empiric: Feed with too many decimals") {
         assert_le(decimals, WadRay.WAD_DECIMALS);
     }
 
@@ -284,7 +284,7 @@ func add_yang{
 func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
-    with_attr error_message("Empiric: too soon to update prices") {
+    with_attr error_message("Empiric: Too soon to update prices") {
         let (can_proceed_with_update: bool) = probeTask();
         assert can_proceed_with_update = TRUE;
     }

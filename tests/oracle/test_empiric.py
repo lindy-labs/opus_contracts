@@ -103,14 +103,14 @@ async def test_set_price_validity_thresholds(empiric):
 async def test_set_price_validity_thresholds_failures(empiric):
     # test for freshness within bounds
     for bound in (EMPIRIC_LOWER_FRESHNESS_BOUND - 1, EMPIRIC_UPPER_FRESHNESS_BOUND + 1):
-        with pytest.raises(StarkException, match="Empiric: freshness threshold out of bounds"):
+        with pytest.raises(StarkException, match="Empiric: Freshness threshold out of bounds"):
             await empiric.set_price_validity_thresholds(bound, EMPIRIC_SOURCES_THRESHOLD).execute(
                 caller_address=EMPIRIC_OWNER
             )
 
     # test for sources within bounds
     for bound in (EMPIRIC_LOWER_SOURCES_BOUND - 1, EMPIRIC_UPPER_SOURCES_BOUND + 1):
-        with pytest.raises(StarkException, match="Empiric: sources threshold out of bounds"):
+        with pytest.raises(StarkException, match="Empiric: Sources threshold out of bounds"):
             await empiric.set_price_validity_thresholds(EMPIRIC_FRESHNESS_THRESHOLD, bound).execute(
                 caller_address=EMPIRIC_OWNER
             )
@@ -133,7 +133,7 @@ async def test_set_oracle_address(empiric, mock_empiric_impl):
 
 @pytest.mark.asyncio
 async def test_set_oracle_address_failures(empiric):
-    with pytest.raises(StarkException, match="Empiric: address cannot be zero"):
+    with pytest.raises(StarkException, match="Empiric: Address cannot be zero"):
         await empiric.set_oracle_address(0).execute(caller_address=EMPIRIC_OWNER)
 
     with pytest.raises(StarkException):
@@ -150,7 +150,7 @@ async def test_set_update_interval(empiric):
 @pytest.mark.asyncio
 async def test_set_update_interval_failures(empiric):
     for interval in (EMPIRIC_LOWER_UPDATE_INTERVAL_BOUND - 1, EMPIRIC_UPPER_UPDATE_INTERVAL_BOUND + 1):
-        with pytest.raises(StarkException, match="Empiric: update interval out of bounds"):
+        with pytest.raises(StarkException, match="Empiric: Update interval out of bounds"):
             await empiric.set_update_interval(interval).execute(caller_address=EMPIRIC_OWNER)
 
     with pytest.raises(StarkException):
@@ -169,23 +169,23 @@ async def test_add_yang_failures(empiric, mock_empiric_impl):
     with pytest.raises(StarkException):
         await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=BAD_GUY)
 
-    with pytest.raises(StarkException, match="Empiric: invalid values"):
+    with pytest.raises(StarkException, match="Empiric: Invalid values"):
         await empiric.add_yang(0, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
-    with pytest.raises(StarkException, match="Empiric: invalid values"):
+    with pytest.raises(StarkException, match="Empiric: Invalid values"):
         await empiric.add_yang(ETH_EMPIRIC_ID, 0).execute(caller_address=EMPIRIC_OWNER)
 
     await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 0, 5000, 3).execute()
-    with pytest.raises(StarkException, match="Empiric: unknown pair ID"):
+    with pytest.raises(StarkException, match="Empiric: Unknown pair ID"):
         await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
     await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 20, 5000, 3).execute()
-    with pytest.raises(StarkException, match="Empiric: feed with too many decimals"):
+    with pytest.raises(StarkException, match="Empiric: Feed with too many decimals"):
         await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
 
     await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 100, 8, 5000, 3).execute()
     await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
-    with pytest.raises(StarkException, match="Empiric: yang already present"):
+    with pytest.raises(StarkException, match="Empiric: Yang already present"):
         await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
 
 
@@ -254,7 +254,7 @@ async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl,
 
     # second update that's happening too soon should not pass
     set_block_timestamp(starknet, INIT_BLOCK_TS + 1)
-    with pytest.raises(StarkException, match="Empiric: too soon to update prices"):
+    with pytest.raises(StarkException, match="Empiric: Too soon to update prices"):
         await empiric.update_prices().execute()
 
 
