@@ -44,16 +44,6 @@ namespace IERC20Burnable {
     }
 }
 
-// TODO: not even sure if these methods should be on USDa
-@contract_interface
-namespace IUSDa {
-    func get_collateralization_ratio() -> (ratio: felt) {
-    }
-
-    func get_total_collateral() -> (total: felt) {
-    }
-}
-
 @contract_interface
 namespace IEmpiricOracle {
     // https://docs.empiric.network/using-empiric/consuming-data#function-get_spot_median
