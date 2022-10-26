@@ -156,13 +156,6 @@ def tokens(
 
 
 @pytest.fixture
-async def usda(starknet: Starknet) -> StarknetContract:
-    owner = str_to_felt("usda owner")
-    contract = compile_contract("contracts/USDa/USDa.cairo")
-    return await starknet.deploy(contract_class=contract, constructor_calldata=[owner])
-
-
-@pytest.fixture
 async def mrac_controller(starknet: Starknet) -> StarknetContract:
     contract = compile_contract("contracts/MRAC/controller.cairo")
     return await starknet.deploy(contract_class=contract, constructor_calldata=[*DEFAULT_MRAC_PARAMETERS])
@@ -412,7 +405,7 @@ async def yin(starknet, shrine) -> StarknetContract:
     yin_contract = compile_contract("contracts/yin/yin.cairo")
     deployed_yin = await starknet.deploy(
         contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("USD Aura"), str_to_felt("USDa"), 18, shrine.contract_address],
+        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
     )
 
     # Authorizing the yin contract to call `move_yin` in shrine
