@@ -1,6 +1,6 @@
 async-cache==1.1.1
 black==22.*
-cairo-lang==0.10.0
+cairo-lang==0.10.1
 ecdsa==0.17.0
 fastecdsa==2.2.1
 filelock==3.7.1
@@ -9,8 +9,8 @@ hypothesis==6.49.1
 isort==5
 marshmallow-dataclass==8.5.3
 numpy==1.23.0
-pytest==7
+pytest==7.2.0
 pytest-asyncio==0.15.1
-pytest-xdist==2.5.0
+pytest-xdist==3.0.2
 sympy==1.8
 toml==0.10.2
