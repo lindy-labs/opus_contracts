@@ -166,11 +166,11 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 ) {
     alloc_locals;
 
-    with_attr error_message("Abbot: input arguments mismatch: {yangs_len} != {amounts_len}") {
+    with_attr error_message("Abbot: Input arguments mismatch: {yangs_len} != {amounts_len}") {
         assert yangs_len = amounts_len;
     }
 
-    with_attr error_message("Abbot: no yangs selected") {
+    with_attr error_message("Abbot: No yangs selected") {
         assert_not_zero(yangs_len);
     }
 
@@ -223,7 +223,7 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) {
     alloc_locals;
 
-    with_attr error_message("Abbot: yang address cannot be zero") {
+    with_attr error_message("Abbot: Yang address cannot be zero") {
         assert_not_zero(yang);
     }
 
@@ -244,7 +244,7 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) {
     alloc_locals;
 
-    with_attr error_message("Abbot: yang address cannot be zero") {
+    with_attr error_message("Abbot: Yang address cannot be zero") {
         assert_not_zero(yang);
     }
 
@@ -301,17 +301,17 @@ func add_yang{
 }(yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address) {
     AccessControl.assert_has_role(AbbotRoles.ADD_YANG);
 
-    with_attr error_message("Abbot: address cannot be zero") {
+    with_attr error_message("Abbot: Address cannot be zero") {
         assert_not_zero(yang);
         assert_not_zero(gate);
     }
 
-    with_attr error_message("Abbot: yang already added") {
+    with_attr error_message("Abbot: Yang already added") {
         let (stored_address: address) = abbot_yang_to_gate.read(yang);
         assert stored_address = 0;
     }
 
-    with_attr error_message("Abbot: yang address does not match Gate's asset") {
+    with_attr error_message("Abbot: Yang address does not match Gate's asset") {
         let (asset: address) = IGate.get_asset(gate);
         assert yang = asset;
     }
@@ -337,7 +337,7 @@ func assert_trove_owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     user: address, trove_id: ufelt
 ) {
     let (real_owner: address) = abbot_trove_owner.read(trove_id);
-    with_attr error_message("Abbot: address {user} does not own trove ID {trove_id}") {
+    with_attr error_message("Abbot: Address {user} does not own trove ID {trove_id}") {
         assert user = real_owner;
     }
     return ();
@@ -356,7 +356,7 @@ func assert_valid_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 func assert_valid_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address
 ) {
-    with_attr error_message("Abbot: yang {yang} is not approved") {
+    with_attr error_message("Abbot: Yang {yang} is not approved") {
         let (gate: address) = abbot_yang_to_gate.read(yang);
         assert_not_zero(gate);
     }

@@ -487,7 +487,7 @@ func advance{
 
     AccessControl.assert_has_role(ShrineRoles.ADVANCE);
 
-    with_attr error_message("Shrine: cannot set a price value to zero.") {
+    with_attr error_message("Shrine: Cannot set a price value to zero") {
         assert_not_zero(price);  // Cannot set a price value to zero
     }
 
@@ -520,7 +520,7 @@ func set_multiplier{
     alloc_locals;
     AccessControl.assert_has_role(ShrineRoles.SET_MULTIPLIER);
 
-    with_attr error_message("Shrine: cannot set a multiplier value to zero.") {
+    with_attr error_message("Shrine: Cannot set a multiplier value to zero") {
         assert_not_zero(new_multiplier);  // Cannot set a multiplier value to zero
     }
 
@@ -606,7 +606,7 @@ func move_yin{
     let (dst_balance: wad) = shrine_yin.read(dst);
 
     // WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
-    with_attr error_message("Shrine: transfer amount exceeds yin balance") {
+    with_attr error_message("Shrine: Transfer amount exceeds yin balance") {
         shrine_yin.write(src, WadRay.sub_unsigned(src_balance, amount));
     }
 
@@ -707,7 +707,7 @@ func forge{
     // Check that debt ceiling has not been reached
     let (current_system_debt: wad) = shrine_total_debt.read();
 
-    with_attr error_message("Shrine: system debt overflow") {
+    with_attr error_message("Shrine: System debt overflow") {
         let new_system_debt: wad = WadRay.add(current_system_debt, amount);  // WadRay.add checks for overflow
     }
 
@@ -790,7 +790,7 @@ func melt{
     shrine_total_debt.write(new_system_debt);
 
     // Update trove information
-    with_attr error_message("Shrine: cannot pay back more debt than exists in this trove") {
+    with_attr error_message("Shrine: Cannot pay back more debt than exists in this trove") {
         let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, amount);  // Reverts if amount > old_trove_info.debt
     }
 
@@ -804,7 +804,7 @@ func melt{
     let (total_yin: wad) = shrine_total_yin.read();
 
     // Reverts if amount > user_yin or amount > total_yin.
-    with_attr error_message("Shrine: not enough yin to melt debt") {
+    with_attr error_message("Shrine: Not enough yin to melt debt") {
         let new_user_yin: wad = WadRay.sub_unsigned(user_yin, amount);
         let new_total_yin: wad = WadRay.sub_unsigned(total_yin, amount);
     }

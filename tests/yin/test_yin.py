@@ -76,11 +76,11 @@ async def test_yin_transfer_pass(shrine_forge, shrine_both, yin):
 @pytest.mark.asyncio
 async def test_yin_transfer_fail(shrine_forge, yin):
     # Attempting to transfer more yin than TROVE1_OWNER owns
-    with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
+    with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
         await yin.transfer(USER_2, FORGE_AMT_WAD + 1).execute(caller_address=TROVE1_OWNER)
 
     # Attempting to transfer any amount of yin when USER_2 owns nothing
-    with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
+    with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
         await yin.transfer(TROVE1_OWNER, 1).execute(caller_address=USER_2)
 
 
@@ -126,47 +126,47 @@ async def test_yin_transfer_from_fail(shrine_forge, yin):
 
     # USER_2 transfers all of TROVE1_OWNER's funds to USER_3 - should fail
     # since TROVE1_OWNER hasn't approved USER_2
-    with pytest.raises(StarkException, match="Yin: insufficient allowance"):
+    with pytest.raises(StarkException, match="Yin: Insufficient allowance"):
         await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD).execute(caller_address=USER_2)
 
     # TROVE1_OWNER approves USER_2 but not enough to send FORGE_AMT_WAD
     await yin.approve(USER_2, FORGE_AMT_WAD // 2).execute(caller_address=TROVE1_OWNER)
 
     # Should fail since USER_2's allowance for TROVE1_OWNER is less than FORGE_AMT_WAD
-    with pytest.raises(StarkException, match="Yin: insufficient allowance"):
+    with pytest.raises(StarkException, match="Yin: Insufficient allowance"):
         await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD).execute(caller_address=USER_2)
 
     # TROVE1_OWNER grants USER_2 unlimited allowance
     await yin.approve(USER_2, INFINITE_YIN_ALLOWANCE).execute(caller_address=TROVE1_OWNER)
 
     # Should fail since USER_2's tries transferring more than TROVE1_OWNER has in their balance
-    with pytest.raises(StarkException, match="Shrine: transfer amount exceeds yin balance"):
+    with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
         await yin.transferFrom(TROVE1_OWNER, USER_3, FORGE_AMT_WAD + 1).execute(caller_address=USER_2)
 
     # Transfer to zero address - should fail since a check prevents this
-    with pytest.raises(StarkException, match="Yin: cannot transfer to the zero address"):
+    with pytest.raises(StarkException, match="Yin: Cannot transfer to the zero address"):
         await yin.transferFrom(TROVE1_OWNER, 0, FORGE_AMT_WAD).execute(caller_address=USER_2)
 
 
 @pytest.mark.asyncio
 async def test_yin_invalid_inputs(yin):
 
-    with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
+    with pytest.raises(StarkException, match=r"Yin: Amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.transfer(USER_2, -1).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
+    with pytest.raises(StarkException, match=r"Yin: Amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.transfer(USER_2, 2**125 + 1).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
+    with pytest.raises(StarkException, match=r"Yin: Amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.approve(USER_2, 2**128 + 1).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
+    with pytest.raises(StarkException, match=r"Yin: Amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.approve(USER_2, 2**128 - 1).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
+    with pytest.raises(StarkException, match=r"Yin: Amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.approve(USER_2, -2).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=r"Yin: amount is not in the valid range \[0, 2\*\*125\]"):
+    with pytest.raises(StarkException, match=r"Yin: Amount is not in the valid range \[0, 2\*\*125\]"):
         await yin.approve(USER_2, 2**125 + 1).execute(caller_address=TROVE1_OWNER)
 
 
@@ -184,7 +184,7 @@ async def test_yin_melt_after_transfer(shrine_forge, shrine_both, yin):
     await yin.transfer(USER_2, FORGE_AMT_WAD // 2).execute(caller_address=TROVE1_OWNER)
 
     # Trying to melt `FORGE_AMT_WAD` debt. Should fail since TROVE1_OWNER no longer has FORGE_AMT_WAD yin.
-    with pytest.raises(StarkException, match="Shrine: not enough yin to melt debt"):
+    with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
         await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
 
     # Trying to melt less than half of `FORGE_AMT_WAD`. Should pass since TROVE1_OWNER has enough yin to do this.
