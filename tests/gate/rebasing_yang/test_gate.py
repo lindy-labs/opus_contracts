@@ -911,7 +911,7 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
 
     # Fails due to non-authorised address
     set_tax_role = GateRoles.SET_TAX
-    with pytest.raises(StarkException, match=f"AccessControl: caller is missing role {set_tax_role}"):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {set_tax_role}"):
         await gate.set_tax(TAX_RAY).execute(caller_address=BAD_GUY)
         await gate.set_tax_collector(BAD_GUY).execute(caller_address=BAD_GUY)
 
