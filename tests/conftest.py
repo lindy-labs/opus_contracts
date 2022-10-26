@@ -10,6 +10,12 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
 from tests.gate.rebasing_yang.constants import INITIAL_AMT
+from tests.oracle.constants import (
+    EMPIRIC_FRESHNESS_THRESHOLD,
+    EMPIRIC_SOURCES_THRESHOLD,
+    EMPIRIC_UPDATE_INTERVAL,
+    INIT_BLOCK_TS,
+)
 from tests.roles import ShrineRoles
 from tests.shrine.constants import (
     DEBT_CEILING,
@@ -27,6 +33,7 @@ from tests.utils import (
     ABBOT_ROLE,
     AURA_USER,
     DOGE_OWNER,
+    EMPIRIC_OWNER,
     GATE_OWNER,
     RAY_PERCENT,
     SHRINE_OWNER,
@@ -412,6 +419,38 @@ async def yin(starknet, shrine) -> StarknetContract:
     await shrine.grant_role(ShrineRoles.MOVE_YIN, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return deployed_yin
+
+
+#
+# Empiric oracle
+#
+
+
+@pytest.fixture
+async def mock_empiric_impl(starknet) -> StarknetContract:
+    contract = compile_contract("tests/oracle/mock_empiric.cairo")
+    return await starknet.deploy(contract_class=contract)
+
+
+@pytest.fixture
+async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
+    set_block_timestamp(starknet, INIT_BLOCK_TS)
+    contract = compile_contract("contracts/oracle/empiric.cairo")
+    empiric = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            EMPIRIC_OWNER,
+            mock_empiric_impl.contract_address,
+            shrine.contract_address,
+            EMPIRIC_UPDATE_INTERVAL,
+            EMPIRIC_FRESHNESS_THRESHOLD,
+            EMPIRIC_SOURCES_THRESHOLD,
+        ],
+    )
+
+    await shrine.grant_role(ShrineRoles.ADVANCE, empiric.contract_address).execute(caller_address=SHRINE_OWNER)
+
+    return empiric
 
 
 #

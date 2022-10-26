@@ -53,3 +53,12 @@ namespace IUSDa {
     func get_total_collateral() -> (total: felt) {
     }
 }
+
+@contract_interface
+namespace IEmpiricOracle {
+    // https://docs.empiric.network/using-empiric/consuming-data#function-get_spot_median
+    func get_spot_median(pair_id: felt) -> (
+        price: felt, decimals: felt, last_updated_ts: felt, num_sources: felt
+    ) {
+    }
+}

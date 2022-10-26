@@ -71,6 +71,7 @@ def str_to_felt(text: str) -> int:
 ABBOT_OWNER = str_to_felt("abbot owner")
 GATE_OWNER = str_to_felt("gate owner")
 SHRINE_OWNER = str_to_felt("shrine owner")
+EMPIRIC_OWNER = str_to_felt("empiric owner")
 
 
 ADMIN = str_to_felt("admin")
@@ -101,6 +102,8 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 # Yin constants
 INFINITE_YIN_ALLOWANCE = CAIRO_PRIME - 1
+
+# Empiric constants
 
 
 def as_address(value: Addressable) -> int:
