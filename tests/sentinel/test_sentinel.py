@@ -8,10 +8,10 @@ from tests.utils import SENTINEL_OWNER, YangConfig, assert_event_emitted
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_sentinel_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_admin().execute()).result.admin == SENTINEL_OWNER
-    assert (await abbot.has_role(SentinelRoles.ADD_YANG, SENTINEL_OWNER).execute()).result.has_role == 1
-    yang_addrs = (await abbot.get_yang_addresses().execute()).result.addresses
+async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+    assert (await sentinel.get_admin().execute()).result.admin == SENTINEL_OWNER
+    assert (await sentinel.has_role(SentinelRoles.ADD_YANG, SENTINEL_OWNER).execute()).result.has_role == 1
+    yang_addrs = (await sentinel.get_yang_addresses().execute()).result.addresses
     assert len(yang_addrs) == 2
     assert steth_yang.contract_address in yang_addrs
     assert doge_yang.contract_address in yang_addrs
@@ -55,13 +55,13 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
         ).execute(caller_address=OTHER_USER)
 
     # test reverting on yang address equal 0
-    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
+    with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
         await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
             caller_address=SENTINEL_OWNER
         )
 
     # test reverting on gate address equal 0
-    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
+    with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
         await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
             caller_address=SENTINEL_OWNER
         )
@@ -70,14 +70,14 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
     await sentinel.add_yang(
         yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
     ).execute(caller_address=SENTINEL_OWNER)
-    with pytest.raises(StarkException, match="Abbot: Yang already added"):
+    with pytest.raises(StarkException, match="Sentinel: Yang already added"):
         await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
 
     # test reverting when the Gate is for a different yang
     yang = doge_yang
-    with pytest.raises(StarkException, match="Abbot: Yang address does not match Gate's asset"):
+    with pytest.raises(StarkException, match="Sentinel: Yang address does not match Gate's asset"):
         await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
