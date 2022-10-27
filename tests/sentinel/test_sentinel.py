@@ -83,21 +83,28 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
         ).execute(caller_address=SENTINEL_OWNER)
 
 
+# Tests for view functions grouped together for efficiency since none of them change the state
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_get_yang_addresses(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_view_funcs(sentinel, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
+
+    # Testing `get_yang_addresses`
     assert (await sentinel.get_yang_addresses().execute()).result.addresses == [
         steth_yang.contract_address,
         doge_yang.contract_address,
     ]
 
-
-@pytest.mark.usefixtures("sentinel_with_yangs")
-@pytest.mark.asyncio
-async def test_get_gate_address(sentinel, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
+    # Testing `get_gate_addresses`
     assert (
         await sentinel.get_gate_address(steth_yang.contract_address).execute()
     ).result.gate == steth_gate.contract_address
     assert (
         await sentinel.get_gate_address(doge_yang.contract_address).execute()
     ).result.gate == doge_gate.contract_address
+
+    # Testing `get_yang`
+    assert (await sentinel.get_yang(0).execute()).result.yang == steth_yang.contract_address
+    assert (await sentinel.get_yang(1).execute()).result.yang == doge_yang.contract_address
+
+    # Testing `get_yang_addresses_count`
+    assert (await sentinel.get_yang_addresses_count().execute()).result.count == 2
