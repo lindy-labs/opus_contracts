@@ -2,7 +2,7 @@ import math
 import operator
 
 import pytest
-from hypothesis import assume, example, given, reproduce_failure, settings
+from hypothesis import assume, example, given, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
@@ -260,7 +260,6 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
         ("test_runsigned_div_unchecked", operator.floordiv, RAY_SCALE, "res"),
     ],
 )
-@reproduce_failure("6.49.1", b"AAEDAQAAhfhvwEw9AQABCdg=")
 @pytest.mark.asyncio
 async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
     # `unsigned_div_rem` assumes 0 < right <= CAIRO_PRIME / RANGE_CHECK_BOUND
