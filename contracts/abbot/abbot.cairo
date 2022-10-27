@@ -217,6 +217,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
+// Caller does not need to be trove owner
 @external
 func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, trove_id: ufelt, amount: wad
@@ -278,6 +279,7 @@ func forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return ();
 }
 
+// Caller does not need to be trove owner
 @external
 func melt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, amount: wad
