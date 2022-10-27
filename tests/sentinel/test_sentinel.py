@@ -1,6 +1,20 @@
 import pytest
+from starkware.starkware_utils.error_handling import StarkException
 
+from tests.roles import SentinelRoles
+from tests.sentinel.constants import *  # noqa: F403
 from tests.utils import SENTINEL_OWNER, YangConfig, assert_event_emitted
+
+
+@pytest.mark.usefixtures("sentinel_with_yangs")
+@pytest.mark.asyncio
+async def test_sentinel_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
+    assert (await abbot.get_admin().execute()).result.admin == SENTINEL_OWNER
+    assert (await abbot.has_role(SentinelRoles.ADD_YANG, SENTINEL_OWNER).execute()).result.has_role == 1
+    yang_addrs = (await abbot.get_yang_addresses().execute()).result.addresses
+    assert len(yang_addrs) == 2
+    assert steth_yang.contract_address in yang_addrs
+    assert doge_yang.contract_address in yang_addrs
 
 
 @pytest.mark.asyncio
@@ -27,3 +41,63 @@ async def test_add_yang(sentinel, shrine_deploy, steth_yang: YangConfig, doge_ya
     assert len(addrs) == len(yangs)
     for i in range(len(yangs)):
         assert addrs[i] in (y.contract_address for y in yangs)
+
+
+@pytest.mark.asyncio
+async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+
+    yang = steth_yang
+
+    # test reverting on unathorized actor calling add_yang
+    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
+        await sentinel.add_yang(
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+        ).execute(caller_address=OTHER_USER)
+
+    # test reverting on yang address equal 0
+    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
+        await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+    # test reverting on gate address equal 0
+    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
+        await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+    # test reverting on trying to add the same yang / gate combo
+    await sentinel.add_yang(
+        yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+    ).execute(caller_address=SENTINEL_OWNER)
+    with pytest.raises(StarkException, match="Abbot: Yang already added"):
+        await sentinel.add_yang(
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+        ).execute(caller_address=SENTINEL_OWNER)
+
+    # test reverting when the Gate is for a different yang
+    yang = doge_yang
+    with pytest.raises(StarkException, match="Abbot: Yang address does not match Gate's asset"):
+        await sentinel.add_yang(
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address
+        ).execute(caller_address=SENTINEL_OWNER)
+
+
+@pytest.mark.usefixtures("sentinel_with_yangs")
+@pytest.mark.asyncio
+async def test_get_yang_addresses(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+    assert (await sentinel.get_yang_addresses().execute()).result.addresses == [
+        steth_yang.contract_address,
+        doge_yang.contract_address,
+    ]
+
+
+@pytest.mark.usefixtures("sentinel_with_yangs")
+@pytest.mark.asyncio
+async def test_get_gate_address(sentinel, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
+    assert (
+        await sentinel.get_gate_address(steth_yang.contract_address).execute()
+    ).result.gate == steth_gate.contract_address
+    assert (
+        await sentinel.get_gate_address(doge_yang.contract_address).execute()
+    ).result.gate == doge_gate.contract_address

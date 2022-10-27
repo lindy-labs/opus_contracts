@@ -254,39 +254,21 @@ async def shrine_forge(shrine, shrine_deposit) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def abbot(starknet, shrine_deploy) -> StarknetContract:
+async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
     shrine = shrine_deploy
     abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
-        contract_class=abbot_contract, constructor_calldata=[ABBOT_OWNER, shrine.contract_address]
+        contract_class=abbot_contract,
+        constructor_calldata=[ABBOT_OWNER, shrine.contract_address, sentinel.contract_address],
     )
 
     # auth Abbot in Shrine
     # TODO: eventually remove ADD_YANG and SET_THRESHOLD from the Abbot
     #       https://github.com/lindy-labs/aura_contracts/issues/105
-    roles = (
-        ShrineRoles.DEPOSIT
-        + ShrineRoles.WITHDRAW
-        + ShrineRoles.FORGE
-        + ShrineRoles.MELT
-        + ShrineRoles.ADD_YANG
-        + ShrineRoles.SET_THRESHOLD
-    )
+    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE + ShrineRoles.MELT
     await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return abbot
-
-
-@pytest.fixture
-async def abbot_with_yangs(starknet: Starknet, abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
-
-    for yang in (steth_yang, doge_yang):
-        await abbot.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).execute(caller_address=ABBOT_OWNER)
 
 
 #
@@ -493,3 +475,5 @@ async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang) -> Star
         await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
+
+    return sentinel
