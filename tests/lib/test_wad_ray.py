@@ -2,7 +2,7 @@ import math
 import operator
 
 import pytest
-from hypothesis import assume, example, given, settings
+from hypothesis import assume, example, given, reproduce_failure, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
@@ -260,6 +260,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
         ("test_runsigned_div_unchecked", operator.floordiv, RAY_SCALE, "res"),
     ],
 )
+@reproduce_failure("6.49.1", b"AAEDAQAAhfhvwEw9AQABCdg=")
 @pytest.mark.asyncio
 async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
     # `unsigned_div_rem` assumes 0 < right <= CAIRO_PRIME / RANGE_CHECK_BOUND
@@ -273,9 +274,9 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
 
     if not fn.endswith("unchecked") and abs(expected_py) > BOUND:
         # `unsigned_div_rem` asserts 0 <= quotient < rc_bound, meaning this exception
-        # will only catch BOUND < quotient <= rc_bound
+        # will only catch BOUND < quotient < rc_bound
         if expected_py < RANGE_CHECK_BOUND:
-            with pytest.raises(StarkException, match="WadRay: out of bounds"):
+            with pytest.raises(StarkException, match="WadRay: Out of bounds"):
                 await method(left, right).execute()
         else:
             with pytest.raises(StarkException):
