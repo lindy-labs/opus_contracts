@@ -31,7 +31,8 @@ from tests.shrine.constants import (
 from tests.utils import (
     ABBOT_OWNER,
     ABBOT_ROLE,
-    AURA_USER,
+    AURA_USER_1,
+    AURA_USER_2,
     DOGE_OWNER,
     EMPIRIC_OWNER,
     GATE_OWNER,
@@ -435,19 +436,27 @@ async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
 
 
 @pytest.fixture
-async def funded_aura_user(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+async def funded_aura_user_1(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
     # fund the user with bags
-    await steth_token.transfer(AURA_USER, (to_wad(1_000), 0)).execute(caller_address=STETH_OWNER)
-    await doge_token.transfer(AURA_USER, (to_wad(1_000_000), 0)).execute(caller_address=DOGE_OWNER)
+    await steth_token.transfer(AURA_USER_1, (to_wad(1_000), 0)).execute(caller_address=STETH_OWNER)
+    await doge_token.transfer(AURA_USER_1, (to_wad(1_000_000), 0)).execute(caller_address=DOGE_OWNER)
 
     # user approves Aura gates to spend bags
-    await max_approve(steth_token, AURA_USER, steth_yang.gate_address)
-    await max_approve(doge_token, AURA_USER, doge_yang.gate_address)
+    await max_approve(steth_token, AURA_USER_1, steth_yang.gate_address)
+    await max_approve(doge_token, AURA_USER_1, doge_yang.gate_address)
 
 
-#
-# Deployed Sentinel
-#
+@pytest.fixture
+async def funded_aura_user_2(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+    # fund the user with bags
+    await steth_token.transfer(AURA_USER_2, (to_wad(1_000), 0)).execute(caller_address=STETH_OWNER)
+    await doge_token.transfer(AURA_USER_2, (to_wad(1_000_000), 0)).execute(caller_address=DOGE_OWNER)
+
+    # user approves Aura gates to spend bags
+    await max_approve(steth_token, AURA_USER_2, steth_yang.gate_address)
+    await max_approve(doge_token, AURA_USER_2, doge_yang.gate_address)
+
+
 @pytest.fixture
 async def sentinel(starknet, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy

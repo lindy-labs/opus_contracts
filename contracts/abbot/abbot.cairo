@@ -191,6 +191,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
+// Caller does not need to be trove owner
 @external
 func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, trove_id: ufelt, amount: wad
@@ -204,9 +205,7 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (sentinel: address) = abbot_sentinel_address.read();
     assert_valid_yang(sentinel, yang);
 
-    // don't allow depositing to foreign troves
     let (user: address) = get_caller_address();
-    assert_trove_owner(user, trove_id);
 
     do_deposit(user, trove_id, yang, amount);
 
@@ -258,6 +257,7 @@ func forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return ();
 }
 
+// Caller does not need to be trove owner
 @external
 func melt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, amount: wad
@@ -265,8 +265,6 @@ func melt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     alloc_locals;
 
     let (user: address) = get_caller_address();
-    assert_trove_owner(user, trove_id);
-
     let (shrine: address) = abbot_shrine_address.read();
     IShrine.melt(shrine, user, trove_id, amount);
 
