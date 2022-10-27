@@ -398,21 +398,7 @@ async def test_forge_failures(abbot):
         await abbot.forge(TROVE_1, amount).execute(caller_address=AURA_USER_1)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
-@pytest.mark.asyncio
-async def test_melt(abbot, yin, shrine):
-    melt_amount = to_wad(333)
-    remaining_amount = INITIAL_FORGED_AMOUNT - melt_amount
-
-    tx = await abbot.melt(TROVE_1, melt_amount).execute(caller_address=AURA_USER_1)
-
-    # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
-    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER_1, remaining_amount])
-
-    assert (await yin.balanceOf(AURA_USER_1).execute()).result.balance == remaining_amount
-
-
+@pytest.mark.parametrize("melter", [AURA_USER_1, AURA_USER_2])  # melt with trove owner, and non-owner
 @pytest.mark.usefixtures(
     "abbot_with_yangs",
     "funded_aura_user_1",
@@ -421,17 +407,17 @@ async def test_melt(abbot, yin, shrine):
     "aura_user_2_with_trove_id_2",
 )
 @pytest.mark.asyncio
-async def test_melt_non_owner(abbot, yin, shrine):
+async def test_melt(abbot, yin, shrine, melter):
     melt_amount = to_wad(333)
     remaining_amount = INITIAL_FORGED_AMOUNT - melt_amount
 
-    tx = await abbot.melt(TROVE_1, melt_amount).execute(caller_address=AURA_USER_2)
+    tx = await abbot.melt(TROVE_1, melt_amount).execute(caller_address=melter)
 
     # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
-    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER_2, remaining_amount])
+    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [melter, remaining_amount])
 
-    assert (await yin.balanceOf(AURA_USER_2).execute()).result.balance == remaining_amount
+    assert (await yin.balanceOf(melter).execute()).result.balance == remaining_amount
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
