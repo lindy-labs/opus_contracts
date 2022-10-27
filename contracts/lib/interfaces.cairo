@@ -63,7 +63,7 @@ namespace IFlashLender {
 
     func flashLoan(
         receiver: felt, token: felt, amount: Uint256, calldata_len: felt, calldata: felt*
-    ) {
+    ) -> (success: felt) {
     }
 }
 

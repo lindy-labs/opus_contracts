@@ -24,7 +24,7 @@ class ShrineRoles(IntEnum):
     ADD_YANG = 2**0
     ADVANCE = 2**1
     DEPOSIT = 2**2
-    FLASH_LOAN = 2**3
+    FLASH_MINT = 2**3
     FORGE = 2**4
     KILL = 2**5
     MELT = 2**6

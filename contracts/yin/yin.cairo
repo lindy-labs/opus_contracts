@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero
+from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt
 from starkware.cairo.common.uint256 import Uint256, assert_uint256_eq, assert_uint256_le
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
@@ -33,11 +33,15 @@ const UINT8_MAX = 255;
 //
 
 @event
-func Transfer(from_, to, value) {
+func Transfer(from_: address, to: address, value: wad) {
 }
 
 @event
-func Approval(owner, spender, value) {
+func Approval(owner: address, spender: address, value: wad) {
+}
+
+@event
+func FlashMint(initiator: address, receiver: address, token: address, amount: Uint256) {
 }
 
 //
@@ -251,24 +255,14 @@ func _spend_allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 //
 
 // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
-// it is supposed to be returned from the onFlashLoan function by the flash loan receiver
-const ON_FLASH_LOAN_SUCCESS = 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9;
+// it is supposed to be returned from the onFlashLoan function by the receiver
+// the raw value is 0x439148f0bbc682ca079e46d6e2c2f0c1e3b820f1a291b069d8882abf8cf18dd9
+// and here it's split into Uint256 parts
+const ON_FLASH_MINT_SUCCESS_LOW = 302690805846553493147886643436372200921;
+const ON_FLASH_MINT_SUCCESS_HIGH = 89812638168441061617712796123820912833;
 
 // Percentage value of Yin's total supply that can be flash minted
 const FLASH_MINT_AMOUNT_PCT = 5 * WadRay.WAD_PERCENT;
-
-@view
-func flashFee(token: felt, amount: Uint256) -> (fee: Uint256) {
-    // as per EIP3156, if a token is not supported, this function must revert
-    // and we only support flash minting of Yin
-    with_attr error_message("Yin: Unsupported flash loan token") {
-        let (yin: address) = get_contract_address();
-        assert token = yin;
-    }
-
-    // feeless loans
-    return (Uint256(0, 0),);
-}
 
 @view
 func maxFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -286,6 +280,19 @@ func maxFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     return (Uint256(0, 0),);
 }
 
+@view
+func flashFee{syscall_ptr: felt*}(token: felt, amount: Uint256) -> (fee: Uint256) {
+    // as per EIP3156, if a token is not supported, this function must revert
+    // and we only support flash minting of Yin
+    with_attr error_message("Yin: Unsupported token") {
+        let (yin: address) = get_contract_address();
+        assert token = yin;
+    }
+
+    // feeless minting
+    return (Uint256(0, 0),);
+}
+
 @external
 func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     receiver: address, token: address, amount: Uint256, calldata_len: ufelt, calldata: ufelt*
@@ -295,14 +302,15 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // reverts if token != yin, as per EIP3156
     let (fee: Uint256) = flashFee(token, amount);
 
-    with_attr error_message("Yin: Flash loan amount exceeds maximum possible amount to loan") {
-        let (max_loan: Uint256) = maxFlashLoan(token);
-        assert_uint256_le(amount, max_loan);
+    with_attr error_message("Yin: Flash mint amount exceeds maximum allowed mint amount") {
+        let (max: Uint256) = maxFlashLoan(token);
+        assert_uint256_le(amount, max);
     }
 
+    let (shrine: address) = yin_shrine_address.read();
     let felt_amount: wad = WadRay.from_uint(amount);
-    // update the Yin balance of the receiver by the requested amount
-    IShrine.start_flash_loan(shrine, receiver, felt_amount);
+    // updating Yin balance of the receiver by the requested amount
+    IShrine.start_flash_mint(shrine, receiver, felt_amount);
 
     let (initiator: address) = get_caller_address();
     let (borrower_resp: Uint256) = IFlashBorrower.onFlashLoan(
@@ -310,13 +318,17 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     with_attr error_message("Yin: onFlashLoan callback failed") {
-        let (expected_value: Uint256) = WadRay.to_uint(ON_FLASH_LOAN_SUCCESS);
+        let expected_value: Uint256 = Uint256(
+            low=ON_FLASH_MINT_SUCCESS_LOW, high=ON_FLASH_MINT_SUCCESS_HIGH
+        );
         assert_uint256_eq(borrower_resp, expected_value);
     }
 
     // this function in Shrine takes care of the balance validation
     // and reverts if it does not add up
-    IShrine.end_flash_loan(shrine, receiver, felt_amount);
+    IShrine.end_flash_mint(shrine, receiver, felt_amount);
+
+    FlashMint.emit(initiator, receiver, token, amount);
 
     return (TRUE,);
 }
