@@ -13,6 +13,12 @@ namespace ISentinel {
     func get_yang_addresses() -> (addresses_len: ufelt, addresses: address*) {
     }
 
+    func get_yang_addresses_count() -> (count: ufelt) {
+    }
+
+    func get_yang(idx: ufelt) -> (yang: address) {
+    }
+
     //
     // External
     //

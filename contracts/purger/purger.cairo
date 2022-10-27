@@ -7,7 +7,7 @@ from starkware.cairo.common.math import assert_nn_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.abbot.interface import IAbbot
+from contracts.sentinel.interface import ISentinel
 from contracts.gate.interface import IGate
 from contracts.shrine.interface import IShrine
 
@@ -44,7 +44,7 @@ func purger_shrine() -> (shrine: address) {
 }
 
 @storage_var
-func purger_abbot() -> (abbot: address) {
+func purger_sentinel() -> (sentinel: address) {
 }
 
 @storage_var
@@ -117,10 +117,10 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, abbot: address, absorber: address
+    shrine: address, sentinel: address, absorber: address
 ) {
     purger_shrine.write(shrine);
-    purger_abbot.write(abbot);
+    purger_sentinel.write(sentinel);
     purger_absorber.write(absorber);
     return ();
 }
@@ -253,12 +253,12 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     IShrine.melt(shrine, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
-    let (abbot: address) = purger_abbot.read();
-    let (yang_count, yangs: address*) = IAbbot.get_yang_addresses(abbot);
+    let (sentinel: address) = purger_sentinel.read();
+    let (yang_count, yangs: address*) = ISentinel.get_yang_addresses(sentinel);
     let (freed_assets_amt: wad*) = alloc();
 
     free_yangs(
-        shrine, abbot, recipient, trove_id, yang_count, yangs, percentage_freed, freed_assets_amt
+        shrine, sentinel, recipient, trove_id, yang_count, yangs, percentage_freed, freed_assets_amt
     );
 
     // Assert new LTV < old LTV
@@ -388,7 +388,7 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 // Helper function to loop through yang addresses and transfer freed yang to recipient
 func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine: address,
-    abbot: address,
+    sentinel: address,
     recipient: address,
     trove_id: ufelt,
     yang_count: ufelt,
@@ -400,11 +400,11 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         return ();
     }
 
-    free_yang(shrine, abbot, recipient, trove_id, [yangs], percentage_freed, freed_assets_amt);
+    free_yang(shrine, sentinel, recipient, trove_id, [yangs], percentage_freed, freed_assets_amt);
 
     return free_yangs(
         shrine,
-        abbot,
+        sentinel,
         recipient,
         trove_id,
         yang_count - 1,
@@ -417,7 +417,7 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 // Helper function to transfer freed yang to recipient for a specific yang
 func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine: address,
-    abbot: address,
+    sentinel: address,
     recipient: address,
     trove_id: ufelt,
     yang: address,
@@ -432,7 +432,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return ();
     }
 
-    let (gate: address) = IAbbot.get_gate_address(abbot, yang);
+    let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
     // `rmul` of a wad and a ray returns a wad
     let freed_yang: wad = WadRay.rmul(deposited_amt, percentage_freed);

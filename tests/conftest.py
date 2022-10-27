@@ -36,6 +36,7 @@ from tests.utils import (
     EMPIRIC_OWNER,
     GATE_OWNER,
     RAY_PERCENT,
+    SENTINEL_OWNER,
     SHRINE_OWNER,
     STETH_OWNER,
     TIME_INTERVAL,
@@ -460,3 +461,35 @@ async def funded_aura_user(steth_token, steth_yang: YangConfig, doge_token, doge
     # user approves Aura gates to spend bags
     await max_approve(steth_token, AURA_USER, steth_yang.gate_address)
     await max_approve(doge_token, AURA_USER, doge_yang.gate_address)
+
+
+#
+# Deployed Sentinel
+#
+@pytest.fixture
+async def sentinel(starknet, shrine_deploy) -> StarknetContract:
+    shrine = shrine_deploy
+    contract = compile_contract("contracts/sentinel/sentinel.cairo")
+
+    sentinel = await starknet.deploy(
+        contract_class=contract, constructor_calldata=[SENTINEL_OWNER, shrine.contract_address]
+    )
+
+    # Authorize Sentinel in Shrine
+    await shrine.grant_role(ShrineRoles.ADD_YANG + ShrineRoles.SET_THRESHOLD, sentinel.contract_address).execute(
+        caller_address=SHRINE_OWNER
+    )
+
+    return sentinel
+
+
+@pytest.fixture
+async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang) -> StarknetContract:
+    # Setting block timestamp to interval 1, because add_yang assigns the initial
+    # price to current interval - 1 (i.e. 0 in this case)
+    set_block_timestamp(starknet, TIME_INTERVAL)
+
+    for yang in (steth_yang, doge_yang):
+        await sentinel.add_yang(
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+        ).execute(caller_address=SENTINEL_OWNER)

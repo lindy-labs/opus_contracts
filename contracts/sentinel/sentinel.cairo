@@ -46,7 +46,7 @@ func sentinel_yang_addresses_count() -> (count: ufelt) {
 
 // 0-based array of yang addresses added to the Shrine via this Sentinel
 @storage_var
-func sentinel_yang_addresses(idx) -> (address: felt) {
+func sentinel_yang_addresses(idx: ufelt) -> (yang: address) {
 }
 
 // the address of the Shrine associated with this Sentinel
@@ -55,7 +55,21 @@ func sentinel_shrine_address() -> (shrine: address) {
 }
 
 //
-// view functions
+// Constructor
+//
+
+@constructor
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, shrine: address) {
+    AccessControl.initializer(admin);
+    AccessControl._grant_role(SentinelRoles.ADD_YANG, admin);
+    sentinel_shrine_address.write(shrine);
+    return ();
+}
+
+//
+// View functions
 //
 
 @view
@@ -75,6 +89,23 @@ func get_yang_addresses{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     get_yang_addresses_loop(count, 0, addresses);
     return (count, addresses);
 }
+
+@view
+func get_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(idx: ufelt) -> (
+    yang: address
+) {
+    return sentinel_yang_addresses.read(idx);
+}
+
+@view
+func get_yang_addresses_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (count: ufelt) {
+    return sentinel_yang_addresses_count.read();
+}
+
+//
+// External functions
+//
 
 @external
 func add_yang{

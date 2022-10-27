@@ -5,6 +5,10 @@ class AbbotRoles(IntEnum):
     ADD_YANG = 2**0
 
 
+class SentinelRoles(IntEnum):
+    ADD_YANG = 2**0
+
+
 class EmpiricRoles(IntEnum):
     ADD_YANG = 2**0
     SET_ORACLE_ADDRESS = 2**1
