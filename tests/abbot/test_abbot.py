@@ -263,25 +263,24 @@ async def test_close_trove_failures(abbot):
         await abbot.close_trove(1).execute(caller_address=OTHER_USER)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.parametrize("depositor", [AURA_USER_1, AURA_USER_2])  # melt with trove owner, and non-owner
+@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1", "funded_aura_user_2")
 @pytest.mark.asyncio
-async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, depositor):
     fresh_steth_deposit = to_wad(1)
     fresh_doge_deposit = to_wad(200)
 
     tx1 = await abbot.deposit(steth_yang.contract_address, TROVE_1, fresh_steth_deposit).execute(
-        caller_address=AURA_USER_1
+        caller_address=depositor
     )
-    tx2 = await abbot.deposit(doge_yang.contract_address, TROVE_1, fresh_doge_deposit).execute(
-        caller_address=AURA_USER_1
-    )
+    tx2 = await abbot.deposit(doge_yang.contract_address, TROVE_1, fresh_doge_deposit).execute(caller_address=depositor)
 
     # check if gates emitted Deposit from AURA_USER_1 to trove with the right amount
     assert_event_emitted(
-        tx1, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [AURA_USER_1, TROVE_1, fresh_steth_deposit]
+        tx1, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [depositor, TROVE_1, fresh_steth_deposit]
     )
     assert_event_emitted(
-        tx2, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [AURA_USER_1, TROVE_1, fresh_doge_deposit]
+        tx2, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [depositor, TROVE_1, fresh_doge_deposit]
     )
 
     assert (
@@ -292,7 +291,7 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
     ).result.balance == INITIAL_DOGE_DEPOSIT + fresh_doge_deposit
 
     # depositing 0 should pass, no event on gate (exits early)
-    await abbot.deposit(steth_yang.contract_address, TROVE_1, 0).execute(caller_address=AURA_USER_1)
+    await abbot.deposit(steth_yang.contract_address, TROVE_1, 0).execute(caller_address=depositor)
     assert (
         await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
     ).result.balance == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
@@ -308,13 +307,6 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
         await abbot.deposit(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).execute(
             caller_address=AURA_USER_1
         )
-
-    with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
-        await abbot.deposit(steth_yang.contract_address, TROVE_1, to_wad(1)).execute(caller_address=OTHER_USER)
-
-    nope_trove = 2  # trove ID 2 does not exist
-    with pytest.raises(StarkException, match=f"Abbot: Address {AURA_USER_1} does not own trove ID {nope_trove}"):
-        await abbot.deposit(steth_yang.contract_address, nope_trove, to_wad(1)).execute(caller_address=AURA_USER_1)
 
 
 @pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")

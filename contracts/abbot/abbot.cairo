@@ -229,9 +229,7 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     assert_valid_yang(yang);
 
-    // don't allow depositing to foreign troves
     let (user: address) = get_caller_address();
-    assert_trove_owner(user, trove_id);
 
     do_deposit(user, trove_id, yang, amount);
 
