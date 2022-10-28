@@ -219,7 +219,6 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     assert_trove_owner(user, trove_id);
 
     let (shrine: address) = abbot_shrine_address.read();
-    let (sentinel: address) = abbot_sentinel_address.read();
 
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
