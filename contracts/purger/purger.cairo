@@ -7,8 +7,8 @@ from starkware.cairo.common.math import assert_nn_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.sentinel.interface import ISentinel
 from contracts.gate.interface import IGate
+from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
 
 from contracts.lib.aliases import address, bool, ray, ufelt, wad

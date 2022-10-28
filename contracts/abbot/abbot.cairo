@@ -5,22 +5,10 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.abbot.roles import AbbotRoles
 from contracts.gate.interface import IGate
-from contracts.shrine.interface import IShrine
 from contracts.sentinel.interface import ISentinel
+from contracts.shrine.interface import IShrine
 
-// these imported public functions are part of the contract's interface
-from contracts.lib.accesscontrol.accesscontrol_external import (
-    change_admin,
-    get_admin,
-    get_roles,
-    grant_role,
-    has_role,
-    renounce_role,
-    revoke_role,
-)
-from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 from contracts.lib.types import Trove, Yang
@@ -90,8 +78,6 @@ func abbot_trove_owner(trove_id: ufelt) -> (owner: address) {
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(admin: address, shrine: address, sentinel: address) {
-    AccessControl.initializer(admin);
-    AccessControl._grant_role(AbbotRoles.ADD_YANG, admin);
     abbot_shrine_address.write(shrine);
     abbot_sentinel_address.write(sentinel);
     return ();
@@ -147,7 +133,8 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         assert_not_zero(yangs_len);
     }
 
-    assert_valid_yangs(yangs_len, yangs);
+    let (sentinel: address) = abbot_sentinel_address.read();
+    assert_valid_yangs(sentinel, yangs_len, yangs);
 
     let (troves_count: ufelt) = abbot_troves_count.read();
     abbot_troves_count.write(troves_count + 1);
@@ -161,7 +148,7 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     abbot_trove_owner.write(new_trove_id, user);
 
     let (shrine: address) = abbot_shrine_address.read();
-    do_deposits(user, new_trove_id, yangs_len, yangs, amounts);
+    do_deposits(shrine, sentinel, user, new_trove_id, yangs_len, yangs, amounts);
     IShrine.forge(shrine, user, new_trove_id, forge_amount);
 
     TroveOpened.emit(user, new_trove_id);
@@ -184,7 +171,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
     let (sentinel: address) = abbot_sentinel_address.read();
     let (yang_addresses_count: ufelt) = ISentinel.get_yang_addresses_count(sentinel);
-    do_withdrawals_full(shrine, user, trove_id, 0, yang_addresses_count);
+    do_withdrawals_full(shrine, sentinel, user, trove_id, 0, yang_addresses_count);
 
     // deliberately not emitting an event
 
@@ -203,11 +190,13 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     let (sentinel: address) = abbot_sentinel_address.read();
+    let (shrine: address) = abbot_shrine_address.read();
+
     assert_valid_yang(sentinel, yang);
 
     let (user: address) = get_caller_address();
 
-    do_deposit(user, trove_id, yang, amount);
+    do_deposit(shrine, sentinel, user, trove_id, yang, amount);
 
     return ();
 }
@@ -286,15 +275,13 @@ func assert_trove_owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 func assert_valid_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yangs_len: ufelt, yangs: address*
+    sentinel: address, yangs_len: ufelt, yangs: address*
 ) {
-    let (sentinel: address) = abbot_sentinel_address.read();
-
     if (yangs_len == 0) {
         return ();
     }
     assert_valid_yang(sentinel, [yangs]);
-    return assert_valid_yangs(yangs_len - 1, yangs + 1);
+    return assert_valid_yangs(sentinel, yangs_len - 1, yangs + 1);
 }
 
 func assert_valid_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -310,24 +297,29 @@ func assert_valid_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 // loop through all the yangs and their respective amounts that need to be deposited
 // and call the appropriate Gate's `deposit` function
 func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    user: address, trove_id: ufelt, deposits_count: ufelt, yangs: address*, amounts: wad*
+    shrine: address,
+    sentinel: address,
+    user: address,
+    trove_id: ufelt,
+    deposits_count: ufelt,
+    yangs: address*,
+    amounts: wad*,
 ) {
     if (deposits_count == 0) {
         return ();
     }
-    do_deposit(user, trove_id, [yangs], [amounts]);
-    return do_deposits(user, trove_id, deposits_count - 1, yangs + 1, amounts + 1);
+    do_deposit(shrine, sentinel, user, trove_id, [yangs], [amounts]);
+    return do_deposits(
+        shrine, sentinel, user, trove_id, deposits_count - 1, yangs + 1, amounts + 1
+    );
 }
 
 func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    user: address, trove_id: ufelt, yang: address, amount: wad
+    shrine: address, sentinel: address, user: address, trove_id: ufelt, yang: address, amount: wad
 ) {
     alloc_locals;
 
-    let (sentinel: address) = abbot_sentinel_address.read();
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
-
-    let (shrine: address) = abbot_shrine_address.read();
 
     ReentrancyGuard._start();
     let yang_amount: wad = IGate.deposit(gate, user, trove_id, amount);
@@ -340,7 +332,12 @@ func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 // loop through all the yangs of a trove and withdraw full yang amount
 // deposited into the trove
 func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, user: address, trove_id: ufelt, yang_idx: ufelt, yang_count: ufelt
+    shrine: address,
+    sentinel: address,
+    user: address,
+    trove_id: ufelt,
+    yang_idx: ufelt,
+    yang_count: ufelt,
 ) {
     alloc_locals;
 
@@ -348,13 +345,12 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         return ();
     }
 
-    let (sentinel: address) = abbot_sentinel_address.read();
     let (yang: address) = ISentinel.get_yang(sentinel, yang_idx);
 
     let (yang_amount: wad) = IShrine.get_deposit(shrine, yang, trove_id);
 
     if (yang_amount == 0) {
-        return do_withdrawals_full(shrine, user, trove_id, yang_idx + 1, yang_count);
+        return do_withdrawals_full(shrine, sentinel, user, trove_id, yang_idx + 1, yang_count);
     } else {
         let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
         let (shrine: address) = abbot_shrine_address.read();
@@ -364,7 +360,7 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         IShrine.withdraw(shrine, yang, trove_id, yang_amount);
         ReentrancyGuard._end();
 
-        return do_withdrawals_full(shrine, user, trove_id, yang_idx + 1, yang_count);
+        return do_withdrawals_full(shrine, sentinel, user, trove_id, yang_idx + 1, yang_count);
     }
 }
 

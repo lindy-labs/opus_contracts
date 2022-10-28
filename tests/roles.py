@@ -1,10 +1,6 @@
 from enum import IntEnum
 
 
-class AbbotRoles(IntEnum):
-    ADD_YANG = 2**0
-
-
 class SentinelRoles(IntEnum):
     ADD_YANG = 2**0
 

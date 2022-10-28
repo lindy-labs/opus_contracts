@@ -4,8 +4,8 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 
-from contracts.sentinel.roles import SentinelRoles
 from contracts.gate.interface import IGate
+from contracts.sentinel.roles import SentinelRoles
 from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface

@@ -2,8 +2,7 @@ import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.roles import SentinelRoles
-from tests.sentinel.constants import *  # noqa: F403
-from tests.utils import SENTINEL_OWNER, YangConfig, assert_event_emitted
+from tests.utils import BAD_GUY, SENTINEL_OWNER, YangConfig, assert_event_emitted
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
@@ -52,7 +51,7 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
     with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
         await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).execute(caller_address=OTHER_USER)
+        ).execute(caller_address=BAD_GUY)
 
     # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):

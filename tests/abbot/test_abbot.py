@@ -4,7 +4,6 @@ from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
 from tests.utils import (
-    ABBOT_OWNER,
     AURA_USER_1,
     AURA_USER_2,
     SHRINE_OWNER,
@@ -58,12 +57,6 @@ async def aura_user_2_with_trove_id_2(abbot, shrine, steth_yang: YangConfig, dog
 #
 # tests
 #
-
-
-@pytest.mark.usefixtures("sentinel_with_yangs")
-@pytest.mark.asyncio
-async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_admin().execute()).result.admin == ABBOT_OWNER
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1")
