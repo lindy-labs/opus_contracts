@@ -873,6 +873,8 @@ func start_flash_mint{
     }
 
     shrine_yin.write(receiver, new_balance);
+    let (total_yin: wad) = shrine_total_yin.read();
+    shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
     shrine_flash_mint_receiver_balance.write(current_balance);
 
     return ();
@@ -900,6 +902,8 @@ func end_flash_mint{
     }
 
     shrine_yin.write(receiver, post_mint_balance);
+    let (total_yin: wad) = shrine_total_yin.read();
+    shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
 
     // reseting back to 0 for a cheaper TX (no storage update)
     shrine_flash_mint_receiver_balance.write(0);
