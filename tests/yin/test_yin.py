@@ -225,6 +225,7 @@ async def test_maxFlashLoan(yin):
     max_loan_uint = (await yin.maxFlashLoan(yin.contract_address).execute()).result.amount
     max_loan = from_uint(max_loan_uint)
 
+    assert total_yin > 0  # sanity check
     assert max_loan == int(0.05 * total_yin)
 
 
