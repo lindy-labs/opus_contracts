@@ -10,6 +10,7 @@ from contracts.shrine.interface import IShrine
 
 from contracts.lib.aliases import address, bool, str, ufelt, wad
 from contracts.lib.interfaces import IFlashBorrower
+from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 from contracts.lib.wad_ray import WadRay
 
 // Yin-ERC20
@@ -313,9 +314,12 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     IShrine.start_flash_mint(shrine, receiver, felt_amount);
 
     let (initiator: address) = get_caller_address();
+
+    ReentrancyGuard._start();
     let (borrower_resp: Uint256) = IFlashBorrower.onFlashLoan(
         receiver, initiator, token, amount, fee, calldata_len, calldata
     );
+    ReentrancyGuard._end();
 
     with_attr error_message("Yin: onFlashLoan callback failed") {
         let expected_value: Uint256 = Uint256(
