@@ -163,15 +163,6 @@ func shrine_total_debt() -> (total_debt: wad) {
 func shrine_total_yin() -> (total_yin: wad) {
 }
 
-// Used to temporarily store the balance of a flash mint receiver. The
-// variable is updated with the Yin balance of the receiver, before they
-// are granted the loan. After the flash mint is done, this storage var
-// is reset back to 0 to lower TX fees. So in effect it acts as a
-// temporary global variable.
-@storage_var
-func shrine_flash_mint_receiver_balance() -> (balance: wad) {
-}
-
 // Keeps track of the price history of each Yang - packed
 // interval: timestamp divided by TIME_INTERVAL.
 // packed contains both the actual price (high 125 bits) and the cumulative price (low 125 bits) of
@@ -866,16 +857,14 @@ func start_flash_mint{
     }
 
     let (current_balance: wad) = shrine_yin.read(receiver);
-    let new_balance: wad = current_balance + amount;
-
-    with_attr error_message("Shrine: New balance value ({new_balance}) overflow") {
-        WadRay.assert_valid_unsigned(new_balance);
+    with_attr error_message("Shrine: Mint overflow") {
+        let new_balance: wad = WadRay.add_unsigned(current_balance, amount);
     }
 
+    // mint yin
     shrine_yin.write(receiver, new_balance);
     let (total_yin: wad) = shrine_total_yin.read();
     shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
-    shrine_flash_mint_receiver_balance.write(current_balance);
 
     return ();
 }
@@ -888,25 +877,18 @@ func end_flash_mint{
 
     AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
 
-    // skipping amount validation because it already had to pass validation
-    // in start_flash_loan
+    // skipping amount validation because it already had to
+    // pass validation in start_flash_loan
 
-    let (pre_mint_balance: wad) = shrine_flash_mint_receiver_balance.read();
     let (current_balance: wad) = shrine_yin.read(receiver);
-    let post_mint_balance: wad = current_balance - amount;
-
     with_attr error_message("Shrine: Invalid post flash mint state") {
-        assert_nn(post_mint_balance);
-        // post flash mint balance cannot be less than pre flash mint balance
-        assert_le(pre_mint_balance, post_mint_balance);
+        let post_mint_balance: wad = WadRay.sub_unsigned(current_balance, amount);
     }
 
+    // burn yin
     shrine_yin.write(receiver, post_mint_balance);
     let (total_yin: wad) = shrine_total_yin.read();
     shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
-
-    // reseting back to 0 for a cheaper TX (no storage update)
-    shrine_flash_mint_receiver_balance.write(0);
 
     return ();
 }

@@ -329,7 +329,6 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     // this function in Shrine takes care of the balance validation
-    // and reverts if it does not add up
     IShrine.end_flash_mint(shrine, receiver, felt_amount);
 
     FlashMint.emit(initiator, receiver, token, amount);
