@@ -12,7 +12,6 @@ from tests.purger.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
-    ABBOT_OWNER,
     AURA_USER_1,
     FALSE,
     GATE_OWNER,
@@ -257,11 +256,6 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetC
 #
 # Tests - Setup
 #
-
-
-@pytest.mark.asyncio
-async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_admin().execute()).result.admin == ABBOT_OWNER
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
