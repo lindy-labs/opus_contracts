@@ -63,6 +63,7 @@ async def aura_user_2_with_trove_id_2(abbot, shrine, steth_yang: YangConfig, dog
 @pytest.mark.parametrize("forge_amount", [0, INITIAL_FORGED_AMOUNT])
 @pytest.mark.asyncio
 async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, forge_amount):
+
     tx = await abbot.open_trove(
         forge_amount,
         [steth_yang.contract_address, doge_yang.contract_address],

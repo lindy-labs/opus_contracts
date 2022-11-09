@@ -77,7 +77,7 @@ func abbot_trove_owner(trove_id: ufelt) -> (owner: address) {
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address, shrine: address, sentinel: address) {
+}(shrine: address, sentinel: address) {
     abbot_shrine_address.write(shrine);
     abbot_sentinel_address.write(sentinel);
     return ();

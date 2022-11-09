@@ -29,7 +29,6 @@ from tests.shrine.constants import (
     YANGS,
 )
 from tests.utils import (
-    ABBOT_OWNER,
     ABBOT_ROLE,
     AURA_USER_1,
     AURA_USER_2,
@@ -260,7 +259,7 @@ async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
     abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
         contract_class=abbot_contract,
-        constructor_calldata=[ABBOT_OWNER, shrine.contract_address, sentinel.contract_address],
+        constructor_calldata=[shrine.contract_address, sentinel.contract_address],
     )
 
     # auth Abbot in Shrine
