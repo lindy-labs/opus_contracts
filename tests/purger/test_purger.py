@@ -12,11 +12,11 @@ from tests.purger.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
-    ABBOT_OWNER,
     AURA_USER_1,
     FALSE,
     GATE_OWNER,
     RAY_SCALE,
+    SENTINEL_OWNER,
     SHRINE_OWNER,
     STETH_OWNER,
     TIME_INTERVAL,
@@ -148,7 +148,7 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 @pytest.fixture
 async def shrine_feeds(
-    starknet, abbot_with_yangs, shrine, steth_yang: YangConfig, doge_yang: YangConfig
+    starknet, sentinel_with_yangs, shrine, steth_yang: YangConfig, doge_yang: YangConfig
 ) -> List[List[int]]:
     # Creating the price feeds
     yangs = (steth_yang, doge_yang)
@@ -173,7 +173,7 @@ async def aura_user_1_with_trove_id_1(
     shrine,
     shrine_feeds,
     abbot,
-    abbot_with_yangs,
+    sentinel_with_yangs,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
 ) -> int:
@@ -201,7 +201,7 @@ async def aura_user_1_with_trove_id_1(
 
 
 @pytest.fixture
-async def funded_searcher(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_token, steth_yang: YangConfig):
+async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
     # fund the user with bags
     await steth_token.transfer(SEARCHER, (SEARCHER_STETH_WAD, 0)).execute(caller_address=STETH_OWNER)
 
@@ -214,11 +214,11 @@ async def funded_searcher(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_t
 
 
 @pytest.fixture
-async def funded_absorber(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_token, steth_yang: YangConfig):
+async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
     # fund the user with bags
     await steth_token.transfer(MOCK_ABSORBER, (MOCK_ABSORBER_STETH_WAD, 0)).execute(caller_address=STETH_OWNER)
 
-    # user approves Aura gates to spend bags
+    # user approves the Aura gates to spend bags
     await max_approve(steth_token, MOCK_ABSORBER, steth_yang.gate_address)
 
     await abbot.open_trove(
@@ -227,7 +227,7 @@ async def funded_absorber(shrine, shrine_feeds, abbot, abbot_with_yangs, steth_t
 
 
 @pytest.fixture
-async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetContract:
+async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetContract:
     purger_code = get_contract_code_with_replacement(
         "contracts/purger/purger.cairo",
         {"func get_penalty_internal": "@view\nfunc get_penalty_internal"},
@@ -237,7 +237,7 @@ async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetCont
         contract_class=purger_contract,
         constructor_calldata=[
             shrine.contract_address,
-            abbot.contract_address,
+            sentinel.contract_address,
             MOCK_ABSORBER,
         ],
     )
@@ -258,17 +258,17 @@ async def purger(starknet, shrine, abbot, steth_gate, doge_gate) -> StarknetCont
 #
 
 
-@pytest.mark.usefixtures("abbot_with_yangs")
+@pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_admin().execute()).result.admin == ABBOT_OWNER
-    yang_addrs = (await abbot.get_yang_addresses().execute()).result.addresses
+async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+    assert (await sentinel.get_admin().execute()).result.admin == SENTINEL_OWNER
+    yang_addrs = (await sentinel.get_yang_addresses().execute()).result.addresses
     assert len(yang_addrs) == 2
     assert steth_yang.contract_address in yang_addrs
     assert doge_yang.contract_address in yang_addrs
 
 
-@pytest.mark.usefixtures("abbot_with_yangs")
+@pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
 async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_yang: YangConfig):
     # Check price feeds
@@ -295,7 +295,7 @@ async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_y
     assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1")
 @pytest.mark.asyncio
 async def test_aura_user_setup(shrine, purger, aura_user_1_with_trove_id_1):
     forge_amt = aura_user_1_with_trove_id_1
@@ -361,7 +361,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
     "funded_searcher",
@@ -490,7 +490,7 @@ async def test_liquidate_pass(
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
     "funded_searcher",
@@ -523,7 +523,7 @@ async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
 
 
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
     "funded_searcher",
@@ -557,7 +557,7 @@ async def test_liquidate_fail_out_of_bounds(purger, liquidate_amt):
 
 
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
 )
@@ -584,7 +584,7 @@ async def test_liquidate_fail_insufficient_yin(
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
     "funded_absorber",
@@ -708,7 +708,7 @@ async def test_absorb_pass(
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
     "funded_absorber",

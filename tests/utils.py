@@ -69,6 +69,7 @@ def str_to_felt(text: str) -> int:
 
 # Common addresses
 ABBOT_OWNER = str_to_felt("abbot owner")
+SENTINEL_OWNER = str_to_felt("sentinel owner")
 GATE_OWNER = str_to_felt("gate owner")
 SHRINE_OWNER = str_to_felt("shrine owner")
 EMPIRIC_OWNER = str_to_felt("empiric owner")

@@ -273,9 +273,9 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
 
     if not fn.endswith("unchecked") and abs(expected_py) > BOUND:
         # `unsigned_div_rem` asserts 0 <= quotient < rc_bound, meaning this exception
-        # will only catch BOUND < quotient <= rc_bound
+        # will only catch BOUND < quotient < rc_bound
         if expected_py < RANGE_CHECK_BOUND:
-            with pytest.raises(StarkException, match="WadRay: out of bounds"):
+            with pytest.raises(StarkException, match="WadRay: Out of bounds"):
                 await method(left, right).execute()
         else:
             with pytest.raises(StarkException):

@@ -3,9 +3,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
-from tests.roles import AbbotRoles
 from tests.utils import (
-    ABBOT_OWNER,
     AURA_USER_1,
     AURA_USER_2,
     SHRINE_OWNER,
@@ -61,85 +59,11 @@ async def aura_user_2_with_trove_id_2(abbot, shrine, steth_yang: YangConfig, dog
 #
 
 
-@pytest.mark.usefixtures("abbot_with_yangs")
-@pytest.mark.asyncio
-async def test_abbot_setup(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_admin().execute()).result.admin == ABBOT_OWNER
-    assert (await abbot.has_role(AbbotRoles.ADD_YANG, ABBOT_OWNER).execute()).result.has_role == 1
-    yang_addrs = (await abbot.get_yang_addresses().execute()).result.addresses
-    assert len(yang_addrs) == 2
-    assert steth_yang.contract_address in yang_addrs
-    assert doge_yang.contract_address in yang_addrs
-
-
-@pytest.mark.asyncio
-async def test_add_yang(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
-    yangs = (steth_yang, doge_yang)
-    for idx, yang in enumerate(yangs):
-        tx = await abbot.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).execute(caller_address=ABBOT_OWNER)
-
-        assert_event_emitted(tx, abbot.contract_address, "YangAdded", [yang.contract_address, yang.gate_address])
-        # this assert on an event emitted from the shrine contract serves as a proxy
-        # to see if the Shrine was actually called (IShrine.add_yang)
-        assert_event_emitted(
-            tx,
-            shrine.contract_address,
-            "YangAdded",
-            [yang.contract_address, idx + 1, yang.ceiling, yang.price_wad],
-        )
-
-    addrs = (await abbot.get_yang_addresses().execute()).result.addresses
-    assert len(addrs) == len(yangs)
-    for i in range(len(yangs)):
-        assert addrs[i] in (y.contract_address for y in yangs)
-
-
-@pytest.mark.asyncio
-async def test_add_yang_failures(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-
-    yang = steth_yang
-
-    # test reverting on unathorized actor calling add_yang
-    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
-        await abbot.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).execute(caller_address=OTHER_USER)
-
-    # test reverting on yang address equal 0
-    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
-        await abbot.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
-            caller_address=ABBOT_OWNER
-        )
-
-    # test reverting on gate address equal 0
-    with pytest.raises(StarkException, match="Abbot: Address cannot be zero"):
-        await abbot.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
-            caller_address=ABBOT_OWNER
-        )
-
-    # test reverting on trying to add the same yang / gate combo
-    await abbot.add_yang(
-        yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-    ).execute(caller_address=ABBOT_OWNER)
-    with pytest.raises(StarkException, match="Abbot: Yang already added"):
-        await abbot.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
-        ).execute(caller_address=ABBOT_OWNER)
-
-    # test reverting when the Gate is for a different yang
-    yang = doge_yang
-    with pytest.raises(StarkException, match="Abbot: Yang address does not match Gate's asset"):
-        await abbot.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address
-        ).execute(caller_address=ABBOT_OWNER)
-
-
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1")
 @pytest.mark.parametrize("forge_amount", [0, INITIAL_FORGED_AMOUNT])
 @pytest.mark.asyncio
 async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, forge_amount):
+
     tx = await abbot.open_trove(
         forge_amount,
         [steth_yang.contract_address, doge_yang.contract_address],
@@ -208,7 +132,7 @@ async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang:
         await abbot.open_trove(0, [shitcoin_yang.contract_address], [10**10]).execute(caller_address=AURA_USER_1)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
     assert (await abbot.get_user_trove_ids(AURA_USER_1).execute()).result.trove_ids == [TROVE_1]
@@ -253,7 +177,7 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
     )
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_close_trove_failures(abbot):
     with pytest.raises(StarkException, match=f"Abbot: Address {AURA_USER_1} does not own trove ID 2"):
@@ -264,7 +188,9 @@ async def test_close_trove_failures(abbot):
 
 
 @pytest.mark.parametrize("depositor", [AURA_USER_1, AURA_USER_2])  # melt with trove owner, and non-owner
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1", "funded_aura_user_2")
+@pytest.mark.usefixtures(
+    "sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1", "funded_aura_user_2"
+)
 @pytest.mark.asyncio
 async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, depositor):
     fresh_steth_deposit = to_wad(1)
@@ -297,7 +223,7 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
     ).result.balance == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
 
 
-@pytest.mark.usefixtures("abbot_with_yangs")
+@pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
 async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
@@ -309,7 +235,7 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
         )
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
     steth_withdraw_amount = to_wad(2)
@@ -345,7 +271,7 @@ async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
     ).result.balance == INITIAL_DOGE_DEPOSIT - doge_withdraw_amount
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
@@ -360,7 +286,7 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
         await abbot.withdraw(steth_yang.contract_address, TROVE_1, to_wad(10)).execute(caller_address=OTHER_USER)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1")
 @pytest.mark.asyncio
 async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
     await abbot.open_trove(0, [steth_yang.contract_address], [INITIAL_STETH_DEPOSIT]).execute(
@@ -378,7 +304,7 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
     assert (await yin.balanceOf(AURA_USER_1).execute()).result.balance == forge_amount
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_forge_failures(abbot):
     with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
@@ -392,7 +318,7 @@ async def test_forge_failures(abbot):
 
 @pytest.mark.parametrize("melter", [AURA_USER_1, AURA_USER_2])  # melt with trove owner, and non-owner
 @pytest.mark.usefixtures(
-    "abbot_with_yangs",
+    "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
     "funded_aura_user_2",
@@ -412,7 +338,7 @@ async def test_melt(abbot, yin, shrine, melter):
     assert (await yin.balanceOf(melter).execute()).result.balance == remaining_amount
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_melt_failures(abbot):
     with pytest.raises(StarkException, match="Shrine: System debt underflow"):
@@ -420,14 +346,14 @@ async def test_melt_failures(abbot):
         await abbot.melt(TROVE_1, amount).execute(caller_address=AURA_USER_1)
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_get_trove_owner(abbot):
     assert (await abbot.get_trove_owner(TROVE_1).execute()).result.owner == AURA_USER_1
     assert (await abbot.get_trove_owner(789).execute()).result.owner == 0
 
 
-@pytest.mark.usefixtures("abbot_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
 async def test_get_user_trove_ids(abbot, steth_yang: YangConfig):
     assert (await abbot.get_user_trove_ids(AURA_USER_1).execute()).result.trove_ids == [TROVE_1]
@@ -437,23 +363,3 @@ async def test_get_user_trove_ids(abbot, steth_yang: YangConfig):
     await abbot.open_trove(0, [steth_yang.contract_address], [to_wad(2)]).execute(caller_address=AURA_USER_1)
     assert (await abbot.get_user_trove_ids(AURA_USER_1).execute()).result.trove_ids == [TROVE_1, 2]
     assert (await abbot.get_troves_count().execute()).result.count == 2
-
-
-@pytest.mark.usefixtures("abbot_with_yangs")
-@pytest.mark.asyncio
-async def test_get_yang_addresses(abbot, steth_yang: YangConfig, doge_yang: YangConfig):
-    assert (await abbot.get_yang_addresses().execute()).result.addresses == [
-        steth_yang.contract_address,
-        doge_yang.contract_address,
-    ]
-
-
-@pytest.mark.usefixtures("abbot_with_yangs")
-@pytest.mark.asyncio
-async def test_get_gate_address(abbot, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
-    assert (
-        await abbot.get_gate_address(steth_yang.contract_address).execute()
-    ).result.gate == steth_gate.contract_address
-    assert (
-        await abbot.get_gate_address(doge_yang.contract_address).execute()
-    ).result.gate == doge_gate.contract_address

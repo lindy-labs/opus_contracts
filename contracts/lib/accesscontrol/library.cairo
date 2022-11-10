@@ -97,6 +97,7 @@ namespace AccessControl {
         bitwise_ptr: BitwiseBuiltin*,
     }(role: ufelt, account: address) -> bool {
         let (roles: ufelt) = accesscontrol_roles.read(account);
+
         // masks roles such that all bits are zero, except the bit(s) representing `role`, which may be zero or one
         let (masked_roles: ufelt) = bitwise_and(roles, role);
         let authorized: bool = is_not_zero(masked_roles);
