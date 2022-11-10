@@ -190,14 +190,15 @@ namespace WadRay {
     // Conversions
     //
 
-    func to_uint(n) -> (uint: Uint256) {
+    func to_uint{range_check_ptr}(n) -> (uint: Uint256) {
+        assert_valid_unsigned(n);
         let uint = Uint256(low=n, high=0);
         return (uint,);
     }
 
     func from_uint{range_check_ptr}(n: Uint256) -> wad {
         assert n.high = 0;
-        assert_valid(n.low);
+        assert_valid_unsigned(n.low);
         return n.low;
     }
 
