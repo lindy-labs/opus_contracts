@@ -218,7 +218,7 @@ async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
     # fund the user with bags
     await steth_token.transfer(MOCK_ABSORBER, (MOCK_ABSORBER_STETH_WAD, 0)).execute(caller_address=STETH_OWNER)
 
-    # user approves Aura gates to spend bags
+    # user approves the Aura gates to spend bags
     await max_approve(steth_token, MOCK_ABSORBER, steth_yang.gate_address)
 
     await abbot.open_trove(
