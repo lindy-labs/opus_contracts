@@ -103,7 +103,7 @@ TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
 TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 # Yin constants
-INFINITE_YIN_ALLOWANCE = CAIRO_PRIME - 1
+INFINITE_YIN_ALLOWANCE = 2**256 - 1
 
 # Empiric constants
 

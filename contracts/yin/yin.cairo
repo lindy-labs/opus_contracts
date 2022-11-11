@@ -3,7 +3,13 @@
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt
-from starkware.cairo.common.uint256 import Uint256, assert_uint256_le
+from starkware.cairo.common.uint256 import (
+    ALL_ONES,
+    Uint256,
+    assert_uint256_le,
+    uint256_check,
+    uint256_sub,
+)
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.shrine.interface import IShrine
@@ -26,7 +32,6 @@ from contracts.lib.wad_ray import WadRay
 // Constants
 //
 
-const INFINITE_ALLOWANCE = -1;
 const UINT8_MAX = 255;
 
 //
@@ -34,11 +39,11 @@ const UINT8_MAX = 255;
 //
 
 @event
-func Transfer(from_: address, to: address, value: wad) {
+func Transfer(from_: address, to: address, value: Uint256) {
 }
 
 @event
-func Approval(owner: address, spender: address, value: wad) {
+func Approval(owner: address, spender: address, value: Uint256) {
 }
 
 @event
@@ -66,7 +71,7 @@ func yin_shrine_address() -> (addr: address) {
 }
 
 @storage_var
-func yin_allowances(owner, spender) -> (allowance: wad) {
+func yin_allowances(owner, spender) -> (allowance: Uint256) {
 }
 
 //
@@ -75,7 +80,7 @@ func yin_allowances(owner, spender) -> (allowance: wad) {
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    name: str, symbol: str, decimals: wad, shrine: address
+    name: str, symbol: str, decimals: ufelt, shrine: address
 ) {
     yin_name.write(name);
     yin_symbol.write(symbol);
@@ -105,15 +110,6 @@ func symbol{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -
 }
 
 @view
-func totalSupply{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    total_supply: wad
-) {
-    let (shrine: address) = yin_shrine_address.read();
-    let (total_supply: wad) = IShrine.get_total_yin(shrine);
-    return (total_supply,);
-}
-
-@view
 func decimals{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     decimals: ufelt
 ) {
@@ -121,18 +117,29 @@ func decimals{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
 }
 
 @view
-func balanceOf{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(account) -> (
-    balance: wad
+func totalSupply{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    total_supply: Uint256
 ) {
     let (shrine: address) = yin_shrine_address.read();
-    let (balance: wad) = IShrine.get_yin(contract_address=shrine, user=account);
+    let (total_yin: wad) = IShrine.get_total_yin(shrine);
+    let (total_supply: Uint256) = WadRay.to_uint(total_yin);
+    return (total_supply,);
+}
+
+@view
+func balanceOf{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    account: address
+) -> (balance: Uint256) {
+    let (shrine: address) = yin_shrine_address.read();
+    let (yin: wad) = IShrine.get_yin(shrine, account);
+    let (balance: Uint256) = WadRay.to_uint(yin);
     return (balance,);
 }
 
 @view
-func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(owner, spender) -> (
-    allowance: wad
-) {
+func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    owner: address, spender: address
+) -> (allowance: Uint256) {
     return yin_allowances.read(owner, spender);
 }
 
@@ -142,12 +149,9 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 @external
 func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    recipient: address, amount: wad
+    recipient: address, amount: Uint256
 ) -> (success: bool) {
-    with_attr error_message("Yin: Amount is not in the valid range [0, 2**125]") {
-        WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
-    }
-
+    %{ print(ids.amount) %}
     let (sender: address) = get_caller_address();
     _transfer(sender, recipient, amount);
     return (TRUE,);
@@ -155,12 +159,8 @@ func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 @external
 func transferFrom{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    sender: address, recipient: address, amount: wad
+    sender: address, recipient: address, amount: Uint256
 ) -> (success: bool) {
-    with_attr error_message("Yin: Amount is not in the valid range [0, 2**125]") {
-        WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
-    }
-
     let (caller: address) = get_caller_address();
     _spend_allowance(sender, caller, amount);
     _transfer(sender, recipient, amount);
@@ -169,18 +169,8 @@ func transferFrom{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
 @external
 func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    spender: address, amount: wad
+    spender: address, amount: Uint256
 ) -> (success: bool) {
-    alloc_locals;
-    if (amount != INFINITE_ALLOWANCE) {
-        with_attr error_message("Yin: Amount is not in the valid range [0, 2**125]") {
-            WadRay.assert_valid_unsigned(amount);  // Valid range: [0, 2**125]
-        }
-        tempvar range_check_ptr = range_check_ptr;
-    } else {
-        tempvar range_check_ptr = range_check_ptr;
-    }
-
     let (caller: address) = get_caller_address();
     _approve(caller, spender, amount);
     return (TRUE,);
@@ -191,23 +181,27 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 //
 
 func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    sender: address, recipient: address, amount: wad
+    sender: address, recipient: address, amount: Uint256
 ) {
     with_attr error_message("Yin: Cannot transfer to the zero address") {
         assert_not_zero(recipient);
     }
 
+    with_attr error_message("Yin: Amount not valid") {
+        uint256_check(amount);
+    }
+
     let (shrine: address) = yin_shrine_address.read();
 
     // Calling shrine's `move_yin` function, which handles the rest of the transfer logic
-    IShrine.move_yin(contract_address=shrine, src=sender, dst=recipient, amount=amount);
+    IShrine.move_yin(shrine, sender, recipient, WadRay.from_uint(amount));
 
     Transfer.emit(sender, recipient, amount);
     return ();
 }
 
 func _approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    owner: address, spender: address, amount: wad
+    owner: address, spender: address, amount: Uint256
 ) {
     with_attr error_message("Yin: Cannot approve from the zero address") {
         assert_not_zero(owner);
@@ -217,23 +211,30 @@ func _approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert_not_zero(spender);
     }
 
+    with_attr error_message("Yin: Amount not valid") {
+        uint256_check(amount);
+    }
+
     yin_allowances.write(owner, spender, amount);
     Approval.emit(owner, spender, amount);
     return ();
 }
 
 func _spend_allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    owner: address, spender: address, amount: wad
+    owner: address, spender: address, amount: Uint256
 ) {
     alloc_locals;
 
-    let (current_allowance: wad) = yin_allowances.read(owner, spender);
-    if (current_allowance != INFINITE_ALLOWANCE) {
-        with_attr error_message("Yin: Insufficient allowance") {
-            _approve(owner, spender, WadRay.sub_unsigned(current_allowance, amount));  // Reverts if amount > current_allowance
-        }
-
+    let (current_allowance: Uint256) = yin_allowances.read(owner, spender);
+    if (current_allowance.low == ALL_ONES and current_allowance.high == ALL_ONES) {
+        // infinite allowance 2**256 - 1
         return ();
+    }
+
+    with_attr error_message("Yin: Insufficient allowance") {
+        assert_uint256_le(amount, current_allowance);
+        let (new_allowance: Uint256) = uint256_sub(current_allowance, amount);
+        _approve(owner, spender, new_allowance);
     }
 
     return ();
@@ -272,7 +273,9 @@ func maxFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let (yin: address) = get_contract_address();
     // can only flash mint our own Yin synthetic
     if (token == yin) {
-        let (yin_balance: wad) = totalSupply();
+        // let (yin_balance: Uint256) = totalSupply();
+        let (supply: Uint256) = totalSupply();
+        let yin_balance: wad = WadRay.from_uint(supply);
         let max: Uint256 = WadRay.to_uint(WadRay.wmul(yin_balance, FLASH_MINT_AMOUNT_PCT));
         return (max,);
     }

@@ -11,6 +11,7 @@ from tests.utils import (
     TROVE_1,
     YangConfig,
     assert_event_emitted,
+    from_uint,
     to_wad,
 )
 
@@ -301,7 +302,8 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, forge_amount])
     assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER_1, forge_amount])
 
-    assert (await yin.balanceOf(AURA_USER_1).execute()).result.balance == forge_amount
+    balance = (await yin.balanceOf(AURA_USER_1).execute()).result.balance
+    assert from_uint(balance) == forge_amount
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
@@ -335,7 +337,8 @@ async def test_melt(abbot, yin, shrine, melter):
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
     assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [melter, remaining_amount])
 
-    assert (await yin.balanceOf(melter).execute()).result.balance == remaining_amount
+    balance = (await yin.balanceOf(melter).execute()).result.balance
+    assert from_uint(balance) == remaining_amount
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
