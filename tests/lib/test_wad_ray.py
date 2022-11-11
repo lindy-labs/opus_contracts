@@ -14,6 +14,7 @@ from tests.utils import (
     RAY_SCALE,
     WAD_RAY_DIFF,
     WAD_SCALE,
+    Uint256,
     compile_contract,
     signed_int_to_felt,
     to_ray,
@@ -30,6 +31,7 @@ st_int125 = st.integers(min_value=-(2**125), max_value=2**125)
 st_uint125 = st.integers(min_value=1, max_value=2**125)
 st_uint128 = st.integers(min_value=1, max_value=2**128)
 st_uint = st.integers(min_value=0, max_value=2 * 200)
+rogue_uint = st.integers(min_value=2**128, max_value=CAIRO_PRIME - 1)
 
 
 @pytest.fixture(scope="session")
@@ -347,6 +349,16 @@ async def test_from_uint_fail(wad_ray, val):
     val = to_uint(val)
     with pytest.raises(StarkException, match="WadRay: Out of bounds"):
         await wad_ray.test_from_uint(val).execute()
+
+
+@settings(max_examples=50, deadline=None)
+@given(low=rogue_uint)
+@example(low=-1)
+@pytest.mark.asyncio
+async def test_from_uint_fail_on_rogue_input(wad_ray, low):
+    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
+        uint = Uint256(low=low, high=0)
+        await wad_ray.test_from_uint(uint).execute()
 
 
 @pytest.mark.parametrize("func", ["add_unsigned", "sub_unsigned", "wunsigned_div", "runsigned_div"])
