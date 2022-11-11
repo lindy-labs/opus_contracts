@@ -11,6 +11,7 @@ from tests.utils import (
     TROVE_1,
     TRUE,
     assert_event_emitted,
+    compile_contract,
     from_uint,
     str_to_felt,
 )
@@ -36,6 +37,13 @@ def shrine_both(request) -> StarknetContract:
     Wrapper fixture to pass the regular and killed instances of shrine to `pytest.parametrize`.
     """
     return request.getfixturevalue(request.param)
+
+
+# mock flash mint receiver
+@pytest.fixture
+async def flash_minter(starknet) -> StarknetContract:
+    contract = compile_contract("tests/yin/flash_minter.cairo")
+    return await starknet.deploy(contract_class=contract)
 
 
 #
