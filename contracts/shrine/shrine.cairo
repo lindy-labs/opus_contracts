@@ -2,7 +2,13 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math import (
+    assert_le,
+    assert_nn,
+    assert_not_zero,
+    split_felt,
+    unsigned_div_rem,
+)
 from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp
 
@@ -834,6 +840,55 @@ func seize{
     AccessControl.assert_has_role(ShrineRoles.SEIZE);
 
     withdraw_internal(yang, trove_id, amount);
+
+    return ();
+}
+
+@external
+func start_flash_mint{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(receiver: address, amount: wad) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
+
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
+
+    let (current_balance: wad) = shrine_yin.read(receiver);
+    with_attr error_message("Shrine: Mint overflow") {
+        let new_balance: wad = WadRay.add_unsigned(current_balance, amount);
+    }
+
+    // mint yin
+    shrine_yin.write(receiver, new_balance);
+    let (total_yin: wad) = shrine_total_yin.read();
+    shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
+
+    return ();
+}
+
+@external
+func end_flash_mint{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(receiver: address, amount: wad) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
+
+    // skipping amount validation because it already had to
+    // pass validation in start_flash_loan
+
+    let (current_balance: wad) = shrine_yin.read(receiver);
+    with_attr error_message("Shrine: Invalid post flash mint state") {
+        let post_mint_balance: wad = WadRay.sub_unsigned(current_balance, amount);
+    }
+
+    // burn yin
+    shrine_yin.write(receiver, post_mint_balance);
+    let (total_yin: wad) = shrine_total_yin.read();
+    shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
 
     return ();
 }

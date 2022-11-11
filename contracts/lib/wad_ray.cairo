@@ -186,6 +186,7 @@ namespace WadRay {
         let (q, _) = unsigned_div_rem(product, b);
         return q;
     }
+
     //
     // Conversions
     //

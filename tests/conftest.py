@@ -389,8 +389,9 @@ async def yin(starknet, shrine) -> StarknetContract:
         constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
     )
 
-    # Authorizing the yin contract to call `move_yin` in shrine
-    await shrine.grant_role(ShrineRoles.MOVE_YIN, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
+    # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine
+    roles = ShrineRoles.MOVE_YIN + ShrineRoles.FLASH_MINT
+    await shrine.grant_role(roles, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return deployed_yin
 

@@ -89,6 +89,12 @@ namespace IShrine {
     func seize(yang: address, trove_id: ufelt, amount: wad) {
     }
 
+    func start_flash_mint(receiver: address, amount: wad) {
+    }
+
+    func end_flash_mint(receiver: address, amount: wad) {
+    }
+
     //
     // view
     //

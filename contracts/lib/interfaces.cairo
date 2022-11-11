@@ -52,3 +52,30 @@ namespace IEmpiricOracle {
     ) {
     }
 }
+
+@contract_interface
+namespace IFlashLender {
+    func maxFlashLoan(token: felt) -> (amount: Uint256) {
+    }
+
+    func flashFee(token: felt, amount: Uint256) -> (fee: Uint256) {
+    }
+
+    func flashLoan(
+        receiver: felt, token: felt, amount: Uint256, calldata_len: felt, calldata: felt*
+    ) -> (success: felt) {
+    }
+}
+
+@contract_interface
+namespace IFlashBorrower {
+    func onFlashLoan(
+        initiator: felt,
+        token: felt,
+        amount: Uint256,
+        fee: Uint256,
+        calldata_len: felt,
+        calldata: felt*,
+    ) -> (hash: Uint256) {
+    }
+}
