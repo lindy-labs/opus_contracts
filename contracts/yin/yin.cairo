@@ -3,7 +3,7 @@
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt
-from starkware.cairo.common.uint256 import Uint256, assert_uint256_eq, assert_uint256_le
+from starkware.cairo.common.uint256 import Uint256, assert_uint256_le
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.shrine.interface import IShrine
@@ -300,6 +300,11 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> (success: bool) {
     alloc_locals;
 
+    // prevents looping which would lead to excessive minting
+    // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
+    // yin to be minted, as per spec
+    ReentrancyGuard._start();
+
     // reverts if token != yin, as per EIP3156
     let (fee: Uint256) = flashFee(token, amount);
 
@@ -315,23 +320,21 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (initiator: address) = get_caller_address();
 
-    ReentrancyGuard._start();
     let (borrower_resp: Uint256) = IFlashBorrower.onFlashLoan(
         receiver, initiator, token, amount, fee, calldata_len, calldata
     );
-    ReentrancyGuard._end();
 
     with_attr error_message("Yin: onFlashLoan callback failed") {
-        let expected_value: Uint256 = Uint256(
-            low=ON_FLASH_MINT_SUCCESS_LOW, high=ON_FLASH_MINT_SUCCESS_HIGH
-        );
-        assert_uint256_eq(borrower_resp, expected_value);
+        assert borrower_resp.low = ON_FLASH_MINT_SUCCESS_LOW;
+        assert borrower_resp.high = ON_FLASH_MINT_SUCCESS_HIGH;
     }
 
     // this function in Shrine takes care of the balance validation
     IShrine.end_flash_mint(shrine, receiver, felt_amount);
 
     FlashMint.emit(initiator, receiver, token, amount);
+
+    ReentrancyGuard._end();
 
     return (TRUE,);
 }

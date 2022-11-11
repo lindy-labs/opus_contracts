@@ -58,9 +58,10 @@ func onFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert_le(amount.low, balance);
     }
 
-    assert calldata_len = 2;
+    assert calldata_len = 3;
     let should_return_correct: bool = calldata[0];
     let attempt_to_steal: bool = calldata[1];
+    let attempt_to_reenter: bool = calldata[2];
 
     if (attempt_to_steal == TRUE) {
         IYin.transfer(token, 0xbeef, amount.low);
@@ -68,9 +69,16 @@ func onFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         tempvar pedersen_ptr = pedersen_ptr;
         tempvar range_check_ptr = range_check_ptr;
     } else {
-        tempvar syscall_ptr = syscall_ptr;
-        tempvar pedersen_ptr = pedersen_ptr;
-        tempvar range_check_ptr = range_check_ptr;
+        if (attempt_to_reenter == TRUE) {
+            IFlashLender.flashLoan(token, initiator, token, amount, calldata_len, calldata);
+            tempvar syscall_ptr = syscall_ptr;
+            tempvar pedersen_ptr = pedersen_ptr;
+            tempvar range_check_ptr = range_check_ptr;
+        } else {
+            tempvar syscall_ptr = syscall_ptr;
+            tempvar pedersen_ptr = pedersen_ptr;
+            tempvar range_check_ptr = range_check_ptr;
+        }
     }
 
     got_initiator.write(initiator);

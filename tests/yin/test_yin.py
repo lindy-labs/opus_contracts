@@ -238,7 +238,7 @@ async def test_maxFlashLoan_unsupported_token(yin):
 @pytest.mark.asyncio
 async def test_flashLoan(yin, flash_minter):
     mintooor = str_to_felt("mintooor")
-    calldata = [True, False]
+    calldata = [True, False, False]
 
     initial_balance = (await yin.balanceOf(mintooor).execute()).result.balance
     mint_amount = (await yin.maxFlashLoan(yin.contract_address).execute()).result.amount
@@ -277,7 +277,9 @@ async def test_flashLoan_incorrect_callback_return(yin, flash_minter):
     mint_amount = (await yin.maxFlashLoan(yin.contract_address).execute()).result.amount
 
     with pytest.raises(StarkException, match="Yin: onFlashLoan callback failed"):
-        await yin.flashLoan(flash_minter.contract_address, yin.contract_address, mint_amount, [False, False]).execute()
+        await yin.flashLoan(
+            flash_minter.contract_address, yin.contract_address, mint_amount, [False, False, False]
+        ).execute()
 
 
 @pytest.mark.usefixtures("shrine_forge")
@@ -286,4 +288,17 @@ async def test_flashLoan_trying_to_steal(yin, flash_minter):
     mint_amount = (await yin.maxFlashLoan(yin.contract_address).execute()).result.amount
 
     with pytest.raises(StarkException, match="Shrine: Invalid post flash mint state"):
-        await yin.flashLoan(flash_minter.contract_address, yin.contract_address, mint_amount, [True, True]).execute()
+        await yin.flashLoan(
+            flash_minter.contract_address, yin.contract_address, mint_amount, [True, True, False]
+        ).execute()
+
+
+@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.asyncio
+async def test_flashLoan_not_reentrant(yin, flash_minter):
+    mint_amount = (await yin.maxFlashLoan(yin.contract_address).execute()).result.amount
+
+    with pytest.raises(StarkException):
+        await yin.flashLoan(
+            flash_minter.contract_address, yin.contract_address, mint_amount, [True, False, True]
+        ).execute()
