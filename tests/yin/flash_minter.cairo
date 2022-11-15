@@ -3,14 +3,11 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le
-from starkware.cairo.common.uint256 import Uint256
+from starkware.cairo.common.uint256 import Uint256, assert_uint256_le
 from starkware.starknet.common.syscalls import get_contract_address
 
-from contracts.yin.interface import IYin
-
 from contracts.lib.aliases import address, bool, ufelt
-from contracts.lib.interfaces import IFlashLender
+from contracts.lib.interfaces import IERC20, IFlashLender
 
 //
 // storage variables for holding `onFlashLoan` values
@@ -54,8 +51,8 @@ func onFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
     with_attr error_message("Flash mint amount not transferred to receiver") {
         let (self: address) = get_contract_address();
-        let (balance: ufelt) = IYin.balanceOf(token, self);
-        assert_le(amount.low, balance);
+        let (balance: Uint256) = IERC20.balanceOf(token, self);
+        assert_uint256_le(amount, balance);
     }
 
     assert calldata_len = 3;
@@ -64,7 +61,7 @@ func onFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let attempt_to_reenter: bool = calldata[2];
 
     if (attempt_to_steal == TRUE) {
-        IYin.transfer(token, 0xbeef, amount.low);
+        IERC20.transfer(token, 0xbeef, amount);
         tempvar syscall_ptr = syscall_ptr;
         tempvar pedersen_ptr = pedersen_ptr;
         tempvar range_check_ptr = range_check_ptr;

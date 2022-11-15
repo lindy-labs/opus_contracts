@@ -412,7 +412,7 @@ async def test_liquidate_pass(
 
     # Sanity check: searcher has sufficient yin
     searcher_yin_balance = (await yin.balanceOf(SEARCHER).execute()).result.balance
-    assert searcher_yin_balance > close_amt_wad
+    assert from_uint(searcher_yin_balance) > close_amt_wad
 
     # Get yang balance of searcher
     before_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
@@ -625,7 +625,7 @@ async def test_absorb_pass(
 
     # Sanity check: absorber has sufficient yin
     absorber_yin_balance = (await yin.balanceOf(MOCK_ABSORBER).execute()).result.balance
-    assert absorber_yin_balance > before_trove_debt
+    assert from_uint(absorber_yin_balance) > before_trove_debt
 
     # Get yang balance of absorber
     before_absorber_steth_bal = from_wad(
@@ -708,6 +708,11 @@ async def test_absorb_pass(
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
 @pytest.mark.usefixtures(
+    "yin",
+    "steth_token",
+    "doge_token",
+    "steth_gate",
+    "doge_gate",
     "sentinel_with_yangs",
     "funded_aura_user_1",
     "aura_user_1_with_trove_id_1",
@@ -718,11 +723,6 @@ async def test_absorb_fail_ltv_too_low(
     starknet,
     shrine,
     purger,
-    yin,
-    steth_token,
-    doge_token,
-    steth_gate,
-    doge_gate,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
     price_change,
