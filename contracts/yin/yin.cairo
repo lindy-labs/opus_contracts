@@ -151,7 +151,6 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     recipient: address, amount: Uint256
 ) -> (success: bool) {
-    %{ print(ids.amount) %}
     let (sender: address) = get_caller_address();
     _transfer(sender, recipient, amount);
     return (TRUE,);
@@ -273,7 +272,6 @@ func maxFlashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let (yin: address) = get_contract_address();
     // can only flash mint our own Yin synthetic
     if (token == yin) {
-        // let (yin_balance: Uint256) = totalSupply();
         let (supply: Uint256) = totalSupply();
         let yin_balance: wad = WadRay.from_uint(supply);
         let max: Uint256 = WadRay.to_uint(WadRay.wmul(yin_balance, FLASH_MINT_AMOUNT_PCT));
