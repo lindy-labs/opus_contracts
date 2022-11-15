@@ -296,7 +296,7 @@ async def test_flashLoan_incorrect_callback_return(yin, flash_minter):
 async def test_flashLoan_trying_to_steal(yin, flash_minter):
     mint_amount = (await yin.maxFlashLoan(yin.contract_address).execute()).result.amount
 
-    with pytest.raises(StarkException, match="Shrine: Invalid post flash mint state"):
+    with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
         await yin.flashLoan(
             flash_minter.contract_address, yin.contract_address, mint_amount, [True, True, False]
         ).execute()

@@ -74,10 +74,6 @@ func DebtTotalUpdated(total: wad) {
 }
 
 @event
-func YinTotalUpdated(total: wad) {
-}
-
-@event
 func YangsCountUpdated(count: ufelt) {
 }
 
@@ -91,10 +87,6 @@ func ThresholdUpdated(yang: address, threshold: ray) {
 
 @event
 func TroveUpdated(trove_id: ufelt, trove: Trove) {
-}
-
-@event
-func YinUpdated(user: address, amount: wad) {
 }
 
 @event
@@ -744,21 +736,12 @@ func forge{
     // Check if Trove is within limits
     assert_healthy(trove_id);
 
-    // Update the user's yin
-    let (user_yin: wad) = shrine_yin.read(user);
-    let new_user_yin: wad = WadRay.add(user_yin, amount);
-    shrine_yin.write(user, new_user_yin);
-
-    // Update the total yin
-    let (total_yin: wad) = shrine_total_yin.read();
-    let new_total_yin: wad = WadRay.add(total_yin, amount);
-    shrine_total_yin.write(new_total_yin);
+    // Update balances
+    forge_internal(user, amount);
 
     // Events
     DebtTotalUpdated.emit(new_system_debt);
     TroveUpdated.emit(trove_id, new_trove_info);
-    YinTotalUpdated.emit(new_total_yin);
-    YinUpdated.emit(user, new_user_yin);
 
     return ();
 }
@@ -803,27 +786,11 @@ func melt{
     let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, new_trove_info);
 
-    // Updating the user's yin
-    let (user_yin: wad) = shrine_yin.read(user);
-
-    // Updating the total yin
-    let (total_yin: wad) = shrine_total_yin.read();
-
-    // Reverts if amount > user_yin or amount > total_yin.
-    with_attr error_message("Shrine: Not enough yin to melt debt") {
-        let new_user_yin: wad = WadRay.sub_unsigned(user_yin, amount);
-        let new_total_yin: wad = WadRay.sub_unsigned(total_yin, amount);
-    }
-
-    shrine_yin.write(user, new_user_yin);
-    shrine_total_yin.write(new_total_yin);
+    melt_internal(user, amount);
 
     // Events
-
     DebtTotalUpdated.emit(new_system_debt);
     TroveUpdated.emit(trove_id, new_trove_info);
-    YinTotalUpdated.emit(new_total_yin);
-    YinUpdated.emit(user, new_user_yin);
 
     return ();
 }
@@ -856,15 +823,8 @@ func start_flash_mint{
         WadRay.assert_valid_unsigned(amount);
     }
 
-    let (current_balance: wad) = shrine_yin.read(receiver);
-    with_attr error_message("Shrine: Mint overflow") {
-        let new_balance: wad = WadRay.add_unsigned(current_balance, amount);
-    }
-
-    // mint yin
-    shrine_yin.write(receiver, new_balance);
-    let (total_yin: wad) = shrine_total_yin.read();
-    shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
+    // Update balances
+    forge_internal(receiver, amount);
 
     return ();
 }
@@ -880,15 +840,8 @@ func end_flash_mint{
     // skipping amount validation because it already had to
     // pass validation in start_flash_loan
 
-    let (current_balance: wad) = shrine_yin.read(receiver);
-    with_attr error_message("Shrine: Invalid post flash mint state") {
-        let post_mint_balance: wad = WadRay.sub_unsigned(current_balance, amount);
-    }
-
-    // burn yin
-    shrine_yin.write(receiver, post_mint_balance);
-    let (total_yin: wad) = shrine_total_yin.read();
-    shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
+    // Update balances
+    melt_internal(receiver, amount);
 
     return ();
 }
@@ -996,6 +949,39 @@ func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> u
     let (time: ufelt) = get_block_timestamp();
     let (interval: ufelt, _) = unsigned_div_rem(time, TIME_INTERVAL);
     return interval;
+}
+
+func forge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    user: address, amount: wad
+) {
+    with_attr error_message("Shrine: Forge overflow") {
+        // Update user's yin
+        let (user_yin: wad) = shrine_yin.read(user);
+        shrine_yin.write(user, WadRay.add_unsigned(user_yin, amount));
+
+        // Update total yin
+        let (total_yin: wad) = shrine_total_yin.read();
+        shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
+    }
+
+    return ();
+}
+
+func melt_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    user: address, amount: wad
+) {
+    // Reverts if amount > user_yin or amount > total_yin.
+    with_attr error_message("Shrine: Not enough yin to melt debt") {
+        // Update user's yin
+        let (user_yin: wad) = shrine_yin.read(user);
+        shrine_yin.write(user, WadRay.sub_unsigned(user_yin, amount));
+
+        // Update total yin
+        let (total_yin: wad) = shrine_total_yin.read();
+        shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
+    }
+
+    return ();
 }
 
 // Withdraw a specified amount of a Yang from a Trove
