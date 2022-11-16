@@ -442,13 +442,15 @@ async def test_liquidate_pass(
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
-    # Sanity check that trove LTV will improve for debugging flaky test
+    # Sanity check that expected trove LTV does not increase
     expected_after_trove_debt = before_trove_debt - close_amt
     expected_after_trove_value = before_trove_value * (1 - freed_percentage)
 
     if expected_after_trove_debt == 0:
+        # Catch zero division error
         expected_after_trove_ltv = Decimal("0")
     else:
+        # Truncate to 27 decimals to match precision of `ray`
         expected_after_trove_ltv = (expected_after_trove_debt / expected_after_trove_value).quantize(
             Decimal("1E-27"), rounding=ROUND_DOWN
         )
