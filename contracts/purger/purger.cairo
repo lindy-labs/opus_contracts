@@ -265,6 +265,10 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (_, updated_trove_ltv: ray, _, _) = IShrine.get_trove_info(shrine, trove_id);
     with_attr error_message("Purger: Loan-to-value ratio increased") {
         assert_nn(updated_trove_ltv);
+        %{
+            print("updated trove LTV: ", ids.updated_trove_ltv)
+            print("before trove LTV: ", ids.trove_ltv)
+        %}
         assert_nn_le(updated_trove_ltv, trove_ltv);
     }
 
