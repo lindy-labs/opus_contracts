@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import List
 
 import pytest
@@ -442,8 +442,15 @@ async def test_liquidate_pass(
 
     # Sanity check that trove LTV will improve for debugging flaky test
     expected_after_trove_debt = before_trove_debt - close_amt
-    expected_after_trove_value = before_trove_value * (1 - from_ray(freed_percentage))
-    expected_after_trove_ltv = expected_after_trove_debt / expected_after_trove_value
+    expected_after_trove_value = before_trove_value * (1 - freed_percentage)
+
+    if expected_after_trove_debt == 0:
+        expected_after_trove_ltv = Decimal("0")
+    else:
+        expected_after_trove_ltv = (expected_after_trove_debt / expected_after_trove_value).quantize(
+            Decimal("1E-27"), rounding=ROUND_DOWN
+        )
+
     assert expected_after_trove_ltv <= before_trove_ltv
 
     # Call liquidate
