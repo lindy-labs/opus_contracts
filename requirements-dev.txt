@@ -5,6 +5,7 @@ ecdsa==0.17.0
 fastecdsa==2.2.1
 filelock==3.7.1
 flake8==4
+flaky==3.7.0
 hypothesis==6.49.1
 isort==5
 marshmallow-dataclass==8.5.3
