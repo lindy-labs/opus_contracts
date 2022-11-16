@@ -1869,6 +1869,11 @@ async def test_shrine_unhealthy(shrine):
 
 @pytest.mark.asyncio
 async def test_get_trove_info(shrine, shrine_deposit_multiple):
+
+    # Check LTV for trove with value but zero debt
+    trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    assert trove_info.ltv == 0
+
     forge_amt = (await shrine.get_max_forge(TROVE_1).execute()).result.max // 2
     await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt).execute(caller_address=SHRINE_OWNER)
 
