@@ -3,7 +3,7 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_nn_le, unsigned_div_rem
+from starkware.cairo.common.math import assert_nn, assert_nn_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
@@ -264,6 +264,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // Assert new LTV < old LTV
     let (_, updated_trove_ltv: ray, _, _) = IShrine.get_trove_info(shrine, trove_id);
     with_attr error_message("Purger: Loan-to-value ratio increased") {
+        assert_nn(a);
+        assert_nn(b);
         assert_nn_le(updated_trove_ltv, trove_ltv);
     }
 
