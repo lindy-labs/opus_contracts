@@ -358,8 +358,8 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     assert_equalish(penalty, expected_penalty)
 
 
-@pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+@pytest.mark.parametrize("price_change", [Decimal("-0.2")])
+@pytest.mark.parametrize("max_close_percentage", [Decimal("0.01")])
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
     "funded_aura_user_1",
