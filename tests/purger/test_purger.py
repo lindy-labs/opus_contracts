@@ -440,6 +440,12 @@ async def test_liquidate_pass(
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
+    # Sanity check that trove LTV will improve for debugging flaky test
+    expected_after_trove_debt = before_trove_debt - close_amt
+    expected_after_trove_value = before_trove_value * (1 - from_ray(freed_percentage))
+    expected_after_trove_ltv = expected_after_trove_debt / expected_after_trove_value
+    assert expected_after_trove_ltv <= before_trove_ltv
+
     # Call liquidate
     liquidate = await purger.liquidate(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
