@@ -36,3 +36,7 @@ class ShrineRoles(IntEnum):
     SET_THRESHOLD = 2**12
     SET_YANG_MAX = 2**13
     WITHDRAW = 2**14
+
+
+class YinRoles(IntEnum):
+    EMIT = 2**0

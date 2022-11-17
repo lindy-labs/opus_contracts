@@ -10,6 +10,7 @@ from starkware.starknet.common.syscalls import get_caller_address
 from contracts.gate.interface import IGate
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
+from contracts.yin.interface import IYin
 
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
@@ -41,6 +42,10 @@ const MAX_PENALTY_LTV = 8888 * 10 ** 23;  // 0.8888
 
 @storage_var
 func purger_shrine() -> (shrine: address) {
+}
+
+@storage_var
+func purger_yin() -> (yin: address) {
 }
 
 @storage_var
@@ -117,9 +122,10 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, sentinel: address, absorber: address
+    shrine: address, yin: address, sentinel: address, absorber: address
 ) {
     purger_shrine.write(shrine);
+    purger_yin.write(yin);
     purger_sentinel.write(sentinel);
     purger_absorber.write(absorber);
     return ();
@@ -134,9 +140,11 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // Reverts if the trove is not liquidatable (i.e. LTV > threshold)
 // Reverts if the repayment amount exceeds the maximum amount as determined by the close factor.
 @external
-func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, purge_amt: wad, recipient: address
-) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+func liquidate{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt, purge_amt: wad, recipient: address) -> (
+    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+) {
     alloc_locals;
 
     let (shrine: address) = purger_shrine.read();
@@ -174,7 +182,9 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // Reverts if the trove's LTV is not above the max penalty LTV
 // - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
 @external
-func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
+func absorb{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt) -> (
     yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
 ) {
     alloc_locals;
@@ -238,7 +248,9 @@ func assert_liquidatable{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 // corresponding freed collateral to be sent to the recipient address
 // Reverts if the trove's LTV is worse off than before the purge
 // - This should not be possible, but is added in for safety.
-func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func purge{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(
     shrine: address,
     trove_id: ufelt,
     trove_ltv: ray,
@@ -267,6 +279,8 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert_nn_le(updated_trove_ltv, trove_ltv);
     }
 
+    let (yin: address) = purger_yin.read();
+    IYin.emit_on_melt(yin, funder, purge_amt);
     Purged.emit(
         trove_id,
         purge_amt,

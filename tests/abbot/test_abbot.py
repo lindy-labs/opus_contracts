@@ -12,6 +12,7 @@ from tests.utils import (
     YangConfig,
     assert_event_emitted,
     from_uint,
+    to_uint,
     to_wad,
 )
 
@@ -63,7 +64,7 @@ async def aura_user_2_with_trove_id_2(abbot, shrine, steth_yang: YangConfig, dog
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1")
 @pytest.mark.parametrize("forge_amount", [0, INITIAL_FORGED_AMOUNT])
 @pytest.mark.asyncio
-async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, forge_amount):
+async def test_open_trove(abbot, shrine, yin, steth_yang: YangConfig, doge_yang: YangConfig, forge_amount):
 
     tx = await abbot.open_trove(
         forge_amount,
@@ -119,6 +120,7 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
     assert_event_emitted(
         tx, doge_yang.contract_address, "Transfer", [AURA_USER_1, doge_yang.gate_address, INITIAL_DOGE_DEPOSIT, 0]
     )
+    assert_event_emitted(tx, yin.contract_address, "Transfer", [0, AURA_USER_1, *to_uint(forge_amount)])
 
 
 @pytest.mark.asyncio
@@ -135,7 +137,7 @@ async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang:
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
 @pytest.mark.asyncio
-async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_close_trove(abbot, shrine, yin, steth_yang: YangConfig, doge_yang: YangConfig):
     assert (await abbot.get_user_trove_ids(AURA_USER_1).execute()).result.trove_ids == [TROVE_1]
 
     tx = await abbot.close_trove(TROVE_1).execute(caller_address=AURA_USER_1)
@@ -176,6 +178,7 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
     assert_event_emitted(
         tx, doge_yang.contract_address, "Transfer", [doge_yang.gate_address, AURA_USER_1, INITIAL_DOGE_DEPOSIT, 0]
     )
+    assert_event_emitted(tx, yin.contract_address, "Transfer", [AURA_USER_1, 0, *to_uint(INITIAL_FORGED_AMOUNT)])
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1", "aura_user_1_with_trove_id_1")
@@ -298,9 +301,8 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
 
     tx = await abbot.forge(TROVE_1, forge_amount).execute(caller_address=AURA_USER_1)
 
-    # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, forge_amount])
-    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [AURA_USER_1, forge_amount])
+    assert_event_emitted(tx, yin.contract_address, "Transfer", [0, AURA_USER_1, *to_uint(forge_amount)])
 
     balance = (await yin.balanceOf(AURA_USER_1).execute()).result.balance
     assert from_uint(balance) == forge_amount
@@ -333,9 +335,8 @@ async def test_melt(abbot, yin, shrine, melter):
 
     tx = await abbot.melt(TROVE_1, melt_amount).execute(caller_address=melter)
 
-    # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
-    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [melter, remaining_amount])
+    assert_event_emitted(tx, yin.contract_address, "Transfer", [melter, 0, *to_uint(melt_amount)])
 
     balance = (await yin.balanceOf(melter).execute()).result.balance
     assert from_uint(balance) == remaining_amount

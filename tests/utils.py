@@ -73,6 +73,7 @@ SENTINEL_OWNER = str_to_felt("sentinel owner")
 GATE_OWNER = str_to_felt("gate owner")
 SHRINE_OWNER = str_to_felt("shrine owner")
 EMPIRIC_OWNER = str_to_felt("empiric owner")
+YIN_OWNER = str_to_felt("yin owner")
 
 
 ADMIN = str_to_felt("admin")

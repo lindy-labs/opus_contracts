@@ -9,7 +9,7 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.purger.constants import *  # noqa: F403
-from tests.roles import GateRoles, ShrineRoles
+from tests.roles import GateRoles, ShrineRoles, YinRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     AURA_USER_1,
@@ -23,6 +23,7 @@ from tests.utils import (
     TROVE_1,
     TRUE,
     WAD_RAY_OOB_VALUES,
+    YIN_OWNER,
     YangConfig,
     assert_equalish,
     assert_event_emitted,
@@ -37,6 +38,7 @@ from tests.utils import (
     price_bounds,
     set_block_timestamp,
     to_ray,
+    to_uint,
     to_wad,
 )
 
@@ -227,7 +229,7 @@ async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
 
 
 @pytest.fixture
-async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetContract:
+async def purger(starknet, shrine, yin, sentinel, steth_gate, doge_gate) -> StarknetContract:
     purger_code = get_contract_code_with_replacement(
         "contracts/purger/purger.cairo",
         {"func get_penalty_internal": "@view\nfunc get_penalty_internal"},
@@ -237,10 +239,14 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetC
         contract_class=purger_contract,
         constructor_calldata=[
             shrine.contract_address,
+            yin.contract_address,
             sentinel.contract_address,
             MOCK_ABSORBER,
         ],
     )
+
+    # Approve purget in Yin for emitting events
+    await yin.grant_role(YinRoles.EMIT, purger.contract_address).execute(caller_address=YIN_OWNER)
 
     # Approve purger to call `seize` in Shrine
     purger_roles = ShrineRoles.MELT + ShrineRoles.SEIZE
@@ -450,7 +456,7 @@ async def test_liquidate_pass(
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
 
-    # Check event
+    # Check events
     assert_event_emitted(
         liquidate,
         purger.contract_address,
@@ -459,6 +465,8 @@ async def test_liquidate_pass(
         and d[5:]
         == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
     )
+
+    assert_event_emitted(liquidate, yin.contract_address, "Transfer", [SEARCHER, 0, *to_uint(close_amt_wad)])
 
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
     after_trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
@@ -665,7 +673,7 @@ async def test_absorb_pass(
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
 
-    # Check event
+    # Check events
     assert_event_emitted(
         absorb,
         purger.contract_address,
@@ -673,6 +681,10 @@ async def test_absorb_pass(
         lambda d: d[:4] == [TROVE_1, before_trove_info.debt, MOCK_ABSORBER, MOCK_ABSORBER]
         and d[5:]
         == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
+    )
+
+    assert_event_emitted(
+        absorb, yin.contract_address, "Transfer", [MOCK_ABSORBER, 0, *to_uint(to_wad(before_trove_debt))]
     )
 
     # Check that LTV is 0 after all debt is repaid

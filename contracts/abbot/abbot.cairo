@@ -8,6 +8,7 @@ from starkware.starknet.common.syscalls import get_caller_address
 from contracts.gate.interface import IGate
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
+from contracts.yin.interface import IYin
 
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
@@ -32,6 +33,10 @@ func YangAdded(yang: address, gate: address) {
 // the address of the Shrine associated with this Abbot
 @storage_var
 func abbot_shrine_address() -> (shrine: address) {
+}
+
+@storage_var
+func abbot_yin_address() -> (yin: address) {
 }
 
 @storage_var
@@ -77,8 +82,9 @@ func abbot_trove_owner(trove_id: ufelt) -> (owner: address) {
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(shrine: address, sentinel: address) {
+}(shrine: address, yin: address, sentinel: address) {
     abbot_shrine_address.write(shrine);
+    abbot_yin_address.write(yin);
     abbot_sentinel_address.write(sentinel);
     return ();
 }
@@ -120,9 +126,9 @@ func get_troves_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 
 // create a new trove
 @external
-func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: wad*
-) {
+func open_trove{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: wad*) {
     alloc_locals;
 
     with_attr error_message("Abbot: Input arguments mismatch: {yangs_len} != {amounts_len}") {
@@ -151,6 +157,8 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     do_deposits(shrine, sentinel, user, new_trove_id, yangs_len, yangs, amounts);
     IShrine.forge(shrine, user, new_trove_id, forge_amount);
 
+    let (yin: address) = abbot_yin_address.read();
+    IYin.emit_on_forge(yin, user, forge_amount);
     TroveOpened.emit(user, new_trove_id);
 
     return ();
@@ -158,7 +166,9 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 
 // closes a trove, repaying its debt in full and withdrawing all the Yangs
 @external
-func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) {
+func close_trove{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id) {
     alloc_locals;
 
     // don't allow manipulation of foreign troves
@@ -173,7 +183,8 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (yang_addresses_count: ufelt) = ISentinel.get_yang_addresses_count(sentinel);
     do_withdrawals_full(shrine, sentinel, user, trove_id, 0, yang_addresses_count);
 
-    // deliberately not emitting an event
+    let (yin: address) = abbot_yin_address.read();
+    IYin.emit_on_melt(yin, user, outstanding_debt);
 
     return ();
 }
@@ -231,9 +242,9 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 @external
-func forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, amount: wad
-) {
+func forge{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt, amount: wad) {
     alloc_locals;
 
     let (user: address) = get_caller_address();
@@ -242,19 +253,25 @@ func forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (shrine: address) = abbot_shrine_address.read();
     IShrine.forge(shrine, user, trove_id, amount);
 
+    let (yin: address) = abbot_yin_address.read();
+    IYin.emit_on_forge(yin, user, amount);
+
     return ();
 }
 
 // Caller does not need to be trove owner
 @external
-func melt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, amount: wad
-) {
+func melt{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt, amount: wad) {
     alloc_locals;
 
     let (user: address) = get_caller_address();
     let (shrine: address) = abbot_shrine_address.read();
     IShrine.melt(shrine, user, trove_id, amount);
+
+    let (yin: address) = abbot_yin_address.read();
+    IYin.emit_on_melt(yin, user, amount);
 
     return ();
 }

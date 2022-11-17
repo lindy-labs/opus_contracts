@@ -16,7 +16,7 @@ from tests.oracle.constants import (
     EMPIRIC_UPDATE_INTERVAL,
     INIT_BLOCK_TS,
 )
-from tests.roles import ShrineRoles
+from tests.roles import ShrineRoles, YinRoles
 from tests.shrine.constants import (
     DEBT_CEILING,
     FEED_LEN,
@@ -44,6 +44,7 @@ from tests.utils import (
     TROVE2_OWNER,
     TROVE_1,
     WAD_SCALE,
+    YIN_OWNER,
     Uint256,
     YangConfig,
     compile_code,
@@ -254,13 +255,16 @@ async def shrine_forge(shrine, shrine_deposit) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
+async def abbot(starknet, shrine_deploy, yin, sentinel) -> StarknetContract:
     shrine = shrine_deploy
     abbot_contract = compile_contract("contracts/abbot/abbot.cairo")
     abbot = await starknet.deploy(
         contract_class=abbot_contract,
-        constructor_calldata=[shrine.contract_address, sentinel.contract_address],
+        constructor_calldata=[shrine.contract_address, yin.contract_address, sentinel.contract_address],
     )
+
+    # auth Abbot in Yin for emitting events
+    await yin.grant_role(YinRoles.EMIT, abbot.contract_address).execute(caller_address=YIN_OWNER)
 
     # auth Abbot in Shrine
     roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE + ShrineRoles.MELT
@@ -381,12 +385,10 @@ async def doge_gate(starknet, abbot, shrine_deploy, doge_token) -> StarknetContr
 
 @pytest.fixture
 async def yin(starknet, shrine) -> StarknetContract:
-
-    # Deploying the yin contract
     yin_contract = compile_contract("contracts/yin/yin.cairo")
     deployed_yin = await starknet.deploy(
         contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
+        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, YIN_OWNER, shrine.contract_address],
     )
 
     # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine

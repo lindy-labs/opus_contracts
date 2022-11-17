@@ -1,7 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.bool import TRUE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt
 from starkware.cairo.common.uint256 import (
     ALL_ONES,
@@ -13,7 +13,20 @@ from starkware.cairo.common.uint256 import (
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.shrine.interface import IShrine
+from contracts.yin.roles import YinRoles
 
+// these imported public functions are part of the contract's interface
+from contracts.lib.accesscontrol.accesscontrol_external import (
+    change_admin,
+    get_admin,
+    get_roles,
+    grant_role,
+    has_role,
+    renounce_role,
+    revoke_role,
+)
+
+from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, str, ufelt, wad
 from contracts.lib.interfaces import IFlashBorrower
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
@@ -27,6 +40,11 @@ from contracts.lib.wad_ray import WadRay
 //
 // However, this functionality is not enough to make yin usable as a fully-fledged token, and so this modified ERC-20 contract serves
 // as a wrapper for "raw" yin, enabling its use in the broader DeFi ecosystem.
+//
+// This setup has the following idiosyncrasy. Because Yin is created and destroyed (forged and melted) in Shrine,
+// but the Transfer from/to zero address that's associated with these actions needs to be emitted from the yin.cairo
+// contract, we expose two protected functions that do just that. They emit a Transfer event, but are called from
+// other contracts in the system, at appropriate places.
 
 //
 // Constants
@@ -80,17 +98,17 @@ func yin_allowances(owner, spender) -> (allowance: Uint256) {
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    name: str, symbol: str, decimals: ufelt, shrine: address
+    name: str, symbol: str, decimals: ufelt, admin: address, shrine: address
 ) {
     yin_name.write(name);
     yin_symbol.write(symbol);
-    yin_shrine_address.write(shrine);
-
     with_attr error_message("Yin: Decimals exceed 2^8 - 1") {
         assert_le(decimals, UINT8_MAX);
     }
-
     yin_decimals.write(decimals);
+
+    AccessControl.initializer(admin);
+    yin_shrine_address.write(shrine);
 
     return ();
 }
@@ -173,6 +191,26 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (caller: address) = get_caller_address();
     _approve(caller, spender, amount);
     return (TRUE,);
+}
+
+@external
+func emit_on_forge{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(to: address, amount: wad) {
+    AccessControl.assert_has_role(YinRoles.EMIT);
+    let (value: Uint256) = WadRay.to_uint(amount);
+    Transfer.emit(0, to, value);
+    return ();
+}
+
+@external
+func emit_on_melt{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(from_: address, amount: wad) {
+    AccessControl.assert_has_role(YinRoles.EMIT);
+    let (value: Uint256) = WadRay.to_uint(amount);
+    Transfer.emit(from_, 0, value);
+    return ();
 }
 
 //
@@ -333,9 +371,11 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // this function in Shrine takes care of the balance validation
     IShrine.end_flash_mint(shrine, receiver, felt_amount);
 
-    FlashMint.emit(initiator, receiver, token, amount);
-
     ReentrancyGuard._end();
+
+    Transfer.emit(0, receiver, amount);  // event for minting
+    Transfer.emit(receiver, 0, amount);  // event for burning
+    FlashMint.emit(initiator, receiver, token, amount);
 
     return (TRUE,);
 }
