@@ -1867,8 +1867,9 @@ async def test_shrine_unhealthy(shrine):
     assert is_healthy == FALSE
 
 
+@pytest.mark.usefixtures("shrine_deposit_multiple")
 @pytest.mark.asyncio
-async def test_get_trove_info(shrine, shrine_deposit_multiple):
+async def test_get_trove_info(shrine):
 
     # Check LTV for trove with value but zero debt
     trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
