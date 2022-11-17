@@ -481,7 +481,11 @@ async def test_liquidate_pass(
     after_trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
     after_trove_ltv = from_ray(after_trove_info.ltv)
     after_trove_debt = from_wad(after_trove_info.debt)
+    after_trove_value = from_wad(after_trove_info.value)
+
     assert after_trove_ltv <= before_trove_ltv
+    assert_equalish(after_trove_value, expected_after_trove_value)
+    assert_equalish(after_trove_debt, expected_after_trove_debt)
 
     # Check collateral tokens balance of searcher
     after_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
@@ -500,9 +504,6 @@ async def test_liquidate_pass(
         (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.balance
     )
     assert_equalish(after_trove_doge_yang, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
-
-    # Check trove debt
-    assert_equalish(after_trove_debt, before_trove_debt - close_amt)
 
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
