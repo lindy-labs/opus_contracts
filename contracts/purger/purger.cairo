@@ -262,7 +262,8 @@ func purge{
     alloc_locals;
 
     // Melt from the funder address directly
-    IShrine.melt(shrine, funder, trove_id, purge_amt);
+    let (yin: address) = purger_yin.read();
+    IYin.melt(yin, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
     let (sentinel: address) = purger_sentinel.read();
@@ -279,8 +280,6 @@ func purge{
         assert_nn_le(updated_trove_ltv, trove_ltv);
     }
 
-    let (yin: address) = purger_yin.read();
-    IYin.emit_on_melt(yin, funder, purge_amt);
     Purged.emit(
         trove_id,
         purge_amt,

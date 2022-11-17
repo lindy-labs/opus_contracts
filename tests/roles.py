@@ -39,4 +39,5 @@ class ShrineRoles(IntEnum):
 
 
 class YinRoles(IntEnum):
-    EMIT = 2**0
+    FORGE = 2**0
+    MELT = 2**1

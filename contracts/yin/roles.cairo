@@ -1,3 +1,4 @@
 namespace YinRoles {
-    const EMIT = 2 ** 0;
+    const FORGE = 2 ** 0;
+    const MELT = 2 ** 1;
 }

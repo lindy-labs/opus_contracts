@@ -245,12 +245,11 @@ async def purger(starknet, shrine, yin, sentinel, steth_gate, doge_gate) -> Star
         ],
     )
 
-    # Approve purget in Yin for emitting events
-    await yin.grant_role(YinRoles.EMIT, purger.contract_address).execute(caller_address=YIN_OWNER)
+    # Approve purget in Yin
+    await yin.grant_role(YinRoles.MELT, purger.contract_address).execute(caller_address=YIN_OWNER)
 
     # Approve purger to call `seize` in Shrine
-    purger_roles = ShrineRoles.MELT + ShrineRoles.SEIZE
-    await shrine.grant_role(purger_roles, purger.contract_address).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(ShrineRoles.SEIZE, purger.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # Approve purger to call `withdraw` in Gate
     await steth_gate.grant_role(GateRoles.WITHDRAW, purger.contract_address).execute(caller_address=GATE_OWNER)

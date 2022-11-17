@@ -194,22 +194,32 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 @external
-func emit_on_forge{
+func forge{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(to: address, amount: wad) {
-    AccessControl.assert_has_role(YinRoles.EMIT);
+}(user: address, trove_id: ufelt, amount: wad) {
+    AccessControl.assert_has_role(YinRoles.FORGE);
+
+    let (shrine: address) = yin_shrine_address.read();
+    IShrine.forge(shrine, user, trove_id, amount);
+
     let (value: Uint256) = WadRay.to_uint(amount);
-    Transfer.emit(0, to, value);
+    Transfer.emit(0, user, value);
+
     return ();
 }
 
 @external
-func emit_on_melt{
+func melt{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(from_: address, amount: wad) {
-    AccessControl.assert_has_role(YinRoles.EMIT);
+}(user: address, trove_id: ufelt, amount: wad) {
+    AccessControl.assert_has_role(YinRoles.MELT);
+
+    let (shrine: address) = yin_shrine_address.read();
+    IShrine.melt(shrine, user, trove_id, amount);
+
     let (value: Uint256) = WadRay.to_uint(amount);
-    Transfer.emit(from_, 0, value);
+    Transfer.emit(user, 0, value);
+
     return ();
 }
 

@@ -263,12 +263,13 @@ async def abbot(starknet, shrine_deploy, yin, sentinel) -> StarknetContract:
         constructor_calldata=[shrine.contract_address, yin.contract_address, sentinel.contract_address],
     )
 
-    # auth Abbot in Yin for emitting events
-    await yin.grant_role(YinRoles.EMIT, abbot.contract_address).execute(caller_address=YIN_OWNER)
+    # auth Abbot in Yin
+    await yin.grant_role(YinRoles.FORGE + YinRoles.MELT, abbot.contract_address).execute(caller_address=YIN_OWNER)
 
     # auth Abbot in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE + ShrineRoles.MELT
-    await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW, abbot.contract_address).execute(
+        caller_address=SHRINE_OWNER
+    )
 
     return abbot
 
@@ -391,8 +392,8 @@ async def yin(starknet, shrine) -> StarknetContract:
         constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, YIN_OWNER, shrine.contract_address],
     )
 
-    # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine
-    roles = ShrineRoles.MOVE_YIN + ShrineRoles.FLASH_MINT
+    # Authorizing the yin contract in Shrine
+    roles = ShrineRoles.MOVE_YIN + ShrineRoles.FLASH_MINT + ShrineRoles.FORGE + ShrineRoles.MELT
     await shrine.grant_role(roles, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return deployed_yin

@@ -155,10 +155,10 @@ func open_trove{
 
     let (shrine: address) = abbot_shrine_address.read();
     do_deposits(shrine, sentinel, user, new_trove_id, yangs_len, yangs, amounts);
-    IShrine.forge(shrine, user, new_trove_id, forge_amount);
 
     let (yin: address) = abbot_yin_address.read();
-    IYin.emit_on_forge(yin, user, forge_amount);
+    IYin.forge(yin, user, new_trove_id, forge_amount);
+
     TroveOpened.emit(user, new_trove_id);
 
     return ();
@@ -177,14 +177,13 @@ func close_trove{
 
     let (shrine: address) = abbot_shrine_address.read();
     let (_, _, _, outstanding_debt: wad) = IShrine.get_trove_info(shrine, trove_id);
-    IShrine.melt(shrine, user, trove_id, outstanding_debt);
+
+    let (yin: address) = abbot_yin_address.read();
+    IYin.melt(yin, user, trove_id, outstanding_debt);
 
     let (sentinel: address) = abbot_sentinel_address.read();
     let (yang_addresses_count: ufelt) = ISentinel.get_yang_addresses_count(sentinel);
     do_withdrawals_full(shrine, sentinel, user, trove_id, 0, yang_addresses_count);
-
-    let (yin: address) = abbot_yin_address.read();
-    IYin.emit_on_melt(yin, user, outstanding_debt);
 
     return ();
 }
@@ -250,11 +249,8 @@ func forge{
     let (user: address) = get_caller_address();
     assert_trove_owner(user, trove_id);
 
-    let (shrine: address) = abbot_shrine_address.read();
-    IShrine.forge(shrine, user, trove_id, amount);
-
     let (yin: address) = abbot_yin_address.read();
-    IYin.emit_on_forge(yin, user, amount);
+    IYin.forge(yin, user, trove_id, amount);
 
     return ();
 }
@@ -267,11 +263,9 @@ func melt{
     alloc_locals;
 
     let (user: address) = get_caller_address();
-    let (shrine: address) = abbot_shrine_address.read();
-    IShrine.melt(shrine, user, trove_id, amount);
 
     let (yin: address) = abbot_yin_address.read();
-    IYin.emit_on_melt(yin, user, amount);
+    IYin.melt(yin, user, trove_id, amount);
 
     return ();
 }

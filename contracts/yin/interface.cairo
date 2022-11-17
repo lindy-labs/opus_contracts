@@ -1,12 +1,12 @@
 %lang starknet
 
-from contracts.lib.aliases import address, wad
+from contracts.lib.aliases import address, ufelt, wad
 
 @contract_interface
 namespace IYin {
-    func emit_on_forge(to: address, amount: wad) {
+    func forge(user: address, trove_id: ufelt, amount: wad) {
     }
 
-    func emit_on_melt(from_: address, amount: wad) {
+    func melt(user: address, trove_id: ufelt, amount: wad) {
     }
 }
