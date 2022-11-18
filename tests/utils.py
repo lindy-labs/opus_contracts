@@ -85,7 +85,7 @@ AURA_USER_1 = str_to_felt("aura user 1")
 AURA_USER_2 = str_to_felt("aura user 2")
 
 # Roles
-ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW
+ABBOT_ROLE = GateRoles.ENTER + GateRoles.EXIT
 
 # Troves
 TROVE_1 = 1

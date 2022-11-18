@@ -1,6 +1,6 @@
 import decimal
-from enum import IntEnum
 
+from tests.roles import GateRoles
 from tests.utils import str_to_felt, to_ray, to_uint, to_wad
 
 TAX = decimal.Decimal("0.025")
@@ -31,13 +31,4 @@ COMPOUND_MULTIPLIER = decimal.Decimal("1.1")
 TAX_COLLECTOR = str_to_felt("tax collector")
 
 
-# Access Control
-class GateRoles(IntEnum):
-    DEPOSIT = 2**0
-    KILL = 2**1
-    SET_TAX = 2**2
-    SET_TAX_COLLECTOR = 2**3
-    WITHDRAW = 2**4
-
-
-ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW
+ABBOT_ROLE = GateRoles.ENTER + GateRoles.EXIT
