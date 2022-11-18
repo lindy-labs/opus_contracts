@@ -7,7 +7,7 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.roles import ShrineRoles
+from tests.roles import GateRoles, ShrineRoles
 from tests.utils import (
     ABBOT_ROLE,
     ADMIN,
