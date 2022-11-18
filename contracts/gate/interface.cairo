@@ -19,10 +19,10 @@ namespace IGate {
     //
     // external
     //
-    func deposit(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
+    func enter(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
     }
 
-    func withdraw(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
+    func exit(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
     }
 
     func kill() {
@@ -40,9 +40,9 @@ namespace IGate {
     func get_exchange_rate() -> (rate: wad) {
     }
 
-    func preview_deposit(assets: wad) -> (preview: wad) {
+    func preview_enter(assets: wad) -> (preview: wad) {
     }
 
-    func preview_withdraw(yang: wad) -> (preview: wad) {
+    func preview_exit(yang: wad) -> (preview: wad) {
     }
 }
