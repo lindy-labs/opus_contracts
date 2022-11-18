@@ -1,7 +1,8 @@
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import List
 
 import pytest
+from flaky import flaky
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
@@ -358,8 +359,9 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     assert_equalish(penalty, expected_penalty)
 
 
+@flaky
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.parametrize("max_close_percentage", [Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+@pytest.mark.parametrize("max_close_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
     "funded_aura_user_1",
@@ -440,6 +442,21 @@ async def test_liquidate_pass(
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
+    # Sanity check that expected trove LTV does not increase
+    expected_after_trove_debt = before_trove_debt - close_amt
+    expected_after_trove_value = before_trove_value * (1 - freed_percentage)
+
+    if max_close_percentage == Decimal("1"):
+        # Catch zero division error
+        expected_after_trove_ltv = Decimal("0")
+    else:
+        # Truncate to 27 decimals to match precision of `ray`
+        expected_after_trove_ltv = (expected_after_trove_debt / expected_after_trove_value).quantize(
+            Decimal("1E-27"), rounding=ROUND_DOWN
+        )
+
+    assert expected_after_trove_ltv <= before_trove_ltv
+
     # Call liquidate
     liquidate = await purger.liquidate(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
@@ -464,7 +481,11 @@ async def test_liquidate_pass(
     after_trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
     after_trove_ltv = from_ray(after_trove_info.ltv)
     after_trove_debt = from_wad(after_trove_info.debt)
+    after_trove_value = from_wad(after_trove_info.value)
+
     assert after_trove_ltv <= before_trove_ltv
+    assert_equalish(after_trove_value, expected_after_trove_value)
+    assert_equalish(after_trove_debt, expected_after_trove_debt)
 
     # Check collateral tokens balance of searcher
     after_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
@@ -483,9 +504,6 @@ async def test_liquidate_pass(
         (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.balance
     )
     assert_equalish(after_trove_doge_yang, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
-
-    # Check trove debt
-    assert_equalish(after_trove_debt, before_trove_debt - close_amt)
 
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
