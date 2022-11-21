@@ -1900,7 +1900,7 @@ async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
     assert_equalish(from_ray(trove_info.ltv), expected_ltv)
 
 
-TEST_THRESHOLDS = [Decimal("0.5"), Decimal("0.66"), Decimal("0.8")]
+TEST_THRESHOLDS = [to_ray(Decimal("0.5")), to_ray(Decimal("0.66")), to_ray(Decimal("0.8"))]
 
 
 @pytest.mark.usefixtures("shrine_deposit_multiple")
@@ -1909,15 +1909,13 @@ TEST_THRESHOLDS = [Decimal("0.5"), Decimal("0.66"), Decimal("0.8")]
 @pytest.mark.parametrize("yang3_threshold", TEST_THRESHOLDS)
 @pytest.mark.asyncio
 async def test_get_trove_info_variable_thresholds(shrine, yang1_threshold, yang2_threshold, yang3_threshold):
-    # Modify threshold
-    new_thresholds = [to_ray(yang1_threshold), to_ray(yang2_threshold), to_ray(yang3_threshold)]
-    yang_addresses = [yang["address"] for yang in YANGS]
-    for new_threshold, yang_address in zip(new_thresholds, yang_addresses):
+    new_thresholds = [yang1_threshold, yang2_threshold, yang3_threshold]
+    prices = []
+    for d, new_threshold in zip(DEPOSITS, new_thresholds):
+        yang_address = d["address"]
         await shrine.set_threshold(yang_address, new_threshold).execute(caller_address=SHRINE_OWNER)
 
-    prices = []
-    for d in DEPOSITS:
-        price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price
+        price = (await shrine.get_current_yang_price(yang_address).execute()).result.price
         prices.append(price)
 
     expected_threshold, expected_value = calculate_trove_threshold_and_value(
