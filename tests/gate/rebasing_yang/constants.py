@@ -1,10 +1,9 @@
-import decimal
-from enum import IntEnum
+from decimal import Decimal
 
 from tests.utils import str_to_felt, to_ray, to_uint, to_wad
 
-TAX = decimal.Decimal("0.025")
-TAX_MAX = decimal.Decimal("0.05")
+TAX = Decimal("0.025")
+TAX_MAX = Decimal("0.05")
 TAX_RAY = to_ray(TAX)
 
 INITIAL_AMT = to_wad(100)
@@ -24,20 +23,7 @@ SECOND_MINT_AMT = to_wad(4)
 SECOND_MINT_AMT_UINT = to_uint(SECOND_MINT_AMT)
 
 # Value for simulated `compound` in `levy` for `test_gate_taxable.cairo`
-COMPOUND_MULTIPLIER = decimal.Decimal("1.1")
-
+COMPOUND_MULTIPLIER = Decimal("1.1")
 
 # Accounts
 TAX_COLLECTOR = str_to_felt("tax collector")
-
-
-# Access Control
-class GateRoles(IntEnum):
-    DEPOSIT = 2**0
-    KILL = 2**1
-    SET_TAX = 2**2
-    SET_TAX_COLLECTOR = 2**3
-    WITHDRAW = 2**4
-
-
-ABBOT_ROLE = GateRoles.DEPOSIT + GateRoles.WITHDRAW

@@ -223,7 +223,7 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
     ReentrancyGuard._start();
-    IGate.withdraw(gate, user, trove_id, amount);
+    IGate.exit(gate, user, trove_id, amount);
     IShrine.withdraw(shrine, yang, trove_id, amount);
     ReentrancyGuard._end();
 
@@ -321,7 +321,7 @@ func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
     ReentrancyGuard._start();
-    let yang_amount: wad = IGate.deposit(gate, user, trove_id, amount);
+    let yang_amount: wad = IGate.enter(gate, user, trove_id, amount);
     IShrine.deposit(shrine, yang, trove_id, yang_amount);
     ReentrancyGuard._end();
 
@@ -355,7 +355,7 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         let (shrine: address) = abbot_shrine_address.read();
 
         ReentrancyGuard._start();
-        IGate.withdraw(gate, user, trove_id, yang_amount);
+        IGate.exit(gate, user, trove_id, yang_amount);
         IShrine.withdraw(shrine, yang, trove_id, yang_amount);
         ReentrancyGuard._end();
 

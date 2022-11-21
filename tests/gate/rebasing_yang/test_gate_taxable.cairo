@@ -15,8 +15,8 @@ from contracts.gate.rebasing_yang.library_external import (
     get_total_assets,
     get_total_yang,
     get_shrine,
-    preview_deposit,
-    preview_withdraw,
+    preview_enter,
+    preview_exit,
 )
 from contracts.gate.rebasing_yang.roles import GateRoles
 
@@ -56,11 +56,11 @@ const REBASE_RATIO = 10 * WadRay.RAY_PERCENT;  // 10%
 //
 
 @event
-func Deposit(user: address, trove_id: ufelt, assets: wad, yang: wad) {
+func Enter(user: address, trove_id: ufelt, assets: wad, yang: wad) {
 }
 
 @event
-func Withdraw(user: address, trove_id: ufelt, assets: wad, yang: wad) {
+func Exit(user: address, trove_id: ufelt, assets: wad, yang: wad) {
 }
 
 @event
@@ -142,27 +142,24 @@ func kill{
 }
 
 @external
-func deposit{
+func enter{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
-    // Assert live
     assert_live();
 
-    AccessControl.assert_has_role(GateRoles.DEPOSIT);
+    AccessControl.assert_has_role(GateRoles.ENTER);
 
     let yang: wad = Gate.convert_to_yang(assets);
     if (yang == 0) {
         return (0,);
     }
 
-    // Get asset and gate addresses
     let asset: address = get_asset();
     let gate: address = get_contract_address();
 
-    // Transfer asset from `user_address` to Gate
     let (assets_uint) = WadRay.to_uint(assets);
     with_attr error_message("Gate: Transfer of asset failed") {
         let (success) = IERC20.transferFrom(
@@ -171,30 +168,26 @@ func deposit{
         assert success = TRUE;
     }
 
-    // Emit event
-    Deposit.emit(user, trove_id, assets, yang);
+    Enter.emit(user, trove_id, assets, yang);
 
     return (yang,);
 }
 
 @external
-func withdraw{
+func exit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
-    AccessControl.assert_has_role(GateRoles.WITHDRAW);
+    AccessControl.assert_has_role(GateRoles.EXIT);
 
     let assets: wad = Gate.convert_to_assets(yang);
     if (assets == 0) {
         return (0,);
     }
 
-    // Get asset address
     let asset: address = Gate.get_asset();
-
-    // Transfer asset from Gate to `user_address`
     let (assets_uint: Uint256) = WadRay.to_uint(assets);
     with_attr error_message("Gate: Transfer of asset failed") {
         let (success: bool) = IERC20.transfer(
@@ -204,7 +197,7 @@ func withdraw{
     }
 
     // Emit event
-    Withdraw.emit(user, trove_id, assets, yang);
+    Exit.emit(user, trove_id, assets, yang);
 
     return (assets,);
 }

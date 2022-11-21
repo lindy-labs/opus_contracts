@@ -13,11 +13,11 @@ class EmpiricRoles(IntEnum):
 
 
 class GateRoles(IntEnum):
-    DEPOSIT = 2**0
-    KILL = 2**1
-    SET_TAX = 2**2
-    SET_TAX_COLLECTOR = 2**3
-    WITHDRAW = 2**4
+    ENTER = 2**0
+    EXIT = 2**1
+    KILL = 2**2
+    SET_TAX = 2**3
+    SET_TAX_COLLECTOR = 2**4
 
 
 class ShrineRoles(IntEnum):

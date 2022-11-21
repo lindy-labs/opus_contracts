@@ -48,17 +48,17 @@ func get_exchange_rate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 }
 
 @view
-func preview_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    assets_wad
-) -> (preview: wad) {
+func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(assets_wad) -> (
+    preview: wad
+) {
     let preview: wad = Gate.convert_to_yang(assets_wad);
     return (preview,);
 }
 
 @view
-func preview_withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yang_wad
-) -> (preview: wad) {
+func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(yang_wad) -> (
+    preview: wad
+) {
     let preview: wad = Gate.convert_to_assets(yang_wad);
     return (preview,);
 }
