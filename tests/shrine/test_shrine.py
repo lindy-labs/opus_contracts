@@ -37,6 +37,7 @@ from tests.utils import (
     price_bounds,
     set_block_timestamp,
     str_to_felt,
+    to_ray,
     to_wad,
 )
 
@@ -1870,7 +1871,7 @@ async def test_shrine_unhealthy(shrine):
 @pytest.mark.usefixtures("shrine_deposit_multiple")
 @pytest.mark.parametrize("max_forge_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.asyncio
-async def test_get_trove_info(shrine, max_forge_percentage):
+async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
     # Check LTV for trove with value but zero debt
     trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
     assert trove_info.ltv == 0
@@ -1897,6 +1898,34 @@ async def test_get_trove_info(shrine, max_forge_percentage):
     assert_equalish(from_ray(trove_info.threshold), expected_threshold)
     assert_equalish(from_wad(trove_info.value), expected_value)
     assert_equalish(from_ray(trove_info.ltv), expected_ltv)
+
+
+TEST_THRESHOLDS = [Decimal("0.5"), Decimal("0.66"), Decimal("0.8")]
+
+
+@pytest.mark.usefixtures("shrine_deposit_multiple")
+@pytest.mark.parametrize("yang1_threshold", TEST_THRESHOLDS)
+@pytest.mark.parametrize("yang2_threshold", TEST_THRESHOLDS)
+@pytest.mark.parametrize("yang3_threshold", TEST_THRESHOLDS)
+@pytest.mark.asyncio
+async def test_get_trove_info_variable_thresholds(shrine, yang1_threshold, yang2_threshold, yang3_threshold):
+    # Modify threshold
+    new_thresholds = [to_ray(yang1_threshold), to_ray(yang2_threshold), to_ray(yang3_threshold)]
+    yang_addresses = [yang["address"] for yang in YANGS]
+    for new_threshold, yang_address in zip(new_thresholds, yang_addresses):
+        await shrine.set_threshold(yang_address, new_threshold).execute(caller_address=SHRINE_OWNER)
+
+    prices = []
+    for d in DEPOSITS:
+        price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price
+        prices.append(price)
+
+    expected_threshold, expected_value = calculate_trove_threshold_and_value(
+        prices, [d["amount"] for d in DEPOSITS], new_thresholds
+    )
+
+    trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    assert_equalish(from_ray(trove_info.threshold), expected_threshold)
 
 
 @pytest.mark.usefixtures("update_feeds")
