@@ -247,9 +247,9 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetC
     purger_roles = ShrineRoles.MELT + ShrineRoles.SEIZE
     await shrine.grant_role(purger_roles, purger.contract_address).execute(caller_address=SHRINE_OWNER)
 
-    # Approve purger to call `withdraw` in Gate
-    await steth_gate.grant_role(GateRoles.WITHDRAW, purger.contract_address).execute(caller_address=GATE_OWNER)
-    await doge_gate.grant_role(GateRoles.WITHDRAW, purger.contract_address).execute(caller_address=GATE_OWNER)
+    # Approve purger to call `exit` in Gate
+    await steth_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
+    await doge_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
 
     return purger
 
@@ -429,16 +429,14 @@ async def test_liquidate_pass(
     before_trove_steth_yang_wad = (
         await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()
     ).result.balance
-    before_trove_steth_bal_wad = (
-        await steth_gate.preview_withdraw(before_trove_steth_yang_wad).execute()
-    ).result.preview
+    before_trove_steth_bal_wad = (await steth_gate.preview_exit(before_trove_steth_yang_wad).execute()).result.preview
     expected_freed_steth_yang = freed_percentage * from_wad(before_trove_steth_yang_wad)
     expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
 
     before_trove_doge_yang_wad = (
         await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()
     ).result.balance
-    before_trove_doge_bal_wad = (await doge_gate.preview_withdraw(before_trove_doge_yang_wad).execute()).result.preview
+    before_trove_doge_bal_wad = (await doge_gate.preview_exit(before_trove_doge_yang_wad).execute()).result.preview
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
@@ -660,16 +658,14 @@ async def test_absorb_pass(
     before_trove_steth_yang_wad = (
         await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()
     ).result.balance
-    before_trove_steth_bal_wad = (
-        await steth_gate.preview_withdraw(before_trove_steth_yang_wad).execute()
-    ).result.preview
+    before_trove_steth_bal_wad = (await steth_gate.preview_exit(before_trove_steth_yang_wad).execute()).result.preview
     expected_freed_steth_yang = freed_percentage * from_wad(before_trove_steth_yang_wad)
     expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
 
     before_trove_doge_yang_wad = (
         await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()
     ).result.balance
-    before_trove_doge_bal_wad = (await doge_gate.preview_withdraw(before_trove_doge_yang_wad).execute()).result.preview
+    before_trove_doge_bal_wad = (await doge_gate.preview_exit(before_trove_doge_yang_wad).execute()).result.preview
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 

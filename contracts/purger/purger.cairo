@@ -439,7 +439,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     ReentrancyGuard._start();
     // The denomination is based on the number of decimals for the token
-    let (freed_asset_amt: wad) = IGate.withdraw(gate, recipient, trove_id, freed_yang);
+    let (freed_asset_amt: wad) = IGate.exit(gate, recipient, trove_id, freed_yang);
     assert [freed_assets_amt] = freed_asset_amt;
     IShrine.seize(shrine, yang, trove_id, freed_yang);
     ReentrancyGuard._end();
