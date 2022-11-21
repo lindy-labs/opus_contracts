@@ -20,7 +20,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 )
 
 from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.aliases import address, ray, ufelt, wad
 
 //
 // Events

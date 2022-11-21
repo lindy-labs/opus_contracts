@@ -1,8 +1,8 @@
 // Ported to Cairo from https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 %lang starknet
 
-from starkware.cairo.common.bool import FALSE, TRUE
-from starkware.cairo.common.math import assert_le, assert_lt, unsigned_div_rem
+from starkware.cairo.common.bool import TRUE
+from starkware.cairo.common.math import assert_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le
 
 from contracts.lib.aliases import bool, wad

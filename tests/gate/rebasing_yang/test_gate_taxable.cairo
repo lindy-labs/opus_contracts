@@ -93,16 +93,16 @@ func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(authed, shrine_address, asset_address, tax, tax_collector_address) {
+}(admin: address, shrine: address, asset: address, tax: ray, tax_collector: address) {
     alloc_locals;
 
-    AccessControl.initializer(authed);
+    AccessControl.initializer(admin);
 
     // Grant permission
-    AccessControl._grant_role(GateRoles.DEFAULT_GATE_TAXABLE_ADMIN_ROLE, authed);
+    AccessControl._grant_role(GateRoles.DEFAULT_GATE_TAXABLE_ADMIN_ROLE, admin);
 
-    Gate.initializer(shrine_address, asset_address);
-    GateTax.initializer(tax, tax_collector_address);
+    Gate.initializer(shrine, asset);
+    GateTax.initializer(tax, tax_collector);
     gate_live.write(TRUE);
     return ();
 }
@@ -112,7 +112,7 @@ func constructor{
 @external
 func set_tax{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(tax) {
+}(tax: ray) {
     AccessControl.assert_has_role(GateRoles.SET_TAX);
     GateTax.set_tax(tax);
     return ();
@@ -121,9 +121,9 @@ func set_tax{
 @external
 func set_tax_collector{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(address) {
+}(tax_collector: address) {
     AccessControl.assert_has_role(GateRoles.SET_TAX_COLLECTOR);
-    GateTax.set_tax_collector(address);
+    GateTax.set_tax_collector(tax_collector);
     return ();
 }
 
@@ -260,7 +260,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
     // Calculate rebase amount based on 10% of current gate's balance
     let current_assets: wad = Gate.get_total_assets();
     let rebase_amount: wad = WadRay.rmul(current_assets, REBASE_RATIO);
-    let (rebase_amount_uint) = WadRay.to_uint(rebase_amount);
+    let (rebase_amount_uint: Uint256) = WadRay.to_uint(rebase_amount);
 
     // Minting tokens
     MockRebasingToken.mint(contract_address=asset, recipient=gate, amount=rebase_amount_uint);

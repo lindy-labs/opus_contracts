@@ -28,7 +28,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     revoke_role,
 )
 from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.aliases import address, bool, ufelt, wad
 from contracts.lib.interfaces import IERC20
 from contracts.lib.wad_ray import WadRay
 
