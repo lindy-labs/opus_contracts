@@ -56,7 +56,7 @@ func Killed() {
 //
 
 @storage_var
-func gate_live_storage() -> (is_live: bool) {
+func gate_live() -> (is_live: bool) {
 }
 
 //
@@ -67,7 +67,7 @@ func gate_live_storage() -> (is_live: bool) {
 func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     is_live: bool
 ) {
-    return gate_live_storage.read();
+    return gate_live.read();
 }
 
 //
@@ -87,7 +87,7 @@ func constructor{
 
     Gate.initializer(shrine, asset);
     GateTax.initializer(tax, tax_collector);
-    gate_live_storage.write(TRUE);
+    gate_live.write(TRUE);
     return ();
 }
 
@@ -120,7 +120,7 @@ func kill{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }() {
     AccessControl.assert_has_role(GateRoles.KILL);
-    gate_live_storage.write(FALSE);
+    gate_live.write(FALSE);
     Killed.emit();
     return ();
 }
@@ -228,7 +228,7 @@ func levy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
 func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     // Check system is live
-    let (is_live: bool) = gate_live_storage.read();
+    let (is_live: bool) = gate_live.read();
     with_attr error_message("Gate: Gate is not live") {
         assert is_live = TRUE;
     }
