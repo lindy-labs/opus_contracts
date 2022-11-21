@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt
+from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.uint256 import (
     ALL_ONES,
     Uint256,

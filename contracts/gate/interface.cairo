@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import address, bool, ufelt, wad
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
 
 @contract_interface
 namespace IGate {
@@ -44,5 +44,27 @@ namespace IGate {
     }
 
     func preview_withdraw(yang: wad) -> (preview: wad) {
+    }
+}
+
+@contract_interface
+namespace IGateTax {
+    //
+    // getters
+    //
+    func get_tax() -> (tax: ray) {
+    }
+
+    func get_tax_collector() -> (tax_collector: address) {
+    }
+
+    // external
+    func set_tax(tax: ray) {
+    }
+
+    func set_tax_collector(new_collector: address) {
+    }
+
+    func levy() {
     }
 }

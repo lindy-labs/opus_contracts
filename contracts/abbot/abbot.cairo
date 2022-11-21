@@ -9,7 +9,7 @@ from contracts.gate.interface import IGate
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
 
-from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.aliases import address, ufelt, wad
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 from contracts.lib.types import Trove, Yang
 

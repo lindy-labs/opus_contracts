@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import address, ray, ufelt, wad
+from contracts.lib.aliases import address, ufelt, wad
 
 @contract_interface
 namespace IAbbot {
@@ -45,10 +45,5 @@ namespace IAbbot {
     }
 
     func melt(trove_id: ufelt, amount: wad) {
-    }
-
-    func add_yang(
-        yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address
-    ) {
     }
 }
