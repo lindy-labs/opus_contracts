@@ -80,13 +80,13 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
     assert_event_emitted(
         tx,
         steth_yang.gate_address,
-        "Deposit",
+        "Enter",
         lambda d: d[:2] == [AURA_USER_1, TROVE_1] and d[-1] == INITIAL_STETH_DEPOSIT,
     )
     assert_event_emitted(
         tx,
         doge_yang.gate_address,
-        "Deposit",
+        "Enter",
         lambda d: d[:2] == [AURA_USER_1, TROVE_1] and d[-1] == INITIAL_DOGE_DEPOSIT,
     )
 
@@ -148,13 +148,13 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
     assert_event_emitted(
         tx,
         steth_yang.gate_address,
-        "Withdraw",
+        "Exit",
         lambda d: d[:2] == [AURA_USER_1, TROVE_1] and d[-1] == INITIAL_STETH_DEPOSIT,
     )
     assert_event_emitted(
         tx,
         doge_yang.gate_address,
-        "Withdraw",
+        "Exit",
         lambda d: d[:2] == [AURA_USER_1, TROVE_1] and d[-1] == INITIAL_DOGE_DEPOSIT,
     )
 
@@ -204,10 +204,10 @@ async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCon
 
     # check if gates emitted Deposit from AURA_USER_1 to trove with the right amount
     assert_event_emitted(
-        tx1, steth_yang.gate_address, "Deposit", lambda d: d[:3] == [depositor, TROVE_1, fresh_steth_deposit]
+        tx1, steth_yang.gate_address, "Enter", lambda d: d[:3] == [depositor, TROVE_1, fresh_steth_deposit]
     )
     assert_event_emitted(
-        tx2, doge_yang.gate_address, "Deposit", lambda d: d[:3] == [depositor, TROVE_1, fresh_doge_deposit]
+        tx2, doge_yang.gate_address, "Enter", lambda d: d[:3] == [depositor, TROVE_1, fresh_doge_deposit]
     )
 
     assert (
@@ -253,14 +253,14 @@ async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangCo
     assert_event_emitted(
         tx1,
         steth_yang.gate_address,
-        "Withdraw",
+        "Exit",
         lambda d: d[:2] == [AURA_USER_1, TROVE_1] and d[-1] == steth_withdraw_amount,
     )
 
     assert_event_emitted(
         tx2,
         doge_yang.gate_address,
-        "Withdraw",
+        "Exit",
         lambda d: d[:2] == [AURA_USER_1, TROVE_1] and d[-1] == doge_withdraw_amount,
     )
 
