@@ -87,10 +87,10 @@ Cairo lets us create aliases, or custom names, for types, using the `using` key 
 | `bool`          | 0 or 1                                                              |
 | `packed`        | a felt containing multiple values that have been packed together    |
 | `str`           | Cairo short-string                                                  |
-| `sfelt`         | 'signed' felt, in the range [-2**128 2**128)                        |
+| `sfelt`         | 'signed' felt, in the range [-2<sup>128</sup>, 2<sup>128</sup>)     |
 | `ufelt`         | 'regular' felt                                                      |
-| `wad`           | 18-decimal number, in the range [-2**125, 2**125]                   |
-| `ray`           | 27-decimal number, in the range [-2**125, 2**125]                   |
+| `wad`           | 18-decimal number, in the range [-2<sup>125</sup>, 2<sup>125</sup>] |
+| `ray`           | 27-decimal number, in the range [-2<sup>125</sup>, 2<sup>125</sup>] |
 
 to use these aliases, include the following import in your contract (include aliases in the import statement as needed):
 
