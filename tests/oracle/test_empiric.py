@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
@@ -16,10 +18,10 @@ from tests.oracle.constants import (
 )
 from tests.roles import EmpiricRoles
 from tests.utils import (
+    ABBOT_ROLE,
+    AURA_USER_1,
     BAD_GUY,
-    BTC_OWNER,
     EMPIRIC_OWNER,
-    ETH_OWNER,
     GATE_OWNER,
     INITIAL_ASSET_AMT_PER_YANG,
     RAY_PERCENT,
@@ -27,9 +29,11 @@ from tests.utils import (
     TIME_INTERVAL,
     assert_event_emitted,
     compile_contract,
+    max_approve,
     set_block_timestamp,
     signed_int_to_felt,
     str_to_felt,
+    to_uint,
     to_wad,
 )
 
@@ -37,11 +41,13 @@ BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
 BTC_INIT_PRICE = 19520
 BTC_CEILING = to_wad(10_000_000)
 BTC_THRESHOLD = 85 * RAY_PERCENT
+BTC_DEPOSIT = to_wad(10)
 
 ETH_EMPIRIC_ID = str_to_felt("ETH/USD")
 ETH_INIT_PRICE = 1283
 ETH_CEILING = to_wad(15_000_000)
 ETH_THRESHOLD = 80 * RAY_PERCENT
+ETH_DEPOSIT = to_wad(100)
 
 
 def to_empiric(value: int) -> int:
@@ -55,25 +61,19 @@ def to_empiric(value: int) -> int:
 
 @pytest.fixture
 async def btc_token(tokens) -> StarknetContract:
-    return await tokens("Bitcoin", "BTC", 18, (to_wad(100_000), 0), BTC_OWNER)
+    return await tokens("Bitcoin", "BTC", 18, (to_wad(100_000), 0), AURA_USER_1)
 
 
 @pytest.fixture
 async def eth_token(tokens) -> StarknetContract:
-    return await tokens("Ether", "ETH", 18, (to_wad(10_000_000), 0), ETH_OWNER)
+    return await tokens("Ether", "ETH", 18, (to_wad(10_000_000), 0), AURA_USER_1)
 
 
 @pytest.fixture
-async def with_yangs(starknet, shrine, sentinel, empiric, btc_token, eth_token, mock_empiric_impl):
-    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
-    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, 8, 5000, 6).execute()
-
-    await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
-    await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
-
+async def btc_gate(starknet, shrine, btc_token) -> StarknetContract:
     contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
 
-    btc_gate = await starknet.deploy(
+    return await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
             GATE_OWNER,
@@ -82,7 +82,12 @@ async def with_yangs(starknet, shrine, sentinel, empiric, btc_token, eth_token, 
         ],
     )
 
-    eth_gate = await starknet.deploy(
+
+@pytest.fixture
+async def eth_gate(starknet, shrine, eth_token) -> StarknetContract:
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
+
+    return await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
             GATE_OWNER,
@@ -91,13 +96,38 @@ async def with_yangs(starknet, shrine, sentinel, empiric, btc_token, eth_token, 
         ],
     )
 
+
+@pytest.fixture
+async def with_yangs(
+    starknet, shrine, abbot, sentinel, empiric, btc_token, eth_token, btc_gate, eth_gate, mock_empiric_impl
+):
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, 8, 5000, 6).execute()
+
+    await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
+    await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
+
     await sentinel.add_yang(
         btc_token.contract_address, BTC_CEILING, BTC_THRESHOLD, to_wad(BTC_INIT_PRICE), btc_gate.contract_address
     ).execute(caller_address=SENTINEL_OWNER)
-
     await sentinel.add_yang(
         eth_token.contract_address, ETH_CEILING, ETH_THRESHOLD, to_wad(ETH_INIT_PRICE), eth_gate.contract_address
     ).execute(caller_address=SENTINEL_OWNER)
+
+    await btc_gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+    await eth_gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+
+
+@pytest.fixture
+async def funded_gates(shrine, abbot, btc_token, eth_token, btc_gate, eth_gate, with_yangs):
+    await max_approve(btc_token, AURA_USER_1, btc_gate.contract_address)
+    await max_approve(eth_token, AURA_USER_1, eth_gate.contract_address)
+
+    await abbot.open_trove(
+        0,
+        [btc_token.contract_address, eth_token.contract_address],
+        [BTC_DEPOSIT, ETH_DEPOSIT],
+    ).execute(caller_address=AURA_USER_1)
 
 
 @pytest.mark.asyncio
@@ -227,18 +257,36 @@ async def test_add_yang_failures(btc_token, eth_token, empiric, mock_empiric_imp
         await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
 
-@pytest.mark.usefixtures("with_yangs")
+@pytest.mark.usefixtures("with_yangs", "funded_gates")
+@pytest.mark.parametrize(
+    "rebase_percentage", [Decimal("0"), Decimal("0.01"), Decimal("0.1"), Decimal("0.5"), Decimal("1")]
+)
 @pytest.mark.asyncio
-async def test_update_prices(btc_token, eth_token, empiric, mock_empiric_impl, shrine, starknet):
+async def test_update_prices(
+    btc_token, eth_token, btc_gate, eth_gate, empiric, mock_empiric_impl, shrine, starknet, rebase_percentage
+):
+    # simulate rebase by sending tokens to the gate
+    await btc_token.transfer(btc_gate.contract_address, to_uint(int(rebase_percentage * BTC_DEPOSIT))).execute(
+        caller_address=AURA_USER_1
+    )
+    await eth_token.transfer(eth_gate.contract_address, to_uint(int(rebase_percentage * ETH_DEPOSIT))).execute(
+        caller_address=AURA_USER_1
+    )
+
     oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
     oracle_update_interval = oracle_update_ts // TIME_INTERVAL
+
+    price_multiplier = Decimal("1") + rebase_percentage
 
     # the multiplying by 2 here is because add_yang sets the
     # sentinel value in the interval _previous_ to current
     new_eth_price = 1293
-    eth_cumulative_price = ETH_INIT_PRICE * 2 + new_eth_price
+    new_eth_yang_price = price_multiplier * new_eth_price
+    eth_cumulative_price = ETH_INIT_PRICE * 2 + new_eth_yang_price
+
     new_btc_price = 19330
-    btc_cumulative_price = BTC_INIT_PRICE * 2 + new_btc_price
+    new_btc_yang_price = price_multiplier * new_btc_price
+    btc_cumulative_price = BTC_INIT_PRICE * 2 + new_btc_yang_price
 
     await mock_empiric_impl.next_get_spot_median(
         ETH_EMPIRIC_ID, to_empiric(new_eth_price), 8, oracle_update_ts, 3
@@ -255,21 +303,21 @@ async def test_update_prices(btc_token, eth_token, empiric, mock_empiric_impl, s
         tx,
         shrine.contract_address,
         "YangPriceUpdated",
-        [eth_token.contract_address, to_wad(new_eth_price), to_wad(eth_cumulative_price), oracle_update_interval],
+        [eth_token.contract_address, to_wad(new_eth_yang_price), to_wad(eth_cumulative_price), oracle_update_interval],
     )
     assert_event_emitted(
         tx,
         shrine.contract_address,
         "YangPriceUpdated",
-        [btc_token.contract_address, to_wad(new_btc_price), to_wad(btc_cumulative_price), oracle_update_interval],
+        [btc_token.contract_address, to_wad(new_btc_yang_price), to_wad(btc_cumulative_price), oracle_update_interval],
     )
 
     assert (
         await shrine.get_yang_price(eth_token.contract_address, oracle_update_interval).execute()
-    ).result.price == to_wad(new_eth_price)
+    ).result.price == to_wad(new_eth_yang_price)
     assert (
         await shrine.get_yang_price(btc_token.contract_address, oracle_update_interval).execute()
-    ).result.price == to_wad(new_btc_price)
+    ).result.price == to_wad(new_btc_yang_price)
 
 
 @pytest.mark.asyncio
