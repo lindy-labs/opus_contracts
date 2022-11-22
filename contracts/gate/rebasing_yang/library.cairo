@@ -6,7 +6,7 @@ from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.shrine.interface import IShrine
 
-from contracts.lib.aliases import address, wad
+from contracts.lib.aliases import address, ufelt, wad
 from contracts.lib.interfaces import IERC20
 from contracts.lib.types import Yang
 from contracts.lib.wad_ray import WadRay
@@ -67,10 +67,19 @@ namespace Gate {
 
     func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         ) -> wad {
-        let rate: wad = convert_to_assets(WadRay.WAD_ONE);
+        let amt: wad = convert_to_assets(WadRay.WAD_ONE);
 
-        // TODO: Handle conversion of assets with less than 18 decimals
-        return rate;
+        // Scale assets with less than 18 decimals to wad
+        let asset: address = get_asset();
+        let decimals: ufelt = IERC20.decimals(contract_address=asset);
+
+        // Assumes 0 <= decimals < 18
+        let decimals_offset: ufelt = WadRay.WAD_DECIMALS - decimals;
+        if (decimals_offset == 0) {
+            return amt;
+        }
+
+        return amt * decimals_offset;
     }
 
     //

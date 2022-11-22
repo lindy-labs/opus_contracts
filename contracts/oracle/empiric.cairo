@@ -396,7 +396,7 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     return update_prices_loop(index - 1, oracle, shrine, sentinel, block_timestamp);
 }
 
-// Internal function to fetch the amount of the underlying asset represented by a wad unit of yang
+// Internal function to fetch the amount of the underlying asset represented by one unit of yang
 // The asset amount is scaled to wad.
 // Returns 0 (sentinel value) if the Gate is invalid
 func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -411,7 +411,7 @@ func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
         return (0,);
     }
 
-    let (asset_amt: wad) = IGate.preview_exit(gate, WadRay.WAD_ONE);
+    let (asset_amt: wad) = IGate.get_asset_amt_per_yang(gate);
     return (asset_amt,);
 }
 
