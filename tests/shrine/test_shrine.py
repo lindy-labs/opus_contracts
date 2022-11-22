@@ -1,5 +1,5 @@
 from collections import namedtuple
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from math import exp
 from typing import List
 
@@ -37,6 +37,7 @@ from tests.utils import (
     price_bounds,
     set_block_timestamp,
     str_to_felt,
+    to_ray,
     to_wad,
 )
 
@@ -1868,15 +1869,12 @@ async def test_shrine_unhealthy(shrine):
 
 
 @pytest.mark.usefixtures("shrine_deposit_multiple")
+@pytest.mark.parametrize("max_forge_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.asyncio
-async def test_get_trove_info(shrine):
-
+async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
     # Check LTV for trove with value but zero debt
     trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
     assert trove_info.ltv == 0
-
-    forge_amt = (await shrine.get_max_forge(TROVE_1).execute()).result.max // 2
-    await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt).execute(caller_address=SHRINE_OWNER)
 
     prices = []
     for d in DEPOSITS:
@@ -1887,15 +1885,46 @@ async def test_get_trove_info(shrine):
         prices, [d["amount"] for d in DEPOSITS], [d["threshold"] for d in DEPOSITS]
     )
 
-    expected_ltv = from_wad(forge_amt) / expected_value
+    expected_max_forge_amt = expected_threshold * expected_value
+    forge_amt = (max_forge_percentage * expected_max_forge_amt).quantize(Decimal("1E-18"), rounding=ROUND_DOWN)
+    forge_amt_wad = to_wad(forge_amt)
 
-    # Getting actual threshold
+    await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
+
+    expected_ltv = forge_amt / expected_value
+
     trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
-
-    assert trove_info.debt == forge_amt
+    assert trove_info.debt == forge_amt_wad
     assert_equalish(from_ray(trove_info.threshold), expected_threshold)
     assert_equalish(from_wad(trove_info.value), expected_value)
     assert_equalish(from_ray(trove_info.ltv), expected_ltv)
+
+
+@pytest.mark.usefixtures("shrine_deposit_multiple")
+@pytest.mark.parametrize(
+    "thresholds",
+    [
+        (to_ray(Decimal("0.5")), to_ray(Decimal("0.66")), to_ray(Decimal("0.8"))),
+        (to_ray(Decimal("0.65432")), to_ray(Decimal("0.76543")), to_ray(Decimal("0.87654"))),
+        (to_ray(Decimal("0.333")), to_ray(Decimal("0.666")), to_ray(Decimal("0.888"))),
+    ],
+)
+@pytest.mark.asyncio
+async def test_get_trove_info_variable_thresholds(shrine, thresholds):
+    prices = []
+    for d, threshold in zip(DEPOSITS, thresholds):
+        yang_address = d["address"]
+        await shrine.set_threshold(yang_address, threshold).execute(caller_address=SHRINE_OWNER)
+
+        price = (await shrine.get_current_yang_price(yang_address).execute()).result.price
+        prices.append(price)
+
+    expected_threshold, expected_value = calculate_trove_threshold_and_value(
+        prices, [d["amount"] for d in DEPOSITS], thresholds
+    )
+
+    trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    assert_equalish(from_ray(trove_info.threshold), expected_threshold)
 
 
 @pytest.mark.usefixtures("update_feeds")
