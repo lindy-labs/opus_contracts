@@ -8,7 +8,7 @@ from starkware.starknet.common.syscalls import get_contract_address
 from contracts.gate.rebasing_yang.library import Gate
 from contracts.gate.rebasing_yang.library_external import (
     get_asset,
-    get_exchange_rate,
+    get_asset_amt_per_yang,
     get_shrine,
     get_total_assets,
     get_total_yang,
