@@ -8,10 +8,12 @@ from starkware.cairo.common.math import (
     assert_not_equal,
     assert_not_zero,
 )
-from starkware.cairo.common.math_cmp import is_le, is_nn
+from starkware.cairo.common.math_cmp import is_le, is_nn, is_nn_le
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
+from contracts.gate.interface import IGate
 from contracts.oracle.roles import EmpiricRoles
+from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface
@@ -64,6 +66,11 @@ func empiric_oracle() -> (oracle: address) {
 func empiric_shrine() -> (shrine: address) {
 }
 
+// address of Sentinel contract (conforming to ISentinel)
+@storage_var
+func empiric_sentinel() -> (sentinel: address) {
+}
+
 // the minimal time difference in seconds of how often
 // we want to fetch from the oracle
 @storage_var
@@ -108,7 +115,11 @@ func empiric_yang_settings(index: ufelt) -> (settings: YangSettings) {
 
 @event
 func InvalidPriceUpdate(
-    yang: address, price: ufelt, empiric_last_updated_ts: ufelt, empiric_num_sources: ufelt
+    yang: address,
+    price: ufelt,
+    empiric_last_updated_ts: ufelt,
+    empiric_num_sources: ufelt,
+    asset_amt_per_yang: wad,
 ) {
 }
 
@@ -145,6 +156,7 @@ func constructor{
     admin: address,
     oracle: address,
     shrine: address,
+    sentinel: address,
     update_interval: ufelt,
     freshness_threshold: ufelt,
     sources_threshold: ufelt,
@@ -158,6 +170,7 @@ func constructor{
 
     empiric_oracle.write(oracle);
     empiric_shrine.write(shrine);
+    empiric_sentinel.write(sentinel);
     empiric_update_interval.write(update_interval);
     let validity_thresholds = PriceValidityThresholds(freshness_threshold, sources_threshold);
     empiric_price_validity_thresholds.write(validity_thresholds);
@@ -293,9 +306,10 @@ func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (yangs_count: ufelt) = empiric_yangs_count.read();
     let (oracle: address) = empiric_oracle.read();
     let (shrine: address) = empiric_shrine.read();
+    let (sentinel: address) = empiric_sentinel.read();
     let (block_timestamp: ufelt) = get_block_timestamp();
 
-    update_prices_loop(yangs_count - 1, oracle, shrine, block_timestamp);
+    update_prices_loop(yangs_count - 1, oracle, shrine, sentinel, block_timestamp);
 
     // record update timestamp
     empiric_last_price_update.write(block_timestamp);
@@ -348,7 +362,7 @@ func assert_new_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
 }
 
 func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    index: ufelt, oracle: address, shrine: address, block_timestamp: ufelt
+    index: ufelt, oracle: address, shrine: address, sentinel: address, block_timestamp: ufelt
 ) {
     alloc_locals;
 
@@ -358,6 +372,8 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
     let (settings: YangSettings) = empiric_yang_settings.read(index);
 
+    let (asset_amt_per_yang: wad) = get_asset_amt_per_yang(settings.yang, sentinel);
+
     let (
         value: ufelt, decimals: ufelt, last_updated_ts: ufelt, num_sources: ufelt
     ) = IEmpiricOracle.get_spot_median(oracle, settings.empiric_id);
@@ -366,20 +382,45 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     let (mul: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
     let price: wad = value * mul;
 
-    let (is_valid) = is_valid_price_update(value, block_timestamp, last_updated_ts, num_sources);
+    let (is_valid) = is_valid_price_update(
+        value, block_timestamp, last_updated_ts, num_sources, asset_amt_per_yang
+    );
     if (is_valid == TRUE) {
-        // TODO: once we have a single gate, this call to advance will have to be updated, see:
-        //       https://github.com/lindy-labs/aura_contracts/pull/152#issuecomment-1282143697
-        IShrine.advance(shrine, settings.yang, price);
+        IShrine.advance(shrine, settings.yang, price, asset_amt_per_yang);
     } else {
-        InvalidPriceUpdate.emit(settings.yang, price, last_updated_ts, num_sources);
+        InvalidPriceUpdate.emit(
+            settings.yang, price, last_updated_ts, num_sources, asset_amt_per_yang
+        );
     }
 
-    return update_prices_loop(index - 1, oracle, shrine, block_timestamp);
+    return update_prices_loop(index - 1, oracle, shrine, sentinel, block_timestamp);
+}
+
+// Internal function to fetch the amount of the underlying asset represented by a wad unit of yang
+// The asset amount is scaled to wad.
+// Returns 0 (sentinel value) if the Gate is invalid
+func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address, sentinel: address
+) -> (asset_amt: wad) {
+    alloc_locals;
+
+    let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
+
+    // Return the sentinel value if Gate is zero address
+    if (gate == 0) {
+        return (0,);
+    }
+
+    let (asset_amt: wad) = IGate.preview_exit(gate, WadRay.WAD_ONE);
+    return (asset_amt,);
 }
 
 func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    value: ufelt, block_timestamp: ufelt, last_updated_ts: ufelt, num_sources: ufelt
+    value: ufelt,
+    block_timestamp: ufelt,
+    last_updated_ts: ufelt,
+    num_sources: ufelt,
+    asset_amt_per_yang: wad,
 ) -> (is_valid: bool) {
     alloc_locals;
 
@@ -413,6 +454,9 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     // block_timestamp - last_updates_ts can never be negative if the code reaches here
     let is_fresh: bool = is_le(block_timestamp - last_updated_ts, required.freshness);
 
+    // check if asset amount is valid
+    let is_valid_ratio: bool = is_nn_le(WadRay.WAD_ONE, asset_amt_per_yang);
+
     // multiplication simulates boolean AND
-    return (has_enough_sources * is_fresh,);
+    return (has_enough_sources * is_fresh * is_valid_ratio,);
 }

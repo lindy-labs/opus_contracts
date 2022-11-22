@@ -2,7 +2,13 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math import (
+    assert_le,
+    assert_nn_le,
+    assert_not_zero,
+    split_felt,
+    unsigned_div_rem,
+)
 from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp
 
@@ -479,20 +485,27 @@ func constructor{
 //
 
 // Set the price of the specified Yang for a given interval
+// price of 1 unit of yang = price of underlying asset * amount of underlying asset represented by 1 unit of yang
 @external
 func advance{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, price: wad) {
+}(yang: address, asset_price: wad, asset_amt_per_yang: ray) {
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.ADVANCE);
 
     with_attr error_message("Shrine: Cannot set a price value to zero") {
-        assert_not_zero(price);  // Cannot set a price value to zero
+        assert_not_zero(asset_price);  // Cannot set a price value to zero
+    }
+
+    with_attr error_message("Shrine: Exchange rate of yang to asset cannot be lower than 1") {
+        assert_nn_le(WadRay.WAD_ONE, asset_amt_per_yang);
     }
 
     let interval: ufelt = now();
     let yang_id: ufelt = get_valid_yang_id(yang);
+
+    let yang_price: wad = WadRay.wmul(asset_price, asset_amt_per_yang);
 
     // Calculating the new cumulative price
     // To do this, we get the interval of the last price update, find the number of
@@ -502,12 +515,12 @@ func advance{
         yang_id, interval - 1
     );
     // TODO: should there be an overflow check here?
-    let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + price;
+    let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + yang_price;
 
-    let price_and_cumulative_price: packed = pack_125(price, new_cumulative);
+    let price_and_cumulative_price: packed = pack_125(yang_price, new_cumulative);
     shrine_yang_price.write(yang_id, interval, price_and_cumulative_price);
 
-    YangPriceUpdated.emit(yang, price, new_cumulative, interval);
+    YangPriceUpdated.emit(yang, yang_price, new_cumulative, interval);
 
     return ();
 }
