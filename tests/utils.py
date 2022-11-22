@@ -78,6 +78,8 @@ EMPIRIC_OWNER = str_to_felt("empiric owner")
 ADMIN = str_to_felt("admin")
 BAD_GUY = str_to_felt("bad guy")
 
+BTC_OWNER = str_to_felt("btc owner")
+ETH_OWNER = str_to_felt("eth owner")
 STETH_OWNER = str_to_felt("steth owner")
 DOGE_OWNER = str_to_felt("doge owner")
 
