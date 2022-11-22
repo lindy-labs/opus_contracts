@@ -35,6 +35,7 @@ from tests.utils import (
     DOGE_OWNER,
     EMPIRIC_OWNER,
     GATE_OWNER,
+    INITIAL_ASSET_AMT_PER_YANG,
     RAY_PERCENT,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -223,7 +224,9 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(YANGS)):
-            await shrine.advance(YANGS[j]["address"], feeds[j][i]).execute(caller_address=SHRINE_OWNER)
+            await shrine.advance(YANGS[j]["address"], feeds[j][i], INITIAL_ASSET_AMT_PER_YANG).execute(
+                caller_address=SHRINE_OWNER
+            )
 
         await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
@@ -408,7 +411,7 @@ async def mock_empiric_impl(starknet) -> StarknetContract:
 
 
 @pytest.fixture
-async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
+async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetContract:
     set_block_timestamp(starknet, INIT_BLOCK_TS)
     contract = compile_contract("contracts/oracle/empiric.cairo")
     empiric = await starknet.deploy(
@@ -417,6 +420,7 @@ async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
             EMPIRIC_OWNER,
             mock_empiric_impl.contract_address,
             shrine.contract_address,
+            sentinel.contract_address,
             EMPIRIC_UPDATE_INTERVAL,
             EMPIRIC_FRESHNESS_THRESHOLD,
             EMPIRIC_SOURCES_THRESHOLD,

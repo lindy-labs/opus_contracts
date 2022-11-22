@@ -19,9 +19,13 @@ from tests.roles import EmpiricRoles
 from tests.utils import (
     BAD_GUY,
     EMPIRIC_OWNER,
-    SHRINE_OWNER,
+    GATE_OWNER,
+    INITIAL_ASSET_AMT_PER_YANG,
+    RAY_PERCENT,
+    SENTINEL_OWNER,
     TIME_INTERVAL,
     assert_event_emitted,
+    compile_contract,
     set_block_timestamp,
     signed_int_to_felt,
     str_to_felt,
@@ -30,11 +34,17 @@ from tests.utils import (
 
 BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
 BTC_YANG = str_to_felt("btc")
+BTC_YANG_ADDRESS = BTC_YANG
 BTC_INIT_PRICE = 19520
+BTC_CEILING = to_wad(10_000_000)
+BTC_THRESHOLD = 85 * RAY_PERCENT
 
 ETH_EMPIRIC_ID = str_to_felt("ETH/USD")
 ETH_YANG = str_to_felt("eth")
+ETH_YANG_ADDRESS = ETH_YANG
 ETH_INIT_PRICE = 1283
+ETH_CEILING = to_wad(15_000_000)
+ETH_THRESHOLD = 80 * RAY_PERCENT
 
 
 def to_empiric(value: int) -> int:
@@ -47,19 +57,40 @@ def to_empiric(value: int) -> int:
 
 
 @pytest.fixture
-async def with_yangs(shrine, empiric, mock_empiric_impl):
+async def with_yangs(starknet, shrine, sentinel, empiric, mock_empiric_impl):
     await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
     await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, 8, 5000, 6).execute()
 
     await empiric.add_yang(ETH_EMPIRIC_ID, ETH_YANG).execute(caller_address=EMPIRIC_OWNER)
     await empiric.add_yang(BTC_EMPIRIC_ID, BTC_YANG).execute(caller_address=EMPIRIC_OWNER)
 
-    await shrine.add_yang(ETH_YANG, 100_000_000, to_wad(Decimal("0.9")), to_wad(ETH_INIT_PRICE)).execute(
-        caller_address=SHRINE_OWNER
+    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
+
+    btc_gate = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            GATE_OWNER,
+            shrine.contract_address,
+            BTC_YANG_ADDRESS,
+        ],
     )
-    await shrine.add_yang(BTC_YANG, 100_000_000, to_wad(Decimal("0.85")), to_wad(BTC_INIT_PRICE)).execute(
-        caller_address=SHRINE_OWNER
+
+    eth_gate = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            GATE_OWNER,
+            shrine.contract_address,
+            ETH_YANG_ADDRESS,
+        ],
     )
+
+    await sentinel.add_yang(
+        BTC_YANG_ADDRESS, BTC_CEILING, BTC_THRESHOLD, to_wad(BTC_INIT_PRICE), btc_gate.contract_address
+    ).execute(caller_address=SENTINEL_OWNER)
+
+    await sentinel.add_yang(
+        ETH_YANG_ADDRESS, ETH_CEILING, ETH_THRESHOLD, to_wad(ETH_INIT_PRICE), eth_gate.contract_address
+    ).execute(caller_address=SENTINEL_OWNER)
 
 
 @pytest.mark.asyncio
@@ -274,7 +305,7 @@ async def test_update_prices_invalid_price_updates(empiric, mock_empiric_impl, p
         tx,
         empiric.contract_address,
         "InvalidPriceUpdate",
-        [ETH_YANG, signed_int_to_felt(to_wad(price)), update_ts, num_sources],
+        [ETH_YANG, signed_int_to_felt(to_wad(price)), update_ts, num_sources, INITIAL_ASSET_AMT_PER_YANG],
     )
 
 
