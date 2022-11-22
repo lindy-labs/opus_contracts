@@ -8,6 +8,7 @@ from contracts.shrine.interface import IShrine
 
 from contracts.lib.aliases import address, ufelt, wad
 from contracts.lib.interfaces import IERC20
+from contracts.lib.pow import pow10
 from contracts.lib.types import Yang
 from contracts.lib.wad_ray import WadRay
 
@@ -79,7 +80,8 @@ namespace Gate {
             return amt;
         }
 
-        return amt * decimals_offset;
+        let (mul: ufelt) = pow10(decimals_offset);
+        return amt * mul;
     }
 
     //
