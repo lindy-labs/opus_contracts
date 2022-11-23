@@ -16,6 +16,7 @@ from tests.utils import (
     AURA_USER_1,
     FALSE,
     GATE_OWNER,
+    INITIAL_ASSET_AMT_PER_YANG,
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -71,7 +72,7 @@ async def advance_yang_prices_by_percentage(
         # Update price
         new_price = int((Decimal("1") + price_change) * current_price)
 
-        await shrine.advance(yang_address, new_price).execute(caller_address=SHRINE_OWNER)
+        await shrine.advance(yang_address, new_price, INITIAL_ASSET_AMT_PER_YANG).execute(caller_address=SHRINE_OWNER)
 
 
 def get_close_factor(ltv: Decimal) -> Decimal:
@@ -162,7 +163,9 @@ async def shrine_feeds(
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(yangs)):
-            await shrine.advance(yangs[j].contract_address, feeds[j][i]).execute(caller_address=SHRINE_OWNER)
+            await shrine.advance(yangs[j].contract_address, feeds[j][i], INITIAL_ASSET_AMT_PER_YANG).execute(
+                caller_address=SHRINE_OWNER
+            )
 
         await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
