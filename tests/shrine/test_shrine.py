@@ -642,19 +642,21 @@ async def test_unauthorized_kill(shrine):
 
 
 @pytest.mark.usefixtures("update_feeds")
+@pytest.mark.parametrize(
+    "asset_amt_per_yang", [Decimal("1"), Decimal("1.01"), Decimal("1.1"), Decimal("1.5"), Decimal("2")]
+)
 @pytest.mark.asyncio
-async def test_advance(starknet, shrine):
+async def test_advance(starknet, shrine, asset_amt_per_yang):
     timestamp = get_block_timestamp(starknet)
     interval = get_interval(timestamp)
     yang_price_info = (await shrine.get_yang_price(YANG1_ADDRESS, interval - 1).execute()).result
 
     new_asset_price = YANGS[0]["start_price"] + 1
-    new_exchange_rate = Decimal("2")
-    advance = await shrine.advance(YANG1_ADDRESS, to_wad(new_asset_price), to_wad(new_exchange_rate)).execute(
+    advance = await shrine.advance(YANG1_ADDRESS, to_wad(new_asset_price), to_wad(asset_amt_per_yang)).execute(
         caller_address=SHRINE_OWNER
     )
 
-    expected_yang_price_wad = to_wad(new_asset_price * new_exchange_rate)
+    expected_yang_price_wad = to_wad(new_asset_price * asset_amt_per_yang)
     expected_cumulative = int(yang_price_info.cumulative_price + expected_yang_price_wad)
 
     # Test event emitted
