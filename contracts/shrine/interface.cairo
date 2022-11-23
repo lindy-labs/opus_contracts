@@ -62,7 +62,7 @@ namespace IShrine {
     func kill() {
     }
 
-    func advance(yang: address, asset_price: wad, yang_to_asset_ratio: ray) {
+    func advance(yang: address, asset_price: wad, asset_amt_per_yang: wad) {
     }
 
     func set_multiplier(new_multiplier: ray) {

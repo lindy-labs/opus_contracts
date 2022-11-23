@@ -489,7 +489,7 @@ func constructor{
 @external
 func advance{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, asset_price: wad, asset_amt_per_yang: ray) {
+}(yang: address, asset_price: wad, asset_amt_per_yang: wad) {
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.ADVANCE);
