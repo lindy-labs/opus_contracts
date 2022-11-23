@@ -498,7 +498,7 @@ func advance{
         assert_not_zero(asset_price);  // Cannot set a price value to zero
     }
 
-    with_attr error_message("Shrine: Exchange rate of yang to asset cannot be lower than 1") {
+    with_attr error_message("Shrine: Amount of asset per yang cannot be lower than 1") {
         assert_nn_le(WadRay.WAD_ONE, asset_amt_per_yang);
     }
 

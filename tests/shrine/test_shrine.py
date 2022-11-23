@@ -693,6 +693,16 @@ async def test_advance_invalid_yang(shrine):
 
 
 @pytest.mark.usefixtures("update_feeds")
+@pytest.mark.parametrize("asset_amt_per_yang", [Decimal("0"), Decimal("0.99")])
+@pytest.mark.asyncio
+async def test_advance_invalid_asset_amt_per_yang(shrine, asset_amt_per_yang):
+    with pytest.raises(StarkException, match="Shrine: Amount of asset per yang cannot be lower than 1"):
+        await shrine.advance(YANG1_ADDRESS, to_wad(YANGS[0]["start_price"]), to_wad(asset_amt_per_yang)).execute(
+            caller_address=SHRINE_OWNER
+        )
+
+
+@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_set_multiplier(starknet, shrine):
     timestamp = get_block_timestamp(starknet)
