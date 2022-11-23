@@ -38,7 +38,6 @@ from tests.utils import (
     price_bounds,
     set_block_timestamp,
     str_to_felt,
-    to_ray,
     to_wad,
 )
 
@@ -651,7 +650,7 @@ async def test_advance(starknet, shrine):
 
     new_asset_price = YANGS[0]["start_price"] + 1
     new_exchange_rate = Decimal("2")
-    advance = await shrine.advance(YANG1_ADDRESS, to_wad(new_asset_price), to_ray(new_exchange_rate)).execute(
+    advance = await shrine.advance(YANG1_ADDRESS, to_wad(new_asset_price), to_wad(new_exchange_rate)).execute(
         caller_address=SHRINE_OWNER
     )
 
