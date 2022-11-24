@@ -8,7 +8,7 @@ from starkware.cairo.common.math import (
     assert_not_equal,
     assert_not_zero,
 )
-from starkware.cairo.common.math_cmp import is_le, is_nn, is_nn_le
+from starkware.cairo.common.math_cmp import is_le, is_nn
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.gate.interface import IGate
@@ -397,7 +397,7 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 // Internal function to fetch the amount of the underlying asset represented by one wad of yang
-// Returns 0 (sentinel value) if the Gate is invalid
+// Returns 0 (dummy value) if the Gate is invalid
 func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, sentinel: address
 ) -> (asset_amt: wad) {
@@ -405,7 +405,7 @@ func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
-    // Return the sentinel value if Gate is zero address
+    // Return the dummy value if Gate is zero address
     if (gate == 0) {
         return (0,);
     }
@@ -453,9 +453,9 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     // block_timestamp - last_updates_ts can never be negative if the code reaches here
     let is_fresh: bool = is_le(block_timestamp - last_updated_ts, required.freshness);
 
-    // check if asset amount is valid
-    let is_valid_ratio: bool = is_nn_le(WadRay.WAD_ONE, asset_amt_per_yang);
+    // check if asset amount is successfully retrieved
+    let has_ratio: bool = is_nn(asset_amt_per_yang);
 
     // multiplication simulates boolean AND
-    return (has_enough_sources * is_fresh * is_valid_ratio,);
+    return (has_enough_sources * is_fresh * has_ratio,);
 }

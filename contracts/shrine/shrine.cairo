@@ -2,13 +2,7 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import (
-    assert_le,
-    assert_nn_le,
-    assert_not_zero,
-    split_felt,
-    unsigned_div_rem,
-)
+from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp
 
