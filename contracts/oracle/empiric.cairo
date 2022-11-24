@@ -8,7 +8,7 @@ from starkware.cairo.common.math import (
     assert_not_equal,
     assert_not_zero,
 )
-from starkware.cairo.common.math_cmp import is_le, is_nn
+from starkware.cairo.common.math_cmp import is_le, is_nn, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.gate.interface import IGate
@@ -454,7 +454,7 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     let is_fresh: bool = is_le(block_timestamp - last_updated_ts, required.freshness);
 
     // check if asset amount is successfully retrieved
-    let has_ratio: bool = is_nn(asset_amt_per_yang);
+    let has_ratio: bool = is_not_zero(asset_amt_per_yang);
 
     // multiplication simulates boolean AND
     return (has_enough_sources * is_fresh * has_ratio,);
