@@ -127,7 +127,7 @@ def tokens(
     starknet: Starknet,
 ) -> Callable[[str, str, int, Uint256, int], Awaitable[StarknetContract]]:
     """
-    A factory fixture that creates a non-taxable Gate for a given ERC20 token.
+    A factory fixture that creates a mock ERC20 token.
 
     The returned factory function requires 5 input arguments to deploy
     a new token: name (str), symbol (str), decimals (int),
@@ -159,12 +159,15 @@ def gates(
     starknet: Starknet,
 ) -> Callable[[StarknetContract, StarknetContract], Awaitable[StarknetContract]]:
     """
-    A factory fixture that creates a mock ERC20 token.
+    A factory fixture that creates a Gate (without tax and auto-compounding)
+    for a given ERC20 token.
 
-    The returned factory function requires 5 input arguments to deploy
-    a new token: name (str), symbol (str), decimals (int),
-    initial supply (Uint256) and recipient (int). It returns an instance
-    of StarknetContract.
+    The returned factory function requires 2 input arguments to deploy
+    a new token:
+        shrine (deployed StarknetContract instance of Shrine)
+        token (deployed StarknetContract instance of token)
+
+    It returns an instance of StarknetContract.
     """
     contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
 
@@ -334,9 +337,6 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
 
 @pytest.fixture
 async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> StarknetContract:
-    """
-    Deploys an instance of the Gate module, without any autocompounding or tax.
-    """
     shrine = shrine_deploy
 
     gate = await gates(shrine, steth_token)
@@ -344,28 +344,17 @@ async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> Star
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
 
-    # auth Gate in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
-    await shrine.grant_role(roles, gate.contract_address).execute(caller_address=SHRINE_OWNER)
-
     return gate
 
 
 @pytest.fixture
 async def doge_gate(starknet, abbot, shrine_deploy, doge_token, gates) -> StarknetContract:
-    """
-    Deploys an instance of the Gate module, without any autocompounding or tax.
-    """
     shrine = shrine_deploy
 
     gate = await gates(shrine, doge_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-
-    # auth Gate in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
-    await shrine.grant_role(roles, gate.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return gate
 
