@@ -10,9 +10,9 @@ from tests.gate.rebasing_yang.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.utils import (
     ABBOT_ROLE,
-    ADMIN,
     BAD_GUY,
     FALSE,
+    GATE_OWNER,
     MAX_UINT256,
     SHRINE_OWNER,
     TIME_INTERVAL,
@@ -102,7 +102,7 @@ async def gate_rebasing_tax(starknet, shrine, rebasing_token) -> StarknetContrac
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
-            ADMIN,
+            GATE_OWNER,
             shrine.contract_address,
             rebasing_token.contract_address,
             TAX_RAY,
@@ -111,7 +111,7 @@ async def gate_rebasing_tax(starknet, shrine, rebasing_token) -> StarknetContrac
     )
 
     # Grant `Abbot` access to `enter` and `exit`
-    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=ADMIN)
+    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=GATE_OWNER)
     return gate
 
 
@@ -124,14 +124,14 @@ async def gate_rebasing(starknet, shrine, rebasing_token) -> StarknetContract:
     gate = await starknet.deploy(
         contract_class=contract,
         constructor_calldata=[
-            ADMIN,
+            GATE_OWNER,
             shrine.contract_address,
             rebasing_token.contract_address,
         ],
     )
 
     # Grant `Abbot` access to `enter` and `exit
-    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=ADMIN)
+    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=GATE_OWNER)
     return gate
 
 
@@ -722,7 +722,7 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate, rebasing_to
 async def test_kill(shrine_authed, gate, rebasing_token):
 
     # Kill
-    await gate.kill().execute(caller_address=ADMIN)
+    await gate.kill().execute(caller_address=GATE_OWNER)
     assert (await gate.get_live().execute()).result.is_live == FALSE
 
     # Assert enter fails
@@ -875,7 +875,7 @@ async def test_gate_constructor_invalid_tax(shrine, starknet, rebasing_token):
 async def test_gate_set_tax_pass(gate_rebasing_tax):
     gate = gate_rebasing_tax
 
-    tx = await gate.set_tax(TAX_RAY // 2).execute(caller_address=ADMIN)
+    tx = await gate.set_tax(TAX_RAY // 2).execute(caller_address=GATE_OWNER)
     assert_event_emitted(tx, gate.contract_address, "TaxUpdated", [TAX_RAY, TAX_RAY // 2])
 
     new_tax = (await gate.get_tax().execute()).result.tax
@@ -887,7 +887,7 @@ async def test_gate_set_tax_collector(gate_rebasing_tax):
     gate = gate_rebasing_tax
 
     new_tax_collector = 9876
-    tx = await gate.set_tax_collector(new_tax_collector).execute(caller_address=ADMIN)
+    tx = await gate.set_tax_collector(new_tax_collector).execute(caller_address=GATE_OWNER)
 
     assert_event_emitted(
         tx,
@@ -906,7 +906,7 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
 
     # Fails due to max tax exceeded
     with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
-        await gate.set_tax(to_ray(TAX_MAX) + 1).execute(caller_address=ADMIN)
+        await gate.set_tax(to_ray(TAX_MAX) + 1).execute(caller_address=GATE_OWNER)
 
     # Fails due to non-authorised address
     set_tax_role = GateRoles.SET_TAX
@@ -916,7 +916,7 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
 
     # Fails due to zero address
     with pytest.raises(StarkException, match="Gate: Invalid tax collector address"):
-        await gate.set_tax_collector(ZERO_ADDRESS).execute(caller_address=ADMIN)
+        await gate.set_tax_collector(ZERO_ADDRESS).execute(caller_address=GATE_OWNER)
 
 
 @pytest.mark.usefixtures("trove_1_enter")
