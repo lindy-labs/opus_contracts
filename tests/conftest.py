@@ -337,9 +337,7 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
 
 @pytest.fixture
 async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> StarknetContract:
-    shrine = shrine_deploy
-
-    gate = await gates(shrine, steth_token)
+    gate = await gates(shrine_deploy, steth_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
@@ -349,9 +347,7 @@ async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> Star
 
 @pytest.fixture
 async def doge_gate(starknet, abbot, shrine_deploy, doge_token, gates) -> StarknetContract:
-    shrine = shrine_deploy
-
-    gate = await gates(shrine, doge_token)
+    gate = await gates(shrine_deploy, doge_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
