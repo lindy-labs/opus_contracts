@@ -876,8 +876,6 @@ async def test_gate_set_tax_parameters_fail(gate_rebasing_tax):
 @pytest.mark.parametrize("gate", ["gate_rebasing_tax"], indirect=["gate"])
 @pytest.mark.asyncio
 async def test_gate_levy(shrine_authed, gate, steth_token):
-    # `rebase` fixture simulates an autocompounding
-
     # Get balances before levy
     before_tax_collector_bal = from_uint((await steth_token.balanceOf(TAX_COLLECTOR).execute()).result.balance)
     before_gate_bal = (await gate.get_total_assets().execute()).result.total
