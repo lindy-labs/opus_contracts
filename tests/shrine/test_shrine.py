@@ -991,10 +991,6 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
         [TROVE_1, FEED_LEN - 1, forge_amt_wad],
     )
 
-    # Yin Events
-    assert_event_emitted(forge, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, forge_amt_wad])
-    assert_event_emitted(forge, shrine.contract_address, "YinTotalUpdated", [forge_amt_wad])
-
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
     assert system_debt == forge_amt_wad
 
@@ -1074,10 +1070,6 @@ async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
 async def test_shrine_melt_pass(shrine, shrine_melt):
     assert_event_emitted(shrine_melt, shrine.contract_address, "DebtTotalUpdated", [0])
     assert_event_emitted(shrine_melt, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, 0])
-
-    # Yin events
-    assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, 0])
-    assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
 
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
     assert system_debt == 0
@@ -1929,10 +1921,10 @@ async def test_yin_transfer_invalid_inputs(shrine, amount):
         await shrine.transfer(YIN_USER1, to_uint(amount)).execute(caller_address=TROVE1_OWNER)
 
 
-@pytest.mark.parametrize("amount", [-1, 2**256])
+@pytest.mark.parametrize("amount", [-1, 2**256 - 1])
 @pytest.mark.asyncio
 async def test_yin_approve_invalid_inputs(shrine, amount):
-    with pytest.raises(StarkException, match="Yin: Amount not valid"):
+    with pytest.raises(StarkException, match="Shrine: Amount not valid"):
         await shrine.approve(YIN_USER1, to_uint(amount)).execute(caller_address=TROVE1_OWNER)
 
 

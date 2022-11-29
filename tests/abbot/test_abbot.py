@@ -12,6 +12,7 @@ from tests.utils import (
     YangConfig,
     assert_event_emitted,
     from_uint,
+    to_uint,
     to_wad,
 )
 
@@ -287,7 +288,7 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
 @pytest.mark.asyncio
-async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
+async def test_forge(abbot, steth_yang: YangConfig, shrine):
     await abbot.open_trove(0, [steth_yang.contract_address], [INITIAL_STETH_DEPOSIT]).execute(
         caller_address=TROVE1_OWNER
     )
@@ -298,9 +299,9 @@ async def test_forge(abbot, steth_yang: YangConfig, yin, shrine):
 
     # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, forge_amount])
-    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, forge_amount])
+    assert_event_emitted(tx, shrine.contract_address, "Transfer", [0, TROVE1_OWNER, *to_uint(forge_amount)])
 
-    balance = (await yin.balanceOf(TROVE1_OWNER).execute()).result.balance
+    balance = (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance
     assert from_uint(balance) == forge_amount
 
 
@@ -325,7 +326,7 @@ async def test_forge_failures(abbot):
     "forged_trove_2",
 )
 @pytest.mark.asyncio
-async def test_melt(abbot, yin, shrine, melter):
+async def test_melt(abbot, shrine, melter):
     melt_amount = to_wad(333)
     remaining_amount = INITIAL_FORGED_AMOUNT - melt_amount
 
@@ -333,9 +334,9 @@ async def test_melt(abbot, yin, shrine, melter):
 
     # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
-    assert_event_emitted(tx, shrine.contract_address, "YinUpdated", [melter, remaining_amount])
+    assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amount)])
 
-    balance = (await yin.balanceOf(melter).execute()).result.balance
+    balance = (await shrine.balanceOf(melter).execute()).result.balance
     assert from_uint(balance) == remaining_amount
 
 
