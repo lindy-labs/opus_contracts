@@ -361,7 +361,9 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
 
 @flaky
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.parametrize("max_close_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+@pytest.mark.parametrize(
+    "max_close_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
+)
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
     "funded_aura_user_1",
@@ -409,7 +411,10 @@ async def test_liquidate_pass(
     assert_equalish(from_wad(maximum_close_amt_wad), expected_maximum_close_amt)
 
     # Calculate close amount based on parametrization
-    close_amt_wad = int(max_close_percentage * maximum_close_amt_wad)
+    close_amt_wad = input_close_amt_wad = int(max_close_percentage * maximum_close_amt_wad)
+    if input_close_amt_wad > maximum_close_amt_wad:
+        close_amt_wad = maximum_close_amt_wad
+
     close_amt = from_wad(close_amt_wad)
 
     # Sanity check: searcher has sufficient yin
@@ -444,7 +449,7 @@ async def test_liquidate_pass(
     expected_after_trove_debt = before_trove_debt - close_amt
     expected_after_trove_value = before_trove_value * (1 - freed_percentage)
 
-    if max_close_percentage == Decimal("1"):
+    if max_close_percentage >= Decimal("1"):
         # Catch zero division error
         expected_after_trove_ltv = Decimal("0")
     else:
@@ -456,7 +461,7 @@ async def test_liquidate_pass(
     assert expected_after_trove_ltv <= before_trove_ltv
 
     # Call liquidate
-    liquidate = await purger.liquidate(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
+    liquidate = await purger.liquidate(TROVE_1, input_close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
     # Check return data
     assert liquidate.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
@@ -536,33 +541,6 @@ async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
             await purger.liquidate(TROVE_1, purge_amt, SEARCHER).execute(caller_address=SEARCHER)
         elif fn == "absorb":
             await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
-
-
-@pytest.mark.usefixtures(
-    "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
-    "funded_searcher",
-)
-@pytest.mark.asyncio
-async def test_liquidate_fail_exceed_max_close(
-    starknet,
-    shrine,
-    purger,
-    steth_yang: YangConfig,
-    doge_yang: YangConfig,
-):
-
-    yangs = [steth_yang, doge_yang]
-    price_change = Decimal("-0.1")
-    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
-
-    # Assert max close amount is positive
-    max_close_amt = (await purger.get_max_close_amount(TROVE_1).execute()).result.amount
-    assert max_close_amt > 0
-
-    with pytest.raises(StarkException, match="Purger: Maximum close amount exceeded"):
-        await purger.liquidate(TROVE_1, max_close_amt + 1, SEARCHER).execute(caller_address=SEARCHER)
 
 
 @pytest.mark.parametrize("liquidate_amt", WAD_RAY_OOB_VALUES)
