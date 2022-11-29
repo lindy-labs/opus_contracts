@@ -44,6 +44,9 @@ namespace WadRay {
     }
 
     func min{range_check_ptr}(a, b) -> felt {
+        assert_valid(a);
+        assert_valid(b);
+
         let le = is_le(a, b);
         if (le == TRUE) {
             return a;
@@ -52,6 +55,9 @@ namespace WadRay {
     }
 
     func max{range_check_ptr}(a, b) -> felt {
+        assert_valid(a);
+        assert_valid(b);
+
         let le = is_le(a, b);
         if (le == TRUE) {
             return b;
