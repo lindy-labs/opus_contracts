@@ -1049,47 +1049,25 @@ async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
 #
 
 
+@pytest.mark.usefixtures("shrine_forge", "shrine_forge_trove2")
+@pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD, 2**125])
 @pytest.mark.asyncio
-async def test_shrine_melt_pass(shrine, shrine_melt):
-    assert_event_emitted(shrine_melt, shrine.contract_address, "DebtTotalUpdated", [0])
-    assert_event_emitted(shrine_melt, shrine.contract_address, "TroveUpdated", [TROVE_1, FEED_LEN - 1, 0])
-
-    # Yin events
-    assert_event_emitted(shrine_melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, 0])
-    assert_event_emitted(shrine_melt, shrine.contract_address, "YinTotalUpdated", [0])
-
-    system_debt = (await shrine.get_total_debt().execute()).result.total_debt
-    assert system_debt == 0
-
-    trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    assert trove.debt == 0
-    assert trove.charge_from == FEED_LEN - 1
-
-    shrine_ltv = (await shrine.get_trove_info(TROVE_1).execute()).result.ltv
-    assert shrine_ltv == 0
-
-    is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
-    assert is_healthy == TRUE
-
-    # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
-    max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG1_THRESHOLD])
-    assert_equalish(max_forge_amt, expected_limit)
-
-
-@pytest.mark.usefixtures("shrine_forge")
-@pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD])
-@pytest.mark.asyncio
-async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
+async def test_shrine_melt_pass(shrine, melt_amt_wad):
     price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
 
-    estimated_debt_wad = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
-    outstanding_amt_wad = estimated_debt_wad - melt_amt_wad
+    total_debt_wad = (await shrine.get_total_debt().execute()).result.total_debt
+    # Debt should be forged amount since the interval has not progressed
+    estimated_debt_wad = FORGE_AMT_WAD
 
     melt = await shrine.melt(TROVE1_OWNER, TROVE_1, melt_amt_wad).execute(caller_address=SHRINE_OWNER)
 
-    assert_event_emitted(melt, shrine.contract_address, "DebtTotalUpdated", [outstanding_amt_wad])
+    if melt_amt_wad > estimated_debt_wad:
+        melt_amt_wad = estimated_debt_wad
+
+    outstanding_amt_wad = estimated_debt_wad - melt_amt_wad
+    expected_total_debt_wad = total_debt_wad - melt_amt_wad
+
+    assert_event_emitted(melt, shrine.contract_address, "DebtTotalUpdated", [expected_total_debt_wad])
 
     assert_event_emitted(
         melt,
@@ -1098,8 +1076,15 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
         [TROVE_1, FEED_LEN - 1, outstanding_amt_wad],
     )
 
+    # Yin events
+    expected_remaining_yin = FORGE_AMT_WAD - melt_amt_wad
+    assert_event_emitted(melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, expected_remaining_yin])
+
+    expected_yin_supply = (FORGE_AMT_WAD * 2) - melt_amt_wad
+    assert_event_emitted(melt, shrine.contract_address, "YinTotalUpdated", [expected_yin_supply])
+
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
-    assert system_debt == outstanding_amt_wad
+    assert system_debt == expected_total_debt_wad
 
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == outstanding_amt_wad
@@ -1119,27 +1104,6 @@ async def test_shrine_partial_melt_pass(shrine, melt_amt_wad):
         outstanding_amt_wad
     )
     assert_equalish(max_forge_amt, expected_max_forge_amt)
-
-
-@pytest.mark.usefixtures("update_feeds")
-@pytest.mark.asyncio
-async def test_shrine_melt_system_underflow(shrine):
-    estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
-    excess_debt = estimated_debt + 1
-    with pytest.raises(StarkException, match="Shrine: System debt underflow"):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).execute(caller_address=SHRINE_OWNER)
-
-
-@pytest.mark.usefixtures("update_feeds_with_trove2")
-@pytest.mark.asyncio
-async def test_shrine_melt_trove_underflow(shrine):
-    estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
-    excess_debt = estimated_debt + 1
-    with pytest.raises(
-        StarkException,
-        match="Shrine: Cannot pay back more debt than exists in this trove",
-    ):
-        await shrine.melt(TROVE1_OWNER, TROVE_1, excess_debt).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_forge")
