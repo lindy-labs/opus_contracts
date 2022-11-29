@@ -758,7 +758,6 @@ func forge{
 }
 
 // Repay a specified amount of synthetic for a Trove
-// The module calling this function should ensure that `amount` does not exceed Trove's debt.
 @external
 func melt{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -780,19 +779,20 @@ func melt{
     // Get current interval
     let current_interval: ufelt = now();
 
+    // Cap `amount` to trove's debt if it exceeds
+    let melt_amt: wad = WadRay.min(old_trove_info.debt, amount);
+
+    // Will not revert because amount is capped to trove's debt
+    let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, melt_amt);
+
     // Update system debt
     let (current_system_debt: wad) = shrine_total_debt.read();
 
     with_attr error_message("Shrine: System debt underflow") {
-        let new_system_debt: wad = WadRay.sub_unsigned(current_system_debt, amount);  // WadRay.sub_unsigned contains an underflow check
+        let new_system_debt: wad = WadRay.sub_unsigned(current_system_debt, melt_amt);  // WadRay.sub_unsigned contains an underflow check
     }
 
     shrine_total_debt.write(new_system_debt);
-
-    // Update trove information
-    with_attr error_message("Shrine: Cannot pay back more debt than exists in this trove") {
-        let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, amount);  // Reverts if amount > old_trove_info.debt
-    }
 
     let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, new_trove_info);
@@ -805,8 +805,8 @@ func melt{
 
     // Reverts if amount > user_yin or amount > total_yin.
     with_attr error_message("Shrine: Not enough yin to melt debt") {
-        let new_user_yin: wad = WadRay.sub_unsigned(user_yin, amount);
-        let new_total_yin: wad = WadRay.sub_unsigned(total_yin, amount);
+        let new_user_yin: wad = WadRay.sub_unsigned(user_yin, melt_amt);
+        let new_total_yin: wad = WadRay.sub_unsigned(total_yin, melt_amt);
     }
 
     shrine_yin.write(user, new_user_yin);
