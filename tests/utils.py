@@ -80,9 +80,6 @@ BAD_GUY = str_to_felt("bad guy")
 STETH_OWNER = str_to_felt("steth owner")
 DOGE_OWNER = str_to_felt("doge owner")
 
-AURA_USER_1 = str_to_felt("aura user 1")
-AURA_USER_2 = str_to_felt("aura user 2")
-
 # Roles
 ABBOT_ROLE = GateRoles.ENTER + GateRoles.EXIT
 

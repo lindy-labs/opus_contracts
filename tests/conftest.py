@@ -29,8 +29,6 @@ from tests.shrine.constants import (
 )
 from tests.utils import (
     ABBOT_ROLE,
-    AURA_USER_1,
-    AURA_USER_2,
     DOGE_OWNER,
     EMPIRIC_OWNER,
     GATE_OWNER,
@@ -40,6 +38,7 @@ from tests.utils import (
     STETH_OWNER,
     TIME_INTERVAL,
     TROVE1_OWNER,
+    TROVE2_OWNER,
     TROVE_1,
     WAD_SCALE,
     Uint256,
@@ -415,25 +414,25 @@ async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
 
 
 @pytest.fixture
-async def funded_aura_user_1(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+async def funded_trove1_owner(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
     # fund the user with bags
-    await steth_token.transfer(AURA_USER_1, (to_wad(1_000), 0)).execute(caller_address=STETH_OWNER)
-    await doge_token.transfer(AURA_USER_1, (to_wad(1_000_000), 0)).execute(caller_address=DOGE_OWNER)
+    await steth_token.mint(TROVE1_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE1_OWNER)
+    await doge_token.mint(TROVE1_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE1_OWNER)
 
     # user approves Aura gates to spend bags
-    await max_approve(steth_token, AURA_USER_1, steth_yang.gate_address)
-    await max_approve(doge_token, AURA_USER_1, doge_yang.gate_address)
+    await max_approve(steth_token, TROVE1_OWNER, steth_yang.gate_address)
+    await max_approve(doge_token, TROVE1_OWNER, doge_yang.gate_address)
 
 
 @pytest.fixture
-async def funded_aura_user_2(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+async def funded_trove2_owner(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
     # fund the user with bags
-    await steth_token.transfer(AURA_USER_2, (to_wad(1_000), 0)).execute(caller_address=STETH_OWNER)
-    await doge_token.transfer(AURA_USER_2, (to_wad(1_000_000), 0)).execute(caller_address=DOGE_OWNER)
+    await steth_token.mint(TROVE2_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE2_OWNER)
+    await doge_token.mint(TROVE2_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE2_OWNER)
 
     # user approves Aura gates to spend bags
-    await max_approve(steth_token, AURA_USER_2, steth_yang.gate_address)
-    await max_approve(doge_token, AURA_USER_2, doge_yang.gate_address)
+    await max_approve(steth_token, TROVE2_OWNER, steth_yang.gate_address)
+    await max_approve(doge_token, TROVE2_OWNER, doge_yang.gate_address)
 
 
 @pytest.fixture

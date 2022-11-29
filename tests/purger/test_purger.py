@@ -13,7 +13,6 @@ from tests.purger.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
-    AURA_USER_1,
     FALSE,
     GATE_OWNER,
     RAY_SCALE,
@@ -21,6 +20,7 @@ from tests.utils import (
     SHRINE_OWNER,
     STETH_OWNER,
     TIME_INTERVAL,
+    TROVE1_OWNER,
     TROVE_1,
     TRUE,
     WAD_RAY_OOB_VALUES,
@@ -170,7 +170,7 @@ async def shrine_feeds(
 
 
 @pytest.fixture
-async def aura_user_1_with_trove_id_1(
+async def forged_trove_1(
     shrine,
     shrine_feeds,
     abbot,
@@ -196,7 +196,7 @@ async def aura_user_1_with_trove_id_1(
         forge_amt,
         [steth_yang.contract_address, doge_yang.contract_address],
         [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD],
-    ).execute(caller_address=AURA_USER_1)
+    ).execute(caller_address=TROVE1_OWNER)
 
     return forge_amt
 
@@ -296,10 +296,10 @@ async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_y
     assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_aura_user_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
 @pytest.mark.asyncio
-async def test_aura_user_setup(shrine, purger, aura_user_1_with_trove_id_1):
-    forge_amt = aura_user_1_with_trove_id_1
+async def test_trove1_setup(shrine, purger, forged_trove_1):
+    forge_amt = forged_trove_1
     trove_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
     assert trove_debt == forge_amt
 
@@ -364,8 +364,8 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
 @pytest.mark.parametrize("max_close_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
+    "funded_trove1_owner",
+    "forged_trove_1",
     "funded_searcher",
 )
 @pytest.mark.asyncio
@@ -507,8 +507,8 @@ async def test_liquidate_pass(
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
+    "funded_trove1_owner",
+    "forged_trove_1",
     "funded_searcher",
 )
 @pytest.mark.asyncio
@@ -540,8 +540,8 @@ async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
 
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
+    "funded_trove1_owner",
+    "forged_trove_1",
     "funded_searcher",
 )
 @pytest.mark.asyncio
@@ -574,8 +574,8 @@ async def test_liquidate_fail_out_of_bounds(purger, liquidate_amt):
 
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
+    "funded_trove1_owner",
+    "forged_trove_1",
 )
 @pytest.mark.asyncio
 async def test_liquidate_fail_insufficient_yin(
@@ -601,8 +601,8 @@ async def test_liquidate_fail_insufficient_yin(
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
+    "funded_trove1_owner",
+    "forged_trove_1",
     "funded_absorber",
 )
 @pytest.mark.asyncio
@@ -728,8 +728,8 @@ async def test_absorb_pass(
     "steth_gate",
     "doge_gate",
     "sentinel_with_yangs",
-    "funded_aura_user_1",
-    "aura_user_1_with_trove_id_1",
+    "funded_trove1_owner",
+    "forged_trove_1",
     "funded_absorber",
 )
 @pytest.mark.asyncio
