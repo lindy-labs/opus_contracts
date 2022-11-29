@@ -277,7 +277,7 @@ func add_yang{
         let (_, decimals: ufelt, _, _) = IEmpiricOracle.get_spot_median(oracle, empiric_id);
     }
     with_attr error_message("Empiric: Unknown pair ID") {
-        // Empirict returns 0 decimals for an unknown pair ID
+        // Empiric returns 0 decimals for an unknown pair ID
         assert_not_zero(decimals);
     }
     with_attr error_message("Empiric: Feed with too many decimals") {
@@ -424,6 +424,12 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 ) -> (is_valid: bool) {
     alloc_locals;
 
+    // check if asset amount is successfully retrieved
+    let has_ratio: bool = is_not_zero(asset_amt_per_yang);
+    if (has_ratio == FALSE) {
+        return (FALSE,);
+    }
+
     let is_positive_value: bool = is_nn(value);
     if (is_positive_value == FALSE) {
         return (FALSE,);
@@ -454,9 +460,6 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     // block_timestamp - last_updates_ts can never be negative if the code reaches here
     let is_fresh: bool = is_le(block_timestamp - last_updated_ts, required.freshness);
 
-    // check if asset amount is successfully retrieved
-    let has_ratio: bool = is_not_zero(asset_amt_per_yang);
-
     // multiplication simulates boolean AND
-    return (has_enough_sources * is_fresh * has_ratio,);
+    return (has_enough_sources * is_fresh,);
 }
