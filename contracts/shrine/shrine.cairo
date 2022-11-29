@@ -483,23 +483,17 @@ func constructor{
 @external
 func advance{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, asset_price: wad, asset_amt_per_yang: wad) {
+}(yang: address, price: wad) {
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.ADVANCE);
 
     with_attr error_message("Shrine: Cannot set a price value to zero") {
-        assert_not_zero(asset_price);  // Cannot set a price value to zero
-    }
-
-    with_attr error_message("Shrine: Amount of asset per yang cannot be 0") {
-        assert_not_zero(asset_amt_per_yang);
+        assert_not_zero(price);  // Cannot set a price value to zero
     }
 
     let interval: ufelt = now();
     let yang_id: ufelt = get_valid_yang_id(yang);
-
-    let yang_price: wad = WadRay.wmul(asset_price, asset_amt_per_yang);
 
     // Calculating the new cumulative price
     // To do this, we get the interval of the last price update, find the number of
@@ -509,12 +503,12 @@ func advance{
         yang_id, interval - 1
     );
     // TODO: should there be an overflow check here?
-    let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + yang_price;
+    let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + price;
 
-    let price_and_cumulative_price: packed = pack_125(yang_price, new_cumulative);
+    let price_and_cumulative_price: packed = pack_125(price, new_cumulative);
     shrine_yang_price.write(yang_id, interval, price_and_cumulative_price);
 
-    YangPriceUpdated.emit(yang, yang_price, new_cumulative, interval);
+    YangPriceUpdated.emit(yang, price, new_cumulative, interval);
 
     return ();
 }

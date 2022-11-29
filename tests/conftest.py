@@ -34,7 +34,6 @@ from tests.utils import (
     DOGE_OWNER,
     EMPIRIC_OWNER,
     GATE_OWNER,
-    INITIAL_ASSET_AMT_PER_YANG,
     RAY_PERCENT,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -175,7 +174,11 @@ def gates(
     async def create_gate(shrine: StarknetContract, token: StarknetContract):
         gate = await starknet.deploy(
             contract_class=contract,
-            constructor_calldata=[GATE_OWNER, shrine.contract_address, token.contract_address],
+            constructor_calldata=[
+                GATE_OWNER,
+                shrine.contract_address,
+                token.contract_address,
+            ],
         )
         return gate
 
@@ -229,7 +232,10 @@ async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     # Creating the yangs
     for i in range(len(YANGS)):
         await shrine.add_yang(
-            YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])
+            YANGS[i]["address"],
+            YANGS[i]["ceiling"],
+            YANGS[i]["threshold"],
+            to_wad(YANGS[i]["start_price"]),
         ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
@@ -249,9 +255,7 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(YANGS)):
-            await shrine.advance(YANGS[j]["address"], feeds[j][i], INITIAL_ASSET_AMT_PER_YANG).execute(
-                caller_address=SHRINE_OWNER
-            )
+            await shrine.advance(YANGS[j]["address"], feeds[j][i]).execute(caller_address=SHRINE_OWNER)
 
         await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
@@ -322,7 +326,13 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
-    return YangConfig(steth_token.contract_address, ceiling, threshold, price_wad, steth_gate.contract_address)
+    return YangConfig(
+        steth_token.contract_address,
+        ceiling,
+        threshold,
+        price_wad,
+        steth_gate.contract_address,
+    )
 
 
 @pytest.fixture
@@ -330,7 +340,13 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     ceiling = to_wad(100_000_000)
     threshold = 20 * RAY_PERCENT
     price_wad = to_wad(0.07)
-    return YangConfig(doge_token.contract_address, ceiling, threshold, price_wad, doge_gate.contract_address)
+    return YangConfig(
+        doge_token.contract_address,
+        ceiling,
+        threshold,
+        price_wad,
+        doge_gate.contract_address,
+    )
 
 
 #
@@ -370,7 +386,12 @@ async def yin(starknet, shrine) -> StarknetContract:
     yin_contract = compile_contract("contracts/yin/yin.cairo")
     deployed_yin = await starknet.deploy(
         contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
+        constructor_calldata=[
+            str_to_felt("Cash"),
+            str_to_felt("CASH"),
+            18,
+            shrine.contract_address,
+        ],
     )
 
     # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine
@@ -446,7 +467,8 @@ async def sentinel(starknet, shrine_deploy) -> StarknetContract:
     contract = compile_contract("contracts/sentinel/sentinel.cairo")
 
     sentinel = await starknet.deploy(
-        contract_class=contract, constructor_calldata=[SENTINEL_OWNER, shrine.contract_address]
+        contract_class=contract,
+        constructor_calldata=[SENTINEL_OWNER, shrine.contract_address],
     )
 
     # Authorize Sentinel in Shrine
@@ -465,7 +487,11 @@ async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang) -> Star
 
     for yang in (steth_yang, doge_yang):
         await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+            yang.contract_address,
+            yang.ceiling,
+            yang.threshold,
+            yang.price_wad,
+            yang.gate_address,
         ).execute(caller_address=SENTINEL_OWNER)
 
     return sentinel

@@ -11,7 +11,6 @@ from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
     BAD_GUY,
     FALSE,
-    INITIAL_ASSET_AMT_PER_YANG,
     RAY_PERCENT,
     RAY_SCALE,
     SHRINE_OWNER,
@@ -165,9 +164,7 @@ async def update_feeds(starknet, shrine, shrine_forge) -> List[Decimal]:
         timestamp = (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
-        await shrine.advance(yang0_address, yang0_feed[i], INITIAL_ASSET_AMT_PER_YANG).execute(
-            caller_address=SHRINE_OWNER
-        )
+        await shrine.advance(yang0_address, yang0_feed[i]).execute(caller_address=SHRINE_OWNER)
         await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
     return list(map(from_wad, yang0_feed))
@@ -243,7 +240,12 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
     # Get estimated debt for troves
     estimated_trove1_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
     estimated_trove2_debt = (await shrine.get_trove_info(TROVE_2).execute()).result.debt
-    return estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price
+    return (
+        estimated_trove1_debt,
+        estimated_trove2_debt,
+        expected_debt,
+        expected_avg_price,
+    )
 
 
 @pytest.fixture(scope="function")
@@ -270,7 +272,7 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> 
 
         # Skip index after timestamp is set
         if i != idx:
-            await shrine.advance(yang0_address, price, INITIAL_ASSET_AMT_PER_YANG).execute(caller_address=SHRINE_OWNER)
+            await shrine.advance(yang0_address, price).execute(caller_address=SHRINE_OWNER)
             await shrine.set_multiplier(multiplier).execute(caller_address=SHRINE_OWNER)
 
     return idx, list(map(from_wad, yang0_feed))
@@ -404,7 +406,10 @@ async def test_set_ceiling_unauthorized(shrine):
 @pytest.mark.parametrize("new_ceiling", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
 async def test_set_ceiling_out_of_bounds(shrine, new_ceiling):
-    with pytest.raises(StarkException, match=r"Shrine: Value of `new_ceiling` \(-?\d+\) is out of bounds"):
+    with pytest.raises(
+        StarkException,
+        match=r"Shrine: Value of `new_ceiling` \(-?\d+\) is out of bounds",
+    ):
         await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
 
 
@@ -518,7 +523,10 @@ async def test_set_threshold_exceeds_max(shrine):
 @pytest.mark.parametrize("threshold", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
 async def test_set_threshold_out_of_bounds(shrine, threshold):
-    with pytest.raises(StarkException, match=r"Shrine: Value of `new_threshold` \(-?\d+\) is out of bounds"):
+    with pytest.raises(
+        StarkException,
+        match=r"Shrine: Value of `new_threshold` \(-?\d+\) is out of bounds",
+    ):
         await shrine.set_threshold(YANG1_ADDRESS, threshold).execute(caller_address=SHRINE_OWNER)
 
 
@@ -643,21 +651,16 @@ async def test_unauthorized_kill(shrine):
 
 
 @pytest.mark.usefixtures("update_feeds")
-@pytest.mark.parametrize(
-    "asset_amt_per_yang", [Decimal("1"), Decimal("1.01"), Decimal("1.1"), Decimal("1.5"), Decimal("2")]
-)
 @pytest.mark.asyncio
-async def test_advance(starknet, shrine, asset_amt_per_yang):
+async def test_advance(starknet, shrine):
     timestamp = get_block_timestamp(starknet)
     interval = get_interval(timestamp)
     yang_price_info = (await shrine.get_yang_price(YANG1_ADDRESS, interval - 1).execute()).result
 
     new_asset_price = YANGS[0]["start_price"] + 1
-    advance = await shrine.advance(YANG1_ADDRESS, to_wad(new_asset_price), to_wad(asset_amt_per_yang)).execute(
-        caller_address=SHRINE_OWNER
-    )
+    advance = await shrine.advance(YANG1_ADDRESS, to_wad(new_asset_price)).execute(caller_address=SHRINE_OWNER)
 
-    expected_yang_price_wad = to_wad(new_asset_price * asset_amt_per_yang)
+    expected_yang_price_wad = to_wad(new_asset_price)
     expected_cumulative = int(yang_price_info.cumulative_price + expected_yang_price_wad)
 
     # Test event emitted
@@ -679,25 +682,14 @@ async def test_advance(starknet, shrine, asset_amt_per_yang):
 @pytest.mark.asyncio
 async def test_advance_unauthorized(shrine):
     with pytest.raises(StarkException):
-        await shrine.advance(YANG1_ADDRESS, to_wad(YANGS[0]["start_price"]), INITIAL_ASSET_AMT_PER_YANG).execute(
-            caller_address=BAD_GUY
-        )
+        await shrine.advance(YANG1_ADDRESS, to_wad(YANGS[0]["start_price"])).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_advance_invalid_yang(shrine):
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.advance(FAUX_YANG_ADDRESS, to_wad(YANGS[0]["start_price"]), INITIAL_ASSET_AMT_PER_YANG).execute(
-            caller_address=SHRINE_OWNER
-        )
-
-
-@pytest.mark.usefixtures("update_feeds")
-@pytest.mark.asyncio
-async def test_advance_invalid_asset_amt_per_yang(shrine):
-    with pytest.raises(StarkException, match="Shrine: Amount of asset per yang cannot be 0"):
-        await shrine.advance(YANG1_ADDRESS, to_wad(YANGS[0]["start_price"]), 0).execute(caller_address=SHRINE_OWNER)
+        await shrine.advance(FAUX_YANG_ADDRESS, to_wad(YANGS[0]["start_price"])).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds")
@@ -1198,7 +1190,12 @@ async def test_compound(shrine, estimate):
     last_updated = (await shrine.get_yang_price(YANG1_ADDRESS, end_interval).execute()).result.price
     assert last_updated != 0
 
-    estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price = estimate
+    (
+        estimated_trove1_debt,
+        estimated_trove2_debt,
+        expected_debt,
+        expected_avg_price,
+    ) = estimate
 
     # Convert wad values to decimal
     adjusted_estimated_trove1_debt = from_wad(estimated_trove1_debt)
@@ -1234,7 +1231,12 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
     T+START--------------T+END
     """
 
-    estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price = estimate
+    (
+        estimated_trove1_debt,
+        estimated_trove2_debt,
+        expected_debt,
+        expected_avg_price,
+    ) = estimate
 
     start_interval = FEED_LEN - 1
     end_interval = start_interval + FEED_LEN
@@ -1402,9 +1404,7 @@ async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge,
     start_price = Decimal("2_005")
     start_price_wad = to_wad(start_price)
 
-    await shrine.advance(YANG1_ADDRESS, start_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, start_price_wad).execute(caller_address=SHRINE_OWNER)
     await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     # Advnce timestamp by `intervals_before_last_charge` intervals and charge using a zero deposit - `T+START`
@@ -1458,9 +1458,7 @@ async def test_charge_scenario_3(starknet, shrine, interval_count):
     start_price_wad = to_wad(start_price)
     start_interval = get_interval(get_block_timestamp(starknet))
 
-    await shrine.advance(YANG1_ADDRESS, start_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, start_price_wad).execute(caller_address=SHRINE_OWNER)
 
     # Charge trove after initial set of price feeds by calling deposit with 0 - `T+START/LAST_UPDATED`
     await shrine.deposit(YANG1_ADDRESS, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
@@ -1529,9 +1527,7 @@ async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_s
 
     available_end_price = Decimal("2_110")
     available_end_price_wad = to_wad(available_end_price)
-    await shrine.advance(YANG1_ADDRESS, available_end_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, available_end_price_wad).execute(caller_address=SHRINE_OWNER)
     await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     _, end_cumulative_price, _ = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result
@@ -1576,7 +1572,11 @@ async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_s
 @pytest.mark.usefixtures("estimate")
 @pytest.mark.asyncio
 async def test_charge_scenario_5(
-    starknet, shrine, missed_intervals_before_start, last_updated_interval_after_start, intervals_after_last_update
+    starknet,
+    shrine,
+    missed_intervals_before_start,
+    last_updated_interval_after_start,
+    intervals_after_last_update,
 ):
     """
     Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update`
@@ -1594,9 +1594,7 @@ async def test_charge_scenario_5(
     available_start_price = Decimal("2_005")
     available_start_price_wad = to_wad(available_start_price)
 
-    await shrine.advance(YANG1_ADDRESS, available_start_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, available_start_price_wad).execute(caller_address=SHRINE_OWNER)
     await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     _, available_start_cumulative_price, _ = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result
@@ -1618,9 +1616,7 @@ async def test_charge_scenario_5(
     available_end_price = Decimal("2_155")
     available_end_price_wad = to_wad(available_end_price)
 
-    await shrine.advance(YANG1_ADDRESS, available_end_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, available_end_price_wad).execute(caller_address=SHRINE_OWNER)
     await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     _, available_end_cumulative_price, _ = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result
@@ -1680,9 +1676,7 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
     available_start_price = Decimal("2_005")
     available_start_price_wad = to_wad(available_start_price)
 
-    await shrine.advance(YANG1_ADDRESS, available_start_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, available_start_price_wad).execute(caller_address=SHRINE_OWNER)
     await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     _, available_start_cumulative_price, _ = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result
@@ -1705,9 +1699,7 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
     available_end_price = Decimal("2_255")
     available_end_price_wad = to_wad(available_end_price)
 
-    await shrine.advance(YANG1_ADDRESS, available_end_price_wad, INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, available_end_price_wad).execute(caller_address=SHRINE_OWNER)
     await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
     _, available_end_cumulative_price, _ = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result
@@ -1877,7 +1869,7 @@ async def test_shrine_melt_after_move_yin_fail(shrine):
 async def test_shrine_advance_set_multiplier_invalid_fail(shrine_deploy):
     shrine = shrine_deploy
     with pytest.raises(StarkException, match="Shrine: Cannot set a price value to zero"):
-        await shrine.advance(YANG1_ADDRESS, 0, INITIAL_ASSET_AMT_PER_YANG).execute(caller_address=SHRINE_OWNER)
+        await shrine.advance(YANG1_ADDRESS, 0).execute(caller_address=SHRINE_OWNER)
 
     with pytest.raises(StarkException, match="Shrine: Cannot set a multiplier value to zero"):
         await shrine.set_multiplier(0).execute(caller_address=SHRINE_OWNER)
@@ -1897,15 +1889,16 @@ async def test_shrine_unhealthy(shrine):
     unsafe_price = debt / Decimal("0.85") / yang_balance
 
     # Update yang price to unsafe level
-    await shrine.advance(YANG1_ADDRESS, to_wad(unsafe_price), INITIAL_ASSET_AMT_PER_YANG).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.advance(YANG1_ADDRESS, to_wad(unsafe_price)).execute(caller_address=SHRINE_OWNER)
     is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
     assert is_healthy == FALSE
 
 
 @pytest.mark.usefixtures("shrine_deposit_multiple")
-@pytest.mark.parametrize("max_forge_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
+@pytest.mark.parametrize(
+    "max_forge_percentage",
+    [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")],
+)
 @pytest.mark.asyncio
 async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
     # Check LTV for trove with value but zero debt
@@ -1941,7 +1934,11 @@ async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
     "thresholds",
     [
         (to_ray(Decimal("0.5")), to_ray(Decimal("0.66")), to_ray(Decimal("0.8"))),
-        (to_ray(Decimal("0.65432")), to_ray(Decimal("0.76543")), to_ray(Decimal("0.87654"))),
+        (
+            to_ray(Decimal("0.65432")),
+            to_ray(Decimal("0.76543")),
+            to_ray(Decimal("0.87654")),
+        ),
         (to_ray(Decimal("0.333")), to_ray(Decimal("0.666")), to_ray(Decimal("0.888"))),
     ],
 )
