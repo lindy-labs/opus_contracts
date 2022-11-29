@@ -1914,18 +1914,20 @@ async def test_yin_transfer_from_fail(shrine):
         await shrine.transferFrom(TROVE1_OWNER, 0, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
 
 
-@pytest.mark.parametrize("amount", [-1, 2**125 + 1, 2**128 + 1, 2**128 - 1])
+@pytest.mark.parametrize(
+    "amount", [to_uint(-1), to_uint(2**125 + 1), to_uint(2**128 + 1), (2**128, 0), (0, 2**128)]
+)
 @pytest.mark.asyncio
 async def test_yin_transfer_invalid_inputs(shrine, amount):
     with pytest.raises(StarkException):
-        await shrine.transfer(YIN_USER1, to_uint(amount)).execute(caller_address=TROVE1_OWNER)
+        await shrine.transfer(YIN_USER1, amount).execute(caller_address=TROVE1_OWNER)
 
 
-@pytest.mark.parametrize("amount", [-1, 2**256 - 1])
+@pytest.mark.parametrize("amount", [to_uint(-1), to_uint(2**256), (2**128, 0), (0, 2**128)])
 @pytest.mark.asyncio
 async def test_yin_approve_invalid_inputs(shrine, amount):
     with pytest.raises(StarkException, match="Shrine: Amount not valid"):
-        await shrine.approve(YIN_USER1, to_uint(amount)).execute(caller_address=TROVE1_OWNER)
+        await shrine.approve(YIN_USER1, amount).execute(caller_address=TROVE1_OWNER)
 
 
 @pytest.mark.usefixtures("shrine_forge")
