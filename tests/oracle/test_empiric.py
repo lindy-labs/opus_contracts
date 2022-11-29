@@ -20,13 +20,13 @@ from tests.oracle.constants import (
 from tests.roles import EmpiricRoles
 from tests.utils import (
     ABBOT_ROLE,
-    AURA_USER_1,
     BAD_GUY,
     EMPIRIC_OWNER,
     GATE_OWNER,
     RAY_PERCENT,
     SENTINEL_OWNER,
     TIME_INTERVAL,
+    TROVE1_OWNER,
     assert_event_emitted,
     max_approve,
     set_block_timestamp,
@@ -65,12 +65,12 @@ def to_empiric(value: int) -> int:
 
 @pytest.fixture
 async def btc_token(tokens) -> StarknetContract:
-    return await tokens("Bitcoin", "BTC", 18, (to_wad(100_000), 0), AURA_USER_1)
+    return await tokens("Bitcoin", "BTC", 18, (to_wad(100_000), 0), TROVE1_OWNER)
 
 
 @pytest.fixture
 async def eth_token(tokens) -> StarknetContract:
-    return await tokens("Ether", "ETH", 18, (to_wad(10_000_000), 0), AURA_USER_1)
+    return await tokens("Ether", "ETH", 18, (to_wad(10_000_000), 0), TROVE1_OWNER)
 
 
 @pytest.fixture
@@ -111,14 +111,14 @@ async def with_yangs(starknet, shrine, sentinel, empiric, eth_token, eth_gate, m
 
 @pytest.fixture
 async def funded_gates(shrine, abbot, btc_token, eth_token, btc_gate, eth_gate, with_yangs):
-    await max_approve(btc_token, AURA_USER_1, btc_gate.contract_address)
-    await max_approve(eth_token, AURA_USER_1, eth_gate.contract_address)
+    await max_approve(btc_token, TROVE1_OWNER, btc_gate.contract_address)
+    await max_approve(eth_token, TROVE1_OWNER, eth_gate.contract_address)
 
     await abbot.open_trove(
         0,
         [btc_token.contract_address, eth_token.contract_address],
         [BTC_DEPOSIT, ETH_DEPOSIT],
-    ).execute(caller_address=AURA_USER_1)
+    ).execute(caller_address=TROVE1_OWNER)
 
 
 #
@@ -263,10 +263,10 @@ async def test_update_prices(
 ):
     # simulate rebase by sending tokens to the gate
     await btc_token.transfer(btc_gate.contract_address, to_uint(int(rebase_percentage * BTC_DEPOSIT))).execute(
-        caller_address=AURA_USER_1
+        caller_address=TROVE1_OWNER
     )
     await eth_token.transfer(eth_gate.contract_address, to_uint(int(rebase_percentage * ETH_DEPOSIT))).execute(
-        caller_address=AURA_USER_1
+        caller_address=TROVE1_OWNER
     )
 
     oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
