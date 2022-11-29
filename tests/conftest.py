@@ -443,8 +443,7 @@ async def sentinel(starknet, shrine_deploy) -> StarknetContract:
     contract = compile_contract("contracts/sentinel/sentinel.cairo")
 
     sentinel = await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[SENTINEL_OWNER, shrine.contract_address],
+        contract_class=contract, constructor_calldata=[SENTINEL_OWNER, shrine.contract_address]
     )
 
     # Authorize Sentinel in Shrine
