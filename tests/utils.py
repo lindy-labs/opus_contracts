@@ -88,7 +88,6 @@ TROVE_3 = 3
 TROVE1_OWNER = str_to_felt("trove 1 owner")
 TROVE2_OWNER = str_to_felt("trove 2 owner")
 TROVE3_OWNER = str_to_felt("trove 3 owner")
-TROVE4_OWNER = str_to_felt("trove 4 owner")
 
 # Time Interval
 TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
