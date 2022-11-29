@@ -386,7 +386,8 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         value, block_timestamp, last_updated_ts, num_sources, asset_amt_per_yang
     );
     if (is_valid == TRUE) {
-        IShrine.advance(shrine, settings.yang, price, asset_amt_per_yang);
+        let yang_price: wad = WadRay.wmul(price, asset_amt_per_yang);
+        IShrine.advance(shrine, settings.yang, yang_price);
     } else {
         InvalidPriceUpdate.emit(
             settings.yang, price, last_updated_ts, num_sources, asset_amt_per_yang
