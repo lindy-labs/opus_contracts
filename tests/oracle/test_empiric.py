@@ -74,34 +74,39 @@ async def eth_token(tokens) -> StarknetContract:
 
 
 @pytest.fixture
-async def btc_gate(starknet, shrine, btc_token, gates) -> StarknetContract:
-    return await gates(shrine, btc_token)
+async def btc_gate(starknet, shrine, abbot, btc_token, gates) -> StarknetContract:
+    gate = await gates(shrine, btc_token)
+    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+    return gate
 
 
 @pytest.fixture
-async def eth_gate(starknet, shrine, eth_token, gates) -> StarknetContract:
-    return await gates(shrine, eth_token)
+async def eth_gate(starknet, shrine, abbot, eth_token, gates) -> StarknetContract:
+    gate = await gates(shrine, eth_token)
+    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+    return gate
 
 
 @pytest.fixture
-async def with_yangs(
-    starknet, shrine, abbot, sentinel, empiric, btc_token, eth_token, btc_gate, eth_gate, mock_empiric_impl
-):
-    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+async def with_btc(starknet, shrine, sentinel, empiric, btc_token, btc_gate, mock_empiric_impl):
     await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, 8, 5000, 6).execute()
 
-    await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
     await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
     await sentinel.add_yang(
         btc_token.contract_address, BTC_CEILING, BTC_THRESHOLD, to_wad(BTC_INIT_PRICE), btc_gate.contract_address
     ).execute(caller_address=SENTINEL_OWNER)
+
+
+@pytest.fixture
+async def with_yangs(starknet, shrine, sentinel, empiric, eth_token, eth_gate, mock_empiric_impl, with_btc):
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+
+    await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
+
     await sentinel.add_yang(
         eth_token.contract_address, ETH_CEILING, ETH_THRESHOLD, to_wad(ETH_INIT_PRICE), eth_gate.contract_address
     ).execute(caller_address=SENTINEL_OWNER)
-
-    await btc_gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-    await eth_gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
 
 
 @pytest.fixture
@@ -357,6 +362,46 @@ async def test_update_prices_invalid_price_updates(eth_token, empiric, mock_empi
             update_ts,
             num_sources,
             INITIAL_ASSET_AMT_PER_YANG,
+        ],
+    )
+
+
+# yang has not been added to Sentinel
+@pytest.mark.usefixtures("with_btc")
+@pytest.mark.asyncio
+async def test_update_prices_invalid_gate(starknet, shrine, eth_token, empiric, mock_empiric_impl):
+    # Add ETH to empiric but not Sentinel
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+
+    await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
+
+    oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
+
+    # the multiplying by 2 here is because add_yang sets the
+    # sentinel value in the interval _previous_ to current
+    num_eth_sources = 3
+    new_eth_price = new_eth_yang_price = 1293
+
+    await mock_empiric_impl.next_get_spot_median(
+        ETH_EMPIRIC_ID, to_empiric(new_eth_price), 8, oracle_update_ts, num_eth_sources
+    ).execute()
+
+    set_block_timestamp(starknet, oracle_update_ts)
+    caller = str_to_felt("yagi")
+    tx = await empiric.update_prices().execute(caller_address=caller)
+    assert_event_emitted(tx, empiric.contract_address, "PricesUpdated", [oracle_update_ts, caller])
+
+    INVALID_ASSET_AMT_PER_YANG = 0
+    assert_event_emitted(
+        tx,
+        empiric.contract_address,
+        "InvalidPriceUpdate",
+        [
+            eth_token.contract_address,
+            to_wad(new_eth_yang_price),
+            oracle_update_ts,
+            num_eth_sources,
+            INVALID_ASSET_AMT_PER_YANG,
         ],
     )
 
