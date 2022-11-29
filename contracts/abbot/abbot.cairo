@@ -21,10 +21,6 @@ from contracts.lib.types import Trove, Yang
 func TroveOpened(user: address, trove_id: ufelt) {
 }
 
-@event
-func YangAdded(yang: address, gate: address) {
-}
-
 //
 // Storage
 //

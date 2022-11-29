@@ -38,14 +38,15 @@ WADRAY_BOUND = 2**125
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
 # Gas estimation constants
-NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin"]
+NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin", "ec_op_builtin"]
 WEIGHTS = {
     "storage": 512,
     "step": 0.05,
-    "ecdsa_builtin": 25.6,
-    "range_check_builtin": 0.4,
-    "bitwise_builtin": 12.8,
-    "pedersen_builtin": 0.4,
+    "ecdsa_builtin": 102.4,
+    "range_check_builtin": 0.8,
+    "bitwise_builtin": 3.2,
+    "pedersen_builtin": 1.6,
+    "ec_op_builtin": 51.2,
 }
 
 Uint256 = namedtuple("Uint256", "low high")
@@ -74,8 +75,6 @@ GATE_OWNER = str_to_felt("gate owner")
 SHRINE_OWNER = str_to_felt("shrine owner")
 EMPIRIC_OWNER = str_to_felt("empiric owner")
 
-
-ADMIN = str_to_felt("admin")
 BAD_GUY = str_to_felt("bad guy")
 
 STETH_OWNER = str_to_felt("steth owner")
