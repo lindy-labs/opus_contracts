@@ -5,7 +5,6 @@ from tests.utils import str_to_felt, to_wad
 #
 
 
-SHITCOIN_OWNER = str_to_felt("shitcoin owner")
 OTHER_USER = str_to_felt("other user")
 
 

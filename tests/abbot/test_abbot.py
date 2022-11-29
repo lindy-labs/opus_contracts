@@ -22,7 +22,7 @@ from tests.utils import (
 
 @pytest.fixture
 async def shitcoin(tokens) -> StarknetContract:
-    return await tokens("To the moon", "SHIT", 18, (2**128 - 1, 0), SHITCOIN_OWNER)
+    return await tokens("To the moon", "SHIT", 18)
 
 
 @pytest.fixture

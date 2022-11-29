@@ -18,7 +18,6 @@ from tests.utils import (
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
-    STETH_OWNER,
     TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE_1,
@@ -204,7 +203,7 @@ async def forged_trove_1(
 @pytest.fixture
 async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
     # fund the user with bags
-    await steth_token.transfer(SEARCHER, (SEARCHER_STETH_WAD, 0)).execute(caller_address=STETH_OWNER)
+    await steth_token.mint(SEARCHER, (SEARCHER_STETH_WAD, 0)).execute(caller_address=SEARCHER)
 
     # user approves Aura gates to spend bags
     await max_approve(steth_token, SEARCHER, steth_yang.gate_address)
@@ -217,7 +216,7 @@ async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
 @pytest.fixture
 async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
     # fund the user with bags
-    await steth_token.transfer(MOCK_ABSORBER, (MOCK_ABSORBER_STETH_WAD, 0)).execute(caller_address=STETH_OWNER)
+    await steth_token.mint(MOCK_ABSORBER, (MOCK_ABSORBER_STETH_WAD, 0)).execute(caller_address=MOCK_ABSORBER)
 
     # user approves the Aura gates to spend bags
     await max_approve(steth_token, MOCK_ABSORBER, steth_yang.gate_address)

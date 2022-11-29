@@ -77,9 +77,6 @@ EMPIRIC_OWNER = str_to_felt("empiric owner")
 
 BAD_GUY = str_to_felt("bad guy")
 
-STETH_OWNER = str_to_felt("steth owner")
-DOGE_OWNER = str_to_felt("doge owner")
-
 # Roles
 ABBOT_ROLE = GateRoles.ENTER + GateRoles.EXIT
 

@@ -29,13 +29,11 @@ from tests.shrine.constants import (
 )
 from tests.utils import (
     ABBOT_ROLE,
-    DOGE_OWNER,
     EMPIRIC_OWNER,
     GATE_OWNER,
     RAY_PERCENT,
     SENTINEL_OWNER,
     SHRINE_OWNER,
-    STETH_OWNER,
     TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
@@ -139,14 +137,12 @@ def tokens(
         name: str,
         symbol: str,
         decimals: int,
-        initial_supply: tuple[int, int],
-        recipient: int,
     ):
         name = str_to_felt(name)
         symbol = str_to_felt(symbol)
         token = await starknet.deploy(
             contract_class=contract,
-            constructor_calldata=[name, symbol, decimals, *initial_supply, recipient],
+            constructor_calldata=[name, symbol, decimals],
         )
         return token
 
@@ -300,12 +296,12 @@ async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
 
 @pytest.fixture
 async def steth_token(tokens) -> StarknetContract:
-    return await tokens("Lido Staked ETH", "stETH", 18, (to_wad(100_000), 0), STETH_OWNER)
+    return await tokens("Lido Staked ETH", "stETH", 18)
 
 
 @pytest.fixture
 async def doge_token(tokens) -> StarknetContract:
-    return await tokens("Dogecoin", "DOGE", 18, (to_wad(10_000_000), 0), DOGE_OWNER)
+    return await tokens("Dogecoin", "DOGE", 18)
 
 
 #
