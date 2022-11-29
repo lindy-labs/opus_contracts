@@ -479,7 +479,6 @@ func constructor{
 //
 
 // Set the price of the specified Yang for a given interval
-// price of 1 unit of yang = price of underlying asset * amount of underlying asset represented by 1 unit of yang
 @external
 func advance{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
