@@ -15,6 +15,7 @@ from tests.oracle.constants import (
     EMPIRIC_UPPER_SOURCES_BOUND,
     EMPIRIC_UPPER_UPDATE_INTERVAL_BOUND,
     INIT_BLOCK_TS,
+    INITIAL_ASSET_AMT_PER_YANG,
 )
 from tests.roles import EmpiricRoles
 from tests.utils import (
@@ -23,7 +24,6 @@ from tests.utils import (
     BAD_GUY,
     EMPIRIC_OWNER,
     GATE_OWNER,
-    INITIAL_ASSET_AMT_PER_YANG,
     RAY_PERCENT,
     SENTINEL_OWNER,
     TIME_INTERVAL,
