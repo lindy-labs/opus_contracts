@@ -4,7 +4,14 @@ from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_le, is_not_zero
-from starkware.starknet.common.syscalls import get_block_timestamp
+from starkware.cairo.common.uint256 import (
+    ALL_ONES,
+    Uint256,
+    assert_uint256_le,
+    uint256_check,
+    uint256_sub,
+)
+from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
 from contracts.shrine.roles import ShrineRoles
 
@@ -19,7 +26,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     revoke_role,
 )
 from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
+from contracts.lib.aliases import address, bool, packed, ray, str, ufelt, wad
 from contracts.lib.convert import pack_felt, pack_125, unpack_125
 from contracts.lib.exp import exp
 from contracts.lib.types import Trove, Yang
@@ -68,10 +75,6 @@ func DebtTotalUpdated(total: wad) {
 }
 
 @event
-func YinTotalUpdated(total: wad) {
-}
-
-@event
 func YangsCountUpdated(count: ufelt) {
 }
 
@@ -88,10 +91,6 @@ func TroveUpdated(trove_id: ufelt, trove: Trove) {
 }
 
 @event
-func YinUpdated(user: address, amount: wad) {
-}
-
-@event
 func DepositUpdated(yang: address, trove_id: ufelt, amount: wad) {
 }
 
@@ -105,6 +104,15 @@ func CeilingUpdated(ceiling: wad) {
 
 @event
 func Killed() {
+}
+
+// ERC20 events
+@event
+func Transfer(sender: address, recipient: address, amount: Uint256) {
+}
+
+@event
+func Approval(owner: address, spender: address, value: Uint256) {
 }
 
 //
@@ -184,6 +192,61 @@ func shrine_thresholds(yang_id: ufelt) -> (threshold: ray) {
 
 @storage_var
 func shrine_live() -> (is_live: bool) {
+}
+
+// Yin storage
+
+@storage_var
+func shrine_yin_name() -> (name: str) {
+}
+
+@storage_var
+func shrine_yin_symbol() -> (symbol: str) {
+}
+
+@storage_var
+func shrine_yin_decimals() -> (decimals: ufelt) {
+}
+
+@storage_var
+func shrine_yin_allowances(owner, spender) -> (allowance: Uint256) {
+}
+
+//
+// Constructor
+//
+
+@constructor
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, name: str, symbol: str, decimals: ufelt) {
+    alloc_locals;
+
+    AccessControl.initializer(admin);
+
+    // Grant admin permission
+    AccessControl._grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, admin);
+
+    shrine_live.write(TRUE);
+
+    // Set initial multiplier value
+    let interval: ufelt = now();
+    // The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
+    let init_mul_cumulative_mul: packed = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER);
+    shrine_multiplier.write(interval, init_mul_cumulative_mul);
+
+    // Events
+    MultiplierUpdated.emit(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER, interval);
+
+    // ERC20
+    shrine_yin_name.write(name);
+    shrine_yin_symbol.write(symbol);
+    with_attr error_message("Yin: Decimals exceed 255") {
+        assert_le(decimals, 255);
+    }
+    shrine_yin_decimals.write(decimals);
+
+    return ();
 }
 
 //
@@ -309,6 +372,50 @@ func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
     is_live: bool
 ) {
     return shrine_live.read();
+}
+
+// ERC20 getters
+
+@view
+func name{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (name: str) {
+    return shrine_yin_name.read();
+}
+
+@view
+func symbol{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (symbol: str) {
+    return shrine_yin_symbol.read();
+}
+
+@view
+func decimals{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    decimals: ufelt
+) {
+    return shrine_yin_decimals.read();
+}
+
+@view
+func totalSupply{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    total_supply: Uint256
+) {
+    let (total_yin: wad) = shrine_total_yin.read();
+    let (total_supply: Uint256) = WadRay.to_uint(total_yin);
+    return (total_supply,);
+}
+
+@view
+func balanceOf{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    account: address
+) -> (balance: Uint256) {
+    let (account_yin: wad) = shrine_yin.read(account);
+    let (balance: Uint256) = WadRay.to_uint(account_yin);
+    return (balance,);
+}
+
+@view
+func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    owner: address, spender: address
+) -> (allowance: Uint256) {
+    return shrine_yin_allowances.read(owner, spender);
 }
 
 //
@@ -447,34 +554,6 @@ func kill{
 }
 
 //
-// Constructor
-//
-
-@constructor
-func constructor{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address) {
-    alloc_locals;
-
-    AccessControl.initializer(admin);
-
-    // Grant admin permission
-    AccessControl._grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, admin);
-
-    shrine_live.write(TRUE);
-
-    // Set initial multiplier value
-    let interval: ufelt = now();
-    // The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
-    let init_mul_cumulative_mul: packed = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER);
-    shrine_multiplier.write(interval, init_mul_cumulative_mul);
-
-    // Events
-    MultiplierUpdated.emit(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER, interval);
-    return ();
-}
-
-//
 // Core functions - External
 //
 
@@ -588,32 +667,6 @@ func move_yang{
     // Events
     DepositUpdated.emit(yang, src_trove_id, new_src_balance);
     DepositUpdated.emit(yang, dst_trove_id, new_dst_balance);
-
-    return ();
-}
-
-@external
-func move_yin{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(src: address, dst: address, amount: wad) {
-    AccessControl.assert_has_role(ShrineRoles.MOVE_YIN);
-
-    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
-        WadRay.assert_valid_unsigned(amount);
-    }
-
-    let (src_balance: wad) = shrine_yin.read(src);
-    let (dst_balance: wad) = shrine_yin.read(dst);
-
-    // WadRay.sub_unsigned reverts on underflow, so this function cannot be used to move more yin than src_address owns
-    with_attr error_message("Shrine: Transfer amount exceeds yin balance") {
-        shrine_yin.write(src, WadRay.sub_unsigned(src_balance, amount));
-    }
-
-    shrine_yin.write(dst, WadRay.add(dst_balance, amount));
-
-    // No event emissions - this is because `move-yin` should only be called by an
-    // ERC20 wrapper contract which emits a `Transfer` event on transfers anyway.
 
     return ();
 }
@@ -738,21 +791,12 @@ func forge{
     // Check if Trove is within limits
     assert_healthy(trove_id);
 
-    // Update the user's yin
-    let (user_yin: wad) = shrine_yin.read(user);
-    let new_user_yin: wad = WadRay.add(user_yin, amount);
-    shrine_yin.write(user, new_user_yin);
-
-    // Update the total yin
-    let (total_yin: wad) = shrine_total_yin.read();
-    let new_total_yin: wad = WadRay.add(total_yin, amount);
-    shrine_total_yin.write(new_total_yin);
+    // Update balances
+    forge_internal(user, amount);
 
     // Events
     DebtTotalUpdated.emit(new_system_debt);
     TroveUpdated.emit(trove_id, new_trove_info);
-    YinTotalUpdated.emit(new_total_yin);
-    YinUpdated.emit(user, new_user_yin);
 
     return ();
 }
@@ -797,27 +841,12 @@ func melt{
     let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, new_trove_info);
 
-    // Updating the user's yin
-    let (user_yin: wad) = shrine_yin.read(user);
-
-    // Updating the total yin
-    let (total_yin: wad) = shrine_total_yin.read();
-
-    // Reverts if amount > user_yin or amount > total_yin.
-    with_attr error_message("Shrine: Not enough yin to melt debt") {
-        let new_user_yin: wad = WadRay.sub_unsigned(user_yin, amount);
-        let new_total_yin: wad = WadRay.sub_unsigned(total_yin, amount);
-    }
-
-    shrine_yin.write(user, new_user_yin);
-    shrine_total_yin.write(new_total_yin);
+    // Update balances
+    melt_internal(user, amount);
 
     // Events
-
     DebtTotalUpdated.emit(new_system_debt);
     TroveUpdated.emit(trove_id, new_trove_info);
-    YinTotalUpdated.emit(new_total_yin);
-    YinUpdated.emit(user, new_user_yin);
 
     return ();
 }
@@ -850,15 +879,8 @@ func start_flash_mint{
         WadRay.assert_valid_unsigned(amount);
     }
 
-    let (current_balance: wad) = shrine_yin.read(receiver);
-    with_attr error_message("Shrine: Mint overflow") {
-        let new_balance: wad = WadRay.add_unsigned(current_balance, amount);
-    }
-
-    // mint yin
-    shrine_yin.write(receiver, new_balance);
-    let (total_yin: wad) = shrine_total_yin.read();
-    shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
+    // Update balances
+    forge_internal(receiver, amount);
 
     return ();
 }
@@ -874,17 +896,42 @@ func end_flash_mint{
     // skipping amount validation because it already had to
     // pass validation in start_flash_loan
 
-    let (current_balance: wad) = shrine_yin.read(receiver);
-    with_attr error_message("Shrine: Invalid post flash mint state") {
-        let post_mint_balance: wad = WadRay.sub_unsigned(current_balance, amount);
-    }
-
-    // burn yin
-    shrine_yin.write(receiver, post_mint_balance);
-    let (total_yin: wad) = shrine_total_yin.read();
-    shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
+    // Update balances
+    melt_internal(receiver, amount);
 
     return ();
+}
+
+//
+// Core Functions - public ERC20
+//
+
+@external
+func transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    recipient: address, amount: Uint256
+) -> (success: bool) {
+    let (sender: address) = get_caller_address();
+    _transfer(sender, recipient, amount);
+    return (TRUE,);
+}
+
+@external
+func transferFrom{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    sender: address, recipient: address, amount: Uint256
+) -> (success: bool) {
+    let (caller: address) = get_caller_address();
+    _spend_allowance(sender, caller, amount);
+    _transfer(sender, recipient, amount);
+    return (TRUE,);
+}
+
+@external
+func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    spender: address, amount: Uint256
+) -> (success: bool) {
+    let (caller: address) = get_caller_address();
+    _approve(caller, spender, amount);
+    return (TRUE,);
 }
 
 //
@@ -990,6 +1037,45 @@ func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> u
     let (time: ufelt) = get_block_timestamp();
     let (interval: ufelt, _) = unsigned_div_rem(time, TIME_INTERVAL);
     return interval;
+}
+
+func forge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    user: address, amount: wad
+) {
+    with_attr error_message("Shrine: Forge overflow") {
+        // Update user's yin
+        let (user_yin: wad) = shrine_yin.read(user);
+        shrine_yin.write(user, WadRay.add_unsigned(user_yin, amount));
+
+        // Update total yin
+        let (total_yin: wad) = shrine_total_yin.read();
+        shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
+    }
+
+    let (amount_uint: Uint256) = WadRay.to_uint(amount);
+    Transfer.emit(0, user, amount_uint);
+
+    return ();
+}
+
+func melt_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    user: address, amount: wad
+) {
+    // Reverts if amount > user_yin or amount > total_yin.
+    with_attr error_message("Shrine: Not enough yin to melt debt") {
+        // Update user's yin
+        let (user_yin: wad) = shrine_yin.read(user);
+        shrine_yin.write(user, WadRay.sub_unsigned(user_yin, amount));
+
+        // Update total yin
+        let (total_yin: wad) = shrine_total_yin.read();
+        shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
+    }
+
+    let (amount_uint: Uint256) = WadRay.to_uint(amount);
+    Transfer.emit(user, 0, amount_uint);
+
+    return ();
 }
 
 // Withdraw a specified amount of a Yang from a Trove
@@ -1398,4 +1484,77 @@ func get_trove_threshold_and_value_internal{
         cumulative_weighted_threshold,
         cumulative_trove_value,
     );
+}
+
+//
+// Internal ERC20 functions
+//
+
+func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    sender: address, recipient: address, amount_uint: Uint256
+) {
+    with_attr error_message("Shrine: Cannot transfer to the zero address") {
+        assert_not_zero(recipient);
+    }
+
+    with_attr error_message("Shrine: Amount not valid") {
+        uint256_check(amount_uint);
+    }
+
+    with_attr error_message("Shrine: Amount value ({amount_uint}) is out of bounds") {
+        let amount: wad = WadRay.from_uint(amount_uint);
+    }
+
+    let (sender_balance: wad) = shrine_yin.read(sender);
+    let (recipient_balance: wad) = shrine_yin.read(recipient);
+
+    // WadRay.sub_unsigned reverts on underflow, so this function cannot be used
+    // to move more yin than sender owns
+    with_attr error_message("Shrine: Transfer amount exceeds yin balance") {
+        shrine_yin.write(sender, WadRay.sub_unsigned(sender_balance, amount));
+    }
+    shrine_yin.write(recipient, WadRay.add(recipient_balance, amount));
+
+    Transfer.emit(sender, recipient, amount_uint);
+    return ();
+}
+
+func _approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    owner: address, spender: address, amount: Uint256
+) {
+    with_attr error_message("Shrine: Cannot approve from the zero address") {
+        assert_not_zero(owner);
+    }
+
+    with_attr error_message("Shrine: Cannot approve to the zero address") {
+        assert_not_zero(spender);
+    }
+
+    with_attr error_message("Shrine: Amount not valid") {
+        uint256_check(amount);
+    }
+
+    shrine_yin_allowances.write(owner, spender, amount);
+    Approval.emit(owner, spender, amount);
+    return ();
+}
+
+func _spend_allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    owner: address, spender: address, amount: Uint256
+) {
+    alloc_locals;
+
+    let (current_allowance: Uint256) = shrine_yin_allowances.read(owner, spender);
+    if (current_allowance.low == ALL_ONES and current_allowance.high == ALL_ONES) {
+        // infinite allowance 2**256 - 1
+        return ();
+    }
+
+    with_attr error_message("Shrine: Insufficient yin allowance") {
+        assert_uint256_le(amount, current_allowance);
+        let (new_allowance: Uint256) = uint256_sub(current_allowance, amount);
+        _approve(owner, spender, new_allowance);
+    }
+
+    return ();
 }
