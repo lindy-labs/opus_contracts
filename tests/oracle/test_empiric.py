@@ -28,7 +28,6 @@ from tests.utils import (
     SENTINEL_OWNER,
     TIME_INTERVAL,
     assert_event_emitted,
-    compile_contract,
     max_approve,
     set_block_timestamp,
     signed_int_to_felt,
@@ -59,6 +58,11 @@ def to_empiric(value: int) -> int:
     return value * (10**8)
 
 
+#
+# fixtures
+#
+
+
 @pytest.fixture
 async def btc_token(tokens) -> StarknetContract:
     return await tokens("Bitcoin", "BTC", 18, (to_wad(100_000), 0), AURA_USER_1)
@@ -70,31 +74,13 @@ async def eth_token(tokens) -> StarknetContract:
 
 
 @pytest.fixture
-async def btc_gate(starknet, shrine, btc_token) -> StarknetContract:
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
-
-    return await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            GATE_OWNER,
-            shrine.contract_address,
-            btc_token.contract_address,
-        ],
-    )
+async def btc_gate(starknet, shrine, btc_token, gates) -> StarknetContract:
+    return await gates(shrine, btc_token)
 
 
 @pytest.fixture
-async def eth_gate(starknet, shrine, eth_token) -> StarknetContract:
-    contract = compile_contract("contracts/gate/rebasing_yang/gate.cairo")
-
-    return await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            GATE_OWNER,
-            shrine.contract_address,
-            eth_token.contract_address,
-        ],
-    )
+async def eth_gate(starknet, shrine, eth_token, gates) -> StarknetContract:
+    return await gates(shrine, eth_token)
 
 
 @pytest.fixture
@@ -128,6 +114,11 @@ async def funded_gates(shrine, abbot, btc_token, eth_token, btc_gate, eth_gate, 
         [btc_token.contract_address, eth_token.contract_address],
         [BTC_DEPOSIT, ETH_DEPOSIT],
     ).execute(caller_address=AURA_USER_1)
+
+
+#
+# tests
+#
 
 
 @pytest.mark.asyncio
