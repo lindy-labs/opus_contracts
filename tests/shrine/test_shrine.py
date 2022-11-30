@@ -308,7 +308,7 @@ async def test_shrine_deploy(shrine):
 
     assert (await shrine.name().execute()).result.name == YIN_NAME
     assert (await shrine.symbol().execute()).result.symbol == YIN_SYMBOL
-    assert (await shrine.decimals().execute()).result.decimals == YIN_DECIMALS
+    assert (await shrine.decimals().execute()).result.decimals == 18
 
 
 @pytest.mark.asyncio
@@ -1858,13 +1858,17 @@ async def test_yin_transfer_from_pass(shrine_both):
     # TROVE1_OWNER approves YIN_USER1
     approve_tx = await shrine.approve(YIN_USER1, to_uint(FORGE_AMT_WAD)).execute(caller_address=TROVE1_OWNER)
     assert approve_tx.result.success == TRUE
+    assert_event_emitted(
+        approve_tx, shrine.contract_address, "Approval", [TROVE1_OWNER, YIN_USER1, *to_uint(FORGE_AMT_WAD)]
+    )
 
     # Checking user1's allowance for TROVE1_OWNER
     allowance = (await shrine.allowance(TROVE1_OWNER, YIN_USER1).execute()).result.allowance
     assert allowance == to_uint(FORGE_AMT_WAD)
 
     # YIN_USER1 transfers all of TROVE1_OWNER's funds to YIN_USER2
-    await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+    tx = await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+    assert_event_emitted(tx, shrine.contract_address, "Transfer", [TROVE1_OWNER, YIN_USER2, *to_uint(FORGE_AMT_WAD)])
 
     # Checking balances
     assert (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance == to_uint(0)
@@ -1936,7 +1940,7 @@ async def test_yin_approve_invalid_inputs(shrine, amount):
 async def test_yin_melt_after_transfer(shrine_both):
     shrine = shrine_both
 
-    # Transferring half of TROVE1_OWNER's balance to USER_2
+    # Transferring half of TROVE1_OWNER's balance to YIN_USER1
     await shrine.transfer(YIN_USER1, to_uint(FORGE_AMT_WAD // 2)).execute(caller_address=TROVE1_OWNER)
 
     # Trying to melt `FORGE_AMT_WAD` debt. Should fail since TROVE1_OWNER no longer has FORGE_AMT_WAD yin.
@@ -1947,13 +1951,13 @@ async def test_yin_melt_after_transfer(shrine_both):
     await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD // 2 - 1).execute(caller_address=SHRINE_OWNER)
 
     # Checking that the user's debt and yin are what we expect them to be
-    u1_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    u1_yin = (await shrine.get_yin(TROVE1_OWNER).execute()).result.balance
+    trove1_info = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    trove1_owner_yin = (await shrine.get_yin(TROVE1_OWNER).execute()).result.balance
 
-    assert u1_trove.debt == FORGE_AMT_WAD - (FORGE_AMT_WAD // 2 - 1)
+    assert trove1_info.debt == FORGE_AMT_WAD - (FORGE_AMT_WAD // 2 - 1)
 
     # First `FORGE_AMT_WAD//2` yin was transferred, and then `FORGE_AMT_WAD//2 - 1` was melted
-    assert u1_yin == FORGE_AMT_WAD - FORGE_AMT_WAD // 2 - (FORGE_AMT_WAD // 2 - 1)
+    assert trove1_owner_yin == FORGE_AMT_WAD - FORGE_AMT_WAD // 2 - (FORGE_AMT_WAD // 2 - 1)
 
 
 #

@@ -108,7 +108,7 @@ func Killed() {
 
 // ERC20 events
 @event
-func Transfer(sender: address, recipient: address, amount: Uint256) {
+func Transfer(from_: address, to: address, value: Uint256) {
 }
 
 @event
@@ -219,7 +219,7 @@ func shrine_yin_allowances(owner, spender) -> (allowance: Uint256) {
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address, name: str, symbol: str, decimals: ufelt) {
+}(admin: address, name: str, symbol: str) {
     alloc_locals;
 
     AccessControl.initializer(admin);
@@ -241,10 +241,7 @@ func constructor{
     // ERC20
     shrine_yin_name.write(name);
     shrine_yin_symbol.write(symbol);
-    with_attr error_message("Yin: Decimals exceed 255") {
-        assert_le(decimals, 255);
-    }
-    shrine_yin_decimals.write(decimals);
+    shrine_yin_decimals.write(18);
 
     return ();
 }
@@ -1491,18 +1488,18 @@ func get_trove_threshold_and_value_internal{
 //
 
 func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    sender: address, recipient: address, amount_uint: Uint256
+    sender: address, recipient: address, amount: Uint256
 ) {
     with_attr error_message("Shrine: Cannot transfer to the zero address") {
         assert_not_zero(recipient);
     }
 
     with_attr error_message("Shrine: Amount not valid") {
-        uint256_check(amount_uint);
+        uint256_check(amount);
     }
 
-    with_attr error_message("Shrine: Amount value ({amount_uint}) is out of bounds") {
-        let amount: wad = WadRay.from_uint(amount_uint);
+    with_attr error_message("Shrine: Amount value ({amount}) is out of bounds") {
+        let amount_wad: wad = WadRay.from_uint(amount);
     }
 
     let (sender_balance: wad) = shrine_yin.read(sender);
@@ -1511,11 +1508,11 @@ func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // WadRay.sub_unsigned reverts on underflow, so this function cannot be used
     // to move more yin than sender owns
     with_attr error_message("Shrine: Transfer amount exceeds yin balance") {
-        shrine_yin.write(sender, WadRay.sub_unsigned(sender_balance, amount));
+        shrine_yin.write(sender, WadRay.sub_unsigned(sender_balance, amount_wad));
     }
-    shrine_yin.write(recipient, WadRay.add(recipient_balance, amount));
+    shrine_yin.write(recipient, WadRay.add(recipient_balance, amount_wad));
 
-    Transfer.emit(sender, recipient, amount_uint);
+    Transfer.emit(sender, recipient, amount);
     return ();
 }
 

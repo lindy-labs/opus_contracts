@@ -5,7 +5,6 @@ from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE, str_to_felt
 
 YIN_NAME = str_to_felt("Cash")
 YIN_SYMBOL = str_to_felt("CASH")
-YIN_DECIMALS = 18
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 
