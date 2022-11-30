@@ -28,10 +28,12 @@ ZERO_ADDRESS = 0
 TRUE = 1
 FALSE = 0
 
-WAD_PERCENT = 10**16
-RAY_PERCENT = 10**25
-WAD_SCALE = 10**18
-RAY_SCALE = 10**27
+WAD_DECIMALS = 18
+RAY_DECIMALS = 27
+WAD_PERCENT = 10 ** (WAD_DECIMALS - 2)
+RAY_PERCENT = 10 ** (RAY_DECIMALS - 2)
+WAD_SCALE = 10**WAD_DECIMALS
+RAY_SCALE = 10**RAY_DECIMALS
 WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
 WADRAY_BOUND = 2**125
 
@@ -222,6 +224,28 @@ def from_wad(n: int) -> Decimal:
 
 def wad_to_ray(n: int) -> int:
     return int(n * (RAY_SCALE // WAD_SCALE))
+
+
+def wad_to_custom_decimals(n: int, token_decimals: int) -> Decimal:
+    """
+    Helper function to scale a wad according to the decimal precision of a token with
+    less than 18 decimals.
+
+    Arguments
+    ---------
+    n: int
+        Amount in wad precision.
+    token_decimals: int
+        Number of decimals for token with less than 18 decimals.
+
+    Returns
+    -------
+    Amount scaled to the token's decimals
+    """
+    if token_decimals == 18:
+        return n
+
+    return int(n / 10 ** (WAD_DECIMALS - token_decimals))
 
 
 def from_ray(n: int) -> Decimal:
