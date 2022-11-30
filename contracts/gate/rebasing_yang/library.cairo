@@ -65,18 +65,10 @@ namespace Gate {
         return yang_info.total;
     }
 
-    func get_exchange_rate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         ) -> wad {
-        let total_supply: wad = get_total_yang();
-        let total_balance: wad = get_total_assets();
-
-        // Catch division by zero errors
-        if (total_supply == 0) {
-            return 0;
-        }
-
-        let rate: wad = WadRay.wunsigned_div_unchecked(total_balance, total_supply);
-        return rate;
+        let amt: wad = convert_to_assets(WadRay.WAD_ONE);
+        return amt;
     }
 
     //

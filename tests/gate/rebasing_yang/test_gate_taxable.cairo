@@ -11,7 +11,7 @@ from contracts.gate.gate_tax_external import get_tax, get_tax_collector
 from contracts.gate.rebasing_yang.library import Gate
 from contracts.gate.rebasing_yang.library_external import (
     get_asset,
-    get_exchange_rate,
+    get_asset_amt_per_yang,
     get_total_assets,
     get_total_yang,
     get_shrine,

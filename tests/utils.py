@@ -97,8 +97,6 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 # Yin constants
 INFINITE_YIN_ALLOWANCE = 2**256 - 1
 
-# Empiric constants
-
 
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):

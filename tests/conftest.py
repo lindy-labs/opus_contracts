@@ -384,7 +384,7 @@ async def mock_empiric_impl(starknet) -> StarknetContract:
 
 
 @pytest.fixture
-async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
+async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetContract:
     set_block_timestamp(starknet, INIT_BLOCK_TS)
     contract = compile_contract("contracts/oracle/empiric.cairo")
     empiric = await starknet.deploy(
@@ -393,6 +393,7 @@ async def empiric(starknet, shrine, mock_empiric_impl) -> StarknetContract:
             EMPIRIC_OWNER,
             mock_empiric_impl.contract_address,
             shrine.contract_address,
+            sentinel.contract_address,
             EMPIRIC_UPDATE_INTERVAL,
             EMPIRIC_FRESHNESS_THRESHOLD,
             EMPIRIC_SOURCES_THRESHOLD,

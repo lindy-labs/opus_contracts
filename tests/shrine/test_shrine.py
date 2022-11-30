@@ -498,10 +498,10 @@ async def test_set_threshold(shrine):
     assert (await shrine.get_yang_threshold(YANG1_ADDRESS).execute()).result.threshold == value
 
     # test setting to max value
-    max = RAY_SCALE
-    tx = await shrine.set_threshold(YANG1_ADDRESS, max).execute(caller_address=SHRINE_OWNER)
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG1_ADDRESS, max])
-    assert (await shrine.get_yang_threshold(YANG1_ADDRESS).execute()).result.threshold == max
+    max_threshold = RAY_SCALE
+    tx = await shrine.set_threshold(YANG1_ADDRESS, max_threshold).execute(caller_address=SHRINE_OWNER)
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG1_ADDRESS, max_threshold])
+    assert (await shrine.get_yang_threshold(YANG1_ADDRESS).execute()).result.threshold == max_threshold
 
 
 @pytest.mark.asyncio
