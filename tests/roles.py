@@ -29,10 +29,9 @@ class ShrineRoles(IntEnum):
     KILL = 2**5
     MELT = 2**6
     MOVE_YANG = 2**7
-    MOVE_YIN = 2**8
-    SEIZE = 2**9
-    SET_CEILING = 2**10
-    SET_MULTIPLIER = 2**11
-    SET_THRESHOLD = 2**12
-    SET_YANG_MAX = 2**13
-    WITHDRAW = 2**14
+    SEIZE = 2**8
+    SET_CEILING = 2**9
+    SET_MULTIPLIER = 2**10
+    SET_THRESHOLD = 2**11
+    SET_YANG_MAX = 2**12
+    WITHDRAW = 2**13
