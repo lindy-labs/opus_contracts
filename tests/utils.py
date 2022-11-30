@@ -226,26 +226,23 @@ def wad_to_ray(n: int) -> int:
     return int(n * (RAY_SCALE // WAD_SCALE))
 
 
-def wad_to_custom_decimals(n: int, token_decimals: int) -> Decimal:
+def to_decimals(n: Union[int, float, Decimal], token_decimals: int) -> int:
     """
-    Helper function to scale a wad according to the decimal precision of a token with
-    less than 18 decimals.
+    Helper function to scale a number to its fixed point equivalent
+    according to the given decimal precision.
 
     Arguments
     ---------
     n: int
-        Amount in wad precision.
+        Amount in real terms.
     token_decimals: int
-        Number of decimals for token with less than 18 decimals.
+        Number of decimals to scale by.
 
     Returns
     -------
-    Amount scaled to the token's decimals
+    Scaled amount.
     """
-    if token_decimals == 18:
-        return n
-
-    return int(n / 10 ** (WAD_DECIMALS - token_decimals))
+    return int(n * 10**token_decimals)
 
 
 def from_ray(n: int) -> Decimal:

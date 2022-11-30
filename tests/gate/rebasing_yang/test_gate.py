@@ -31,10 +31,10 @@ from tests.utils import (
     from_wad,
     set_block_timestamp,
     str_to_felt,
+    to_decimals,
     to_ray,
     to_uint,
     to_wad,
-    wad_to_custom_decimals,
 )
 
 #
@@ -67,7 +67,7 @@ def get_yang_from_assets(total_yang: int, total_assets: int, assets_amt: int, de
 
     Returns
     -------
-    Amount of yang to be issued in Decimal.
+    Amount of yang in wad to be issued in Decimal.
     """
     if decimals == WAD_DECIMALS:
         assets_amt = from_wad(assets_amt)
@@ -97,7 +97,7 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> D
 
     Returns
     -------
-    Amount of assets to be deposited in Decimal.
+    Amount of assets, in the denomination of the decimals of the assets, to be deposited in Decimal.
     """
     return from_wad(total_assets) * from_wad(yang_amt) / from_wad(total_yang)
 
@@ -108,9 +108,16 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> D
 
 
 @pytest.fixture
-async def funded_users(steth_token):
-    await steth_token.mint(TROVE1_OWNER, (INITIAL_AMT, 0)).execute(caller_address=TROVE1_OWNER)
-    await steth_token.mint(TROVE2_OWNER, (INITIAL_AMT, 0)).execute(caller_address=TROVE2_OWNER)
+async def funded_users(steth_token, wbtc_token):
+    steth_token_decimals = (await steth_token.decimals().execute()).result.decimals
+    steth_inital_amt = to_decimals(INITIAL_AMT, steth_token_decimals)
+    await steth_token.mint(TROVE1_OWNER, (steth_inital_amt, 0)).execute(caller_address=TROVE1_OWNER)
+    await steth_token.mint(TROVE2_OWNER, (steth_inital_amt, 0)).execute(caller_address=TROVE2_OWNER)
+
+    wbtc_token_decimals = (await wbtc_token.decimals().execute()).result.decimals
+    wbtc_inital_amt = to_decimals(INITIAL_AMT, wbtc_token_decimals)
+    await wbtc_token.mint(TROVE1_OWNER, (wbtc_inital_amt, 0)).execute(caller_address=TROVE1_OWNER)
+    await wbtc_token.mint(TROVE2_OWNER, (wbtc_inital_amt, 0)).execute(caller_address=TROVE2_OWNER)
 
 
 @pytest.fixture
@@ -146,7 +153,39 @@ async def steth_gate_info(steth_token, steth_gate) -> tuple[StarknetContract, in
 
 
 @pytest.fixture
-async def shrine_authed(starknet: Starknet, shrine, steth_token) -> StarknetContract:
+async def wbtc_gate_taxable_info(starknet, shrine, wbtc_token) -> tuple[StarknetContract, int, StarknetContract]:
+    """
+    Deploys an instance of the Gate module with autocompounding and tax.
+    """
+    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
+
+    gate = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            GATE_OWNER,
+            shrine.contract_address,
+            wbtc_token.contract_address,
+            TAX_RAY,
+            TAX_COLLECTOR,
+        ],
+    )
+
+    # Grant `Abbot` access to `enter` and `exit`
+    await gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=GATE_OWNER)
+    decimals = (await wbtc_token.decimals().execute()).result.decimals
+    return wbtc_token, decimals, gate
+
+
+@pytest.fixture
+async def wbtc_gate_info(wbtc_token, wbtc_gate) -> tuple[StarknetContract, int, StarknetContract]:
+    # Grant `Abbot` access to `enter` and `exit
+    await wbtc_gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=GATE_OWNER)
+    decimals = (await wbtc_token.decimals().execute()).result.decimals
+    return wbtc_token, decimals, wbtc_gate
+
+
+@pytest.fixture
+async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> StarknetContract:
     """
     Add Abbot as an authorized address of Shrine.
     """
@@ -167,6 +206,13 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token) -> StarknetCont
         to_wad(1000),
     ).execute(caller_address=SHRINE_OWNER)
 
+    await shrine.add_yang(
+        wbtc_token.contract_address,
+        to_wad(1000),
+        to_ray(Decimal("0.8")),
+        to_wad(10_000),
+    ).execute(caller_address=SHRINE_OWNER)
+
     return shrine
 
 
@@ -179,7 +225,7 @@ async def trove_1_enter(shrine_authed, gate_info, funded_users) -> StarknetCallI
 
     await token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE1_OWNER)
 
-    scaled_deposit_amt = wad_to_custom_decimals(FIRST_DEPOSIT_AMT, decimals)
+    scaled_deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
 
     yang_wad = (await gate.preview_enter(scaled_deposit_amt).execute()).result.preview
     enter = await gate.enter(TROVE1_OWNER, TROVE_1, scaled_deposit_amt).execute(caller_address=MOCK_ABBOT)
@@ -197,7 +243,7 @@ async def trove_2_enter_before_rebase(shrine_authed, gate_info, trove_1_enter) -
 
     await token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE2_OWNER)
 
-    scaled_deposit_amt = wad_to_custom_decimals(FIRST_DEPOSIT_AMT, decimals)
+    scaled_deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
 
     yang_wad = (await gate.preview_enter(scaled_deposit_amt).execute()).result.preview
     enter = await gate.enter(TROVE2_OWNER, TROVE_2, scaled_deposit_amt).execute(caller_address=MOCK_ABBOT)
@@ -215,7 +261,7 @@ async def trove_2_enter_after_rebase(shrine_authed, gate_info, trove_1_enter, re
 
     await token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE2_OWNER)
 
-    scaled_deposit_amt = wad_to_custom_decimals(FIRST_DEPOSIT_AMT, decimals)
+    scaled_deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
 
     yang_wad = (await gate.preview_enter(scaled_deposit_amt).execute()).result.preview
     enter = await gate.enter(TROVE2_OWNER, TROVE_2, scaled_deposit_amt).execute(caller_address=MOCK_ABBOT)
@@ -231,7 +277,7 @@ async def rebase(gate_info, trove_1_enter) -> StarknetCallInfo:
     """
     token, decimals, gate = gate_info
 
-    scaled_rebase_amt = wad_to_custom_decimals(FIRST_REBASE_AMT, decimals)
+    scaled_rebase_amt = to_decimals(FIRST_REBASE_AMT, decimals)
 
     tx = await token.mint(gate.contract_address, to_uint(scaled_rebase_amt)).execute(caller_address=TROVE1_OWNER)
     return tx
@@ -250,7 +296,11 @@ def gate_info(request) -> StarknetContract:
 #
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_setup(gate_info):
     steth_token, _, gate = gate_info
@@ -291,7 +341,11 @@ async def test_gate_setup(gate_info):
 #
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_gas_cost):
     token, decimals, gate = gate_info
@@ -301,7 +355,7 @@ async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_
 
     # Check gate asset balance
     total_bal = (await gate.get_total_assets().execute()).result.total
-    assert total_bal == wad_to_custom_decimals(FIRST_DEPOSIT_AMT, 18)
+    assert total_bal == to_decimals(FIRST_DEPOSIT_AMT, decimals)
 
     # Check gate yang balance
     total_yang = (await gate.get_total_yang().execute()).result.total
@@ -310,7 +364,7 @@ async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_
 
     # Check exchange rate
     asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
-    assert asset_amt_per_yang == 10**decimals
+    assert asset_amt_per_yang == WAD_SCALE
 
     # Check event
     assert_event_emitted(
@@ -322,7 +376,11 @@ async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_
 
 
 @pytest.mark.usefixtures("rebase")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
     token, decimals, gate = gate_info
@@ -332,7 +390,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
     before_total_assets = (await gate.get_total_assets().execute()).result.total
 
     # Calculate expected yang
-    deposit_amt = wad_to_custom_decimals(SECOND_DEPOSIT_AMT, decimals)
+    deposit_amt = to_decimals(SECOND_DEPOSIT_AMT, decimals)
     expected_yang = get_yang_from_assets(before_total_yang, before_total_assets, deposit_amt, decimals)
 
     # Get user's yang before subsequent deposit
@@ -346,7 +404,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
 
     # Check gate asset balance
     total_assets = (await gate.get_total_assets().execute()).result.total
-    expected_bal = wad_to_custom_decimals(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
+    expected_bal = to_decimals(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
     assert total_assets == expected_bal
 
     # Check vault yang balance
@@ -374,14 +432,18 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
     )
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_info, trove_2_enter_before_rebase):
     token, decimals, gate = gate_info
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().execute()).result.total
-    expected_bal = FIRST_DEPOSIT_AMT * 2
+    expected_bal = to_decimals(FIRST_DEPOSIT_AMT * 2, decimals)
     assert after_total_bal == expected_bal
 
     # Check gate yang balance
@@ -398,23 +460,27 @@ async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_in
         trove_2_enter_before_rebase,
         gate.contract_address,
         "Enter",
-        [TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT, expected_yang],
+        [TROVE2_OWNER, TROVE_2, to_decimals(FIRST_DEPOSIT_AMT, decimals), expected_yang],
     )
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_subsequent_unique_enter_after_rebase(shrine_authed, gate_info, trove_2_enter_after_rebase):
     token, decimals, gate = gate_info
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().execute()).result.total
-    expected_bal = wad_to_custom_decimals(FIRST_DEPOSIT_AMT * 2 + FIRST_REBASE_AMT, decimals)
+    expected_bal = to_decimals(FIRST_DEPOSIT_AMT * 2 + FIRST_REBASE_AMT, decimals)
     assert after_total_bal == expected_bal
 
     # Calculate expected yang
-    deposit_amt = wad_to_custom_decimals(FIRST_DEPOSIT_AMT, decimals)
-    deposited_amt = deposit_amt + wad_to_custom_decimals(FIRST_REBASE_AMT, decimals)
+    deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    deposited_amt = deposit_amt + to_decimals(FIRST_REBASE_AMT, decimals)
     expected_yang = get_yang_from_assets(FIRST_DEPOSIT_YANG, deposited_amt, deposit_amt, decimals)
 
     # Check gate yang balance
@@ -439,7 +505,11 @@ async def test_gate_subsequent_unique_enter_after_rebase(shrine_authed, gate_inf
 
 
 @pytest.mark.usefixtures("trove_1_enter")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cost):
     """
@@ -457,7 +527,7 @@ async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cos
     after_gate_balance = (await gate.get_total_assets().execute()).result.total
 
     # Assert user receives initial deposit
-    assert from_uint(after_user_balance) == wad_to_custom_decimals(INITIAL_AMT, decimals)
+    assert from_uint(after_user_balance) == to_decimals(INITIAL_AMT, decimals)
     assert after_gate_balance == 0
 
     # Fetch post-withdrawal yang
@@ -471,16 +541,21 @@ async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cos
     assert asset_amt_per_yang == WAD_SCALE
 
     # Check event
+    deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
     assert_event_emitted(
         gate_exit,
         gate.contract_address,
         "Exit",
-        [TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_YANG],
+        [TROVE1_OWNER, TROVE_1, deposit_amt, FIRST_DEPOSIT_YANG],
     )
 
 
 @pytest.mark.usefixtures("rebase")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
     """
@@ -497,7 +572,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
     after_gate_balance = (await gate.get_total_assets().execute()).result.total
 
     # Assert user receives initial deposit and rebased amount
-    expected_user_balance = wad_to_custom_decimals(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
+    expected_user_balance = to_decimals(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
     assert from_uint(after_user_balance) == expected_user_balance
     assert after_gate_balance == 0
 
@@ -511,7 +586,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
     asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
     assert asset_amt_per_yang == WAD_SCALE
 
-    expected_withdrawn_assets = wad_to_custom_decimals(FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT, decimals)
+    expected_withdrawn_assets = to_decimals(FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT, decimals)
     # Check event
     assert_event_emitted(
         gate_exit,
@@ -522,10 +597,16 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
 
 
 @pytest.mark.usefixtures("trove_2_enter_before_rebase")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
     token, decimals, gate = gate_info
+
+    deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
 
     # Get initial exchange rate
     start_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
@@ -577,7 +658,7 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
         trove_2_gate_exit,
         gate.contract_address,
         "Exit",
-        [TROVE2_OWNER, TROVE_2, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_YANG],
+        [TROVE2_OWNER, TROVE_2, deposit_amt, FIRST_DEPOSIT_YANG],
     )
 
     # Get user balance
@@ -625,12 +706,16 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
         trove_1_gate_exit,
         gate.contract_address,
         "Exit",
-        [TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_AMT, FIRST_DEPOSIT_YANG],
+        [TROVE1_OWNER, TROVE_1, deposit_amt, FIRST_DEPOSIT_YANG],
     )
 
 
 @pytest.mark.usefixtures("trove_2_enter_after_rebase")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
     token, decimals, gate = gate_info
@@ -722,7 +807,11 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
 
 
 @pytest.mark.usefixtures("rebase")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_kill(shrine_authed, gate_info):
     token, decimals, gate = gate_info
@@ -733,7 +822,7 @@ async def test_kill(shrine_authed, gate_info):
 
     # Assert enter fails
     with pytest.raises(StarkException, match="Gate: Gate is not live"):
-        deposit_amt = wad_to_custom_decimals(SECOND_DEPOSIT_AMT, decimals)
+        deposit_amt = to_decimals(SECOND_DEPOSIT_AMT, decimals)
         await gate.enter(TROVE1_OWNER, TROVE_1, deposit_amt).execute(caller_address=MOCK_ABBOT)
 
     # Assert withdraw succeeds
@@ -776,7 +865,11 @@ async def test_kill(shrine_authed, gate_info):
 
 
 @pytest.mark.usefixtures("shrine_authed")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_enter_insufficient_fail(gate_info):
     token, decimals, gate = gate_info
@@ -785,40 +878,57 @@ async def test_gate_enter_insufficient_fail(gate_info):
     await token.approve(gate.contract_address, MAX_UINT256).execute(TROVE1_OWNER)
     # Call enter with more asset than user has
     with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
-        invalid_deposit_amt = wad_to_custom_decimals(INITIAL_AMT, decimals) + 1
+        invalid_deposit_amt = to_decimals(INITIAL_AMT, decimals) + 1
         await gate.enter(TROVE1_OWNER, TROVE_1, invalid_deposit_amt).execute(caller_address=MOCK_ABBOT)
 
 
-@pytest.mark.usefixtures("shrine_authed", "steth_token", "trove_1_enter")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.usefixtures("trove_1_enter")
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
-async def test_gate_exit_insufficient_fail(gate_info):
-    _, _, gate = gate_info
-    # Call withdraw with more gate yang than user has
+async def test_gate_exit_insufficient_fail(shrine_authed, gate_info):
+    token, decimals, gate = gate_info
+    # Call withdraw with more gate yang than in the gate
+    trove_bal = (await shrine_authed.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
+    print("trove balance: ", trove_bal)
+    # Note that there is precision loss for tokens with less than 18 decimals if the excess amount is too small
+    # Therefore, we scale the excess by the difference in number of decimals
+    excess = 1 * 10 ** (WAD_DECIMALS - decimals)
     with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
-        await gate.exit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_YANG + 1).execute(caller_address=MOCK_ABBOT)
+        await gate.exit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_YANG + excess).execute(caller_address=MOCK_ABBOT)
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_unauthorized_enter(gate_info):
     """Test third-party initiated"""
     token, decimals, gate = gate_info
 
     # Seed unauthorized address with asset
-    mint_amt = wad_to_custom_decimals(INITIAL_AMT, decimals)
+    mint_amt = to_decimals(INITIAL_AMT, decimals)
     await token.mint(BAD_GUY, to_uint(mint_amt)).execute(caller_address=BAD_GUY)
 
     # Sanity check
     assert from_uint((await token.balanceOf(BAD_GUY).execute()).result.balance) == mint_amt
 
     with pytest.raises(StarkException):
-        deposit_amt = wad_to_custom_decimals(FIRST_DEPOSIT_AMT, decimals)
+        deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
         await gate.enter(TROVE1_OWNER, TROVE_1, deposit_amt).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.usefixtures("trove_1_enter")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_unauthorized_exit(shrine_authed, gate_info):
     """Test user-initiated"""
@@ -826,15 +936,18 @@ async def test_unauthorized_exit(shrine_authed, gate_info):
 
     # Sanity check
     bal = (await shrine_authed.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
-    expected_bal = wad_to_custom_decimals(INITIAL_AMT - FIRST_DEPOSIT_AMT, decimals)
-    assert bal == expected_bal
+    assert bal == FIRST_DEPOSIT_YANG
 
     with pytest.raises(StarkException):
         await gate.exit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_YANG).execute(caller_address=TROVE1_OWNER)
 
 
 @pytest.mark.usefixtures("trove_1_enter")
-@pytest.mark.parametrize("gate_info", ["steth_gate_info", "steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.parametrize("fn", ["enter", "exit"])
 @pytest.mark.asyncio
 async def test_zero_enter_exit(shrine_authed, gate_info, fn):
@@ -877,9 +990,10 @@ async def test_gate_constructor_invalid_tax(shrine, starknet, steth_token):
         )
 
 
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
-async def test_gate_set_tax_pass(steth_gate_taxable_info):
-    _, _, gate = steth_gate_taxable_info
+async def test_gate_set_tax_pass(gate_info):
+    _, _, gate = gate_info
 
     tx = await gate.set_tax(TAX_RAY // 2).execute(caller_address=GATE_OWNER)
     assert_event_emitted(tx, gate.contract_address, "TaxUpdated", [TAX_RAY, TAX_RAY // 2])
@@ -888,9 +1002,10 @@ async def test_gate_set_tax_pass(steth_gate_taxable_info):
     assert new_tax == TAX_RAY // 2
 
 
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
-async def test_gate_set_tax_collector(steth_gate_taxable_info):
-    _, _, gate = steth_gate_taxable_info
+async def test_gate_set_tax_collector(gate_info):
+    _, _, gate = gate_info
 
     new_tax_collector = 9876
     tx = await gate.set_tax_collector(new_tax_collector).execute(caller_address=GATE_OWNER)
@@ -906,9 +1021,10 @@ async def test_gate_set_tax_collector(steth_gate_taxable_info):
     assert res == new_tax_collector
 
 
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
-async def test_gate_set_tax_parameters_fail(steth_gate_taxable_info):
-    _, _, gate = steth_gate_taxable_info
+async def test_gate_set_tax_parameters_fail(gate_info):
+    _, _, gate = gate_info
 
     # Fails due to max tax exceeded
     with pytest.raises(StarkException, match="Gate: Maximum tax exceeded"):
@@ -926,7 +1042,7 @@ async def test_gate_set_tax_parameters_fail(steth_gate_taxable_info):
 
 
 @pytest.mark.usefixtures("trove_1_enter")
-@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
 async def test_gate_levy(shrine_authed, gate_info):
     token, decimals, gate = gate_info
@@ -937,7 +1053,7 @@ async def test_gate_levy(shrine_authed, gate_info):
 
     # Update Gate's balance and charge tax
     levy = await gate.levy().execute(caller_address=MOCK_ABBOT)
-    levied_amt = wad_to_custom_decimals(FIRST_TAX_AMT, decimals)
+    levied_amt = to_decimals(FIRST_TAX_AMT, decimals)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().execute()).result.total

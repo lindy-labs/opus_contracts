@@ -304,6 +304,11 @@ async def doge_token(tokens) -> StarknetContract:
     return await tokens("Dogecoin", "DOGE", 18)
 
 
+@pytest.fixture
+async def wbtc_token(tokens) -> StarknetContract:
+    return await tokens("Wrapped BTC", "WBTC", 8)
+
+
 #
 # Yang
 #
@@ -343,6 +348,16 @@ async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> Star
 @pytest.fixture
 async def doge_gate(starknet, abbot, shrine_deploy, doge_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, doge_token)
+
+    # auth Abbot in Gate
+    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+
+    return gate
+
+
+@pytest.fixture
+async def wbtc_gate(starknet, abbot, shrine_deploy, wbtc_token, gates) -> StarknetContract:
+    gate = await gates(shrine_deploy, wbtc_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
