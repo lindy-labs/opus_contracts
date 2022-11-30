@@ -65,12 +65,12 @@ def to_empiric(value: int) -> int:
 
 @pytest.fixture
 async def btc_token(tokens) -> StarknetContract:
-    return await tokens("Bitcoin", "BTC", 18, (to_wad(100_000), 0), TROVE1_OWNER)
+    return await tokens("Bitcoin", "BTC", 18)
 
 
 @pytest.fixture
 async def eth_token(tokens) -> StarknetContract:
-    return await tokens("Ether", "ETH", 18, (to_wad(10_000_000), 0), TROVE1_OWNER)
+    return await tokens("Ether", "ETH", 18)
 
 
 @pytest.fixture
@@ -111,6 +111,9 @@ async def with_yangs(starknet, shrine, sentinel, empiric, eth_token, eth_gate, m
 
 @pytest.fixture
 async def funded_gates(shrine, abbot, btc_token, eth_token, btc_gate, eth_gate, with_yangs):
+    await btc_token.mint(TROVE1_OWNER, (BTC_DEPOSIT, 0)).execute(caller_address=TROVE1_OWNER)
+    await eth_token.mint(TROVE1_OWNER, (ETH_DEPOSIT, 0)).execute(caller_address=TROVE1_OWNER)
+
     await max_approve(btc_token, TROVE1_OWNER, btc_gate.contract_address)
     await max_approve(eth_token, TROVE1_OWNER, eth_gate.contract_address)
 
@@ -262,11 +265,11 @@ async def test_update_prices(
     btc_token, eth_token, btc_gate, eth_gate, empiric, mock_empiric_impl, shrine, starknet, rebase_percentage
 ):
     # simulate rebase by sending tokens to the gate
-    await btc_token.transfer(btc_gate.contract_address, to_uint(int(rebase_percentage * BTC_DEPOSIT))).execute(
-        caller_address=TROVE1_OWNER
+    await btc_token.mint(btc_gate.contract_address, to_uint(int(rebase_percentage * BTC_DEPOSIT))).execute(
+        caller_address=btc_gate.contract_address
     )
-    await eth_token.transfer(eth_gate.contract_address, to_uint(int(rebase_percentage * ETH_DEPOSIT))).execute(
-        caller_address=TROVE1_OWNER
+    await eth_token.mint(eth_gate.contract_address, to_uint(int(rebase_percentage * ETH_DEPOSIT))).execute(
+        caller_address=eth_gate.contract_address
     )
 
     oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
