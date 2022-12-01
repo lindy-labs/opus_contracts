@@ -31,7 +31,7 @@ from tests.utils import (
     from_wad,
     set_block_timestamp,
     str_to_felt,
-    to_decimals,
+    to_fixed_point,
     to_ray,
     to_uint,
     to_wad,
@@ -110,12 +110,12 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> D
 @pytest.fixture
 async def funded_users(steth_token, wbtc_token):
     steth_token_decimals = (await steth_token.decimals().execute()).result.decimals
-    steth_inital_amt = to_decimals(INITIAL_AMT, steth_token_decimals)
+    steth_inital_amt = to_fixed_point(INITIAL_AMT, steth_token_decimals)
     await steth_token.mint(TROVE1_OWNER, (steth_inital_amt, 0)).execute(caller_address=TROVE1_OWNER)
     await steth_token.mint(TROVE2_OWNER, (steth_inital_amt, 0)).execute(caller_address=TROVE2_OWNER)
 
     wbtc_token_decimals = (await wbtc_token.decimals().execute()).result.decimals
-    wbtc_inital_amt = to_decimals(INITIAL_AMT, wbtc_token_decimals)
+    wbtc_inital_amt = to_fixed_point(INITIAL_AMT, wbtc_token_decimals)
     await wbtc_token.mint(TROVE1_OWNER, (wbtc_inital_amt, 0)).execute(caller_address=TROVE1_OWNER)
     await wbtc_token.mint(TROVE2_OWNER, (wbtc_inital_amt, 0)).execute(caller_address=TROVE2_OWNER)
 
@@ -225,7 +225,7 @@ async def trove_1_enter(shrine_authed, gate_info, funded_users) -> StarknetCallI
 
     await token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE1_OWNER)
 
-    scaled_deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    scaled_deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
 
     yang_wad = (await gate.preview_enter(scaled_deposit_amt).execute()).result.preview
     enter = await gate.enter(TROVE1_OWNER, TROVE_1, scaled_deposit_amt).execute(caller_address=MOCK_ABBOT)
@@ -243,7 +243,7 @@ async def trove_2_enter_before_rebase(shrine_authed, gate_info, trove_1_enter) -
 
     await token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE2_OWNER)
 
-    scaled_deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    scaled_deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
 
     yang_wad = (await gate.preview_enter(scaled_deposit_amt).execute()).result.preview
     enter = await gate.enter(TROVE2_OWNER, TROVE_2, scaled_deposit_amt).execute(caller_address=MOCK_ABBOT)
@@ -261,7 +261,7 @@ async def trove_2_enter_after_rebase(shrine_authed, gate_info, trove_1_enter, re
 
     await token.approve(gate.contract_address, MAX_UINT256).execute(caller_address=TROVE2_OWNER)
 
-    scaled_deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    scaled_deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
 
     yang_wad = (await gate.preview_enter(scaled_deposit_amt).execute()).result.preview
     enter = await gate.enter(TROVE2_OWNER, TROVE_2, scaled_deposit_amt).execute(caller_address=MOCK_ABBOT)
@@ -277,7 +277,7 @@ async def rebase(gate_info, trove_1_enter) -> StarknetCallInfo:
     """
     token, decimals, gate = gate_info
 
-    scaled_rebase_amt = to_decimals(FIRST_REBASE_AMT, decimals)
+    scaled_rebase_amt = to_fixed_point(FIRST_REBASE_AMT, decimals)
 
     tx = await token.mint(gate.contract_address, to_uint(scaled_rebase_amt)).execute(caller_address=TROVE1_OWNER)
     return tx
@@ -355,7 +355,7 @@ async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_
 
     # Check gate asset balance
     total_bal = (await gate.get_total_assets().execute()).result.total
-    assert total_bal == to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    assert total_bal == to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
 
     # Check gate yang balance
     total_yang = (await gate.get_total_yang().execute()).result.total
@@ -390,7 +390,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
     before_total_assets = (await gate.get_total_assets().execute()).result.total
 
     # Calculate expected yang
-    deposit_amt = to_decimals(SECOND_DEPOSIT_AMT, decimals)
+    deposit_amt = to_fixed_point(SECOND_DEPOSIT_AMT, decimals)
     expected_yang = get_yang_from_assets(before_total_yang, before_total_assets, deposit_amt, decimals)
 
     # Get user's yang before subsequent deposit
@@ -404,7 +404,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
 
     # Check gate asset balance
     total_assets = (await gate.get_total_assets().execute()).result.total
-    expected_bal = to_decimals(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
+    expected_bal = to_fixed_point(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
     assert total_assets == expected_bal
 
     # Check vault yang balance
@@ -443,7 +443,7 @@ async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_in
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().execute()).result.total
-    expected_bal = to_decimals(FIRST_DEPOSIT_AMT * 2, decimals)
+    expected_bal = to_fixed_point(FIRST_DEPOSIT_AMT * 2, decimals)
     assert after_total_bal == expected_bal
 
     # Check gate yang balance
@@ -460,7 +460,7 @@ async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_in
         trove_2_enter_before_rebase,
         gate.contract_address,
         "Enter",
-        [TROVE2_OWNER, TROVE_2, to_decimals(FIRST_DEPOSIT_AMT, decimals), expected_yang],
+        [TROVE2_OWNER, TROVE_2, to_fixed_point(FIRST_DEPOSIT_AMT, decimals), expected_yang],
     )
 
 
@@ -475,12 +475,12 @@ async def test_gate_subsequent_unique_enter_after_rebase(shrine_authed, gate_inf
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().execute()).result.total
-    expected_bal = to_decimals(FIRST_DEPOSIT_AMT * 2 + FIRST_REBASE_AMT, decimals)
+    expected_bal = to_fixed_point(FIRST_DEPOSIT_AMT * 2 + FIRST_REBASE_AMT, decimals)
     assert after_total_bal == expected_bal
 
     # Calculate expected yang
-    deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
-    deposited_amt = deposit_amt + to_decimals(FIRST_REBASE_AMT, decimals)
+    deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
+    deposited_amt = deposit_amt + to_fixed_point(FIRST_REBASE_AMT, decimals)
     expected_yang = get_yang_from_assets(FIRST_DEPOSIT_YANG, deposited_amt, deposit_amt, decimals)
 
     # Check gate yang balance
@@ -527,7 +527,7 @@ async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cos
     after_gate_balance = (await gate.get_total_assets().execute()).result.total
 
     # Assert user receives initial deposit
-    assert from_uint(after_user_balance) == to_decimals(INITIAL_AMT, decimals)
+    assert from_uint(after_user_balance) == to_fixed_point(INITIAL_AMT, decimals)
     assert after_gate_balance == 0
 
     # Fetch post-withdrawal yang
@@ -541,7 +541,7 @@ async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cos
     assert asset_amt_per_yang == WAD_SCALE
 
     # Check event
-    deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
     assert_event_emitted(
         gate_exit,
         gate.contract_address,
@@ -572,7 +572,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
     after_gate_balance = (await gate.get_total_assets().execute()).result.total
 
     # Assert user receives initial deposit and rebased amount
-    expected_user_balance = to_decimals(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
+    expected_user_balance = to_fixed_point(INITIAL_AMT + FIRST_REBASE_AMT, decimals)
     assert from_uint(after_user_balance) == expected_user_balance
     assert after_gate_balance == 0
 
@@ -586,7 +586,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
     asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
     assert asset_amt_per_yang == WAD_SCALE
 
-    expected_withdrawn_assets = to_decimals(FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT, decimals)
+    expected_withdrawn_assets = to_fixed_point(FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT, decimals)
     # Check event
     assert_event_emitted(
         gate_exit,
@@ -606,7 +606,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
 async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
     token, decimals, gate = gate_info
 
-    deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+    deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
 
     # Get initial exchange rate
     start_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
@@ -822,7 +822,7 @@ async def test_kill(shrine_authed, gate_info):
 
     # Assert enter fails
     with pytest.raises(StarkException, match="Gate: Gate is not live"):
-        deposit_amt = to_decimals(SECOND_DEPOSIT_AMT, decimals)
+        deposit_amt = to_fixed_point(SECOND_DEPOSIT_AMT, decimals)
         await gate.enter(TROVE1_OWNER, TROVE_1, deposit_amt).execute(caller_address=MOCK_ABBOT)
 
     # Assert withdraw succeeds
@@ -878,7 +878,7 @@ async def test_gate_enter_insufficient_fail(gate_info):
     await token.approve(gate.contract_address, MAX_UINT256).execute(TROVE1_OWNER)
     # Call enter with more asset than user has
     with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
-        invalid_deposit_amt = to_decimals(INITIAL_AMT, decimals) + 1
+        invalid_deposit_amt = to_fixed_point(INITIAL_AMT, decimals) + 1
         await gate.enter(TROVE1_OWNER, TROVE_1, invalid_deposit_amt).execute(caller_address=MOCK_ABBOT)
 
 
@@ -912,14 +912,14 @@ async def test_unauthorized_enter(gate_info):
     token, decimals, gate = gate_info
 
     # Seed unauthorized address with asset
-    mint_amt = to_decimals(INITIAL_AMT, decimals)
+    mint_amt = to_fixed_point(INITIAL_AMT, decimals)
     await token.mint(BAD_GUY, to_uint(mint_amt)).execute(caller_address=BAD_GUY)
 
     # Sanity check
     assert from_uint((await token.balanceOf(BAD_GUY).execute()).result.balance) == mint_amt
 
     with pytest.raises(StarkException):
-        deposit_amt = to_decimals(FIRST_DEPOSIT_AMT, decimals)
+        deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
         await gate.enter(TROVE1_OWNER, TROVE_1, deposit_amt).execute(caller_address=BAD_GUY)
 
 
@@ -1053,7 +1053,7 @@ async def test_gate_levy(shrine_authed, gate_info):
 
     # Update Gate's balance and charge tax
     levy = await gate.levy().execute(caller_address=MOCK_ABBOT)
-    levied_amt = to_decimals(FIRST_TAX_AMT, decimals)
+    levied_amt = to_fixed_point(FIRST_TAX_AMT, decimals)
 
     # Check Gate's managed assets and balance
     after_gate_bal = (await gate.get_total_assets().execute()).result.total

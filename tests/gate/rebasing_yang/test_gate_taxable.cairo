@@ -141,10 +141,11 @@ func kill{
     return ();
 }
 
+// `assets` is denominated in the decimals of the asset
 @external
 func enter{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
+}(user: address, trove_id: ufelt, assets: ufelt) -> (yang: wad) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
@@ -173,10 +174,11 @@ func enter{
     return (yang,);
 }
 
+// `assets` is denominated in the decimals of the asset
 @external
 func exit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
+}(user: address, trove_id: ufelt, yang: wad) -> (assets: ufelt) {
     alloc_locals;
     // TODO: Revisit whether reentrancy guard should be added here
 
