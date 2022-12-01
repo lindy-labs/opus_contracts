@@ -177,7 +177,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // Caller does not need to be trove owner
 @external
 func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yang: address, trove_id: ufelt, amount: wad
+    yang: address, trove_id: ufelt, amount: ufelt
 ) {
     alloc_locals;
 

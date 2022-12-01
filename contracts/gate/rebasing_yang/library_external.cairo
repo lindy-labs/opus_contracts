@@ -41,9 +41,9 @@ func get_total_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 // Returns the amount of underlying assets represented by one wad of yang in the Gate
 @view
 func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    amt: wad
+    amt: ufelt
 ) {
-    let rate: wad = Gate.get_asset_amt_per_yang();
+    let rate: ufelt = Gate.get_asset_amt_per_yang();
     return (rate,);
 }
 

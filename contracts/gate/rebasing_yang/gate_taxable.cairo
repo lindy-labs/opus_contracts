@@ -193,13 +193,13 @@ func levy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
     // Get asset balance before compound
-    let before_balance: wad = Gate.get_total_assets();
+    let before_balance: ufelt = Gate.get_total_assets();
 
     // Autocompound
     compound();
 
     // Get asset balance after compound
-    let after_balance: wad = Gate.get_total_assets();
+    let after_balance: ufelt = Gate.get_total_assets();
 
     // Assumption: Balance cannot decrease without any user action
     if (is_le(after_balance, before_balance) == TRUE) {

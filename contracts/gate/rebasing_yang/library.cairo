@@ -143,9 +143,10 @@ namespace Gate {
 
             return scaled_yang;
         } else {
-            let product: wad = WadRay.wmul(assets, total_supply);
             let total_assets: ufelt = get_total_assets();
-            let yang: wad = WadRay.wunsigned_div_unchecked(product, total_assets);
+            let yang: wad = WadRay.wunsigned_div_unchecked(
+                WadRay.wmul(assets, total_supply), total_assets
+            );
             return yang;
         }
     }

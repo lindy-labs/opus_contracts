@@ -31,13 +31,13 @@ namespace IGate {
     //
     // view
     //
-    func get_total_assets() -> (total: wad) {
+    func get_total_assets() -> (total: ufelt) {
     }
 
     func get_total_yang() -> (total: wad) {
     }
 
-    func get_asset_amt_per_yang() -> (amt: wad) {
+    func get_asset_amt_per_yang() -> (amt: ufelt) {
     }
 
     func preview_enter(assets: ufelt) -> (preview: wad) {
