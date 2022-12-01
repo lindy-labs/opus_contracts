@@ -211,30 +211,6 @@ def compile_code(code: Tuple[str, str]) -> StarknetContract:
 #
 
 
-def to_wad(n: Union[int, float, Decimal]) -> int:
-    return int(n * WAD_SCALE)
-
-
-def to_ray(n: Union[int, float, Decimal]) -> int:
-    return int(n * RAY_SCALE)
-
-
-def from_wad(n: int) -> Decimal:
-    return Decimal(n) / WAD_SCALE
-
-
-def wad_to_ray(n: int) -> int:
-    return int(n * (RAY_SCALE // WAD_SCALE))
-
-
-def from_ray(n: int) -> Decimal:
-    return Decimal(n) / RAY_SCALE
-
-
-def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
-    assert abs(a - b) <= error
-
-
 def to_fixed_point(n: Union[int, float, Decimal], decimals: int) -> int:
     """
     Helper function to scale a number to its fixed point equivalent
@@ -271,6 +247,30 @@ def from_fixed_point(n: int, decimals: int) -> Decimal:
     Real value in Decimal.
     """
     return Decimal(n) / 10**decimals
+
+
+def to_wad(n: Union[int, float, Decimal]) -> int:
+    return to_fixed_point(n, WAD_DECIMALS)
+
+
+def to_ray(n: Union[int, float, Decimal]) -> int:
+    return to_fixed_point(n, RAY_DECIMALS)
+
+
+def from_wad(n: int) -> Decimal:
+    return from_fixed_point(n, WAD_DECIMALS)
+
+
+def wad_to_ray(n: int) -> int:
+    return to_fixed_point(n, RAY_DECIMALS - WAD_DECIMALS)
+
+
+def from_ray(n: int) -> Decimal:
+    return from_fixed_point(n, RAY_DECIMALS)
+
+
+def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
+    assert abs(a - b) <= error
 
 
 #
@@ -330,19 +330,19 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
 
 
 def calculate_trove_threshold_and_value(
-    prices: List[int], amounts: List[int], thresholds: List[int]
+    prices: List[Decimal], amounts: List[Decimal], thresholds: List[Decimal]
 ) -> Tuple[Decimal, Decimal]:
     """
     Helper function to calculate a trove's threshold and value
 
     Arguments
     ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
+    prices : List[Decimal]
+        Ordered list of the prices of each Yang in Decimal
+    amounts: List[Decimal]
+        Ordered list of the amount of each Yang deposited in the Trove in Decimal
     thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in ray
+        Ordered list of the threshold for each Yang in Decimal
 
     Returns
     -------
@@ -366,18 +366,18 @@ def calculate_trove_threshold_and_value(
     return threshold, total_value
 
 
-def calculate_max_forge(prices: List[int], amounts: List[int], thresholds: List[int]) -> Decimal:
+def calculate_max_forge(prices: List[Decimal], amounts: List[Decimal], thresholds: List[Decimal]) -> Decimal:
     """
     Helper function to calculate the maximum amount of debt a trove can forge
 
     Arguments
     ---------
-    prices : List[int]
-        Ordered list of the prices of each Yang in wad
-    amounts: List[int]
-        Ordered list of the amount of each Yang deposited in the Trove in wad
+    prices : List[Decimal]
+        Ordered list of the prices of each Yang in Decimal
+    amounts: List[Decimal]
+        Ordered list of the amount of each Yang deposited in the Trove in Decimal
     thresholds: List[Decimal]
-        Ordered list of the threshold for each Yang in ray
+        Ordered list of the threshold for each Yang in Decimal
 
     Returns
     -------
