@@ -26,7 +26,7 @@ func get_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 @view
 func get_total_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    total: wad
+    total: ufelt
 ) {
     return (Gate.get_total_assets(),);
 }
