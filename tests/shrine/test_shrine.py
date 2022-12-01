@@ -4,6 +4,7 @@ from math import exp
 from typing import List
 
 import pytest
+from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
@@ -11,6 +12,7 @@ from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
     BAD_GUY,
     FALSE,
+    INFINITE_YIN_ALLOWANCE,
     RAY_PERCENT,
     RAY_SCALE,
     SHRINE_OWNER,
@@ -38,6 +40,7 @@ from tests.utils import (
     set_block_timestamp,
     str_to_felt,
     to_ray,
+    to_uint,
     to_wad,
 )
 
@@ -273,6 +276,20 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> 
     return idx, list(map(from_wad, yang0_feed))
 
 
+@pytest.fixture
+async def shrine_killed(shrine) -> StarknetContract:
+    await shrine.kill().execute(caller_address=SHRINE_OWNER)
+    return shrine
+
+
+@pytest.fixture
+def shrine_both(request) -> StarknetContract:
+    """
+    Wrapper fixture to pass the regular and killed instances of shrine to `pytest.parametrize`.
+    """
+    return request.getfixturevalue(request.param)
+
+
 #
 # Tests - Initial parameters of Shrine
 #
@@ -288,6 +305,10 @@ async def test_shrine_deploy(shrine):
     # Assert that `get_current_multiplier` terminates
     multiplier = (await shrine.get_current_multiplier().execute()).result.multiplier
     assert multiplier == RAY_SCALE
+
+    assert (await shrine.name().execute()).result.name == YIN_NAME
+    assert (await shrine.symbol().execute()).result.symbol == YIN_SYMBOL
+    assert (await shrine.decimals().execute()).result.decimals == 18
 
 
 @pytest.mark.asyncio
@@ -498,10 +519,10 @@ async def test_set_threshold(shrine):
     assert (await shrine.get_yang_threshold(YANG1_ADDRESS).execute()).result.threshold == value
 
     # test setting to max value
-    max = RAY_SCALE
-    tx = await shrine.set_threshold(YANG1_ADDRESS, max).execute(caller_address=SHRINE_OWNER)
-    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG1_ADDRESS, max])
-    assert (await shrine.get_yang_threshold(YANG1_ADDRESS).execute()).result.threshold == max
+    max_threshold = RAY_SCALE
+    tx = await shrine.set_threshold(YANG1_ADDRESS, max_threshold).execute(caller_address=SHRINE_OWNER)
+    assert_event_emitted(tx, shrine.contract_address, "ThresholdUpdated", [YANG1_ADDRESS, max_threshold])
+    assert (await shrine.get_yang_threshold(YANG1_ADDRESS).execute()).result.threshold == max_threshold
 
 
 @pytest.mark.asyncio
@@ -969,10 +990,6 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
         "TroveUpdated",
         [TROVE_1, FEED_LEN - 1, forge_amt_wad],
     )
-
-    # Yin Events
-    assert_event_emitted(forge, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, forge_amt_wad])
-    assert_event_emitted(forge, shrine.contract_address, "YinTotalUpdated", [forge_amt_wad])
 
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
     assert system_debt == forge_amt_wad
@@ -1754,48 +1771,161 @@ async def test_move_yang_invalid_yang(shrine):
 
 
 #
-# Tests - Move yin
+# Tests - Yin transfers
 #
 
 
-@pytest.mark.parametrize("transfer_amount", [0, FORGE_AMT_WAD // 2, FORGE_AMT_WAD])
+@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
+@pytest.mark.asyncio
+async def test_yin_transfer_pass(shrine_both):
+
+    shrine = shrine_both
+
+    # Checking TROVE1_OWNER's and user's initial balance
+    assert (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance == to_uint(FORGE_AMT_WAD)
+    assert (await shrine.balanceOf(YIN_USER1).execute()).result.balance == to_uint(0)
+
+    # Transferring all of TROVE1_OWNER's balance to user
+    transfer_tx = await shrine.transfer(YIN_USER1, to_uint(FORGE_AMT_WAD)).execute(caller_address=TROVE1_OWNER)
+    assert transfer_tx.result.success == TRUE
+
+    assert (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance == to_uint(0)
+    assert (await shrine.balanceOf(YIN_USER1).execute()).result.balance == to_uint(FORGE_AMT_WAD)
+
+    assert_event_emitted(
+        transfer_tx,
+        shrine.contract_address,
+        "Transfer",
+        [TROVE1_OWNER, YIN_USER1, *to_uint(FORGE_AMT_WAD)],
+    )
+
+    # Attempting to transfer 0 yin when TROVE1_OWNER owns nothing - should pass
+    await shrine.transfer(YIN_USER1, to_uint(0)).execute(caller_address=TROVE1_OWNER)
+
+
 @pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_shrine_move_yin_pass(shrine, transfer_amount):
-
-    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, transfer_amount).execute(caller_address=SHRINE_OWNER)
-    # Checking the updated balances
-    u1_new_bal = (await shrine.get_yin(TROVE1_OWNER).execute()).result.balance
-    assert u1_new_bal == FORGE_AMT_WAD - transfer_amount
-
-    u2_new_bal = (await shrine.get_yin(TROVE2_OWNER).execute()).result.balance
-    assert u2_new_bal == transfer_amount
-
-
-@pytest.mark.usefixtures("shrine_forge")
-@pytest.mark.asyncio
-async def test_shrine_move_yin_fail_insufficient(shrine):
-    # Trying to transfer more than the user owns
+async def test_yin_transfer_fail(shrine):
+    # Attempting to transfer more yin than TROVE1_OWNER owns
     with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
-        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD + 1).execute(caller_address=SHRINE_OWNER)
+        await shrine.transfer(YIN_USER1, to_uint(FORGE_AMT_WAD + 1)).execute(caller_address=TROVE1_OWNER)
+
+    # Attempting to transfer any amount of yin when user owns nothing
+    with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
+        await shrine.transfer(TROVE1_OWNER, to_uint(1)).execute(caller_address=YIN_USER1)
 
 
-@pytest.mark.parametrize("move_amt", WAD_RAY_OOB_VALUES)
+@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
-async def test_shrine_move_yin_fail_out_of_bounds(shrine, move_amt):
-    with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
-        await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, move_amt).execute(caller_address=SHRINE_OWNER)
+async def test_yin_transfer_from_pass(shrine_both):
+
+    shrine = shrine_both
+
+    # TROVE1_OWNER approves YIN_USER1
+    approve_tx = await shrine.approve(YIN_USER1, to_uint(FORGE_AMT_WAD)).execute(caller_address=TROVE1_OWNER)
+    assert approve_tx.result.success == TRUE
+    assert_event_emitted(
+        approve_tx, shrine.contract_address, "Approval", [TROVE1_OWNER, YIN_USER1, *to_uint(FORGE_AMT_WAD)]
+    )
+
+    # Checking user1's allowance for TROVE1_OWNER
+    allowance = (await shrine.allowance(TROVE1_OWNER, YIN_USER1).execute()).result.allowance
+    assert allowance == to_uint(FORGE_AMT_WAD)
+
+    # YIN_USER1 transfers all of TROVE1_OWNER's funds to YIN_USER2
+    tx = await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+    assert_event_emitted(tx, shrine.contract_address, "Transfer", [TROVE1_OWNER, YIN_USER2, *to_uint(FORGE_AMT_WAD)])
+
+    # Checking balances
+    assert (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance == to_uint(0)
+    assert (await shrine.balanceOf(YIN_USER2).execute()).result.balance == to_uint(FORGE_AMT_WAD)
+
+    # Checking YIN_USER1's allowance
+    assert (await shrine.allowance(TROVE1_OWNER, YIN_USER1).execute()).result.allowance == to_uint(0)
 
 
 @pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
-async def test_shrine_melt_after_move_yin_fail(shrine):
+async def test_yin_infinite_allowance(shrine):
+    # infinite allowance test
+    await shrine.approve(YIN_USER1, to_uint(INFINITE_YIN_ALLOWANCE)).execute(caller_address=TROVE1_OWNER)
+    await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+    assert (await shrine.allowance(TROVE1_OWNER, YIN_USER1).execute()).result.allowance == to_uint(
+        INFINITE_YIN_ALLOWANCE
+    )
 
-    # Transfer half of the forge amount to another account
-    await shrine.move_yin(TROVE1_OWNER, TROVE2_OWNER, FORGE_AMT_WAD // 2).execute(caller_address=SHRINE_OWNER)
-    # Attempt to melt all debt - should fail since not enough yin
+
+@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.asyncio
+async def test_yin_transfer_from_fail(shrine):
+    # Calling `transferFrom` with an allowance of zero
+
+    # YIN_USER1 transfers all of TROVE1_OWNER's funds to USER_3 - should fail
+    # since TROVE1_OWNER hasn't approved YIN_USER1
+    with pytest.raises(StarkException, match="Shrine: Insufficient yin allowance"):
+        await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+
+    # TROVE1_OWNER approves YIN_USER1 but not enough to send FORGE_AMT_WAD
+    await shrine.approve(YIN_USER1, to_uint(FORGE_AMT_WAD // 2)).execute(caller_address=TROVE1_OWNER)
+
+    # Should fail since YIN_USER1's allowance for TROVE1_OWNER is less than FORGE_AMT_WAD
+    with pytest.raises(StarkException, match="Shrine: Insufficient yin allowance"):
+        await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+
+    # TROVE1_OWNER grants YIN_USER1 unlimited allowance
+    await shrine.approve(YIN_USER1, to_uint(INFINITE_YIN_ALLOWANCE)).execute(caller_address=TROVE1_OWNER)
+
+    # Should fail since YIN_USER1's tries transferring more than TROVE1_OWNER has in their balance
+    with pytest.raises(StarkException, match="Shrine: Transfer amount exceeds yin balance"):
+        await shrine.transferFrom(TROVE1_OWNER, YIN_USER2, to_uint(FORGE_AMT_WAD + 1)).execute(caller_address=YIN_USER1)
+
+    # Transfer to zero address - should fail since a check prevents this
+    with pytest.raises(StarkException, match="Shrine: Cannot transfer to the zero address"):
+        await shrine.transferFrom(TROVE1_OWNER, 0, to_uint(FORGE_AMT_WAD)).execute(caller_address=YIN_USER1)
+
+
+@pytest.mark.parametrize(
+    "amount", [to_uint(-1), to_uint(2**125 + 1), to_uint(2**128 + 1), (2**128, 0), (0, 2**128)]
+)
+@pytest.mark.asyncio
+async def test_yin_transfer_invalid_inputs(shrine, amount):
+    with pytest.raises(StarkException):
+        await shrine.transfer(YIN_USER1, amount).execute(caller_address=TROVE1_OWNER)
+
+
+@pytest.mark.parametrize("amount", [to_uint(-1), to_uint(2**256), (2**128, 0), (0, 2**128)])
+@pytest.mark.asyncio
+async def test_yin_approve_invalid_inputs(shrine, amount):
+    with pytest.raises(StarkException, match="Shrine: Amount not valid"):
+        await shrine.approve(YIN_USER1, amount).execute(caller_address=TROVE1_OWNER)
+
+
+@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
+@pytest.mark.asyncio
+async def test_yin_melt_after_transfer(shrine_both):
+    shrine = shrine_both
+
+    # Transferring half of TROVE1_OWNER's balance to YIN_USER1
+    await shrine.transfer(YIN_USER1, to_uint(FORGE_AMT_WAD // 2)).execute(caller_address=TROVE1_OWNER)
+
+    # Trying to melt `FORGE_AMT_WAD` debt. Should fail since TROVE1_OWNER no longer has FORGE_AMT_WAD yin.
     with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
         await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
+
+    # Trying to melt less than half of `FORGE_AMT_WAD`. Should pass since TROVE1_OWNER has enough yin to do this.
+    await shrine.melt(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD // 2 - 1).execute(caller_address=SHRINE_OWNER)
+
+    # Checking that the user's debt and yin are what we expect them to be
+    trove1_info = (await shrine.get_trove(TROVE_1).execute()).result.trove
+    trove1_owner_yin = (await shrine.get_yin(TROVE1_OWNER).execute()).result.balance
+
+    assert trove1_info.debt == FORGE_AMT_WAD - (FORGE_AMT_WAD // 2 - 1)
+
+    # First `FORGE_AMT_WAD//2` yin was transferred, and then `FORGE_AMT_WAD//2 - 1` was melted
+    assert trove1_owner_yin == FORGE_AMT_WAD - FORGE_AMT_WAD // 2 - (FORGE_AMT_WAD // 2 - 1)
 
 
 #

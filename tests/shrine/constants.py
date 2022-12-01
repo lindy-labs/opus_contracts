@@ -1,7 +1,10 @@
 from decimal import Decimal
 
 from tests.roles import ShrineRoles
-from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE
+from tests.utils import RAY_PERCENT, RAY_SCALE, WAD_SCALE, str_to_felt
+
+YIN_NAME = str_to_felt("Cash")
+YIN_SYMBOL = str_to_felt("CASH")
 
 LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 
@@ -9,6 +12,9 @@ YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
 FAUX_YANG_ADDRESS = 7890
+
+YIN_USER1 = str_to_felt("yin user 1")
+YIN_USER2 = str_to_felt("yin user 2")
 
 
 # Shrine setup constants

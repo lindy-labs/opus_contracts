@@ -21,6 +21,7 @@ from tests.utils import (
     TROVE_1,
     TROVE_2,
     TRUE,
+    WAD_SCALE,
     ZERO_ADDRESS,
     assert_equalish,
     assert_event_emitted,
@@ -240,8 +241,8 @@ async def test_gate_setup(gate, steth_token):
     assert (await gate.get_total_yang().execute()).result.total == 0
 
     # Check initial exchange rate
-    exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert exchange_rate == 0
+    asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert asset_amt_per_yang == WAD_SCALE
 
     if "get_tax" in gate._contract_functions:
         # Check tax
@@ -274,8 +275,8 @@ async def test_gate_deposit_pass(shrine_authed, gate, steth_token, trove_1_enter
     assert total_yang == user_yang == FIRST_DEPOSIT_AMT
 
     # Check exchange rate
-    exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert exchange_rate == to_wad(1)
+    asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert asset_amt_per_yang == WAD_SCALE
 
     # Check event
     assert_event_emitted(
@@ -427,8 +428,8 @@ async def test_gate_exit_before_rebase(shrine_authed, gate, steth_token, collect
     assert after_user_yang == total_yang == 0
 
     # Check exchange rate
-    exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert exchange_rate == 0
+    asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert asset_amt_per_yang == WAD_SCALE
 
     # Check event
     assert_event_emitted(
@@ -468,8 +469,8 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate, steth_token):
     assert after_user_yang == total_yang == 0
 
     # Check exchange rate
-    exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert exchange_rate == 0
+    asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert asset_amt_per_yang == WAD_SCALE
 
     expected_withdrawn_assets = FIRST_DEPOSIT_AMT + FIRST_REBASE_AMT
     # Check event
@@ -487,7 +488,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate, steth_token):
 async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate, steth_token):
 
     # Get initial exchange rate
-    start_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
+    start_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
 
     # Get initial balance for trove 2
     trove_2_yang = (await shrine_authed.get_deposit(steth_token.contract_address, TROVE_2).execute()).result.balance
@@ -528,8 +529,8 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate, steth_to
     )
 
     # Check exchange rate
-    after_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert after_exchange_rate == start_exchange_rate
+    after_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert after_asset_amt_per_yang == start_asset_amt_per_yang
 
     # Check event emitted
     assert_event_emitted(
@@ -576,8 +577,8 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate, steth_to
     )
 
     # Check exchange rate
-    end_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert end_exchange_rate == 0
+    end_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert end_asset_amt_per_yang == WAD_SCALE
 
     # Check event emitted
     assert_event_emitted(
@@ -594,7 +595,7 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate, steth_to
 async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate, steth_token):
 
     # Get initial exchange rate
-    start_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
+    start_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
 
     # Check gate asset balance
     start_total_bal = (await gate.get_total_assets().execute()).result.total
@@ -637,8 +638,8 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate, steth_token
     )
 
     # Check exchange rate
-    after_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert after_exchange_rate == start_exchange_rate
+    after_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert after_asset_amt_per_yang == start_asset_amt_per_yang
 
     # Get user balance
     start_user_bal = from_uint((await steth_token.balanceOf(TROVE1_OWNER).execute()).result.balance)
@@ -675,8 +676,8 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate, steth_token
     )
 
     # Check exchange rate
-    end_exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    assert end_exchange_rate == 0
+    end_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    assert end_asset_amt_per_yang == WAD_SCALE
 
 
 @pytest.mark.usefixtures("rebase")
@@ -894,9 +895,9 @@ async def test_gate_levy(shrine_authed, gate, steth_token):
     assert expected_user_assets == after_gate_bal
 
     # Check exchange rate
-    exchange_rate = (await gate.get_exchange_rate().execute()).result.rate
-    expected_exchange_rate = int(after_gate_bal / from_wad(user_yang))
-    assert exchange_rate == expected_exchange_rate
+    asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
+    expected_asset_amt_per_yang = int(after_gate_bal / from_wad(user_yang))
+    assert asset_amt_per_yang == expected_asset_amt_per_yang
 
     # Check tax collector has received tax
     after_tax_collector_bal = from_uint((await steth_token.balanceOf(TAX_COLLECTOR).execute()).result.balance)

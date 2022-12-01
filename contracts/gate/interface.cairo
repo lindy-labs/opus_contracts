@@ -37,7 +37,7 @@ namespace IGate {
     func get_total_yang() -> (total: wad) {
     }
 
-    func get_exchange_rate() -> (rate: wad) {
+    func get_asset_amt_per_yang() -> (amt: wad) {
     }
 
     func preview_enter(assets: wad) -> (preview: wad) {
