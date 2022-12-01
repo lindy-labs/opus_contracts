@@ -26,6 +26,8 @@ from tests.shrine.constants import (
     SHRINE_FULL_ACCESS,
     YANG1_ADDRESS,
     YANGS,
+    YIN_NAME,
+    YIN_SYMBOL,
 )
 from tests.utils import (
     ABBOT_ROLE,
@@ -202,7 +204,9 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 
     shrine_contract = compile_code(shrine_code)
 
-    shrine = await starknet.deploy(contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER])
+    shrine = await starknet.deploy(
+        contract_class=shrine_contract, constructor_calldata=[SHRINE_OWNER, YIN_NAME, YIN_SYMBOL]
+    )
 
     # Grant shrine owner all roles
     await shrine.grant_role(SHRINE_FULL_ACCESS, SHRINE_OWNER).execute(caller_address=SHRINE_OWNER)

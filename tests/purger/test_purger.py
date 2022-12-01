@@ -384,7 +384,6 @@ async def test_liquidate_pass(
     starknet,
     shrine,
     purger,
-    yin,
     steth_token,
     doge_token,
     wbtc_token,
@@ -427,7 +426,7 @@ async def test_liquidate_pass(
     close_amt = from_wad(close_amt_wad)
 
     # Sanity check: searcher has sufficient yin
-    searcher_yin_balance = (await yin.balanceOf(SEARCHER).execute()).result.balance
+    searcher_yin_balance = (await shrine.balanceOf(SEARCHER).execute()).result.balance
     assert from_uint(searcher_yin_balance) > close_amt_wad
 
     # Get yang balance of searcher
@@ -661,7 +660,6 @@ async def test_full_absorb_pass(
     starknet,
     shrine,
     purger,
-    yin,
     steth_token,
     doge_token,
     wbtc_token,
@@ -694,7 +692,7 @@ async def test_full_absorb_pass(
         assert_equalish(penalty, expected_penalty)
 
     # Sanity check: absorber has sufficient yin
-    absorber_yin_balance = (await yin.balanceOf(MOCK_ABSORBER).execute()).result.balance
+    absorber_yin_balance = (await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance
     assert from_uint(absorber_yin_balance) > before_trove_debt
 
     # Get yang balance of absorber
@@ -794,7 +792,6 @@ async def test_full_absorb_pass(
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
 @pytest.mark.usefixtures(
-    "yin",
     "steth_token",
     "doge_token",
     "wbtc_token",

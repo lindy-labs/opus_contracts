@@ -71,9 +71,6 @@ namespace IShrine {
     func move_yang(yang: address, src_trove_id: ufelt, dst_trove_id: ufelt, amount: wad) {
     }
 
-    func move_yin(src: address, dst: address, amount: wad) {
-    }
-
     func deposit(yang: address, trove_id: ufelt, amount: wad) {
     }
 
