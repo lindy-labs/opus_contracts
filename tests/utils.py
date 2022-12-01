@@ -60,7 +60,8 @@ Calldata = list[int]  # payload arguments sent with a function call
 Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
 
 # Default error margin for fixed point calculations
-ERROR_MARGIN = Decimal("0.000000001")
+ERROR_MARGIN = Decimal("1E-10")
+WBTC_ERROR_MARGIN = Decimal("1E-8")
 
 seed(420)
 
@@ -226,7 +227,15 @@ def wad_to_ray(n: int) -> int:
     return int(n * (RAY_SCALE // WAD_SCALE))
 
 
-def to_decimals(n: Union[int, float, Decimal], token_decimals: int) -> int:
+def from_ray(n: int) -> Decimal:
+    return Decimal(n) / RAY_SCALE
+
+
+def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
+    assert abs(a - b) <= error
+
+
+def to_fixed_point(n: Union[int, float, Decimal], decimals: int) -> int:
     """
     Helper function to scale a number to its fixed point equivalent
     according to the given decimal precision.
@@ -235,22 +244,33 @@ def to_decimals(n: Union[int, float, Decimal], token_decimals: int) -> int:
     ---------
     n: int
         Amount in real terms.
-    token_decimals: int
+    decimals: int
         Number of decimals to scale by.
 
     Returns
     -------
     Scaled amount.
     """
-    return int(n * 10**token_decimals)
+    return int(n * 10**decimals)
 
 
-def from_ray(n: int) -> Decimal:
-    return Decimal(n) / RAY_SCALE
+def from_fixed_point(n: int, decimals: int) -> Decimal:
+    """
+    Helper function to scale a fixed point number to real value
+    according to the given decimal precision.
 
+    Arguments
+    ---------
+    n: int
+        Amount in fixed point.
+    decimals: int
+        Number of decimals to scale by.
 
-def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
-    assert abs(a - b) <= error
+    Returns
+    -------
+    Real value in Decimal.
+    """
+    return Decimal(n) / 10**decimals
 
 
 #
@@ -336,10 +356,6 @@ def calculate_trove_threshold_and_value(
     assert len(prices) == len(amounts) == len(thresholds)
 
     for p, a, t in zip(prices, amounts, thresholds):
-        p = from_wad(p)
-        a = from_wad(a)
-        t = from_ray(t)
-
         total_value += p * a
         cumulative_weighted_threshold += p * a * t
 
