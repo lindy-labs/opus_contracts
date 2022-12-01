@@ -52,7 +52,7 @@ PURGE_FUNCTIONS = ("purge", "restricted_purge")
 async def advance_yang_prices_by_percentage(
     starknet: Starknet,
     shrine: StarknetContract,
-    yangs: List[YangConfig],
+    yangs: tuple[YangConfig],
     price_change: Decimal,
 ):
     """
@@ -180,6 +180,8 @@ async def forged_trove_1(
     doge_yang: YangConfig,
     wbtc_yang: YangConfig,
 ) -> int:
+    yangs = (steth_yang, doge_yang, wbtc_yang)
+
     # Get stETH price
     steth_price = (await shrine.get_current_yang_price(steth_yang.contract_address).execute()).result.price
 
@@ -196,14 +198,14 @@ async def forged_trove_1(
         from_wad(USER_DOGE_DEPOSIT_WAD),
         from_fixed_point(USER_WBTC_DEPOSIT_AMT, 8),
     ]
-    thresholds = [from_ray(t) for t in (steth_yang.threshold, doge_yang.threshold, wbtc_yang.threshold)]
+    thresholds = [from_ray(yang.threshold) for yang in yangs]
     max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
 
     forge_amt = to_wad(max_forge_amt - 1)
 
     await abbot.open_trove(
         forge_amt,
-        [steth_yang.contract_address, doge_yang.contract_address, wbtc_yang.contract_address],
+        [yang.contract_address for yang in yangs],
         [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT],
     ).execute(caller_address=TROVE1_OWNER)
 
@@ -396,7 +398,7 @@ async def test_liquidate_pass(
     price_change,
     max_close_percentage,
 ):
-    yangs = [steth_yang, doge_yang, wbtc_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy
@@ -482,11 +484,8 @@ async def test_liquidate_pass(
     liquidate = await purger.liquidate(TROVE_1, close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
     # Check return data
-    assert liquidate.result.yangs == [
-        steth_yang.contract_address,
-        doge_yang.contract_address,
-        wbtc_yang.contract_address,
-    ]
+    expected_yang_addresses = [yang.contract_address for yang in yangs]
+    assert liquidate.result.yangs == expected_yang_addresses
     freed_steth = liquidate.result.freed_assets_amt[0]
     freed_doge = liquidate.result.freed_assets_amt[1]
     freed_wbtc = liquidate.result.freed_assets_amt[2]
@@ -500,17 +499,7 @@ async def test_liquidate_pass(
         purger.contract_address,
         "Purged",
         lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER]
-        and d[5:]
-        == [
-            len(yangs),
-            steth_yang.contract_address,
-            doge_yang.contract_address,
-            wbtc_yang.contract_address,
-            len(yangs),
-            freed_steth,
-            freed_doge,
-            freed_wbtc,
-        ],
+        and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), freed_steth, freed_doge, freed_wbtc],
     )
 
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
@@ -602,7 +591,7 @@ async def test_liquidate_fail_exceed_max_close(
     wbtc_yang: YangConfig,
 ):
 
-    yangs = [steth_yang, doge_yang, wbtc_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     price_change = Decimal("-0.1")
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
@@ -636,7 +625,7 @@ async def test_liquidate_fail_insufficient_yin(
     wbtc_yang: YangConfig,
 ):
     # SEARCHER is not funded because `funded_searcher` fixture was omitted
-    yangs = [steth_yang, doge_yang, wbtc_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     price_change = Decimal("-0.1")
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
@@ -671,7 +660,7 @@ async def test_full_absorb_pass(
     wbtc_yang: YangConfig,
     price_change,
 ):
-    yangs = [steth_yang, doge_yang, wbtc_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy
@@ -722,7 +711,8 @@ async def test_full_absorb_pass(
     absorb = await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
 
     # Check return data
-    assert absorb.result.yangs == [steth_yang.contract_address, doge_yang.contract_address, wbtc_yang.contract_address]
+    expected_yang_addresses = [yang.contract_address for yang in yangs]
+    assert absorb.result.yangs == expected_yang_addresses
     freed_steth = absorb.result.freed_assets_amt[0]
     freed_doge = absorb.result.freed_assets_amt[1]
     freed_wbtc = absorb.result.freed_assets_amt[2]
@@ -736,17 +726,7 @@ async def test_full_absorb_pass(
         purger.contract_address,
         "Purged",
         lambda d: d[:4] == [TROVE_1, before_trove_info.debt, MOCK_ABSORBER, MOCK_ABSORBER]
-        and d[5:]
-        == [
-            len(yangs),
-            steth_yang.contract_address,
-            doge_yang.contract_address,
-            wbtc_yang.contract_address,
-            len(yangs),
-            freed_steth,
-            freed_doge,
-            freed_wbtc,
-        ],
+        and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), freed_steth, freed_doge, freed_wbtc],
     )
 
     # Check that LTV is 0 after all debt is repaid
@@ -816,7 +796,7 @@ async def test_absorb_fail_ltv_too_low(
     """
     Failing tests for `absorb` when threshold <= LTV <= max penalty LTV
     """
-    yangs = [steth_yang, doge_yang, wbtc_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy
