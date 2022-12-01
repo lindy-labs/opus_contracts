@@ -4,7 +4,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 
 from contracts.gate.rebasing_yang.library import Gate
 
-from contracts.lib.aliases import address, wad
+from contracts.lib.aliases import address, ufelt, wad
 
 //
 // Getters
@@ -38,12 +38,12 @@ func get_total_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return (Gate.get_total_yang(),);
 }
 
-// Returns the amount of underlying assets represented by one wad of yang in the Gate
+// Returns the amount of underlying assets in wad represented by one wad of yang in the Gate
 @view
 func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    amt: ufelt
+    amt: wad
 ) {
-    let rate: ufelt = Gate.get_asset_amt_per_yang();
+    let rate: wad = Gate.get_asset_amt_per_yang();
     return (rate,);
 }
 
@@ -59,6 +59,6 @@ func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(yang: wad) -> (
     preview: ufelt
 ) {
-    let preview: ufelt = Gate.convert_to_assets(yang_wad);
+    let preview: ufelt = Gate.convert_to_assets(yang);
     return (preview,);
 }
