@@ -40,10 +40,10 @@ namespace IGate {
     func get_asset_amt_per_yang() -> (amt: wad) {
     }
 
-    func preview_enter(assets: wad) -> (preview: wad) {
+    func preview_enter(assets: ufelt) -> (preview: wad) {
     }
 
-    func preview_exit(yang: wad) -> (preview: wad) {
+    func preview_exit(yang: wad) -> (preview: ufelt) {
     }
 }
 

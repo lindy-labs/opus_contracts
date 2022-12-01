@@ -5,7 +5,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.aliases import address, bool, ray, ufelt
 from contracts.lib.interfaces import IERC20
 from contracts.lib.wad_ray import WadRay
 

@@ -40,11 +40,11 @@ from contracts.lib.wad_ray import WadRay
 //
 
 @event
-func Enter(user: address, trove_id: ufelt, assets: wad, yang: wad) {
+func Enter(user: address, trove_id: ufelt, assets: ufelt, yang: wad) {
 }
 
 @event
-func Exit(user: address, trove_id: ufelt, assets: wad, yang: wad) {
+func Exit(user: address, trove_id: ufelt, assets: ufelt, yang: wad) {
 }
 
 @event
@@ -168,7 +168,7 @@ func exit{
 
     AccessControl.assert_has_role(GateRoles.EXIT);
 
-    let assets: wad = Gate.convert_to_assets(yang);
+    let assets: ufelt = Gate.convert_to_assets(yang);
     if (assets == 0) {
         return (0,);
     }
