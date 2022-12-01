@@ -136,7 +136,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 @external
 func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
-) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*) {
     alloc_locals;
 
     let (shrine: address) = purger_shrine.read();
@@ -175,7 +175,7 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
 @external
 func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
-    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
 ) {
     alloc_locals;
 
@@ -246,16 +246,15 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     percentage_freed: ray,
     funder: address,
     recipient: address,
-) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*) {
     alloc_locals;
-
     // Melt from the funder address directly
     IShrine.melt(shrine, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
     let (sentinel: address) = purger_sentinel.read();
     let (yang_count, yangs: address*) = ISentinel.get_yang_addresses(sentinel);
-    let (freed_assets_amt: wad*) = alloc();
+    let (freed_assets_amt: ufelt*) = alloc();
 
     free_yangs(
         shrine, sentinel, recipient, trove_id, yang_count, yangs, percentage_freed, freed_assets_amt
@@ -394,7 +393,7 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     yang_count: ufelt,
     yangs: address*,
     percentage_freed: ray,
-    freed_assets_amt: wad*,
+    freed_assets_amt: ufelt*,
 ) {
     if (yang_count == 0) {
         return ();
@@ -422,7 +421,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt,
     yang: address,
     percentage_freed: ray,
-    freed_assets_amt: wad*,
+    freed_assets_amt: ufelt*,
 ) {
     let (deposited_amt: wad) = IShrine.get_deposit(shrine, yang, trove_id);
 
@@ -439,7 +438,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     ReentrancyGuard._start();
     // The denomination is based on the number of decimals for the token
-    let (freed_asset_amt: wad) = IGate.exit(gate, recipient, trove_id, freed_yang);
+    let (freed_asset_amt: ufelt) = IGate.exit(gate, recipient, trove_id, freed_yang);
     assert [freed_assets_amt] = freed_asset_amt;
     IShrine.seize(shrine, yang, trove_id, freed_yang);
     ReentrancyGuard._end();

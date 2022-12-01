@@ -117,7 +117,7 @@ func get_troves_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 // create a new trove
 @external
 func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: wad*
+    forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: ufelt*
 ) {
     alloc_locals;
 
@@ -199,7 +199,7 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 @external
 func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yang: address, trove_id: ufelt, amount: ufelt
+    yang: address, trove_id: ufelt, amount: wad
 ) {
     alloc_locals;
 
@@ -298,7 +298,7 @@ func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     trove_id: ufelt,
     deposits_count: ufelt,
     yangs: address*,
-    amounts: wad*,
+    amounts: ufelt*,
 ) {
     if (deposits_count == 0) {
         return ();
@@ -310,7 +310,7 @@ func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }
 
 func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, sentinel: address, user: address, trove_id: ufelt, yang: address, amount: wad
+    shrine: address, sentinel: address, user: address, trove_id: ufelt, yang: address, amount: ufelt
 ) {
     alloc_locals;
 

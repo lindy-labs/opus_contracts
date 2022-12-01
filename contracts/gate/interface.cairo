@@ -19,10 +19,10 @@ namespace IGate {
     //
     // external
     //
-    func enter(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
+    func enter(user: address, trove_id: ufelt, assets: ufelt) -> (yang: wad) {
     }
 
-    func exit(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
+    func exit(user: address, trove_id: ufelt, yang: wad) -> (assets: ufelt) {
     }
 
     func kill() {
