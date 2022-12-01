@@ -109,7 +109,7 @@ namespace Gate {
 
             // Scale by difference
             let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
-            let (scaled_assets: wad, _) = unsigned_div_rem(yang, scale);
+            let (scaled_assets: ufelt, _) = unsigned_div_rem(yang, scale);
 
             return scaled_assets;
         } else {

@@ -122,7 +122,8 @@ namespace GateTax {
         }
 
         // Calculate taxable amount
-        // `rmul` on a wad and a ufelt representing a fixed point returns a ufelt with the same fixed point
+        // `rmul` on a ray and a ufelt representing a fixed point with a given decimal precision
+        // returns a ufelt representing a fixed point with the same decimal precision
         let chargeable: ufelt = WadRay.rmul(taxable, tax);
 
         // Transfer fees

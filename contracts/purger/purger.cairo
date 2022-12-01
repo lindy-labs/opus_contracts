@@ -65,7 +65,7 @@ func Purged(
     yangs_len: ufelt,
     yangs: address*,
     freed_assets_amt_len: ufelt,
-    freed_assets_amt: wad*,
+    freed_assets_amt: ufelt*,
 ) {
 }
 
@@ -200,14 +200,14 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     if (fully_absorbable == TRUE) {
         // Call purge with `percentage_freed` set to 100%
         let (
-            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(shrine, trove_id, trove_ltv, trove_debt, WadRay.RAY_ONE, absorber, absorber);
     } else {
         let percentage_freed: ray = get_percentage_freed(
             trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_balance
         );
         let (
-            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(
             shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
         );
@@ -423,10 +423,10 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     percentage_freed: ray,
     freed_assets_amt: ufelt*,
 ) {
-    let (deposited_amt: wad) = IShrine.get_deposit(shrine, yang, trove_id);
+    let (deposited_yang_amt: wad) = IShrine.get_deposit(shrine, yang, trove_id);
 
     // Early termination if no yang deposited
-    if (deposited_amt == 0) {
+    if (deposited_yang_amt == 0) {
         assert [freed_assets_amt] = 0;
         return ();
     }
@@ -434,7 +434,7 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
     // `rmul` of a wad and a ray returns a wad
-    let freed_yang: wad = WadRay.rmul(deposited_amt, percentage_freed);
+    let freed_yang: wad = WadRay.rmul(deposited_yang_amt, percentage_freed);
 
     ReentrancyGuard._start();
     // The denomination is based on the number of decimals for the token
