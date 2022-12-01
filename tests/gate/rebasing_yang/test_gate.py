@@ -22,11 +22,14 @@ from tests.utils import (
     TROVE_2,
     TRUE,
     WAD_DECIMALS,
+    WAD_ERROR_MARGIN,
     WAD_SCALE,
     ZERO_ADDRESS,
     assert_equalish,
     assert_event_emitted,
     compile_contract,
+    custom_error_margin,
+    from_fixed_point,
     from_uint,
     from_wad,
     set_block_timestamp,
@@ -41,7 +44,6 @@ from tests.utils import (
 # Constants
 #
 
-CUSTOM_ERROR_MARGIN = Decimal("10e-18")
 MOCK_ABBOT = str_to_felt("abbot")
 
 
@@ -67,19 +69,12 @@ def get_yang_from_assets(total_yang: int, total_assets: int, assets_amt: int, de
 
     Returns
     -------
-    Amount of yang in wad to be issued in Decimal.
+    Amount of yang to be issued in Decimal.
     """
-    if decimals == WAD_DECIMALS:
-        assets_amt = from_wad(assets_amt)
-        total_assets = from_wad(total_assets)
-    else:
-        assets_amt /= Decimal("10") ** (WAD_DECIMALS - decimals)
-        total_assets /= Decimal("10") ** (WAD_DECIMALS - decimals)
-
-    return from_wad(total_yang) * assets_amt / total_assets
+    return from_wad(total_yang) * from_fixed_point(assets_amt, decimals) / from_fixed_point(total_assets, decimals)
 
 
-def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> Decimal:
+def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int, decimals: int) -> Decimal:
     """
     Helper function to calculate the number of assets to be deposited to issue the
     given value of yang.
@@ -97,9 +92,9 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int) -> D
 
     Returns
     -------
-    Amount of assets, in the denomination of the decimals of the assets, to be deposited in Decimal.
+    Amount of assets to be deposited in Decimal.
     """
-    return from_wad(total_assets) * from_wad(yang_amt) / from_wad(total_yang)
+    return from_fixed_point(total_assets, decimals) * from_wad(yang_amt) / from_wad(total_yang)
 
 
 #
@@ -412,7 +407,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
     assert_equalish(
         from_wad(after_total_yang),
         from_wad(before_total_yang) + expected_yang,
-        CUSTOM_ERROR_MARGIN,
+        WAD_ERROR_MARGIN,
     )
 
     # Check user's yang
@@ -420,7 +415,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
     assert_equalish(
         from_wad(after_user_yang),
         from_wad(before_user_yang) + expected_yang,
-        CUSTOM_ERROR_MARGIN,
+        WAD_ERROR_MARGIN,
     )
 
     # Check event emitted
@@ -488,12 +483,12 @@ async def test_gate_subsequent_unique_enter_after_rebase(shrine_authed, gate_inf
     assert_equalish(
         from_wad(after_total_yang),
         from_wad(FIRST_DEPOSIT_YANG) + expected_yang,
-        CUSTOM_ERROR_MARGIN,
+        WAD_ERROR_MARGIN,
     )
 
     # Check user's yang
     after_user_yang = (await shrine_authed.get_deposit(token.contract_address, TROVE_2).execute()).result.balance
-    assert_equalish(from_wad(after_user_yang), expected_yang, CUSTOM_ERROR_MARGIN)
+    assert_equalish(from_wad(after_user_yang), expected_yang, WAD_ERROR_MARGIN)
 
     # Check event emitted
     assert_event_emitted(
@@ -605,6 +600,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
 @pytest.mark.asyncio
 async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
     token, decimals, gate = gate_info
+    asset_error_margin = custom_error_margin(decimals)
 
     deposit_amt = to_fixed_point(FIRST_DEPOSIT_AMT, decimals)
 
@@ -624,14 +620,14 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
     await shrine_authed.withdraw(token.contract_address, TROVE_2, trove_2_yang).execute(caller_address=MOCK_ABBOT)
 
     # Calculate expected assets
-    expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang)
+    expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang, decimals)
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().execute()).result.total
     assert_equalish(
-        from_wad(after_total_bal),
-        from_wad(start_total_bal) - expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_total_bal, decimals),
+        from_fixed_point(start_total_bal, decimals) - expected_assets,
+        asset_error_margin,
     )
 
     # Check gate yang balance
@@ -644,9 +640,9 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
 
     after_user_bal = from_uint((await token.balanceOf(TROVE2_OWNER).execute()).result.balance)
     assert_equalish(
-        from_wad(after_user_bal),
-        from_wad(start_user_bal) + expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_user_bal, decimals),
+        from_fixed_point(start_user_bal, decimals) + expected_assets,
+        asset_error_margin,
     )
 
     # Check exchange rate
@@ -672,14 +668,14 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
     await shrine_authed.withdraw(token.contract_address, TROVE_1, trove_1_yang).execute(caller_address=MOCK_ABBOT)
 
     # Calculate expected assets
-    expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang)
+    expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang, decimals)
 
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().execute()).result.total
     assert_equalish(
-        from_wad(end_total_bal),
-        from_wad(after_total_bal) - expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(end_total_bal, decimals),
+        from_fixed_point(after_total_bal, decimals) - expected_assets,
+        asset_error_margin,
     )
 
     # Check gate yang balance
@@ -692,9 +688,9 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
 
     after_user_bal = from_uint((await token.balanceOf(TROVE1_OWNER).execute()).result.balance)
     assert_equalish(
-        from_wad(after_user_bal),
-        from_wad(start_user_bal) + expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_user_bal, decimals),
+        from_fixed_point(start_user_bal, decimals) + expected_assets,
+        asset_error_margin,
     )
 
     # Check exchange rate
@@ -719,6 +715,7 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
 @pytest.mark.asyncio
 async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
     token, decimals, gate = gate_info
+    asset_error_margin = custom_error_margin(decimals)
 
     # Get initial exchange rate
     start_asset_amt_per_yang = (await gate.get_asset_amt_per_yang().execute()).result.amt
@@ -734,16 +731,15 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
     await shrine_authed.withdraw(token.contract_address, TROVE_2, trove_2_yang).execute(caller_address=MOCK_ABBOT)
 
     # Calculate expected assets
-    expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang)
+    expected_assets = get_assets_from_yang(start_total_yang, start_total_bal, trove_2_yang, decimals)
 
     # Check gate asset balance
     after_total_bal = (await gate.get_total_assets().execute()).result.total
 
-    # Using `assert_equalish` due to rounding error
     assert_equalish(
-        from_wad(after_total_bal),
-        from_wad(start_total_bal) - expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_total_bal, decimals),
+        from_fixed_point(start_total_bal, decimals) - expected_assets,
+        asset_error_margin,
     )
 
     # Check gate yang balance
@@ -756,11 +752,10 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
 
     after_user_bal = from_uint((await token.balanceOf(TROVE2_OWNER).execute()).result.balance)
 
-    # Using `assert_equalish` due to rounding error
     assert_equalish(
-        from_wad(after_user_bal),
-        from_wad(start_user_bal) + expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_user_bal, decimals),
+        from_fixed_point(start_user_bal, decimals) + expected_assets,
+        asset_error_margin,
     )
 
     # Check exchange rate
@@ -772,7 +767,7 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
     trove_1_yang = (await shrine_authed.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
 
     # Calculate expected assets
-    expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang)
+    expected_assets = get_assets_from_yang(after_total_yang, after_total_bal, trove_1_yang, decimals)
 
     # Withdraw from trove 1
     await gate.exit(TROVE1_OWNER, TROVE_1, trove_1_yang).execute(caller_address=MOCK_ABBOT)
@@ -781,9 +776,9 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
     # Check gate asset balance
     end_total_bal = (await gate.get_total_assets().execute()).result.total
     assert_equalish(
-        from_wad(end_total_bal),
-        from_wad(after_total_bal) - expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(end_total_bal, decimals),
+        from_fixed_point(after_total_bal, decimals) - expected_assets,
+        asset_error_margin,
     )
 
     # Check gate yang balance
@@ -796,9 +791,9 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
 
     after_user_bal = from_uint((await token.balanceOf(TROVE1_OWNER).execute()).result.balance)
     assert_equalish(
-        from_wad(after_user_bal),
-        from_wad(start_user_bal) + expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_user_bal, decimals),
+        from_fixed_point(start_user_bal, decimals) + expected_assets,
+        asset_error_margin,
     )
 
     # Check exchange rate
@@ -815,6 +810,7 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
 @pytest.mark.asyncio
 async def test_kill(shrine_authed, gate_info):
     token, decimals, gate = gate_info
+    asset_error_margin = custom_error_margin(decimals)
 
     # Kill
     await gate.kill().execute(caller_address=GATE_OWNER)
@@ -835,7 +831,7 @@ async def test_kill(shrine_authed, gate_info):
     before_user_yang = (await shrine_authed.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
     before_gate_yang = (await gate.get_total_yang().execute()).result.total
 
-    expected_assets = get_assets_from_yang(before_gate_yang, before_gate_balance, withdraw_yang_amt)
+    expected_assets = get_assets_from_yang(before_gate_yang, before_gate_balance, withdraw_yang_amt, decimals)
 
     # Withdraw from trove 1
     await gate.exit(TROVE1_OWNER, TROVE_1, withdraw_yang_amt).execute(caller_address=MOCK_ABBOT)
@@ -850,14 +846,14 @@ async def test_kill(shrine_authed, gate_info):
 
     # Assert withdrawal is successful
     assert_equalish(
-        from_wad(after_user_balance),
-        from_wad(before_user_balance) + expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_user_balance, decimals),
+        from_fixed_point(before_user_balance, decimals) + expected_assets,
+        asset_error_margin,
     )
     assert_equalish(
-        from_wad(after_gate_balance),
-        from_wad(before_gate_balance) - expected_assets,
-        CUSTOM_ERROR_MARGIN,
+        from_fixed_point(after_gate_balance, decimals),
+        from_fixed_point(before_gate_balance, decimals) - expected_assets,
+        asset_error_margin,
     )
 
     assert after_user_yang == before_user_yang - withdraw_yang_amt

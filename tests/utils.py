@@ -61,6 +61,7 @@ Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as
 
 # Default error margin for fixed point calculations
 ERROR_MARGIN = Decimal("1E-10")
+WAD_ERROR_MARGIN = Decimal("1E-18")
 WBTC_ERROR_MARGIN = Decimal("1E-8")
 
 seed(420)
@@ -271,6 +272,10 @@ def from_ray(n: int) -> Decimal:
 
 def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
     assert abs(a - b) <= error
+
+
+def custom_error_margin(negative_exp: int) -> Decimal:
+    return Decimal(f"1E-{negative_exp}")
 
 
 #
