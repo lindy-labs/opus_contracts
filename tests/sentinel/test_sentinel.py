@@ -7,13 +7,14 @@ from tests.utils import BAD_GUY, SENTINEL_OWNER, YangConfig, assert_event_emitte
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig):
     assert (await sentinel.get_admin().execute()).result.admin == SENTINEL_OWNER
     assert (await sentinel.has_role(SentinelRoles.ADD_YANG, SENTINEL_OWNER).execute()).result.has_role == 1
     yang_addrs = (await sentinel.get_yang_addresses().execute()).result.addresses
-    assert len(yang_addrs) == 2
+    assert len(yang_addrs) == 3
     assert steth_yang.contract_address in yang_addrs
     assert doge_yang.contract_address in yang_addrs
+    assert wbtc_yang.contract_address in yang_addrs
 
 
 @pytest.mark.asyncio
@@ -85,12 +86,15 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
 # Tests for view functions grouped together for efficiency since none of them change the state
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_view_funcs(sentinel, steth_yang: YangConfig, doge_yang: YangConfig, steth_gate, doge_gate):
+async def test_view_funcs(
+    sentinel, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig, steth_gate, doge_gate, wbtc_gate
+):
 
     # Testing `get_yang_addresses`
     assert (await sentinel.get_yang_addresses().execute()).result.addresses == [
         steth_yang.contract_address,
         doge_yang.contract_address,
+        wbtc_yang.contract_address,
     ]
 
     # Testing `get_gate_addresses`
@@ -100,10 +104,14 @@ async def test_view_funcs(sentinel, steth_yang: YangConfig, doge_yang: YangConfi
     assert (
         await sentinel.get_gate_address(doge_yang.contract_address).execute()
     ).result.gate == doge_gate.contract_address
+    assert (
+        await sentinel.get_gate_address(wbtc_yang.contract_address).execute()
+    ).result.gate == wbtc_gate.contract_address
 
     # Testing `get_yang`
     assert (await sentinel.get_yang(0).execute()).result.yang == steth_yang.contract_address
     assert (await sentinel.get_yang(1).execute()).result.yang == doge_yang.contract_address
+    assert (await sentinel.get_yang(2).execute()).result.yang == wbtc_yang.contract_address
 
     # Testing `get_yang_addresses_count`
-    assert (await sentinel.get_yang_addresses_count().execute()).result.count == 2
+    assert (await sentinel.get_yang_addresses_count().execute()).result.count == 3
