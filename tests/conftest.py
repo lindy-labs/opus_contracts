@@ -454,7 +454,9 @@ async def funded_trove1_owner(
 
 
 @pytest.fixture
-async def funded_trove2_owner(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+async def funded_trove2_owner(
+    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
+):
     # fund the user with bags
     await steth_token.mint(TROVE2_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE2_OWNER)
     await doge_token.mint(TROVE2_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE2_OWNER)
