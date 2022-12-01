@@ -134,6 +134,7 @@ namespace Gate {
             let (decimals: ufelt) = IERC20.decimals(asset);
 
             if (decimals == 18) {
+                // `assets` is of `wad` type
                 return assets;
             }
 
