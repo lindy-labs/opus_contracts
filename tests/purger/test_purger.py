@@ -361,7 +361,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
 @flaky
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize(
-    "max_close_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
+    "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
 )
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
@@ -381,7 +381,7 @@ async def test_liquidate_pass(
     steth_yang: YangConfig,
     doge_yang: YangConfig,
     price_change,
-    max_close_percentage,
+    max_close_multiplier,
 ):
     yangs = [steth_yang, doge_yang]
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
@@ -409,7 +409,7 @@ async def test_liquidate_pass(
     assert_equalish(from_wad(maximum_close_amt_wad), expected_maximum_close_amt)
 
     # Calculate close amount based on parametrization
-    close_amt_wad = input_close_amt_wad = int(max_close_percentage * maximum_close_amt_wad)
+    close_amt_wad = input_close_amt_wad = int(max_close_multiplier * maximum_close_amt_wad)
     if input_close_amt_wad > maximum_close_amt_wad:
         close_amt_wad = maximum_close_amt_wad
 
@@ -447,7 +447,7 @@ async def test_liquidate_pass(
     expected_after_trove_debt = before_trove_debt - close_amt
     expected_after_trove_value = before_trove_value * (1 - freed_percentage)
 
-    if max_close_percentage >= Decimal("1"):
+    if max_close_multiplier >= Decimal("1"):
         # Catch zero division error
         expected_after_trove_ltv = Decimal("0")
     else:
