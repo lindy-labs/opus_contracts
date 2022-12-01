@@ -119,6 +119,8 @@ async def funded_users(steth_token, wbtc_token):
 async def steth_gate_taxable_info(starknet, shrine, steth_token) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
+
+    Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
 
@@ -141,6 +143,9 @@ async def steth_gate_taxable_info(starknet, shrine, steth_token) -> tuple[Starkn
 
 @pytest.fixture
 async def steth_gate_info(steth_token, steth_gate) -> tuple[StarknetContract, int, StarknetContract]:
+    """
+    Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
+    """
     # Grant `Abbot` access to `enter` and `exit
     await steth_gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=GATE_OWNER)
     decimals = (await steth_token.decimals().execute()).result.decimals
@@ -151,6 +156,8 @@ async def steth_gate_info(steth_token, steth_gate) -> tuple[StarknetContract, in
 async def wbtc_gate_taxable_info(starknet, shrine, wbtc_token) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
+
+    Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
 
@@ -173,6 +180,9 @@ async def wbtc_gate_taxable_info(starknet, shrine, wbtc_token) -> tuple[Starknet
 
 @pytest.fixture
 async def wbtc_gate_info(wbtc_token, wbtc_gate) -> tuple[StarknetContract, int, StarknetContract]:
+    """
+    Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
+    """
     # Grant `Abbot` access to `enter` and `exit
     await wbtc_gate.grant_role(ABBOT_ROLE, MOCK_ABBOT).execute(caller_address=GATE_OWNER)
     decimals = (await wbtc_token.decimals().execute()).result.decimals
@@ -281,7 +291,10 @@ async def rebase(gate_info, trove_1_enter) -> StarknetCallInfo:
 @pytest.fixture
 def gate_info(request) -> StarknetContract:
     """
-    Wrapper fixture to pass the non-taxable and taxable instances of Gate module to `pytest.parametrize`.
+    Wrapper fixture to pass the non-taxable and taxable instances of the respective gate fixtures
+    to `pytest.parametrize`.
+
+    Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     return request.getfixturevalue(request.param)
 
