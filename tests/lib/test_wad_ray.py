@@ -12,11 +12,13 @@ from tests.utils import (
     CAIRO_PRIME,
     RANGE_CHECK_BOUND,
     RAY_SCALE,
+    WAD_DECIMALS,
     WAD_RAY_DIFF,
     WAD_SCALE,
     Uint256,
     compile_contract,
     signed_int_to_felt,
+    to_fixed_point,
     to_ray,
     to_uint,
     to_wad,
@@ -324,6 +326,21 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
     else:
         res = getattr((await method(input_val).execute()).result, ret)
         assert res == expected_py
+
+
+@settings(max_examples=50, deadline=None)
+@given(val=st_uint125, decimals=st.integers(min_value=0, max_value=17))
+@example(val=(BOUND // 10**10) + 1, decimals=8)  # Failing case
+@pytest.mark.asyncio
+async def test_fixed_point_to_wad_conversion_pass(wad_ray, val, decimals):
+    expected_output = to_fixed_point(val, WAD_DECIMALS - decimals)
+
+    if expected_output > BOUND:
+        with pytest.raises(StarkException, match="WadRay: Out of bounds"):
+            await wad_ray.test_fixed_point_to_wad(val, decimals).execute()
+    else:
+        res = (await wad_ray.test_fixed_point_to_wad(val, decimals).execute()).result.res
+        assert res == expected_output
 
 
 @settings(max_examples=50, deadline=None)
