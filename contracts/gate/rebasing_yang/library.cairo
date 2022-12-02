@@ -26,10 +26,6 @@ func gate_asset() -> (asset: address) {
 }
 
 namespace Gate {
-    //
-    // Constructor
-    //
-
     func initializer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         shrine: address, asset: address
     ) {
@@ -37,8 +33,6 @@ namespace Gate {
         gate_asset.write(asset);
         return ();
     }
-
-    // Getters
 
     func get_shrine{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> address {
         let (shrine: address) = gate_shrine.read();
@@ -75,21 +69,15 @@ namespace Gate {
         let (asset: address) = gate_asset.read();
         let (decimals: ufelt) = IERC20.decimals(asset);
 
-        if (decimals == 18) {
+        if (decimals == WadRay.WAD_DECIMALS) {
             // `amt` is already scaled to `wad`
             return amt;
         }
 
         // Scale tokens with less than 18 decimals to wad
-        let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
-        let scaled_amt: wad = amt * scale;
-
+        let scaled_amt: wad = WadRay.fixed_point_to_wad(amt, decimals);
         return scaled_amt;
     }
-
-    //
-    // Internal
-    //
 
     // Return value is `ufelt` because `asset` may not be 18 decimals
     func convert_to_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -103,7 +91,7 @@ namespace Gate {
             let (asset: address) = gate_asset.read();
             let (decimals: ufelt) = IERC20.decimals(asset);
 
-            if (decimals == 18) {
+            if (decimals == WadRay.WAD_DECIMALS) {
                 return yang;
             }
 
@@ -133,15 +121,13 @@ namespace Gate {
             let (asset: address) = gate_asset.read();
             let (decimals: ufelt) = IERC20.decimals(asset);
 
-            if (decimals == 18) {
+            if (decimals == WadRay.WAD_DECIMALS) {
                 // `assets` is of `wad` type
                 return assets;
             }
 
             // Scale by difference
-            let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
-            let scaled_yang: wad = assets * scale;
-
+            let scaled_yang: wad = WadRay.fixed_point_to_wad(assets, decimals);
             return scaled_yang;
         } else {
             let total_assets: ufelt = get_total_assets();
