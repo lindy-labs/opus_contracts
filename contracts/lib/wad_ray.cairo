@@ -234,6 +234,9 @@ namespace WadRay {
 
     // Scales a fixed point number with less than 18 decimals of precision to wad
     func fixed_point_to_wad{range_check_ptr}(n: ufelt, decimals: ufelt) -> wad {
+        with_attr error_message("WadRay: Decimals is greater than 18") {
+            assert_nn_le(decimals, WAD_DECIMALS);
+        }
         let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
         let scaled_n: wad = n * scale;
         assert_valid(scaled_n);

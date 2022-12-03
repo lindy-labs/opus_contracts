@@ -329,13 +329,17 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
 
 
 @settings(max_examples=50, deadline=None)
-@given(val=st_uint125, decimals=st.integers(min_value=0, max_value=17))
-@example(val=(BOUND // 10**10) + 1, decimals=8)  # Failing case
+@given(val=st_uint125, decimals=st.integers(min_value=0, max_value=20))
+@example(val=(BOUND // 10**10) + 1, decimals=8)  # Failing case: scaled value > BOUND
+@example(val=10**18, decimals=19)  # Failing case: decimals > 18
 @pytest.mark.asyncio
 async def test_fixed_point_to_wad_conversion_pass(wad_ray, val, decimals):
     expected_output = to_fixed_point(val, WAD_DECIMALS - decimals)
 
-    if expected_output > BOUND:
+    if decimals > 18:
+        with pytest.raises(StarkException, match="WadRay: Decimals is greater than 18"):
+            await wad_ray.test_fixed_point_to_wad(val, decimals).execute()
+    elif expected_output > BOUND:
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await wad_ray.test_fixed_point_to_wad(val, decimals).execute()
     else:
