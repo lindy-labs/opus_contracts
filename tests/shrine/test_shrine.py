@@ -1096,13 +1096,6 @@ async def test_shrine_melt_pass(shrine, melt_amt_wad):
         [TROVE_1, FEED_LEN - 1, outstanding_amt_wad],
     )
 
-    # Yin events
-    expected_remaining_yin = FORGE_AMT_WAD - melt_amt_wad
-    assert_event_emitted(melt, shrine.contract_address, "YinUpdated", [TROVE1_OWNER, expected_remaining_yin])
-
-    expected_yin_supply = (FORGE_AMT_WAD * 2) - melt_amt_wad
-    assert_event_emitted(melt, shrine.contract_address, "YinTotalUpdated", [expected_yin_supply])
-
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
     assert system_debt == expected_total_debt_wad
 
