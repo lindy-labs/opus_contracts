@@ -337,7 +337,7 @@ async def test_melt(abbot, shrine, melter, melt_amt):
 
     # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
-    assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amount)])
+    assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amt)])
 
     balance = (await shrine.balanceOf(melter).execute()).result.balance
     assert from_uint(balance) == remaining_amount

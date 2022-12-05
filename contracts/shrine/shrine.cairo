@@ -839,7 +839,7 @@ func melt{
     set_trove(trove_id, new_trove_info);
 
     // Update balances
-    melt_internal(user, amount);
+    melt_internal(user, melt_amt);
 
     // Events
     DebtTotalUpdated.emit(new_system_debt);
