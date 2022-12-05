@@ -65,7 +65,7 @@ func Purged(
     yangs_len: ufelt,
     yangs: address*,
     freed_assets_amt_len: ufelt,
-    freed_assets_amt: wad*,
+    freed_assets_amt: ufelt*,
 ) {
 }
 
@@ -136,7 +136,7 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 @external
 func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, purge_amt: wad, recipient: address
-) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*) {
     alloc_locals;
 
     let (shrine: address) = purger_shrine.read();
@@ -173,7 +173,7 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
 @external
 func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id: ufelt) -> (
-    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+    yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
 ) {
     alloc_locals;
 
@@ -198,14 +198,14 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     if (fully_absorbable == TRUE) {
         // Call purge with `percentage_freed` set to 100%
         let (
-            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(shrine, trove_id, trove_ltv, trove_debt, WadRay.RAY_ONE, absorber, absorber);
     } else {
         let percentage_freed: ray = get_percentage_freed(
             trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_balance
         );
         let (
-            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(
             shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
         );
@@ -244,16 +244,15 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     percentage_freed: ray,
     funder: address,
     recipient: address,
-) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*) {
+) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*) {
     alloc_locals;
-
     // Melt from the funder address directly
     IShrine.melt(shrine, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
     let (sentinel: address) = purger_sentinel.read();
     let (yang_count, yangs: address*) = ISentinel.get_yang_addresses(sentinel);
-    let (freed_assets_amt: wad*) = alloc();
+    let (freed_assets_amt: ufelt*) = alloc();
 
     free_yangs(
         shrine, sentinel, recipient, trove_id, yang_count, yangs, percentage_freed, freed_assets_amt
@@ -392,7 +391,7 @@ func free_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     yang_count: ufelt,
     yangs: address*,
     percentage_freed: ray,
-    freed_assets_amt: wad*,
+    freed_assets_amt: ufelt*,
 ) {
     if (yang_count == 0) {
         return ();
@@ -420,12 +419,12 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt,
     yang: address,
     percentage_freed: ray,
-    freed_assets_amt: wad*,
+    freed_assets_amt: ufelt*,
 ) {
-    let (deposited_amt: wad) = IShrine.get_deposit(shrine, yang, trove_id);
+    let (deposited_yang_amt: wad) = IShrine.get_deposit(shrine, yang, trove_id);
 
     // Early termination if no yang deposited
-    if (deposited_amt == 0) {
+    if (deposited_yang_amt == 0) {
         assert [freed_assets_amt] = 0;
         return ();
     }
@@ -433,11 +432,11 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
 
     // `rmul` of a wad and a ray returns a wad
-    let freed_yang: wad = WadRay.rmul(deposited_amt, percentage_freed);
+    let freed_yang: wad = WadRay.rmul(deposited_yang_amt, percentage_freed);
 
     ReentrancyGuard._start();
     // The denomination is based on the number of decimals for the token
-    let (freed_asset_amt: wad) = IGate.exit(gate, recipient, trove_id, freed_yang);
+    let (freed_asset_amt: ufelt) = IGate.exit(gate, recipient, trove_id, freed_yang);
     assert [freed_assets_amt] = freed_asset_amt;
     IShrine.seize(shrine, yang, trove_id, freed_yang);
     ReentrancyGuard._end();

@@ -28,14 +28,14 @@ namespace IAbbot {
     //
 
     func open_trove(
-        forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: wad*
+        forge_amount: wad, yangs_len: ufelt, yangs: address*, amounts_len: ufelt, amounts: ufelt*
     ) {
     }
 
     func close_trove(trove_id: ufelt) {
     }
 
-    func deposit(yang: address, trove_id: ufelt, amount: wad) {
+    func deposit(yang: address, trove_id: ufelt, amount: ufelt) {
     }
 
     func withdraw(yang: address, trove_id: ufelt, amount: wad) {

@@ -776,9 +776,9 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     assert amt == deposit_amt_wad
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
+    yang_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [deposit_amt_wad], [YANG1_THRESHOLD])
+    expected_limit = calculate_max_forge([yang_price], [from_wad(deposit_amt_wad)], [from_ray(YANG1_THRESHOLD)])
     assert_equalish(max_forge_amt, expected_limit)
 
 
@@ -865,9 +865,9 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     assert is_healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
+    yang_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [remaining_amt_wad], [YANG1_THRESHOLD])
+    expected_limit = calculate_max_forge([yang_price], [from_wad(remaining_amt_wad)], [from_ray(YANG1_THRESHOLD)])
     assert_equalish(max_forge_amt, expected_limit)
 
 
@@ -910,10 +910,10 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     assert is_healthy == TRUE
 
     # Check max forge amount
-    yang0_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
-    expected_max_forge_amt = calculate_max_forge([yang0_price], [remaining_amt_wad], [YANG1_THRESHOLD]) - from_wad(
-        FORGE_AMT_WAD
-    )
+    yang0_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
+    expected_max_forge_amt = calculate_max_forge(
+        [yang0_price], [from_wad(remaining_amt_wad)], [from_ray(YANG1_THRESHOLD)]
+    ) - from_wad(FORGE_AMT_WAD)
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
     assert_equalish(max_forge_amt, expected_max_forge_amt)
 
@@ -1010,7 +1010,9 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
 
     # Check max forge amount
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_limit = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG1_THRESHOLD])
+    expected_limit = calculate_max_forge(
+        [from_wad(yang_price)], [from_wad(INITIAL_DEPOSIT_WAD)], [from_ray(YANG1_THRESHOLD)]
+    )
     current_debt = from_wad(trove_info.debt)
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
@@ -1116,11 +1118,11 @@ async def test_shrine_melt_pass(shrine, melt_amt_wad):
     assert is_healthy == TRUE
 
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
+    yang_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_max_forge_amt = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG1_THRESHOLD]) - from_wad(
-        outstanding_amt_wad
-    )
+    expected_max_forge_amt = calculate_max_forge(
+        [yang_price], [from_wad(INITIAL_DEPOSIT_WAD)], [from_ray(YANG1_THRESHOLD)]
+    ) - from_wad(outstanding_amt_wad)
     assert_equalish(max_forge_amt, expected_max_forge_amt)
 
 
@@ -1706,9 +1708,11 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
 @pytest.mark.asyncio
 async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
     # Check max forge amount
-    yang_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
+    yang_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    expected_max_forge_amt = calculate_max_forge([yang_price], [INITIAL_DEPOSIT_WAD], [YANG1_THRESHOLD])
+    expected_max_forge_amt = calculate_max_forge(
+        [yang_price], [from_wad(INITIAL_DEPOSIT_WAD)], [from_ray(YANG1_THRESHOLD)]
+    )
     current_debt = from_wad((await shrine.get_trove_info(TROVE_1).execute()).result.debt)
     assert_equalish(max_forge_amt, expected_max_forge_amt - current_debt)
 
@@ -1737,7 +1741,7 @@ async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
 
     # Check max forge amount
     max_forge_amt = from_wad((await shrine.get_max_forge(TROVE_1).execute()).result.max)
-    move_amt_value = move_amt * from_wad(yang_price) * from_ray(YANG1_THRESHOLD)
+    move_amt_value = move_amt * yang_price * from_ray(YANG1_THRESHOLD)
     expected_max_forge_amt -= move_amt_value
     assert_equalish(max_forge_amt, expected_max_forge_amt - current_debt)
 
@@ -1982,11 +1986,11 @@ async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
 
     prices = []
     for d in DEPOSITS:
-        price = (await shrine.get_current_yang_price(d["address"]).execute()).result.price
+        price = from_wad((await shrine.get_current_yang_price(d["address"]).execute()).result.price)
         prices.append(price)
 
     expected_threshold, expected_value = calculate_trove_threshold_and_value(
-        prices, [d["amount"] for d in DEPOSITS], [d["threshold"] for d in DEPOSITS]
+        prices, [from_wad(d["amount"]) for d in DEPOSITS], [from_ray(d["threshold"]) for d in DEPOSITS]
     )
 
     expected_max_forge_amt = expected_threshold * expected_value
@@ -2008,9 +2012,9 @@ async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
 @pytest.mark.parametrize(
     "thresholds",
     [
-        (to_ray(Decimal("0.5")), to_ray(Decimal("0.66")), to_ray(Decimal("0.8"))),
-        (to_ray(Decimal("0.65432")), to_ray(Decimal("0.76543")), to_ray(Decimal("0.87654"))),
-        (to_ray(Decimal("0.333")), to_ray(Decimal("0.666")), to_ray(Decimal("0.888"))),
+        (Decimal("0.5"), Decimal("0.66"), Decimal("0.8")),
+        (Decimal("0.65432"), Decimal("0.76543"), Decimal("0.87654")),
+        (Decimal("0.333"), Decimal("0.666"), Decimal("0.888")),
     ],
 )
 @pytest.mark.asyncio
@@ -2018,13 +2022,13 @@ async def test_get_trove_info_variable_thresholds(shrine, thresholds):
     prices = []
     for d, threshold in zip(DEPOSITS, thresholds):
         yang_address = d["address"]
-        await shrine.set_threshold(yang_address, threshold).execute(caller_address=SHRINE_OWNER)
+        await shrine.set_threshold(yang_address, to_ray(threshold)).execute(caller_address=SHRINE_OWNER)
 
-        price = (await shrine.get_current_yang_price(yang_address).execute()).result.price
+        price = from_wad((await shrine.get_current_yang_price(yang_address).execute()).result.price)
         prices.append(price)
 
     expected_threshold, expected_value = calculate_trove_threshold_and_value(
-        prices, [d["amount"] for d in DEPOSITS], thresholds
+        prices, [from_wad(d["amount"]) for d in DEPOSITS], thresholds
     )
 
     trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result

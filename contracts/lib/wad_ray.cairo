@@ -11,6 +11,7 @@ from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 
 from contracts.lib.aliases import ray, ufelt, wad
+from contracts.lib.pow import pow10
 
 // Adapted from Influence's 64x61 fixed-point math library (https://github.com/influenceth/cairo-math-64x61/blob/master/contracts/Math64x61.cairo).
 
@@ -253,5 +254,16 @@ namespace WadRay {
     func ray_to_wad{range_check_ptr}(ray) -> wad {
         let (converted, _) = unsigned_div_rem(ray, DIFF);
         return converted;
+    }
+
+    // Scales a fixed point number with less than 18 decimals of precision to wad
+    func fixed_point_to_wad{range_check_ptr}(n: ufelt, decimals: ufelt) -> wad {
+        with_attr error_message("WadRay: Decimals is greater than 18") {
+            assert_nn_le(decimals, WAD_DECIMALS);
+        }
+        let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
+        let scaled_n: wad = n * scale;
+        assert_valid(scaled_n);
+        return scaled_n;
     }
 }

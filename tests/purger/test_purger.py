@@ -23,12 +23,14 @@ from tests.utils import (
     TROVE_1,
     TRUE,
     WAD_RAY_OOB_VALUES,
+    WBTC_ERROR_MARGIN,
     YangConfig,
     assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
     compile_code,
     create_feed,
+    from_fixed_point,
     from_ray,
     from_uint,
     from_wad,
@@ -50,7 +52,7 @@ PURGE_FUNCTIONS = ("purge", "restricted_purge")
 async def advance_yang_prices_by_percentage(
     starknet: Starknet,
     shrine: StarknetContract,
-    yangs: List[YangConfig],
+    yangs: tuple[YangConfig],
     price_change: Decimal,
 ):
     """
@@ -148,10 +150,10 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 @pytest.fixture
 async def shrine_feeds(
-    starknet, sentinel_with_yangs, shrine, steth_yang: YangConfig, doge_yang: YangConfig
+    starknet, sentinel_with_yangs, shrine, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig
 ) -> List[List[int]]:
     # Creating the price feeds
-    yangs = (steth_yang, doge_yang)
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
@@ -176,25 +178,35 @@ async def forged_trove_1(
     sentinel_with_yangs,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    wbtc_yang: YangConfig,
 ) -> int:
+    yangs = (steth_yang, doge_yang, wbtc_yang)
+
     # Get stETH price
     steth_price = (await shrine.get_current_yang_price(steth_yang.contract_address).execute()).result.price
 
     # Get Doge price
     doge_price = (await shrine.get_current_yang_price(doge_yang.contract_address).execute()).result.price
 
+    # Get WBTC price
+    wbtc_price = (await shrine.get_current_yang_price(wbtc_yang.contract_address).execute()).result.price
+
     # Get maximum forge amount
-    prices = [steth_price, doge_price]
-    amounts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD]
-    thresholds = [steth_yang.threshold, doge_yang.threshold]
+    prices = [from_wad(p) for p in (steth_price, doge_price, wbtc_price)]
+    amounts = [
+        from_wad(USER_STETH_DEPOSIT_WAD),
+        from_wad(USER_DOGE_DEPOSIT_WAD),
+        from_fixed_point(USER_WBTC_DEPOSIT_AMT, 8),
+    ]
+    thresholds = [from_ray(yang.threshold) for yang in yangs]
     max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
 
     forge_amt = to_wad(max_forge_amt - 1)
 
     await abbot.open_trove(
         forge_amt,
-        [steth_yang.contract_address, doge_yang.contract_address],
-        [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD],
+        [yang.contract_address for yang in yangs],
+        [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT],
     ).execute(caller_address=TROVE1_OWNER)
 
     return forge_amt
@@ -227,7 +239,7 @@ async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
 
 
 @pytest.fixture
-async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetContract:
+async def purger(starknet, shrine, sentinel, steth_gate, doge_gate, wbtc_gate) -> StarknetContract:
     purger_code = get_contract_code_with_replacement(
         "contracts/purger/purger.cairo",
         {"func get_penalty_internal": "@view\nfunc get_penalty_internal"},
@@ -249,6 +261,7 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetC
     # Approve purger to call `exit` in Gate
     await steth_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
     await doge_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
+    await wbtc_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
 
     return purger
 
@@ -260,19 +273,20 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate) -> StarknetC
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig):
     assert (await sentinel.get_admin().execute()).result.admin == SENTINEL_OWNER
     yang_addrs = (await sentinel.get_yang_addresses().execute()).result.addresses
-    assert len(yang_addrs) == 2
+    assert len(yang_addrs) == 3
     assert steth_yang.contract_address in yang_addrs
     assert doge_yang.contract_address in yang_addrs
+    assert wbtc_yang.contract_address in yang_addrs
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_shrine_setup(shrine, shrine_feeds, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig):
     # Check price feeds
-    yangs = (steth_yang, doge_yang)
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     for i in range(len(yangs)):
         yang_address = yangs[i].contract_address
 
@@ -376,14 +390,17 @@ async def test_liquidate_pass(
     purger,
     steth_token,
     doge_token,
+    wbtc_token,
     steth_gate,
     doge_gate,
+    wbtc_gate,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    wbtc_yang: YangConfig,
     price_change,
     max_close_multiplier,
 ):
-    yangs = [steth_yang, doge_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy
@@ -422,6 +439,9 @@ async def test_liquidate_pass(
     # Get yang balance of searcher
     before_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
     before_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
+    before_searcher_wbtc_bal = from_fixed_point(
+        from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance), 8
+    )
 
     # Get freed percentage
     freed_percentage = get_freed_percentage(
@@ -443,6 +463,13 @@ async def test_liquidate_pass(
     expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
     expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
 
+    before_trove_wbtc_yang_wad = (
+        await shrine.get_deposit(wbtc_token.contract_address, TROVE_1).execute()
+    ).result.balance
+    before_trove_wbtc_bal_amt = (await wbtc_gate.preview_exit(before_trove_wbtc_yang_wad).execute()).result.preview
+    expected_freed_wbtc_yang = freed_percentage * from_wad(before_trove_wbtc_yang_wad)
+    expected_freed_wbtc = freed_percentage * from_fixed_point(before_trove_wbtc_bal_amt, 8)
+
     # Sanity check that expected trove LTV does not increase
     expected_after_trove_debt = before_trove_debt - close_amt
     expected_after_trove_value = before_trove_value * (1 - freed_percentage)
@@ -462,11 +489,14 @@ async def test_liquidate_pass(
     liquidate = await purger.liquidate(TROVE_1, input_close_amt_wad, SEARCHER).execute(caller_address=SEARCHER)
 
     # Check return data
-    assert liquidate.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
+    expected_yang_addresses = [yang.contract_address for yang in yangs]
+    assert liquidate.result.yangs == expected_yang_addresses
     freed_steth = liquidate.result.freed_assets_amt[0]
     freed_doge = liquidate.result.freed_assets_amt[1]
+    freed_wbtc = liquidate.result.freed_assets_amt[2]
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
+    assert_equalish(from_fixed_point(freed_wbtc, 8), expected_freed_wbtc, WBTC_ERROR_MARGIN)
 
     # Check event
     assert_event_emitted(
@@ -474,8 +504,7 @@ async def test_liquidate_pass(
         purger.contract_address,
         "Purged",
         lambda d: d[:4] == [TROVE_1, close_amt_wad, SEARCHER, SEARCHER]
-        and d[5:]
-        == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
+        and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), freed_steth, freed_doge, freed_wbtc],
     )
 
     # Check that LTV has improved (before LTV < 100%) or stayed the same (before LTV >= 100%)
@@ -495,6 +524,11 @@ async def test_liquidate_pass(
     after_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
     assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
 
+    after_searcher_wbtc_bal = from_fixed_point(
+        from_uint((await wbtc_token.balanceOf(SEARCHER).execute()).result.balance), 8
+    )
+    assert_equalish(after_searcher_wbtc_bal, before_searcher_wbtc_bal + expected_freed_wbtc, WBTC_ERROR_MARGIN)
+
     # Get yang balance of trove
     after_trove_steth_yang = from_wad(
         (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.balance
@@ -505,6 +539,11 @@ async def test_liquidate_pass(
         (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.balance
     )
     assert_equalish(after_trove_doge_yang, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
+
+    after_trove_wbtc_yang = from_wad(
+        (await shrine.get_deposit(wbtc_token.contract_address, TROVE_1).execute()).result.balance
+    )
+    assert_equalish(after_trove_wbtc_yang, from_wad(before_trove_wbtc_yang_wad) - expected_freed_wbtc_yang)
 
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
@@ -560,9 +599,10 @@ async def test_liquidate_fail_insufficient_yin(
     purger,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    wbtc_yang: YangConfig,
 ):
     # SEARCHER is not funded because `funded_searcher` fixture was omitted
-    yangs = [steth_yang, doge_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     price_change = Decimal("-0.1")
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
@@ -582,19 +622,22 @@ async def test_liquidate_fail_insufficient_yin(
     "funded_absorber",
 )
 @pytest.mark.asyncio
-async def test_absorb_pass(
+async def test_full_absorb_pass(
     starknet,
     shrine,
     purger,
     steth_token,
     doge_token,
+    wbtc_token,
     steth_gate,
     doge_gate,
+    wbtc_gate,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    wbtc_yang: YangConfig,
     price_change,
 ):
-    yangs = [steth_yang, doge_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy
@@ -623,36 +666,36 @@ async def test_absorb_pass(
         from_uint((await steth_token.balanceOf(MOCK_ABSORBER).execute()).result.balance)
     )
     before_absorber_doge_bal = from_wad(from_uint((await doge_token.balanceOf(MOCK_ABSORBER).execute()).result.balance))
-
-    # Get freed percentage
-    freed_percentage = get_freed_percentage(
-        before_trove_threshold, before_trove_ltv, before_trove_value, before_trove_debt, before_trove_debt
+    before_absorber_wbtc_bal = from_fixed_point(
+        from_uint((await wbtc_token.balanceOf(MOCK_ABSORBER).execute()).result.balance), 8
     )
 
     # Get yang balance of trove
-    before_trove_steth_yang_wad = (
+    expected_freed_steth_yang = (
         await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()
     ).result.balance
-    before_trove_steth_bal_wad = (await steth_gate.preview_exit(before_trove_steth_yang_wad).execute()).result.preview
-    expected_freed_steth_yang = freed_percentage * from_wad(before_trove_steth_yang_wad)
-    expected_freed_steth = freed_percentage * from_wad(before_trove_steth_bal_wad)
+    expected_freed_steth = from_wad((await steth_gate.preview_exit(expected_freed_steth_yang).execute()).result.preview)
 
-    before_trove_doge_yang_wad = (
-        await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()
-    ).result.balance
-    before_trove_doge_bal_wad = (await doge_gate.preview_exit(before_trove_doge_yang_wad).execute()).result.preview
-    expected_freed_doge_yang = freed_percentage * from_wad(before_trove_doge_yang_wad)
-    expected_freed_doge = freed_percentage * from_wad(before_trove_doge_bal_wad)
+    expected_freed_doge_yang = (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.balance
+    expected_freed_doge = from_wad((await doge_gate.preview_exit(expected_freed_doge_yang).execute()).result.preview)
+
+    expected_freed_wbtc_yang = (await shrine.get_deposit(wbtc_token.contract_address, TROVE_1).execute()).result.balance
+    expected_freed_wbtc = from_fixed_point(
+        (await wbtc_gate.preview_exit(expected_freed_wbtc_yang).execute()).result.preview, 8
+    )
 
     # Call absorb
     absorb = await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
 
     # Check return data
-    assert absorb.result.yangs == [steth_yang.contract_address, doge_yang.contract_address]
+    expected_yang_addresses = [yang.contract_address for yang in yangs]
+    assert absorb.result.yangs == expected_yang_addresses
     freed_steth = absorb.result.freed_assets_amt[0]
     freed_doge = absorb.result.freed_assets_amt[1]
+    freed_wbtc = absorb.result.freed_assets_amt[2]
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
+    assert_equalish(from_fixed_point(freed_wbtc, 8), expected_freed_wbtc, WBTC_ERROR_MARGIN)
 
     # Check event
     assert_event_emitted(
@@ -660,8 +703,7 @@ async def test_absorb_pass(
         purger.contract_address,
         "Purged",
         lambda d: d[:4] == [TROVE_1, before_trove_info.debt, MOCK_ABSORBER, MOCK_ABSORBER]
-        and d[5:]
-        == [len(yangs), steth_yang.contract_address, doge_yang.contract_address, len(yangs), freed_steth, freed_doge],
+        and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), freed_steth, freed_doge, freed_wbtc],
     )
 
     # Check that LTV is 0 after all debt is repaid
@@ -680,16 +722,26 @@ async def test_absorb_pass(
     after_absorber_doge_bal = from_wad(from_uint((await doge_token.balanceOf(MOCK_ABSORBER).execute()).result.balance))
     assert_equalish(after_absorber_doge_bal, before_absorber_doge_bal + expected_freed_doge)
 
+    after_absorber_wbtc_bal = from_fixed_point(
+        from_uint((await wbtc_token.balanceOf(MOCK_ABSORBER).execute()).result.balance), 8
+    )
+    assert_equalish(after_absorber_wbtc_bal, before_absorber_wbtc_bal + expected_freed_wbtc)
+
     # Get yang balance of trove
     after_trove_steth_yang = from_wad(
         (await shrine.get_deposit(steth_token.contract_address, TROVE_1).execute()).result.balance
     )
-    assert_equalish(after_trove_steth_yang, from_wad(before_trove_steth_yang_wad) - expected_freed_steth_yang)
+    assert after_trove_steth_yang == 0
 
     after_trove_doge_yang = from_wad(
         (await shrine.get_deposit(doge_token.contract_address, TROVE_1).execute()).result.balance
     )
-    assert_equalish(after_trove_doge_yang, from_wad(before_trove_doge_yang_wad) - expected_freed_doge_yang)
+    assert after_trove_doge_yang == 0
+
+    after_trove_wbtc_yang = from_wad(
+        (await shrine.get_deposit(wbtc_token.contract_address, TROVE_1).execute()).result.balance
+    )
+    assert after_trove_wbtc_yang == 0
 
     # Check trove debt
     assert after_trove_debt == 0
@@ -699,8 +751,10 @@ async def test_absorb_pass(
 @pytest.mark.usefixtures(
     "steth_token",
     "doge_token",
+    "wbtc_token",
     "steth_gate",
     "doge_gate",
+    "wbtc_gate",
     "sentinel_with_yangs",
     "funded_trove1_owner",
     "forged_trove_1",
@@ -713,12 +767,13 @@ async def test_absorb_fail_ltv_too_low(
     purger,
     steth_yang: YangConfig,
     doge_yang: YangConfig,
+    wbtc_yang: YangConfig,
     price_change,
 ):
     """
     Failing tests for `absorb` when threshold <= LTV <= max penalty LTV
     """
-    yangs = [steth_yang, doge_yang]
+    yangs = (steth_yang, doge_yang, wbtc_yang)
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy

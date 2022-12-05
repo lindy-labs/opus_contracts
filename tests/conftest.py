@@ -51,6 +51,7 @@ from tests.utils import (
     max_approve,
     set_block_timestamp,
     str_to_felt,
+    to_fixed_point,
     to_wad,
 )
 
@@ -308,6 +309,11 @@ async def doge_token(tokens) -> StarknetContract:
     return await tokens("Dogecoin", "DOGE", 18)
 
 
+@pytest.fixture
+async def wbtc_token(tokens) -> StarknetContract:
+    return await tokens("Wrapped BTC", "WBTC", 8)
+
+
 #
 # Yang
 #
@@ -329,6 +335,14 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     return YangConfig(doge_token.contract_address, ceiling, threshold, price_wad, doge_gate.contract_address)
 
 
+@pytest.fixture
+def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
+    ceiling = to_wad(1_000)
+    threshold = 80 * RAY_PERCENT
+    price_wad = to_wad(10_000)
+    return YangConfig(wbtc_token.contract_address, ceiling, threshold, price_wad, wbtc_gate.contract_address)
+
+
 #
 # Gate
 #
@@ -347,6 +361,16 @@ async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> Star
 @pytest.fixture
 async def doge_gate(starknet, abbot, shrine_deploy, doge_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, doge_token)
+
+    # auth Abbot in Gate
+    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+
+    return gate
+
+
+@pytest.fixture
+async def wbtc_gate(starknet, abbot, shrine_deploy, wbtc_token, gates) -> StarknetContract:
+    gate = await gates(shrine_deploy, wbtc_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
@@ -415,25 +439,33 @@ async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetCont
 
 
 @pytest.fixture
-async def funded_trove1_owner(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+async def funded_trove1_owner(
+    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
+):
     # fund the user with bags
     await steth_token.mint(TROVE1_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE1_OWNER)
     await doge_token.mint(TROVE1_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE1_OWNER)
+    await wbtc_token.mint(TROVE1_OWNER, (to_fixed_point(10, 8), 0)).execute(caller_address=TROVE1_OWNER)
 
     # user approves Aura gates to spend bags
     await max_approve(steth_token, TROVE1_OWNER, steth_yang.gate_address)
     await max_approve(doge_token, TROVE1_OWNER, doge_yang.gate_address)
+    await max_approve(wbtc_token, TROVE1_OWNER, wbtc_yang.gate_address)
 
 
 @pytest.fixture
-async def funded_trove2_owner(steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig):
+async def funded_trove2_owner(
+    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
+):
     # fund the user with bags
     await steth_token.mint(TROVE2_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE2_OWNER)
     await doge_token.mint(TROVE2_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE2_OWNER)
+    await wbtc_token.mint(TROVE2_OWNER, (to_fixed_point(10, 8), 0)).execute(caller_address=TROVE2_OWNER)
 
     # user approves Aura gates to spend bags
     await max_approve(steth_token, TROVE2_OWNER, steth_yang.gate_address)
     await max_approve(doge_token, TROVE2_OWNER, doge_yang.gate_address)
+    await max_approve(wbtc_token, TROVE2_OWNER, wbtc_yang.gate_address)
 
 
 @pytest.fixture
@@ -454,12 +486,12 @@ async def sentinel(starknet, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang) -> StarknetContract:
+async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang, wbtc_yang) -> StarknetContract:
     # Setting block timestamp to interval 1, because add_yang assigns the initial
     # price to current interval - 1 (i.e. 0 in this case)
     set_block_timestamp(starknet, TIME_INTERVAL)
 
-    for yang in (steth_yang, doge_yang):
+    for yang in (steth_yang, doge_yang, wbtc_yang):
         await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
