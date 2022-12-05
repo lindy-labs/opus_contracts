@@ -25,6 +25,7 @@ from tests.utils import (
     TROVE_2,
     TROVE_3,
     TRUE,
+    WAD_RAY_BOUND,
     WAD_RAY_OOB_VALUES,
     WAD_SCALE,
     assert_equalish,
@@ -1138,6 +1139,15 @@ async def test_shrine_melt_amount_out_of_bounds(shrine, melt_amt):
     # amount check happens before checking balances
     with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
         await shrine.melt(TROVE1_OWNER, TROVE_1, melt_amt).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.mark.usefixtures("shrine_forge", "shrine_forge_trove2")
+@pytest.mark.asyncio
+async def test_shrine_melt_insufficient_yin(shrine):
+    # Set up trove 2 to have less yin than trove 1's debt
+    await shrine.transfer(TROVE1_OWNER, to_uint(1)).execute(caller_address=TROVE2_OWNER)
+    with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
+        await shrine.melt(TROVE2_OWNER, TROVE_1, WAD_RAY_BOUND).execute(caller_address=SHRINE_OWNER)
 
 
 #
