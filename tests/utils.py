@@ -39,6 +39,9 @@ WADRAY_BOUND = 2**125
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
+# Token decimals
+WBTC_DECIMALS = 8
+
 # Gas estimation constants
 NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin", "ec_op_builtin"]
 WEIGHTS = {
@@ -67,7 +70,7 @@ def custom_error_margin(negative_exp: int) -> Decimal:
 # Default error margin for fixed point calculations
 ERROR_MARGIN = custom_error_margin(10)
 WAD_ERROR_MARGIN = custom_error_margin(WAD_DECIMALS)
-WBTC_ERROR_MARGIN = custom_error_margin(8)
+WBTC_ERROR_MARGIN = custom_error_margin(WBTC_DECIMALS)
 
 seed(420)
 

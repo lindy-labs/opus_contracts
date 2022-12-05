@@ -40,7 +40,9 @@ from tests.utils import (
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE_1,
+    WAD_DECIMALS,
     WAD_SCALE,
+    WBTC_DECIMALS,
     Uint256,
     YangConfig,
     compile_code,
@@ -301,17 +303,17 @@ async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
 
 @pytest.fixture
 async def steth_token(tokens) -> StarknetContract:
-    return await tokens("Lido Staked ETH", "stETH", 18)
+    return await tokens("Lido Staked ETH", "stETH", WAD_DECIMALS)
 
 
 @pytest.fixture
 async def doge_token(tokens) -> StarknetContract:
-    return await tokens("Dogecoin", "DOGE", 18)
+    return await tokens("Dogecoin", "DOGE", WAD_DECIMALS)
 
 
 @pytest.fixture
 async def wbtc_token(tokens) -> StarknetContract:
-    return await tokens("Wrapped BTC", "WBTC", 8)
+    return await tokens("Wrapped BTC", "WBTC", WBTC_DECIMALS)
 
 
 #
@@ -445,7 +447,7 @@ async def funded_trove1_owner(
     # fund the user with bags
     await steth_token.mint(TROVE1_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE1_OWNER)
     await doge_token.mint(TROVE1_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE1_OWNER)
-    await wbtc_token.mint(TROVE1_OWNER, (to_fixed_point(10, 8), 0)).execute(caller_address=TROVE1_OWNER)
+    await wbtc_token.mint(TROVE1_OWNER, (to_fixed_point(10, WBTC_DECIMALS), 0)).execute(caller_address=TROVE1_OWNER)
 
     # user approves Aura gates to spend bags
     await max_approve(steth_token, TROVE1_OWNER, steth_yang.gate_address)
@@ -460,7 +462,7 @@ async def funded_trove2_owner(
     # fund the user with bags
     await steth_token.mint(TROVE2_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE2_OWNER)
     await doge_token.mint(TROVE2_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE2_OWNER)
-    await wbtc_token.mint(TROVE2_OWNER, (to_fixed_point(10, 8), 0)).execute(caller_address=TROVE2_OWNER)
+    await wbtc_token.mint(TROVE2_OWNER, (to_fixed_point(10, WBTC_DECIMALS), 0)).execute(caller_address=TROVE2_OWNER)
 
     # user approves Aura gates to spend bags
     await max_approve(steth_token, TROVE2_OWNER, steth_yang.gate_address)
