@@ -447,7 +447,7 @@ async def test_liquidate_pass(
     expected_after_trove_debt = before_trove_debt - close_amt
     expected_after_trove_value = before_trove_value * (1 - freed_percentage)
 
-    if max_close_multiplier >= Decimal("1"):
+    if input_close_amt_wad >= before_trove_debt:
         # Catch zero division error
         expected_after_trove_ltv = Decimal("0")
     else:
