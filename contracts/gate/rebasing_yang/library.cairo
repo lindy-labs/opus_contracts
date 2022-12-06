@@ -79,7 +79,7 @@ namespace Gate {
         return scaled_amt;
     }
 
-    // Return value is `ufelt` because `asset` may not be 18 decimals
+    // Return value is `ufelt` because `asset` is denominated in the decimals of the asset
     func convert_to_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         yang: wad
     ) -> ufelt {
@@ -92,10 +92,11 @@ namespace Gate {
             let (decimals: ufelt) = IERC20.decimals(asset);
 
             if (decimals == WadRay.WAD_DECIMALS) {
+                // `assets` is of same `wad` precision as `yang`
                 return yang;
             }
 
-            // Scale by difference
+            // Scale by difference to match the decimal precision of the asset
             let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
             let (scaled_assets: ufelt, _) = unsigned_div_rem(yang, scale);
 
@@ -122,11 +123,11 @@ namespace Gate {
             let (decimals: ufelt) = IERC20.decimals(asset);
 
             if (decimals == WadRay.WAD_DECIMALS) {
-                // `assets` is of `wad` type
+                // `assets` is of `wad` precision
                 return assets;
             }
 
-            // Scale by difference
+            // Scale by difference to match `wad` precision `
             let scaled_yang: wad = WadRay.fixed_point_to_wad(assets, decimals);
             return scaled_yang;
         } else {

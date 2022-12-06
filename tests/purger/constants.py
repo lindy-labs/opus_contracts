@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from tests.utils import str_to_felt, to_fixed_point, to_wad
+from tests.utils import WBTC_DECIMALS, str_to_felt, to_fixed_point, to_wad
 
 #
 # Constants
@@ -18,8 +18,8 @@ USER_STETH_DEPOSIT_WAD = to_wad(10)
 # Starting value of USD 700
 USER_DOGE_DEPOSIT_WAD = to_wad(10_000)
 
-# Starting value of USD 10_000, with 8 decimals
-USER_WBTC_DEPOSIT_AMT = to_fixed_point(5, 8)
+# Starting value of USD 10_000, with WBTC decimal precision
+USER_WBTC_DEPOSIT_AMT = to_fixed_point(5, WBTC_DECIMALS)
 
 SEARCHER = str_to_felt("searcher")
 SEARCHER_STETH_WAD = to_wad(2_000)
