@@ -46,8 +46,8 @@ func test_add{range_check_ptr}(a, b) -> (res: wad) {
 }
 
 @view
-func test_add_unsigned{range_check_ptr}(a, b) -> (res: wad) {
-    return (WadRay.add_unsigned(a, b),);
+func test_unsigned_add{range_check_ptr}(a, b) -> (res: wad) {
+    return (WadRay.unsigned_add(a, b),);
 }
 
 @view
@@ -56,8 +56,8 @@ func test_sub{range_check_ptr}(a, b) -> (res: wad) {
 }
 
 @view
-func test_sub_unsigned{range_check_ptr}(a, b) -> (res: felt) {
-    return (WadRay.sub_unsigned(a, b),);
+func test_unsigned_sub{range_check_ptr}(a, b) -> (res: felt) {
+    return (WadRay.unsigned_sub(a, b),);
 }
 
 @view

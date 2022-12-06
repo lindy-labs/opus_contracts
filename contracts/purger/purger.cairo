@@ -291,9 +291,9 @@ func get_close_factor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     let ltv_squared = WadRay.rmul(ltv, ltv);
     let factor_one = WadRay.rmul(CF1, ltv_squared);
 
-    let factor_two = WadRay.add_unsigned(ltv, ltv);
+    let factor_two = WadRay.unsigned_add(ltv, ltv);
     let factors_sum = WadRay.sub(factor_one, factor_two);
-    let close_factor = WadRay.add_unsigned(factors_sum, CF2);
+    let close_factor = WadRay.unsigned_add(factors_sum, CF2);
 
     return close_factor;
 }
@@ -350,7 +350,7 @@ func get_penalty_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     }
 
     let penalty: ray = WadRay.runsigned_div(
-        WadRay.sub_unsigned(trove_value, trove_debt), trove_debt
+        WadRay.unsigned_sub(trove_value, trove_debt), trove_debt
     );
     return (penalty,);
 }
@@ -375,7 +375,7 @@ func get_percentage_freed{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
     // `rmul` of a wad and a ray returns a wad
     let penalty_amt: wad = WadRay.rmul(purge_amt, penalty);
-    let freed_amt: wad = WadRay.add_unsigned(penalty_amt, purge_amt);
+    let freed_amt: wad = WadRay.unsigned_add(penalty_amt, purge_amt);
 
     // `runsigned_div` of two wads returns a ray
     let percentage_freed: ray = WadRay.runsigned_div(freed_amt, trove_value);

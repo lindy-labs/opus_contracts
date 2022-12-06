@@ -96,7 +96,7 @@ namespace WadRay {
         return sum;
     }
 
-    func add_unsigned{range_check_ptr}(a, b) -> wad {
+    func unsigned_add{range_check_ptr}(a, b) -> wad {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 
@@ -114,7 +114,7 @@ namespace WadRay {
         return diff;
     }
 
-    func sub_unsigned{range_check_ptr}(a, b) -> wad {
+    func unsigned_sub{range_check_ptr}(a, b) -> wad {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 

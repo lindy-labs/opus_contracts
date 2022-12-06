@@ -186,9 +186,9 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 @example(left=0, right=0)
 @example(left=1, right=0)
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
-@pytest.mark.parametrize("fn,op", [("test_add_unsigned", operator.add), ("test_sub_unsigned", operator.sub)])
+@pytest.mark.parametrize("fn,op", [("test_unsigned_add", operator.add), ("test_unsigned_sub", operator.sub)])
 @pytest.mark.asyncio
-async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
+async def test_add_unsigned_sub(wad_ray, left, right, fn, op):
     expected_py = op(left, right)
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
@@ -392,7 +392,7 @@ async def test_from_uint_fail_on_rogue_input(wad_ray, low):
         await wad_ray.test_from_uint(uint).execute()
 
 
-@pytest.mark.parametrize("func", ["add_unsigned", "sub_unsigned", "wunsigned_div", "runsigned_div"])
+@pytest.mark.parametrize("func", ["unsigned_add", "unsigned_sub", "wunsigned_div", "runsigned_div"])
 @pytest.mark.asyncio
 async def test_out_of_bounds_unsigned(wad_ray, func):
     test_func = getattr(wad_ray, "test_" + func)

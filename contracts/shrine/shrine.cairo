@@ -646,8 +646,8 @@ func move_yang{
 
     // Ensure source trove has sufficient yang
     with_attr error_message("Shrine: Insufficient yang") {
-        // WadRay.sub_unsigned asserts (src_yang_balance - amount) >= 0
-        let new_src_balance: wad = WadRay.sub_unsigned(src_yang_balance, amount);
+        // WadRay.unsigned_sub asserts (src_yang_balance - amount) >= 0
+        let new_src_balance: wad = WadRay.unsigned_sub(src_yang_balance, amount);
     }
 
     // Update yang balance of source trove
@@ -658,7 +658,7 @@ func move_yang{
 
     // Update yang balance of destination trove
     let (dst_yang_balance: wad) = shrine_deposits.read(yang_id, dst_trove_id);
-    let new_dst_balance: wad = WadRay.add_unsigned(dst_yang_balance, amount);
+    let new_dst_balance: wad = WadRay.unsigned_add(dst_yang_balance, amount);
     shrine_deposits.write(yang_id, dst_trove_id, new_dst_balance);
 
     // Events
@@ -827,13 +827,13 @@ func melt{
     let (current_system_debt: wad) = shrine_total_debt.read();
 
     with_attr error_message("Shrine: System debt underflow") {
-        let new_system_debt: wad = WadRay.sub_unsigned(current_system_debt, melt_amt);  // WadRay.sub_unsigned contains an underflow check
+        let new_system_debt: wad = WadRay.unsigned_sub(current_system_debt, melt_amt);  // WadRay.unsigned_sub contains an underflow check
     }
 
     shrine_total_debt.write(new_system_debt);
 
     // Will not revert because amount is capped to trove's debt
-    let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, melt_amt);
+    let new_debt: wad = WadRay.unsigned_sub(old_trove_info.debt, melt_amt);
     let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, new_trove_info);
 
@@ -1041,11 +1041,11 @@ func forge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     with_attr error_message("Shrine: Forge overflow") {
         // Update user's yin
         let (user_yin: wad) = shrine_yin.read(user);
-        shrine_yin.write(user, WadRay.add_unsigned(user_yin, amount));
+        shrine_yin.write(user, WadRay.unsigned_add(user_yin, amount));
 
         // Update total yin
         let (total_yin: wad) = shrine_total_yin.read();
-        shrine_total_yin.write(WadRay.add_unsigned(total_yin, amount));
+        shrine_total_yin.write(WadRay.unsigned_add(total_yin, amount));
     }
 
     let (amount_uint: Uint256) = WadRay.to_uint(amount);
@@ -1061,11 +1061,11 @@ func melt_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     with_attr error_message("Shrine: Not enough yin to melt debt") {
         // Update user's yin
         let (user_yin: wad) = shrine_yin.read(user);
-        shrine_yin.write(user, WadRay.sub_unsigned(user_yin, amount));
+        shrine_yin.write(user, WadRay.unsigned_sub(user_yin, amount));
 
         // Update total yin
         let (total_yin: wad) = shrine_total_yin.read();
-        shrine_total_yin.write(WadRay.sub_unsigned(total_yin, amount));
+        shrine_total_yin.write(WadRay.unsigned_sub(total_yin, amount));
     }
 
     let (amount_uint: Uint256) = WadRay.to_uint(amount);
@@ -1092,15 +1092,15 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (trove_yang_balance: wad) = shrine_deposits.read(yang_id, trove_id);
 
     with_attr error_message("Shrine: Insufficient yang") {
-        // WadRay.sub_unsigned asserts (trove_yang_balance - amount) >= 0
-        let new_trove_balance: wad = WadRay.sub_unsigned(trove_yang_balance, amount);
+        // WadRay.unsigned_sub asserts (trove_yang_balance - amount) >= 0
+        let new_trove_balance: wad = WadRay.unsigned_sub(trove_yang_balance, amount);
     }
 
     // Charge interest
     charge(trove_id);
 
     // Update yang balance of system
-    let new_total: wad = WadRay.sub_unsigned(old_yang_info.total, amount);
+    let new_total: wad = WadRay.unsigned_sub(old_yang_info.total, amount);
     let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
     shrine_yangs.write(yang_id, new_yang_info);
 
@@ -1144,7 +1144,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let (old_system_debt: wad) = shrine_total_debt.read();
 
     // Get interest charged
-    let diff: wad = WadRay.sub_unsigned(new_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
+    let diff: wad = WadRay.unsigned_sub(new_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
 
     // Get new system debt
     tempvar new_system_debt: wad = old_system_debt + diff;
@@ -1466,9 +1466,9 @@ func get_trove_threshold_and_value_internal{
 
     let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
 
-    // WadRay.add_unsigned includes overflow check on result
-    let cumulative_trove_value: wad = WadRay.add_unsigned(cumulative_trove_value, deposited_value);
-    let cumulative_weighted_threshold: ray = WadRay.add_unsigned(
+    // WadRay.unsigned_add includes overflow check on result
+    let cumulative_trove_value: wad = WadRay.unsigned_add(cumulative_trove_value, deposited_value);
+    let cumulative_weighted_threshold: ray = WadRay.unsigned_add(
         cumulative_weighted_threshold, weighted_threshold
     );
 
@@ -1504,10 +1504,10 @@ func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (sender_balance: wad) = shrine_yin.read(sender);
     let (recipient_balance: wad) = shrine_yin.read(recipient);
 
-    // WadRay.sub_unsigned reverts on underflow, so this function cannot be used
+    // WadRay.unsigned_sub reverts on underflow, so this function cannot be used
     // to move more yin than sender owns
     with_attr error_message("Shrine: Transfer amount exceeds yin balance") {
-        shrine_yin.write(sender, WadRay.sub_unsigned(sender_balance, amount_wad));
+        shrine_yin.write(sender, WadRay.unsigned_sub(sender_balance, amount_wad));
     }
     shrine_yin.write(recipient, WadRay.add(recipient_balance, amount_wad));
 
