@@ -318,6 +318,7 @@ async def test_forge_failures(abbot):
 
 
 @pytest.mark.parametrize("melter", [TROVE1_OWNER, TROVE2_OWNER])  # melt with trove owner, and non-owner
+@pytest.mark.parametrize("melt_amt", [to_wad(333), INITIAL_FORGED_AMOUNT * 2])
 @pytest.mark.usefixtures(
     "sentinel_with_yangs",
     "funded_trove1_owner",
@@ -326,26 +327,20 @@ async def test_forge_failures(abbot):
     "forged_trove_2",
 )
 @pytest.mark.asyncio
-async def test_melt(abbot, shrine, melter):
-    melt_amount = to_wad(333)
-    remaining_amount = INITIAL_FORGED_AMOUNT - melt_amount
+async def test_melt(abbot, shrine, melter, melt_amt):
+    tx = await abbot.melt(TROVE_1, melt_amt).execute(caller_address=melter)
 
-    tx = await abbot.melt(TROVE_1, melt_amount).execute(caller_address=melter)
+    if melt_amt > INITIAL_FORGED_AMOUNT:
+        melt_amt = INITIAL_FORGED_AMOUNT
+
+    remaining_amount = INITIAL_FORGED_AMOUNT - melt_amt
 
     # asserting only events particular to the user
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
-    assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amount)])
+    assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amt)])
 
     balance = (await shrine.balanceOf(melter).execute()).result.balance
     assert from_uint(balance) == remaining_amount
-
-
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
-@pytest.mark.asyncio
-async def test_melt_failures(abbot):
-    with pytest.raises(StarkException, match="Shrine: System debt underflow"):
-        amount = INITIAL_FORGED_AMOUNT * 2
-        await abbot.melt(TROVE_1, amount).execute(caller_address=TROVE1_OWNER)
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")

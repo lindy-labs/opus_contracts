@@ -1,3 +1,4 @@
+from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math import (
     abs_value,
     assert_le,
@@ -6,6 +7,7 @@ from starkware.cairo.common.math import (
     signed_div_rem,
     unsigned_div_rem,
 )
+from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256
 
 from contracts.lib.aliases import ray, ufelt, wad
@@ -40,6 +42,28 @@ namespace WadRay {
             assert_nn_le(n, BOUND);
         }
         return ();
+    }
+
+    func unsigned_min{range_check_ptr}(a, b) -> felt {
+        assert_valid(a);
+        assert_valid(b);
+
+        let le = is_le(a, b);
+        if (le == TRUE) {
+            return a;
+        }
+        return b;
+    }
+
+    func unsigned_max{range_check_ptr}(a, b) -> felt {
+        assert_valid_unsigned(a);
+        assert_valid_unsigned(b);
+
+        let le = is_le(a, b);
+        if (le == TRUE) {
+            return b;
+        }
+        return a;
     }
 
     func floor{range_check_ptr}(n) -> wad {

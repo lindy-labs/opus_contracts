@@ -13,6 +13,7 @@ from tests.utils import (
     RANGE_CHECK_BOUND,
     RAY_SCALE,
     WAD_DECIMALS,
+    WAD_RAY_BOUND,
     WAD_RAY_DIFF,
     WAD_SCALE,
     Uint256,
@@ -24,9 +25,6 @@ from tests.utils import (
     to_wad,
     wad_to_ray,
 )
-
-BOUND = 2**125
-
 
 st_int = st.integers(min_value=-(2**250), max_value=2**250)
 st_int125 = st.integers(min_value=-(2**125), max_value=2**125)
@@ -43,13 +41,13 @@ async def wad_ray(starknet_session: Starknet) -> StarknetContract:
     return wad_ray
 
 
-BOUND_TEST_CASES = [-(BOUND + 1), -BOUND, -1, 0, 1, BOUND - 1, BOUND, BOUND + 1]
+BOUND_TEST_CASES = [-(WAD_RAY_BOUND + 1), -WAD_RAY_BOUND, -1, 0, 1, WAD_RAY_BOUND - 1, WAD_RAY_BOUND, WAD_RAY_BOUND + 1]
 
 
 @pytest.mark.parametrize("val", BOUND_TEST_CASES)
 @pytest.mark.asyncio
 async def test_assert_valid(wad_ray, val):
-    if abs(val) > BOUND:
+    if abs(val) > WAD_RAY_BOUND:
         with pytest.raises(StarkException):
             await wad_ray.test_assert_valid(val).execute()
     else:
@@ -59,7 +57,7 @@ async def test_assert_valid(wad_ray, val):
 @pytest.mark.parametrize("val", BOUND_TEST_CASES)
 @pytest.mark.asyncio
 async def test_assert_valid_unsigned(wad_ray, val):
-    if val < 0 or val > BOUND:
+    if val < 0 or val > WAD_RAY_BOUND:
         with pytest.raises(StarkException):
             await wad_ray.test_assert_valid_unsigned(val).execute()
     else:
@@ -70,12 +68,12 @@ async def test_assert_valid_unsigned(wad_ray, val):
 @given(val=st_int)
 @example(val=to_wad(RANGE_CHECK_BOUND) + 1)
 @example(val=to_wad(RANGE_CHECK_BOUND))
-@example(val=to_wad(BOUND + 1))
-@example(val=to_wad(BOUND))
+@example(val=to_wad(WAD_RAY_BOUND + 1))
+@example(val=to_wad(WAD_RAY_BOUND))
 @example(val=to_wad(to_wad(25)))  # Test exact multiple of wad - should return same value
 @example(val=0)
-@example(val=-to_wad(BOUND + 1))
-@example(val=-to_wad(BOUND))
+@example(val=-to_wad(WAD_RAY_BOUND + 1))
+@example(val=-to_wad(WAD_RAY_BOUND))
 @example(val=to_wad(-RANGE_CHECK_BOUND))
 @example(val=to_wad(-(RANGE_CHECK_BOUND + 1)))
 @pytest.mark.asyncio
@@ -88,12 +86,12 @@ async def test_floor(wad_ray, val):
     expected_py = to_wad(math.floor(q))
     expected_cairo = signed_int_to_felt(expected_py)
 
-    if q < (-BOUND) or q >= BOUND:
+    if q < (-WAD_RAY_BOUND) or q >= WAD_RAY_BOUND:
         # Exception raised by Cairo's builtin `signed_div_rem`
-        # -bound <= q < bound
+        # -wad_ray_bound <= q < wad_ray_bound
         with pytest.raises(StarkException):
             await wad_ray.test_floor(input_val).execute()
-    elif abs(expected_py) > BOUND:
+    elif abs(expected_py) > WAD_RAY_BOUND:
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await wad_ray.test_floor(input_val).execute()
     else:
@@ -105,12 +103,12 @@ async def test_floor(wad_ray, val):
 @given(val=st_int)
 @example(val=to_wad(RANGE_CHECK_BOUND) + 1)
 @example(val=to_wad(RANGE_CHECK_BOUND))
-@example(val=to_wad(BOUND + 1))
-@example(val=to_wad(BOUND))
+@example(val=to_wad(WAD_RAY_BOUND + 1))
+@example(val=to_wad(WAD_RAY_BOUND))
 @example(val=to_wad(to_wad(25)))  # Test exact multiple of wad - should return same value
 @example(val=0)
-@example(val=-to_wad(BOUND + 1))
-@example(val=-to_wad(BOUND))
+@example(val=-to_wad(WAD_RAY_BOUND + 1))
+@example(val=-to_wad(WAD_RAY_BOUND))
 @example(val=to_wad(-RANGE_CHECK_BOUND))
 @example(val=to_wad(-(RANGE_CHECK_BOUND + 1)))
 @pytest.mark.asyncio
@@ -130,17 +128,29 @@ async def test_ceil(wad_ray, val):
         # Otherwise, round up by adding one wad
         expected_cairo = signed_int_to_felt(expected_py + WAD_SCALE)
 
-    if q < (-BOUND) or q >= BOUND:
+    if q < (-WAD_RAY_BOUND) or q >= WAD_RAY_BOUND:
         # Exception raised by Cairo's builtin `signed_div_rem`
-        # -bound <= q < bound
+        # -wad_ray_bound <= q < wad_ray_bound
         with pytest.raises(StarkException):
             await wad_ray.test_ceil(input_val).execute()
-    elif abs(expected_py) > BOUND:
+    elif abs(expected_py) > WAD_RAY_BOUND:
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await wad_ray.test_ceil(input_val).execute()
     else:
         res = (await wad_ray.test_ceil(input_val).execute()).result.res
         assert res == expected_cairo
+
+
+@settings(max_examples=50, deadline=None)
+@given(left=st_uint125, right=st_uint125)
+@pytest.mark.parametrize("fn,op", [("test_unsigned_min", min), ("test_unsigned_max", max)])
+@pytest.mark.asyncio
+async def test_minmax(wad_ray, left, right, fn, op):
+    method = wad_ray.get_contract_function(fn)
+    res = (await method(left, right).execute()).result.res
+    expected = signed_int_to_felt(op(left, right))
+
+    assert res == expected
 
 
 @settings(max_examples=50, deadline=None)
@@ -161,7 +171,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
 
-    if abs(expected_py) > BOUND:
+    if abs(expected_py) > WAD_RAY_BOUND:
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(left_input_val, right_input_val).execute()
 
@@ -183,7 +193,7 @@ async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
 
-    if expected_py < 0 or expected_py > BOUND:
+    if expected_py < 0 or expected_py > WAD_RAY_BOUND:
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(left, right).execute()
 
@@ -238,7 +248,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 
     method = wad_ray.get_contract_function(fn)
 
-    if abs(expected_py) > BOUND:
+    if abs(expected_py) > WAD_RAY_BOUND:
         with pytest.raises(StarkException):
             await method(left_input_val, right_input_val).execute()
 
@@ -275,9 +285,9 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
 
-    if not fn.endswith("unchecked") and abs(expected_py) > BOUND:
+    if not fn.endswith("unchecked") and abs(expected_py) > WAD_RAY_BOUND:
         # `unsigned_div_rem` asserts 0 <= quotient < rc_bound, meaning this exception
-        # will only catch BOUND < quotient < rc_bound
+        # will only catch WAD_RAY_BOUND < quotient < rc_bound
         if expected_py < RANGE_CHECK_BOUND:
             with pytest.raises(StarkException, match="WadRay: Out of bounds"):
                 await method(left, right).execute()
@@ -295,9 +305,9 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
 
 @settings(max_examples=50, deadline=None)
 @given(val=st_uint125)
-@example(val=(BOUND // WAD_RAY_DIFF) + 1)  # Failing case for wad_to_ray
+@example(val=(WAD_RAY_BOUND // WAD_RAY_DIFF) + 1)  # Failing case for wad_to_ray
 @example(val=(RANGE_CHECK_BOUND // WAD_RAY_DIFF) + 1)  # Failing case for wad_to_ray
-@example(val=to_wad((BOUND // WAD_SCALE) + 1))  # Failing case for to_wad
+@example(val=to_wad((WAD_RAY_BOUND // WAD_SCALE) + 1))  # Failing case for to_wad
 @example(val=to_wad((RANGE_CHECK_BOUND // WAD_SCALE) + 1))  # Failing case for to_wad
 @pytest.mark.parametrize(
     "fn,input_op,output_op,ret",
@@ -315,11 +325,11 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
 
     method = wad_ray.get_contract_function(fn)
 
-    if fn in ("test_to_wad", "test_wad_to_ray") and abs(expected_py) > BOUND:
+    if fn in ("test_to_wad", "test_wad_to_ray") and abs(expected_py) > WAD_RAY_BOUND:
         # Test `assert_valid`
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(input_val).execute()
-    elif fn == "test_wad_to_felt" and not (-BOUND <= expected_py < BOUND):
+    elif fn == "test_wad_to_felt" and not (-WAD_RAY_BOUND <= expected_py < WAD_RAY_BOUND):
         # Exception for `signed_div_rem`
         with pytest.raises(StarkException):
             await method(input_val).execute()
@@ -330,7 +340,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
 
 @settings(max_examples=50, deadline=None)
 @given(val=st_uint125, decimals=st.integers(min_value=0, max_value=20))
-@example(val=(BOUND // 10**10) + 1, decimals=8)  # Failing case: scaled value > BOUND
+@example(val=(WAD_RAY_BOUND // 10**10) + 1, decimals=8)  # Failing case: scaled value > WAD_RAY_BOUND
 @example(val=10**18, decimals=19)  # Failing case: decimals > 18
 @pytest.mark.asyncio
 async def test_fixed_point_to_wad_conversion_pass(wad_ray, val, decimals):
@@ -339,7 +349,7 @@ async def test_fixed_point_to_wad_conversion_pass(wad_ray, val, decimals):
     if decimals > 18:
         with pytest.raises(StarkException, match="WadRay: Decimals is greater than 18"):
             await wad_ray.test_fixed_point_to_wad(val, decimals).execute()
-    elif expected_output > BOUND:
+    elif expected_output > WAD_RAY_BOUND:
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await wad_ray.test_fixed_point_to_wad(val, decimals).execute()
     else:
@@ -364,7 +374,7 @@ async def test_uint_conversion_pass(wad_ray, val, fn, input_op, output_op, ret):
     assert res == expected_py
 
 
-@pytest.mark.parametrize("val", [BOUND + 1, RANGE_CHECK_BOUND - 1])
+@pytest.mark.parametrize("val", [WAD_RAY_BOUND + 1, RANGE_CHECK_BOUND - 1])
 @pytest.mark.asyncio
 async def test_from_uint_fail(wad_ray, val):
     val = to_uint(val)

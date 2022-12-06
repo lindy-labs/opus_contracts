@@ -12,6 +12,7 @@ from contracts.shrine.interface import IShrine
 from contracts.lib.aliases import address, ufelt, wad
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
 from contracts.lib.types import Trove, Yang
+from contracts.lib.wad_ray import WadRay
 
 //
 // Events
@@ -162,8 +163,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert_trove_owner(user, trove_id);
 
     let (shrine: address) = abbot_shrine_address.read();
-    let (_, _, _, outstanding_debt: wad) = IShrine.get_trove_info(shrine, trove_id);
-    IShrine.melt(shrine, user, trove_id, outstanding_debt);
+    IShrine.melt(shrine, user, trove_id, WadRay.BOUND);
 
     let (sentinel: address) = abbot_sentinel_address.read();
     let (yang_addresses_count: ufelt) = ISentinel.get_yang_addresses_count(sentinel);

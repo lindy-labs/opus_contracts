@@ -154,17 +154,15 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // Check purge_amt <= max_close_amt
     // Since the value of `max_close_amt` cannot exceed `debt`, this also checks that 0 < `purge_amt` < `debt`
     let max_close_amt: wad = get_max_close_amount_internal(trove_ltv, trove_debt);
-    with_attr error_message("Purger: Maximum close amount exceeded") {
-        assert_nn_le(purge_amt, max_close_amt);
-    }
+    let safe_purge_amt: wad = WadRay.unsigned_min(purge_amt, max_close_amt);
 
     // Get percentage freed
     let percentage_freed: ray = get_percentage_freed(
-        trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
+        trove_threshold, trove_ltv, trove_value, trove_debt, safe_purge_amt
     );
 
     let (funder: address) = get_caller_address();
-    return purge(shrine, trove_id, trove_ltv, purge_amt, percentage_freed, funder, recipient);
+    return purge(shrine, trove_id, trove_ltv, safe_purge_amt, percentage_freed, funder, recipient);
 }
 
 // Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
