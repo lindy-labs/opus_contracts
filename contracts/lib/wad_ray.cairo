@@ -44,7 +44,7 @@ namespace WadRay {
         return ();
     }
 
-    func unsigned_min{range_check_ptr}(a, b) -> felt {
+    func unsigned_min{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 
@@ -55,7 +55,7 @@ namespace WadRay {
         return b;
     }
 
-    func unsigned_max{range_check_ptr}(a, b) -> felt {
+    func unsigned_max{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 
@@ -87,7 +87,7 @@ namespace WadRay {
         return ceiled;
     }
 
-    func add{range_check_ptr}(a, b) -> wad {
+    func add{range_check_ptr}(a, b) -> felt {
         assert_valid(a);
         assert_valid(b);
 
@@ -96,7 +96,7 @@ namespace WadRay {
         return sum;
     }
 
-    func add_unsigned{range_check_ptr}(a, b) -> wad {
+    func unsigned_add{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 
@@ -105,7 +105,7 @@ namespace WadRay {
         return sum;
     }
 
-    func sub{range_check_ptr}(a, b) -> wad {
+    func sub{range_check_ptr}(a, b) -> felt {
         assert_valid(a);
         assert_valid(b);
 
@@ -114,7 +114,7 @@ namespace WadRay {
         return diff;
     }
 
-    func sub_unsigned{range_check_ptr}(a, b) -> wad {
+    func unsigned_sub{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 
@@ -193,7 +193,6 @@ namespace WadRay {
         return ray_u * div_sign;
     }
 
-    // Assumes both a and b are positive integers
     func runsigned_div{range_check_ptr}(a, b) -> ray {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -251,8 +250,8 @@ namespace WadRay {
     }
 
     // Truncates a ray to return a wad
-    func ray_to_wad{range_check_ptr}(ray) -> wad {
-        let (converted, _) = unsigned_div_rem(ray, DIFF);
+    func ray_to_wad{range_check_ptr}(n) -> wad {
+        let (converted, _) = unsigned_div_rem(n, DIFF);
         return converted;
     }
 
