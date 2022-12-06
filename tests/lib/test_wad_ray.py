@@ -188,7 +188,7 @@ async def test_add_sub(wad_ray, left, right, fn, op):
 @example(left=to_wad(1), right=to_wad(1))  # Test wad values
 @pytest.mark.parametrize("fn,op", [("test_unsigned_add", operator.add), ("test_unsigned_sub", operator.sub)])
 @pytest.mark.asyncio
-async def test_add_unsigned_sub(wad_ray, left, right, fn, op):
+async def test_add_sub_unsigned(wad_ray, left, right, fn, op):
     expected_py = op(left, right)
     expected_cairo = signed_int_to_felt(expected_py)
     method = wad_ray.get_contract_function(fn)
@@ -211,16 +211,16 @@ async def test_add_unsigned_sub(wad_ray, left, right, fn, op):
 @example(left=to_ray(2), right=to_ray(2))  # Test wad values
 @example(left=to_ray(1), right=to_ray(1) // 2)  # Test percentage
 @pytest.mark.parametrize(
-    "fn,op,scale,ret",
+    "fn,op,scale",
     [
-        ("test_wmul", operator.mul, WAD_SCALE, "res"),
-        ("test_wsigned_div", operator.floordiv, WAD_SCALE, "res"),
-        ("test_rmul", operator.mul, RAY_SCALE, "res"),
-        ("test_rsigned_div", operator.floordiv, RAY_SCALE, "res"),
+        ("test_wmul", operator.mul, WAD_SCALE),
+        ("test_wsigned_div", operator.floordiv, WAD_SCALE),
+        ("test_rmul", operator.mul, RAY_SCALE),
+        ("test_rsigned_div", operator.floordiv, RAY_SCALE),
     ],
 )
 @pytest.mark.asyncio
-async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
+async def test_mul_div_signed(wad_ray, left, right, fn, op, scale):
     # skip right = 0
     assume(right != 0)
 
@@ -253,7 +253,7 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
             await method(left_input_val, right_input_val).execute()
 
     else:
-        res = getattr((await method(left_input_val, right_input_val).execute()).result, ret)
+        res = (await method(left_input_val, right_input_val).execute()).result.res
         assert res == expected_cairo
 
 
@@ -266,16 +266,16 @@ async def test_mul_div_signed(wad_ray, left, right, fn, op, scale, ret):
 @example(left=to_ray(2), right=to_ray(2))  # Test wad values
 @example(left=to_ray(1), right=to_ray(1) // 2)  # Test percentage
 @pytest.mark.parametrize(
-    "fn,op,scale,ret",
+    "fn,op,scale",
     [
-        ("test_wunsigned_div", operator.floordiv, WAD_SCALE, "res"),
-        ("test_wunsigned_div_unchecked", operator.floordiv, WAD_SCALE, "res"),
-        ("test_runsigned_div", operator.floordiv, RAY_SCALE, "res"),
-        ("test_runsigned_div_unchecked", operator.floordiv, RAY_SCALE, "res"),
+        ("test_wunsigned_div", operator.floordiv, WAD_SCALE),
+        ("test_wunsigned_div_unchecked", operator.floordiv, WAD_SCALE),
+        ("test_runsigned_div", operator.floordiv, RAY_SCALE),
+        ("test_runsigned_div_unchecked", operator.floordiv, RAY_SCALE),
     ],
 )
 @pytest.mark.asyncio
-async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
+async def test_div_unsigned(wad_ray, left, right, fn, op, scale):
     # `unsigned_div_rem` assumes 0 < right <= CAIRO_PRIME / RANGE_CHECK_BOUND
     assume(right <= CAIRO_PRIME // RANGE_CHECK_BOUND)
     scaled_left = left * scale
@@ -299,7 +299,7 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
         with pytest.raises(StarkException):
             await method(left, right).execute()
     else:
-        res = getattr((await method(left, right).execute()).result, ret)
+        res = (await method(left, right).execute()).result.res
         assert res == expected_cairo
 
 
@@ -310,16 +310,16 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale, ret):
 @example(val=to_wad((WAD_RAY_BOUND // WAD_SCALE) + 1))  # Failing case for to_wad
 @example(val=to_wad((RANGE_CHECK_BOUND // WAD_SCALE) + 1))  # Failing case for to_wad
 @pytest.mark.parametrize(
-    "fn,input_op,output_op,ret",
+    "fn,input_op,output_op",
     [
-        ("test_to_wad", int, to_wad, "res"),
-        ("test_wad_to_felt", to_wad, int, "res"),
-        ("test_wad_to_ray", int, wad_to_ray, "res"),
-        ("test_wad_to_ray_unchecked", int, wad_to_ray, "res"),
+        ("test_to_wad", int, to_wad),
+        ("test_wad_to_felt", to_wad, int),
+        ("test_wad_to_ray", int, wad_to_ray),
+        ("test_wad_to_ray_unchecked", int, wad_to_ray),
     ],
 )
 @pytest.mark.asyncio
-async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, ret):
+async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op):
     input_val = input_op(val)
     expected_py = output_op(val)
 
@@ -334,7 +334,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op, re
         with pytest.raises(StarkException):
             await method(input_val).execute()
     else:
-        res = getattr((await method(input_val).execute()).result, ret)
+        res = (await method(input_val).execute()).result.res
         assert res == expected_py
 
 

@@ -29,13 +29,13 @@ func test_ceil{range_check_ptr}(n) -> (res: wad) {
 }
 
 @view
-func test_unsigned_max{range_check_ptr}(a, b) -> (res: felt) {
+func test_unsigned_max{range_check_ptr}(a, b) -> (res: ufelt) {
     let res: felt = WadRay.unsigned_max(a, b);
     return (res,);
 }
 
 @view
-func test_unsigned_min{range_check_ptr}(a, b) -> (res: felt) {
+func test_unsigned_min{range_check_ptr}(a, b) -> (res: ufelt) {
     let res: felt = WadRay.unsigned_min(a, b);
     return (res,);
 }
