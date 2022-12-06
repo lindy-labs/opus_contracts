@@ -823,9 +823,6 @@ func melt{
     // Cap `amount` to trove's debt if it exceeds
     let melt_amt: wad = WadRay.unsigned_min(old_trove_info.debt, amount);
 
-    // Will not revert because amount is capped to trove's debt
-    let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, melt_amt);
-
     // Update system debt
     let (current_system_debt: wad) = shrine_total_debt.read();
 
@@ -835,6 +832,8 @@ func melt{
 
     shrine_total_debt.write(new_system_debt);
 
+    // Will not revert because amount is capped to trove's debt
+    let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, melt_amt);
     let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, new_trove_info);
 
