@@ -44,7 +44,7 @@ namespace WadRay {
         return ();
     }
 
-    func min{range_check_ptr}(a, b) -> felt {
+    func unsigned_min{range_check_ptr}(a, b) -> felt {
         assert_valid(a);
         assert_valid(b);
 
@@ -55,7 +55,7 @@ namespace WadRay {
         return b;
     }
 
-    func max{range_check_ptr}(a, b) -> felt {
+    func unsigned_max{range_check_ptr}(a, b) -> felt {
         assert_valid(a);
         assert_valid(b);
 

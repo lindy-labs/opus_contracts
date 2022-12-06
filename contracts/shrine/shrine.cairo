@@ -821,7 +821,7 @@ func melt{
     let current_interval: ufelt = now();
 
     // Cap `amount` to trove's debt if it exceeds
-    let melt_amt: wad = WadRay.min(old_trove_info.debt, amount);
+    let melt_amt: wad = WadRay.unsigned_min(old_trove_info.debt, amount);
 
     // Will not revert because amount is capped to trove's debt
     let new_debt: wad = WadRay.sub_unsigned(old_trove_info.debt, melt_amt);

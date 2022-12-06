@@ -142,15 +142,12 @@ async def test_ceil(wad_ray, val):
 
 
 @settings(max_examples=50, deadline=None)
-@given(left=st_int125, right=st_int125)
-@pytest.mark.parametrize("fn,op", [("test_min", min), ("test_max", max)])
+@given(left=st_uint125, right=st_uint125)
+@pytest.mark.parametrize("fn,op", [("test_unsigned_min", min), ("test_unsigned_max", max)])
 @pytest.mark.asyncio
 async def test_minmax(wad_ray, left, right, fn, op):
-    left_input = signed_int_to_felt(left)
-    right_input = signed_int_to_felt(right)
-
     method = wad_ray.get_contract_function(fn)
-    res = (await method(left_input, right_input).execute()).result.res
+    res = (await method(left, right).execute()).result.res
     expected = signed_int_to_felt(op(left, right))
 
     assert res == expected

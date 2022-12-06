@@ -154,7 +154,7 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // Check purge_amt <= max_close_amt
     // Since the value of `max_close_amt` cannot exceed `debt`, this also checks that 0 < `purge_amt` < `debt`
     let max_close_amt: wad = get_max_close_amount_internal(trove_ltv, trove_debt);
-    let safe_purge_amt: wad = WadRay.min(purge_amt, max_close_amt);
+    let safe_purge_amt: wad = WadRay.unsigned_min(purge_amt, max_close_amt);
 
     // Get percentage freed
     let percentage_freed: ray = get_percentage_freed(
