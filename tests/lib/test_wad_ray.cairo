@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.lib.aliases import ray, wad
+from contracts.lib.aliases import ray, ufelt, wad
 from contracts.lib.wad_ray import WadRay
 
 @view
@@ -116,4 +116,9 @@ func test_wad_to_ray{range_check_ptr}(n) -> (res: ray) {
 @view
 func test_wad_to_ray_unchecked(n) -> (res: ray) {
     return (WadRay.wad_to_ray_unchecked(n),);
+}
+
+@view
+func test_fixed_point_to_wad{range_check_ptr}(n: ufelt, decimals: ufelt) -> (res: wad) {
+    return (WadRay.fixed_point_to_wad(n, decimals),);
 }

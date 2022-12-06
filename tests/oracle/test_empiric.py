@@ -32,6 +32,7 @@ from tests.utils import (
     set_block_timestamp,
     signed_int_to_felt,
     str_to_felt,
+    to_fixed_point,
     to_uint,
     to_wad,
 )
@@ -40,7 +41,7 @@ BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
 BTC_INIT_PRICE = 19520
 BTC_CEILING = to_wad(10_000_000)
 BTC_THRESHOLD = 85 * RAY_PERCENT
-BTC_DEPOSIT = to_wad(10)
+BTC_DEPOSIT = to_fixed_point(10, 8)
 
 ETH_EMPIRIC_ID = str_to_felt("ETH/USD")
 ETH_INIT_PRICE = 1283
@@ -65,7 +66,7 @@ def to_empiric(value: int) -> int:
 
 @pytest.fixture
 async def btc_token(tokens) -> StarknetContract:
-    return await tokens("Bitcoin", "BTC", 18)
+    return await tokens("Bitcoin", "BTC", 8)
 
 
 @pytest.fixture

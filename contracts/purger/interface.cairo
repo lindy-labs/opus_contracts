@@ -19,12 +19,12 @@ namespace IPurger {
     //
 
     func liquidate(trove_id: ufelt, purge_amt: wad, recipient: address) -> (
-        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
     ) {
     }
 
     func absorb(trove_id: ufelt) -> (
-        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: wad*
+        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
     ) {
     }
 }

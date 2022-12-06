@@ -19,10 +19,10 @@ namespace IGate {
     //
     // external
     //
-    func enter(user: address, trove_id: ufelt, assets: wad) -> (yang: wad) {
+    func enter(user: address, trove_id: ufelt, assets: ufelt) -> (yang: wad) {
     }
 
-    func exit(user: address, trove_id: ufelt, yang: wad) -> (assets: wad) {
+    func exit(user: address, trove_id: ufelt, yang: wad) -> (assets: ufelt) {
     }
 
     func kill() {
@@ -31,7 +31,7 @@ namespace IGate {
     //
     // view
     //
-    func get_total_assets() -> (total: wad) {
+    func get_total_assets() -> (total: ufelt) {
     }
 
     func get_total_yang() -> (total: wad) {
@@ -40,10 +40,10 @@ namespace IGate {
     func get_asset_amt_per_yang() -> (amt: wad) {
     }
 
-    func preview_enter(assets: wad) -> (preview: wad) {
+    func preview_enter(assets: ufelt) -> (preview: wad) {
     }
 
-    func preview_exit(yang: wad) -> (preview: wad) {
+    func preview_exit(yang: wad) -> (preview: ufelt) {
     }
 }
 

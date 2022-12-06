@@ -5,7 +5,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.uint256 import Uint256
 
-from contracts.lib.aliases import address, bool, ray, wad
+from contracts.lib.aliases import address, bool, ray, ufelt
 from contracts.lib.interfaces import IERC20
 from contracts.lib.wad_ray import WadRay
 
@@ -29,7 +29,7 @@ func TaxCollectorUpdated(prev_tax_collector: address, new_tax_collector: address
 }
 
 @event
-func TaxLevied(tax: wad) {
+func TaxLevied(tax: ufelt) {
 }
 
 //
@@ -107,8 +107,9 @@ namespace GateTax {
     //
 
     // Charge the tax and transfer to the tax collector
+    // `taxable` is denominated in the decimals of the asset
     func levy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        asset: address, taxable: wad
+        asset: address, taxable: ufelt
     ) {
         alloc_locals;
 
@@ -121,8 +122,9 @@ namespace GateTax {
         }
 
         // Calculate taxable amount
-        // `rmul` on a wad and a ray returns a wad
-        let chargeable: wad = WadRay.rmul(taxable, tax);
+        // `rmul` on a ray and a ufelt representing a fixed point with a given decimal precision
+        // returns a ufelt representing a fixed point with the same decimal precision
+        let chargeable: ufelt = WadRay.rmul(taxable, tax);
 
         // Transfer fees
         let (tax_collector: address) = gate_tax_collector_storage.read();
