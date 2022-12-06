@@ -193,7 +193,6 @@ namespace WadRay {
         return ray_u * div_sign;
     }
 
-    // Assumes both a and b are positive integers
     func runsigned_div{range_check_ptr}(a, b) -> ray {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -251,8 +250,8 @@ namespace WadRay {
     }
 
     // Truncates a ray to return a wad
-    func ray_to_wad{range_check_ptr}(ray) -> wad {
-        let (converted, _) = unsigned_div_rem(ray, DIFF);
+    func ray_to_wad{range_check_ptr}(n) -> wad {
+        let (converted, _) = unsigned_div_rem(n, DIFF);
         return converted;
     }
 
