@@ -56,8 +56,8 @@ namespace WadRay {
     }
 
     func unsigned_max{range_check_ptr}(a, b) -> felt {
-        assert_valid(a);
-        assert_valid(b);
+        assert_valid_unsigned(a);
+        assert_valid_unsigned(b);
 
         let le = is_le(a, b);
         if (le == TRUE) {
