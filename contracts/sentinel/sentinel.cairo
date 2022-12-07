@@ -189,6 +189,8 @@ func enter{
 }(yang: address, user: address, trove_id: ufelt, asset_amt: ufelt) -> (yang_amt: wad) {
     alloc_locals;
 
+    AccessControl.assert_has_role(SentinelRoles.ENTER);
+
     let (gate: address) = get_gate_address(yang);
 
     with_attr error_message("Sentinel: Yang {yang} is not approved") {
@@ -204,6 +206,8 @@ func exit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(yang: address, user: address, trove_id: ufelt, yang_amt: wad) -> (asset_amt: ufelt) {
     alloc_locals;
+
+    AccessControl.assert_has_role(SentinelRoles.EXIT);
 
     let (gate: address) = get_gate_address(yang);
 
