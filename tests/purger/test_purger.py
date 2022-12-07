@@ -192,11 +192,9 @@ async def forged_trove_1(
 
     # Get maximum forge amount
     prices = [from_wad(p) for p in (steth_price, doge_price, wbtc_price)]
-    amounts = [
-        from_wad(USER_STETH_DEPOSIT_WAD),
-        from_wad(USER_DOGE_DEPOSIT_WAD),
-        from_fixed_point(USER_WBTC_DEPOSIT_AMT, wbtc_yang.decimals),
-    ]
+    deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
+    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
+
     thresholds = [from_ray(yang.threshold) for yang in yangs]
     max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
 
@@ -205,7 +203,7 @@ async def forged_trove_1(
     await abbot.open_trove(
         forge_amt,
         [yang.contract_address for yang in yangs],
-        [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT],
+        deposit_amts,
     ).execute(caller_address=TROVE1_OWNER)
 
     return forge_amt

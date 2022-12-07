@@ -361,7 +361,7 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
 
 
 @pytest.fixture
-async def steth_gate(starknet, abbot, sentinel, shrine_deploy, steth_token, gates) -> StarknetContract:
+async def steth_gate(starknet, sentinel, shrine_deploy, steth_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, steth_token)
 
     # auth Sentinel in Gate
@@ -371,7 +371,7 @@ async def steth_gate(starknet, abbot, sentinel, shrine_deploy, steth_token, gate
 
 
 @pytest.fixture
-async def doge_gate(starknet, abbot, sentinel, shrine_deploy, doge_token, gates) -> StarknetContract:
+async def doge_gate(starknet, sentinel, shrine_deploy, doge_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, doge_token)
 
     # auth Sentinel in Gate
@@ -381,7 +381,7 @@ async def doge_gate(starknet, abbot, sentinel, shrine_deploy, doge_token, gates)
 
 
 @pytest.fixture
-async def wbtc_gate(starknet, abbot, sentinel, shrine_deploy, wbtc_token, gates) -> StarknetContract:
+async def wbtc_gate(starknet, sentinel, shrine_deploy, wbtc_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, wbtc_token)
 
     # auth Sentinel in Gate
