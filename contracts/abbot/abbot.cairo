@@ -260,7 +260,7 @@ func assert_trove_owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 // loop through all the yangs and their respective amounts that need to be deposited
-// and call the appropriate Gate's `deposit` function
+// and call the  Gate's `deposit` function via Sentinel
 func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shrine: address,
     sentinel: address,
