@@ -18,7 +18,7 @@ from tests.utils import (
 
 @pytest.fixture
 @pytest.mark.asyncio
-async def mock_abbot(sentinel):
+async def mock_owner_as_abbot(sentinel):
     await (sentinel.grant_role(SENTINEL_ROLE_FOR_ABBOT, SENTINEL_OWNER).execute(caller_address=SENTINEL_OWNER))
 
 
@@ -134,7 +134,7 @@ async def test_view_funcs(
     assert (await sentinel.get_yang_addresses_count().execute()).result.count == 3
 
 
-@pytest.mark.usefixtures("mock_abbot")
+@pytest.mark.usefixtures("mock_owner_as_abbot")
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
 @pytest.mark.asyncio
 async def test_gate_fns_pass(
@@ -181,7 +181,7 @@ async def test_gate_fns_pass(
         )
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "mock_abbot")
+@pytest.mark.usefixtures("sentinel_with_yangs", "mock_owner_as_abbot")
 @pytest.mark.asyncio
 async def test_gate_fns_fail_invalid_yang(sentinel):
     faux_yang_address = 999
