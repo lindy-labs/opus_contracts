@@ -109,7 +109,7 @@ func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 ) -> (amt: wad) {
     let (gate: address) = get_gate_address(yang);
 
-    with_attr error_message("Sentinel: Yang does not exist") {
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
         assert_not_zero(gate);
     }
 
@@ -123,7 +123,7 @@ func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) -> (preview: wad) {
     let (gate: address) = get_gate_address(yang);
 
-    with_attr error_message("Sentinel: Yang does not exist") {
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
         assert_not_zero(gate);
     }
 
@@ -137,7 +137,7 @@ func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 ) -> (preview: ufelt) {
     let (gate: address) = get_gate_address(yang);
 
-    with_attr error_message("Sentinel: Yang does not exist") {
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
         assert_not_zero(gate);
     }
 
@@ -191,7 +191,7 @@ func enter{
 
     let (gate: address) = get_gate_address(yang);
 
-    with_attr error_message("Sentinel: Yang does not exist") {
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
         assert_not_zero(gate);
     }
 
@@ -207,7 +207,7 @@ func exit{
 
     let (gate: address) = get_gate_address(yang);
 
-    with_attr error_message("Sentinel: Yang does not exist") {
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
         assert_not_zero(gate);
     }
 

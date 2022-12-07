@@ -5,7 +5,6 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.gate.interface import IGate
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
 
@@ -130,9 +129,6 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         assert_not_zero(yangs_len);
     }
 
-    let (sentinel: address) = abbot_sentinel_address.read();
-    assert_valid_yangs(sentinel, yangs_len, yangs);
-
     let (troves_count: ufelt) = abbot_troves_count.read();
     abbot_troves_count.write(troves_count + 1);
 
@@ -145,6 +141,7 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     abbot_trove_owner.write(new_trove_id, user);
 
     let (shrine: address) = abbot_shrine_address.read();
+    let (sentinel: address) = abbot_sentinel_address.read();
     do_deposits(shrine, sentinel, user, new_trove_id, yangs_len, yangs, amounts);
     IShrine.forge(shrine, user, new_trove_id, forge_amount);
 
@@ -187,9 +184,6 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (sentinel: address) = abbot_sentinel_address.read();
     let (shrine: address) = abbot_shrine_address.read();
-
-    assert_valid_yang(sentinel, yang);
-
     let (user: address) = get_caller_address();
 
     do_deposit(shrine, sentinel, user, trove_id, yang, amount);
@@ -207,19 +201,15 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert_not_zero(yang);
     }
 
-    let (sentinel: address) = abbot_sentinel_address.read();
-    assert_valid_yang(sentinel, yang);
-
     // don't allow withdrawing from foreign troves
     let (user: address) = get_caller_address();
     assert_trove_owner(user, trove_id);
 
     let (shrine: address) = abbot_shrine_address.read();
-
-    let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
+    let (sentinel: address) = abbot_sentinel_address.read();
 
     ReentrancyGuard._start();
-    IGate.exit(gate, user, trove_id, amount);
+    ISentinel.exit(sentinel, yang, user, trove_id, amount);
     IShrine.withdraw(shrine, yang, trove_id, amount);
     ReentrancyGuard._end();
 
@@ -269,26 +259,6 @@ func assert_trove_owner{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     return ();
 }
 
-func assert_valid_yangs{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    sentinel: address, yangs_len: ufelt, yangs: address*
-) {
-    if (yangs_len == 0) {
-        return ();
-    }
-    assert_valid_yang(sentinel, [yangs]);
-    return assert_valid_yangs(sentinel, yangs_len - 1, yangs + 1);
-}
-
-func assert_valid_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    sentinel: address, yang: address
-) {
-    with_attr error_message("Abbot: Yang {yang} is not approved") {
-        let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
-        assert_not_zero(gate);
-    }
-    return ();
-}
-
 // loop through all the yangs and their respective amounts that need to be deposited
 // and call the appropriate Gate's `deposit` function
 func do_deposits{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -314,10 +284,8 @@ func do_deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 ) {
     alloc_locals;
 
-    let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
-
     ReentrancyGuard._start();
-    let yang_amount: wad = IGate.enter(gate, user, trove_id, amount);
+    let yang_amount: wad = ISentinel.enter(sentinel, yang, user, trove_id, amount);
     IShrine.deposit(shrine, yang, trove_id, yang_amount);
     ReentrancyGuard._end();
 
@@ -347,11 +315,10 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     if (yang_amount == 0) {
         return do_withdrawals_full(shrine, sentinel, user, trove_id, yang_idx + 1, yang_count);
     } else {
-        let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
         let (shrine: address) = abbot_shrine_address.read();
 
         ReentrancyGuard._start();
-        IGate.exit(gate, user, trove_id, yang_amount);
+        ISentinel.exit(sentinel, yang, user, trove_id, yang_amount);
         IShrine.withdraw(shrine, yang, trove_id, yang_amount);
         ReentrancyGuard._end();
 
