@@ -2,7 +2,17 @@ import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.roles import SentinelRoles
-from tests.utils import BAD_GUY, SENTINEL_OWNER, YangConfig, assert_event_emitted
+from tests.utils import (
+    BAD_GUY,
+    SENTINEL_OWNER,
+    TROVE1_OWNER,
+    TROVE_1,
+    WAD_SCALE,
+    YangConfig,
+    assert_event_emitted,
+    to_fixed_point,
+    to_wad,
+)
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
@@ -115,3 +125,73 @@ async def test_view_funcs(
 
     # Testing `get_yang_addresses_count`
     assert (await sentinel.get_yang_addresses_count().execute()).result.count == 3
+
+
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.asyncio
+async def test_gate_fns_pass(
+    sentinel, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig, steth_gate, doge_gate, wbtc_gate
+):
+    yangs = (steth_yang, doge_yang, wbtc_yang)
+    gates = (steth_gate, doge_gate, wbtc_gate)
+    deposit_asset_amt = 5
+    for yang, gate in zip(yangs, gates):
+        scaled_asset_deposit_amt = to_fixed_point(deposit_asset_amt, yang.decimals)
+        scaled_yang_withdraw_amt = to_wad(deposit_asset_amt)
+
+        expected_yang_amt = (
+            await sentinel.preview_enter(yang.contract_address, scaled_asset_deposit_amt).execute()
+        ).result.preview
+        assert expected_yang_amt == scaled_yang_withdraw_amt
+
+        enter = await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+        expected_asset_amt_per_yang = (
+            await sentinel.get_asset_amt_per_yang(yang.contract_address).execute()
+        ).result.amt
+
+        # Asserts on the gate
+        assert_event_emitted(
+            enter, gate.contract_address, "Enter", [TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt, expected_yang_amt]
+        )
+        assert expected_asset_amt_per_yang == WAD_SCALE
+
+        expected_asset_amt = (
+            await sentinel.preview_exit(yang.contract_address, scaled_yang_withdraw_amt).execute()
+        ).result.preview
+        assert expected_asset_amt == scaled_asset_deposit_amt
+
+        exit_ = await sentinel.exit(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_yang_withdraw_amt).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+        # Asserts on the gate
+        assert_event_emitted(
+            exit_, gate.contract_address, "Exit", [TROVE1_OWNER, TROVE_1, expected_asset_amt, scaled_yang_withdraw_amt]
+        )
+
+
+@pytest.mark.asyncio
+async def test_gate_fns_fail_invalid_yang(sentinel):
+    faux_yang_address = 999
+    faux_yang_amt = faux_deposit_amt = to_wad(10)
+    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+        await sentinel.enter(faux_yang_address, TROVE1_OWNER, TROVE_1, faux_deposit_amt).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+        await sentinel.exit(faux_yang_address, TROVE1_OWNER, TROVE_1, faux_yang_amt).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+        await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()
+
+    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+        await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()
+
+    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+        await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()
