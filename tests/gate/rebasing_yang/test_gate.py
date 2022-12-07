@@ -25,6 +25,7 @@ from tests.utils import (
     WAD_ERROR_MARGIN,
     WAD_SCALE,
     ZERO_ADDRESS,
+    YangConfig,
     assert_equalish,
     assert_event_emitted,
     compile_contract,
@@ -116,7 +117,9 @@ async def funded_users(steth_token, wbtc_token):
 
 
 @pytest.fixture
-async def steth_gate_taxable_info(starknet, shrine, steth_token) -> tuple[StarknetContract, int, StarknetContract]:
+async def steth_gate_taxable_info(
+    starknet, shrine, steth_token, steth_yang: YangConfig
+) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
 
@@ -137,23 +140,25 @@ async def steth_gate_taxable_info(starknet, shrine, steth_token) -> tuple[Starkn
 
     # Grant `Sentinel` access to `enter` and `exit`
     await gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=GATE_OWNER)
-    decimals = (await steth_token.decimals().execute()).result.decimals
-    return steth_token, decimals, gate
+    return steth_token, steth_yang.decimals, gate
 
 
 @pytest.fixture
-async def steth_gate_info(steth_token, steth_gate) -> tuple[StarknetContract, int, StarknetContract]:
+async def steth_gate_info(
+    steth_token, steth_gate, steth_yang: YangConfig
+) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     # Grant `Sentinel` access to `enter` and `exit
     await steth_gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=GATE_OWNER)
-    decimals = (await steth_token.decimals().execute()).result.decimals
-    return steth_token, decimals, steth_gate
+    return steth_token, steth_yang.decimals, steth_gate
 
 
 @pytest.fixture
-async def wbtc_gate_taxable_info(starknet, shrine, wbtc_token) -> tuple[StarknetContract, int, StarknetContract]:
+async def wbtc_gate_taxable_info(
+    starknet, shrine, wbtc_token, wbtc_yang: YangConfig
+) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
 
@@ -174,19 +179,19 @@ async def wbtc_gate_taxable_info(starknet, shrine, wbtc_token) -> tuple[Starknet
 
     # Grant `Sentinel` access to `enter` and `exit`
     await gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=GATE_OWNER)
-    decimals = (await wbtc_token.decimals().execute()).result.decimals
-    return wbtc_token, decimals, gate
+    return wbtc_token, wbtc_yang.decimals, gate
 
 
 @pytest.fixture
-async def wbtc_gate_info(wbtc_token, wbtc_gate) -> tuple[StarknetContract, int, StarknetContract]:
+async def wbtc_gate_info(
+    wbtc_token, wbtc_gate, wbtc_yang: YangConfig
+) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     # Grant `Sentinel` access to `enter` and `exit
     await wbtc_gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=GATE_OWNER)
-    decimals = (await wbtc_token.decimals().execute()).result.decimals
-    return wbtc_token, decimals, wbtc_gate
+    return wbtc_token, wbtc_yang.decimals, wbtc_gate
 
 
 @pytest.fixture
