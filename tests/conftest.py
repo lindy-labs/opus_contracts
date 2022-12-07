@@ -55,6 +55,7 @@ from tests.utils import (
     set_block_timestamp,
     str_to_felt,
     to_fixed_point,
+    to_uint,
     to_wad,
 )
 
@@ -454,30 +455,34 @@ async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetCont
 async def funded_trove1_owner(
     steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
 ):
-    # fund the user with bags
-    await steth_token.mint(TROVE1_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE1_OWNER)
-    await doge_token.mint(TROVE1_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE1_OWNER)
-    await wbtc_token.mint(TROVE1_OWNER, (to_fixed_point(10, WBTC_DECIMALS), 0)).execute(caller_address=TROVE1_OWNER)
+    tokens = (steth_token, doge_token, wbtc_token)
+    yangs = (steth_yang, doge_yang, wbtc_yang)
+    amts = (1_000, 1_000_000, 10)
 
-    # user approves Aura gates to spend bags
-    await max_approve(steth_token, TROVE1_OWNER, steth_yang.gate_address)
-    await max_approve(doge_token, TROVE1_OWNER, doge_yang.gate_address)
-    await max_approve(wbtc_token, TROVE1_OWNER, wbtc_yang.gate_address)
+    for token, yang, amt in zip(tokens, yangs, amts):
+        amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
+        # fund the user with bags
+        await token.mint(TROVE1_OWNER, amt_uint).execute(caller_address=TROVE1_OWNER)
+
+        # user approves Aura gates to spend bags
+        await max_approve(token, TROVE1_OWNER, yang.gate_address)
 
 
 @pytest.fixture
 async def funded_trove2_owner(
     steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
 ):
-    # fund the user with bags
-    await steth_token.mint(TROVE2_OWNER, (to_wad(1_000), 0)).execute(caller_address=TROVE2_OWNER)
-    await doge_token.mint(TROVE2_OWNER, (to_wad(1_000_000), 0)).execute(caller_address=TROVE2_OWNER)
-    await wbtc_token.mint(TROVE2_OWNER, (to_fixed_point(10, WBTC_DECIMALS), 0)).execute(caller_address=TROVE2_OWNER)
+    tokens = (steth_token, doge_token, wbtc_token)
+    yangs = (steth_yang, doge_yang, wbtc_yang)
+    amts = (1_000, 1_000_000, 10)
 
-    # user approves Aura gates to spend bags
-    await max_approve(steth_token, TROVE2_OWNER, steth_yang.gate_address)
-    await max_approve(doge_token, TROVE2_OWNER, doge_yang.gate_address)
-    await max_approve(wbtc_token, TROVE2_OWNER, wbtc_yang.gate_address)
+    for token, yang, amt in zip(tokens, yangs, amts):
+        amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
+        # fund the user with bags
+        await token.mint(TROVE2_OWNER, amt_uint).execute(caller_address=TROVE2_OWNER)
+
+        # user approves Aura gates to spend bags
+        await max_approve(token, TROVE2_OWNER, yang.gate_address)
 
 
 @pytest.fixture
