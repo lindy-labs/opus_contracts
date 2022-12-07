@@ -9,6 +9,7 @@ from tests.utils import (
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE_1,
+    WAD_DECIMALS,
     YangConfig,
     assert_event_emitted,
     from_uint,
@@ -23,7 +24,7 @@ from tests.utils import (
 
 @pytest.fixture
 async def shitcoin(tokens) -> StarknetContract:
-    return await tokens("To the moon", "SHIT", 18)
+    return await tokens("To the moon", "SHIT", WAD_DECIMALS)
 
 
 @pytest.fixture
@@ -35,7 +36,7 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 @pytest.fixture
 def shitcoin_yang(shitcoin) -> YangConfig:
-    return YangConfig(shitcoin.contract_address, 0, 0, 0, 0)
+    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0)
 
 
 @pytest.fixture

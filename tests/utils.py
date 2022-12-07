@@ -55,7 +55,7 @@ WEIGHTS = {
 }
 
 Uint256 = namedtuple("Uint256", "low high")
-YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_wad gate_address")
+YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address")
 
 Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]

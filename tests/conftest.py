@@ -326,7 +326,9 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
-    return YangConfig(steth_token.contract_address, ceiling, threshold, price_wad, steth_gate.contract_address)
+    return YangConfig(
+        steth_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, steth_gate.contract_address
+    )
 
 
 @pytest.fixture
@@ -334,7 +336,9 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     ceiling = to_wad(100_000_000)
     threshold = 20 * RAY_PERCENT
     price_wad = to_wad(0.07)
-    return YangConfig(doge_token.contract_address, ceiling, threshold, price_wad, doge_gate.contract_address)
+    return YangConfig(
+        doge_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, doge_gate.contract_address
+    )
 
 
 @pytest.fixture
@@ -342,7 +346,9 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     ceiling = to_wad(1_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(10_000)
-    return YangConfig(wbtc_token.contract_address, ceiling, threshold, price_wad, wbtc_gate.contract_address)
+    return YangConfig(
+        wbtc_token.contract_address, WBTC_DECIMALS, ceiling, threshold, price_wad, wbtc_gate.contract_address
+    )
 
 
 #
@@ -351,31 +357,37 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
 
 
 @pytest.fixture
-async def steth_gate(starknet, abbot, shrine_deploy, steth_token, gates) -> StarknetContract:
+async def steth_gate(starknet, abbot, sentinel, shrine_deploy, steth_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, steth_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
 
+    await gate.grant_role(ABBOT_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+
     return gate
 
 
 @pytest.fixture
-async def doge_gate(starknet, abbot, shrine_deploy, doge_token, gates) -> StarknetContract:
+async def doge_gate(starknet, abbot, sentinel, shrine_deploy, doge_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, doge_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
 
+    await gate.grant_role(ABBOT_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+
     return gate
 
 
 @pytest.fixture
-async def wbtc_gate(starknet, abbot, shrine_deploy, wbtc_token, gates) -> StarknetContract:
+async def wbtc_gate(starknet, abbot, sentinel, shrine_deploy, wbtc_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, wbtc_token)
 
     # auth Abbot in Gate
     await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
+
+    await gate.grant_role(ABBOT_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 
