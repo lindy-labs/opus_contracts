@@ -5,6 +5,7 @@ from tests.roles import SentinelRoles
 from tests.utils import (
     BAD_GUY,
     SENTINEL_OWNER,
+    SENTINEL_ROLE_FOR_ABBOT,
     TROVE1_OWNER,
     TROVE_1,
     WAD_SCALE,
@@ -13,6 +14,12 @@ from tests.utils import (
     to_fixed_point,
     to_wad,
 )
+
+
+@pytest.fixture
+@pytest.mark.asyncio
+async def mock_abbot(sentinel):
+    await (sentinel.grant_role(SENTINEL_ROLE_FOR_ABBOT, SENTINEL_OWNER).execute(caller_address=SENTINEL_OWNER))
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
@@ -127,6 +134,7 @@ async def test_view_funcs(
     assert (await sentinel.get_yang_addresses_count().execute()).result.count == 3
 
 
+@pytest.mark.usefixtures("mock_abbot")
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
 @pytest.mark.asyncio
 async def test_gate_fns_pass(
@@ -173,6 +181,7 @@ async def test_gate_fns_pass(
         )
 
 
+@pytest.mark.usefixtures("sentinel_with_yangs", "mock_abbot")
 @pytest.mark.asyncio
 async def test_gate_fns_fail_invalid_yang(sentinel):
     faux_yang_address = 999
@@ -195,3 +204,18 @@ async def test_gate_fns_fail_invalid_yang(sentinel):
 
     with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()
+
+
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.asyncio
+async def test_gate_fns_fail_unauthorized(sentinel, steth_yang: YangConfig):
+    deposit_asset_amt = deposit_yang_amt = to_wad(5)
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {SentinelRoles.ENTER}"):
+        await sentinel.enter(steth_yang.contract_address, TROVE1_OWNER, TROVE_1, deposit_asset_amt).execute(
+            caller_address=TROVE1_OWNER
+        )
+
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {SentinelRoles.EXIT}"):
+        await sentinel.exit(steth_yang.contract_address, TROVE1_OWNER, TROVE_1, deposit_yang_amt).execute(
+            caller_address=TROVE1_OWNER
+        )

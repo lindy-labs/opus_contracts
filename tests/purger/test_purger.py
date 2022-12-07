@@ -10,11 +10,10 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.purger.constants import *  # noqa: F403
-from tests.roles import GateRoles, ShrineRoles
+from tests.roles import SentinelRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     FALSE,
-    GATE_OWNER,
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -259,9 +258,7 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate, wbtc_gate) -
     await shrine.grant_role(purger_roles, purger.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # Approve purger to call `exit` in Gate
-    await steth_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
-    await doge_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
-    await wbtc_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
+    await sentinel.grant_role(SentinelRoles.EXIT, purger.contract_address).execute(caller_address=SENTINEL_OWNER)
 
     return purger
 

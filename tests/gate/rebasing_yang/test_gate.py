@@ -11,8 +11,8 @@ from tests.roles import GateRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
     FALSE,
-    GATE_EXTERNAL_ROLE,
     GATE_OWNER,
+    GATE_ROLE_FOR_SENTINEL,
     MAX_UINT256,
     SHRINE_OWNER,
     TIME_INTERVAL,
@@ -136,7 +136,7 @@ async def steth_gate_taxable_info(starknet, shrine, steth_token) -> tuple[Starkn
     )
 
     # Grant `Abbot` access to `enter` and `exit`
-    await gate.grant_role(GATE_EXTERNAL_ROLE, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
     decimals = (await steth_token.decimals().execute()).result.decimals
     return steth_token, decimals, gate
 
@@ -147,7 +147,7 @@ async def steth_gate_info(steth_token, steth_gate) -> tuple[StarknetContract, in
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     # Grant `Abbot` access to `enter` and `exit
-    await steth_gate.grant_role(GATE_EXTERNAL_ROLE, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
+    await steth_gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
     decimals = (await steth_token.decimals().execute()).result.decimals
     return steth_token, decimals, steth_gate
 
@@ -173,7 +173,7 @@ async def wbtc_gate_taxable_info(starknet, shrine, wbtc_token) -> tuple[Starknet
     )
 
     # Grant `Abbot` access to `enter` and `exit`
-    await gate.grant_role(GATE_EXTERNAL_ROLE, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
     decimals = (await wbtc_token.decimals().execute()).result.decimals
     return wbtc_token, decimals, gate
 
@@ -184,7 +184,7 @@ async def wbtc_gate_info(wbtc_token, wbtc_gate) -> tuple[StarknetContract, int, 
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
     # Grant `Abbot` access to `enter` and `exit
-    await wbtc_gate.grant_role(GATE_EXTERNAL_ROLE, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
+    await wbtc_gate.grant_role(GATE_ROLE_FOR_SENTINEL, MOCK_SENTINEL).execute(caller_address=GATE_OWNER)
     decimals = (await wbtc_token.decimals().execute()).result.decimals
     return wbtc_token, decimals, wbtc_gate
 
@@ -324,8 +324,8 @@ async def test_gate_setup(gate_info):
     assert asset_bal == 0
 
     # Check Abbot address is authorized to `enter` and `exit`
-    GATE_EXTERNAL_ROLE = (await gate.get_roles(MOCK_SENTINEL).execute()).result.roles
-    assert GATE_EXTERNAL_ROLE == GATE_EXTERNAL_ROLE
+    GATE_ROLE_FOR_SENTINEL = (await gate.get_roles(MOCK_SENTINEL).execute()).result.roles
+    assert GATE_ROLE_FOR_SENTINEL == GATE_ROLE_FOR_SENTINEL
 
     # Check initial values
     assert (await gate.get_total_yang().execute()).result.total == 0

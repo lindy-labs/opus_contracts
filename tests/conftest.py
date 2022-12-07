@@ -31,10 +31,11 @@ from tests.shrine.constants import (
 )
 from tests.utils import (
     EMPIRIC_OWNER,
-    GATE_EXTERNAL_ROLE,
     GATE_OWNER,
+    GATE_ROLE_FOR_SENTINEL,
     RAY_PERCENT,
     SENTINEL_OWNER,
+    SENTINEL_ROLE_FOR_ABBOT,
     SHRINE_OWNER,
     TIME_INTERVAL,
     TROVE1_OWNER,
@@ -293,6 +294,9 @@ async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
     roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE + ShrineRoles.MELT
     await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
 
+    # auth Abbot in Sentinel
+    await sentinel.grant_role(SENTINEL_ROLE_FOR_ABBOT, abbot.contract_address).execute(caller_address=SENTINEL_OWNER)
+
     return abbot
 
 
@@ -361,7 +365,7 @@ async def steth_gate(starknet, abbot, sentinel, shrine_deploy, steth_token, gate
     gate = await gates(shrine_deploy, steth_token)
 
     # auth Sentinel in Gate
-    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 
@@ -371,7 +375,7 @@ async def doge_gate(starknet, abbot, sentinel, shrine_deploy, doge_token, gates)
     gate = await gates(shrine_deploy, doge_token)
 
     # auth Sentinel in Gate
-    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 
@@ -381,7 +385,7 @@ async def wbtc_gate(starknet, abbot, sentinel, shrine_deploy, wbtc_token, gates)
     gate = await gates(shrine_deploy, wbtc_token)
 
     # auth Sentinel in Gate
-    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 

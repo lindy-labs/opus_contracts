@@ -21,8 +21,8 @@ from tests.roles import EmpiricRoles
 from tests.utils import (
     BAD_GUY,
     EMPIRIC_OWNER,
-    GATE_EXTERNAL_ROLE,
     GATE_OWNER,
+    GATE_ROLE_FOR_SENTINEL,
     RAY_PERCENT,
     SENTINEL_OWNER,
     TIME_INTERVAL,
@@ -77,14 +77,14 @@ async def eth_token(tokens) -> StarknetContract:
 @pytest.fixture
 async def btc_gate(starknet, shrine, sentinel, btc_token, gates) -> StarknetContract:
     gate = await gates(shrine, btc_token)
-    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
     return gate
 
 
 @pytest.fixture
 async def eth_gate(starknet, shrine, sentinel, eth_token, gates) -> StarknetContract:
     gate = await gates(shrine, eth_token)
-    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
     return gate
 
 

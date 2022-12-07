@@ -17,7 +17,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.roles import GateRoles
+from tests.roles import GateRoles, SentinelRoles
 
 RANGE_CHECK_BOUND = 2**128
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -90,7 +90,8 @@ EMPIRIC_OWNER = str_to_felt("empiric owner")
 BAD_GUY = str_to_felt("bad guy")
 
 # Roles
-GATE_EXTERNAL_ROLE = GateRoles.ENTER + GateRoles.EXIT
+GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
+SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
 
 # Troves
 TROVE_1 = 1
