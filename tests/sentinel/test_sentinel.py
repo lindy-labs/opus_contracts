@@ -177,21 +177,21 @@ async def test_gate_fns_pass(
 async def test_gate_fns_fail_invalid_yang(sentinel):
     faux_yang_address = 999
     faux_yang_amt = faux_deposit_amt = to_wad(10)
-    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.enter(faux_yang_address, TROVE1_OWNER, TROVE_1, faux_deposit_amt).execute(
             caller_address=SENTINEL_OWNER
         )
 
-    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.exit(faux_yang_address, TROVE1_OWNER, TROVE_1, faux_yang_amt).execute(
             caller_address=SENTINEL_OWNER
         )
 
-    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()
 
-    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()
 
-    with pytest.raises(StarkException, match="Sentinel: Yang does not exist"):
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()

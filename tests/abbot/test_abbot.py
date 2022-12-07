@@ -131,7 +131,7 @@ async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang:
     with pytest.raises(StarkException, match="Abbot: No yangs selected"):
         await abbot.open_trove(0, [], []).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=rf"Abbot: Yang {STARKNET_ADDR} is not approved"):
+    with pytest.raises(StarkException, match=rf"Sentinel: Yang {STARKNET_ADDR} is not approved"):
         await abbot.open_trove(0, [shitcoin_yang.contract_address], [10**10]).execute(caller_address=TROVE1_OWNER)
 
 
@@ -230,7 +230,7 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
         await abbot.deposit(0, TROVE_1, 0).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=rf"Abbot: Yang {STARKNET_ADDR} is not approved"):
+    with pytest.raises(StarkException, match=rf"Sentinel: Yang {STARKNET_ADDR} is not approved"):
         await abbot.deposit(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).execute(
             caller_address=TROVE1_OWNER
         )
@@ -278,7 +278,7 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
         await abbot.withdraw(0, TROVE_1, 0).execute(caller_address=TROVE1_OWNER)
 
-    with pytest.raises(StarkException, match=rf"Abbot: Yang {STARKNET_ADDR} is not approved"):
+    with pytest.raises(StarkException, match=rf"Sentinel: Yang {STARKNET_ADDR} is not approved"):
         await abbot.withdraw(shitcoin_yang.contract_address, TROVE_1, to_wad(100_000)).execute(
             caller_address=TROVE1_OWNER
         )
