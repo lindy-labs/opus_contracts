@@ -160,7 +160,7 @@ async def test_gate_fns_pass(
             await sentinel.get_asset_amt_per_yang(yang.contract_address).execute()
         ).result.amt
 
-        # Proxy to check if `Gate.enter` is called
+        # Check if `Gate.enter` is called
         assert_event_emitted(
             enter, gate.contract_address, "Enter", [TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt, expected_yang_amt]
         )
@@ -175,7 +175,7 @@ async def test_gate_fns_pass(
             caller_address=SENTINEL_OWNER
         )
 
-        # Proxy to check if `Gate.exit` is called
+        # Check if `Gate.exit` is called
         assert_event_emitted(
             exit_, gate.contract_address, "Exit", [TROVE1_OWNER, TROVE_1, expected_asset_amt, scaled_yang_withdraw_amt]
         )
