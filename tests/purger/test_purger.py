@@ -45,8 +45,6 @@ from tests.utils import (
 # Helpers
 #
 
-PURGE_FUNCTIONS = ("purge", "restricted_purge")
-
 
 async def advance_yang_prices_by_percentage(
     starknet: Starknet,
