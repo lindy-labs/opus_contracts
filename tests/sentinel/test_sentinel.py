@@ -196,14 +196,10 @@ async def test_gate_fns_fail_invalid_yang(sentinel):
             caller_address=SENTINEL_OWNER
         )
 
-    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
-        await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()
-
-    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
-        await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()
-
-    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
-        await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()
+    expected_yang = (await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()).result.preview
+    expected_asset_wad = (await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()).result.preview
+    expected_asset_amt = (await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()).result.amt
+    assert expected_yang == expected_asset_wad == expected_asset_amt == 0
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")

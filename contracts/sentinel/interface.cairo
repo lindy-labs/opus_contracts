@@ -19,7 +19,7 @@ namespace ISentinel {
     func get_yang(idx: ufelt) -> (yang: address) {
     }
 
-    func get_asset_amt_per_yang() -> (amt: wad) {
+    func get_asset_amt_per_yang(yang: address) -> (amt: wad) {
     }
 
     func preview_enter(yang: address, asset_amt: ufelt) -> (preview: wad) {
