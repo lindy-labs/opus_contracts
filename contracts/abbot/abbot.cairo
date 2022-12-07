@@ -182,8 +182,8 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert_not_zero(yang);
     }
 
-    let (sentinel: address) = abbot_sentinel_address.read();
     let (shrine: address) = abbot_shrine_address.read();
+    let (sentinel: address) = abbot_sentinel_address.read();
     let (user: address) = get_caller_address();
 
     do_deposit(shrine, sentinel, user, trove_id, yang, amount);
@@ -315,8 +315,6 @@ func do_withdrawals_full{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     if (yang_amount == 0) {
         return do_withdrawals_full(shrine, sentinel, user, trove_id, yang_idx + 1, yang_count);
     } else {
-        let (shrine: address) = abbot_shrine_address.read();
-
         ReentrancyGuard._start();
         ISentinel.exit(sentinel, yang, user, trove_id, yang_amount);
         IShrine.withdraw(shrine, yang, trove_id, yang_amount);
