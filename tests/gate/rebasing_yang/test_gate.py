@@ -197,7 +197,7 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
 
     # Grant `Abbot` access to `deposit` and `withdraw` in `Shrine`
     role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
-    await shrine.grant_role(role_value, MOCK_ABBOT).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(role_value, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=SHRINE_OWNER)
 
     # Setting block timestamp to interval 1, because add_yang assigns the initial
     # price to current interval - 1 (i.e. 0 in this case)
