@@ -30,8 +30,8 @@ from tests.shrine.constants import (
     YIN_SYMBOL,
 )
 from tests.utils import (
-    ABBOT_ROLE,
     EMPIRIC_OWNER,
+    GATE_EXTERNAL_ROLE,
     GATE_OWNER,
     RAY_PERCENT,
     SENTINEL_OWNER,
@@ -360,10 +360,8 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
 async def steth_gate(starknet, abbot, sentinel, shrine_deploy, steth_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, steth_token)
 
-    # auth Abbot in Gate
-    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-
-    await gate.grant_role(ABBOT_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    # auth Sentinel in Gate
+    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 
@@ -372,10 +370,8 @@ async def steth_gate(starknet, abbot, sentinel, shrine_deploy, steth_token, gate
 async def doge_gate(starknet, abbot, sentinel, shrine_deploy, doge_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, doge_token)
 
-    # auth Abbot in Gate
-    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-
-    await gate.grant_role(ABBOT_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    # auth Sentinel in Gate
+    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 
@@ -384,10 +380,8 @@ async def doge_gate(starknet, abbot, sentinel, shrine_deploy, doge_token, gates)
 async def wbtc_gate(starknet, abbot, sentinel, shrine_deploy, wbtc_token, gates) -> StarknetContract:
     gate = await gates(shrine_deploy, wbtc_token)
 
-    # auth Abbot in Gate
-    await gate.grant_role(ABBOT_ROLE, abbot.contract_address).execute(caller_address=GATE_OWNER)
-
-    await gate.grant_role(ABBOT_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
+    # auth Sentinel in Gate
+    await gate.grant_role(GATE_EXTERNAL_ROLE, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
 

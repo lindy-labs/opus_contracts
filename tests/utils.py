@@ -90,7 +90,7 @@ EMPIRIC_OWNER = str_to_felt("empiric owner")
 BAD_GUY = str_to_felt("bad guy")
 
 # Roles
-ABBOT_ROLE = GateRoles.ENTER + GateRoles.EXIT
+GATE_EXTERNAL_ROLE = GateRoles.ENTER + GateRoles.EXIT
 
 # Troves
 TROVE_1 = 1
