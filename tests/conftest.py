@@ -467,14 +467,10 @@ async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetCont
 
 
 @pytest.fixture
-async def funded_trove1_owner(
-    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
-):
-    tokens = (steth_token, doge_token, wbtc_token)
-    yangs = (steth_yang, doge_yang, wbtc_yang)
+async def funded_trove1_owner(yang_tokens, yangs):
     amts = (1_000, 1_000_000, 10)
 
-    for token, yang, amt in zip(tokens, yangs, amts):
+    for token, yang, amt in zip(yang_tokens, yangs, amts):
         amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
         # fund the user with bags
         await token.mint(TROVE1_OWNER, amt_uint).execute(caller_address=TROVE1_OWNER)
@@ -484,14 +480,10 @@ async def funded_trove1_owner(
 
 
 @pytest.fixture
-async def funded_trove2_owner(
-    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
-):
-    tokens = (steth_token, doge_token, wbtc_token)
-    yangs = (steth_yang, doge_yang, wbtc_yang)
+async def funded_trove2_owner(yang_tokens, yangs):
     amts = (1_000, 1_000_000, 10)
 
-    for token, yang, amt in zip(tokens, yangs, amts):
+    for token, yang, amt in zip(yang_tokens, yangs, amts):
         amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
         # fund the user with bags
         await token.mint(TROVE2_OWNER, amt_uint).execute(caller_address=TROVE2_OWNER)

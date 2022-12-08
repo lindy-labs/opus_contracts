@@ -137,13 +137,9 @@ async def test_view_funcs(
 @pytest.mark.usefixtures("mock_owner_as_abbot")
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
 @pytest.mark.asyncio
-async def test_gate_fns_pass(
-    sentinel, steth_yang: YangConfig, doge_yang: YangConfig, wbtc_yang: YangConfig, steth_gate, doge_gate, wbtc_gate
-):
-    yangs = (steth_yang, doge_yang, wbtc_yang)
-    gates = (steth_gate, doge_gate, wbtc_gate)
+async def test_gate_fns_pass(sentinel, yangs, yang_gates):
     deposit_asset_amt = 5
-    for yang, gate in zip(yangs, gates):
+    for yang, gate in zip(yangs, yang_gates):
         scaled_asset_deposit_amt = to_fixed_point(deposit_asset_amt, yang.decimals)
         scaled_yang_withdraw_amt = to_wad(deposit_asset_amt)
 
