@@ -35,9 +35,8 @@ async def test_sentinel_setup(sentinel, steth_yang: YangConfig, doge_yang: YangC
 
 
 @pytest.mark.asyncio
-async def test_add_yang(sentinel, shrine_deploy, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_add_yang(sentinel, shrine_deploy, yangs):
     shrine = shrine_deploy
-    yangs = (steth_yang, doge_yang)
 
     for idx, yang in enumerate(yangs):
         tx = await sentinel.add_yang(
