@@ -1,7 +1,7 @@
 """Utilities for testing Cairo contracts."""
 import os
 from collections import namedtuple
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from functools import cache
 from random import seed, uniform
 from typing import Callable, Dict, Iterable, List, Tuple, Union
@@ -280,6 +280,11 @@ def from_ray(n: int) -> Decimal:
 
 
 def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
+    # Truncate inputs to the accepted error margin
+    # For example, comparing 0.0001 and 0.00020123 should pass with an error margin of 1E-4.
+    # Without rounding, it would not pass because 0.00010123 > 0.0001
+    a = a.quantize(error, rounding=ROUND_DOWN)
+    b = b.quantize(error, rounding=ROUND_DOWN)
     assert abs(a - b) <= error
 
 

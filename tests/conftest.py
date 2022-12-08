@@ -321,6 +321,11 @@ async def wbtc_token(tokens) -> StarknetContract:
     return await tokens("Wrapped BTC", "WBTC", WBTC_DECIMALS)
 
 
+@pytest.fixture
+async def yang_tokens(steth_token, doge_token, wbtc_token) -> tuple[StarknetContract]:
+    return steth_token, doge_token, wbtc_token
+
+
 #
 # Yang
 #
@@ -356,6 +361,11 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     )
 
 
+@pytest.fixture
+async def yangs(steth_yang, doge_yang, wbtc_yang) -> tuple[YangConfig]:
+    return steth_yang, doge_yang, wbtc_yang
+
+
 #
 # Gate
 #
@@ -389,6 +399,11 @@ async def wbtc_gate(starknet, sentinel, shrine_deploy, wbtc_token, gates) -> Sta
     await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
+
+
+@pytest.fixture
+async def yang_gates(steth_gate, doge_gate, wbtc_gate) -> tuple[StarknetContract]:
+    return steth_gate, doge_gate, wbtc_gate
 
 
 #
