@@ -91,6 +91,10 @@ func TroveUpdated(trove_id: ufelt, trove: Trove) {
 }
 
 @event
+func TroveRedistributed(trove_id: ufelt, amount: wad) {
+}
+
+@event
 func DepositUpdated(yang: address, trove_id: ufelt, amount: wad) {
 }
 
@@ -190,6 +194,28 @@ func shrine_multiplier(interval: ufelt) -> (mul_and_cumulative_mul: packed) {
 func shrine_thresholds(yang_id: ufelt) -> (threshold: ray) {
 }
 
+// Keeps track of how many redistributions have occurred
+@storage_var
+func shrine_redistribution_count() -> (count: ufelt) {
+}
+
+// Last redistribution accounted for a trove
+@storage_var
+func shrine_trove_redistribution(trove_id: ufelt) -> (snapshot: ufelt) {
+}
+
+// Mapping of yang ID and redistribution ID to the amount distributed per yang
+@storage_var
+func shrine_yang_pending_debt_per_redistribution(yang_id: ufelt, redistribution_id: ufelt) -> (
+    debt: wad
+) {
+}
+
+// Mapping from a yang ID to its total redistributed debt pending being pulled to troves
+@storage_var
+func shrine_yang_pending_debt_error(yang_id: ufelt) -> (total: wad) {
+}
+
 @storage_var
 func shrine_live() -> (is_live: bool) {
 }
@@ -268,6 +294,7 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     // Calculate debt
     let (trove: Trove) = get_trove(trove_id);
     let debt: wad = compound(trove_id, trove.debt, trove.charge_from, interval);
+    let debt: wad = pull_pending_debt_for_trove(trove_id, debt, FALSE);
 
     // Catch troves with no value
     if (value == 0) {
@@ -362,6 +389,17 @@ func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 ) -> (threshold: ray) {
     let yang_id: ufelt = get_valid_yang_id(yang);
     return shrine_thresholds.read(yang_id);
+}
+
+@view
+func get_yang_pending_debt_per_redistribution{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(yang: address, redistribution_id: ufelt) -> (debt_per_yang: wad) {
+    let yang_id: ufelt = get_valid_yang_id(yang);
+    let debt_per_yang: wad = shrine_yang_pending_debt_per_redistribution.read(
+        yang_id, redistribution_id
+    );
+    return (debt_per_yang,);
 }
 
 @view
@@ -930,6 +968,49 @@ func approve{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return (TRUE,);
 }
 
+@external
+func redistribute{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(trove_id: ufelt) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(ShrineRoles.REDISTRIBUTE);
+
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    let interval: ufelt = now();
+    let (_, trove_value: wad) = get_trove_threshold_and_value_internal(
+        trove_id, interval, interval, yang_count, 0, 0
+    );
+
+    // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
+    let (trove_info: Trove) = get_trove(trove_id);
+
+    // Get current redistribution ID and update
+    let prev_redistribution_id: ufelt = shrine_redistribution_count.read();
+    let redistribution_id: ufelt = prev_redistribution_id + 1;
+    shrine_redistribution_count.write(redistribution_id);
+
+    // Perform redistribution
+    let redistributed_debt = redistribute_internal(
+        redistribution_id, trove_id, trove_value, trove_info.debt, yang_count, interval, 0
+    );
+
+    with_attr error_message("Shrine: Redistributed debt is not equal to trove's debt") {
+        assert redistributed_debt = trove_info.debt;
+    }
+
+    let trove: Trove = get_trove(trove_id);
+    let updated_trove_info: Trove = Trove(charge_from=trove.charge_from, debt=0);
+    set_trove(trove_id, updated_trove_info);
+
+    // Sanity check that trove is healthy
+    assert_healthy(trove_id);
+
+    TroveRedistributed.emit(trove_id, trove_info.debt);
+
+    return ();
+}
+
 //
 // Core Functions - View
 //
@@ -1129,7 +1210,10 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let current_interval: ufelt = now();
 
     // Get new debt amount
-    let new_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+    let compounded_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+
+    // Pull undistributed debt and update state
+    let new_debt: wad = pull_pending_debt_for_trove(trove_id, compounded_debt, TRUE);
 
     // Catch troves with zero value
     if (new_debt == trove.debt) {
@@ -1192,6 +1276,227 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
 
     return compounded_debt;
+}
+
+// Loop through yang for the trove:
+// 1. set the deposit to 0
+// 2. calculate the pending debt for that yang, then update the storage variable
+func redistribute_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(
+    redistribution_id: ufelt,
+    trove_id: ufelt,
+    trove_value: wad,
+    trove_debt: wad,
+    current_yang_id: ufelt,
+    current_interval: ufelt,
+    redistributed_debt: wad,
+) -> wad {
+    alloc_locals;
+
+    if (current_yang_id == 0) {
+        return redistributed_debt;
+    }
+
+    let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
+
+    if (deposited == 0) {
+        return redistribute_internal(
+            redistribution_id,
+            trove_id,
+            trove_value,
+            trove_debt,
+            current_yang_id - 1,
+            current_interval,
+            redistributed_debt,
+        );
+    }
+
+    // Set the yang amount to 0, causing the exchange rate from yang to the underlying asset
+    // in Gate to automatically rebase
+    shrine_deposits.write(current_yang_id, trove_id, 0);
+
+    // Update yang balance of system
+    let old_yang_info: Yang = shrine_yangs.read(current_yang_id);
+    let new_yang_total: wad = WadRay.unsigned_sub(old_yang_info.total, deposited);
+    let new_yang_info: Yang = Yang(total=new_yang_total, max=old_yang_info.max);
+    shrine_yangs.write(current_yang_id, new_yang_info);
+
+    // Calculate (value of yang / trove value) * debt and assign pending debt to yang
+    let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);
+    let yang_value: wad = WadRay.wmul(deposited, yang_price);
+    let raw_debt_to_distribute: wad = WadRay.wmul(
+        WadRay.wunsigned_div(yang_value, trove_value), trove_debt
+    );
+
+    let (debt_to_distribute: wad, updated_redistributed_debt: wad) = round_distributed_debt(
+        trove_debt, raw_debt_to_distribute, redistributed_debt
+    );
+
+    // Adjust debt to distribute by adding the error from the last redistribution
+    let last_error: wad = shrine_yang_pending_debt_error.read(current_yang_id);
+    let adjusted_debt_to_distribute: wad = WadRay.unsigned_add(debt_to_distribute, last_error);
+
+    let debt_increment_per_yang: wad = WadRay.wunsigned_div(
+        adjusted_debt_to_distribute, new_yang_total
+    );
+
+    // Update debt per yang for current yang and current redistribution ID
+    shrine_yang_pending_debt_per_redistribution.write(
+        current_yang_id, redistribution_id, debt_increment_per_yang
+    );
+
+    let new_error: wad = WadRay.unsigned_sub(
+        adjusted_debt_to_distribute, WadRay.wmul(debt_increment_per_yang, new_yang_total)
+    );
+    shrine_yang_pending_debt_error.write(current_yang_id, new_error);
+
+    // Continue iteration if there is no dust
+    if (debt_to_distribute == raw_debt_to_distribute) {
+        return redistribute_internal(
+            redistribution_id,
+            trove_id,
+            trove_value,
+            trove_debt,
+            current_yang_id - 1,
+            current_interval,
+            redistributed_debt + debt_to_distribute,
+        );
+    }
+
+    return redistributed_debt + debt_to_distribute;
+}
+
+// Helper function to round up the debt to be redistributed for a yang if the remaining debt
+// falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
+// of debt redistributed is equal to the trove's debt
+func round_distributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_debt: wad, debt_to_distribute: wad, cumulative_redistributed_debt: wad
+) -> (trove_debt: wad, cumulative_redistributed_debt: wad) {
+    alloc_locals;
+
+    let updated_cumulative_redistributed_debt = cumulative_redistributed_debt + debt_to_distribute;
+    let remaining_debt: wad = trove_debt - updated_cumulative_redistributed_debt;
+    let round_up: bool = is_le(remaining_debt, WadRay.HALF_WAD_SCALE);
+    if (round_up == TRUE) {
+        return (
+            debt_to_distribute + remaining_debt,
+            updated_cumulative_redistributed_debt + remaining_debt,
+        );
+    }
+    return (debt_to_distribute, updated_cumulative_redistributed_debt);
+}
+
+func pull_pending_debt_for_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    trove_id: ufelt, trove_debt: wad, update_state: bool
+) -> (new_debt: wad) {
+    alloc_locals;
+
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    let latest_redistribution_id: ufelt = shrine_redistribution_count.read();
+    let trove_last_redistribution_id: ufelt = shrine_trove_redistribution.read(trove_id);
+
+    // Early termination if no redistributions since trove was last updated
+    if (latest_redistribution_id == trove_last_redistribution_id) {
+        return (trove_debt,);
+    }
+
+    let new_debt: wad = pull_pending_debt_for_trove_internal(
+        trove_last_redistribution_id,
+        latest_redistribution_id,
+        trove_id,
+        trove_debt,
+        yang_count,
+        update_state,
+    );
+
+    if (update_state == TRUE) {
+        shrine_trove_redistribution.write(trove_id, latest_redistribution_id);
+        return (new_debt,);
+    }
+
+    return (new_debt,);
+}
+
+func pull_pending_debt_for_trove_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(
+    last_redistribution_id: ufelt,
+    current_redistribution_id: ufelt,
+    trove_id: ufelt,
+    trove_debt: wad,
+    current_yang_id: ufelt,
+    update_state: bool,
+) -> (new_debt: wad) {
+    alloc_locals;
+
+    if (current_yang_id == 0) {
+        return (trove_debt,);
+    }
+
+    let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
+    let debt_increment: wad = get_redistributed_debt_for_yang(
+        last_redistribution_id, current_redistribution_id, current_yang_id, deposited, 0
+    );
+    let trove_debt: wad = trove_debt + debt_increment;
+
+    if (update_state == TRUE) {
+        return pull_pending_debt_for_trove_internal(
+            last_redistribution_id,
+            current_redistribution_id,
+            trove_id,
+            trove_debt,
+            current_yang_id - 1,
+            update_state,
+        );
+    }
+
+    return pull_pending_debt_for_trove_internal(
+        last_redistribution_id,
+        current_redistribution_id,
+        trove_id,
+        trove_debt,
+        current_yang_id - 1,
+        update_state,
+    );
+}
+
+func get_redistributed_debt_for_yang{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(
+    last_redistribution_id: ufelt,
+    current_redistribution_id: ufelt,
+    yang_id: ufelt,
+    yang_amt: wad,
+    cumulative_debt: wad,
+) -> (debt: wad) {
+    alloc_locals;
+
+    if (last_redistribution_id == current_redistribution_id) {
+        return (cumulative_debt,);
+    }
+
+    // Get the amount of debt per yang for the current redistribution
+    let debt_per_yang: wad = shrine_yang_pending_debt_per_redistribution.read(
+        yang_id, current_redistribution_id
+    );
+
+    // Early termination if no debt was distributed for given yang
+    if (debt_per_yang == 0) {
+        return get_redistributed_debt_for_yang(
+            last_redistribution_id,
+            current_redistribution_id - 1,
+            yang_id,
+            yang_amt,
+            cumulative_debt,
+        );
+    }
+
+    let debt_increment: wad = WadRay.wmul(yang_amt, debt_per_yang);
+    let cumulative_debt: wad = cumulative_debt + debt_increment;
+    return get_redistributed_debt_for_yang(
+        last_redistribution_id, current_redistribution_id - 1, yang_id, yang_amt, cumulative_debt
+    );
 }
 
 // base rate function:
