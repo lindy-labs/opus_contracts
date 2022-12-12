@@ -50,6 +50,8 @@ DEPOSITS = {
     },
 }
 
+YANG_ADDRESSES = (YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS)
+
 
 #
 # Helpers
@@ -122,13 +124,11 @@ async def redistribution_setup(shrine):
 
 @pytest.fixture
 async def update_feeds(starknet, shrine):
+    start_prices = []
+    for yang in yang_addresses:
+        start_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
+        start_prices.append(start_price)
 
-    yang1_start_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
-    yang2_start_price = from_wad((await shrine.get_current_yang_price(YANG2_ADDRESS).execute()).result.price)
-    yang3_start_price = from_wad((await shrine.get_current_yang_price(YANG3_ADDRESS).execute()).result.price)
-    yang4_start_price = from_wad((await shrine.get_current_yang_price(YANG4_ADDRESS).execute()).result.price)
-
-    start_prices = [yang1_start_price, yang2_start_price, yang3_start_price, yang4_start_price]
     feeds = [create_feed(p, FEED_LEN, MAX_PRICE_CHANGE) for p in start_prices]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
