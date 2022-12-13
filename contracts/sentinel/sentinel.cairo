@@ -125,8 +125,8 @@ func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) -> (yang_amt: wad) {
     let (gate: address) = get_gate_address(yang);
 
-    if (gate == 0) {
-        return (0,);
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
     }
 
     let yang_amt: wad = IGate.preview_enter(gate, asset_amt);
@@ -140,8 +140,8 @@ func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 ) -> (asset_amt: ufelt) {
     let (gate: address) = get_gate_address(yang);
 
-    if (gate == 0) {
-        return (0,);
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
     }
 
     let asset_amt: ufelt = IGate.preview_exit(gate, yang_amt);
