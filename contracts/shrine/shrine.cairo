@@ -201,7 +201,7 @@ func shrine_redistribution_count() -> (count: ufelt) {
 
 // Last redistribution accounted for a trove
 @storage_var
-func shrine_trove_redistribution(trove_id: ufelt) -> (snapshot: ufelt) {
+func shrine_trove_redistribution_count(trove_id: ufelt) -> (count: ufelt) {
 }
 
 // Mapping of yang ID and redistribution ID to a packed value of
@@ -386,6 +386,19 @@ func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 ) -> (threshold: ray) {
     let yang_id: ufelt = get_valid_yang_id(yang);
     return shrine_thresholds.read(yang_id);
+}
+
+@view
+func get_redistribution_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (count: ufelt) {
+    return shrine_redistribution_count.read();
+}
+
+@view
+func get_trove_redistribution_count{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(trove_id: ufelt) -> (count: ufelt) {
+    return shrine_trove_redistribution_count.read(trove_id);
 }
 
 @view
@@ -1417,7 +1430,7 @@ func pull_redistributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     alloc_locals;
 
     let latest_redistribution_id: ufelt = shrine_redistribution_count.read();
-    let trove_last_redistribution_id: ufelt = shrine_trove_redistribution.read(trove_id);
+    let trove_last_redistribution_id: ufelt = shrine_trove_redistribution_count.read(trove_id);
 
     // Early termination if no redistributions since trove was last updated
     if (latest_redistribution_id == trove_last_redistribution_id) {
@@ -1429,7 +1442,7 @@ func pull_redistributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     );
 
     if (update_redistribution_id == TRUE) {
-        shrine_trove_redistribution.write(trove_id, latest_redistribution_id);
+        shrine_trove_redistribution_count.write(trove_id, latest_redistribution_id);
         return (new_debt,);
     }
 

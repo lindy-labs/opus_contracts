@@ -41,6 +41,12 @@ namespace IShrine {
     func get_yang_threshold(yang: address) -> (threshold: ray) {
     }
 
+    func get_redistribution_count() -> (count: ufelt) {
+    }
+
+    func get_trove_redistribution_count(trove_id: ufelt) -> (count: ufelt) {
+    }
+
     func get_redistributed_debt_per_yang(yang: address, redistribution_id: ufelt) -> (
         debt_per_yang: wad
     ) {
