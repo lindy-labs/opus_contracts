@@ -245,9 +245,8 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
     # Storage keys updated
     # - shrine_total_debt (via `estimate`)
     # - shrine_troves (via `estimate`)
-    # - shrine_yang_pending_debt_error * num_yangs
     # - shrine_trove_redistribution
-    print(f"\nRedistribute ({num_yangs} yangs, 2 troves) - pull: \n{estimate_gas(update_trove3, 3 + num_yangs, 1)}")
+    print(f"\nRedistribute ({num_yangs} yangs, 2 troves) - pull: \n{estimate_gas(update_trove3, 3, 1)}")
 
 
 @pytest.mark.asyncio
