@@ -69,14 +69,13 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=BAD_GUY)
 
-    # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
+        # test reverting on yang address equal 0
         await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
             caller_address=SENTINEL_OWNER
         )
 
-    # test reverting on gate address equal 0
-    with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
+        # test reverting on gate address equal 0
         await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
             caller_address=SENTINEL_OWNER
         )
@@ -128,7 +127,7 @@ async def test_gate_fns_pass(sentinel, yangs, yang_gates):
 
         expected_yang_amt = (
             await sentinel.preview_enter(yang.contract_address, scaled_asset_deposit_amt).execute()
-        ).result.preview
+        ).result.yang_amt
         assert expected_yang_amt == scaled_yang_withdraw_amt
 
         enter = await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
@@ -147,7 +146,7 @@ async def test_gate_fns_pass(sentinel, yangs, yang_gates):
 
         expected_asset_amt = (
             await sentinel.preview_exit(yang.contract_address, scaled_yang_withdraw_amt).execute()
-        ).result.preview
+        ).result.asset_amt
         assert expected_asset_amt == scaled_asset_deposit_amt
 
         exit_ = await sentinel.exit(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_yang_withdraw_amt).execute(
@@ -170,15 +169,15 @@ async def test_gate_fns_fail_invalid_yang(sentinel):
             caller_address=SENTINEL_OWNER
         )
 
-    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.exit(faux_yang_address, TROVE1_OWNER, TROVE_1, faux_yang_amt).execute(
             caller_address=SENTINEL_OWNER
         )
 
-    expected_yang = (await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()).result.preview
-    expected_asset_wad = (await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()).result.preview
+        await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()
+        await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()
+
     expected_asset_amt = (await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()).result.amt
-    assert expected_yang == expected_asset_wad == expected_asset_amt == 0
+    assert expected_asset_amt == 0
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
