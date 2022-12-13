@@ -71,14 +71,13 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=BAD_GUY)
 
-    # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
+        # test reverting on yang address equal 0
         await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
             caller_address=SENTINEL_OWNER
         )
 
-    # test reverting on gate address equal 0
-    with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
+        # test reverting on gate address equal 0
         await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
             caller_address=SENTINEL_OWNER
         )
