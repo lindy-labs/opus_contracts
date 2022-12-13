@@ -48,6 +48,9 @@ DEPOSITS = {
 TROVES = (TROVE_1, TROVE_2, TROVE_3)
 TROVE_OWNERS = (TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER)
 
+FIRST_REDISTRIBUTION_ID = 1
+SECOND_REDISTRIBUTION_ID = 2
+
 DUST_THRESHOLD = Decimal("1E-9")
 
 
@@ -133,7 +136,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
         redistribute_trove1,
         shrine.contract_address,
         "TroveRedistributed",
-        [TROVE_1, estimated_trove1_debt],
+        [FIRST_REDISTRIBUTION_ID, TROVE_1, estimated_trove1_debt],
     )
     # Storage keys updated:
     # - shrine_troves
@@ -217,7 +220,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
         redistribute_trove2,
         shrine.contract_address,
         "TroveRedistributed",
-        [TROVE_2, updated_estimated_trove2_debt],
+        [SECOND_REDISTRIBUTION_ID, TROVE_2, updated_estimated_trove2_debt],
     )
 
     expected_trove3_debt = estimated_trove3_debt
@@ -296,7 +299,7 @@ async def test_shrine_redistribute_with_dust_yang(shrine):
         redistribute_trove1,
         shrine.contract_address,
         "TroveRedistributed",
-        [TROVE_1, estimated_trove1_debt],
+        [FIRST_REDISTRIBUTION_ID, TROVE_1, estimated_trove1_debt],
     )
 
     # Check entire's trove 1's debt is distributed to YANG_2

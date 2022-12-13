@@ -91,7 +91,7 @@ func TroveUpdated(trove_id: ufelt, trove: Trove) {
 }
 
 @event
-func TroveRedistributed(trove_id: ufelt, amount: wad) {
+func TroveRedistributed(redistribution_id: ufelt, trove_id: ufelt, amount: wad) {
 }
 
 @event
@@ -935,7 +935,7 @@ func redistribute{
     // Sanity check that trove is healthy
     assert_healthy(trove_id);
 
-    TroveRedistributed.emit(trove_id, trove.debt);
+    TroveRedistributed.emit(redistribution_id, trove_id, trove.debt);
 
     return ();
 }
