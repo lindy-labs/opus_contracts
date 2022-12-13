@@ -932,9 +932,6 @@ func redistribute{
     let updated_trove_info: Trove = Trove(charge_from=interval, debt=0);
     set_trove(trove_id, updated_trove_info);
 
-    // Sanity check that trove is healthy
-    assert_healthy(trove_id);
-
     TroveRedistributed.emit(redistribution_id, trove_id, trove.debt);
 
     return ();
