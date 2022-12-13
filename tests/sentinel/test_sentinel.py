@@ -69,13 +69,14 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=BAD_GUY)
 
+    # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
-        # test reverting on yang address equal 0
         await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
             caller_address=SENTINEL_OWNER
         )
 
-        # test reverting on gate address equal 0
+    # test reverting on gate address equal 0
+    with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
         await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
             caller_address=SENTINEL_OWNER
         )
@@ -169,11 +170,15 @@ async def test_gate_fns_fail_invalid_yang(sentinel):
             caller_address=SENTINEL_OWNER
         )
 
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.exit(faux_yang_address, TROVE1_OWNER, TROVE_1, faux_yang_amt).execute(
             caller_address=SENTINEL_OWNER
         )
 
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()
+
+    with pytest.raises(StarkException, match=f"Sentinel: Yang {faux_yang_address} is not approved"):
         await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()
 
     expected_asset_amt = (await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()).result.amt
