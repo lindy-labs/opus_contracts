@@ -140,11 +140,10 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
     # - shrine_deposits * num_yangs
     # - shrine_yangs * num_yangs
     # - shrine_redistribution_count
-    # - shrine_yang_pending_debt_per_redistribution * num_yangs
-    # - shrine_yang_pending_debt_error * num_yangs
+    # - shrine_yang_redistribution (debt_per_yang + error) * num_yangs
     print(
         f"\nRedistribute ({num_yangs} yang, 1 trove) - redistribute: \n"
-        f"{estimate_gas(redistribute_trove1, 2 + 4 * num_yangs, 1)}"
+        f"{estimate_gas(redistribute_trove1, 2 + 3 * num_yangs, 1)}"
     )
 
     expected_trove2_debt = from_wad(estimated_trove2_debt)
@@ -157,7 +156,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
         expected_debt_per_yang = expected_yang_debt / expected_remaining_yang
 
         debt_per_yang = from_wad(
-            (await shrine.get_yang_pending_debt_per_redistribution(yang_addr, 1).execute()).result.debt_per_yang
+            (await shrine.get_redistributed_debt_per_yang(yang_addr, 1).execute()).result.debt_per_yang
         )
         assert_equalish(debt_per_yang, expected_debt_per_yang)
 
@@ -228,7 +227,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
         # Check distribution for yang 1 from trove 2
         expected_trove2_yang_debt = (yang_val / updated_trove2_val) * from_wad(updated_estimated_trove2_debt)
         trove2_debt_per_yang = from_wad(
-            (await shrine.get_yang_pending_debt_per_redistribution(yang_addr, 2).execute()).result.debt_per_yang
+            (await shrine.get_redistributed_debt_per_yang(yang_addr, 2).execute()).result.debt_per_yang
         )
         expected_remaining_yang = DEPOSITS[TROVE_3][yang_addr]
         expected_trove2_debt_per_yang = expected_trove2_yang_debt / expected_remaining_yang
@@ -308,7 +307,7 @@ async def test_shrine_redistribute_with_dust_yang(shrine):
     expected_debt_per_yang2 = from_wad(estimated_trove1_debt) / expected_remaining_yang2
 
     debt_per_yang2 = from_wad(
-        (await shrine.get_yang_pending_debt_per_redistribution(YANG2_ADDRESS, 1).execute()).result.debt_per_yang
+        (await shrine.get_redistributed_debt_per_yang(YANG2_ADDRESS, 1).execute()).result.debt_per_yang
     )
     assert_equalish(debt_per_yang2, expected_debt_per_yang2)
     expected_trove2_debt = from_wad(estimated_trove2_debt) + expected_debt_per_yang2 * DEPOSITS[TROVE_2][YANG2_ADDRESS]
@@ -317,9 +316,7 @@ async def test_shrine_redistribute_with_dust_yang(shrine):
     after_trove1_yang1_bal = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
     assert after_trove1_yang1_bal == trove1_yang1_deposit_amt
 
-    debt_per_yang1 = (
-        await shrine.get_yang_pending_debt_per_redistribution(YANG1_ADDRESS, 1).execute()
-    ).result.debt_per_yang
+    debt_per_yang1 = (await shrine.get_redistributed_debt_per_yang(YANG1_ADDRESS, 1).execute()).result.debt_per_yang
     assert debt_per_yang1 == 0
 
     # Check trove 2 debt
