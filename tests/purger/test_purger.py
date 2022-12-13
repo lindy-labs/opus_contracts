@@ -10,11 +10,10 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.purger.constants import *  # noqa: F403
-from tests.roles import GateRoles, ShrineRoles
+from tests.roles import SentinelRoles, ShrineRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     FALSE,
-    GATE_OWNER,
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -23,7 +22,6 @@ from tests.utils import (
     TROVE_1,
     TRUE,
     WAD_RAY_OOB_VALUES,
-    WBTC_DECIMALS,
     WBTC_ERROR_MARGIN,
     YangConfig,
     assert_equalish,
@@ -46,8 +44,6 @@ from tests.utils import (
 #
 # Helpers
 #
-
-PURGE_FUNCTIONS = ("purge", "restricted_purge")
 
 
 async def advance_yang_prices_by_percentage(
@@ -194,11 +190,9 @@ async def forged_trove_1(
 
     # Get maximum forge amount
     prices = [from_wad(p) for p in (steth_price, doge_price, wbtc_price)]
-    amounts = [
-        from_wad(USER_STETH_DEPOSIT_WAD),
-        from_wad(USER_DOGE_DEPOSIT_WAD),
-        from_fixed_point(USER_WBTC_DEPOSIT_AMT, WBTC_DECIMALS),
-    ]
+    deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
+    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
+
     thresholds = [from_ray(yang.threshold) for yang in yangs]
     max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
 
@@ -207,7 +201,7 @@ async def forged_trove_1(
     await abbot.open_trove(
         forge_amt,
         [yang.contract_address for yang in yangs],
-        [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT],
+        deposit_amts,
     ).execute(caller_address=TROVE1_OWNER)
 
     return forge_amt
@@ -260,9 +254,7 @@ async def purger(starknet, shrine, sentinel, steth_gate, doge_gate, wbtc_gate) -
     await shrine.grant_role(purger_roles, purger.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # Approve purger to call `exit` in Gate
-    await steth_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
-    await doge_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
-    await wbtc_gate.grant_role(GateRoles.EXIT, purger.contract_address).execute(caller_address=GATE_OWNER)
+    await sentinel.grant_role(SentinelRoles.EXIT, purger.contract_address).execute(caller_address=SENTINEL_OWNER)
 
     return purger
 
@@ -441,7 +433,7 @@ async def test_liquidate_pass(
     before_searcher_steth_bal = from_wad(from_uint((await steth_token.balanceOf(SEARCHER).execute()).result.balance))
     before_searcher_doge_bal = from_wad(from_uint((await doge_token.balanceOf(SEARCHER).execute()).result.balance))
     before_searcher_wbtc_bal = from_fixed_point(
-        from_uint((await wbtc_token.balanceOf(SEARCHER).execute()).result.balance), WBTC_DECIMALS
+        from_uint((await wbtc_token.balanceOf(SEARCHER).execute()).result.balance), wbtc_yang.decimals
     )
 
     # Get freed percentage
@@ -469,7 +461,7 @@ async def test_liquidate_pass(
     ).result.balance
     before_trove_wbtc_bal_amt = (await wbtc_gate.preview_exit(before_trove_wbtc_yang_wad).execute()).result.preview
     expected_freed_wbtc_yang = freed_percentage * from_wad(before_trove_wbtc_yang_wad)
-    expected_freed_wbtc = freed_percentage * from_fixed_point(before_trove_wbtc_bal_amt, WBTC_DECIMALS)
+    expected_freed_wbtc = freed_percentage * from_fixed_point(before_trove_wbtc_bal_amt, wbtc_yang.decimals)
 
     # Sanity check that expected trove LTV does not increase
     expected_after_trove_debt = before_trove_debt - close_amt
@@ -497,7 +489,7 @@ async def test_liquidate_pass(
     freed_wbtc = liquidate.result.freed_assets_amt[2]
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
-    assert_equalish(from_fixed_point(freed_wbtc, WBTC_DECIMALS), expected_freed_wbtc, WBTC_ERROR_MARGIN)
+    assert_equalish(from_fixed_point(freed_wbtc, wbtc_yang.decimals), expected_freed_wbtc, WBTC_ERROR_MARGIN)
 
     # Check event
     assert_event_emitted(
@@ -526,7 +518,7 @@ async def test_liquidate_pass(
     assert_equalish(after_searcher_doge_bal, before_searcher_doge_bal + expected_freed_doge)
 
     after_searcher_wbtc_bal = from_fixed_point(
-        from_uint((await wbtc_token.balanceOf(SEARCHER).execute()).result.balance), WBTC_DECIMALS
+        from_uint((await wbtc_token.balanceOf(SEARCHER).execute()).result.balance), wbtc_yang.decimals
     )
     assert_equalish(after_searcher_wbtc_bal, before_searcher_wbtc_bal + expected_freed_wbtc, WBTC_ERROR_MARGIN)
 
@@ -668,7 +660,7 @@ async def test_full_absorb_pass(
     )
     before_absorber_doge_bal = from_wad(from_uint((await doge_token.balanceOf(MOCK_ABSORBER).execute()).result.balance))
     before_absorber_wbtc_bal = from_fixed_point(
-        from_uint((await wbtc_token.balanceOf(MOCK_ABSORBER).execute()).result.balance), WBTC_DECIMALS
+        from_uint((await wbtc_token.balanceOf(MOCK_ABSORBER).execute()).result.balance), wbtc_yang.decimals
     )
 
     # Get yang balance of trove
@@ -682,7 +674,7 @@ async def test_full_absorb_pass(
 
     expected_freed_wbtc_yang = (await shrine.get_deposit(wbtc_token.contract_address, TROVE_1).execute()).result.balance
     expected_freed_wbtc = from_fixed_point(
-        (await wbtc_gate.preview_exit(expected_freed_wbtc_yang).execute()).result.preview, WBTC_DECIMALS
+        (await wbtc_gate.preview_exit(expected_freed_wbtc_yang).execute()).result.preview, wbtc_yang.decimals
     )
 
     # Call absorb
@@ -696,7 +688,7 @@ async def test_full_absorb_pass(
     freed_wbtc = absorb.result.freed_assets_amt[2]
     assert_equalish(from_wad(freed_steth), expected_freed_steth)
     assert_equalish(from_wad(freed_doge), expected_freed_doge)
-    assert_equalish(from_fixed_point(freed_wbtc, WBTC_DECIMALS), expected_freed_wbtc, WBTC_ERROR_MARGIN)
+    assert_equalish(from_fixed_point(freed_wbtc, wbtc_yang.decimals), expected_freed_wbtc, WBTC_ERROR_MARGIN)
 
     # Check event
     assert_event_emitted(
@@ -724,7 +716,7 @@ async def test_full_absorb_pass(
     assert_equalish(after_absorber_doge_bal, before_absorber_doge_bal + expected_freed_doge)
 
     after_absorber_wbtc_bal = from_fixed_point(
-        from_uint((await wbtc_token.balanceOf(MOCK_ABSORBER).execute()).result.balance), WBTC_DECIMALS
+        from_uint((await wbtc_token.balanceOf(MOCK_ABSORBER).execute()).result.balance), wbtc_yang.decimals
     )
     assert_equalish(after_absorber_wbtc_bal, before_absorber_wbtc_bal + expected_freed_wbtc)
 

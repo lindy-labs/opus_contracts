@@ -17,7 +17,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.roles import GateRoles
+from tests.roles import GateRoles, SentinelRoles
 
 RANGE_CHECK_BOUND = 2**128
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -55,7 +55,7 @@ WEIGHTS = {
 }
 
 Uint256 = namedtuple("Uint256", "low high")
-YangConfig = namedtuple("YangConfig", "contract_address ceiling threshold price_wad gate_address")
+YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address")
 
 Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]
@@ -90,7 +90,8 @@ EMPIRIC_OWNER = str_to_felt("empiric owner")
 BAD_GUY = str_to_felt("bad guy")
 
 # Roles
-ABBOT_ROLE = GateRoles.ENTER + GateRoles.EXIT
+GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
+SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
 
 # Troves
 TROVE_1 = 1

@@ -7,7 +7,6 @@ from starkware.cairo.common.math import assert_nn_le
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
-from contracts.gate.interface import IGate
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
 
@@ -429,14 +428,12 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return ();
     }
 
-    let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
-
     // `rmul` of a wad and a ray returns a wad
     let freed_yang: wad = WadRay.rmul(deposited_yang_amt, percentage_freed);
 
     ReentrancyGuard._start();
     // The denomination is based on the number of decimals for the token
-    let (freed_asset_amt: ufelt) = IGate.exit(gate, recipient, trove_id, freed_yang);
+    let (freed_asset_amt: ufelt) = ISentinel.exit(sentinel, yang, recipient, trove_id, freed_yang);
     assert [freed_assets_amt] = freed_asset_amt;
     IShrine.seize(shrine, yang, trove_id, freed_yang);
     ReentrancyGuard._end();

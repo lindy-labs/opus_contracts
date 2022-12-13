@@ -103,6 +103,51 @@ func get_yang_addresses_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     return sentinel_yang_addresses_count.read();
 }
 
+// Returns 0 if the yang is invalid
+@view
+func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address
+) -> (amt: wad) {
+    let (gate: address) = get_gate_address(yang);
+
+    if (gate == 0) {
+        return (0,);
+    }
+
+    let amt: wad = IGate.get_asset_amt_per_yang(gate);
+    return (amt,);
+}
+
+// Returns 0 if the yang is invalid
+@view
+func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address, asset_amt: ufelt
+) -> (yang_amt: wad) {
+    let (gate: address) = get_gate_address(yang);
+
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
+    }
+
+    let yang_amt: wad = IGate.preview_enter(gate, asset_amt);
+    return (yang_amt,);
+}
+
+// Returns 0 if the yang is invalid
+@view
+func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address, yang_amt: wad
+) -> (asset_amt: ufelt) {
+    let (gate: address) = get_gate_address(yang);
+
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
+    }
+
+    let asset_amt: ufelt = IGate.preview_exit(gate, yang_amt);
+    return (asset_amt,);
+}
+
 //
 // External functions
 //
@@ -139,6 +184,38 @@ func add_yang{
     YangAdded.emit(yang, gate);
 
     return ();
+}
+
+@external
+func enter{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(yang: address, user: address, trove_id: ufelt, asset_amt: ufelt) -> (yang_amt: wad) {
+    AccessControl.assert_has_role(SentinelRoles.ENTER);
+
+    let (gate: address) = get_gate_address(yang);
+
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
+    }
+
+    let yang_amt: wad = IGate.enter(gate, user, trove_id, asset_amt);
+    return (yang_amt,);
+}
+
+@external
+func exit{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(yang: address, user: address, trove_id: ufelt, yang_amt: wad) -> (asset_amt: ufelt) {
+    AccessControl.assert_has_role(SentinelRoles.EXIT);
+
+    let (gate: address) = get_gate_address(yang);
+
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
+    }
+
+    let asset_amt: ufelt = IGate.exit(gate, user, trove_id, yang_amt);
+    return (asset_amt,);
 }
 
 //

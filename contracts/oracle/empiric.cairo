@@ -11,7 +11,6 @@ from starkware.cairo.common.math import (
 from starkware.cairo.common.math_cmp import is_le, is_nn, is_not_zero
 from starkware.starknet.common.syscalls import get_block_timestamp, get_caller_address
 
-from contracts.gate.interface import IGate
 from contracts.oracle.roles import EmpiricRoles
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
@@ -372,7 +371,7 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
     let (settings: YangSettings) = empiric_yang_settings.read(index);
 
-    let (asset_amt_per_yang: wad) = get_asset_amt_per_yang(settings.yang, sentinel);
+    let (asset_amt_per_yang: wad) = ISentinel.get_asset_amt_per_yang(sentinel, settings.yang);
 
     let (
         value: ufelt, decimals: ufelt, last_updated_ts: ufelt, num_sources: ufelt
@@ -395,24 +394,6 @@ func update_prices_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     }
 
     return update_prices_loop(index - 1, oracle, shrine, sentinel, block_timestamp);
-}
-
-// Internal function to fetch the amount of the underlying asset represented by one wad of yang
-// Returns 0 (dummy value) if the Gate is invalid
-func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    yang: address, sentinel: address
-) -> (asset_amt: wad) {
-    alloc_locals;
-
-    let (gate: address) = ISentinel.get_gate_address(sentinel, yang);
-
-    // Return the dummy value if Gate is zero address
-    if (gate == 0) {
-        return (0,);
-    }
-
-    let (asset_amt: wad) = IGate.get_asset_amt_per_yang(gate);
-    return (asset_amt,);
 }
 
 func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(

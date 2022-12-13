@@ -19,6 +19,15 @@ namespace ISentinel {
     func get_yang(idx: ufelt) -> (yang: address) {
     }
 
+    func get_asset_amt_per_yang(yang: address) -> (amt: wad) {
+    }
+
+    func preview_enter(yang: address, asset_amt: ufelt) -> (yang_amt: wad) {
+    }
+
+    func preview_exit(yang: address, yang_amt: wad) -> (asset_amt: ufelt) {
+    }
+
     //
     // External
     //
@@ -26,5 +35,11 @@ namespace ISentinel {
     func add_yang(
         yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address
     ) {
+    }
+
+    func enter(yang: address, user: address, trove_id: ufelt, asset_amt: ufelt) -> (yang_amt: wad) {
+    }
+
+    func exit(yang: address, user: address, trove_id: ufelt, yang_amt: wad) -> (asset_amt: ufelt) {
     }
 }
