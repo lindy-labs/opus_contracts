@@ -149,7 +149,7 @@ async def test_gate_fns_pass(
 
         expected_yang_amt = (
             await sentinel.preview_enter(yang.contract_address, scaled_asset_deposit_amt).execute()
-        ).result.preview
+        ).result.yang_amt
         assert expected_yang_amt == scaled_yang_withdraw_amt
 
         enter = await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
@@ -168,7 +168,7 @@ async def test_gate_fns_pass(
 
         expected_asset_amt = (
             await sentinel.preview_exit(yang.contract_address, scaled_yang_withdraw_amt).execute()
-        ).result.preview
+        ).result.asset_amt
         assert expected_asset_amt == scaled_asset_deposit_amt
 
         exit_ = await sentinel.exit(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_yang_withdraw_amt).execute(
@@ -196,8 +196,8 @@ async def test_gate_fns_fail_invalid_yang(sentinel):
             caller_address=SENTINEL_OWNER
         )
 
-    expected_yang = (await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()).result.preview
-    expected_asset_wad = (await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()).result.preview
+    expected_yang = (await sentinel.preview_enter(faux_yang_address, faux_deposit_amt).execute()).result.yang_amt
+    expected_asset_wad = (await sentinel.preview_exit(faux_yang_address, faux_yang_amt).execute()).result.asset_amt
     expected_asset_amt = (await sentinel.get_asset_amt_per_yang(faux_yang_address).execute()).result.amt
     assert expected_yang == expected_asset_wad == expected_asset_amt == 0
 

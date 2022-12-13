@@ -22,10 +22,10 @@ namespace ISentinel {
     func get_asset_amt_per_yang(yang: address) -> (amt: wad) {
     }
 
-    func preview_enter(yang: address, asset_amt: ufelt) -> (preview: wad) {
+    func preview_enter(yang: address, asset_amt: ufelt) -> (yang_amt: wad) {
     }
 
-    func preview_exit(yang: address, yang_amt: wad) -> (preview: ufelt) {
+    func preview_exit(yang: address, yang_amt: wad) -> (asset_amt: ufelt) {
     }
 
     //

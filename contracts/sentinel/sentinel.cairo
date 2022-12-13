@@ -122,7 +122,7 @@ func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 @view
 func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, asset_amt: ufelt
-) -> (preview: wad) {
+) -> (yang_amt: wad) {
     let (gate: address) = get_gate_address(yang);
 
     if (gate == 0) {
@@ -137,7 +137,7 @@ func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 @view
 func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, yang_amt: wad
-) -> (preview: ufelt) {
+) -> (asset_amt: ufelt) {
     let (gate: address) = get_gate_address(yang);
 
     if (gate == 0) {
