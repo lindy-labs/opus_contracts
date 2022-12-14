@@ -38,6 +38,7 @@ from tests.utils import (
     price_bounds,
     set_block_timestamp,
     to_ray,
+    to_uint,
     to_wad,
 )
 
@@ -193,7 +194,7 @@ async def forged_trove_1(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs
 @pytest.fixture
 async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
     # fund the user with bags
-    await steth_token.mint(SEARCHER, (SEARCHER_STETH_WAD, 0)).execute(caller_address=SEARCHER)
+    await steth_token.mint(SEARCHER, to_uint(SEARCHER_STETH_WAD)).execute(caller_address=SEARCHER)
 
     # user approves Aura gates to spend bags
     await max_approve(steth_token, SEARCHER, steth_yang.gate_address)
@@ -206,7 +207,7 @@ async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
 @pytest.fixture
 async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
     # fund the user with bags
-    await steth_token.mint(MOCK_ABSORBER, (MOCK_ABSORBER_STETH_WAD, 0)).execute(caller_address=MOCK_ABSORBER)
+    await steth_token.mint(MOCK_ABSORBER, to_uint(MOCK_ABSORBER_STETH_WAD)).execute(caller_address=MOCK_ABSORBER)
 
     # user approves the Aura gates to spend bags
     await max_approve(steth_token, MOCK_ABSORBER, steth_yang.gate_address)
