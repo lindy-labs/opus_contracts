@@ -321,6 +321,11 @@ async def wbtc_token(tokens) -> StarknetContract:
     return await tokens("Wrapped BTC", "WBTC", WBTC_DECIMALS)
 
 
+@pytest.fixture
+async def yang_tokens(steth_token, doge_token, wbtc_token) -> tuple[StarknetContract]:
+    return steth_token, doge_token, wbtc_token
+
+
 #
 # Yang
 #
@@ -356,6 +361,11 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     )
 
 
+@pytest.fixture
+async def yangs(steth_yang, doge_yang, wbtc_yang) -> tuple[YangConfig]:
+    return steth_yang, doge_yang, wbtc_yang
+
+
 #
 # Gate
 #
@@ -389,6 +399,11 @@ async def wbtc_gate(starknet, sentinel, shrine_deploy, wbtc_token, gates) -> Sta
     await gate.grant_role(GATE_ROLE_FOR_SENTINEL, sentinel.contract_address).execute(caller_address=GATE_OWNER)
 
     return gate
+
+
+@pytest.fixture
+async def yang_gates(steth_gate, doge_gate, wbtc_gate) -> tuple[StarknetContract]:
+    return steth_gate, doge_gate, wbtc_gate
 
 
 #
@@ -452,14 +467,10 @@ async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetCont
 
 
 @pytest.fixture
-async def funded_trove1_owner(
-    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
-):
-    tokens = (steth_token, doge_token, wbtc_token)
-    yangs = (steth_yang, doge_yang, wbtc_yang)
+async def funded_trove1_owner(yang_tokens, yangs):
     amts = (1_000, 1_000_000, 10)
 
-    for token, yang, amt in zip(tokens, yangs, amts):
+    for token, yang, amt in zip(yang_tokens, yangs, amts):
         amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
         # fund the user with bags
         await token.mint(TROVE1_OWNER, amt_uint).execute(caller_address=TROVE1_OWNER)
@@ -469,14 +480,10 @@ async def funded_trove1_owner(
 
 
 @pytest.fixture
-async def funded_trove2_owner(
-    steth_token, steth_yang: YangConfig, doge_token, doge_yang: YangConfig, wbtc_token, wbtc_yang: YangConfig
-):
-    tokens = (steth_token, doge_token, wbtc_token)
-    yangs = (steth_yang, doge_yang, wbtc_yang)
+async def funded_trove2_owner(yang_tokens, yangs):
     amts = (1_000, 1_000_000, 10)
 
-    for token, yang, amt in zip(tokens, yangs, amts):
+    for token, yang, amt in zip(yang_tokens, yangs, amts):
         amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
         # fund the user with bags
         await token.mint(TROVE2_OWNER, amt_uint).execute(caller_address=TROVE2_OWNER)

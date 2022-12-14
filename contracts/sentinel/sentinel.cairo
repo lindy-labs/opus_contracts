@@ -103,7 +103,8 @@ func get_yang_addresses_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     return sentinel_yang_addresses_count.read();
 }
 
-// Returns 0 if the yang is invalid
+// Returns 0 if the yang is invalid, as opposed to `preview_enter` and `preview_exit`
+// Zero value will be handled by the oracle module so as to prevent price updates from failing
 @view
 func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address
@@ -118,7 +119,7 @@ func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     return (amt,);
 }
 
-// Returns 0 if the yang is invalid
+// Reverts if the yang is invalid
 @view
 func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, asset_amt: ufelt
@@ -133,7 +134,7 @@ func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return (yang_amt,);
 }
 
-// Returns 0 if the yang is invalid
+// Reverts if the yang is invalid
 @view
 func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang: address, yang_amt: wad

@@ -40,20 +40,20 @@ def shitcoin_yang(shitcoin) -> YangConfig:
 
 
 @pytest.fixture
-async def forged_trove_1(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
+async def forged_trove_1(abbot, shrine, yangs):
     await abbot.open_trove(
         INITIAL_FORGED_AMOUNT,
-        [steth_yang.contract_address, doge_yang.contract_address],
-        [INITIAL_STETH_DEPOSIT, INITIAL_DOGE_DEPOSIT],
+        [yang.contract_address for yang in yangs],
+        INITIAL_DEPOSITS,
     ).execute(caller_address=TROVE1_OWNER)
 
 
 @pytest.fixture
-async def forged_trove_2(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
+async def forged_trove_2(abbot, shrine, yangs):
     await abbot.open_trove(
         INITIAL_FORGED_AMOUNT,
-        [steth_yang.contract_address, doge_yang.contract_address],
-        [INITIAL_STETH_DEPOSIT, INITIAL_DOGE_DEPOSIT],
+        [yang.contract_address for yang in yangs],
+        INITIAL_DEPOSITS,
     ).execute(caller_address=TROVE2_OWNER)
 
 
@@ -65,12 +65,12 @@ async def forged_trove_2(abbot, shrine, steth_yang: YangConfig, doge_yang: YangC
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
 @pytest.mark.parametrize("forge_amount", [0, INITIAL_FORGED_AMOUNT])
 @pytest.mark.asyncio
-async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, forge_amount):
+async def test_open_trove(abbot, shrine, yangs, forge_amount):
 
     tx = await abbot.open_trove(
         forge_amount,
-        [steth_yang.contract_address, doge_yang.contract_address],
-        [INITIAL_STETH_DEPOSIT, INITIAL_DOGE_DEPOSIT],
+        [yang.contract_address for yang in yangs],
+        INITIAL_DEPOSITS,
     ).execute(caller_address=TROVE1_OWNER)
 
     # asserts on the Abbot
@@ -78,49 +78,31 @@ async def test_open_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yang
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
     assert (await abbot.get_troves_count().execute()).result.count == TROVE_1
 
-    # asserts on the gates
-    assert_event_emitted(
-        tx,
-        steth_yang.gate_address,
-        "Enter",
-        lambda d: d[:2] == [TROVE1_OWNER, TROVE_1] and d[-1] == INITIAL_STETH_DEPOSIT,
-    )
-    assert_event_emitted(
-        tx,
-        doge_yang.gate_address,
-        "Enter",
-        lambda d: d[:2] == [TROVE1_OWNER, TROVE_1] and d[-1] == INITIAL_DOGE_DEPOSIT,
-    )
+    for yang, deposit_amt, expected_yang_amt in zip(yangs, INITIAL_DEPOSITS, INITIAL_YANG_AMTS):
+        # asserts on the gates
+        assert_event_emitted(
+            tx,
+            yang.gate_address,
+            "Enter",
+            [TROVE1_OWNER, TROVE_1, deposit_amt, expected_yang_amt],
+        )
 
-    # asserts on the shrine
-    assert_event_emitted(
-        tx,
-        shrine.contract_address,
-        "YangUpdated",
-        lambda d: d[:2] == [steth_yang.contract_address, INITIAL_STETH_DEPOSIT],
-    )
-    assert_event_emitted(
-        tx,
-        shrine.contract_address,
-        "YangUpdated",
-        lambda d: d[:2] == [doge_yang.contract_address, INITIAL_DOGE_DEPOSIT],
-    )
-    assert_event_emitted(
-        tx, shrine.contract_address, "DepositUpdated", [steth_yang.contract_address, TROVE_1, INITIAL_STETH_DEPOSIT]
-    )
-    assert_event_emitted(
-        tx, shrine.contract_address, "DepositUpdated", [doge_yang.contract_address, TROVE_1, INITIAL_DOGE_DEPOSIT]
-    )
+        # asserts on the shrine
+        assert_event_emitted(
+            tx,
+            shrine.contract_address,
+            "YangUpdated",
+            lambda d: d[:2] == [yang.contract_address, expected_yang_amt],
+        )
+        assert_event_emitted(
+            tx, shrine.contract_address, "DepositUpdated", [yang.contract_address, TROVE_1, expected_yang_amt]
+        )
+
+        # asserts on the tokens
+        # the 0 is to conform to Uint256
+        assert_event_emitted(tx, yang.contract_address, "Transfer", [TROVE1_OWNER, yang.gate_address, deposit_amt, 0])
+
     assert (await shrine.get_trove(TROVE_1).execute()).result.trove.debt == forge_amount
-
-    # asserts on the tokens
-    # the 0 is to conform to Uint256
-    assert_event_emitted(
-        tx, steth_yang.contract_address, "Transfer", [TROVE1_OWNER, steth_yang.gate_address, INITIAL_STETH_DEPOSIT, 0]
-    )
-    assert_event_emitted(
-        tx, doge_yang.contract_address, "Transfer", [TROVE1_OWNER, doge_yang.gate_address, INITIAL_DOGE_DEPOSIT, 0]
-    )
 
 
 @pytest.mark.asyncio
@@ -137,7 +119,7 @@ async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang:
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
 @pytest.mark.asyncio
-async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
+async def test_close_trove(abbot, shrine, yangs):
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
 
     tx = await abbot.close_trove(TROVE_1).execute(caller_address=TROVE1_OWNER)
@@ -146,38 +128,25 @@ async def test_close_trove(abbot, shrine, steth_yang: YangConfig, doge_yang: Yan
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
     assert (await shrine.get_trove(TROVE_1).execute()).result.trove.debt == 0
 
-    # asserts on the gates
-    assert_event_emitted(
-        tx,
-        steth_yang.gate_address,
-        "Exit",
-        lambda d: d[:2] == [TROVE1_OWNER, TROVE_1] and d[-1] == INITIAL_STETH_DEPOSIT,
-    )
-    assert_event_emitted(
-        tx,
-        doge_yang.gate_address,
-        "Exit",
-        lambda d: d[:2] == [TROVE1_OWNER, TROVE_1] and d[-1] == INITIAL_DOGE_DEPOSIT,
-    )
+    for yang, deposit_amt, expected_yang_amt in zip(yangs, INITIAL_DEPOSITS, INITIAL_YANG_AMTS):
+        # asserts on the gates
+        assert_event_emitted(
+            tx,
+            yang.gate_address,
+            "Exit",
+            [TROVE1_OWNER, TROVE_1, deposit_amt, expected_yang_amt],
+        )
 
-    # asserts on the shrine
-    assert_event_emitted(
-        tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [steth_yang.contract_address, 0]
-    )
-    assert_event_emitted(tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [doge_yang.contract_address, 0])
-    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [steth_yang.contract_address, TROVE_1, 0])
-    assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [doge_yang.contract_address, TROVE_1, 0])
+        # asserts on the shrine
+        assert_event_emitted(tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [yang.contract_address, 0])
+        assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [yang.contract_address, TROVE_1, 0])
+
+        # asserts on the tokens
+        # the 0 is to conform to Uint256
+        assert_event_emitted(tx, yang.contract_address, "Transfer", [yang.gate_address, TROVE1_OWNER, deposit_amt, 0])
+
     assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [0])  # from melt
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, 0])
-
-    # asserts on the tokens
-    # the 0 is to conform to Uint256
-    assert_event_emitted(
-        tx, steth_yang.contract_address, "Transfer", [steth_yang.gate_address, TROVE1_OWNER, INITIAL_STETH_DEPOSIT, 0]
-    )
-    assert_event_emitted(
-        tx, doge_yang.contract_address, "Transfer", [doge_yang.gate_address, TROVE1_OWNER, INITIAL_DOGE_DEPOSIT, 0]
-    )
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
@@ -193,35 +162,22 @@ async def test_close_trove_failures(abbot):
 @pytest.mark.parametrize("depositor", [TROVE1_OWNER, TROVE2_OWNER])  # melt with trove owner, and non-owner
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1", "funded_trove2_owner")
 @pytest.mark.asyncio
-async def test_deposit(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig, depositor):
-    fresh_steth_deposit = to_wad(1)
-    fresh_doge_deposit = to_wad(200)
+async def test_deposit(abbot, shrine, yangs, depositor):
+    for yang, deposited_yang, deposit_amt, expected_yang_amt in zip(
+        yangs, INITIAL_YANG_AMTS, SUBSEQUENT_DEPOSITS, SUBSEQUENT_YANG_AMTS
+    ):
 
-    tx1 = await abbot.deposit(steth_yang.contract_address, TROVE_1, fresh_steth_deposit).execute(
-        caller_address=depositor
-    )
-    tx2 = await abbot.deposit(doge_yang.contract_address, TROVE_1, fresh_doge_deposit).execute(caller_address=depositor)
+        tx = await abbot.deposit(yang.contract_address, TROVE_1, deposit_amt).execute(caller_address=depositor)
 
-    # check if gates emitted Deposit from TROVE1_OWNER to trove with the right amount
-    assert_event_emitted(
-        tx1, steth_yang.gate_address, "Enter", lambda d: d[:3] == [depositor, TROVE_1, fresh_steth_deposit]
-    )
-    assert_event_emitted(
-        tx2, doge_yang.gate_address, "Enter", lambda d: d[:3] == [depositor, TROVE_1, fresh_doge_deposit]
-    )
+        # check if gates emitted Deposit from TROVE1_OWNER to trove with the right amount
+        assert_event_emitted(tx, yang.gate_address, "Enter", [depositor, TROVE_1, deposit_amt, expected_yang_amt])
 
-    assert (
-        await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
-    ).result.balance == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
-    assert (
-        await shrine.get_deposit(doge_yang.contract_address, TROVE_1).execute()
-    ).result.balance == INITIAL_DOGE_DEPOSIT + fresh_doge_deposit
+        expected_yang = deposited_yang + expected_yang_amt
+        assert (await shrine.get_deposit(yang.contract_address, TROVE_1).execute()).result.balance == expected_yang
 
-    # depositing 0 should pass, no event on gate (exits early)
-    await abbot.deposit(steth_yang.contract_address, TROVE_1, 0).execute(caller_address=depositor)
-    assert (
-        await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
-    ).result.balance == INITIAL_STETH_DEPOSIT + fresh_steth_deposit
+        # depositing 0 should pass, no event on gate (exits early)
+        await abbot.deposit(yang.contract_address, TROVE_1, 0).execute(caller_address=depositor)
+        assert (await shrine.get_deposit(yang.contract_address, TROVE_1).execute()).result.balance == expected_yang
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
@@ -238,38 +194,24 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
 @pytest.mark.asyncio
-async def test_withdraw(abbot, shrine, steth_yang: YangConfig, doge_yang: YangConfig):
-    steth_withdraw_amount = to_wad(2)
-    doge_withdraw_amount = to_wad(50)
+async def test_withdraw(abbot, shrine, yangs):
+    for yang, deposited_yang, withdraw_asset_amt, withdraw_yang_amt in zip(
+        yangs, INITIAL_YANG_AMTS, WITHDRAW_AMTS, WITHDRAW_YANG_AMTS
+    ):
+        tx = await abbot.withdraw(yang.contract_address, TROVE_1, withdraw_yang_amt).execute(
+            caller_address=TROVE1_OWNER
+        )
 
-    tx1 = await abbot.withdraw(steth_yang.contract_address, TROVE_1, steth_withdraw_amount).execute(
-        caller_address=TROVE1_OWNER
-    )
+        assert_event_emitted(
+            tx,
+            yang.gate_address,
+            "Exit",
+            [TROVE1_OWNER, TROVE_1, withdraw_asset_amt, withdraw_yang_amt],
+        )
 
-    tx2 = await abbot.withdraw(doge_yang.contract_address, TROVE_1, doge_withdraw_amount).execute(
-        caller_address=TROVE1_OWNER
-    )
-
-    assert_event_emitted(
-        tx1,
-        steth_yang.gate_address,
-        "Exit",
-        lambda d: d[:2] == [TROVE1_OWNER, TROVE_1] and d[-1] == steth_withdraw_amount,
-    )
-
-    assert_event_emitted(
-        tx2,
-        doge_yang.gate_address,
-        "Exit",
-        lambda d: d[:2] == [TROVE1_OWNER, TROVE_1] and d[-1] == doge_withdraw_amount,
-    )
-
-    assert (
-        await shrine.get_deposit(steth_yang.contract_address, TROVE_1).execute()
-    ).result.balance == INITIAL_STETH_DEPOSIT - steth_withdraw_amount
-    assert (
-        await shrine.get_deposit(doge_yang.contract_address, TROVE_1).execute()
-    ).result.balance == INITIAL_DOGE_DEPOSIT - doge_withdraw_amount
+        assert (
+            await shrine.get_deposit(yang.contract_address, TROVE_1).execute()
+        ).result.balance == deposited_yang - withdraw_yang_amt
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
