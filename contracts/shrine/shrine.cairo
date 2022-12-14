@@ -91,7 +91,7 @@ func TroveUpdated(trove_id: ufelt, trove: Trove) {
 }
 
 @event
-func TroveRedistributed(redistribution_id: ufelt, trove_id: ufelt, amount: wad) {
+func TroveRedistributed(redistribution_id: ufelt, trove_id: ufelt, debt: wad) {
 }
 
 @event

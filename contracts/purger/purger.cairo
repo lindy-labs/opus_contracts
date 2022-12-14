@@ -199,17 +199,20 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         let (
             yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(shrine, trove_id, trove_ltv, trove_debt, WadRay.RAY_ONE, absorber, absorber);
-    } else {
-        let percentage_freed: ray = get_percentage_freed(
-            trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_balance
-        );
-        let (
-            yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
-        ) = purge(
-            shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
-        );
-        // TODO: Redistribute
+        // TODO: Call Absorber to update its internal accounting
+
+        return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     }
+
+    let percentage_freed: ray = get_percentage_freed(
+        trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_balance
+    );
+    let (
+        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
+    ) = purge(
+        shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
+    );
+    IShrine.redistribute(shrine, trove_id);
 
     // TODO: Call Absorber to update its internal accounting
 
