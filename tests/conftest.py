@@ -40,6 +40,7 @@ from tests.utils import (
     TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE3_OWNER,
     TROVE_1,
     WAD_DECIMALS,
     WAD_SCALE,
@@ -467,29 +468,18 @@ async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetCont
 
 
 @pytest.fixture
-async def funded_trove1_owner(yang_tokens, yangs):
+async def funded_trove_owners(yang_tokens, yangs):
     amts = (1_000, 1_000_000, 10)
+    trove_owners = (TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER)
 
-    for token, yang, amt in zip(yang_tokens, yangs, amts):
-        amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
-        # fund the user with bags
-        await token.mint(TROVE1_OWNER, amt_uint).execute(caller_address=TROVE1_OWNER)
+    for owner in trove_owners:
+        for token, yang, amt in zip(yang_tokens, yangs, amts):
+            amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
+            # fund the user with bags
+            await token.mint(owner, amt_uint).execute(caller_address=owner)
 
-        # user approves Aura gates to spend bags
-        await max_approve(token, TROVE1_OWNER, yang.gate_address)
-
-
-@pytest.fixture
-async def funded_trove2_owner(yang_tokens, yangs):
-    amts = (1_000, 1_000_000, 10)
-
-    for token, yang, amt in zip(yang_tokens, yangs, amts):
-        amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
-        # fund the user with bags
-        await token.mint(TROVE2_OWNER, amt_uint).execute(caller_address=TROVE2_OWNER)
-
-        # user approves Aura gates to spend bags
-        await max_approve(token, TROVE2_OWNER, yang.gate_address)
+            # user approves Aura gates to spend bags
+            await max_approve(token, owner, yang.gate_address)
 
 
 @pytest.fixture
