@@ -17,7 +17,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.roles import GateRoles, SentinelRoles
+from tests.roles import GateRoles, SentinelRoles, ShrineRoles
 
 RANGE_CHECK_BOUND = 2**128
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -92,6 +92,7 @@ BAD_GUY = str_to_felt("bad guy")
 # Roles
 GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
 SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
+SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
 
 # Troves
 TROVE_1 = 1

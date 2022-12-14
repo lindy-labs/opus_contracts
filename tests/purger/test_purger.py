@@ -17,8 +17,11 @@ from tests.utils import (
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
+    SHRINE_ROLE_FOR_PURGER,
     TIME_INTERVAL,
     TROVE1_OWNER,
+    TROVE2_OWNER,
+    TROVE3_OWNER,
     TROVE_1,
     TRUE,
     WAD_RAY_OOB_VALUES,
@@ -125,6 +128,9 @@ def get_freed_percentage(
     If LTV <= 100%, return the freed percentage based on (close amount + penalty amount) / total value of trove
     If LTV > 100%, return the freed percentage based on close amount / total debt of trove.
     """
+    if close_amt == 0:
+        return Decimal("0")
+
     if ltv > Decimal("1"):
         return close_amt / trove_debt
 
@@ -166,7 +172,7 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> List[Lis
 
 
 @pytest.fixture
-async def forged_trove_1(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs) -> int:
+async def forged_trove_1(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> int:
     prices = []
 
     for yang in yangs:
@@ -192,11 +198,63 @@ async def forged_trove_1(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs
 
 
 @pytest.fixture
+async def forged_trove_2(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> int:
+    prices = []
+
+    for yang in yangs:
+        price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
+        prices.append(price)
+
+    # Get maximum forge amount
+    deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
+    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
+
+    thresholds = [from_ray(yang.threshold) for yang in yangs]
+    max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
+
+    forge_amt = to_wad(max_forge_amt - 1)
+
+    await abbot.open_trove(
+        forge_amt,
+        [yang.contract_address for yang in yangs],
+        deposit_amts,
+    ).execute(caller_address=TROVE2_OWNER)
+
+    return forge_amt
+
+
+@pytest.fixture
+async def forged_trove_3(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> int:
+    prices = []
+
+    for yang in yangs:
+        price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
+        prices.append(price)
+
+    # Get maximum forge amount
+    deposit_amts = [USER_STETH_DEPOSIT_WAD // 2, USER_DOGE_DEPOSIT_WAD // 2, USER_WBTC_DEPOSIT_AMT // 2]
+    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
+
+    thresholds = [from_ray(yang.threshold) for yang in yangs]
+    max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
+
+    forge_amt = to_wad(max_forge_amt - 1)
+
+    await abbot.open_trove(
+        forge_amt,
+        [yang.contract_address for yang in yangs],
+        deposit_amts,
+    ).execute(caller_address=TROVE3_OWNER)
+
+    return forge_amt
+
+
+@pytest.fixture
 async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
-    # fund the user with bags
+    # fund the searcher with bags
     await steth_token.mint(SEARCHER, to_uint(SEARCHER_STETH_WAD)).execute(caller_address=SEARCHER)
 
-    # user approves Aura gates to spend bags
+    # Searcher approves Aura gates to spend bags
     await max_approve(steth_token, SEARCHER, steth_yang.gate_address)
 
     await abbot.open_trove(SEARCHER_FORGE_AMT_WAD, [steth_yang.contract_address], [SEARCHER_STETH_WAD]).execute(
@@ -205,13 +263,16 @@ async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
 
 
 @pytest.fixture
-async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_token, steth_yang: YangConfig):
-    # fund the user with bags
+async def prefunded_absorber(steth_token, steth_yang: YangConfig):
+    # fund the absorber with bags
     await steth_token.mint(MOCK_ABSORBER, to_uint(MOCK_ABSORBER_STETH_WAD)).execute(caller_address=MOCK_ABSORBER)
 
-    # user approves the Aura gates to spend bags
+    # Absorber approves the Aura gates to spend bags
     await max_approve(steth_token, MOCK_ABSORBER, steth_yang.gate_address)
 
+
+@pytest.fixture
+async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_yang: YangConfig, prefunded_absorber):
     await abbot.open_trove(
         MOCK_ABSORBER_FORGE_AMT_WAD, [steth_yang.contract_address], [MOCK_ABSORBER_STETH_WAD]
     ).execute(caller_address=MOCK_ABSORBER)
@@ -234,8 +295,7 @@ async def purger(starknet, shrine, sentinel) -> StarknetContract:
     )
 
     # Approve purger to call `seize` in Shrine
-    purger_roles = ShrineRoles.MELT + ShrineRoles.SEIZE
-    await shrine.grant_role(purger_roles, purger.contract_address).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(SHRINE_ROLE_FOR_PURGER, purger.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # Approve purger to call `exit` in Gate
     await sentinel.grant_role(SentinelRoles.EXIT, purger.contract_address).execute(caller_address=SENTINEL_OWNER)
@@ -284,7 +344,7 @@ async def test_shrine_setup(shrine, shrine_feeds, yangs):
     assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
 async def test_trove1_setup(shrine, purger, forged_trove_1):
     forge_amt = forged_trove_1
@@ -352,7 +412,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
 @pytest.mark.parametrize(
     "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
 )
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1", "funded_searcher")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_searcher")
 @pytest.mark.asyncio
 async def test_liquidate_pass(
     starknet,
@@ -414,11 +474,11 @@ async def test_liquidate_pass(
 
         # Get yang balance of trove and calculate amount expected to be freed
         before_trove_yang_wad = (await shrine.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
-        before_trove_asset_bal_wad = (
+        before_trove_asset_bal = (
             await sentinel.preview_exit(yang.contract_address, before_trove_yang_wad).execute()
         ).result.asset_amt
         expected_freed_yang = freed_percentage * from_wad(before_trove_yang_wad)
-        expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal_wad, yang.decimals)
+        expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals)
 
         yangs_info[yang.contract_address] = {
             "before_searcher_bal": adjusted_bal,
@@ -494,7 +554,7 @@ async def test_liquidate_pass(
 
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1", "funded_searcher")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_searcher")
 @pytest.mark.asyncio
 async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
     """
@@ -529,7 +589,7 @@ async def test_liquidate_fail_out_of_bounds(purger, liquidate_amt):
         await purger.liquidate(TROVE_1, liquidate_amt, SEARCHER).execute(caller_address=SEARCHER)
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_liquidate_fail_insufficient_yin(starknet, shrine, purger, yangs):
     # SEARCHER is not funded because `funded_searcher` fixture was omitted
@@ -545,7 +605,7 @@ async def test_liquidate_fail_insufficient_yin(starknet, shrine, purger, yangs):
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1", "funded_absorber")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_absorber")
 @pytest.mark.asyncio
 async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens, yangs, price_change):
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
@@ -569,7 +629,7 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
 
     # Sanity check: absorber has sufficient yin
     absorber_yin_balance = (await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance
-    assert from_uint(absorber_yin_balance) > before_trove_debt
+    assert from_wad(from_uint(absorber_yin_balance)) > before_trove_debt
 
     yangs_info = {}
 
@@ -640,8 +700,174 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
     assert after_trove_debt == 0
 
 
+@pytest.mark.parametrize("percentage_covered", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
+@pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
+@pytest.mark.usefixtures(
+    "sentinel_with_yangs", "forged_trove_1", "forged_trove_2", "forged_trove_3", "prefunded_absorber"
+)
+@pytest.mark.asyncio
+async def test_partial_absorb_with_redistribution_pass(
+    starknet, shrine, abbot, sentinel, purger, yang_tokens, yangs, yang_gates, percentage_covered, price_change
+):
+    # Fund absorber with a percentage of the debt of trove 1
+    trove_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
+    absorber_forge_amt = int(percentage_covered * trove_debt)
+    steth_yang = yangs[0]
+    await abbot.open_trove(absorber_forge_amt, [steth_yang.contract_address], [MOCK_ABSORBER_STETH_WAD]).execute(
+        caller_address=MOCK_ABSORBER
+    )
+
+    await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
+
+    # Assert trove is not healthy
+    is_healthy = (await shrine.is_healthy(TROVE_1).execute()).result.healthy
+    assert is_healthy == FALSE
+
+    # Get LTV
+    before_trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    before_trove_value = from_wad(before_trove_info.value)
+    before_trove_threshold = from_ray(before_trove_info.threshold)
+    before_trove_debt = from_wad(before_trove_info.debt)
+    before_trove_ltv = from_ray(before_trove_info.ltv)
+
+    # Check purge penalty
+    penalty = from_ray((await purger.get_penalty(TROVE_1).execute()).result.penalty)
+    if before_trove_ltv > Decimal("1"):
+        expected_penalty = get_penalty(before_trove_threshold, before_trove_ltv, before_trove_value, before_trove_debt)
+        assert_equalish(penalty, expected_penalty)
+
+    # Sanity check: absorber has insufficient yin
+    absorber_yin_balance = (await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance
+    assert from_wad(from_uint(absorber_yin_balance)) < before_trove_debt
+
+    freed_percentage = get_freed_percentage(
+        before_trove_threshold, before_trove_ltv, before_trove_value, before_trove_debt, from_wad(absorber_forge_amt)
+    )
+
+    yangs_info = {}
+
+    for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
+        # Get yang token balance of searcher
+        adjusted_bal = from_fixed_point(
+            from_uint((await token.balanceOf(SEARCHER).execute()).result.balance), yang.decimals
+        )
+
+        # Get yang balance of trove and calculate amount expected to be freed
+        before_trove_yang_wad = (await shrine.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
+        before_trove_asset_bal = (
+            await sentinel.preview_exit(yang.contract_address, before_trove_yang_wad).execute()
+        ).result.asset_amt
+
+        expected_freed_yang = (
+            (freed_percentage * from_wad(before_trove_yang_wad)) if freed_percentage > Decimal("0") else Decimal("0")
+        )
+        expected_freed_asset = (
+            (freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals))
+            if freed_percentage > Decimal("0")
+            else Decimal("0")
+        )
+
+        before_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
+        before_gate_asset_bal = from_fixed_point(
+            from_uint((await token.balanceOf(yang.gate_address).execute()).result.balance), yang.decimals
+        )
+
+        yangs_info[yang.contract_address] = {
+            "before_absorber_bal": adjusted_bal,
+            "before_trove_yang_wad": before_trove_yang_wad,
+            "expected_freed_asset": expected_freed_asset,
+            "before_gate_yang": before_gate_yang,
+            "before_gate_asset_bal": before_gate_asset_bal,
+        }
+
+    # Call liquidate
+    partial_absorb = await purger.absorb(TROVE_1).execute(caller_address=SEARCHER)
+
+    # Check return data
+    expected_yang_addresses = [yang.contract_address for yang in yangs]
+    assert partial_absorb.result.yangs == expected_yang_addresses
+
+    actual_freed_assets = partial_absorb.result.freed_assets_amt
+    for actual, yang in zip(actual_freed_assets, yangs):
+        error_margin = custom_error_margin(yang.decimals)
+        expected = yangs_info[yang.contract_address]["expected_freed_asset"]
+        assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
+
+    # Check events
+    assert_event_emitted(
+        partial_absorb,
+        purger.contract_address,
+        "Purged",
+        lambda d: d[:4] == [TROVE_1, absorber_forge_amt, MOCK_ABSORBER, MOCK_ABSORBER]
+        and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+    )
+
+    expected_redistribution_id = 1
+    expected_redistributed_debt = before_trove_info.debt - absorber_forge_amt
+    assert_event_emitted(
+        partial_absorb,
+        shrine.contract_address,
+        "TroveRedistributed",
+        [expected_redistribution_id, TROVE_1, expected_redistributed_debt],
+    )
+
+    # Check that debt is zero, collateral has been redistributed and LTV is 0
+    after_trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
+    after_trove_ltv = from_ray(after_trove_info.ltv)
+    after_trove_debt = from_wad(after_trove_info.debt)
+    after_trove_value = from_wad(after_trove_info.value)
+
+    assert after_trove_ltv == 0
+    assert after_trove_value == 0
+    assert after_trove_debt == 0
+
+    for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
+        # Relax the error margin by one decimal point due to python calculations in decimal
+        # vs cumulative rounding errors from fixed point calculations in Cairo
+        error_margin = custom_error_margin(yang.decimals - 1)
+
+        # Check collateral tokens balance of absorber
+        after_searcher_bal = from_fixed_point(
+            from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
+        )
+        before_absorber_bal = yangs_info[yang.contract_address]["before_absorber_bal"]
+        expected_freed_asset = yangs_info[yang.contract_address]["expected_freed_asset"]
+        assert_equalish(after_searcher_bal, before_absorber_bal + expected_freed_asset, error_margin)
+
+        # Yang balance of trove should be zero
+        after_trove_yang = from_wad(
+            (await shrine.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
+        )
+        assert after_trove_yang == 0
+
+        # Asset balance should be decremented by the amount freed to the absorber
+        before_gate_asset_bal = yangs_info[yang.contract_address]["before_gate_asset_bal"]
+        freed_asset_bal = yangs_info[yang.contract_address]["expected_freed_asset"]
+        expected_gate_asset_bal = before_gate_asset_bal - freed_asset_bal
+
+        after_gate_asset_bal = from_fixed_point(
+            from_uint((await token.balanceOf(yang.gate_address).execute()).result.balance), yang.decimals
+        )
+        assert_equalish(after_gate_asset_bal, expected_gate_asset_bal, error_margin)
+
+        # Yang total should be decremented by trove's balance pre-absorb
+        before_gate_yang = yangs_info[yang.contract_address]["before_gate_yang"]
+        before_trove_yang = from_wad(yangs_info[yang.contract_address]["before_trove_yang_wad"])
+        expected_yang = before_gate_yang - before_trove_yang
+
+        after_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
+        assert_equalish(after_gate_yang, expected_yang)
+
+        # Ratio of asset to yang should be updated
+        after_gate_asset_amt_per_yang = from_wad((await gate.get_asset_amt_per_yang().execute()).result.amt)
+        expected_gate_asset_amt_per_yang = expected_gate_asset_bal / expected_yang
+        assert_equalish(after_gate_asset_amt_per_yang, expected_gate_asset_amt_per_yang, error_margin)
+
+    # Check troves that received the redistribution
+
+
 @pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1", "funded_absorber")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_absorber")
 @pytest.mark.asyncio
 async def test_absorb_fail_ltv_too_low(starknet, shrine, purger, yangs, price_change):
     """
