@@ -52,6 +52,12 @@ from tests.utils import (
 )
 
 #
+# Constants
+#
+
+TROVES = (TROVE_1, TROVE_2, TROVE_3)
+
+#
 # Helpers
 #
 
@@ -178,81 +184,40 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> List[Lis
 
 
 @pytest.fixture
-async def forged_trove_1(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> int:
-    prices = []
+async def forged_troves(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> list[int]:
+    forged_amts = []
 
-    for yang in yangs:
-        price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
-        prices.append(price)
+    trove_owners = [TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER]
+    for trove, owner in zip(TROVES, trove_owners):
+        prices = []
 
-    # Get maximum forge amount
-    deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
-    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
+        for yang in yangs:
+            price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
+            prices.append(price)
 
-    thresholds = [from_ray(yang.threshold) for yang in yangs]
-    max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
+        # Get maximum forge amount
+        deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
 
-    forge_amt = to_wad(max_forge_amt - 1)
+        # Add some variation to trove
+        if trove == TROVE_3:
+            deposit_amts = [i // 2 for i in deposit_amts]
 
-    await abbot.open_trove(
-        forge_amt,
-        [yang.contract_address for yang in yangs],
-        deposit_amts,
-    ).execute(caller_address=TROVE1_OWNER)
+        amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
 
-    return forge_amt
+        thresholds = [from_ray(yang.threshold) for yang in yangs]
+        max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
 
+        forge_amt = to_wad(max_forge_amt - 1)
 
-@pytest.fixture
-async def forged_trove_2(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> int:
-    prices = []
+        await abbot.open_trove(
+            forge_amt,
+            [yang.contract_address for yang in yangs],
+            deposit_amts,
+        ).execute(caller_address=owner)
 
-    for yang in yangs:
-        price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
-        prices.append(price)
+        forged_amts.append(forge_amt)
 
-    # Get maximum forge amount
-    deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
-    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
-
-    thresholds = [from_ray(yang.threshold) for yang in yangs]
-    max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
-
-    forge_amt = to_wad(max_forge_amt - 1)
-
-    await abbot.open_trove(
-        forge_amt,
-        [yang.contract_address for yang in yangs],
-        deposit_amts,
-    ).execute(caller_address=TROVE2_OWNER)
-
-    return forge_amt
-
-
-@pytest.fixture
-async def forged_trove_3(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> int:
-    prices = []
-
-    for yang in yangs:
-        price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
-        prices.append(price)
-
-    # Get maximum forge amount
-    deposit_amts = [USER_STETH_DEPOSIT_WAD // 2, USER_DOGE_DEPOSIT_WAD // 2, USER_WBTC_DEPOSIT_AMT // 2]
-    amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
-
-    thresholds = [from_ray(yang.threshold) for yang in yangs]
-    max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
-
-    forge_amt = to_wad(max_forge_amt - 1)
-
-    await abbot.open_trove(
-        forge_amt,
-        [yang.contract_address for yang in yangs],
-        deposit_amts,
-    ).execute(caller_address=TROVE3_OWNER)
-
-    return forge_amt
+    return forged_amts
 
 
 @pytest.fixture
@@ -358,10 +323,11 @@ async def test_shrine_setup(shrine, shrine_feeds, yangs):
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
-async def test_trove1_setup(shrine, purger, forged_trove_1):
-    forge_amt = forged_trove_1
-    trove_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
-    assert trove_debt == forge_amt
+async def test_troves_setup(shrine, purger, forged_troves):
+    forged_amts = forged_troves
+    for trove, forged_amt in zip(TROVES, forged_amts):
+        trove_debt = (await shrine.get_trove_info(trove).execute()).result.debt
+        assert trove_debt == forged_amt
 
 
 #
@@ -424,7 +390,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
 @pytest.mark.parametrize(
     "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
 )
-@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_searcher")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "funded_searcher")
 @pytest.mark.asyncio
 async def test_liquidate_pass(
     starknet,
@@ -566,7 +532,7 @@ async def test_liquidate_pass(
 
 
 @pytest.mark.parametrize("fn", ["liquidate", "absorb"])
-@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_searcher")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "funded_searcher")
 @pytest.mark.asyncio
 async def test_liquidate_purge_fail_trove_healthy(shrine, purger, fn):
     """
@@ -601,7 +567,7 @@ async def test_liquidate_fail_out_of_bounds(purger, liquidate_amt):
         await purger.liquidate(TROVE_1, liquidate_amt, SEARCHER).execute(caller_address=SEARCHER)
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves")
 @pytest.mark.asyncio
 async def test_liquidate_fail_insufficient_yin(starknet, shrine, purger, yangs):
     # SEARCHER is not funded because `funded_searcher` fixture was omitted
@@ -617,7 +583,7 @@ async def test_liquidate_fail_insufficient_yin(starknet, shrine, purger, yangs):
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_absorber")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "funded_absorber")
 @pytest.mark.asyncio
 async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens, yangs, price_change):
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
@@ -712,11 +678,10 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
     assert after_trove_debt == 0
 
 
+# Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_covered", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.usefixtures(
-    "sentinel_with_yangs", "forged_trove_1", "forged_trove_2", "forged_trove_3", "prefunded_absorber"
-)
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber")
 @pytest.mark.asyncio
 async def test_partial_absorb_with_redistribution_pass(
     starknet,
@@ -732,9 +697,8 @@ async def test_partial_absorb_with_redistribution_pass(
     percentage_covered,
     price_change,
 ):
-    troves = (TROVE_1, TROVE_2, TROVE_3)
     liquidated_trove = TROVE_1
-    other_troves = tuple([t for t in troves if t != liquidated_trove])
+    other_troves = tuple([t for t in TROVES if t != liquidated_trove])
 
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
@@ -761,7 +725,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
     # Get info of all troves
     before_troves_info = {}
-    for trove in troves:
+    for trove in TROVES:
         before_trove_info = (await shrine.get_trove_info(trove).execute()).result
         before_trove_value = from_wad(before_trove_info.value)
         before_trove_threshold = from_ray(before_trove_info.threshold)
@@ -894,7 +858,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
     # Check that debt is zero, collateral has been redistributed and LTV is 0
     after_troves_info = {}
-    for trove in troves:
+    for trove in TROVES:
         after_trove_info = (await shrine.get_trove_info(trove).execute()).result
         after_trove_value = from_wad(after_trove_info.value)
         after_trove_threshold = from_ray(after_trove_info.threshold)
@@ -995,7 +959,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
-@pytest.mark.usefixtures("sentinel_with_yangs", "forged_trove_1", "funded_absorber")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "funded_absorber")
 @pytest.mark.asyncio
 async def test_absorb_fail_ltv_too_low(starknet, shrine, purger, yangs, price_change):
     """
