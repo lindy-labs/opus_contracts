@@ -937,14 +937,12 @@ async def test_gate_exit_insufficient_fail(shrine_authed, gate_info):
     token, decimals, gate = gate_info
     # Call withdraw with more gate yang than in the gate
     trove_bal = (await shrine_authed.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
-    print("trove balance: ", trove_bal)
+
     # Note that there is precision loss for tokens with less than 18 decimals if the excess amount is too small
     # Therefore, we scale the excess by the difference in number of decimals
     excess = 1 * 10 ** (WAD_DECIMALS - decimals)
     with pytest.raises(StarkException, match="Gate: Transfer of asset failed"):
-        await gate.exit(TROVE1_OWNER, TROVE_1, FIRST_DEPOSIT_YANG + excess).execute(
-            caller_address=MOCK_ABBOT_WITH_SENTINEL
-        )
+        await gate.exit(TROVE1_OWNER, TROVE_1, trove_bal + excess).execute(caller_address=MOCK_ABBOT_WITH_SENTINEL)
 
 
 @pytest.mark.parametrize(
