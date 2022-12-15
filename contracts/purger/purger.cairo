@@ -7,6 +7,7 @@ from starkware.cairo.common.math import assert_nn_le
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
+from contracts.oracle.interface import IEmpiric
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
 
@@ -48,6 +49,10 @@ func purger_sentinel() -> (sentinel: address) {
 
 @storage_var
 func purger_absorber() -> (absorber: address) {
+}
+
+@storage_var
+func purger_oracle() -> (oracle: address) {
 }
 
 //
@@ -116,11 +121,12 @@ func get_max_close_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 @constructor
 func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    shrine: address, sentinel: address, absorber: address
+    shrine: address, sentinel: address, absorber: address, oracle: address
 ) {
     purger_shrine.write(shrine);
     purger_sentinel.write(sentinel);
     purger_absorber.write(absorber);
+    purger_oracle.write(oracle);
     return ();
 }
 
@@ -213,6 +219,10 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
     );
     IShrine.redistribute(shrine, trove_id);
+
+    // Update yang prices due to an appreciation in ratio of asset to yang
+    let oracle: address = purger_oracle.read();
+    IEmpiric.force_update_prices(oracle);
 
     // TODO: Call Absorber to update its internal accounting
 
