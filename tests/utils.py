@@ -55,7 +55,7 @@ WEIGHTS = {
 }
 
 Uint256 = namedtuple("Uint256", "low high")
-YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address")
+YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address empiric_id")
 
 Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]
@@ -278,6 +278,15 @@ def wad_to_ray(n: int) -> int:
 
 def from_ray(n: int) -> Decimal:
     return from_fixed_point(n, RAY_DECIMALS)
+
+
+def to_empiric(value: Union[int, float, Decimal]) -> int:
+    """
+    Empiric reports the pairs used in this test suite with 8 decimals.
+    This function converts a "regular" numeric value to an Empiric native
+    one, i.e. as if it was returned from Empiric.
+    """
+    return int(value * (10**8))
 
 
 def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):

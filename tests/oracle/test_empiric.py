@@ -17,7 +17,7 @@ from tests.oracle.constants import (
     INIT_BLOCK_TS,
     INITIAL_ASSET_AMT_PER_YANG,
 )
-from tests.roles import EmpiricRoles
+from tests.roles import EmpiricRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
     EMPIRIC_OWNER,
@@ -25,13 +25,16 @@ from tests.utils import (
     GATE_ROLE_FOR_SENTINEL,
     RAY_PERCENT,
     SENTINEL_OWNER,
+    SHRINE_OWNER,
     TIME_INTERVAL,
     TROVE1_OWNER,
     assert_event_emitted,
+    compile_contract,
     max_approve,
     set_block_timestamp,
     signed_int_to_felt,
     str_to_felt,
+    to_empiric,
     to_fixed_point,
     to_uint,
     to_wad,
@@ -50,18 +53,32 @@ ETH_THRESHOLD = 80 * RAY_PERCENT
 ETH_DEPOSIT = to_wad(100)
 
 
-def to_empiric(value: int) -> int:
-    """
-    Empiric reports the pairs used in this test suite with 8 decimals.
-    This function converts a "regular" numeric value to an Empiric native
-    one, i.e. as if it was returned from Empiric.
-    """
-    return value * (10**8)
-
-
 #
 # fixtures
 #
+
+
+# Override fixture in conftest.py for isolated unit tests
+@pytest.fixture
+async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetContract:
+    set_block_timestamp(starknet, INIT_BLOCK_TS)
+    contract = compile_contract("contracts/oracle/empiric.cairo")
+    empiric = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            EMPIRIC_OWNER,
+            mock_empiric_impl.contract_address,
+            shrine.contract_address,
+            sentinel.contract_address,
+            EMPIRIC_UPDATE_INTERVAL,
+            EMPIRIC_FRESHNESS_THRESHOLD,
+            EMPIRIC_SOURCES_THRESHOLD,
+        ],
+    )
+
+    await shrine.grant_role(ShrineRoles.ADVANCE, empiric.contract_address).execute(caller_address=SHRINE_OWNER)
+
+    return empiric
 
 
 @pytest.fixture
