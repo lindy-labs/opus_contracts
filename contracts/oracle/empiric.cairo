@@ -123,6 +123,10 @@ func InvalidPriceUpdate(
 }
 
 @event
+func PurgerAddressUpdated(old_address: address, new_address: address) {
+}
+
+@event
 func OracleAddressUpdated(old_address: address, new_address: address) {
 }
 
@@ -302,19 +306,21 @@ func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     }
     // TODO: this func will be open to anyone, do we need any other asserts here?
 
-    let (yangs_count: ufelt) = empiric_yangs_count.read();
-    let (oracle: address) = empiric_oracle.read();
-    let (shrine: address) = empiric_shrine.read();
-    let (sentinel: address) = empiric_sentinel.read();
-    let (block_timestamp: ufelt) = get_block_timestamp();
+    update_prices_internal();
 
-    update_prices_loop(yangs_count - 1, oracle, shrine, sentinel, block_timestamp);
+    return ();
+}
 
-    // record update timestamp
-    empiric_last_price_update.write(block_timestamp);
+// Allow purger to update prices during a redistribution using access control
+@external
+func force_update_prices{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    alloc_locals;
 
-    let (caller: address) = get_caller_address();
-    PricesUpdated.emit(block_timestamp, caller);
+    AccessControl.assert_has_role(EmpiricRoles.FORCE_UPDATE_PRICES);
+
+    update_prices_internal();
 
     return ();
 }
@@ -443,4 +449,24 @@ func is_valid_price_update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 
     // multiplication simulates boolean AND
     return (has_enough_sources * is_fresh,);
+}
+
+func update_prices_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+
+    let (yangs_count: ufelt) = empiric_yangs_count.read();
+    let (oracle: address) = empiric_oracle.read();
+    let (shrine: address) = empiric_shrine.read();
+    let (sentinel: address) = empiric_sentinel.read();
+    let (block_timestamp: ufelt) = get_block_timestamp();
+
+    update_prices_loop(yangs_count - 1, oracle, shrine, sentinel, block_timestamp);
+
+    // record update timestamp
+    empiric_last_price_update.write(block_timestamp);
+
+    let (caller: address) = get_caller_address();
+    PricesUpdated.emit(block_timestamp, caller);
+
+    return ();
 }
