@@ -39,8 +39,9 @@ WAD_RAY_BOUND = 2**125
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
-# Token decimals
+# Decimal precision
 WBTC_DECIMALS = 8
+EMPIRIC_DECIMALS = 8
 
 # Gas estimation constants
 NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin", "ec_op_builtin"]

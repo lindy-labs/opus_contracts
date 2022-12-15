@@ -25,6 +25,7 @@ from tests.shrine.constants import (
     YIN_SYMBOL,
 )
 from tests.utils import (
+    EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
@@ -524,14 +525,13 @@ async def empiric(starknet, shrine_deploy, sentinel_with_yangs, mock_empiric_imp
 
     await shrine.grant_role(ShrineRoles.ADVANCE, empiric.contract_address).execute(caller_address=SHRINE_OWNER)
 
-    empiric_decimals = 8
     ts = get_block_timestamp(starknet)
     num_sources = 3
     for yang in yangs:
         price = to_empiric(from_wad(yang.price_wad))
 
         await mock_empiric_impl.next_get_spot_median(
-            yang.empiric_id, price, empiric_decimals, ts, num_sources
+            yang.empiric_id, price, EMPIRIC_DECIMALS, ts, num_sources
         ).execute()
         await empiric.add_yang(yang.empiric_id, yang.contract_address).execute(caller_address=EMPIRIC_OWNER)
 

@@ -13,6 +13,7 @@ from tests.purger.constants import *  # noqa: F403
 from tests.roles import EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
+    EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
     RAY_SCALE,
@@ -737,7 +738,6 @@ async def test_partial_absorb_with_redistribution_pass(
 
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
-    empiric_decimals = 8
     ts = get_block_timestamp(starknet)
     num_sources = 3
 
@@ -746,7 +746,7 @@ async def test_partial_absorb_with_redistribution_pass(
         yang_price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
         price = to_empiric(yang_price)
         await mock_empiric_impl.next_get_spot_median(
-            yang.empiric_id, price, empiric_decimals, ts, num_sources
+            yang.empiric_id, price, EMPIRIC_DECIMALS, ts, num_sources
         ).execute()
 
     # Assert trove is not healthy
