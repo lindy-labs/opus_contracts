@@ -476,11 +476,11 @@ async def test_liquidate_pass(
 
         # Get yang balance of trove and calculate amount expected to be freed
         before_trove_yang_wad = (await shrine.get_deposit(token.contract_address, TROVE_1).execute()).result.balance
-        before_trove_asset_bal = (
+        before_trove_asset_bal_wad = (
             await sentinel.preview_exit(yang.contract_address, before_trove_yang_wad).execute()
         ).result.asset_amt
         expected_freed_yang = freed_percentage * from_wad(before_trove_yang_wad)
-        expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals)
+        expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal_wad, yang.decimals)
 
         yangs_info[yang.contract_address] = {
             "before_searcher_bal": adjusted_bal,
