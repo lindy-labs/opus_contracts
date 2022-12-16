@@ -13,6 +13,7 @@ from tests.utils import (
     YangConfig,
     assert_event_emitted,
     from_uint,
+    str_to_felt,
     to_uint,
     to_wad,
 )
@@ -36,7 +37,8 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 @pytest.fixture
 def shitcoin_yang(shitcoin) -> YangConfig:
-    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0)
+    empiric_id = str_to_felt("SHIT/USD")
+    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0, empiric_id)
 
 
 @pytest.fixture
@@ -62,7 +64,7 @@ async def forged_trove_2(abbot, shrine, yangs):
 #
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.parametrize("forge_amount", [0, INITIAL_FORGED_AMOUNT])
 @pytest.mark.asyncio
 async def test_open_trove(abbot, shrine, yangs, forge_amount):
@@ -117,7 +119,7 @@ async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang:
         await abbot.open_trove(0, [shitcoin_yang.contract_address], [10**10]).execute(caller_address=TROVE1_OWNER)
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_close_trove(abbot, shrine, yangs):
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
@@ -149,7 +151,7 @@ async def test_close_trove(abbot, shrine, yangs):
     assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, 0])
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_close_trove_failures(abbot):
     with pytest.raises(StarkException, match=f"Abbot: Address {TROVE1_OWNER} does not own trove ID 2"):
@@ -160,7 +162,7 @@ async def test_close_trove_failures(abbot):
 
 
 @pytest.mark.parametrize("depositor", [TROVE1_OWNER, TROVE2_OWNER])  # melt with trove owner, and non-owner
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1", "funded_trove2_owner")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_deposit(abbot, shrine, yangs, depositor):
     for yang, deposited_yang, deposit_amt, expected_yang_amt in zip(
@@ -192,7 +194,7 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
         )
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_withdraw(abbot, shrine, yangs):
     for yang, deposited_yang, withdraw_asset_amt, withdraw_yang_amt in zip(
@@ -214,7 +216,7 @@ async def test_withdraw(abbot, shrine, yangs):
         ).result.balance == deposited_yang - withdraw_yang_amt
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
@@ -229,7 +231,7 @@ async def test_withdraw_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Y
         await abbot.withdraw(steth_yang.contract_address, TROVE_1, to_wad(10)).execute(caller_address=OTHER_USER)
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.asyncio
 async def test_forge(abbot, steth_yang: YangConfig, shrine):
     await abbot.open_trove(0, [steth_yang.contract_address], [INITIAL_STETH_DEPOSIT]).execute(
@@ -248,7 +250,7 @@ async def test_forge(abbot, steth_yang: YangConfig, shrine):
     assert from_uint(balance) == forge_amount
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_forge_failures(abbot):
     with pytest.raises(StarkException, match=f"Abbot: Address {OTHER_USER} does not own trove ID {TROVE_1}"):
@@ -262,13 +264,7 @@ async def test_forge_failures(abbot):
 
 @pytest.mark.parametrize("melter", [TROVE1_OWNER, TROVE2_OWNER])  # melt with trove owner, and non-owner
 @pytest.mark.parametrize("melt_amt", [to_wad(333), INITIAL_FORGED_AMOUNT * 2])
-@pytest.mark.usefixtures(
-    "sentinel_with_yangs",
-    "funded_trove1_owner",
-    "forged_trove_1",
-    "funded_trove2_owner",
-    "forged_trove_2",
-)
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1", "forged_trove_2")
 @pytest.mark.asyncio
 async def test_melt(abbot, shrine, melter, melt_amt):
     tx = await abbot.melt(TROVE_1, melt_amt).execute(caller_address=melter)
@@ -286,14 +282,14 @@ async def test_melt(abbot, shrine, melter, melt_amt):
     assert from_uint(balance) == remaining_amount
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_get_trove_owner(abbot):
     assert (await abbot.get_trove_owner(TROVE_1).execute()).result.owner == TROVE1_OWNER
     assert (await abbot.get_trove_owner(789).execute()).result.owner == 0
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "forged_trove_1")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
 async def test_get_user_trove_ids(abbot, steth_yang: YangConfig):
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
