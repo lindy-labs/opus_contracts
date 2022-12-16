@@ -36,6 +36,7 @@ from tests.utils import (
     compile_code,
     create_feed,
     custom_error_margin,
+    estimate_gas,
     from_fixed_point,
     from_ray,
     from_uint,
@@ -983,6 +984,25 @@ async def test_partial_absorb_with_redistribution_pass(
         after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
         # LTV of other troves should be same or worse off after redistribution
         assert after_trove_ltv >= before_trove_ltv
+
+    # Storage keys updated:
+    # Shrine
+    # - shrine_troves
+    # - shrine_deposits * num_yangs
+    # - shrine_yangs * num_yangs
+    # - shrine_redistribution_count
+    # - shrine_yang_redistribution (debt_per_yang + error) * num_yangs
+    # - shrine_yang_price * num_yangs
+    #
+    # Gate (None)
+    #
+    # Asset ERC-20
+    # - Balance of gate * num_yangs
+    # - Balance of absorber * num_yangs
+    #
+    # Empiric
+    # - Last price update
+    print(f"\nPartial absorb: (3 yangs, 1 trove) - redistribute: \n" f"{estimate_gas(partial_absorb, 3 + 6 * 3, 3)}")
 
 
 @pytest.mark.parametrize("price_change", [Decimal("-0.05"), Decimal("-0.1")])
