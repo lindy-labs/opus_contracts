@@ -715,8 +715,7 @@ async def test_partial_absorb_with_redistribution_pass(
         ).execute()
 
     # Assert trove is not healthy
-    is_healthy = (await shrine.is_healthy(liquidated_trove).execute()).result.healthy
-    assert is_healthy == FALSE
+    assert (await shrine.is_healthy(liquidated_trove).execute()).result.healthy is FALSE
 
     # Update trove 2 and trove 3 so that interest is accrued to current interval
     # in order to assert correctness after adding redistributed debt without interest
@@ -748,7 +747,7 @@ async def test_partial_absorb_with_redistribution_pass(
         )
         assert_equalish(penalty, expected_penalty)
 
-    # Fund absorber with a percentage of the debt of trove 1
+    # Fund absorber with a percentage of the debt of trove 1 so that redistribution is triggered
     liquidated_trove_debt = before_troves_info[liquidated_trove]["before_trove_debt"]
     absorber_forge_amt_wad = to_wad(percentage_covered * liquidated_trove_debt)
     steth_yang = yangs[0]
@@ -758,10 +757,6 @@ async def test_partial_absorb_with_redistribution_pass(
 
     # Sanity check
     assert from_uint((await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance) == absorber_forge_amt_wad
-
-    # Sanity check: absorber has insufficient yin
-    absorber_yin_balance = (await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance
-    assert from_wad(from_uint(absorber_yin_balance)) < liquidated_trove_debt
 
     freed_percentage = get_freed_percentage(
         before_troves_info[liquidated_trove]["before_trove_threshold"],
@@ -774,24 +769,20 @@ async def test_partial_absorb_with_redistribution_pass(
     yangs_info = {}
 
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
-        # Get yang token balance of searcher
+        # Get yang token balance of absorber
         adjusted_bal = from_fixed_point(
-            from_uint((await token.balanceOf(SEARCHER).execute()).result.balance), yang.decimals
+            from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
         )
 
         # Get yang balance of trove and calculate amount expected to be freed
         before_trove_yang_wad = (
-            await shrine.get_deposit(token.contract_address, liquidated_trove).execute()
+            await shrine.get_deposit(yang.contract_address, liquidated_trove).execute()
         ).result.balance
         before_trove_asset_bal = (
             await sentinel.preview_exit(yang.contract_address, before_trove_yang_wad).execute()
         ).result.asset_amt
 
-        expected_freed_asset = (
-            (freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals))
-            if freed_percentage > Decimal("0")
-            else Decimal("0")
-        )
+        expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals)
 
         before_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
         before_gate_asset_bal = from_fixed_point(
@@ -901,12 +892,12 @@ async def test_partial_absorb_with_redistribution_pass(
         error_margin = custom_error_margin(yang.decimals) * 2
 
         # Token: Check collateral tokens balance of absorber
-        after_searcher_bal = from_fixed_point(
+        after_absorber_bal = from_fixed_point(
             from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
         )
         before_absorber_bal = yangs_info[yang.contract_address]["before_absorber_bal"]
         expected_freed_asset = yangs_info[yang.contract_address]["expected_freed_asset"]
-        assert_equalish(after_searcher_bal, before_absorber_bal + expected_freed_asset, error_margin)
+        assert_equalish(after_absorber_bal, before_absorber_bal + expected_freed_asset, error_margin)
 
         # Shrine: Yang balance of trove should be zero
         after_trove_yang = from_wad(
