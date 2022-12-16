@@ -795,7 +795,7 @@ async def test_partial_absorb_with_redistribution_pass(
         ]
 
         yangs_info[yang.contract_address] = {
-            "price": yang_price,
+            "yang_price": yang_price,
             "before_absorber_bal": adjusted_bal,
             "before_trove_yang_wad": before_trove_yang_wad,
             "expected_freed_asset": expected_freed_asset,
@@ -879,12 +879,12 @@ async def test_partial_absorb_with_redistribution_pass(
             "after_trove_debt": from_wad(after_trove_info.debt),
         }
 
+        if trove != liquidated_trove:
+            # starting value to calculate expected debt and value below
+            after_troves_info[trove]["expected_trove_debt"] = before_troves_info[trove]["before_trove_debt"]
+
     # Check that all values of liquidated trove are set to zero
     assert all(i == 0 for i in after_troves_info[liquidated_trove].values()) is True
-
-    for trove in other_troves:
-        # starting value to calculate expected debt and value below
-        after_troves_info[trove]["expected_trove_debt"] = before_troves_info[trove]["before_trove_debt"]
 
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
         # Relax the error margin slightly due to python calculations in decimal
@@ -924,7 +924,7 @@ async def test_partial_absorb_with_redistribution_pass(
         assert_equalish(after_gate_yang, expected_yang)
 
         # Shrine: Yang price should have increased due to rebasing
-        before_yang_price = yangs_info[yang.contract_address]["price"]
+        before_yang_price = yangs_info[yang.contract_address]["yang_price"]
         after_yang_price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
         assert after_yang_price > before_yang_price
 
