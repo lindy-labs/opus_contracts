@@ -728,22 +728,13 @@ async def test_partial_absorb_with_redistribution_pass(
     before_troves_info = {}
     for trove in TROVES:
         before_trove_info = (await shrine.get_trove_info(trove).execute()).result
-        before_trove_value = from_wad(before_trove_info.value)
-        before_trove_threshold = from_ray(before_trove_info.threshold)
         before_trove_debt = from_wad(before_trove_info.debt)
-        before_trove_ltv = from_ray(before_trove_info.ltv)
-
         before_troves_info[trove] = {
-            "before_trove_value": before_trove_value,
-            "before_trove_threshold": before_trove_threshold,
+            "before_trove_threshold": from_ray(before_trove_info.threshold),
+            "before_trove_ltv": from_ray(before_trove_info.ltv),
+            "before_trove_value": from_wad(before_trove_info.value),
             "before_trove_debt": before_trove_debt,
-            "before_trove_ltv": before_trove_ltv,
         }
-
-        if trove != liquidated_trove:
-            # starting value to calculate expected debt and value below
-            before_troves_info[trove]["expected_trove_debt"] = before_trove_debt
-            before_troves_info[trove]["expected_trove_value"] = before_trove_value
 
     # Check purge penalty
     has_penalty = before_troves_info[liquidated_trove]["before_trove_ltv"] < Decimal("1")
@@ -882,30 +873,27 @@ async def test_partial_absorb_with_redistribution_pass(
                 partial_absorb,
                 yang.gate_address,
                 "Exit",
+                lambda d: d[0] == MOCK_ABSORBER,
             )
 
     assert (await shrine.get_redistribution_count().execute()).result.count == expected_redistribution_id
 
-    # Check that debt is zero, collateral has been redistributed and LTV is 0
     after_troves_info = {}
     for trove in TROVES:
         after_trove_info = (await shrine.get_trove_info(trove).execute()).result
-        after_trove_value = from_wad(after_trove_info.value)
-        after_trove_threshold = from_ray(after_trove_info.threshold)
-        after_trove_debt = from_wad(after_trove_info.debt)
-        after_trove_ltv = from_ray(after_trove_info.ltv)
-
         after_troves_info[trove] = {
-            "after_trove_value": after_trove_value,
-            "after_trove_threshold": after_trove_threshold,
-            "after_trove_debt": after_trove_debt,
-            "after_trove_ltv": after_trove_ltv,
+            "after_trove_threshold": from_ray(after_trove_info.threshold),
+            "after_trove_ltv": from_ray(after_trove_info.ltv),
+            "after_trove_value": from_wad(after_trove_info.value),
+            "after_trove_debt": from_wad(after_trove_info.debt),
         }
 
-    assert after_troves_info[liquidated_trove]["after_trove_ltv"] == 0
-    assert after_troves_info[liquidated_trove]["after_trove_threshold"] == 0
-    assert after_troves_info[liquidated_trove]["after_trove_value"] == 0
-    assert after_troves_info[liquidated_trove]["after_trove_debt"] == 0
+    # Check that all values of liquidated trove are set to zero
+    assert all(i == 0 for i in after_troves_info[liquidated_trove].values()) is True
+
+    for trove in other_troves:
+        # starting value to calculate expected debt and value below
+        after_troves_info[trove]["expected_trove_debt"] = before_troves_info[trove]["before_trove_debt"]
 
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
         # Relax the error margin slightly due to python calculations in decimal
@@ -972,12 +960,12 @@ async def test_partial_absorb_with_redistribution_pass(
         for trove in other_troves:
             deposited_yang = from_wad((await shrine.get_deposit(yang.contract_address, trove).execute()).result.balance)
             debt_increment = deposited_yang * actual_debt_per_yang
-            before_troves_info[trove]["expected_trove_debt"] += debt_increment
+            after_troves_info[trove]["expected_trove_debt"] += debt_increment
 
     # Check troves that received the redistribution
     for trove in other_troves:
         after_trove_debt = after_troves_info[trove]["after_trove_debt"]
-        expected_debt = before_troves_info[trove]["expected_trove_debt"]
+        expected_debt = after_troves_info[trove]["expected_trove_debt"]
         assert_equalish(after_trove_debt, expected_debt)
 
         before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
