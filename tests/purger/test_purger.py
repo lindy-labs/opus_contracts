@@ -758,7 +758,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
     # Fund absorber with a percentage of the debt of trove 1
     liquidated_trove_debt = before_troves_info[liquidated_trove]["before_trove_debt"]
-    absorber_forge_amt_wad = int(percentage_covered * liquidated_trove_debt)
+    absorber_forge_amt_wad = to_wad(percentage_covered * liquidated_trove_debt)
     steth_yang = yangs[0]
     await abbot.open_trove(absorber_forge_amt_wad, [steth_yang.contract_address], [MOCK_ABSORBER_STETH_WAD]).execute(
         caller_address=MOCK_ABSORBER
@@ -854,6 +854,35 @@ async def test_partial_absorb_with_redistribution_pass(
         [expected_redistribution_id, liquidated_trove, expected_redistributed_debt_wad],
     )
 
+    assert_event_emitted(
+        partial_absorb,
+        empiric.contract_address,
+        "PricesUpdated",
+    )
+
+    for yang in yangs:
+        assert_event_emitted(
+            partial_absorb,
+            shrine.contract_address,
+            "YangUpdated",
+            lambda d: d[0] == yang.contract_address,
+        )
+
+        assert_event_emitted(
+            partial_absorb,
+            shrine.contract_address,
+            "DepositUpdated",
+            lambda d: d[:2] == [yang.contract_address, liquidated_trove],
+        )
+
+        # Gate will only emit `Exit` if the amount of assets to be withdrawn is greater than 0
+        if percentage_covered > 0:
+            assert_event_emitted(
+                partial_absorb,
+                yang.gate_address,
+                "Exit",
+            )
+
     assert (await shrine.get_redistribution_count().execute()).result.count == expected_redistribution_id
 
     # Check that debt is zero, collateral has been redistributed and LTV is 0
@@ -873,13 +902,14 @@ async def test_partial_absorb_with_redistribution_pass(
         }
 
     assert after_troves_info[liquidated_trove]["after_trove_ltv"] == 0
+    assert after_troves_info[liquidated_trove]["after_trove_threshold"] == 0
     assert after_troves_info[liquidated_trove]["after_trove_value"] == 0
     assert after_troves_info[liquidated_trove]["after_trove_debt"] == 0
 
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
-        # Relax the error margin by one decimal point due to python calculations in decimal
-        # vs cumulative rounding errors from fixed point calculations in Cairo
-        error_margin = custom_error_margin(yang.decimals - 1)
+        # Relax the error margin slightly due to python calculations in decimal
+        # vs fixed point calculations in Cairo
+        error_margin = custom_error_margin(yang.decimals) * 2
 
         # Token: Check collateral tokens balance of absorber
         after_searcher_bal = from_fixed_point(
@@ -935,14 +965,12 @@ async def test_partial_absorb_with_redistribution_pass(
                 ).execute()
             ).result.debt_per_yang
         )
-
         assert_equalish(actual_debt_per_yang, expected_debt_per_yang)
 
         # Shrine: Calculate the expected debt for troves that received the distribution
         for trove in other_troves:
             deposited_yang = from_wad((await shrine.get_deposit(yang.contract_address, trove).execute()).result.balance)
             debt_increment = deposited_yang * actual_debt_per_yang
-
             before_troves_info[trove]["expected_trove_debt"] += debt_increment
 
     # Check troves that received the redistribution
@@ -953,7 +981,6 @@ async def test_partial_absorb_with_redistribution_pass(
 
         before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
         after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
-
         # LTV of other troves should be same or worse off after redistribution
         assert after_trove_ltv >= before_trove_ltv
 
