@@ -118,7 +118,7 @@ async def test_view_funcs(sentinel, yangs, yang_gates):
 
 
 @pytest.mark.usefixtures("mock_owner_as_abbot")
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.asyncio
 async def test_gate_fns_pass(sentinel, yangs, yang_gates):
     deposit_asset_amt = 5
@@ -185,7 +185,7 @@ async def test_gate_fns_fail_invalid_yang(sentinel):
     assert expected_asset_amt == 0
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.asyncio
 async def test_gate_fns_fail_unauthorized(sentinel, steth_yang: YangConfig):
     deposit_asset_amt = deposit_yang_amt = to_wad(5)
