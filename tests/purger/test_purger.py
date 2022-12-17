@@ -965,6 +965,10 @@ async def test_partial_absorb_with_redistribution_pass(
         # LTV of other troves should be same or worse off after redistribution
         assert after_trove_ltv >= before_trove_ltv
 
+    assert (await shrine.get_trove_redistribution_count(TROVE_2).execute()).result.count == 0
+    await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+    assert (await shrine.get_trove_redistribution_count(TROVE_2).execute()).result.count == expected_redistribution_id
+
     # Storage keys updated:
     # Shrine
     # - shrine_troves

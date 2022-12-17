@@ -180,6 +180,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
     trove2_debt = from_wad((await shrine.get_trove_info(TROVE_2).execute()).result.debt)
     assert_equalish(trove2_debt, expected_trove2_debt)
 
+    assert (await shrine.get_trove_redistribution_count(TROVE_2).execute()).result.count == 0
     # Check cost of update
     update_trove2 = await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
 
@@ -258,6 +259,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
     trove3_debt = from_wad((await shrine.get_trove_info(TROVE_3).execute()).result.debt)
     assert_equalish(trove3_debt, expected_trove3_debt)
 
+    assert (await shrine.get_trove_redistribution_count(TROVE_3).execute()).result.count == 0
     # Check cost of update
     update_trove3 = await shrine.melt(TROVE3_OWNER, TROVE_3, 0).execute(caller_address=SHRINE_OWNER)
 
