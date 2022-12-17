@@ -123,10 +123,6 @@ func InvalidPriceUpdate(
 }
 
 @event
-func PurgerAddressUpdated(old_address: address, new_address: address) {
-}
-
-@event
 func OracleAddressUpdated(old_address: address, new_address: address) {
 }
 
