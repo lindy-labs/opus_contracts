@@ -315,7 +315,6 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale):
         ("test_to_wad", int, to_wad),
         ("test_wad_to_felt", to_wad, int),
         ("test_wad_to_ray", int, wad_to_ray),
-        ("test_wad_to_ray_unchecked", int, wad_to_ray),
     ],
 )
 @pytest.mark.asyncio

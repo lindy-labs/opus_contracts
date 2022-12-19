@@ -28,7 +28,9 @@ namespace WadRay {
     const RAY_ONE = RAY_SCALE;
     const WAD_ONE = WAD_SCALE;
 
-    // Reverts if `n` overflows or underflows
+    // @notice Check if number is a valid signed value within BOUNDs.
+    //         Reverts if `n` overflows or underflows.
+    // @param n A value to assert.
     func assert_valid{range_check_ptr}(n) {
         with_attr error_message("WadRay: Out of bounds") {
             assert_le(n, BOUND);
@@ -37,6 +39,9 @@ namespace WadRay {
         return ();
     }
 
+    // @notice Check if number is a valid unsigned value within BOUNDs.
+    //         Reverts if `n` overflows.
+    // @param n A value to assert.
     func assert_valid_unsigned{range_check_ptr}(n) {
         with_attr error_message("WadRay: Out of bounds") {
             assert_nn_le(n, BOUND);
@@ -44,6 +49,11 @@ namespace WadRay {
         return ();
     }
 
+    // @notice Select the smaller numerical value. Reverts if either
+    //         argument is not valid.
+    // @param a A valid, unsigned WadRay value.
+    // @param b A valid, unsigned WadRay value.
+    // @return `a` if it's less than or equal to `b`, otherwise `b`.
     func unsigned_min{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -55,6 +65,11 @@ namespace WadRay {
         return b;
     }
 
+    // @notice Select the greater numerical value. Reverts if either
+    //         argument is not valid.
+    // @param a A valid, unsigned WadRay value.
+    // @param b A valid, unsigned WadRay value.
+    // @return `b` if it's greater than `a`, otherwise `a`.
     func unsigned_max{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -66,6 +81,11 @@ namespace WadRay {
         return a;
     }
 
+    // @notice Round down the argument to its nearest Wad value. Round down
+    //         away from zero for negative numbers. Reverts if resulting
+    //         value is not within BOUNDs.
+    // @param n A numeric value.
+    // @return Rounded valid Wad value.
     func floor{range_check_ptr}(n) -> wad {
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND);
         let floored = n - mod_val;
@@ -73,6 +93,11 @@ namespace WadRay {
         return floored;
     }
 
+    // @notice Round up the argument towards its nearest Wad value. Round up
+    //         to zero for negative numbers. Reverts if resulting value is
+    //         not within BOUNDs.
+    // @param A numeric value.
+    // @return Rounded valid Wad value.
     func ceil{range_check_ptr}(n) -> wad {
         let (int_val, mod_val) = signed_div_rem(n, WAD_ONE, BOUND);
 
@@ -87,6 +112,11 @@ namespace WadRay {
         return ceiled;
     }
 
+    // @notice Safely add two numbers. Reverts if arguments are invalid
+    //         or if the resulting value overflows BOUNDs.
+    // @param a A valid, signed WadRay value.
+    // @param b A valid, signed WadRay value.
+    // @return The sum of the passed in arguments. A valid, signed WadRay.
     func add{range_check_ptr}(a, b) -> felt {
         assert_valid(a);
         assert_valid(b);
@@ -96,6 +126,11 @@ namespace WadRay {
         return sum;
     }
 
+    // @notice Safely add two unsigned numbers. Reverts if arguments are invalid
+    //         or if the resulting value overflows BOUNDs.
+    // @param a A valid, unsigned WadRay value.
+    // @param b A valid, unsigned WadRay value.
+    // @return The sum of the passed in arguments. A valid unsigned WadRay.
     func unsigned_add{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -105,6 +140,11 @@ namespace WadRay {
         return sum;
     }
 
+    // @notice Safely subtract two numbers. Reverts if arguments are invalid
+    //         or if the resulting value underflows BOUNDs.
+    // @param a A valid, signed WadRay value.
+    // @param b A valid, signed WadRay value.
+    // @return The difference of a and b. A valid, signed WadRay value.
     func sub{range_check_ptr}(a, b) -> felt {
         assert_valid(a);
         assert_valid(b);
@@ -114,6 +154,11 @@ namespace WadRay {
         return diff;
     }
 
+    // @noticer Safely subtract two unsigned numbers. Reverts if arguments are invalid
+    //          or if the resulting value underflows BOUNDs.
+    // @param a A valid, unsigned WadRay value.
+    // @param b A valid, unsigned WadRay value.
+    // @return The difference of a and b. A valid, unsigned WadRay value.
     func unsigned_sub{range_check_ptr}(a, b) -> ufelt {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -123,7 +168,12 @@ namespace WadRay {
         return diff;
     }
 
-    func wmul{range_check_ptr}(a, b) -> wad {
+    // @notice Safely multiply two Wads. Reverts if arguments are invalid
+    //         or if the resulting value is out of BOUNDs.
+    // @param a A valid, signed Wad value.
+    // @param b A valid, signed Wad value.
+    // @return The product of passed in arguments.
+    func wmul{range_check_ptr}(a: wad, b: wad) -> wad {
         assert_valid(a);
         assert_valid(b);
 
@@ -133,6 +183,12 @@ namespace WadRay {
         return scaled_prod;
     }
 
+    // @notice Calculate integer division of signed WadRay values. Fractional
+    //         values are rounded down to smallest integer. Reverts if arguments are
+    //         invalid or if the resulting value is out ouf BOUNDs.
+    // @param a A valid, signed WadRay value.
+    // @param b A valid, signed WadRay value.
+    // @return Wad integer as a result of the division of a by b (`a//b`).
     func wsigned_div{range_check_ptr}(a, b) -> wad {
         alloc_locals;
 
@@ -149,7 +205,11 @@ namespace WadRay {
         return wad_u * div_sign;
     }
 
-    // Assumes both a and b are positive integers
+    // @notice Calculate integer division of unsigned WadRay values. Reverts if
+    //         arguments are invalid or if the resulting value is out ouf BOUNDs.
+    // @param a A valid, unsigned WadRay value.
+    // @param b A valid, unsigned WadRay value.
+    // @return Wad integer as a result of the division of a by b (`a//b`).
     func wunsigned_div{range_check_ptr}(a, b) -> wad {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
@@ -160,16 +220,23 @@ namespace WadRay {
         return q;
     }
 
-    // Assumes both a and b are unsigned
-    // No overflow check - use only if the quotient of a and b is guaranteed not to overflow
+    // @notice Unchecked version of `wunsigned_div`. Does not do any argument or result
+    //         value checks, use only if the quotient of a and b is guaranteed not to overflow.
+    // @param a An unsigned WadRay value.
+    // @param b An unsigned WadRay value.
+    // @return Wad integer as a result of teh division of a by b (`a//b`).
     func wunsigned_div_unchecked{range_check_ptr}(a, b) -> wad {
         tempvar product = a * WAD_SCALE;
         let (q, _) = unsigned_div_rem(product, b);
         return q;
     }
 
-    // Operations with rays
-    func rmul{range_check_ptr}(a, b) -> ray {
+    // @notice Safely multiply to Rays. Reverts if arguments are invalid
+    //         or if the resulting value is out of BOUNDs.
+    // @param a A avlid, signed Ray value.
+    // @param b A valid, signed Ray value.
+    // @return The product of passed in arguments.
+    func rmul{range_check_ptr}(a: ray, b: ray) -> ray {
         assert_valid(a);
         assert_valid(b);
 
@@ -179,6 +246,12 @@ namespace WadRay {
         return scaled_prod;
     }
 
+    // @notice Calculate integer division of signed WadRay values. Fractional
+    //         values are rounded down to smallest integer. Reverts if arguments are
+    //         invalid or if the resulting value is out ouf BOUNDs.
+    // @param a A valid, signed WadRay value.
+    // @param b A valid, signed WadRay value.
+    // @return Ray integer as a result of the division of a by b (`a//b`).
     func rsigned_div{range_check_ptr}(a, b) -> ray {
         alloc_locals;
 
@@ -193,18 +266,26 @@ namespace WadRay {
         return ray_u * div_sign;
     }
 
+    // @notice Calculate integer division of unsigned WadRay values. Reverts if
+    //         arguments are invalid or if the resulting value is out ouf BOUNDs.
+    // @param a A valid, unsigned WadRay value.
+    // @param b A valid, unsigned WadRay value.
+    // @return Ray integer as a result of the division of a by b (`a//b`).
     func runsigned_div{range_check_ptr}(a, b) -> ray {
         assert_valid_unsigned(a);
         assert_valid_unsigned(b);
 
         tempvar product = a * RAY_SCALE;
         let (q, _) = unsigned_div_rem(product, b);
-        assert_valid(q);
+        assert_valid_unsigned(q);
         return q;
     }
 
-    // Assumes both a and b are unsigned
-    // No overflow check - use only if the quotient of a and b is guaranteed not to overflow
+    // @notice Unchecked version of `runsigned_div`. Does not do any argument or result
+    //         value checks, use only if the quotient of a and b is guaranteed not to overflow.
+    // @param a An unsigned WadRay value.
+    // @param b An unsigned WadRay value.
+    // @return Ray integer as a result of teh division of a by b (`a//b`).
     func runsigned_div_unchecked{range_check_ptr}(a, b) -> ray {
         tempvar product = a * RAY_SCALE;
         let (q, _) = unsigned_div_rem(product, b);
@@ -215,47 +296,69 @@ namespace WadRay {
     // Conversions
     //
 
+    // @notice Convert a valid WadRay value to a Uint256 struct. Reverts
+    //         if the argument is out of BOUNDs.
+    // @param n A valid, unsigned WadRay value.
+    // @return A Uint256 struct representing the same value as `n`.
     func to_uint{range_check_ptr}(n) -> (uint: Uint256) {
         assert_valid_unsigned(n);
         let uint = Uint256(low=n, high=0);
         return (uint,);
     }
 
-    func from_uint{range_check_ptr}(n: Uint256) -> wad {
+    // @notice Convert a Uint256 struct to a numeric value. Reverts
+    //         if the argument is out of BOUNDs.
+    // @param n A Uint256 struct representing a number.
+    // @return An unsigned WadRay value.
+    func from_uint{range_check_ptr}(n: Uint256) -> ufelt {
         assert n.high = 0;
         assert_valid_unsigned(n.low);
         return n.low;
     }
 
+    // @notice Convert an integer to Wad. Reverts if the resulting value
+    //         is out of BOUNDs.
+    // @param n A numerical value.
+    // @return A Wad value.
     func to_wad{range_check_ptr}(n) -> wad {
         let n_wad = n * WAD_SCALE;
         assert_valid(n_wad);
         return n_wad;
     }
 
-    // Truncates fractional component
-    func wad_to_felt{range_check_ptr}(n) -> ufelt {
+    // @notice Convert Wad to an integer. Reverts if the argument is not valid.
+    // @param n A valid, signed Wad value.
+    // @return Descaled integer value of the Wad with fractional component truncated.
+    func wad_to_felt{range_check_ptr}(n: wad) -> felt {
+        assert_valid(n);
         let (converted, _) = signed_div_rem(n, WAD_SCALE, BOUND);
         return converted;
     }
 
-    func wad_to_ray{range_check_ptr}(n) -> ray {
+    // @notice Upscale Wad to Ray. Reverts if the resulting value is out of BOUNDs.
+    // @param n A valid, signed Wad.
+    // @return A valid Ray value.
+    func wad_to_ray{range_check_ptr}(n: wad) -> ray {
         let converted = n * DIFF;
         assert_valid(converted);
         return converted;
     }
 
-    func wad_to_ray_unchecked(n) -> ray {
-        return n * DIFF;
-    }
-
-    // Truncates a ray to return a wad
-    func ray_to_wad{range_check_ptr}(n) -> wad {
+    // @notice Truncate a Ray to Wad. Reverts if the argument is not valid.
+    // @param n A signed, valid Ray value.
+    // @return Descaled Wad value of the Ray with fractional component truncated.
+    func ray_to_wad{range_check_ptr}(n: ray) -> wad {
+        assert_valid(n);
         let (converted, _) = unsigned_div_rem(n, DIFF);
         return converted;
     }
 
-    // Scales a fixed point number with less than 18 decimals of precision to wad
+    // Scales a fixed point number
+    // @notice Scale a fixed point number with less than 18 decimals of precision to Wad.
+    //         Reverts if resulting value is not within BOUNDs.
+    // @param n Value to scale.
+    // @param decimals Number of decimals to scale by. Has to be less than 18 (Wad decimals).
+    // @return Value `n` scaled to Wad.
     func fixed_point_to_wad{range_check_ptr}(n: ufelt, decimals: ufelt) -> wad {
         with_attr error_message("WadRay: Decimals is greater than 18") {
             assert_nn_le(decimals, WAD_DECIMALS);
