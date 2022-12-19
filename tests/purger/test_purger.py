@@ -679,7 +679,7 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
 
 @flaky
 # Percentage of trove's debt that can be covered by the stability pool
-@pytest.mark.parametrize("percentage_covered", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
+@pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber")
 @pytest.mark.asyncio
@@ -694,7 +694,7 @@ async def test_partial_absorb_with_redistribution_pass(
     yang_tokens,
     yangs,
     yang_gates,
-    percentage_covered,
+    percentage_absorbed,
     price_change,
 ):
     liquidated_trove = TROVE_1
@@ -748,7 +748,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
     # Fund absorber with a percentage of the debt of trove 1 so that redistribution is triggered
     liquidated_trove_debt = before_troves_info[liquidated_trove]["before_trove_debt"]
-    absorber_forge_amt_wad = to_wad(percentage_covered * liquidated_trove_debt)
+    absorber_forge_amt_wad = to_wad(percentage_absorbed * liquidated_trove_debt)
     steth_yang = yangs[0]
     await abbot.open_trove(absorber_forge_amt_wad, [steth_yang.contract_address], [MOCK_ABSORBER_STETH_WAD]).execute(
         caller_address=MOCK_ABSORBER
@@ -858,7 +858,7 @@ async def test_partial_absorb_with_redistribution_pass(
         )
 
         # Gate will only emit `Exit` if the amount of assets to be withdrawn is greater than 0
-        if percentage_covered > 0:
+        if percentage_absorbed > 0:
             assert_event_emitted(
                 partial_absorb,
                 yang.gate_address,
