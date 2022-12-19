@@ -1,10 +1,11 @@
 from decimal import Decimal
+from itertools import combinations
 
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
 
 from tests.roles import ShrineRoles
-from tests.shrine.constants import *  # noqa: F403
+from tests.shrine.constants import MOCK_PURGER, YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS
 from tests.utils import (
     SHRINE_OWNER,
     TROVE1_OWNER,
@@ -47,6 +48,12 @@ DEPOSITS = {
 
 TROVES = (TROVE_1, TROVE_2, TROVE_3)
 TROVE_OWNERS = (TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER)
+YANG_ADDRESSES = (YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS)
+
+YANG_ADDR_COMBINATIONS = []
+for i in range(1, len(YANG_ADDRESSES) + 1):
+    j = [list(c) for c in combinations(YANG_ADDRESSES, i)]
+    YANG_ADDR_COMBINATIONS.extend(j)
 
 FIRST_REDISTRIBUTION_ID = 1
 SECOND_REDISTRIBUTION_ID = 2
@@ -107,16 +114,7 @@ async def test_redistribution_setup(shrine):
         assert (await shrine.get_trove_redistribution_count(trove).execute()).result.count == 0
 
 
-@pytest.mark.parametrize(
-    "redistribution_setup",
-    [
-        (YANG1_ADDRESS,),
-        (YANG1_ADDRESS, YANG2_ADDRESS),
-        (YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS),
-        (YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS),
-    ],
-    indirect=["redistribution_setup"],
-)
+@pytest.mark.parametrize("redistribution_setup", YANG_ADDR_COMBINATIONS, indirect=["redistribution_setup"])
 @pytest.mark.asyncio
 async def test_shrine_one_redistribution(shrine, redistribution_setup):
     yang_addresses = redistribution_setup
@@ -193,16 +191,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
     print(f"\nRedistribute ({num_yangs} yang, 1 trove) - pull: \n{estimate_gas(update_trove2, 3, 1)}")
 
 
-@pytest.mark.parametrize(
-    "redistribution_setup",
-    [
-        (YANG1_ADDRESS,),
-        (YANG1_ADDRESS, YANG2_ADDRESS),
-        (YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS),
-        (YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS),
-    ],
-    indirect=["redistribution_setup"],
-)
+@pytest.mark.parametrize("redistribution_setup", YANG_ADDR_COMBINATIONS, indirect=["redistribution_setup"])
 @pytest.mark.asyncio
 async def test_shrine_two_redistributions(shrine, redistribution_setup):
     yang_addresses = redistribution_setup
