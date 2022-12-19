@@ -222,7 +222,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 
     // Update yang prices due to an appreciation in ratio of asset to yang
     let oracle: address = purger_oracle.read();
-    IEmpiric.force_update_prices(oracle);
+    IEmpiric.update_prices(oracle);
 
     // TODO: Call Absorber to update its internal accounting
 

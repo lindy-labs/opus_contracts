@@ -30,9 +30,6 @@ namespace IEmpiric {
     func update_prices() {
     }
 
-    func force_update_prices() {
-    }
-
     func executeTask() {
     }
 }

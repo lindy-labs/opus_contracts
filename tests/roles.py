@@ -9,10 +9,10 @@ class SentinelRoles(IntEnum):
 
 class EmpiricRoles(IntEnum):
     ADD_YANG = 2**0
-    FORCE_UPDATE_PRICES = 2**1
-    SET_ORACLE_ADDRESS = 2**2
-    SET_PRICE_VALIDITY_THRESHOLDS = 2**3
-    SET_UPDATE_INTERVAL = 2**4
+    SET_ORACLE_ADDRESS = 2**1
+    SET_PRICE_VALIDITY_THRESHOLDS = 2**2
+    SET_UPDATE_INTERVAL = 2**3
+    UPDATE_PRICES = 2**4
 
 
 class GateRoles(IntEnum):

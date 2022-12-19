@@ -1,9 +1,9 @@
 namespace EmpiricRoles {
     const ADD_YANG = 2 ** 0;
-    const FORCE_UPDATE_PRICES = 2 ** 1;
-    const SET_ORACLE_ADDRESS = 2 ** 2;
-    const SET_PRICE_VALIDITY_THRESHOLDS = 2 ** 3;
-    const SET_UPDATE_INTERVAL = 2 ** 4;
+    const SET_ORACLE_ADDRESS = 2 ** 1;
+    const SET_PRICE_VALIDITY_THRESHOLDS = 2 ** 2;
+    const SET_UPDATE_INTERVAL = 2 ** 3;
+    const UPDATE_PRICES = 2 ** 4;
 
     const DEFAULT_EMPIRIC_ADMIN_ROLE = ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_INTERVAL;
 }

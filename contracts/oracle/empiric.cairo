@@ -293,29 +293,29 @@ func add_yang{
 }
 
 @external
-func update_prices{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    alloc_locals;
-
-    with_attr error_message("Empiric: Too soon to update prices") {
-        let (can_proceed_with_update: bool) = probeTask();
-        assert can_proceed_with_update = TRUE;
-    }
-    // TODO: this func will be open to anyone, do we need any other asserts here?
-
-    update_prices_internal();
-
-    return ();
-}
-
-// Allow purger to update prices during a redistribution using access control
-@external
-func force_update_prices{
+func update_prices{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }() {
     alloc_locals;
 
-    AccessControl.assert_has_role(EmpiricRoles.FORCE_UPDATE_PRICES);
+    let (can_proceed_with_update: bool) = probeTask();
+    if (can_proceed_with_update == TRUE) {
+        update_prices_internal();
+        return ();
+    }
 
+    // Since redistributions are expected to rarely occur, and price updates are frequent and regular,
+    // the common case is handled first with an early return to avoid revoked references.
+    // If the common case fails, then we check if the caller is authorized and can therefore ignore the
+    // minimum time interval for updates. If the caller is not authorized, assume that the call was for
+    // a price update, and raise an error that the minimum time interval has not elapsed.
+    let (caller: address) = get_caller_address();
+    let skip_check: bool = AccessControl.has_role(EmpiricRoles.UPDATE_PRICES, caller);
+    with_attr error_message("Empiric: Too soon to update prices") {
+        assert skip_check = TRUE;
+    }
+
+    // TODO: this func will be open to anyone, do we need any other asserts here?
     update_prices_internal();
 
     return ();
@@ -340,7 +340,9 @@ func probeTask{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 @external
-func executeTask{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func executeTask{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
     update_prices();
     return ();
 }

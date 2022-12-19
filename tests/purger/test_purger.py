@@ -273,10 +273,8 @@ async def purger(starknet, shrine, sentinel, empiric) -> StarknetContract:
     # Approve purger to call `exit` in Gate
     await sentinel.grant_role(SentinelRoles.EXIT, purger.contract_address).execute(caller_address=SENTINEL_OWNER)
 
-    # Approve purger to call `force_update_prices` in Empiric
-    await empiric.grant_role(EmpiricRoles.FORCE_UPDATE_PRICES, purger.contract_address).execute(
-        caller_address=EMPIRIC_OWNER
-    )
+    # Approve purger to call `update_prices` in Empiric
+    await empiric.grant_role(EmpiricRoles.UPDATE_PRICES, purger.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
     return purger
 
