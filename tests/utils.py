@@ -275,6 +275,10 @@ def wad_to_ray(n: int) -> int:
     return to_fixed_point(n, RAY_DECIMALS - WAD_DECIMALS)
 
 
+def ray_to_wad(n: int) -> int:
+    return n // 10 ** (RAY_DECIMALS - WAD_DECIMALS)
+
+
 def from_ray(n: int) -> Decimal:
     return from_fixed_point(n, RAY_DECIMALS)
 

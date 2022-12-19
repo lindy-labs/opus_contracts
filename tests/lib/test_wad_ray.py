@@ -18,6 +18,7 @@ from tests.utils import (
     WAD_SCALE,
     Uint256,
     compile_contract,
+    ray_to_wad,
     signed_int_to_felt,
     to_fixed_point,
     to_ray,
@@ -315,6 +316,7 @@ async def test_div_unsigned(wad_ray, left, right, fn, op, scale):
         ("test_to_wad", int, to_wad),
         ("test_wad_to_felt", to_wad, int),
         ("test_wad_to_ray", int, wad_to_ray),
+        ("test_ray_to_wad", int, ray_to_wad),
     ],
 )
 @pytest.mark.asyncio
@@ -324,7 +326,7 @@ async def test_wadray_conversions_pass(wad_ray, val, fn, input_op, output_op):
 
     method = wad_ray.get_contract_function(fn)
 
-    if fn in ("test_to_wad", "test_wad_to_ray") and abs(expected_py) > WAD_RAY_BOUND:
+    if input_val > WAD_RAY_BOUND or (fn in ("test_to_wad", "test_wad_to_ray") and abs(expected_py) > WAD_RAY_BOUND):
         # Test `assert_valid`
         with pytest.raises(StarkException, match="WadRay: Out of bounds"):
             await method(input_val).execute()

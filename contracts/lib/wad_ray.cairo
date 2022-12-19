@@ -339,6 +339,7 @@ namespace WadRay {
     // @param n A valid, signed Wad.
     // @return A valid Ray value.
     func wad_to_ray{range_check_ptr}(n: wad) -> ray {
+        assert_valid(n);
         let converted = n * DIFF;
         assert_valid(converted);
         return converted;
