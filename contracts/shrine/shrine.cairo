@@ -1257,8 +1257,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // Get old system debt amount
     let (old_system_debt: wad) = shrine_total_debt.read();
 
-    // Get interest charged
-    // should not include redistributed debt
+    // Get interest charged; should not include redistributed debt
     let diff: wad = WadRay.unsigned_sub(compounded_debt, trove.debt);  // TODO: should this be unchecked? `new_debt` >= `trove.debt` is guaranteed
 
     // Get new system debt
