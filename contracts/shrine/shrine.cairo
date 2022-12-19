@@ -1309,9 +1309,11 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return compounded_debt;
 }
 
-// Loop through yang for the trove:
+// Loop through yangs for the trove:
 // 1. set the deposit to 0
-// 2. calculate the redistributed debt for that yang, then update the storage variable
+// 2. calculate the redistributed debt for that yang and fixed point division error, and write to storage
+//
+// Returns the total amount of debt redistributed.
 func redistribute_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(
