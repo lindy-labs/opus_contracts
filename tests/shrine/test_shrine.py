@@ -1,4 +1,3 @@
-from collections import namedtuple
 from decimal import ROUND_DOWN, Decimal
 from math import exp
 from typing import List
@@ -48,8 +47,6 @@ from tests.utils import (
 #
 # Structs
 #
-
-Yang = namedtuple("Yang", ["total", "max"])
 
 
 def linear(x: Decimal, m: Decimal, b: Decimal) -> Decimal:
