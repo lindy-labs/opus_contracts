@@ -4,7 +4,7 @@ from collections import namedtuple
 from decimal import ROUND_DOWN, Decimal
 from functools import cache
 from random import seed, uniform
-from typing import Callable, Dict, Iterable, List, Tuple, Union
+from typing import Callable, Iterable, Union
 
 from starkware.cairo.lang.compiler.cairo_compile import get_codes
 from starkware.starknet.business_logic.execution.objects import Event
@@ -147,7 +147,7 @@ def assert_event_emitted(
     tx_exec_info,
     from_address,
     name,
-    data: Union[None, Callable[[List[int]], bool], Iterable] = None,
+    data: Union[None, Callable[[list[int]], bool], Iterable] = None,
 ):
     key = get_selector_from_name(name)
 
@@ -180,7 +180,7 @@ def compile_contract(rel_contract_path: str) -> ContractClass:
     )
 
 
-def get_contract_code_with_replacement(rel_contract_path: str, replacements: Dict[str, str]) -> Tuple[str, str]:
+def get_contract_code_with_replacement(rel_contract_path: str, replacements: dict[str, str]) -> tuple[str, str]:
     """
     Modify the source code of a contract by passing in a dictionary with the string to be replaced as the key
     and the new string as the value.
@@ -200,7 +200,7 @@ def get_contract_code_with_replacement(rel_contract_path: str, replacements: Dic
 
 
 @cache
-def compile_code(code: Tuple[str, str]) -> StarknetContract:
+def compile_code(code: tuple[str, str]) -> StarknetContract:
     """
     Compile the source code of a contract.
 
@@ -345,18 +345,18 @@ def price_bounds(start_price: Decimal, length: int, max_change: float) -> tuple[
 
 
 def calculate_trove_threshold_and_value(
-    prices: List[Decimal], amounts: List[Decimal], thresholds: List[Decimal]
-) -> Tuple[Decimal, Decimal]:
+    prices: list[Decimal], amounts: list[Decimal], thresholds: list[Decimal]
+) -> tuple[Decimal, Decimal]:
     """
     Helper function to calculate a trove's threshold and value
 
     Arguments
     ---------
-    prices : List[Decimal]
+    prices : list[Decimal]
         Ordered list of the prices of each Yang in Decimal
-    amounts: List[Decimal]
+    amounts: list[Decimal]
         Ordered list of the amount of each Yang deposited in the Trove in Decimal
-    thresholds: List[Decimal]
+    thresholds: list[Decimal]
         Ordered list of the threshold for each Yang in Decimal
 
     Returns
@@ -381,17 +381,17 @@ def calculate_trove_threshold_and_value(
     return threshold, total_value
 
 
-def calculate_max_forge(prices: List[Decimal], amounts: List[Decimal], thresholds: List[Decimal]) -> Decimal:
+def calculate_max_forge(prices: list[Decimal], amounts: list[Decimal], thresholds: list[Decimal]) -> Decimal:
     """
     Helper function to calculate the maximum amount of debt a trove can forge
 
     Arguments
     ---------
-    prices : List[Decimal]
+    prices : list[Decimal]
         Ordered list of the prices of each Yang in Decimal
-    amounts: List[Decimal]
+    amounts: list[Decimal]
         Ordered list of the amount of each Yang deposited in the Trove in Decimal
-    thresholds: List[Decimal]
+    thresholds: list[Decimal]
         Ordered list of the threshold for each Yang in Decimal
 
     Returns
