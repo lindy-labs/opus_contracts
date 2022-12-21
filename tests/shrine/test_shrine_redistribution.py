@@ -111,7 +111,7 @@ async def redistribution_setup(request) -> list[int]:
 async def test_redistribution_setup(shrine):
     assert (await shrine.get_redistribution_count().execute()).result.count == 0
     for trove in TROVES:
-        assert (await shrine.get_trove_redistribution_count(trove).execute()).result.count == 0
+        assert (await shrine.get_trove_redistribution_id(trove).execute()).result.count == 0
 
 
 @pytest.mark.parametrize("redistribution_setup", YANG_ADDR_COMBINATIONS, indirect=["redistribution_setup"])
@@ -178,11 +178,11 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
     trove2_debt = from_wad((await shrine.get_trove_info(TROVE_2).execute()).result.debt)
     assert_equalish(trove2_debt, expected_trove2_debt)
 
-    assert (await shrine.get_trove_redistribution_count(TROVE_2).execute()).result.count == 0
+    assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.count == 0
     # Check cost of update
     update_trove2 = await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
 
-    assert (await shrine.get_trove_redistribution_count(TROVE_2).execute()).result.count == FIRST_REDISTRIBUTION_ID
+    assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.count == FIRST_REDISTRIBUTION_ID
 
     # Storage keys updated
     # - shrine_total_debt (via `estimate`)
@@ -248,11 +248,11 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
     trove3_debt = from_wad((await shrine.get_trove_info(TROVE_3).execute()).result.debt)
     assert_equalish(trove3_debt, expected_trove3_debt)
 
-    assert (await shrine.get_trove_redistribution_count(TROVE_3).execute()).result.count == 0
+    assert (await shrine.get_trove_redistribution_id(TROVE_3).execute()).result.count == 0
     # Check cost of update
     update_trove3 = await shrine.melt(TROVE3_OWNER, TROVE_3, 0).execute(caller_address=SHRINE_OWNER)
 
-    assert (await shrine.get_trove_redistribution_count(TROVE_3).execute()).result.count == SECOND_REDISTRIBUTION_ID
+    assert (await shrine.get_trove_redistribution_id(TROVE_3).execute()).result.count == SECOND_REDISTRIBUTION_ID
 
     # Storage keys updated
     # - shrine_total_debt (via `estimate`)

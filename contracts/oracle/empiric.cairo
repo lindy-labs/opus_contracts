@@ -310,9 +310,9 @@ func update_prices{
     // minimum time interval for updates. If the caller is not authorized, assume that the call was for
     // a price update, and raise an error that the minimum time interval has not elapsed.
     let (caller: address) = get_caller_address();
-    let skip_check: bool = AccessControl.has_role(EmpiricRoles.UPDATE_PRICES, caller);
+    let can_force_price_update: bool = AccessControl.has_role(EmpiricRoles.UPDATE_PRICES, caller);
     with_attr error_message("Empiric: Too soon to update prices") {
-        assert skip_check = TRUE;
+        assert can_force_price_update = TRUE;
     }
 
     // TODO: this func will be open to anyone, do we need any other asserts here?
