@@ -1,6 +1,5 @@
 from decimal import ROUND_DOWN, Decimal
 from math import exp
-from typing import List
 
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
@@ -92,9 +91,9 @@ def base_rate(ltv: Decimal) -> Decimal:
 
 
 def compound_with_avg_price(
-    yangs_amt: List[Decimal],
-    yangs_thresholds: List[Decimal],
-    yang_prices: List[Decimal],
+    yangs_amt: list[Decimal],
+    yangs_thresholds: list[Decimal],
+    yang_prices: list[Decimal],
     multiplier: Decimal,
     intervals: int,
     debt: Decimal,
@@ -104,11 +103,11 @@ def compound_with_avg_price(
 
     Arguments
     ---------
-    yangs_amt : List[Decimal]
+    yangs_amt : list[Decimal]
         Ordered list of the amount of each Yang
-    yangs_thresholds : List[Decimal]
+    yangs_thresholds : list[Decimal]
         Ordered list of the threshold for each Yang
-    yang_prices: List[Decimal]
+    yang_prices: list[Decimal]
         The price of each yang
     multiplier : Decimal
         The multiplier value
@@ -152,7 +151,7 @@ async def shrine_withdraw(shrine, shrine_deposit) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def update_feeds(starknet, shrine, shrine_forge) -> List[Decimal]:
+async def update_feeds(starknet, shrine, shrine_forge) -> list[Decimal]:
     """
     Additional price feeds for yang 0 after `shrine_forge`
     """
@@ -203,7 +202,7 @@ async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo
 
 
 @pytest.fixture
-async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_feeds) -> List[Decimal]:
+async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_feeds) -> list[Decimal]:
     """
     Helper fixture for `update_feeds` with two troves.
     """
@@ -245,7 +244,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
 
 
 @pytest.fixture(scope="function")
-async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> List[Decimal]:
+async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> list[Decimal]:
     """
     Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
 

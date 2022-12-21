@@ -1,5 +1,4 @@
 from decimal import ROUND_DOWN, Decimal
-from typing import List
 
 import pytest
 from flaky import flaky
@@ -166,7 +165,7 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> List[List[int]]:
+async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[list[int]]:
     # Creating the price feeds
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
 

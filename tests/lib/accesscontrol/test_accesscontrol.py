@@ -1,6 +1,6 @@
 from enum import IntEnum
 from itertools import combinations
-from typing import Callable, List, Tuple
+from typing import Callable
 
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
@@ -22,7 +22,7 @@ class Roles(IntEnum):
 
 SUDO_USER: int = sum([r.value for r in Roles])
 
-ROLES_COMBINATIONS: List[Tuple[Roles, ...]] = []
+ROLES_COMBINATIONS: list[tuple[Roles, ...]] = []
 
 for i in range(1, len(Roles) + 1):
     for j in combinations(Roles, i):
