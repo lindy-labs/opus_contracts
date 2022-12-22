@@ -49,16 +49,16 @@ func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 
 @view
 func preview_enter{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    assets: ufelt
-) -> (preview: wad) {
-    let preview: wad = Gate.convert_to_yang(assets);
-    return (preview,);
+    asset_amt: ufelt
+) -> (yang_amt: wad) {
+    let yang_amt: wad = Gate.convert_to_yang(asset_amt);
+    return (yang_amt,);
 }
 
 @view
-func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(yang: wad) -> (
-    preview: ufelt
-) {
-    let preview: ufelt = Gate.convert_to_assets(yang);
-    return (preview,);
+func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_amt: wad
+) -> (asset_amt: ufelt) {
+    let asset_amt: ufelt = Gate.convert_to_assets(yang_amt);
+    return (asset_amt,);
 }
