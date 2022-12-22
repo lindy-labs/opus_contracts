@@ -832,6 +832,7 @@ async def test_partial_absorb_with_redistribution_pass(
         partial_absorb,
         shrine.contract_address,
         "TroveRedistributed",
+        # Assert property that redistributed debt is equal to estimated trove's debt before redistribution
         [expected_redistribution_id, liquidated_trove, expected_redistributed_debt_wad],
     )
 

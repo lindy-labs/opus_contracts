@@ -141,6 +141,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
         redistribute_trove1,
         shrine.contract_address,
         "TroveRedistributed",
+        # Assert property that redistributed debt is equal to estimated trove's debt before redistribution
         [FIRST_REDISTRIBUTION_ID, TROVE_1, estimated_trove1_debt],
     )
     # Storage keys updated:
@@ -227,6 +228,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
         redistribute_trove2,
         shrine.contract_address,
         "TroveRedistributed",
+        # Assert property that redistributed debt is equal to estimated trove's debt before redistribution
         [SECOND_REDISTRIBUTION_ID, TROVE_2, updated_estimated_trove2_debt],
     )
 
@@ -313,6 +315,7 @@ async def test_shrine_redistribute_with_dust_yang(shrine):
         redistribute_trove1,
         shrine.contract_address,
         "TroveRedistributed",
+        # Assert property that redistributed debt is equal to estimated trove's debt before redistribution
         [FIRST_REDISTRIBUTION_ID, TROVE_1, estimated_trove1_debt],
     )
 

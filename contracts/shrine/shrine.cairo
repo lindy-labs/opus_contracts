@@ -291,7 +291,7 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     // Calculate debt
     let (trove: Trove) = get_trove(trove_id);
     let debt: wad = compound(trove_id, trove.debt, trove.charge_from, interval);
-    let debt: wad = pull_redistributed_debt(trove_id, debt, yang_count, FALSE);
+    let debt: wad = pull_redistributed_debt(trove_id, debt, FALSE);
 
     // Catch troves with no value
     if (value == 0) {
@@ -938,14 +938,10 @@ func redistribute{
         redistribution_id, trove_id, trove_value, trove.debt, yang_count, interval, 0
     );
 
-    with_attr error_message("Shrine: Redistributed debt is not equal to trove's debt") {
-        assert redistributed_debt = trove.debt;
-    }
-
     let updated_trove_info: Trove = Trove(charge_from=interval, debt=0);
     set_trove(trove_id, updated_trove_info);
 
-    TroveRedistributed.emit(redistribution_id, trove_id, trove.debt);
+    TroveRedistributed.emit(redistribution_id, trove_id, redistributed_debt);
 
     return ();
 }
@@ -1242,8 +1238,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let compounded_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
 
     // Pull undistributed debt and update state
-    let (yang_count: ufelt) = shrine_yangs_count.read();
-    let new_debt: wad = pull_redistributed_debt(trove_id, compounded_debt, yang_count, TRUE);
+    let new_debt: wad = pull_redistributed_debt(trove_id, compounded_debt, TRUE);
 
     // Catch troves with zero value
     if (new_debt == trove.debt) {
@@ -1392,12 +1387,12 @@ func redistribute_internal{
             trove_debt,
             current_yang_id - 1,
             current_interval,
-            redistributed_debt + debt_to_distribute,
+            updated_redistributed_debt,
         );
     }
 
     // Otherwise, if debt is rounded up and fully redistributed, skip the remaining yangs
-    return redistributed_debt + debt_to_distribute;
+    return updated_redistributed_debt;
 }
 
 // Helper function to round up the debt to be redistributed for a yang if the remaining debt
@@ -1425,7 +1420,7 @@ func round_distributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 // Takes in a boolean flag to determine whether the redistribution ID for the trove should be updated.
 // Any state update of the trove's debt should be performed in the caller function.
 func pull_redistributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, trove_debt: wad, yang_count: ufelt, update_redistribution_id: bool
+    trove_id: ufelt, trove_debt: wad, update_redistribution_id: bool
 ) -> (new_debt: wad) {
     alloc_locals;
 
@@ -1437,6 +1432,7 @@ func pull_redistributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
         return (trove_debt,);
     }
 
+    let (yang_count: ufelt) = shrine_yangs_count.read();
     let new_debt: wad = pull_redistributed_debt_outer_loop(
         trove_last_redistribution_id, latest_redistribution_id, trove_id, trove_debt, yang_count
     );
