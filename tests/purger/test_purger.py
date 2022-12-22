@@ -865,7 +865,7 @@ async def test_partial_absorb_with_redistribution_pass(
                 lambda d: d[0] == MOCK_ABSORBER,
             )
 
-    assert (await shrine.get_redistribution_count().execute()).result.count == expected_redistribution_id
+    assert (await shrine.get_redistributions_count().execute()).result.count == expected_redistribution_id
 
     after_troves_info = {}
     for trove in TROVES:
@@ -934,21 +934,21 @@ async def test_partial_absorb_with_redistribution_pass(
         # Shrine: Check redistribution in Shrine
         percentage_debt_redistributed = yangs_info[yang.contract_address]["yang_perc_value"]
         yang_debt_redistributed = percentage_debt_redistributed * from_wad(expected_redistributed_debt_wad)
-        expected_debt_per_yang = yang_debt_redistributed / expected_yang
+        expected_unit_debt_for_yang = yang_debt_redistributed / expected_yang
 
-        actual_debt_per_yang = from_wad(
+        unit_debt_for_yang = from_wad(
             (
-                await shrine.get_redistributed_debt_per_yang(
+                await shrine.get_redistributed_unit_debt_for_yang(
                     yang.contract_address, expected_redistribution_id
                 ).execute()
-            ).result.debt_per_yang
+            ).result.unit_debt
         )
-        assert_equalish(actual_debt_per_yang, expected_debt_per_yang)
+        assert_equalish(unit_debt_for_yang, expected_unit_debt_for_yang)
 
         # Shrine: Calculate the expected debt for troves that received the distribution
         for trove in other_troves:
             deposited_yang = from_wad((await shrine.get_deposit(yang.contract_address, trove).execute()).result.balance)
-            debt_increment = deposited_yang * actual_debt_per_yang
+            debt_increment = deposited_yang * unit_debt_for_yang
             after_troves_info[trove]["expected_trove_debt"] += debt_increment
 
     # Check troves that received the redistribution
@@ -962,9 +962,11 @@ async def test_partial_absorb_with_redistribution_pass(
         # LTV of other troves should be same or worse off after redistribution
         assert after_trove_ltv >= before_trove_ltv
 
-    assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.count == 0
+    assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
-    assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.count == expected_redistribution_id
+    assert (
+        await shrine.get_trove_redistribution_id(TROVE_2).execute()
+    ).result.redistribution_id == expected_redistribution_id
 
     # Storage keys updated:
     # Shrine

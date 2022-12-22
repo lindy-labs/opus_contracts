@@ -13,6 +13,6 @@ struct Yang {
 }
 
 struct YangRedistribution {
-    debt_per_yang: wad,  // Amount of debt to be distributed to each wad unit of yang
+    unit_debt: wad,  // Amount of debt in wad to be distributed to each wad unit of yang
     error: wad,  // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
 }

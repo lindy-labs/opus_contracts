@@ -196,16 +196,16 @@ func shrine_thresholds(yang_id: ufelt) -> (threshold: ray) {
 
 // Keeps track of how many redistributions have occurred
 @storage_var
-func shrine_redistribution_count() -> (count: ufelt) {
+func shrine_redistributions_count() -> (count: ufelt) {
 }
 
 // Last redistribution accounted for a trove
 @storage_var
-func shrine_trove_redistribution_id(trove_id: ufelt) -> (count: ufelt) {
+func shrine_trove_redistribution_id(trove_id: ufelt) -> (redistribution_id: ufelt) {
 }
 
 // Mapping of yang ID and redistribution ID to a packed value of
-// 1. debt to be redistributed per yang
+// 1. amount of debt in wad to be redistributed to each wad unit of yang
 // 2. amount of debt to be added to the next redistribution to calculate (1)
 @storage_var
 func shrine_yang_redistribution(yang_id: ufelt, redistribution_id: ufelt) -> (
@@ -389,25 +389,25 @@ func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 @view
-func get_redistribution_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_redistributions_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ) -> (count: ufelt) {
-    return shrine_redistribution_count.read();
+    return shrine_redistributions_count.read();
 }
 
 @view
 func get_trove_redistribution_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
-) -> (count: ufelt) {
+) -> (redistribution_id: ufelt) {
     return shrine_trove_redistribution_id.read(trove_id);
 }
 
 @view
-func get_redistributed_debt_per_yang{
+func get_redistributed_unit_debt_for_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(yang: address, redistribution_id: ufelt) -> (debt_per_yang: wad) {
+}(yang: address, redistribution_id: ufelt) -> (unit_debt: wad) {
     let yang_id: ufelt = get_valid_yang_id(yang);
     let redistribution: YangRedistribution = get_yang_redistribution(yang_id, redistribution_id);
-    return (redistribution.debt_per_yang,);
+    return (redistribution.unit_debt,);
 }
 
 @view
@@ -929,9 +929,9 @@ func redistribute{
     let trove: Trove = get_trove(trove_id);
 
     // Get current redistribution ID and update
-    let prev_redistribution_id: ufelt = shrine_redistribution_count.read();
+    let prev_redistribution_id: ufelt = shrine_redistributions_count.read();
     let redistribution_id: ufelt = prev_redistribution_id + 1;
-    shrine_redistribution_count.write(redistribution_id);
+    shrine_redistributions_count.write(redistribution_id);
 
     // Perform redistribution
     let redistributed_debt = redistribute_internal(
@@ -1122,9 +1122,9 @@ func get_yang_redistribution{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     let (redistribution_packed: packed) = shrine_yang_redistribution.read(
         yang_id, redistribution_id
     );
-    let (debt_per_yang: wad, error: wad) = split_felt(redistribution_packed);
+    let (unit_debt: wad, error: wad) = split_felt(redistribution_packed);
     let yang_redistribution: YangRedistribution = YangRedistribution(
-        debt_per_yang=debt_per_yang, error=error
+        unit_debt=unit_debt, error=error
     );
     return (yang_redistribution,);
 }
@@ -1133,7 +1133,7 @@ func set_yang_redistribution{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     yang_id: ufelt, redistribution_id: ufelt, yang_redistribution: YangRedistribution
 ) {
     let packed_redistribution: packed = pack_felt(
-        yang_redistribution.debt_per_yang, yang_redistribution.error
+        yang_redistribution.unit_debt, yang_redistribution.error
     );
     shrine_yang_redistribution.write(yang_id, redistribution_id, packed_redistribution);
     return ();
@@ -1372,16 +1372,14 @@ func redistribute_internal{
         debt_to_distribute, prev_yang_redistribution.error
     );
 
-    let debt_increment_per_yang: wad = WadRay.wunsigned_div(
-        adjusted_debt_to_distribute, new_yang_total
-    );
+    let unit_debt: wad = WadRay.wunsigned_div(adjusted_debt_to_distribute, new_yang_total);
 
     // Update debt per yang and new error for current yang and current redistribution ID
     let new_error: wad = WadRay.unsigned_sub(
-        adjusted_debt_to_distribute, WadRay.wmul(debt_increment_per_yang, new_yang_total)
+        adjusted_debt_to_distribute, WadRay.wmul(unit_debt, new_yang_total)
     );
     let current_yang_redistribution: YangRedistribution = YangRedistribution(
-        debt_per_yang=debt_increment_per_yang, error=new_error
+        unit_debt=unit_debt, error=new_error
     );
     set_yang_redistribution(current_yang_id, redistribution_id, current_yang_redistribution);
 
@@ -1431,7 +1429,7 @@ func pull_redistributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
 ) -> (new_debt: wad) {
     alloc_locals;
 
-    let latest_redistribution_id: ufelt = shrine_redistribution_count.read();
+    let latest_redistribution_id: ufelt = shrine_redistributions_count.read();
     let trove_last_redistribution_id: ufelt = shrine_trove_redistribution_id.read(trove_id);
 
     // Early termination if no redistributions since trove was last updated
@@ -1500,7 +1498,7 @@ func pull_redistributed_debt_inner_loop{
     );
 
     // Early termination if no debt was distributed for given yang
-    if (redistribution.debt_per_yang == 0) {
+    if (redistribution.unit_debt == 0) {
         return pull_redistributed_debt_inner_loop(
             last_redistribution_id,
             current_redistribution_id - 1,
@@ -1510,7 +1508,7 @@ func pull_redistributed_debt_inner_loop{
         );
     }
 
-    let debt_increment: wad = WadRay.wmul(yang_amt, redistribution.debt_per_yang);
+    let debt_increment: wad = WadRay.wmul(yang_amt, redistribution.unit_debt);
     let cumulative_debt: wad = cumulative_debt + debt_increment;
     return pull_redistributed_debt_inner_loop(
         last_redistribution_id, current_redistribution_id - 1, yang_id, yang_amt, cumulative_debt
