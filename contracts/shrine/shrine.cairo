@@ -1462,13 +1462,26 @@ func pull_redistributed_debt_outer_loop{
     }
 
     let deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
+    if (deposited == 0) {
+        return pull_redistributed_debt_outer_loop(
+            last_redistribution_id,
+            current_redistribution_id,
+            trove_id,
+            trove_debt,
+            current_yang_id - 1,
+        );
+    }
+
     let debt_increment: wad = pull_redistributed_debt_inner_loop(
         last_redistribution_id, current_redistribution_id, current_yang_id, deposited, 0
     );
-    let trove_debt: wad = trove_debt + debt_increment;
 
     return pull_redistributed_debt_outer_loop(
-        last_redistribution_id, current_redistribution_id, trove_id, trove_debt, current_yang_id - 1
+        last_redistribution_id,
+        current_redistribution_id,
+        trove_id,
+        trove_debt + debt_increment,
+        current_yang_id - 1,
     );
 }
 
