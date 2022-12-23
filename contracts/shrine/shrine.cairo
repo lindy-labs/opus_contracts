@@ -1408,7 +1408,7 @@ func round_distributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 ) -> (trove_debt: wad, cumulative_redistributed_debt: wad) {
     alloc_locals;
 
-    let updated_cumulative_redistributed_debt = cumulative_redistributed_debt + debt_to_distribute;
+    let updated_cumulative_redistributed_debt = debt_to_distribute + cumulative_redistributed_debt;
     let remaining_debt: wad = trove_debt - updated_cumulative_redistributed_debt;
     let round_up: bool = is_le(remaining_debt, WadRay.HALF_WAD_SCALE);
     if (round_up == TRUE) {
