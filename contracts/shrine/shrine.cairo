@@ -1344,6 +1344,11 @@ func redistribute_internal{
 
     // Update yang balance of system
     let old_yang_info: Yang = shrine_yangs.read(current_yang_id);
+
+    // Decrementing the system's yang balance by the amount deposited in the trove has the effect of
+    // rebasing (i.e. appreciating) the ratio of asset to yang for the remaining troves.
+    // By removing the distributed yangs from the system, it distributes the assets between
+    // the remaining yangs.
     let new_yang_total: wad = WadRay.unsigned_sub(old_yang_info.total, deposited);
     let new_yang_info: Yang = Yang(total=new_yang_total, max=old_yang_info.max);
     shrine_yangs.write(current_yang_id, new_yang_info);
