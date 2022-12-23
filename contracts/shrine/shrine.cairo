@@ -1365,12 +1365,10 @@ func redistribute_internal{
     );
 
     // Adjust debt to distribute by adding the error from the last redistribution
-    let prev_yang_redistribution: YangRedistribution = get_yang_redistribution(
+    let last_error: wad = get_recent_redistribution_error_for_yang(
         current_yang_id, redistribution_id - 1
     );
-    let adjusted_debt_to_distribute: wad = WadRay.unsigned_add(
-        debt_to_distribute, prev_yang_redistribution.error
-    );
+    let adjusted_debt_to_distribute: wad = WadRay.unsigned_add(debt_to_distribute, last_error);
 
     let unit_debt: wad = WadRay.wunsigned_div(adjusted_debt_to_distribute, new_yang_total);
 
@@ -1398,6 +1396,28 @@ func redistribute_internal{
 
     // Otherwise, if debt is rounded up and fully redistributed, skip the remaining yangs
     return updated_redistributed_debt;
+}
+
+// Returns the last error for `yang_id` at a given `redistribution_id` if the packed value is non-zero.
+// Otherwise, check `redistribution_id` - 1 recursively for the last error.
+func get_recent_redistribution_error_for_yang{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(yang_id: ufelt, redistribution_id: ufelt) -> (error: wad) {
+    alloc_locals;
+
+    if (redistribution_id == 0) {
+        return (0,);
+    }
+
+    let (packed_yang_redistribution: packed) = shrine_yang_redistribution.read(
+        yang_id, redistribution_id
+    );
+    if (packed_yang_redistribution != 0) {
+        let (_, error: wad) = split_felt(packed_yang_redistribution);
+        return (error,);
+    }
+
+    return get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1);
 }
 
 // Helper function to round up the debt to be redistributed for a yang if the remaining debt

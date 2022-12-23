@@ -268,6 +268,70 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
 
 
 @pytest.mark.asyncio
+async def test_last_error(shrine):
+    """
+    This test asserts that the last error for a yang's redistribution is correctly retrieved even if there
+    were intervening redistributions that did not involve a yang.
+
+    For example, yang X is involved in redistribution ID 1 with a non-zero error, was not involved in
+    redistribution IDs 2 to 4, and is next involved in redistribution ID 5. When retrieving the last error
+    for yang X, the error should be that at redistribution ID 1.
+    """
+    # Set up troves
+    for trove, trove_owner in zip(TROVES, TROVE_OWNERS):
+        for yang_addr in YANG_ADDRESSES:
+
+            # Skip YANG_1 for trove 2
+            if yang_addr == YANG1_ADDRESS and trove == TROVE_2:
+                continue
+
+            deposit_amt = to_wad(DEPOSITS[trove][yang_addr])
+            await shrine.deposit(yang_addr, trove, deposit_amt).execute(caller_address=SHRINE_OWNER)
+
+        max_forge_amt = (await shrine.get_max_forge(trove).execute()).result.max
+        forge_amt = max_forge_amt // 2
+        await shrine.forge(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
+
+    redistribution_id = (await shrine.get_redistributions_count().execute()).result.count
+
+    # Redistribute trove 1
+    await shrine.redistribute(TROVE_1).execute(caller_address=MOCK_PURGER)
+
+    # Check redistribution ID and error
+    first_redistribution_id = (await shrine.get_redistributions_count().execute()).result.count
+    assert first_redistribution_id == redistribution_id + 1
+
+    yang1_id = 1
+    yang1_redistribution1 = (
+        await shrine.get_yang_redistribution(yang1_id, first_redistribution_id).execute()
+    ).result.yang_redistribution
+    yang1_redistribution1_last_error = (
+        await shrine.get_recent_redistribution_error_for_yang(yang1_id, first_redistribution_id).execute()
+    ).result.error
+
+    # Sanity check
+    assert yang1_redistribution1.error > 0
+    assert yang1_redistribution1_last_error == yang1_redistribution1.error
+
+    # Redistribute trove 2
+    await shrine.redistribute(TROVE_2).execute(caller_address=MOCK_PURGER)
+
+    # Check redistribution ID and error
+    second_redistribution_id = (await shrine.get_redistributions_count().execute()).result.count
+    assert second_redistribution_id == first_redistribution_id + 1
+
+    yang1_redistribution2 = (
+        await shrine.get_yang_redistribution(yang1_id, second_redistribution_id).execute()
+    ).result.yang_redistribution
+    yang1_redistribution2_last_error = (
+        await shrine.get_recent_redistribution_error_for_yang(yang1_id, second_redistribution_id).execute()
+    ).result.error
+
+    assert yang1_redistribution2.error == 0
+    assert yang1_redistribution2_last_error == yang1_redistribution1.error
+
+
+@pytest.mark.asyncio
 async def test_shrine_redistribute_with_dust_yang(shrine):
     yang_addresses = (YANG1_ADDRESS, YANG2_ADDRESS)
 

@@ -203,6 +203,8 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
             "func get_avg_price": "@view\nfunc get_avg_price",
             "func get_avg_multiplier": "@view\nfunc get_avg_multiplier",
             "func get_trove{": "@view\nfunc get_trove{",
+            "func get_recent_redistribution_error_for_yang{": "@view\nfunc get_recent_redistribution_error_for_yang{",
+            "func get_yang_redistribution{": "@view\nfunc get_yang_redistribution{",
         },
     )
 
