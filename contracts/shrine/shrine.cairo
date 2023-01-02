@@ -1372,10 +1372,10 @@ func redistribute_internal{
 
     let unit_debt: wad = WadRay.wunsigned_div(adjusted_debt_to_distribute, new_yang_total);
 
-    // Update debt per yang and new error for current yang and current redistribution ID
-    let new_error: wad = WadRay.unsigned_sub(
-        adjusted_debt_to_distribute, WadRay.wmul(unit_debt, new_yang_total)
-    );
+    // Due to loss of precision from fixed point division, the actual debt distributed will be less than
+    // or equal to the amount of debt to distribute.
+    let actual_debt_distributed: wad = WadRay.wmul(unit_debt, new_yang_total);
+    let new_error: wad = WadRay.unsigned_sub(adjusted_debt_to_distribute, actual_debt_distributed);
     let current_yang_redistribution: YangRedistribution = YangRedistribution(
         unit_debt=unit_debt, error=new_error
     );
