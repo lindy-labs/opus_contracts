@@ -19,8 +19,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Python setup
+        run: |
+          python -m venv env/
+          source env/bin/activate
+          python -m pip install -r requirements-dev.txt
+
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.4
         with:
-          inputs: requirements-dev.txt
+          virtual-environment: env/
+          local: true
           ignore-vulns: PYSEC-2021-427
