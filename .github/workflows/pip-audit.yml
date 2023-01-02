@@ -22,5 +22,5 @@ jobs:
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.4
         with:
-          with: requirements-dev.txt
+          inputs: requirements-dev.txt
           ignore-vulns: PYSEC-2021-427
