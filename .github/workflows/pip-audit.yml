@@ -28,14 +28,10 @@ jobs:
 
       - name: Env setup
         run: |
-          python -m venv env/
-          source env/bin/activate
           python -m pip install -r requirements-dev.txt
           python -m pip install setuptools --upgrade
 
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.4
         with:
-          virtual-environment: env/
-          local: true
           ignore-vulns: PYSEC-2021-427
