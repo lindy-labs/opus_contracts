@@ -32,6 +32,10 @@ jobs:
           source env/bin/activate
           python -m pip install -r requirements-dev.txt
 
+      # Workaround for CI using vulnerable version of `setuptools`
+      - name: Update `setuptools`
+        run: python -m pip install setuptools --upgrade
+
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.4
         with:
