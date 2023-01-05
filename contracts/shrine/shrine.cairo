@@ -1424,20 +1424,22 @@ func get_recent_redistribution_error_for_yang{
 // falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
 // of debt redistributed is equal to the trove's debt
 func round_distributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_debt: wad, debt_to_distribute: wad, cumulative_redistributed_debt: wad
-) -> (trove_debt: wad, cumulative_redistributed_debt: wad) {
+    total_debt_to_distribute: wad,
+    remaining_debt_to_distribute: wad,
+    cumulative_redistributed_debt: wad,
+) -> (total_debt_to_distribute: wad, cumulative_redistributed_debt: wad) {
     alloc_locals;
 
-    let updated_cumulative_redistributed_debt = debt_to_distribute + cumulative_redistributed_debt;
-    let remaining_debt: wad = trove_debt - updated_cumulative_redistributed_debt;
+    let updated_cumulative_redistributed_debt = remaining_debt_to_distribute + cumulative_redistributed_debt;
+    let remaining_debt: wad = total_debt_to_distribute - updated_cumulative_redistributed_debt;
     let round_up: bool = is_le(remaining_debt, WadRay.HALF_WAD_SCALE);
     if (round_up == TRUE) {
         return (
-            debt_to_distribute + remaining_debt,
+            remaining_debt_to_distribute + remaining_debt,
             updated_cumulative_redistributed_debt + remaining_debt,
         );
     }
-    return (debt_to_distribute, updated_cumulative_redistributed_debt);
+    return (remaining_debt_to_distribute, updated_cumulative_redistributed_debt);
 }
 
 // Takes in a value for the trove's debt, and returns the updated value after adding
