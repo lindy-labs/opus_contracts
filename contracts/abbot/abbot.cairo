@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_le_felt, assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.sentinel.interface import ISentinel
@@ -180,6 +180,15 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     with_attr error_message("Abbot: Yang address cannot be zero") {
         assert_not_zero(yang);
+    }
+
+    with_attr error_message("Abbot: Trove ID cannot be zero") {
+        assert_not_zero(trove_id);
+    }
+
+    with_attr error_message("Abbot: Cannot deposit to a non-existing trove") {
+        let (troves_count: ufelt) = abbot_troves_count.read();
+        assert_le_felt(trove_id, troves_count);
     }
 
     let (shrine: address) = abbot_shrine.read();
