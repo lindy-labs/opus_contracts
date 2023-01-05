@@ -58,6 +58,9 @@ const RATE_BOUND1 = 5 * 10 ** 26;  // 0.5
 const RATE_BOUND2 = 75 * 10 ** 25;  // 0.75
 const RATE_BOUND3 = 9215 * 10 ** 23;  // 0.9215
 
+// Threshold for rounding remaining debt during redistribution
+const ROUNDING_THRESHOLD = 10 ** 9;
+
 //
 // Events
 //
@@ -1432,7 +1435,7 @@ func round_distributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 
     let updated_cumulative_redistributed_debt = remaining_debt_to_distribute + cumulative_redistributed_debt;
     let remaining_debt: wad = total_debt_to_distribute - updated_cumulative_redistributed_debt;
-    let round_up: bool = is_le(remaining_debt, WadRay.HALF_WAD_SCALE);
+    let round_up: bool = is_le(remaining_debt, ROUNDING_THRESHOLD);
     if (round_up == TRUE) {
         return (
             remaining_debt_to_distribute + remaining_debt,

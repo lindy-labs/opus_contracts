@@ -20,7 +20,6 @@ namespace WadRay {
     const WAD_DECIMALS = 18;
     const RAY_DECIMALS = 27;
     const BOUND = 2 ** 125;
-    const HALF_WAD_SCALE = 10 ** 9;
     const WAD_SCALE = 10 ** 18;
     const RAY_SCALE = 10 ** 27;
     const WAD_PERCENT = 10 ** 16;
