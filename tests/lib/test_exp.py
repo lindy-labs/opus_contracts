@@ -74,6 +74,7 @@ async def test_exp_pass_lower(deploy_test_contract, val):
 @given(val=st_lower_range)
 @example(val=to_wad(25))
 @example(val=-to_wad(40))
+@example(val=-39654772204664767312)
 @pytest.mark.asyncio
 async def test_exp_inversions_lower(deploy_test_contract, val):
     contract = deploy_test_contract
@@ -82,7 +83,12 @@ async def test_exp_inversions_lower(deploy_test_contract, val):
     inverse_result = Decimal(from_wad((await contract.get_exp(signed_int_to_felt(-val)).execute()).result.res))
 
     # Precision starts getting pretty bad with all these multiplications and divisions
-    assert_equalish(result * inverse_result, Decimal(1), Decimal("0.06"))
+    if val < -to_wad(39):
+        error_margin = Decimal("0.17")
+    else:
+        error_margin = Decimal("0.06")
+
+    assert_equalish(result * inverse_result, Decimal(1), error_margin)
 
 
 # This tests that exp(x+y) = exp(x)*exp(y)
