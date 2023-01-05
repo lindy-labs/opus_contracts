@@ -19,13 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Python setup
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.9'
-
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.4
         with:
           inputs: requirements-dev.txt
           ignore-vulns: PYSEC-2021-427
+          internal-be-careful-debug: true
