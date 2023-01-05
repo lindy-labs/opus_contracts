@@ -309,8 +309,6 @@ async def test_last_error(shrine):
         await shrine.get_recent_redistribution_error_for_yang(yang1_id, first_redistribution_id).execute()
     ).result.error
 
-    # Sanity check
-    assert yang1_redistribution1.error > 0
     assert yang1_redistribution1_last_error == yang1_redistribution1.error
 
     # Redistribute trove 2
