@@ -182,7 +182,7 @@ async def test_deposit(abbot, shrine, yangs, depositor):
         assert (await shrine.get_deposit(yang.contract_address, TROVE_1).execute()).result.balance == expected_yang
 
 
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove1_owner", "shrine")
+@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "shrine")
 @pytest.mark.asyncio
 async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
