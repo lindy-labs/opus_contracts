@@ -12,6 +12,7 @@ class EmpiricRoles(IntEnum):
     SET_ORACLE_ADDRESS = 2**1
     SET_PRICE_VALIDITY_THRESHOLDS = 2**2
     SET_UPDATE_INTERVAL = 2**3
+    UPDATE_PRICES = 2**4
 
 
 class GateRoles(IntEnum):
@@ -31,9 +32,10 @@ class ShrineRoles(IntEnum):
     KILL = 2**5
     MELT = 2**6
     MOVE_YANG = 2**7
-    SEIZE = 2**8
-    SET_CEILING = 2**9
-    SET_MULTIPLIER = 2**10
-    SET_THRESHOLD = 2**11
-    SET_YANG_MAX = 2**12
-    WITHDRAW = 2**13
+    REDISTRIBUTE = 2**8
+    SEIZE = 2**9
+    SET_CEILING = 2**10
+    SET_MULTIPLIER = 2**11
+    SET_THRESHOLD = 2**12
+    SET_YANG_MAX = 2**13
+    WITHDRAW = 2**14

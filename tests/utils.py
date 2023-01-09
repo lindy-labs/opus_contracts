@@ -17,7 +17,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.roles import GateRoles, SentinelRoles
+from tests.roles import GateRoles, SentinelRoles, ShrineRoles
 
 RANGE_CHECK_BOUND = 2**128
 MAX_UINT256 = (2**128 - 1, 2**128 - 1)
@@ -39,8 +39,9 @@ WAD_RAY_BOUND = 2**125
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
-# Token decimals
+# Decimal precision
 WBTC_DECIMALS = 8
+EMPIRIC_DECIMALS = 8
 
 # Gas estimation constants
 NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin", "ec_op_builtin"]
@@ -55,7 +56,7 @@ WEIGHTS = {
 }
 
 Uint256 = namedtuple("Uint256", "low high")
-YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address")
+YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address empiric_id")
 
 Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]
@@ -92,6 +93,7 @@ BAD_GUY = str_to_felt("bad guy")
 # Roles
 GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
 SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
+SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
 
 # Troves
 TROVE_1 = 1
@@ -281,6 +283,15 @@ def ray_to_wad(n: int) -> int:
 
 def from_ray(n: int) -> Decimal:
     return from_fixed_point(n, RAY_DECIMALS)
+
+
+def to_empiric(value: Union[int, float, Decimal]) -> int:
+    """
+    Empiric reports the pairs used in this test suite with 8 decimals.
+    This function converts a "regular" numeric value to an Empiric native
+    one, i.e. as if it was returned from Empiric.
+    """
+    return int(value * (10**8))
 
 
 def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
