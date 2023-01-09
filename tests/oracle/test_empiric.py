@@ -17,21 +17,25 @@ from tests.oracle.constants import (
     INIT_BLOCK_TS,
     INITIAL_ASSET_AMT_PER_YANG,
 )
-from tests.roles import EmpiricRoles
+from tests.roles import EmpiricRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
+    EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
     RAY_PERCENT,
     SENTINEL_OWNER,
+    SHRINE_OWNER,
     TIME_INTERVAL,
     TROVE1_OWNER,
     assert_event_emitted,
+    compile_contract,
     max_approve,
     set_block_timestamp,
     signed_int_to_felt,
     str_to_felt,
+    to_empiric,
     to_fixed_point,
     to_uint,
     to_wad,
@@ -50,18 +54,32 @@ ETH_THRESHOLD = 80 * RAY_PERCENT
 ETH_DEPOSIT = to_wad(100)
 
 
-def to_empiric(value: int) -> int:
-    """
-    Empiric reports the pairs used in this test suite with 8 decimals.
-    This function converts a "regular" numeric value to an Empiric native
-    one, i.e. as if it was returned from Empiric.
-    """
-    return value * (10**8)
-
-
 #
 # fixtures
 #
+
+
+# Override fixture in conftest.py for isolated unit tests
+@pytest.fixture
+async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetContract:
+    set_block_timestamp(starknet, INIT_BLOCK_TS)
+    contract = compile_contract("contracts/oracle/empiric.cairo")
+    empiric = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            EMPIRIC_OWNER,
+            mock_empiric_impl.contract_address,
+            shrine.contract_address,
+            sentinel.contract_address,
+            EMPIRIC_UPDATE_INTERVAL,
+            EMPIRIC_FRESHNESS_THRESHOLD,
+            EMPIRIC_SOURCES_THRESHOLD,
+        ],
+    )
+
+    await shrine.grant_role(ShrineRoles.ADVANCE, empiric.contract_address).execute(caller_address=SHRINE_OWNER)
+
+    return empiric
 
 
 @pytest.fixture
@@ -90,7 +108,7 @@ async def eth_gate(starknet, shrine, sentinel, eth_token, gates) -> StarknetCont
 
 @pytest.fixture
 async def with_btc(starknet, shrine, sentinel, empiric, btc_token, btc_gate, mock_empiric_impl):
-    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, 8, 5000, 6).execute()
+    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, EMPIRIC_DECIMALS, 5000, 6).execute()
 
     await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
@@ -101,7 +119,7 @@ async def with_btc(starknet, shrine, sentinel, empiric, btc_token, btc_gate, moc
 
 @pytest.fixture
 async def with_yangs(starknet, shrine, sentinel, empiric, eth_token, eth_gate, mock_empiric_impl, with_btc):
-    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, EMPIRIC_DECIMALS, 5000, 6).execute()
 
     await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
@@ -227,7 +245,7 @@ async def test_set_update_interval_failures(empiric):
 
 @pytest.mark.asyncio
 async def test_add_yang(eth_token, empiric, mock_empiric_impl):
-    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, 8, 5000, 3).execute()
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, EMPIRIC_DECIMALS, 5000, 3).execute()
     tx = await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
     assert_event_emitted(tx, empiric.contract_address, "YangAdded", [0, ETH_EMPIRIC_ID, eth_token.contract_address])
 
@@ -251,7 +269,7 @@ async def test_add_yang_failures(btc_token, eth_token, empiric, mock_empiric_imp
     with pytest.raises(StarkException, match="Empiric: Feed with too many decimals"):
         await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
-    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 100, 8, 5000, 3).execute()
+    await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 100, EMPIRIC_DECIMALS, 5000, 3).execute()
     await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
     with pytest.raises(StarkException, match="Empiric: Yang already present"):
         await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
@@ -289,10 +307,10 @@ async def test_update_prices(
     btc_cumulative_price = BTC_INIT_PRICE * 2 + new_btc_yang_price
 
     await mock_empiric_impl.next_get_spot_median(
-        ETH_EMPIRIC_ID, to_empiric(new_eth_price), 8, oracle_update_ts, 3
+        ETH_EMPIRIC_ID, to_empiric(new_eth_price), EMPIRIC_DECIMALS, oracle_update_ts, 3
     ).execute()
     await mock_empiric_impl.next_get_spot_median(
-        BTC_EMPIRIC_ID, to_empiric(new_btc_price), 8, oracle_update_ts, 4
+        BTC_EMPIRIC_ID, to_empiric(new_btc_price), EMPIRIC_DECIMALS, oracle_update_ts, 4
     ).execute()
 
     set_block_timestamp(starknet, oracle_update_ts)
@@ -332,7 +350,7 @@ async def test_update_prices_without_yangs(empiric):
 @pytest.mark.asyncio
 async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl, starknet):
     await mock_empiric_impl.next_get_spot_median(
-        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE), 8, INIT_BLOCK_TS, 3
+        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE), EMPIRIC_DECIMALS, INIT_BLOCK_TS, 3
     ).execute()
 
     # first update should pass
@@ -353,7 +371,9 @@ async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl,
 async def test_update_prices_invalid_price_updates(eth_token, empiric, mock_empiric_impl, price, ts_diff, num_sources):
     update_ts = INIT_BLOCK_TS - ts_diff
 
-    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, to_empiric(price), 8, update_ts, num_sources).execute()
+    await mock_empiric_impl.next_get_spot_median(
+        ETH_EMPIRIC_ID, to_empiric(price), EMPIRIC_DECIMALS, update_ts, num_sources
+    ).execute()
 
     tx = await empiric.update_prices().execute()
     assert_event_emitted(
@@ -375,7 +395,7 @@ async def test_update_prices_invalid_price_updates(eth_token, empiric, mock_empi
 @pytest.mark.asyncio
 async def test_update_prices_invalid_gate(starknet, shrine, eth_token, empiric, mock_empiric_impl):
     # Add ETH to empiric but not Sentinel
-    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, 8, 5000, 6).execute()
+    await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, EMPIRIC_DECIMALS, 5000, 6).execute()
 
     await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
@@ -387,7 +407,7 @@ async def test_update_prices_invalid_gate(starknet, shrine, eth_token, empiric, 
     new_eth_price = new_eth_yang_price = 1293
 
     await mock_empiric_impl.next_get_spot_median(
-        ETH_EMPIRIC_ID, to_empiric(new_eth_price), 8, oracle_update_ts, num_eth_sources
+        ETH_EMPIRIC_ID, to_empiric(new_eth_price), EMPIRIC_DECIMALS, oracle_update_ts, num_eth_sources
     ).execute()
 
     set_block_timestamp(starknet, oracle_update_ts)
@@ -419,7 +439,7 @@ async def test_probeTask(empiric, mock_empiric_impl, starknet):
     new_ts = INIT_BLOCK_TS + 1
     set_block_timestamp(starknet, new_ts)
     await mock_empiric_impl.next_get_spot_median(
-        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE + 30), 8, new_ts, 3
+        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE + 30), EMPIRIC_DECIMALS, new_ts, 3
     ).execute()
     await empiric.update_prices().execute()
 

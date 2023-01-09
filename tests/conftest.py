@@ -9,12 +9,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.oracle.constants import (
-    EMPIRIC_FRESHNESS_THRESHOLD,
-    EMPIRIC_SOURCES_THRESHOLD,
-    EMPIRIC_UPDATE_INTERVAL,
-    INIT_BLOCK_TS,
-)
+from tests.oracle.constants import EMPIRIC_FRESHNESS_THRESHOLD, EMPIRIC_SOURCES_THRESHOLD, EMPIRIC_UPDATE_INTERVAL
 from tests.roles import ShrineRoles
 from tests.shrine.constants import (
     DEBT_CEILING,
@@ -30,6 +25,7 @@ from tests.shrine.constants import (
     YIN_SYMBOL,
 )
 from tests.utils import (
+    EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
@@ -40,6 +36,7 @@ from tests.utils import (
     TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
+    TROVE3_OWNER,
     TROVE_1,
     WAD_DECIMALS,
     WAD_SCALE,
@@ -50,10 +47,13 @@ from tests.utils import (
     compile_contract,
     create_feed,
     estimate_gas,
+    from_wad,
+    get_block_timestamp,
     get_contract_code_with_replacement,
     max_approve,
     set_block_timestamp,
     str_to_felt,
+    to_empiric,
     to_fixed_point,
     to_uint,
     to_wad,
@@ -203,6 +203,8 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
             "func get_avg_price": "@view\nfunc get_avg_price",
             "func get_avg_multiplier": "@view\nfunc get_avg_multiplier",
             "func get_trove{": "@view\nfunc get_trove{",
+            "func get_recent_redistribution_error_for_yang{": "@view\nfunc get_recent_redistribution_error_for_yang{",
+            "func get_yang_redistribution{": "@view\nfunc get_yang_redistribution{",
         },
     )
 
@@ -336,8 +338,15 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
+    empiric_id = str_to_felt("stETH/USD")
     return YangConfig(
-        steth_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, steth_gate.contract_address
+        steth_token.contract_address,
+        WAD_DECIMALS,
+        ceiling,
+        threshold,
+        price_wad,
+        steth_gate.contract_address,
+        empiric_id,
     )
 
 
@@ -346,8 +355,9 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     ceiling = to_wad(100_000_000)
     threshold = 20 * RAY_PERCENT
     price_wad = to_wad(0.07)
+    empiric_id = str_to_felt("DOGE/USD")
     return YangConfig(
-        doge_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, doge_gate.contract_address
+        doge_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, doge_gate.contract_address, empiric_id
     )
 
 
@@ -356,8 +366,15 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     ceiling = to_wad(1_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(10_000)
+    empiric_id = str_to_felt("WBTC/USD")
     return YangConfig(
-        wbtc_token.contract_address, WBTC_DECIMALS, ceiling, threshold, price_wad, wbtc_gate.contract_address
+        wbtc_token.contract_address,
+        WBTC_DECIMALS,
+        ceiling,
+        threshold,
+        price_wad,
+        wbtc_gate.contract_address,
+        empiric_id,
     )
 
 
@@ -429,67 +446,23 @@ async def yin(starknet, shrine) -> StarknetContract:
 
 
 #
-# Empiric oracle
-#
-
-
-@pytest.fixture
-async def mock_empiric_impl(starknet) -> StarknetContract:
-    contract = compile_contract("tests/oracle/mock_empiric.cairo")
-    return await starknet.deploy(contract_class=contract)
-
-
-@pytest.fixture
-async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetContract:
-    set_block_timestamp(starknet, INIT_BLOCK_TS)
-    contract = compile_contract("contracts/oracle/empiric.cairo")
-    empiric = await starknet.deploy(
-        contract_class=contract,
-        constructor_calldata=[
-            EMPIRIC_OWNER,
-            mock_empiric_impl.contract_address,
-            shrine.contract_address,
-            sentinel.contract_address,
-            EMPIRIC_UPDATE_INTERVAL,
-            EMPIRIC_FRESHNESS_THRESHOLD,
-            EMPIRIC_SOURCES_THRESHOLD,
-        ],
-    )
-
-    await shrine.grant_role(ShrineRoles.ADVANCE, empiric.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return empiric
-
-
-#
 # Funded user account and trove (stETH and DOGE)
 #
 
 
 @pytest.fixture
-async def funded_trove1_owner(yang_tokens, yangs):
+async def funded_trove_owners(yang_tokens, yangs):
     amts = (1_000, 1_000_000, 10)
+    trove_owners = (TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER)
 
-    for token, yang, amt in zip(yang_tokens, yangs, amts):
-        amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
-        # fund the user with bags
-        await token.mint(TROVE1_OWNER, amt_uint).execute(caller_address=TROVE1_OWNER)
+    for owner in trove_owners:
+        for token, yang, amt in zip(yang_tokens, yangs, amts):
+            amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
+            # fund the user with bags
+            await token.mint(owner, amt_uint).execute(caller_address=owner)
 
-        # user approves Aura gates to spend bags
-        await max_approve(token, TROVE1_OWNER, yang.gate_address)
-
-
-@pytest.fixture
-async def funded_trove2_owner(yang_tokens, yangs):
-    amts = (1_000, 1_000_000, 10)
-
-    for token, yang, amt in zip(yang_tokens, yangs, amts):
-        amt_uint = to_uint(to_fixed_point(amt, yang.decimals))
-        # fund the user with bags
-        await token.mint(TROVE2_OWNER, amt_uint).execute(caller_address=TROVE2_OWNER)
-
-        # user approves Aura gates to spend bags
-        await max_approve(token, TROVE2_OWNER, yang.gate_address)
+            # user approves Aura gates to spend bags
+            await max_approve(token, owner, yang.gate_address)
 
 
 @pytest.fixture
@@ -521,3 +494,47 @@ async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang, wbtc_ya
         ).execute(caller_address=SENTINEL_OWNER)
 
     return sentinel
+
+
+#
+# Empiric oracle
+#
+
+
+@pytest.fixture
+async def mock_empiric_impl(starknet) -> StarknetContract:
+    contract = compile_contract("tests/oracle/mock_empiric.cairo")
+    return await starknet.deploy(contract_class=contract)
+
+
+@pytest.fixture
+async def empiric(starknet, shrine_deploy, sentinel_with_yangs, mock_empiric_impl, yangs) -> StarknetContract:
+    shrine = shrine_deploy
+    sentinel = sentinel_with_yangs
+    contract = compile_contract("contracts/oracle/empiric.cairo")
+    empiric = await starknet.deploy(
+        contract_class=contract,
+        constructor_calldata=[
+            EMPIRIC_OWNER,
+            mock_empiric_impl.contract_address,
+            shrine.contract_address,
+            sentinel.contract_address,
+            EMPIRIC_UPDATE_INTERVAL,
+            EMPIRIC_FRESHNESS_THRESHOLD,
+            EMPIRIC_SOURCES_THRESHOLD,
+        ],
+    )
+
+    await shrine.grant_role(ShrineRoles.ADVANCE, empiric.contract_address).execute(caller_address=SHRINE_OWNER)
+
+    ts = get_block_timestamp(starknet)
+    num_sources = 3
+    for yang in yangs:
+        price = to_empiric(from_wad(yang.price_wad))
+
+        await mock_empiric_impl.next_get_spot_median(
+            yang.empiric_id, price, EMPIRIC_DECIMALS, ts, num_sources
+        ).execute()
+        await empiric.add_yang(yang.empiric_id, yang.contract_address).execute(caller_address=EMPIRIC_OWNER)
+
+    return empiric

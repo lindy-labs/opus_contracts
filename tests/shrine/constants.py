@@ -11,6 +11,7 @@ LIQUIDATION_THRESHOLD = 80 * RAY_PERCENT
 YANG1_ADDRESS = 1234
 YANG2_ADDRESS = 2345
 YANG3_ADDRESS = 3456
+YANG4_ADDRESS = 4567
 FAUX_YANG_ADDRESS = 7890
 
 YIN_USER1 = str_to_felt("yin user 1")
@@ -37,6 +38,13 @@ YANGS = [
         "id": 3,
         "address": YANG3_ADDRESS,
         "start_price": Decimal("1.25"),
+        "ceiling": 10_000_000 * WAD_SCALE,
+        "threshold": LIQUIDATION_THRESHOLD,
+    },
+    {
+        "id": 4,
+        "address": YANG4_ADDRESS,
+        "start_price": Decimal("17.5"),
         "ceiling": 10_000_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
@@ -94,3 +102,6 @@ DEPOSITS = [
 FORGE_AMT_WAD = 5_000 * WAD_SCALE
 
 SHRINE_FULL_ACCESS = sum([r.value for r in ShrineRoles])
+
+# Redistribute constants
+MOCK_PURGER = str_to_felt("purger")

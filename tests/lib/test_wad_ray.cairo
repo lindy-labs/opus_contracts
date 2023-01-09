@@ -126,8 +126,8 @@ func test_wad_to_ray{range_check_ptr}(n) -> (res: ray) {
 }
 
 @view
-func test_wad_to_ray_unchecked(n) -> (res: ray) {
-    return (WadRay.wad_to_ray_unchecked(n),);
+func test_ray_to_wad{range_check_ptr}(n) -> (res: wad) {
+    return (WadRay.ray_to_wad(n),);
 }
 
 @view

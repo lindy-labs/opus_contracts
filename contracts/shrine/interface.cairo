@@ -38,7 +38,18 @@ namespace IShrine {
     func get_multiplier(interval: ufelt) -> (multiplier: ray, cumulative_multiplier: ray) {
     }
 
-    func get_threshold(yang: address) -> (threshold: ray) {
+    func get_yang_threshold(yang: address) -> (threshold: ray) {
+    }
+
+    func get_redistributions_count() -> (count: ufelt) {
+    }
+
+    func get_trove_redistribution_id(trove_id: ufelt) -> (redistribution_id: ufelt) {
+    }
+
+    func get_redistributed_unit_debt_for_yang(yang: address, redistribution_id: ufelt) -> (
+        unit_debt: wad
+    ) {
     }
 
     func get_live() -> (is_live: bool) {
@@ -84,6 +95,9 @@ namespace IShrine {
     }
 
     func seize(yang: address, trove_id: ufelt, amount: wad) {
+    }
+
+    func redistribute(trove_id: ufelt) {
     }
 
     func start_flash_mint(receiver: address, amount: wad) {
