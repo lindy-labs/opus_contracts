@@ -19,18 +19,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Python setup
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.9'
-          cache: pip
-          cache-dependency-path: '**/requirements-dev.txt'
-
-      - name: Env setup
-        run: pip install -r requirements-dev.txt
-
-      - name: Install pip-audit
-        run: pip install pip-audit
-
       - name: Run pip-audit
-        run: pip-audit --ignore-vuln PYSEC-2021-427
+        uses: pypa/gh-action-pip-audit@v1.0.5
+        with:
+          inputs: requirements-dev.txt
+          ignore-vulns: PYSEC-2021-427
