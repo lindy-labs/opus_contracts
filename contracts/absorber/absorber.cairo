@@ -24,6 +24,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ufelt, wad
 from contracts.lib.convert import pack_felt
 from contracts.lib.interfaces import IERC20
+from contracts.lib.types import AssetAbsorption, Provision
 from contracts.lib.wad_ray import WadRay
 
 // Constants
@@ -35,20 +36,6 @@ const YIN_PER_SHARE_THRESHOLD = 10 ** 9;
 
 // Shares to be minted without a provider to avoid first provider front-running
 const INITIAL_SHARES = 10 ** 3;
-
-//
-// Structs
-//
-
-struct Provision {
-    epoch: ufelt,  // Epoch in which shares are issued
-    shares: wad,  // Amount of shares for provider in the above epoch
-}
-
-struct AssetAbsorption {
-    asset_amt_per_share: wad,  // Amount of asset in its decimal precision per share wad
-    error: wad,  // Error to be added to next absorption
-}
 
 //
 // Storage

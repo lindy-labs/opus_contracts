@@ -1,8 +1,7 @@
 %lang starknet
 
 from contracts.lib.aliases import address, ufelt, wad
-
-from contracts.absorber import AssetAbsorption, Provision
+from contracts.lib.types import AssetAbsorption, Provision
 
 @contract_interface
 namespace IAbsorber {
