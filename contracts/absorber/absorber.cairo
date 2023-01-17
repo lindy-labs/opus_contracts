@@ -4,7 +4,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_nn_le
+from starkware.cairo.common.math_cmp import is_nn_le, is_not_zero
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
@@ -458,40 +458,32 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         current_epoch,
     );
 
-    // Increment epoch ID if yin per share drops below threshold
+    // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
     let shrine: address = absorber_shrine.read();
     let absorber: address = get_contract_address();
     let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
     let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
     let yin_per_share: wad = WadRay.wunsigned_div_unchecked(yin_balance, total_shares);
 
-    let below_threshold: bool = is_nn_le(yin_per_share, YIN_PER_SHARE_THRESHOLD);
+    let above_threshold: bool = is_nn_le(YIN_PER_SHARE_THRESHOLD, yin_per_share);
+    let is_not_emptied: bool = is_not_zero(yin_balance);
 
-    if (below_threshold == TRUE) {
-        let new_epoch: ufelt = current_epoch + 1;
-        absorber_current_epoch.write(new_epoch);
-
-        let epoch_share_conversion_rate: wad = WadRay.wunsigned_div_unchecked(
-            yin_balance, total_shares
-        );
-        absorber_epoch_share_conversion_rate.write(current_epoch, epoch_share_conversion_rate);
-
-        absorber_total_shares.write(yin_balance);
-        EpochChanged.emit(current_epoch, new_epoch);
+    if (above_threshold == TRUE and is_not_emptied == TRUE) {
         return ();
     }
 
-    // Increment epoch ID if stability pool is emptied and reset total shares
-    if (yin_balance == 0) {
-        // Note there is no need to update share conversion rate from current epoch
-        // to next epoch if absorber is emptied.
-        let new_epoch: ufelt = current_epoch + 1;
-        absorber_current_epoch.write(new_epoch);
-        absorber_total_shares.write(0);
-        EpochChanged.emit(current_epoch, new_epoch);
-        return ();
-    }
+    let new_epoch: ufelt = current_epoch + 1;
+    absorber_current_epoch.write(new_epoch);
 
+    let epoch_share_conversion_rate: wad = WadRay.wunsigned_div_unchecked(
+        yin_balance, total_shares
+    );
+    // If absorber is emptied, this will be set to 0.
+    absorber_epoch_share_conversion_rate.write(current_epoch, epoch_share_conversion_rate);
+
+    // If absorber is emptied, this will be set to 0.
+    absorber_total_shares.write(yin_balance);
+    EpochChanged.emit(current_epoch, new_epoch);
     return ();
 }
 
