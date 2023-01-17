@@ -830,6 +830,9 @@ async def test_non_provider_fail(shrine, absorber):
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
         await absorber.reap().execute(caller_address=NON_PROVIDER)
 
+    removable_yin = (await absorber.get_max_removable_yin(NON_PROVIDER).execute()).result.amount
+    assert removable_yin == 0
+
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
