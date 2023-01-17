@@ -226,8 +226,9 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 // View
 //
 
+// Returns the maximum amount of yin removable by a provider.
 @view
-func get_max_removable_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_provider_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
 ) -> (amount: wad) {
     let provision: Provision = get_provision(provider);
@@ -580,7 +581,7 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 }
 
 // This implementation is slightly different from Gate because shares is only used for
-// internal accounting.
+// internal accounting and both shares and yin are wads.
 func convert_to_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shares_amt: wad
 ) -> wad {

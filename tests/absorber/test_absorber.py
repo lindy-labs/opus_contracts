@@ -506,7 +506,7 @@ async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_t
         expected_epoch = before_provider_info.epoch + 1
 
     else:
-        max_removable_yin = (await absorber.get_max_removable_yin(provider).execute()).result.amount
+        max_removable_yin = (await absorber.get_provider_yin(provider).execute()).result.amount
         yin_to_remove_wad = int(percentage_to_remove * max_removable_yin)
         expected_shares_removed = from_wad(
             (await absorber.convert_to_shares(yin_to_remove_wad, TRUE).execute()).result.provider_shares
@@ -617,7 +617,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
 
     # Provider 2 can withdraw up to amount provided
-    max_withdrawable_yin_amt = from_wad((await absorber.get_max_removable_yin(second_provider).execute()).result.amount)
+    max_withdrawable_yin_amt = from_wad((await absorber.get_provider_yin(second_provider).execute()).result.amount)
     assert_equalish(max_withdrawable_yin_amt, second_provider_yin_amt)
 
     # First provider can withdraw a non-zero amount of yin corresponding to what was left in the
@@ -795,7 +795,7 @@ async def test_non_provider_fail(shrine, absorber):
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
         await absorber.reap().execute(caller_address=NON_PROVIDER)
 
-    removable_yin = (await absorber.get_max_removable_yin(NON_PROVIDER).execute()).result.amount
+    removable_yin = (await absorber.get_provider_yin(NON_PROVIDER).execute()).result.amount
     assert removable_yin == 0
 
 

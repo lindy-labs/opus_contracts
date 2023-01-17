@@ -6,7 +6,7 @@ from contracts.lib.types import AssetAbsorption, Provision
 @contract_interface
 namespace IAbsorber {
     //
-    // getters
+    // view
     //
 
     func get_purger() -> (purger: address) {
@@ -30,12 +30,12 @@ namespace IAbsorber {
     func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
+    func get_provider_yin(provider: address) -> (amount: wad) {
+    }
+
     func get_asset_absorption_info(absorption_id: ufelt, asset: address) -> (
         info: AssetAbsorption
     ) {
-    }
-
-    func get_max_removable_yin(provider: address) -> (amount: wad) {
     }
 
     //
@@ -60,8 +60,5 @@ namespace IAbsorber {
         asset_amts_len: ufelt,
         asset_amts: ufelt*,
     ) {
-    }
-
-    func melt(trove_id: ufelt, amount: wad) {
     }
 }
