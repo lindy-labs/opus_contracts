@@ -28,6 +28,9 @@ from contracts.lib.wad_ray import WadRay
 
 // Constants
 
+// Epoch is incremented if the amount of yin wad per share drops below this threshold
+// in order to reset yin per share ratio to parity for accounting. Otherwise, there will
+// eventually be an overflow of total shares as yin per share drops
 const YIN_PER_SHARE_THRESHOLD = 10 ** 9;
 
 // Shares to be minted without a provider to avoid first provider front-running
@@ -39,7 +42,7 @@ const INITIAL_SHARES = 10 ** 3;
 
 struct Provision {
     epoch: ufelt,  // Epoch in which shares are issued
-    shares: wad,
+    shares: wad,  // Amount of shares for provider in the above epoch
 }
 
 struct AssetAbsorption {
@@ -639,8 +642,6 @@ func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 func get_recent_asset_absorption_error{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(asset: address, absorption_id: ufelt) -> (error: wad) {
-    alloc_locals;
-
     if (absorption_id == 0) {
         return (0,);
     }
