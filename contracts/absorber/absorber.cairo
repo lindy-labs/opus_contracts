@@ -495,7 +495,7 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 //
-// Internal
+// Internal - helpers for packed structs
 //
 
 func get_provision{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -533,6 +533,10 @@ func set_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     absorber_asset_absorption.write(absorption_id, asset, packed_info);
     return ();
 }
+
+//
+// Internal - helpers for accounting of shares
+//
 
 // Convert to shares with a flag for whether the value should be rounded up or rounded down.
 // When converting to shares, we always favour the Absorber to the expense of the provider.
@@ -598,6 +602,27 @@ func convert_to_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     }
 }
 
+// Convert an epoch's shares to a subsequent epoch's shares
+// Return argument is named for testing
+func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    start_epoch: ufelt, end_epoch: ufelt, start_shares: wad
+) -> (shares: wad) {
+    if (start_epoch == end_epoch) {
+        return (start_shares,);
+    }
+
+    let epoch_conversion_rate: wad = absorber_epoch_share_conversion_rate.read(start_epoch);
+    let new_shares: wad = WadRay.wmul(start_shares, epoch_conversion_rate);
+
+    return convert_epoch_shares(start_epoch + 1, end_epoch, new_shares);
+}
+
+//
+// Internal - helpers for `update`
+//
+
+// Helper function to iterate over an array of assets received from an absorption for updating
+// each provider's entitlement
 func update_asset_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     absorption_id: ufelt, total_shares: wad, asset_count: ufelt, assets: address*, amounts: ufelt*
 ) {
@@ -608,6 +633,7 @@ func update_asset_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return update_asset_loop(absorption_id, total_shares, asset_count - 1, assets + 1, amounts + 1);
 }
 
+// Helper function to update each provider's entitlement of an absorbed asset
 func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     absorption_id: ufelt, shares: wad, asset: address, amount: ufelt
 ) {
@@ -642,6 +668,12 @@ func get_recent_asset_absorption_error{
     return get_recent_asset_absorption_error(asset, absorption_id - 1);
 }
 
+//
+// Internal - helpers for `reap`
+//
+
+// Internal function to be called whenever a provider takes an action to ensure absorbed assets
+// are properly transferred to the provider before updating the provider's information
 func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address, provided_shares: wad, provided_epoch: ufelt
 ) {
@@ -787,6 +819,7 @@ func derive_absorbed_asset_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     );
 }
 
+// Helper function to iterate over an array of assets to transfer to an address
 func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address, asset_count: ufelt, asset_addresses: address*, asset_amts: ufelt*
 ) {
@@ -797,6 +830,7 @@ func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
     return transfer_assets(provider, asset_count - 1, asset_addresses + 1, asset_amts + 1);
 }
 
+// Helper function to transfer an asset to an address
 func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address, asset_address: address, asset_amt: ufelt
 ) {
@@ -809,18 +843,4 @@ func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     }
 
     return ();
-}
-
-// Return argument is named for testing
-func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    start_epoch: ufelt, end_epoch: ufelt, start_shares: wad
-) -> (shares: wad) {
-    if (start_epoch == end_epoch) {
-        return (start_shares,);
-    }
-
-    let epoch_conversion_rate: wad = absorber_epoch_share_conversion_rate.read(start_epoch);
-    let new_shares: wad = WadRay.wmul(start_shares, epoch_conversion_rate);
-
-    return convert_epoch_shares(start_epoch + 1, end_epoch, new_shares);
 }
