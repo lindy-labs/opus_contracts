@@ -393,6 +393,11 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
         [provider, expected_epoch, initial_yin_amt_provided],
     )
 
+    before_absorber_yin_bal_wad = from_uint(
+        (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
+    )
+    assert before_absorber_yin_bal_wad == initial_yin_amt_provided
+
     # Test subsequent deposit
     subsequent_yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     subsequent_yin_amt_to_provide = from_uint(subsequent_yin_amt_to_provide_uint)
@@ -422,6 +427,9 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
     expected_new_total = from_wad(before_total_shares_wad + expected_new_shares_wad)
 
     assert_equalish(after_total_shares, expected_new_total)
+
+    after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
+    assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -523,6 +531,10 @@ async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_t
         await absorber.get_provider_last_absorption(provider).execute()
     ).result.absorption_id
 
+    before_absorber_yin_bal_wad = from_uint(
+        (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
+    )
+
     if percentage_drained == Decimal("1"):
         yin_to_remove_wad = 0
         expected_shares = Decimal("0")
@@ -564,6 +576,9 @@ async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_t
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
+
+    after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
+    assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
