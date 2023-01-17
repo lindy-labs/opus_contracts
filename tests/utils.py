@@ -87,6 +87,7 @@ SENTINEL_OWNER = str_to_felt("sentinel owner")
 GATE_OWNER = str_to_felt("gate owner")
 SHRINE_OWNER = str_to_felt("shrine owner")
 EMPIRIC_OWNER = str_to_felt("empiric owner")
+ABSORBER_OWNER = str_to_felt("absorber owner")
 
 BAD_GUY = str_to_felt("bad guy")
 
@@ -199,6 +200,18 @@ def get_contract_code_with_replacement(rel_contract_path: str, replacements: dic
 
     code = (contract, filename)
     return code
+
+
+def get_contract_code_with_addition(code: tuple[str, str], addition: str) -> tuple[str, str]:
+    """
+    Adds code to the source code of a contract, after `get_contract_code_with_replacement`.
+    """
+    contract = code[0]
+    filename = code[1]
+
+    contract += addition
+
+    return (contract, filename)
 
 
 @cache
