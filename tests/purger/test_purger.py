@@ -677,6 +677,13 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
         and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
     )
 
+    assert_event_emitted(
+        absorb,
+        absorber.contract_address,
+        "Gain",
+        lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+    )
+
     # Check that LTV is 0 after all debt is repaid
     after_trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
     after_trove_ltv = from_ray(after_trove_info.ltv)
@@ -896,6 +903,14 @@ async def test_partial_absorb_with_redistribution_pass(
                 "Exit",
                 lambda d: d[0] == absorber.contract_address,
             )
+
+    if percentage_absorbed > 0:
+        assert_event_emitted(
+            partial_absorb,
+            absorber.contract_address,
+            "Gain",
+            lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+        )
 
     assert (await shrine.get_redistributions_count().execute()).result.count == expected_redistribution_id
 
