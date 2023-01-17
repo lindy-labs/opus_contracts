@@ -222,14 +222,19 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
     );
 
-    IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
-
     IShrine.redistribute(shrine, trove_id);
 
     // Update yang prices due to an appreciation in ratio of asset to yang
     let oracle: address = purger_oracle.read();
     IEmpiric.update_prices(oracle);
 
+    // Skip `Absorber.update` if absorber has no yin because total shares could be 0
+    // and the call would revert
+    if (absorber_yin_balance == 0) {
+        return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
+    }
+
+    IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
