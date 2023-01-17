@@ -761,74 +761,42 @@ func derive_absorbed_asset_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     let next_absorption_id: ufelt = start_absorption_id + 1;
     let absorption_epoch: ufelt = absorber_absorption_epoch.read(next_absorption_id);
 
-    if (current_epoch == absorption_epoch) {
-        let asset_absorption_info: AssetAbsorption = get_asset_absorption(
-            next_absorption_id, asset
-        );
+    // If `current_epoch == absorption_epoch`, then `adjusted_shares == provided_shares`.
+    let adjusted_shares: wad = convert_epoch_shares(
+        current_epoch, absorption_epoch, provided_shares
+    );
 
-        // Skip to next absorption if no assets were absorbed for current absorption
-        if (asset_absorption_info.asset_amt_per_share == 0) {
-            return derive_absorbed_asset_amount(
-                provided_shares,
-                current_epoch,
-                next_absorption_id,
-                end_absorption_id,
-                asset,
-                cumulative,
-            );
-        }
+    // Terminate if provider does not have any shares for current epoch,
+    if (adjusted_shares == 0) {
+        return cumulative;
+    }
 
-        let provider_assets: ufelt = WadRay.wmul(
-            provided_shares, asset_absorption_info.asset_amt_per_share
-        );
+    let asset_absorption_info: AssetAbsorption = get_asset_absorption(next_absorption_id, asset);
 
+    // Skip to next absorption if no assets were absorbed for current absorption
+    if (asset_absorption_info.asset_amt_per_share == 0) {
         return derive_absorbed_asset_amount(
-            provided_shares,
-            current_epoch,
-            next_absorption_id,
-            end_absorption_id,
-            asset,
-            cumulative + provider_assets,
-        );
-    } else {
-        let new_epoch_shares: wad = convert_epoch_shares(
-            current_epoch, absorption_epoch, provided_shares
-        );
-        let epoch_conversion_rate: wad = absorber_epoch_share_conversion_rate.read(current_epoch);
-
-        // If no conversion of shares between epochs (i.e. absorber is emptied), we can terminate
-        // and return.
-        if (new_epoch_shares == 0) {
-            return cumulative;
-        }
-
-        let asset_absorption_info: AssetAbsorption = get_asset_absorption(end_absorption_id, asset);
-
-        // Skip to next absorption if no assets were absorbed for current absorption
-        if (asset_absorption_info.asset_amt_per_share == 0) {
-            return derive_absorbed_asset_amount(
-                new_epoch_shares,
-                absorption_epoch,
-                next_absorption_id,
-                end_absorption_id,
-                asset,
-                cumulative,
-            );
-        }
-
-        let provider_assets: ufelt = WadRay.wmul(
-            new_epoch_shares, asset_absorption_info.asset_amt_per_share
-        );
-
-        return derive_absorbed_asset_amount(
-            new_epoch_shares,
+            adjusted_shares,
             absorption_epoch,
             next_absorption_id,
             end_absorption_id,
             asset,
-            cumulative + provider_assets,
+            cumulative,
         );
     }
+
+    let provider_assets: ufelt = WadRay.wmul(
+        adjusted_shares, asset_absorption_info.asset_amt_per_share
+    );
+
+    return derive_absorbed_asset_amount(
+        adjusted_shares,
+        absorption_epoch,
+        next_absorption_id,
+        end_absorption_id,
+        asset,
+        cumulative + provider_assets,
+    );
 }
 
 func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
