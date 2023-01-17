@@ -179,7 +179,7 @@ async def shrine(shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def absorber_deploy(starknet, shrine, sentinel, empiric) -> StarknetContract:
+async def absorber_deploy(starknet, shrine, sentinel) -> StarknetContract:
     absorber_code = get_contract_code_with_replacement(
         "contracts/absorber/absorber.cairo",
         {
