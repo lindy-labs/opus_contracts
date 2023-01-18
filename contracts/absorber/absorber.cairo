@@ -32,7 +32,7 @@ from contracts.lib.wad_ray import WadRay
 // Epoch is incremented if the amount of yin wad per share drops below this threshold
 // in order to reset yin per share ratio to parity for accounting. Otherwise, there will
 // eventually be an overflow of total shares as yin per share drops
-const YIN_PER_SHARE_THRESHOLD = 10 ** 9;
+const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 
 // Shares to be minted without a provider to avoid first provider front-running
 const INITIAL_SHARES = 10 ** 3;

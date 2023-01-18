@@ -583,7 +583,11 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
         )
 
 
-@pytest.mark.parametrize("update", [Decimal("0.9999999991"), Decimal("0.99999999999999")], indirect=["update"])
+@pytest.mark.parametrize(
+    "update",
+    [Decimal("0.999000000000000001"), Decimal("0.9999999991"), Decimal("0.99999999999999")],
+    indirect=["update"],
+)
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_provide_after_threshold_absorption(shrine, absorber, update, yangs, yang_tokens):
