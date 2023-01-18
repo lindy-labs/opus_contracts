@@ -27,6 +27,7 @@ from tests.utils import (
     compile_code,
     create_feed,
     custom_error_margin,
+    estimate_gas,
     from_fixed_point,
     from_ray,
     from_uint,
@@ -869,3 +870,29 @@ async def test_purger_zero_address(absorber_deploy, yangs, first_update_assets):
     asset_addresses, asset_amts = first_update_assets
     with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
         await absorber.update(asset_addresses, asset_amts).execute(caller_address=MOCK_PURGER)
+
+
+# TODO: For analysis only; remove before merge
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.parametrize("absorption_count", [1, 2, 3, 4, 5, 10, 20])
+@pytest.mark.asyncio
+async def test_reap_varying_absorptions_count(shrine, absorber, yang_tokens, first_update_assets, absorption_count):
+    provider = PROVIDER_1
+
+    asset_addresses, asset_amts = first_update_assets
+    burn_amt = Decimal("0.05")
+    for i in range(absorption_count):
+        absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
+        burn_amt_wad = int(burn_amt * absorber_yin_bal_wad)
+
+        await simulate_update(
+            shrine,
+            absorber,
+            yang_tokens,
+            asset_addresses,
+            asset_amts,
+            burn_amt_wad,
+        )
+
+    tx = await absorber.reap().execute(caller_address=provider)
+    print("Reap for {} distributions: {}".format(absorption_count, estimate_gas(tx)))
