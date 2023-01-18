@@ -691,9 +691,10 @@ func set_multiplier{
 // Update the base rates of all yangs
 // A base rate of -1 means the base rate for the yang stays the same
 @external
-func update_rates{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    new_rates_len: ufelt, new_rates: ray*
-) {
+func update_rates{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(new_rates_len: ufelt, new_rates: ray*) {
+    alloc_locals;
     AccessControl.assert_has_role(ShrineRoles.SET_RATES);
 
     // Checking that the length of the given rates array is equal to the number of yangs
@@ -710,7 +711,7 @@ func update_rates{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let current_interval: ufelt = now();
 
     // Loop over yangs and update rates
-    update_rates_internal(current_interval, current_idx, new_rates_len, new_rates, 0);
+    update_rates_internal(current_interval, new_idx, new_rates_len, new_rates, 0);
 
     return ();
 }
@@ -1269,6 +1270,8 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func update_rates_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     current_interval: ufelt, new_idx: ufelt, new_rates_len: ufelt, new_rates: ray*, current_yang_id
 ) {
+    alloc_locals;
+
     // Termination condition
     if (current_yang_id == new_rates_len) {
         return ();
@@ -1293,9 +1296,19 @@ func update_rates_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     // Emitting an event for every yang that wasn't trivially updated
     if ([new_rates] != -1) {
         YangRateUpdated.emit(current_yang_id, [new_rates]);
+        tempvar syscall_ptr: felt* = syscall_ptr;
+        tempvar pedersen_ptr: HashBuiltin* = pedersen_ptr;
+        tempvar range_check_ptr: felt = range_check_ptr;
+    } else {
+        tempvar syscall_ptr: felt* = syscall_ptr;
+        tempvar pedersen_ptr: HashBuiltin* = pedersen_ptr;
+        tempvar range_check_ptr: felt = range_check_ptr;
     }
 
-    update_rates_internal(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
+    update_rates_internal(
+        current_interval, new_idx, new_rates_len, new_rates + 1, current_yang_id + 1
+    );
+    return ();
 }
 
 // Adds the accumulated interest as debt to the trove
@@ -1384,6 +1397,8 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func get_yang_rate_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yang_id: ufelt, idx: ufelt
 ) -> (rate: ray, interval: ufelt) {
+    alloc_locals;
+
     let (rate_and_interval: packed) = shrine_rates.read(yang_id, idx);
     let (rate: ray, interval: ufelt) = unpack_125(rate_and_interval);
     return (rate, interval);
