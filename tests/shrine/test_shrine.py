@@ -436,7 +436,9 @@ async def test_add_yang_pass(shrine):
     new_yang_address = 987
     new_yang_threshold = to_wad(Decimal("0.6"))
     new_yang_start_price = to_wad(5)
-    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, 0).execute(
+    new_yang_rate = to_ray(0.06)
+
+    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, 0, new_yang_rate).execute(
         caller_address=SHRINE_OWNER
     )
     assert (await shrine.get_yangs_count().execute()).result.count == g_count + 1
@@ -445,7 +447,7 @@ async def test_add_yang_pass(shrine):
         tx,
         shrine.contract_address,
         "YangAdded",
-        [new_yang_address, g_count + 1, new_yang_start_price],
+        [new_yang_address, g_count + 1, new_yang_start_price, new_yang_rate],
     )
     assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
     assert_event_emitted(
@@ -478,6 +480,7 @@ async def test_add_yang_duplicate_fail(shrine):
             YANG1_THRESHOLD,
             to_wad(YANGS[0]["start_price"]),
             0,
+            to_ray(YANGS[0]["rate"]),
         ).execute(caller_address=SHRINE_OWNER)
 
 
@@ -487,12 +490,14 @@ async def test_add_yang_unauthorized(shrine):
     bad_guy_yang_address = 555
     bad_guy_yang_threshold = to_wad(Decimal("0.5"))
     bad_guy_yang_start_price = to_wad(10)
+    bad_guy_yang_rate = to_ray(0.6)
     with pytest.raises(StarkException):
         await shrine.add_yang(
             bad_guy_yang_address,
             bad_guy_yang_threshold,
             bad_guy_yang_start_price,
             0,
+            bad_guy_yang_rate
         ).execute(caller_address=BAD_GUY)
 
 

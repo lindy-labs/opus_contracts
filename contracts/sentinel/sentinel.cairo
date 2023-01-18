@@ -183,7 +183,7 @@ func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, yang_asset_max: ufelt, yang_threshold: ray, yang_price: wad, gate: address) {
+}(yang: address, yang_asset_max: ufelt, yang_threshold: ray, yang_price: wad, yang_rate: ray, gate: address) {
     AccessControl.assert_has_role(SentinelRoles.ADD_YANG);
 
     with_attr error_message("Sentinel: Address cannot be zero") {
@@ -220,7 +220,7 @@ func add_yang{
     IERC20.transferFrom(yang, caller, gate, initial_deposit_amt_uint);
 
     let (shrine: address) = sentinel_shrine_address.read();
-    IShrine.add_yang(shrine, yang, yang_threshold, yang_price, initial_yang_amt);
+    IShrine.add_yang(shrine, yang, yang_threshold, yang_price, initial_yang_amt, yang_rate);
 
     YangAdded.emit(yang, gate);
     YangAssetMaxUpdated.emit(yang, 0, yang_asset_max);
