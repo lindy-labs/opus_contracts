@@ -31,7 +31,8 @@ from contracts.lib.wad_ray import WadRay
 
 // Epoch is incremented if the amount of yin wad per share drops below this threshold
 // in order to reset yin per share ratio to parity for accounting. Otherwise, there will
-// eventually be an overflow of total shares as yin per share drops
+// eventually be an overflow when converting yin to shares (and vice versa)
+// as yin per share drops
 const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 
 // Shares to be minted without a provider to avoid first provider front-running
@@ -290,8 +291,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     reap_internal(provider, provision.shares, provision.epoch);
 
     // Calculate number of shares to issue to user and to add to total for current epoch
-    // There is a discrepancy between these two due to the initial minimum shares only if
-    // it is the first provision of an epoch and total shares is 0.
+    // The two values deviate only when it is the first provision of an epoch and total shares is 0.
     let (new_provider_shares: wad, issued_shares: wad) = convert_to_shares(amount, FALSE);
 
     // If epoch has changed, convert shares in previous epoch to new epoch's shares
@@ -415,7 +415,6 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 }
 
 // Update assets received after an absorption
-// Can only be called by Purger
 @external
 func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset_addresses_len: ufelt, asset_addresses: address*, asset_amts_len: ufelt, asset_amts: ufelt*
@@ -537,24 +536,26 @@ func set_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 // - Round up for `remove`
 // Returns a tuple of the shares to be issued to the provider, and the total number of shares
 // issued for the system.
-// - `remove` does not require the former, which is meant to handle the first `provide` of an epoch.
+// - There will be a difference between the two values only if it is the first `provide` of an epoch and
+//   the total shares is less than the minimum initial shares.
 func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yin_amt: wad, round_up: bool
 ) -> (provider_shares: wad, system_shares: wad) {
     // Get last deposit
     let total_shares: wad = absorber_total_shares.read();
 
-    // Convert
-    if (total_shares == 0) {
+    let is_above_minimum: wad = is_nn_le(INITIAL_SHARES, total_shares);
+    if (is_above_minimum == FALSE) {
         // This branch should be unreachable when called in `remove` because no address would have
         // any shares if total shares is 0
         with_attr error_message("Absorber: Amount provided is less than minimum initial shares") {
+            // By deducting the initial shares from the first provider's shares, we ensure that
+            // there is a non-removable amount of shares.
             let provider_shares: wad = WadRay.unsigned_sub(yin_amt, INITIAL_SHARES);
         }
 
         return (provider_shares, yin_amt);
     } else {
-        // Get current exchange rate
         let shrine: address = absorber_shrine.read();
         let absorber: address = get_contract_address();
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
