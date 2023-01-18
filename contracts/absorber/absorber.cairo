@@ -827,6 +827,10 @@ func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check
 func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address, asset_address: address, asset_amt: ufelt
 ) {
+    if (asset_amt == 0) {
+        return ();
+    }
+
     let asset_amt_uint: Uint256 = WadRay.to_uint(asset_amt);
 
     // TODO: Should this revert?
