@@ -630,6 +630,10 @@ func update_asset_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     absorption_id: ufelt, shares: wad, asset: address, amount: ufelt
 ) {
+    if (amount == 0) {
+        return ();
+    }
+
     let last_error: wad = get_recent_asset_absorption_error(asset, absorption_id);
     let total_amount_to_distribute: wad = WadRay.unsigned_add(amount, last_error);
 
