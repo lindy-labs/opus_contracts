@@ -66,7 +66,7 @@ const ROUNDING_THRESHOLD = 10 ** 9;
 //
 
 @event
-func YangAdded(yang: address, yang_id: ufelt, start_price: wad) {
+func YangAdded(yang: address, yang_id: ufelt, start_price: wad, initial_rate: ray) {
 }
 
 @event
@@ -83,6 +83,10 @@ func YangsCountUpdated(count: ufelt) {
 
 @event
 func MultiplierUpdated(multiplier: ray, cumulative_multiplier: ray, interval: ufelt) {
+}
+
+@event
+func YangRateUpdated(yang_id: ufelt, new_rate: ray) {
 }
 
 @event
@@ -190,6 +194,15 @@ func shrine_ceiling() -> (ceiling: wad) {
 // the yang at each time interval, both as rays
 @storage_var
 func shrine_multiplier(interval: ufelt) -> (mul_and_cumulative_mul: packed) {
+}
+
+// Keeps track of the most recent rates index
+@storage_var
+func shrine_rates_current_idx() -> (idx: ufelt) {
+}
+
+@storage_var
+func shrine_rates(yang_id: ufelt, idx: ufelt) -> (rate_and_interval: packed) {
 }
 
 // Liquidation threshold per yang (as LTV) - ray
@@ -367,6 +380,14 @@ func get_yang_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 @view
+func get_yang_rate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address, idx: ufelt
+) -> (rate: ray, interval: ufelt) {
+    let (yang_id: ufelt) = shrine_yang_id.read(yang);
+    return get_yang_rate_internal(yang_id, idx);
+}
+
+@view
 func get_ceiling{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     ceiling: wad
 ) {
@@ -474,7 +495,7 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, threshold: ray, initial_price: wad, initial_yang_amt: wad) {
+}(yang: address, threshold: ray, initial_price: wad, initial_yang_amt: wad, initial_rate: ray) {
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.ADD_YANG);
@@ -517,8 +538,13 @@ func add_yang{
     // result in an endless loop of `get_recent_price_from` since it wouldn't find the initial price
     shrine_yang_price.write(yang_id, previous_interval, init_price_and_cumulative_price);
 
+    // Setting the base rate for the new yang
+    let initial_rate_and_interval: packed = pack_125(initial_rate, current_interval);
+    let current_rate_idx: ufelt = shrine_rates_current_idx.read();
+    shrine_rates.write(yang_id, current_rate_idx, initial_rate_and_interval);
+
     // Events
-    YangAdded.emit(yang, yang_id, initial_price);
+    YangAdded.emit(yang, yang_id, initial_price, initial_rate);
     YangsCountUpdated.emit(yang_id);
     YangTotalUpdated.emit(yang, initial_yang_amt);
 
@@ -658,6 +684,33 @@ func set_multiplier{
     shrine_multiplier.write(interval, mul_and_cumulative_mul);
 
     MultiplierUpdated.emit(new_multiplier, new_cumulative_multiplier, interval);
+
+    return ();
+}
+
+// Update the base rates of all yangs
+// A base rate of -1 means the base rate for the yang stays the same
+@external
+func update_rates{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    new_rates_len: ufelt, new_rates: ray*
+) {
+    AccessControl.assert_has_role(ShrineRoles.SET_RATES);
+
+    // Checking that the length of the given rates array is equal to the number of yangs
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    with_attr error_message("Shrine: rates array length not equal to yang count") {
+        assert new_rates_len = yang_count;
+    }
+
+    // Increment index
+    let (current_idx: ufelt) = shrine_rates_current_idx.read();
+    let new_idx: ufelt = current_idx + 1;
+    shrine_rates_current_idx.write(new_idx);
+
+    let current_interval: ufelt = now();
+
+    // Loop over yangs and update rates
+    update_rates_internal(current_interval, current_idx, new_rates_len, new_rates, 0);
 
     return ();
 }
@@ -1211,6 +1264,40 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return ();
 }
 
+// Internal function for looping over all yangs and updating their base rates
+// A new rate value of `-1` means the yang's rate isn't being updated, and so we get the previous value.
+func update_rates_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    current_interval: ufelt, new_idx: ufelt, new_rates_len: ufelt, new_rates: ray*, current_yang_id
+) {
+    // Termination condition
+    if (current_yang_id == new_rates_len) {
+        return ();
+    }
+
+    if ([new_rates] == -1) {
+        let (prev_rate: ray) = shrine_rates.read(current_yang_id, new_idx - 1);
+        let new_rate_and_interval: packed = pack_125(prev_rate, current_interval);
+        tempvar syscall_ptr: felt* = syscall_ptr;
+        tempvar pedersen_ptr: HashBuiltin* = pedersen_ptr;
+        tempvar range_check_ptr: felt = range_check_ptr;
+    } else {
+        let new_rate_and_interval: packed = pack_125([new_rates], current_interval);
+        tempvar syscall_ptr: felt* = syscall_ptr;
+        tempvar pedersen_ptr: HashBuiltin* = pedersen_ptr;
+        tempvar range_check_ptr: felt = range_check_ptr;
+    }
+
+    // Updating rate for current yang
+    shrine_rates.write(current_yang_id, new_idx, new_rate_and_interval);
+
+    // Emitting an event for every yang that wasn't trivially updated
+    if ([new_rates] != -1) {
+        YangRateUpdated.emit(current_yang_id, [new_rates]);
+    }
+
+    update_rates_internal(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
+}
+
 // Adds the accumulated interest as debt to the trove
 func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(trove_id) {
     alloc_locals;
@@ -1292,6 +1379,14 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
 
     return compounded_debt;
+}
+
+func get_yang_rate_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang_id: ufelt, idx: ufelt
+) -> (rate: ray, interval: ufelt) {
+    let (rate_and_interval: packed) = shrine_rates.read(yang_id, idx);
+    let (rate: ray, interval: ufelt) = unpack_125(rate_and_interval);
+    return (rate, interval);
 }
 
 // Loop through yangs for the trove:
