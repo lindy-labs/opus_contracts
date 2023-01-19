@@ -29,7 +29,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, str, ufelt, wad
 from contracts.lib.convert import pack_felt, pack_125, unpack_125
 from contracts.lib.exp import exp
-from contracts.lib.types import Trove, Yang, YangRedistribution
+from contracts.lib.types import Trove, YangRedistribution
 from contracts.lib.wad_ray import WadRay
 
 //
@@ -66,11 +66,11 @@ const ROUNDING_THRESHOLD = 10 ** 9;
 //
 
 @event
-func YangAdded(yang: address, yang_id: ufelt, max: wad, start_price: wad) {
+func YangAdded(yang: address, yang_id: ufelt, start_price: wad) {
 }
 
 @event
-func YangUpdated(yang: address, yang_info: Yang) {
+func YangUpdated(yang: address, total: wad) {
 }
 
 @event
@@ -140,9 +140,9 @@ func shrine_troves(trove_id: ufelt) -> (trove: packed) {
 func shrine_yin(user: address) -> (balance: wad) {
 }
 
-// Stores information about each collateral (see Yang struct)
+// Stores information about the total supply for each yang
 @storage_var
-func shrine_yangs(yang_id: ufelt) -> (yang: Yang) {
+func shrine_yang_total(yang_id: ufelt) -> (total: wad) {
 }
 
 // Number of collateral accepted by the system.
@@ -326,11 +326,11 @@ func get_total_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 }
 
 @view
-func get_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(yang: address) -> (
-    yang: Yang
-) {
+func get_yang_total{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address
+) -> (total: wad) {
     let (yang_id: ufelt) = shrine_yang_id.read(yang);
-    return shrine_yangs.read(yang_id);
+    return shrine_yang_total.read(yang_id);
 }
 
 @view
@@ -471,7 +471,7 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, max: wad, threshold: ray, initial_price: wad) {
+}(yang: address, threshold: ray, initial_price: wad) {
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.ADD_YANG);
@@ -482,11 +482,6 @@ func add_yang{
         assert potential_yang_id = 0;
     }
 
-    // Assert validity of `max` argument
-    with_attr error_message("Shrine: Value of `max` ({max}) is out of bounds") {
-        WadRay.assert_valid_unsigned(max);
-    }
-
     // Validity of `threshold` is asserted in set_threshold
     // Validity of `initial_price` is asserted in pack_125
 
@@ -495,7 +490,6 @@ func add_yang{
     let yang_id: ufelt = yang_count + 1;
 
     shrine_yang_id.write(yang, yang_id);
-    shrine_yangs.write(yang_id, Yang(0, max));
 
     // Update yangs count
     shrine_yangs_count.write(yang_id);
@@ -517,29 +511,8 @@ func add_yang{
     shrine_yang_price.write(yang_id, previous_interval, init_price_and_cumulative_price);
 
     // Events
-    YangAdded.emit(yang, yang_id, max, initial_price);
+    YangAdded.emit(yang, yang_id, initial_price);
     YangsCountUpdated.emit(yang_id);
-
-    return ();
-}
-
-@external
-func set_yang_max{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, new_max: wad) {
-    alloc_locals;
-    AccessControl.assert_has_role(ShrineRoles.SET_YANG_MAX);
-
-    with_attr error_message("Shrine: Value of `new_max` ({new_max}) is out of bounds") {
-        WadRay.assert_valid_unsigned(new_max);
-    }
-
-    let yang_id: ufelt = get_valid_yang_id(yang);
-    let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
-    let new_yang_info: Yang = Yang(old_yang_info.total, new_max);
-    shrine_yangs.write(yang_id, new_yang_info);
-
-    YangUpdated.emit(yang, new_yang_info);
 
     return ();
 }
@@ -738,16 +711,9 @@ func deposit{
 
     // Update yang balance of system
     let yang_id: ufelt = get_valid_yang_id(yang);
-    let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
-    let new_total: wad = WadRay.add(old_yang_info.total, amount);
-
-    // Asserting that the deposit does not cause the total amount of yang deposited to exceed the max.
-    with_attr error_message("Shrine: Exceeds maximum amount of Yang allowed for system") {
-        assert_le(new_total, old_yang_info.max);
-    }
-
-    let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
-    shrine_yangs.write(yang_id, new_yang_info);
+    let (old_total: wad) = shrine_yang_total.read(yang_id);
+    let new_total: wad = WadRay.add(old_total, amount);
+    shrine_yang_total.write(yang_id, new_total);
 
     // Update yang balance of trove
     let (trove_yang_balance: wad) = shrine_deposits.read(yang_id, trove_id);
@@ -755,7 +721,7 @@ func deposit{
     shrine_deposits.write(yang_id, trove_id, new_trove_balance);
 
     // Events
-    YangUpdated.emit(yang, new_yang_info);
+    YangUpdated.emit(yang, new_total);
     DepositUpdated.emit(yang, trove_id, new_trove_balance);
 
     return ();
@@ -1195,7 +1161,7 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 
     // Retrieve yang info
     let yang_id: ufelt = get_valid_yang_id(yang);
-    let (old_yang_info: Yang) = shrine_yangs.read(yang_id);
+    let (old_total: wad) = shrine_yang_total.read(yang_id);
 
     // Ensure trove has sufficient yang
     let (trove_yang_balance: wad) = shrine_deposits.read(yang_id, trove_id);
@@ -1209,15 +1175,14 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     charge(trove_id);
 
     // Update yang balance of system
-    let new_total: wad = WadRay.unsigned_sub(old_yang_info.total, amount);
-    let new_yang_info: Yang = Yang(total=new_total, max=old_yang_info.max);
-    shrine_yangs.write(yang_id, new_yang_info);
+    let new_total: wad = WadRay.unsigned_sub(old_total, amount);
+    shrine_yang_total.write(yang_id, new_total);
 
     // Update yang balance of trove
     shrine_deposits.write(yang_id, trove_id, new_trove_balance);
 
     // Events
-    YangUpdated.emit(yang, new_yang_info);
+    YangUpdated.emit(yang, new_total);
     DepositUpdated.emit(yang, trove_id, new_trove_balance);
 
     return ();
@@ -1346,15 +1311,14 @@ func redistribute_internal{
     shrine_deposits.write(current_yang_id, trove_id, 0);
 
     // Update yang balance of system
-    let old_yang_info: Yang = shrine_yangs.read(current_yang_id);
+    let old_yang_total: wad = shrine_yang_total.read(current_yang_id);
 
     // Decrementing the system's yang balance by the amount deposited in the trove has the effect of
     // rebasing (i.e. appreciating) the ratio of asset to yang for the remaining troves.
     // By removing the distributed yangs from the system, it distributes the assets between
     // the remaining yangs.
-    let new_yang_total: wad = WadRay.unsigned_sub(old_yang_info.total, deposited);
-    let new_yang_info: Yang = Yang(total=new_yang_total, max=old_yang_info.max);
-    shrine_yangs.write(current_yang_id, new_yang_info);
+    let new_yang_total: wad = WadRay.unsigned_sub(old_yang_total, deposited);
+    shrine_yang_total.write(current_yang_id, new_yang_total);
 
     // Calculate (value of yang / trove value) * debt and assign redistributed debt to yang
     let (yang_price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);

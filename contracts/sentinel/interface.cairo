@@ -37,6 +37,9 @@ namespace ISentinel {
     ) {
     }
 
+    func set_yang_asset_max(yang: address, new_asset_max: ufelt) {
+    }
+
     func enter(yang: address, user: address, trove_id: ufelt, asset_amt: ufelt) -> (yang_amt: wad) {
     }
 
