@@ -450,6 +450,14 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
     _, _, _, _, _, assets, asset_amts = update
     asset_count = len(assets)
 
+    absorbed = (await absorber.preview_reap(provider).execute()).result
+    assert absorbed.asset_addresses == assets
+    for asset_info, expected, actual in zip(yangs, asset_amts, absorbed.asset_amts):
+        error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
+        adjusted_expected = from_fixed_point(expected, asset_info.decimals)
+        adjusted_actual = from_fixed_point(actual, asset_info.decimals)
+        assert_equalish(adjusted_expected, adjusted_actual, error_margin)
+
     # Fetch user balances before `reap`
     before_provider_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
     before_provider_last_absorption = (
@@ -507,7 +515,7 @@ async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_t
         expected_epoch = before_provider_info.epoch + 1
 
     else:
-        max_removable_yin = (await absorber.get_provider_yin(provider).execute()).result.amount
+        max_removable_yin = (await absorber.preview_remove(provider).execute()).result.amount
         yin_to_remove_wad = int(percentage_to_remove * max_removable_yin)
         expected_shares_removed = from_wad(
             (await absorber.convert_to_shares(yin_to_remove_wad, TRUE).execute()).result.provider_shares
@@ -622,7 +630,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
 
     # Provider 2 can withdraw up to amount provided
-    max_withdrawable_yin_amt = from_wad((await absorber.get_provider_yin(second_provider).execute()).result.amount)
+    max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(second_provider).execute()).result.amount)
     assert_equalish(max_withdrawable_yin_amt, second_provider_yin_amt)
 
     # First provider can withdraw a non-zero amount of yin corresponding to what was left in the
@@ -714,6 +722,13 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
 
+        absorbed = (await absorber.preview_reap(provider).execute()).result
+        assert absorbed.asset_addresses == asset_addresses
+        for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.asset_amts):
+            error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
+            adjusted_actual = from_fixed_point(actual, asset_info.decimals)
+            assert_equalish(adjusted_expected, adjusted_actual, error_margin)
+
         # Second provider reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
@@ -791,17 +806,22 @@ async def test_multi_user_reap_same_epoch(
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_non_provider_fail(shrine, absorber):
+    provider = NON_PROVIDER
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
-        await absorber.remove(0).execute(caller_address=NON_PROVIDER)
+        await absorber.remove(0).execute(caller_address=provider)
 
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=NON_PROVIDER)
+        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
-        await absorber.reap().execute(caller_address=NON_PROVIDER)
+        await absorber.reap().execute(caller_address=provider)
 
-    removable_yin = (await absorber.get_provider_yin(NON_PROVIDER).execute()).result.amount
+    removable_yin = (await absorber.preview_remove(provider).execute()).result.amount
     assert removable_yin == 0
+
+    absorbed = (await absorber.preview_reap(provider).execute()).result
+    assert absorbed.asset_addresses == []
+    assert absorbed.asset_amts == []
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")

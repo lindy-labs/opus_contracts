@@ -30,11 +30,19 @@ namespace IAbsorber {
     func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
-    func get_provider_yin(provider: address) -> (amount: wad) {
-    }
-
     func get_asset_absorption_info(absorption_id: ufelt, asset: address) -> (
         info: AssetAbsorption
+    ) {
+    }
+
+    func preview_remove(provider: address) -> (amount: wad) {
+    }
+
+    func preview_reap(provider: address) -> (
+        asset_addresses_len: ufelt,
+        asset_addresses: address*,
+        asset_amts_len: ufelt,
+        asset_amts: ufelt*,
     ) {
     }
 

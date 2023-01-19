@@ -229,12 +229,36 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 
 // Returns the maximum amount of yin removable by a provider.
 @view
-func get_provider_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func preview_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
 ) -> (amount: wad) {
     let provision: Provision = get_provision(provider);
     let max_removable_yin: wad = convert_to_yin(provision.shares);
     return (max_removable_yin,);
+}
+
+@view
+func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (
+    asset_addresses_len: ufelt, asset_addresses: address*, asset_amts_len: ufelt, asset_amts: ufelt*
+) {
+    alloc_locals;
+
+    let provision: Provision = get_provision(provider);
+    let provider_last_absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
+    let current_absorption_id: ufelt = absorber_absorptions_count.read();
+
+    let (
+        asset_addresses_len, asset_addresses: address*, asset_amts: ufelt*
+    ) = get_absorbed_assets_for_provider_internal(
+        provider,
+        provision.shares,
+        provision.epoch,
+        provider_last_absorption_id,
+        current_absorption_id,
+    );
+    return (asset_addresses_len, asset_addresses, asset_addresses_len, asset_amts);
 }
 
 //
@@ -684,30 +708,14 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // address is properly updated.
     absorber_provider_last_absorption.write(provider, current_absorption_id);
 
-    // Early termination
-    if (provided_shares == 0) {
-        return ();
-    }
-
-    if (current_absorption_id == provider_last_absorption_id) {
-        return ();
-    }
-
-    let sentinel: address = absorber_sentinel.read();
-    let (asset_addresses_len: ufelt, asset_addresses: address*) = ISentinel.get_yang_addresses(
-        sentinel
-    );
-    let (asset_amts: ufelt*) = alloc();
-
-    reap_absorbed_assets_outer_loop(
+    let (
+        asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*
+    ) = get_absorbed_assets_for_provider_internal(
+        provider,
         provided_shares,
         provided_epoch,
         provider_last_absorption_id,
         current_absorption_id,
-        asset_addresses_len,
-        0,
-        asset_addresses,
-        asset_amts,
     );
 
     // Loop over assets and transfer
@@ -718,11 +726,52 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return ();
 }
 
+func get_absorbed_assets_for_provider_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(
+    provider: address,
+    provided_shares: wad,
+    provided_epoch: ufelt,
+    provided_absorption_id: ufelt,
+    current_absorption_id: ufelt,
+) -> (asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*) {
+    alloc_locals;
+
+    let (asset_amts: ufelt*) = alloc();
+
+    // Early termination by returning empty arrays
+    if (provided_shares == 0) {
+        return (0, asset_amts, asset_amts);
+    }
+
+    if (current_absorption_id == provided_absorption_id) {
+        return (0, asset_amts, asset_amts);
+    }
+
+    let sentinel: address = absorber_sentinel.read();
+    let (asset_addresses_len: ufelt, asset_addresses: address*) = ISentinel.get_yang_addresses(
+        sentinel
+    );
+
+    get_absorbed_assets_for_provider_outer_loop(
+        provided_shares,
+        provided_epoch,
+        provided_absorption_id,
+        current_absorption_id,
+        asset_addresses_len,
+        0,
+        asset_addresses,
+        asset_amts,
+    );
+
+    return (asset_addresses_len, asset_addresses, asset_amts);
+}
+
 // Outer loop iterating over yangs
 // We iterate over yangs first, because array values cannot be updated.
 // Since we can only write the amount of asset to transfer once, we need to compute
 // the total amount to transfer for a given asset across all absorption IDs.
-func reap_absorbed_assets_outer_loop{
+func get_absorbed_assets_for_provider_outer_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     provided_shares: wad,
@@ -741,13 +790,13 @@ func reap_absorbed_assets_outer_loop{
     }
 
     let asset: address = asset_addresses[asset_idx];
-    let asset_amt: ufelt = derive_absorbed_asset_amount(
+    let asset_amt: ufelt = get_absorbed_assets_for_provider_inner_loop(
         provided_shares, provided_epoch, last_absorption_id, current_absorption_id, asset, 0
     );
 
     assert asset_amts[asset_idx] = asset_amt;
 
-    return reap_absorbed_assets_outer_loop(
+    return get_absorbed_assets_for_provider_outer_loop(
         provided_shares,
         provided_epoch,
         last_absorption_id,
@@ -763,7 +812,9 @@ func reap_absorbed_assets_outer_loop{
 // last absorption ID tracked for a user for a given asset
 // We need to iterate from the last absorption ID upwards to the current absorption ID in order to take
 // into account the conversion rate of shares from epoch to epoch
-func derive_absorbed_asset_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_absorbed_assets_for_provider_inner_loop{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(
     provided_shares: wad,
     current_epoch: ufelt,
     start_absorption_id: ufelt,
@@ -793,7 +844,7 @@ func derive_absorbed_asset_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
     // Skip to next absorption if no assets were absorbed for current absorption
     if (asset_absorption_info.asset_amt_per_share == 0) {
-        return derive_absorbed_asset_amount(
+        return get_absorbed_assets_for_provider_inner_loop(
             adjusted_shares,
             absorption_epoch,
             next_absorption_id,
@@ -807,7 +858,7 @@ func derive_absorbed_asset_amount{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
         adjusted_shares, asset_absorption_info.asset_amt_per_share
     );
 
-    return derive_absorbed_asset_amount(
+    return get_absorbed_assets_for_provider_inner_loop(
         adjusted_shares,
         absorption_epoch,
         next_absorption_id,
