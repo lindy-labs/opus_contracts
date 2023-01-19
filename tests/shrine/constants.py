@@ -24,33 +24,28 @@ YANGS = [
         "id": 1,
         "address": YANG1_ADDRESS,
         "start_price": Decimal("2000"),
-        "ceiling": 10_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
         "id": 2,
         "address": YANG2_ADDRESS,
         "start_price": Decimal("500"),
-        "ceiling": 100_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
         "id": 3,
         "address": YANG3_ADDRESS,
         "start_price": Decimal("1.25"),
-        "ceiling": 10_000_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
     {
         "id": 4,
         "address": YANG4_ADDRESS,
         "start_price": Decimal("17.5"),
-        "ceiling": 10_000_000 * WAD_SCALE,
         "threshold": LIQUIDATION_THRESHOLD,
     },
 ]
 
-YANG1_CEILING = YANGS[0]["ceiling"]
 YANG1_THRESHOLD = YANGS[0]["threshold"]
 YANG1_ID = YANGS[0]["id"]
 

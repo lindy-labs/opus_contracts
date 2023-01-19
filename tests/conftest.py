@@ -233,9 +233,9 @@ async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
-        await shrine.add_yang(
-            YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])
-        ).execute(caller_address=SHRINE_OWNER)
+        await shrine.add_yang(YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])).execute(
+            caller_address=SHRINE_OWNER
+        )
 
     return shrine
 

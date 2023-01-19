@@ -5,6 +5,7 @@ class SentinelRoles(IntEnum):
     ADD_YANG = 2**0
     ENTER = 2**1
     EXIT = 2**2
+    SET_YANG_ASSET_MAX = 2**3
 
 
 class EmpiricRoles(IntEnum):
