@@ -498,9 +498,20 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let new_epoch: ufelt = current_epoch + 1;
     absorber_current_epoch.write(new_epoch);
 
+    // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
+    // minimum shares worth of yin from the yin balance so that there is at least such amount
+    // of yin that cannot be removed in the next epoch.
+    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES, yin_balance);
+    if (above_initial_shares == TRUE) {
+        tempvar yin_balance_for_shares: wad = yin_balance - INITIAL_SHARES;
+    } else {
+        tempvar yin_balance_for_shares: wad = yin_balance;
+    }
+
     let epoch_share_conversion_rate: wad = WadRay.wunsigned_div_unchecked(
-        yin_balance, total_shares
+        yin_balance_for_shares, total_shares
     );
+
     // If absorber is emptied, this will be set to 0.
     absorber_epoch_share_conversion_rate.write(current_epoch, epoch_share_conversion_rate);
 
