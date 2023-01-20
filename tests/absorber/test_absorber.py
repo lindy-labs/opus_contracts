@@ -662,9 +662,10 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
+@pytest.mark.parametrize("skip_second_asset", [True, False])  # Test asset not involved in absorption
 @pytest.mark.usefixtures("first_epoch_first_provider", "update")
 @pytest.mark.asyncio
-async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, second_update_assets):
+async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, second_update_assets, skip_second_asset):
     """
     Sequence of events:
     1. Provider 1 provides
@@ -696,6 +697,17 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
 
     # Drain again
     asset_addresses, asset_amts = second_update_assets
+    if skip_second_asset is True:
+        asset_amts[1] = 0
+
+    asset_amts_adjusted = [
+        from_fixed_point(i, asset_info.decimals)
+        for i, asset_info in zip(
+            asset_amts,
+            yangs,
+        )
+    ]
+
     await simulate_update(
         shrine,
         absorber,
@@ -718,7 +730,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
 
     providers = [first_provider, second_provider]
     before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
-    absorbed_amts_arrs = [FIRST_UPDATE_ASSETS_AMT, SECOND_UPDATE_ASSETS_AMT]
+    absorbed_amts_arrs = [FIRST_UPDATE_ASSETS_AMT, asset_amts_adjusted]
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
 
@@ -733,6 +745,9 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
         tx = await absorber.reap().execute(caller_address=provider)
 
         for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
+            if asset == yang_tokens[1] and skip_second_asset is True:
+                continue
+
             assert_event_emitted(
                 tx,
                 asset.contract_address,

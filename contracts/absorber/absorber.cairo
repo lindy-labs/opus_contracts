@@ -841,19 +841,6 @@ func get_absorbed_assets_for_provider_inner_loop{
     }
 
     let asset_absorption_info: AssetAbsorption = get_asset_absorption(next_absorption_id, asset);
-
-    // Skip to next absorption if no assets were absorbed for current absorption
-    if (asset_absorption_info.asset_amt_per_share == 0) {
-        return get_absorbed_assets_for_provider_inner_loop(
-            adjusted_shares,
-            absorption_epoch,
-            next_absorption_id,
-            end_absorption_id,
-            asset,
-            cumulative,
-        );
-    }
-
     let provider_assets: ufelt = WadRay.wmul(
         adjusted_shares, asset_absorption_info.asset_amt_per_share
     );
