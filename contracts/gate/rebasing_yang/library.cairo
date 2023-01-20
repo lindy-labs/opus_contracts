@@ -81,7 +81,7 @@ namespace Gate {
 
     // Return value is `ufelt` because `asset` is denominated in the decimals of the asset
     func convert_to_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        yang: wad
+        yang_amt: wad
     ) -> ufelt {
         alloc_locals;
 
@@ -93,18 +93,18 @@ namespace Gate {
 
             if (decimals == WadRay.WAD_DECIMALS) {
                 // `assets` is of same `wad` precision as `yang`
-                return yang;
+                return yang_amt;
             }
 
             // Scale by difference to match the decimal precision of the asset
             let (scale: ufelt) = pow10(WadRay.WAD_DECIMALS - decimals);
-            let (scaled_assets: ufelt, _) = unsigned_div_rem(yang, scale);
+            let (scaled_assets: ufelt, _) = unsigned_div_rem(yang_amt, scale);
 
             return scaled_assets;
         } else {
             let total_assets: ufelt = get_total_assets();
             let assets: ufelt = WadRay.wunsigned_div_unchecked(
-                WadRay.wmul(yang, total_assets), total_supply
+                WadRay.wmul(yang_amt, total_assets), total_supply
             );
             return assets;
         }
@@ -112,7 +112,7 @@ namespace Gate {
 
     // `assets` is `ufelt` because it may not be 18 decimals
     func convert_to_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        assets: ufelt
+        asset_amt: ufelt
     ) -> wad {
         alloc_locals;
 
@@ -124,16 +124,16 @@ namespace Gate {
 
             if (decimals == WadRay.WAD_DECIMALS) {
                 // `assets` is of `wad` precision
-                return assets;
+                return asset_amt;
             }
 
             // Scale by difference to match `wad` precision `
-            let scaled_yang: wad = WadRay.fixed_point_to_wad(assets, decimals);
+            let scaled_yang: wad = WadRay.fixed_point_to_wad(asset_amt, decimals);
             return scaled_yang;
         } else {
             let total_assets: ufelt = get_total_assets();
             let yang: wad = WadRay.wunsigned_div_unchecked(
-                WadRay.wmul(assets, total_supply), total_assets
+                WadRay.wmul(asset_amt, total_supply), total_assets
             );
             return yang;
         }
