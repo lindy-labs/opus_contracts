@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_le_felt, assert_not_zero
 from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.sentinel.interface import ISentinel
@@ -26,11 +26,11 @@ func TroveOpened(user: address, trove_id: ufelt) {
 
 // the address of the Shrine associated with this Abbot
 @storage_var
-func abbot_shrine_address() -> (shrine: address) {
+func abbot_shrine() -> (shrine: address) {
 }
 
 @storage_var
-func abbot_sentinel_address() -> (sentinel: address) {
+func abbot_sentinel() -> (sentinel: address) {
 }
 
 // total number of troves in Shrine; monotonically increasing
@@ -73,8 +73,8 @@ func abbot_trove_owner(trove_id: ufelt) -> (owner: address) {
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(shrine: address, sentinel: address) {
-    abbot_shrine_address.write(shrine);
-    abbot_sentinel_address.write(sentinel);
+    abbot_shrine.write(shrine);
+    abbot_sentinel.write(sentinel);
     return ();
 }
 
@@ -139,8 +139,8 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     abbot_user_troves.write(user, user_troves_count, new_trove_id);
     abbot_trove_owner.write(new_trove_id, user);
 
-    let (shrine: address) = abbot_shrine_address.read();
-    let (sentinel: address) = abbot_sentinel_address.read();
+    let (shrine: address) = abbot_shrine.read();
+    let (sentinel: address) = abbot_sentinel.read();
     do_deposits(shrine, sentinel, user, new_trove_id, yangs_len, yangs, amounts);
     IShrine.forge(shrine, user, new_trove_id, forge_amount);
 
@@ -158,10 +158,10 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (user: address) = get_caller_address();
     assert_trove_owner(user, trove_id);
 
-    let (shrine: address) = abbot_shrine_address.read();
+    let (shrine: address) = abbot_shrine.read();
     IShrine.melt(shrine, user, trove_id, WadRay.BOUND);
 
-    let (sentinel: address) = abbot_sentinel_address.read();
+    let (sentinel: address) = abbot_sentinel.read();
     let (yang_addresses_count: ufelt) = ISentinel.get_yang_addresses_count(sentinel);
     do_withdrawals_full(shrine, sentinel, user, trove_id, 0, yang_addresses_count);
 
@@ -181,8 +181,17 @@ func deposit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         assert_not_zero(yang);
     }
 
-    let (shrine: address) = abbot_shrine_address.read();
-    let (sentinel: address) = abbot_sentinel_address.read();
+    with_attr error_message("Abbot: Trove ID cannot be zero") {
+        assert_not_zero(trove_id);
+    }
+
+    with_attr error_message("Abbot: Cannot deposit to a non-existing trove") {
+        let (troves_count: ufelt) = abbot_troves_count.read();
+        assert_le_felt(trove_id, troves_count);
+    }
+
+    let (shrine: address) = abbot_shrine.read();
+    let (sentinel: address) = abbot_sentinel.read();
     let (user: address) = get_caller_address();
 
     do_deposit(shrine, sentinel, user, trove_id, yang, amount);
@@ -204,8 +213,8 @@ func withdraw{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (user: address) = get_caller_address();
     assert_trove_owner(user, trove_id);
 
-    let (shrine: address) = abbot_shrine_address.read();
-    let (sentinel: address) = abbot_sentinel_address.read();
+    let (shrine: address) = abbot_shrine.read();
+    let (sentinel: address) = abbot_sentinel.read();
 
     ReentrancyGuard._start();
     ISentinel.exit(sentinel, yang, user, trove_id, amount);
@@ -224,7 +233,7 @@ func forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (user: address) = get_caller_address();
     assert_trove_owner(user, trove_id);
 
-    let (shrine: address) = abbot_shrine_address.read();
+    let (shrine: address) = abbot_shrine.read();
     IShrine.forge(shrine, user, trove_id, amount);
 
     return ();
@@ -238,7 +247,7 @@ func melt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     alloc_locals;
 
     let (user: address) = get_caller_address();
-    let (shrine: address) = abbot_shrine_address.read();
+    let (shrine: address) = abbot_shrine.read();
     IShrine.melt(shrine, user, trove_id, amount);
 
     return ();

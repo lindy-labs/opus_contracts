@@ -252,7 +252,7 @@ func enter{
 
     let yang_asset_max: ufelt = sentinel_yang_asset_max.read(yang);
     let current_total: ufelt = IGate.get_total_assets(gate);
-    let new_total: ufelt = WadRay.unsigned_add(yang_asset_max, current_total);
+    let new_total: ufelt = WadRay.unsigned_add(current_total, asset_amt);
     // Asserting that the deposit does not cause the total amount of yang deposited to exceed the max.
     with_attr error_message("Sentinel: Exceeds maximum amount of asset allowed") {
         assert_le(new_total, yang_asset_max);
