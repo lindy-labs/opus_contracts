@@ -312,7 +312,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
 
     // Withdraw absorbed collateral before updating shares
     let provision: Provision = get_provision(provider);
-    reap_internal(provider, provision.shares, provision.epoch);
+    reap_internal(provider, provision);
 
     // Calculate number of shares to issue to user and to add to total for current epoch
     // The two values deviate only when it is the first provision of an epoch and total shares is 0.
@@ -365,7 +365,7 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
     }
 
     // Withdraw absorbed collateral before updating shares
-    reap_internal(provider, provision.shares, provision.epoch);
+    reap_internal(provider, provision);
 
     // Fetch the shares for current epoch
     let current_epoch: ufelt = absorber_current_epoch.read();
@@ -433,7 +433,7 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
         assert_not_zero(provision.shares);
     }
 
-    reap_internal(provider, provision.shares, provision.epoch);
+    reap_internal(provider, provision);
 
     return ();
 }
@@ -658,11 +658,8 @@ func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let actual_amount_distributed: wad = WadRay.wmul(asset_amt_per_share, shares);
     let error: wad = WadRay.unsigned_sub(total_amount_to_distribute, actual_amount_distributed);
 
-    let asset_absorption: AssetAbsorption = AssetAbsorption(asset_amt_per_share, error);
-    let packed_info: packed = pack_felt(
-        asset_absorption.asset_amt_per_share, asset_absorption.error
-    );
-    absorber_asset_absorption.write(absorption_id, asset, packed_info);
+    let packed_asset_absorption: packed = pack_felt(asset_amt_per_share, error);
+    absorber_asset_absorption.write(absorption_id, asset, packed_asset_absorption);
 
     return ();
 }
@@ -692,7 +689,7 @@ func get_recent_asset_absorption_error{
 // Internal function to be called whenever a provider takes an action to ensure absorbed assets
 // are properly transferred to the provider before updating the provider's information
 func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address, provided_shares: wad, provided_epoch: ufelt
+    provider: address, provision: Provision
 ) {
     alloc_locals;
 
@@ -707,8 +704,8 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*
     ) = get_absorbed_assets_for_provider_internal(
         provider,
-        provided_shares,
-        provided_epoch,
+        provision.shares,
+        provision.epoch,
         provider_last_absorption_id,
         current_absorption_id,
     );
