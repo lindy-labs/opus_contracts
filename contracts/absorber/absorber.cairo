@@ -82,7 +82,7 @@ func absorber_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
 
 // Total number of shares
 @storage_var
-func absorber_total_shares() -> (deposit_id: ufelt) {
+func absorber_total_shares() -> (total: wad) {
 }
 
 // Mapping of a tuple of absorption ID and asset to its distribution
