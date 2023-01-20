@@ -10,7 +10,6 @@ from contracts.shrine.interface import IShrine
 
 from contracts.lib.aliases import address, ufelt, wad
 from contracts.lib.openzeppelin.security.reentrancyguard.library import ReentrancyGuard
-from contracts.lib.types import Trove, Yang
 from contracts.lib.wad_ray import WadRay
 
 //
