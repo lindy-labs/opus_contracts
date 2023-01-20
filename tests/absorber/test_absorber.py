@@ -422,7 +422,7 @@ async def test_update(shrine, absorber, update, yangs, yang_tokens):
     for asset, amt in zip(yangs, FIRST_UPDATE_ASSETS_AMT):
         asset_address = asset.contract_address
         asset_absorption_info = (
-            await absorber.get_asset_absorption_info(expected_absorption_id, asset_address).execute()
+            await absorber.get_asset_absorption_info(asset_address, expected_absorption_id).execute()
         ).result.info
         actual_asset_amt_per_share = from_fixed_point(asset_absorption_info.asset_amt_per_share, asset.decimals)
 

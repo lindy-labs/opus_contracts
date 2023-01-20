@@ -217,7 +217,7 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
 @view
 func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    absorption_id: ufelt, asset: address
+    asset: address, absorption_id: ufelt
 ) -> (info: AssetAbsorption) {
     let info: AssetAbsorption = get_asset_absorption(absorption_id, asset);
     return (info,);
