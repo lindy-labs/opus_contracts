@@ -542,14 +542,6 @@ func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     return (info,);
 }
 
-func set_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    absorption_id: ufelt, asset: address, info: AssetAbsorption
-) {
-    let packed_info: packed = pack_felt(info.asset_amt_per_share, info.error);
-    absorber_asset_absorption.write(absorption_id, asset, packed_info);
-    return ();
-}
-
 //
 // Internal - helpers for accounting of shares
 //
@@ -667,7 +659,10 @@ func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let error: wad = WadRay.unsigned_sub(total_amount_to_distribute, actual_amount_distributed);
 
     let asset_absorption: AssetAbsorption = AssetAbsorption(asset_amt_per_share, error);
-    set_asset_absorption(absorption_id, asset, asset_absorption);
+    let packed_info: packed = pack_felt(
+        asset_absorption.asset_amt_per_share, asset_absorption.error
+    );
+    absorber_asset_absorption.write(absorption_id, asset, packed_info);
 
     return ();
 }
