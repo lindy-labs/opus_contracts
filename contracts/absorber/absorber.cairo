@@ -867,12 +867,7 @@ func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     }
 
     let asset_amt_uint: Uint256 = WadRay.to_uint(asset_amt);
-
-    // TODO: Should this revert?
-    with_attr error_message("Absorber: Transfer of asset failed") {
-        let (success: bool) = IERC20.transfer(asset_address, provider, asset_amt_uint);
-        assert success = TRUE;
-    }
+    IERC20.transfer(asset_address, provider, asset_amt_uint);
 
     return ();
 }
