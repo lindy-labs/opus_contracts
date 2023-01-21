@@ -97,7 +97,7 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 // based on this conversion rate.
 // If the absorber's yin balance is wiped out, the conversion rate will be 0.
 @storage_var
-func absorber_epoch_share_conversion_rate(before: ufelt) -> (rate: wad) {
+func absorber_epoch_share_conversion_rate(epoch: ufelt) -> (rate: wad) {
 }
 
 //
@@ -252,11 +252,7 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let (
         asset_addresses_len, asset_addresses: address*, asset_amts: ufelt*
     ) = get_absorbed_assets_for_provider_internal(
-        provider,
-        provision.shares,
-        provision.epoch,
-        provider_last_absorption_id,
-        current_absorption_id,
+        provider, provision, provider_last_absorption_id, current_absorption_id
     );
     return (asset_addresses_len, asset_addresses, asset_addresses_len, asset_amts);
 }
@@ -316,7 +312,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
 
     // Calculate number of shares to issue to user and to add to total for current epoch
     // The two values deviate only when it is the first provision of an epoch and total shares is 0.
-    let (new_provider_shares: wad, issued_shares: wad) = convert_to_shares(amount, FALSE);
+    let (new_provision_shares: wad, issued_shares: wad) = convert_to_shares(amount, FALSE);
 
     // If epoch has changed, convert shares in previous epoch to new epoch's shares
     let current_epoch: ufelt = absorber_current_epoch.read();
@@ -324,7 +320,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
         provision.epoch, current_epoch, provision.shares
     );
 
-    let new_shares: wad = WadRay.unsigned_add(converted_shares, new_provider_shares);
+    let new_shares: wad = WadRay.unsigned_add(converted_shares, new_provision_shares);
     let provision: Provision = Provision(current_epoch, new_shares);
     set_provision(provider, provision);
 
@@ -488,10 +484,10 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
     let yin_per_share: wad = WadRay.wunsigned_div_unchecked(yin_balance, total_shares);
 
+    // This also checks for absorber's yin balance being emptied because yin per share will be
+    // below threshold if yin balance is 0.
     let above_threshold: bool = is_nn_le(YIN_PER_SHARE_THRESHOLD, yin_per_share);
-    let is_not_emptied: bool = is_not_zero(yin_balance);
-
-    if (above_threshold == TRUE and is_not_emptied == TRUE) {
+    if (above_threshold == TRUE) {
         return ();
     }
 
@@ -501,7 +497,8 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
     // minimum shares worth of yin from the yin balance so that there is at least such amount
     // of yin that cannot be removed in the next epoch.
-    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES, yin_balance);
+    // The amount is 10 ** 3, but we deduct 1 due to `is_nn_le` comparison.
+    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES - 1, yin_balance);
     if (above_initial_shares == TRUE) {
         tempvar yin_balance_for_shares: wad = yin_balance - INITIAL_SHARES;
     } else {
@@ -571,7 +568,8 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     // Get last deposit
     let total_shares: wad = absorber_total_shares.read();
 
-    let is_above_minimum: wad = is_nn_le(INITIAL_SHARES, total_shares);
+    // The amount is 10 ** 3, but we deduct 1 due to `is_nn_le` comparison.
+    let is_above_minimum: wad = is_nn_le(INITIAL_SHARES - 1, total_shares);
     if (is_above_minimum == FALSE) {
         // This branch should be unreachable when called in `remove` because no address would have
         // any shares if total shares is 0
@@ -714,11 +712,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (
         asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*
     ) = get_absorbed_assets_for_provider_internal(
-        provider,
-        provision.shares,
-        provision.epoch,
-        provider_last_absorption_id,
-        current_absorption_id,
+        provider, provision, provider_last_absorption_id, current_absorption_id
     );
 
     // Loop over assets and transfer
@@ -733,8 +727,7 @@ func get_absorbed_assets_for_provider_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     provider: address,
-    provided_shares: wad,
-    provided_epoch: ufelt,
+    provision: Provision,
     provided_absorption_id: ufelt,
     current_absorption_id: ufelt,
 ) -> (asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*) {
@@ -743,7 +736,7 @@ func get_absorbed_assets_for_provider_internal{
     let (asset_amts: ufelt*) = alloc();
 
     // Early termination by returning empty arrays
-    if (provided_shares == 0) {
+    if (provision.shares == 0) {
         return (0, asset_amts, asset_amts);
     }
 
@@ -757,8 +750,7 @@ func get_absorbed_assets_for_provider_internal{
     );
 
     get_absorbed_assets_for_provider_outer_loop(
-        provided_shares,
-        provided_epoch,
+        provision,
         provided_absorption_id,
         current_absorption_id,
         asset_addresses_len,
@@ -777,8 +769,7 @@ func get_absorbed_assets_for_provider_internal{
 func get_absorbed_assets_for_provider_outer_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
-    provided_shares: wad,
-    provided_epoch: ufelt,
+    provision: Provision,
     last_absorption_id: ufelt,
     current_absorption_id: ufelt,
     asset_count: ufelt,
@@ -794,14 +785,13 @@ func get_absorbed_assets_for_provider_outer_loop{
 
     let asset: address = asset_addresses[asset_idx];
     let asset_amt: ufelt = get_absorbed_assets_for_provider_inner_loop(
-        provided_shares, provided_epoch, last_absorption_id, current_absorption_id, asset, 0
+        provision.shares, provision.epoch, last_absorption_id, current_absorption_id, asset, 0
     );
 
     assert asset_amts[asset_idx] = asset_amt;
 
     return get_absorbed_assets_for_provider_outer_loop(
-        provided_shares,
-        provided_epoch,
+        provision,
         last_absorption_id,
         current_absorption_id,
         asset_count,
