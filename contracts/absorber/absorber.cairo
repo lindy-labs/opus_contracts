@@ -21,7 +21,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     revoke_role,
 )
 from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.aliases import address, bool, packed, ufelt, wad
+from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
 from contracts.lib.convert import pack_felt
 from contracts.lib.interfaces import IERC20
 from contracts.lib.types import AssetAbsorption, Provision
@@ -94,12 +94,12 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 
 // Conversion rate of an epoch's shares to the next
 // If an update causes the yin per share to drop below the threshold,
-// the epoch is incremented and yin per share is reset to one wad.
+// the epoch is incremented and yin per share is reset to one ray.
 // A user with shares in that epoch will receive new shares in the next epoch
 // based on this conversion rate.
 // If the absorber's yin balance is wiped out, the conversion rate will be 0.
 @storage_var
-func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: wad) {
+func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 }
 
 //
@@ -500,7 +500,7 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         tempvar yin_balance_for_shares: wad = yin_balance;
     }
 
-    let epoch_share_conversion_rate: wad = WadRay.wunsigned_div_unchecked(
+    let epoch_share_conversion_rate: ray = WadRay.runsigned_div_unchecked(
         yin_balance_for_shares, total_shares
     );
 
@@ -621,8 +621,10 @@ func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return (start_shares,);
     }
 
-    let epoch_conversion_rate: wad = absorber_epoch_share_conversion_rate.read(start_epoch);
-    let new_shares: wad = WadRay.wmul(start_shares, epoch_conversion_rate);
+    let epoch_conversion_rate: ray = absorber_epoch_share_conversion_rate.read(start_epoch);
+
+    // `rmul` of a wad an a ray returns a wad
+    let new_shares: wad = WadRay.rmul(start_shares, epoch_conversion_rate);
 
     return convert_epoch_shares(start_epoch + 1, end_epoch, new_shares);
 }
