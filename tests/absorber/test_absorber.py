@@ -741,6 +741,9 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
             adjusted_actual = from_fixed_point(actual, asset_info.decimals)
             assert_equalish(adjusted_expected, adjusted_actual, error_margin)
 
+        max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(provider).execute()).result.amount)
+        assert max_withdrawable_yin_amt == 0
+
         # Second provider reaps
         tx = await absorber.reap().execute(caller_address=provider)
 

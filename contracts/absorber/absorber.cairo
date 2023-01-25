@@ -233,7 +233,12 @@ func preview_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     provider: address
 ) -> (amount: wad) {
     let provision: Provision = get_provision(provider);
-    let max_removable_yin: wad = convert_to_yin(provision.shares);
+    let current_epoch: ufelt = absorber_current_epoch.read();
+    let current_provider_shares: wad = convert_epoch_shares(
+        provision.epoch, current_epoch, provision.shares
+    );
+
+    let max_removable_yin: wad = convert_to_yin(current_provider_shares);
     return (max_removable_yin,);
 }
 
@@ -463,7 +468,7 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Loop through assets and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
-    update_asset_loop(
+    update_assets_loop(
         current_absorption_id, total_shares, asset_addresses_len, asset_addresses, asset_amts
     );
 
@@ -497,8 +502,7 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
     // minimum shares worth of yin from the yin balance so that there is at least such amount
     // of yin that cannot be removed in the next epoch.
-    // The amount is 10 ** 3, but we deduct 1 due to `is_nn_le` comparison.
-    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES - 1, yin_balance);
+    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES, yin_balance);
     if (above_initial_shares == TRUE) {
         tempvar yin_balance_for_shares: wad = yin_balance - INITIAL_SHARES;
     } else {
@@ -568,8 +572,7 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     // Get last deposit
     let total_shares: wad = absorber_total_shares.read();
 
-    // The amount is 10 ** 3, but we deduct 1 due to `is_nn_le` comparison.
-    let is_above_minimum: wad = is_nn_le(INITIAL_SHARES - 1, total_shares);
+    let is_above_minimum: bool = is_nn_le(INITIAL_SHARES, total_shares);
     if (is_above_minimum == FALSE) {
         // This branch should be unreachable when called in `remove` because no address would have
         // any shares if total shares is 0
@@ -642,14 +645,16 @@ func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 // Helper function to iterate over an array of assets received from an absorption for updating
 // each provider's entitlement
-func update_asset_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func update_assets_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     absorption_id: ufelt, total_shares: wad, asset_count: ufelt, assets: address*, amounts: ufelt*
 ) {
     if (asset_count == 0) {
         return ();
     }
     update_asset(absorption_id, total_shares, [assets], [amounts]);
-    return update_asset_loop(absorption_id, total_shares, asset_count - 1, assets + 1, amounts + 1);
+    return update_assets_loop(
+        absorption_id, total_shares, asset_count - 1, assets + 1, amounts + 1
+    );
 }
 
 // Helper function to update each provider's entitlement of an absorbed asset
