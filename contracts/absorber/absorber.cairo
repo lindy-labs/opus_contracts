@@ -85,7 +85,9 @@ func absorber_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
 func absorber_total_shares() -> (total: wad) {
 }
 
-// Mapping of a tuple of absorption ID and asset to its distribution
+// Mapping of a tuple of absorption ID and asset to a packed struct of
+// 1. the amount of that asset in its decimal precision absorbed per share wad for an absorption
+// 2. the rounding error from calculating (1) that is to be added to the next absorption
 @storage_var
 func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: packed) {
 }
@@ -97,7 +99,7 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 // based on this conversion rate.
 // If the absorber's yin balance is wiped out, the conversion rate will be 0.
 @storage_var
-func absorber_epoch_share_conversion_rate(epoch: ufelt) -> (rate: wad) {
+func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: wad) {
 }
 
 //
@@ -123,8 +125,8 @@ func Remove(provider: address, epoch: ufelt, yin: wad) {
 @event
 func Reap(
     provider: address,
-    asset_addresses_len: ufelt,
-    asset_addresses: address*,
+    assets_len: ufelt,
+    assets: address*,
     asset_amts_len: ufelt,
     asset_amts: ufelt*,
 ) {
@@ -132,8 +134,8 @@ func Reap(
 
 @event
 func Gain(
-    asset_addresses_len: ufelt,
-    asset_addresses: address*,
+    assets_len: ufelt,
+    assets: address*,
     asset_amts_len: ufelt,
     asset_amts: wad*,
     total_shares: wad,
@@ -245,9 +247,7 @@ func preview_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 @view
 func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
-) -> (
-    asset_addresses_len: ufelt, asset_addresses: address*, asset_amts_len: ufelt, asset_amts: ufelt*
-) {
+) -> (assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*) {
     alloc_locals;
 
     let provision: Provision = get_provision(provider);
@@ -255,11 +255,11 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
 
     let (
-        asset_addresses_len, asset_addresses: address*, asset_amts: ufelt*
+        assets_len, assets: address*, asset_amts: ufelt*
     ) = get_absorbed_assets_for_provider_internal(
         provider, provision, provider_last_absorption_id, current_absorption_id
     );
-    return (asset_addresses_len, asset_addresses, asset_addresses_len, asset_amts);
+    return (assets_len, assets, assets_len, asset_amts);
 }
 
 //
@@ -442,7 +442,7 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 // Update assets received after an absorption
 @external
 func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    asset_addresses_len: ufelt, asset_addresses: address*, asset_amts_len: ufelt, asset_amts: ufelt*
+    assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*
 ) {
     alloc_locals;
 
@@ -468,19 +468,10 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Loop through assets and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
-    update_assets_loop(
-        current_absorption_id, total_shares, asset_addresses_len, asset_addresses, asset_amts
-    );
+    update_assets_loop(current_absorption_id, total_shares, assets_len, assets, asset_amts);
 
     // Emit `Gain` event
-    Gain.emit(
-        asset_addresses_len,
-        asset_addresses,
-        asset_amts_len,
-        asset_amts,
-        total_shares,
-        current_epoch,
-    );
+    Gain.emit(assets_len, assets, asset_amts_len, asset_amts, total_shares, current_epoch);
 
     // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
     let shrine: address = absorber_shrine.read();
@@ -569,7 +560,6 @@ func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     yin_amt: wad, round_up: bool
 ) -> (provider_shares: wad, system_shares: wad) {
-    // Get last deposit
     let total_shares: wad = absorber_total_shares.read();
 
     let is_above_minimum: bool = is_nn_le(INITIAL_SHARES, total_shares);
@@ -590,9 +580,7 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
 
         // replicate `WadRay.wunsigned_div_unchecked` to check remainder of integer division
-        let product: wad = WadRay.wmul(yin_amt, total_shares);
-        let scaled_product: wad = product * WadRay.WAD_SCALE;
-        let (computed_shares: wad, r: wad) = unsigned_div_rem(scaled_product, yin_balance);
+        let (computed_shares: wad, r: wad) = unsigned_div_rem(yin_amt * total_shares, yin_balance);
         if (round_up == TRUE and r != 0) {
             return (computed_shares + 1, computed_shares + 1);
         }
@@ -659,7 +647,7 @@ func update_assets_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
 // Helper function to update each provider's entitlement of an absorbed asset
 func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    absorption_id: ufelt, shares: wad, asset: address, amount: ufelt
+    absorption_id: ufelt, total_shares: wad, asset: address, amount: ufelt
 ) {
     if (amount == 0) {
         return ();
@@ -668,8 +656,8 @@ func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let last_error: wad = get_recent_asset_absorption_error(asset, absorption_id);
     let total_amount_to_distribute: wad = WadRay.unsigned_add(amount, last_error);
 
-    let asset_amt_per_share: wad = WadRay.wunsigned_div(total_amount_to_distribute, shares);
-    let actual_amount_distributed: wad = WadRay.wmul(asset_amt_per_share, shares);
+    let asset_amt_per_share: wad = WadRay.wunsigned_div(total_amount_to_distribute, total_shares);
+    let actual_amount_distributed: wad = WadRay.wmul(asset_amt_per_share, total_shares);
     let error: wad = WadRay.unsigned_sub(total_amount_to_distribute, actual_amount_distributed);
 
     let packed_asset_absorption: packed = pack_felt(asset_amt_per_share, error);
@@ -715,15 +703,15 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     absorber_provider_last_absorption.write(provider, current_absorption_id);
 
     let (
-        asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*
+        assets_len: ufelt, assets: address*, asset_amts: ufelt*
     ) = get_absorbed_assets_for_provider_internal(
         provider, provision, provider_last_absorption_id, current_absorption_id
     );
 
     // Loop over assets and transfer
-    transfer_assets(provider, asset_addresses_len, asset_addresses, asset_amts);
+    transfer_assets(provider, assets_len, assets, asset_amts);
 
-    Reap.emit(provider, asset_addresses_len, asset_addresses, asset_addresses_len, asset_amts);
+    Reap.emit(provider, assets_len, assets, assets_len, asset_amts);
 
     return ();
 }
@@ -735,7 +723,7 @@ func get_absorbed_assets_for_provider_internal{
     provision: Provision,
     provided_absorption_id: ufelt,
     current_absorption_id: ufelt,
-) -> (asset_addresses_len: ufelt, asset_addresses: address*, asset_amts: ufelt*) {
+) -> (assets_len: ufelt, assets: address*, asset_amts: ufelt*) {
     alloc_locals;
 
     let (asset_amts: ufelt*) = alloc();
@@ -750,21 +738,13 @@ func get_absorbed_assets_for_provider_internal{
     }
 
     let sentinel: address = absorber_sentinel.read();
-    let (asset_addresses_len: ufelt, asset_addresses: address*) = ISentinel.get_yang_addresses(
-        sentinel
-    );
+    let (assets_len: ufelt, assets: address*) = ISentinel.get_yang_addresses(sentinel);
 
     get_absorbed_assets_for_provider_outer_loop(
-        provision,
-        provided_absorption_id,
-        current_absorption_id,
-        asset_addresses_len,
-        0,
-        asset_addresses,
-        asset_amts,
+        provision, provided_absorption_id, current_absorption_id, assets_len, 0, assets, asset_amts
     );
 
-    return (asset_addresses_len, asset_addresses, asset_amts);
+    return (assets_len, assets, asset_amts);
 }
 
 // Outer loop iterating over yangs
@@ -779,7 +759,7 @@ func get_absorbed_assets_for_provider_outer_loop{
     current_absorption_id: ufelt,
     asset_count: ufelt,
     asset_idx: ufelt,
-    asset_addresses: address*,
+    assets: address*,
     asset_amts: ufelt*,
 ) {
     alloc_locals;
@@ -788,7 +768,7 @@ func get_absorbed_assets_for_provider_outer_loop{
         return ();
     }
 
-    let asset: address = asset_addresses[asset_idx];
+    let asset: address = assets[asset_idx];
     let asset_amt: ufelt = get_absorbed_assets_for_provider_inner_loop(
         provision.shares, provision.epoch, last_absorption_id, current_absorption_id, asset, 0
     );
@@ -801,13 +781,13 @@ func get_absorbed_assets_for_provider_outer_loop{
         current_absorption_id,
         asset_count,
         asset_idx + 1,
-        asset_addresses,
+        assets,
         asset_amts,
     );
 }
 
-// Inner loop iterating over absorption IDs from the latest absorption ID down to the
-// last absorption ID tracked for a user for a given asset
+// Inner loop iterating over absorption IDs from the ID right after the last absorption ID tracked for a user
+// up to the latest absorption ID tracked for a user, for a given asset.
 // We need to iterate from the last absorption ID upwards to the current absorption ID in order to take
 // into account the conversion rate of shares from epoch to epoch
 func get_absorbed_assets_for_provider_inner_loop{
@@ -855,13 +835,13 @@ func get_absorbed_assets_for_provider_inner_loop{
 
 // Helper function to iterate over an array of assets to transfer to an address
 func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address, asset_count: ufelt, asset_addresses: address*, asset_amts: ufelt*
+    provider: address, asset_count: ufelt, assets: address*, asset_amts: ufelt*
 ) {
     if (asset_count == 0) {
         return ();
     }
-    transfer_asset(provider, [asset_addresses], [asset_amts]);
-    return transfer_assets(provider, asset_count - 1, asset_addresses + 1, asset_amts + 1);
+    transfer_asset(provider, [assets], [asset_amts]);
+    return transfer_assets(provider, asset_count - 1, assets + 1, asset_amts + 1);
 }
 
 // Helper function to transfer an asset to an address

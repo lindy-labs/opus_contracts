@@ -451,7 +451,7 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
     asset_count = len(assets)
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
-    assert absorbed.asset_addresses == assets
+    assert absorbed.assets == assets
     for asset_info, expected, actual in zip(yangs, asset_amts, absorbed.asset_amts):
         error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
         adjusted_expected = from_fixed_point(expected, asset_info.decimals)
@@ -735,7 +735,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
 
         absorbed = (await absorber.preview_reap(provider).execute()).result
-        assert absorbed.asset_addresses == asset_addresses
+        assert absorbed.assets == asset_addresses
         for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.asset_amts):
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             adjusted_actual = from_fixed_point(actual, asset_info.decimals)
@@ -838,7 +838,7 @@ async def test_non_provider_fail(shrine, absorber):
     assert removable_yin == 0
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
-    assert absorbed.asset_addresses == []
+    assert absorbed.assets == []
     assert absorbed.asset_amts == []
 
 

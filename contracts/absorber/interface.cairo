@@ -39,10 +39,7 @@ namespace IAbsorber {
     }
 
     func preview_reap(provider: address) -> (
-        asset_addresses_len: ufelt,
-        asset_addresses: address*,
-        asset_amts_len: ufelt,
-        asset_amts: ufelt*,
+        assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*
     ) {
     }
 
@@ -62,11 +59,6 @@ namespace IAbsorber {
     func reap() {
     }
 
-    func update(
-        asset_addresses_len: ufelt,
-        asset_addresses: address*,
-        asset_amts_len: ufelt,
-        asset_amts: ufelt*,
-    ) {
+    func update(assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*) {
     }
 }
