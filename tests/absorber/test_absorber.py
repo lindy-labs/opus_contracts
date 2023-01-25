@@ -771,7 +771,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.asyncio
-async def test_multi_user_reap_same_epoch(
+async def test_multi_user_reap_same_epoch_single_absorption(
     shrine, absorber, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
 ):
     """
@@ -819,6 +819,94 @@ async def test_multi_user_reap_same_epoch(
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             expected_reaped_amt = percentage * absorbed_amt
             assert_equalish(after_bal, before_bal + expected_reaped_amt, error_margin)
+
+
+@pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("0.5")], indirect=["update"])
+@pytest.mark.parametrize("second_absorption_percentage", [Decimal("0.2"), Decimal("0.5")])
+@pytest.mark.usefixtures("first_epoch_first_provider", "funded_absorber_providers")
+@pytest.mark.asyncio
+async def test_multi_user_reap_same_epoch_multi_absorptions(
+    shrine, absorber, yangs, yang_tokens, update, second_update_assets, second_absorption_percentage
+):
+    """
+    Sequence of events:
+    1. Provider 1 provides
+    2. Partial absorption happens
+    3. Provider 2 provides
+    4. Partial absorption happens
+    5. Providers 1 and 2 reaps
+    """
+    first_provider = PROVIDER_1
+    second_provider = PROVIDER_2
+
+    _, _, remaining_yin_wad, _, _, asset_addresses, _ = update
+    first_absorbed_amts = FIRST_UPDATE_ASSETS_AMT
+    asset_count = len(asset_addresses)
+
+    # Step 3: Provider 2 pprovides
+    second_provider_yin_amt_uint = (await shrine.balanceOf(second_provider).execute()).result.balance
+    second_provider_yin_amt_wad = from_uint(second_provider_yin_amt_uint)
+    await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
+
+    # Step 4: Partial absorption
+    first_provider_amt = from_wad(remaining_yin_wad)
+    second_provider_amt = from_wad(second_provider_yin_amt_wad)
+    total_provided_amt = first_provider_amt + second_provider_amt
+
+    second_update_burn_amt_wad = to_wad(second_absorption_percentage * total_provided_amt)
+    second_absorbed_amts = SECOND_UPDATE_ASSETS_AMT
+    _, second_absorbed_amts_wad = second_update_assets
+
+    await simulate_update(
+        shrine,
+        absorber,
+        yang_tokens,
+        asset_addresses,
+        second_absorbed_amts_wad,
+        second_update_burn_amt_wad,
+    )
+
+    providers = [first_provider, second_provider]
+    providers_yin_remaining = [first_provider_amt, second_provider_amt]
+    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+
+    provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
+    for provider, percentage, yin_remaining, before_bals in zip(
+        providers, provided_perc, providers_yin_remaining, before_provider_bals
+    ):
+        tx = await absorber.reap().execute(caller_address=provider)
+
+        assert_event_emitted(
+            tx, absorber.contract_address, "Reap", lambda d: d[:5] == [provider, asset_count, *asset_addresses]
+        )
+
+        for asset, asset_info, before_bal, first_absorbed_amt, second_absorbed_amt in zip(
+            yang_tokens, yangs, before_bals, first_absorbed_amts, second_absorbed_amts
+        ):
+            assert_event_emitted(
+                tx,
+                asset.contract_address,
+                "Transfer",
+                lambda d: d[:2] == [absorber.contract_address, provider],
+            )
+
+            after_bal = from_fixed_point(
+                from_uint((await asset.balanceOf(provider).execute()).result.balance),
+                asset_info.decimals,
+            )
+
+            # Relax error margin by half due to loss of precision from fixed point arithmetic
+            error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
+            expected_reaped_amt = percentage * second_absorbed_amt
+
+            if provider == first_provider:
+                expected_reaped_amt += first_absorbed_amt
+
+            assert_equalish(after_bal, before_bal + expected_reaped_amt, error_margin)
+
+        max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(provider).execute()).result.amount)
+        expected_yin_remaining = yin_remaining - (percentage * from_wad(second_update_burn_amt_wad))
+        assert_equalish(max_withdrawable_yin_amt, expected_yin_remaining)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
