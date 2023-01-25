@@ -70,7 +70,9 @@ func absorber_absorptions_count() -> (absorption_id: ufelt) {
 func absorber_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
 }
 
-// Mapping of address to Provision struct
+// Mapping of address to a packed struct of
+// 1. epoch in which the provider's shares are issued
+// 2. number of shares for the provider in the above epoch
 @storage_var
 func absorber_provision(provider: address) -> (provision: packed) {
 }
@@ -80,7 +82,7 @@ func absorber_provision(provider: address) -> (provision: packed) {
 func absorber_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
 }
 
-// Total number of shares
+// Total number of shares for current epoch
 @storage_var
 func absorber_total_shares() -> (total: wad) {
 }

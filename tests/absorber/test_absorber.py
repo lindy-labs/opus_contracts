@@ -270,20 +270,20 @@ async def funded_absorber_providers(shrine, shrine_feeds, abbot, absorber, steth
 async def first_epoch_first_provider(shrine, absorber, forged_troves, funded_absorber_providers):
     provider = PROVIDER_1
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
-    provide_yin_amt = from_uint(provider_yin_amt_uint) // 2
+    provider_yin_amt = from_uint(provider_yin_amt_uint) // 2
 
-    tx = await absorber.provide(provide_yin_amt).execute(caller_address=provider)
-    return tx, provide_yin_amt
+    tx = await absorber.provide(provider_yin_amt).execute(caller_address=provider)
+    return tx, provider_yin_amt
 
 
 @pytest.fixture
 async def first_epoch_second_provider(shrine, absorber, forged_troves, funded_absorber_providers):
     provider = PROVIDER_2
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
-    provide_yin_amt = from_uint(provider_yin_amt_uint)
+    provider_yin_amt = from_uint(provider_yin_amt_uint)
 
-    tx = await absorber.provide(provide_yin_amt).execute(caller_address=provider)
-    return tx, provide_yin_amt
+    tx = await absorber.provide(provider_yin_amt).execute(caller_address=provider)
+    return tx, provider_yin_amt
 
 
 @pytest.fixture
