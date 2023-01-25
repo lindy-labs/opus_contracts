@@ -622,7 +622,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert total_shares_wad == absorber_yin_bal_wad
 
-    # Provider 2 provides
+    # Step 3: Provider 2 provides
     second_provider_yin_amt_uint = (await shrine.balanceOf(second_provider).execute()).result.balance
     second_provider_yin_amt_wad = from_uint(second_provider_yin_amt_uint)
     second_provider_yin_amt = from_wad(second_provider_yin_amt_wad)
@@ -638,6 +638,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     before_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
     before_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
 
+    # Step 4: Provider 1 withdraws
     await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=first_provider)
 
     after_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
@@ -668,8 +669,8 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, second_update_assets, skip_second_asset):
     """
     Sequence of events:
-    1. Provider 1 provides
-    2. Entire absorber's balance is used for an absorption
+    1. Provider 1 provides (`first_epoch_first_provider`)
+    2. Entire absorber's balance is used for an absorption (`update`)
     3. Provider 2 provides
     4. Entire absorber's balance is used for an absorption
     5. Provider 1 and 2 reaps.
@@ -679,7 +680,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    # Provider 2 provides
+    # Step 3: Provider 2 provides
     second_provider_yin_amt_uint = (await shrine.balanceOf(second_provider).execute()).result.balance
     second_provider_yin_amt_wad = from_uint(second_provider_yin_amt_uint)
 
@@ -695,7 +696,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
     expected_last_absorption = 1
     assert second_provider_last_absorption == expected_last_absorption
 
-    # Drain again
+    # Step 4: Absorber is fully drained
     asset_addresses, asset_amts = second_update_assets
     if skip_second_asset is True:
         asset_amts[1] = 0
@@ -744,7 +745,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
         max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(provider).execute()).result.amount)
         assert max_withdrawable_yin_amt == 0
 
-        # Second provider reaps
+        # Step 5: Provider 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
         for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
@@ -776,8 +777,8 @@ async def test_multi_user_reap_same_epoch_single_absorption(
 ):
     """
     Sequence of events:
-    1. Providers 1 and 2 provide
-    2. Absorption happens
+    1. Providers 1 and 2 provide (`first_epoch_first_provider`, `first_epoch_second_provider`)
+    2. Absorption happens (`update`)
     3. Providers 1 and 2 reaps
     """
     _, _, _, _, _, asset_addresses, _ = update
@@ -796,6 +797,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
 
     provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
     for provider, percentage, before_bals in zip(providers, provided_perc, before_provider_bals):
+        # Step 3: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
         assert_event_emitted(
@@ -830,8 +832,8 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 ):
     """
     Sequence of events:
-    1. Provider 1 provides
-    2. Partial absorption happens
+    1. Provider 1 provides (`first_epoch_first_provider`)
+    2. Partial absorption happens (`update`)
     3. Provider 2 provides
     4. Partial absorption happens
     5. Providers 1 and 2 reaps
@@ -867,13 +869,14 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     )
 
     providers = [first_provider, second_provider]
-    providers_yin_remaining = [first_provider_amt, second_provider_amt]
+    providers_remaining_yin = [first_provider_amt, second_provider_amt]
     before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
 
-    provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
-    for provider, percentage, yin_remaining, before_bals in zip(
-        providers, provided_perc, providers_yin_remaining, before_provider_bals
+    provided_perc = [amt / total_provided_amt for amts in providers_remaining_yin]
+    for provider, percentage, remaining_yin, before_bals in zip(
+        providers, provided_perc, providers_remaining_yin, before_provider_bals
     ):
+        # Step 5: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
         assert_event_emitted(
@@ -905,8 +908,8 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
             assert_equalish(after_bal, before_bal + expected_reaped_amt, error_margin)
 
         max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(provider).execute()).result.amount)
-        expected_yin_remaining = yin_remaining - (percentage * from_wad(second_update_burn_amt_wad))
-        assert_equalish(max_withdrawable_yin_amt, expected_yin_remaining)
+        expected_remaining_yin = remaining_yin - (percentage * from_wad(second_update_burn_amt_wad))
+        assert_equalish(max_withdrawable_yin_amt, expected_remaining_yin)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -971,7 +974,6 @@ async def test_provide_fail(shrine, absorber):
 @pytest.mark.asyncio
 async def test_provide_out_of_bounds_fail(absorber, amt):
     provider = PROVIDER_1
-    # Negative amount
     with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
         await absorber.provide(amt).execute(caller_address=provider)
 
@@ -981,7 +983,6 @@ async def test_provide_out_of_bounds_fail(absorber, amt):
 @pytest.mark.asyncio
 async def test_remove_out_of_bounds_fail(absorber, amt):
     provider = PROVIDER_1
-    # Negative amount
     with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
         await absorber.remove(amt).execute(caller_address=provider)
 
