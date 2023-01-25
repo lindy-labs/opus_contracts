@@ -168,7 +168,17 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     let (funder: address) = get_caller_address();
-    return purge(shrine, trove_id, trove_ltv, safe_purge_amt, percentage_freed, funder, recipient);
+    let (
+        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
+    ) = purge(shrine, trove_id, trove_ltv, safe_purge_amt, percentage_freed, funder, recipient);
+
+    // Assert new LTV < old LTV
+    let (_, updated_trove_ltv: ray, _, _) = IShrine.get_trove_info(shrine, trove_id);
+    with_attr error_message("Purger: Loan-to-value ratio increased") {
+        assert_nn_le(updated_trove_ltv, trove_ltv);
+    }
+
+    return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
 // Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
@@ -278,12 +288,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     free_yangs(
         shrine, sentinel, recipient, trove_id, yang_count, yangs, percentage_freed, freed_assets_amt
     );
-
-    // Assert new LTV < old LTV
-    let (_, updated_trove_ltv: ray, _, _) = IShrine.get_trove_info(shrine, trove_id);
-    with_attr error_message("Purger: Loan-to-value ratio increased") {
-        assert_nn_le(updated_trove_ltv, trove_ltv);
-    }
 
     Purged.emit(
         trove_id,
