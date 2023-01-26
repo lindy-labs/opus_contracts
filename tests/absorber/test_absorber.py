@@ -872,7 +872,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     providers_remaining_yin = [first_provider_amt, second_provider_amt]
     before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
 
-    provided_perc = [amt / total_provided_amt for amts in providers_remaining_yin]
+    provided_perc = [amt / total_provided_amt for amt in providers_remaining_yin]
     for provider, percentage, remaining_yin, before_bals in zip(
         providers, provided_perc, providers_remaining_yin, before_provider_bals
     ):
