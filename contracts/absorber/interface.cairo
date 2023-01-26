@@ -30,7 +30,7 @@ namespace IAbsorber {
     func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
-    func get_asset_absorption_info(absorption_id: ufelt, asset: address) -> (
+    func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (
         info: AssetAbsorption
     ) {
     }
