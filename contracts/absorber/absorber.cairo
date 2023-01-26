@@ -29,10 +29,10 @@ from contracts.lib.wad_ray import WadRay
 
 // Constants
 
-// Epoch is incremented if the amount of yin wad per share drops below this threshold
-// in order to reset yin per share ratio to parity for accounting. Otherwise, there will
+// If the amount of yin wad per share drops below this threshold, the epoch is incremented
+// to reset the yin per share ratio to 1 : 1 parity for accounting. Otherwise, there will
 // eventually be an overflow when converting yin to shares (and vice versa)
-// as yin per share drops
+// as yin per share approaches 0.
 const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 
 // Shares to be minted without a provider to avoid first provider front-running
@@ -55,12 +55,14 @@ func absorber_shrine() -> (shrine: address) {
 }
 
 // Epoch starts from 0.
+// Both shares and absorptions are tied to an epoch.
+// The epoch is incremented when the amount of yin per share drops below the threshold.
+// This includes when the absorber's yin balance is completely depleted.
 @storage_var
 func absorber_current_epoch() -> (epoch: ufelt) {
 }
 
 // Absorptions start from 1.
-// The initial value `0` is used as the terminating condition.
 @storage_var
 func absorber_absorptions_count() -> (absorption_id: ufelt) {
 }
@@ -318,7 +320,8 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     reap_internal(provider, provision);
 
     // Calculate number of shares to issue to user and to add to total for current epoch
-    // The two values deviate only when it is the first provision of an epoch and total shares is 0.
+    // The two values deviate only when it is the first provision of an epoch and
+    // total shares is below the minimum initial shares.
     let (new_provision_shares: wad, issued_shares: wad) = convert_to_shares(amount, FALSE);
 
     // If epoch has changed, convert shares in previous epoch to new epoch's shares
@@ -591,8 +594,8 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 }
 
-// This implementation is slightly different from Gate because shares is only used for
-// internal accounting and both shares and yin are wads.
+// This implementation is slightly different from Gate because the concept of shares is
+// used for internal accounting only, and both shares and yin are wads.
 func convert_to_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     shares_amt: wad
 ) -> wad {
@@ -720,6 +723,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return ();
 }
 
+// Internal function to calculate the absorbed assets that a provider is entitled to
 func get_absorbed_assets_for_provider_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
@@ -752,9 +756,9 @@ func get_absorbed_assets_for_provider_internal{
 }
 
 // Outer loop iterating over yangs
-// We iterate over yangs first, because array values cannot be updated.
-// Since we can only write the amount of asset to transfer once, we need to compute
+// Since we can only write to an array once, we need to compute
 // the total amount to transfer for a given asset across all absorption IDs.
+// Therefore, we iterate over yangs first.
 func get_absorbed_assets_for_provider_outer_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
@@ -793,7 +797,7 @@ func get_absorbed_assets_for_provider_outer_loop{
 // Inner loop iterating over absorption IDs from the ID right after the last absorption ID tracked for a user
 // up to the latest absorption ID tracked for a user, for a given asset.
 // We need to iterate from the last absorption ID upwards to the current absorption ID in order to take
-// into account the conversion rate of shares from epoch to epoch
+// into account the conversion rate of shares from epoch to epoch.
 func get_absorbed_assets_for_provider_inner_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
