@@ -14,6 +14,7 @@ from tests.utils import (
     TIME_INTERVAL,
     TRUE,
     WAD_RAY_OOB_VALUES,
+    ZERO_ADDRESS,
     YangConfig,
     assert_equalish,
     assert_event_emitted,
@@ -61,12 +62,11 @@ async def simulate_update(
         Contract instance of Absorber.
     assets: tuple[StarknetContract]
         Ordered tuple of token contract instances for the freed assets
-    asset_addresses: List[int]
+    asset_addresses: list[int]
         Ordered list of token contract addresses for the freed assets
     asset_amts: list[int]
-        Ordered list of amount of each asset to transfer to the absorber
-        in wad.
-    yin_amt_to_burn_wad:
+        Ordered list of amount of each asset to transfer to the absorber in wad.
+    yin_amt_to_burn_wad: int
         Amount of yin to transfer from the absorber in wad
 
     Returns
@@ -99,8 +99,10 @@ async def simulate_update(
 @pytest.fixture
 async def first_update_assets(yangs) -> tuple[list[int]]:
     """
-    Helper fixture to return a tuple of a list of asset addresses
-    and a list of asset amounts.
+    Helper fixture to return a tuple of:
+    1. a list of asset addresses
+    2. a list of asset amounts in the asset's decimals
+    3. a list of asset amounts in Decimal.
     """
     asset_addresses = [asset_info.contract_address for asset_info in yangs]
     asset_amts = [
@@ -110,14 +112,16 @@ async def first_update_assets(yangs) -> tuple[list[int]]:
             yangs,
         )
     ]
-    return asset_addresses, asset_amts
+    return asset_addresses, asset_amts, FIRST_UPDATE_ASSETS_AMT
 
 
 @pytest.fixture
 async def second_update_assets(yangs) -> tuple[list[int]]:
     """
-    Helper fixture to return a tuple of a list of asset addresses
-    and a list of asset amounts.
+    Helper fixture to return a tuple of:
+    1. a list of asset addresses
+    2. a list of asset amounts in the asset's decimals
+    3. a list of asset amounts in Decimal.
     """
     asset_addresses = [asset_info.contract_address for asset_info in yangs]
     asset_amts = [
@@ -127,7 +131,7 @@ async def second_update_assets(yangs) -> tuple[list[int]]:
             yangs,
         )
     ]
-    return asset_addresses, asset_amts
+    return asset_addresses, asset_amts, SECOND_UPDATE_ASSETS_AMT
 
 
 @pytest.fixture
@@ -267,7 +271,7 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
     burn_amt_wad = int(percentage_to_drain * Decimal(absorber_yin_bal_wad))
 
     # Call `update`
-    asset_addresses, asset_amts = first_update_assets
+    asset_addresses, asset_amts, asset_amts_dec = first_update_assets
     tx, asset_addresses, asset_amts = await simulate_update(
         shrine,
         absorber,
@@ -278,7 +282,16 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
     )
 
     remaining_amt_wad = absorber_yin_bal_wad - burn_amt_wad
-    return tx, percentage_to_drain, remaining_amt_wad, epoch, total_shares_wad, asset_addresses, asset_amts
+    return (
+        tx,
+        percentage_to_drain,
+        remaining_amt_wad,
+        epoch,
+        total_shares_wad,
+        asset_addresses,
+        asset_amts,
+        asset_amts_dec,
+    )
 
 
 #
@@ -365,7 +378,7 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
 async def test_update(shrine, absorber, update, yangs, yang_tokens):
-    tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts = update
+    tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
 
     before_total_shares = from_wad(before_total_shares_wad)
@@ -382,7 +395,7 @@ async def test_update(shrine, absorber, update, yangs, yang_tokens):
     actual_absorption_id = (await absorber.get_absorptions_count().execute()).result.count
     assert actual_absorption_id == expected_absorption_id
 
-    for asset, amt in zip(yangs, FIRST_UPDATE_ASSETS_AMT):
+    for asset, amt in zip(yangs, asset_amts_dec):
         asset_address = asset.contract_address
         asset_absorption_info = (
             await absorber.get_asset_absorption_info(asset_address, expected_absorption_id).execute()
@@ -410,7 +423,7 @@ async def test_update(shrine, absorber, update, yangs, yang_tokens):
 async def test_reap(shrine, absorber, update, yangs, yang_tokens):
     provider = PROVIDER_1
 
-    _, _, _, _, _, assets, asset_amts = update
+    _, _, _, _, _, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
@@ -433,7 +446,7 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
 
     # Check that provider 1 receives all assets from first provision
     for asset_contract, asset_info, before_bal, absorbed_amt in zip(
-        yang_tokens, yangs, before_provider_asset_bals, FIRST_UPDATE_ASSETS_AMT
+        yang_tokens, yangs, before_provider_asset_bals, asset_amts_dec
     ):
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
@@ -460,7 +473,7 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
 async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_to_remove):
     provider = PROVIDER_1
 
-    _, percentage_drained, _, _, total_shares_wad, assets, asset_amts = update
+    _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
 
     before_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
@@ -573,7 +586,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    _, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _ = update
+    _, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
 
     # Assert epoch is updated
     epoch = (await absorber.get_current_epoch().execute()).result.epoch
@@ -611,10 +624,6 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     after_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
     expected_removed_yin = from_wad(remaining_absorber_yin_wad)
     removed_yin = from_wad(after_first_provider_yin_amt_wad - before_first_provider_yin_amt_wad)
-
-    absorber_yin_bal_wad = from_uint(
-        (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
-    )  # Debug
     assert_equalish(removed_yin, expected_removed_yin)
 
     expected_converted_shares = from_wad(
@@ -627,9 +636,11 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("skip_second_asset", [True, False])  # Test asset not involved in absorption
-@pytest.mark.usefixtures("first_epoch_first_provider", "update")
+@pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, second_update_assets, skip_second_asset):
+async def test_reap_different_epochs(
+    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skip_second_asset
+):
     """
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
@@ -640,6 +651,8 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
        Provider 1 should receive assets from first update.
        Provider 2 should receive assets from second update.
     """
+    first_absorbed_amts_dec = update[-1]
+
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
@@ -660,17 +673,10 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
     assert second_provider_last_absorption == expected_last_absorption
 
     # Step 4: Absorber is fully drained
-    asset_addresses, asset_amts = second_update_assets
+    asset_addresses, asset_amts, asset_amts_dec = second_update_assets
     if skip_second_asset is True:
         asset_amts[1] = 0
-
-    asset_amts_adjusted = [
-        from_fixed_point(i, asset_info.decimals)
-        for i, asset_info in zip(
-            asset_amts,
-            yangs,
-        )
-    ]
+        asset_amts_dec[1] = Decimal("0")
 
     await simulate_update(
         shrine,
@@ -694,7 +700,7 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
 
     providers = [first_provider, second_provider]
     before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
-    absorbed_amts_arrs = [FIRST_UPDATE_ASSETS_AMT, asset_amts_adjusted]
+    absorbed_amts_arrs = [first_absorbed_amts_dec, asset_amts_dec]
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
 
@@ -733,7 +739,6 @@ async def test_reap_different_epochs(shrine, absorber, yangs, yang_tokens, secon
 
 
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
-@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
     shrine, absorber, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
@@ -744,8 +749,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     2. Absorption happens (`update`)
     3. Providers 1 and 2 reaps
     """
-    _, _, _, _, _, asset_addresses, _ = update
-    absorbed_amts = FIRST_UPDATE_ASSETS_AMT
+    _, _, _, _, _, asset_addresses, _, absorbed_amts_dec = update
     asset_count = len(asset_addresses)
 
     _, first_provider_amt_wad = first_epoch_first_provider
@@ -767,7 +771,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
             tx, absorber.contract_address, "Reap", lambda d: d[:5] == [provider, asset_count, *asset_addresses]
         )
 
-        for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
+        for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts_dec):
             assert_event_emitted(
                 tx,
                 asset.contract_address,
@@ -804,8 +808,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    _, _, remaining_yin_wad, _, _, asset_addresses, _ = update
-    first_absorbed_amts = FIRST_UPDATE_ASSETS_AMT
+    _, _, remaining_yin_wad, _, _, asset_addresses, _, first_absorbed_amts_dec = update
     asset_count = len(asset_addresses)
 
     # Step 3: Provider 2 pprovides
@@ -819,15 +822,14 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     total_provided_amt = first_provider_amt + second_provider_amt
 
     second_update_burn_amt_wad = to_wad(second_absorption_percentage * total_provided_amt)
-    second_absorbed_amts = SECOND_UPDATE_ASSETS_AMT
-    _, second_absorbed_amts_wad = second_update_assets
+    _, second_absorbed_amts, second_absorbed_amts_dec = second_update_assets
 
     await simulate_update(
         shrine,
         absorber,
         yang_tokens,
         asset_addresses,
-        second_absorbed_amts_wad,
+        second_absorbed_amts,
         second_update_burn_amt_wad,
     )
 
@@ -847,7 +849,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         )
 
         for asset, asset_info, before_bal, first_absorbed_amt, second_absorbed_amt in zip(
-            yang_tokens, yangs, before_bals, first_absorbed_amts, second_absorbed_amts
+            yang_tokens, yangs, before_bals, first_absorbed_amts_dec, second_absorbed_amts_dec
         ):
             assert_event_emitted(
                 tx,
@@ -899,7 +901,7 @@ async def test_non_provider_fail(shrine, absorber):
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_unauthorized_update(shrine, absorber, first_update_assets):
-    asset_addresses, asset_amts = first_update_assets
+    asset_addresses, asset_amts, _ = first_update_assets
     with pytest.raises(StarkException, match="Absorber: Only Purger can call `update`"):
         await absorber.update(asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
 
@@ -953,10 +955,9 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
 @pytest.mark.asyncio
 async def test_purger_zero_address(absorber_deploy, yangs, first_update_assets):
     absorber = absorber_deploy
-    zero_address = 0
     with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
-        await absorber.set_purger(zero_address).execute(caller_address=ABSORBER_OWNER)
+        await absorber.set_purger(ZERO_ADDRESS).execute(caller_address=ABSORBER_OWNER)
 
-    asset_addresses, asset_amts = first_update_assets
+    asset_addresses, asset_amts, _ = first_update_assets
     with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
         await absorber.update(asset_addresses, asset_amts).execute(caller_address=MOCK_PURGER)
