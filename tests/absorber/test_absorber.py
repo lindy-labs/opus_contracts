@@ -12,12 +12,6 @@ from tests.utils import (
     BAD_GUY,
     SHRINE_OWNER,
     TIME_INTERVAL,
-    TROVE1_OWNER,
-    TROVE2_OWNER,
-    TROVE3_OWNER,
-    TROVE_1,
-    TROVE_2,
-    TROVE_3,
     TRUE,
     WAD_RAY_OOB_VALUES,
     YangConfig,
@@ -36,6 +30,7 @@ from tests.utils import (
     get_token_balances,
     max_approve,
     set_block_timestamp,
+    to_fixed_point,
     to_uint,
     to_wad,
 )
@@ -152,6 +147,8 @@ async def absorber_deploy(starknet, shrine, sentinel) -> StarknetContract:
             "func convert_epoch_shares": "@view\nfunc convert_epoch_shares",
         },
     )
+
+    # Helper function to simulate melting of absorber's yin in `Purger.absorb`
     additional_code = """
 @external
 func burn_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -206,39 +203,6 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[lis
 
 
 @pytest.fixture
-async def forged_troves(shrine, shrine_feeds, abbot, sentinel_with_yangs, yangs, funded_trove_owners) -> list[int]:
-    forged_amts = []
-
-    troves = [TROVE_1, TROVE_2, TROVE_3]
-    trove_owners = [TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER]
-    for trove, owner in zip(troves, trove_owners):
-        prices = []
-
-        for yang in yangs:
-            price = from_wad((await shrine.get_current_yang_price(yang.contract_address).execute()).result.price)
-            prices.append(price)
-
-        # Get maximum forge amount
-        deposit_amts = [USER_STETH_DEPOSIT_WAD, USER_DOGE_DEPOSIT_WAD, USER_WBTC_DEPOSIT_AMT]
-        amounts = [from_fixed_point(amt, yang.decimals) for amt, yang in zip(deposit_amts, yangs)]
-
-        thresholds = [from_ray(yang.threshold) for yang in yangs]
-        max_forge_amt = calculate_max_forge(prices, amounts, thresholds)
-
-        forge_amt = to_wad(max_forge_amt - 1)
-
-        await abbot.open_trove(
-            forge_amt,
-            [yang.contract_address for yang in yangs],
-            deposit_amts,
-        ).execute(caller_address=owner)
-
-        forged_amts.append(forge_amt)
-
-    return forged_amts
-
-
-@pytest.fixture
 async def funded_absorber_providers(shrine, shrine_feeds, abbot, absorber, steth_token, steth_yang: YangConfig):
     troves = [PROVIDER_1_TROVE, PROVIDER_2_TROVE]
     trove_owners = [PROVIDER_1, PROVIDER_2]
@@ -266,7 +230,7 @@ async def funded_absorber_providers(shrine, shrine_feeds, abbot, absorber, steth
 
 
 @pytest.fixture
-async def first_epoch_first_provider(shrine, absorber, forged_troves, funded_absorber_providers):
+async def first_epoch_first_provider(shrine, absorber, funded_absorber_providers):
     provider = PROVIDER_1
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
     provider_yin_amt = from_uint(provider_yin_amt_uint) // 2
@@ -276,7 +240,7 @@ async def first_epoch_first_provider(shrine, absorber, forged_troves, funded_abs
 
 
 @pytest.fixture
-async def first_epoch_second_provider(shrine, absorber, forged_troves, funded_absorber_providers):
+async def first_epoch_second_provider(shrine, absorber, funded_absorber_providers):
     provider = PROVIDER_2
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
     provider_yin_amt = from_uint(provider_yin_amt_uint)

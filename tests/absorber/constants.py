@@ -1,20 +1,11 @@
 from decimal import Decimal
 
-from tests.utils import WBTC_DECIMALS, str_to_felt, to_fixed_point, to_wad
+from tests.utils import str_to_felt, to_wad
 
 # Initial shares minted to the system if total shares are 0
 INITIAL_SHARES_WAD = Decimal("1E3")
 
 DEBT_CEILING_WAD = to_wad(1_000_000)
-
-# Starting value of USD 20_000
-USER_STETH_DEPOSIT_WAD = to_wad(10)
-
-# Starting value of USD 700
-USER_DOGE_DEPOSIT_WAD = to_wad(10_000)
-
-# Starting value of USD 10_000, with WBTC decimal precision
-USER_WBTC_DEPOSIT_AMT = to_fixed_point(5, WBTC_DECIMALS)
 
 # Constants for providers to absorber
 PROVIDER_STETH_DEPOSIT_WAD = to_wad(100)
