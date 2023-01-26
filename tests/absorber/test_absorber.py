@@ -10,6 +10,7 @@ from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
     BAD_GUY,
+    MAX_UINT256,
     SHRINE_OWNER,
     TIME_INTERVAL,
     TRUE,
@@ -315,6 +316,27 @@ async def test_absorber_setup(shrine, absorber):
 
 
 @pytest.mark.asyncio
+async def test_set_purger(shrine, absorber):
+    old_purger = (await absorber.get_purger().execute()).result.purger
+    new_purger = NEW_MOCK_PURGER
+
+    tx = await absorber.set_purger(NEW_MOCK_PURGER).execute(caller_address=ABSORBER_OWNER)
+
+    assert_event_emitted(tx, absorber.contract_address, "PurgerUpdated", [old_purger, new_purger])
+
+    purger = (await absorber.get_purger().execute()).result.purger
+    assert purger == new_purger
+
+    old_purger_allowance = from_uint(
+        (await shrine.allowance(absorber.contract_address, old_purger).execute()).result.allowance
+    )
+    assert old_purger_allowance == 0
+
+    new_purger_allowance = (await shrine.allowance(absorber.contract_address, new_purger).execute()).result.allowance
+    assert new_purger_allowance == MAX_UINT256
+
+
+@pytest.mark.asyncio
 async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider):
     provider = PROVIDER_1
 
@@ -415,6 +437,8 @@ async def test_update(shrine, absorber, update, yangs, yang_tokens):
 
         after_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
         assert after_total_shares_wad == 0
+
+        assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -586,12 +610,14 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    _, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
+    tx, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
 
     # Assert epoch is updated
     epoch = (await absorber.get_current_epoch().execute()).result.epoch
     expected_epoch = 1
     assert epoch == expected_epoch
+
+    assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [expected_epoch - 1, expected_epoch])
 
     # Assert share
     total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total

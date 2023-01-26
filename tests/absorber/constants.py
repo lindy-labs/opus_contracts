@@ -16,6 +16,7 @@ PROVIDER_2 = str_to_felt("provider 2")
 PROVIDER_2_TROVE = 5
 
 MOCK_PURGER = str_to_felt("mock purger")
+NEW_MOCK_PURGER = str_to_felt("new mock purger")
 BURNER = str_to_felt("burner")
 NON_PROVIDER = str_to_felt("non-provider")
 
