@@ -937,6 +937,11 @@ async def test_unauthorized_update(shrine, absorber, first_update_assets):
 async def test_provide_fail(shrine, absorber):
     provider = PROVIDER_1
 
+    # Out of bounds
+    for amt in WAD_RAY_OOB_VALUES:
+        with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
+            await absorber.provide(amt).execute(caller_address=provider)
+
     # Less than initial shares
     with pytest.raises(StarkException, match="Absorber: Amount provided is less than minimum initial shares"):
         await absorber.provide(0).execute(caller_address=provider)
@@ -959,14 +964,6 @@ async def test_provide_fail(shrine, absorber):
     await shrine.approve(absorber.contract_address, allowance_amt_uint).execute(caller_address=provider)
     with pytest.raises(StarkException, match="Absorber: Transfer of yin failed"):
         await absorber.provide(yin_bal_wad).execute(caller_address=provider)
-
-
-@pytest.mark.parametrize("amt", WAD_RAY_OOB_VALUES)
-@pytest.mark.asyncio
-async def test_provide_out_of_bounds_fail(absorber, amt):
-    provider = PROVIDER_1
-    with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
-        await absorber.provide(amt).execute(caller_address=provider)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
