@@ -225,7 +225,7 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
 ) -> (info: AssetAbsorption) {
-    let info: AssetAbsorption = get_asset_absorption(absorption_id, asset);
+    let info: AssetAbsorption = get_asset_absorption(asset, absorption_id);
     return (info,);
 }
 
@@ -540,7 +540,7 @@ func set_provision{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 }
 
 func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    absorption_id: ufelt, asset: address
+    asset: address, absorption_id: ufelt
 ) -> (info: AssetAbsorption) {
     let (info_packed: packed) = absorber_asset_absorption.read(absorption_id, asset);
     let (asset_amt_per_share: wad, error: wad) = split_felt(info_packed);
@@ -826,7 +826,7 @@ func get_absorbed_assets_for_provider_inner_loop{
         return cumulative;
     }
 
-    let asset_absorption_info: AssetAbsorption = get_asset_absorption(next_absorption_id, asset);
+    let asset_absorption_info: AssetAbsorption = get_asset_absorption(asset, next_absorption_id);
     let provider_assets: ufelt = WadRay.wmul(
         adjusted_shares, asset_absorption_info.asset_amt_per_share
     );
