@@ -99,7 +99,7 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 // Conversion rate of an epoch's shares to the next
 // If an update causes the yin per share to drop below the threshold,
 // the epoch is incremented and yin per share is reset to one ray.
-// A user with shares in that epoch will receive new shares in the next epoch
+// A provider with shares in that epoch will receive new shares in the next epoch
 // based on this conversion rate.
 // If the absorber's yin balance is wiped out, the conversion rate will be 0.
 @storage_var
@@ -319,7 +319,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     let provision: Provision = get_provision(provider);
     reap_internal(provider, provision);
 
-    // Calculate number of shares to issue to user and to add to total for current epoch
+    // Calculate number of shares to issue to provider and to add to total for current epoch
     // The two values deviate only when it is the first provision of an epoch and
     // total shares is below the minimum initial shares.
     let (new_provision_shares: wad, issued_shares: wad) = convert_to_shares(amount, FALSE);
@@ -365,7 +365,7 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
 
-    // Early termination if user is not a provider
+    // Early termination if caller is not a provider
     with_attr error_message("Absorber: Caller is not a provider") {
         assert_not_zero(provision.shares);
     }
@@ -410,8 +410,10 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         absorber_total_shares.write(new_total_shares);
 
         // Update provision
-        let new_user_shares: wad = WadRay.unsigned_sub(current_provider_shares, shares_to_remove);
-        let new_provision: Provision = Provision(current_epoch, new_user_shares);
+        let new_provider_shares: wad = WadRay.unsigned_sub(
+            current_provider_shares, shares_to_remove
+        );
+        let new_provision: Provision = Provision(current_epoch, new_provider_shares);
         set_provision(provider, new_provision);
 
         let yin_amt_uint: Uint256 = WadRay.to_uint(yin_amt);
@@ -427,7 +429,7 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
 }
 
 // Withdraw absorbed collateral only from the absorber
-// Note that `reap` alone will not update a user's Provision in storage
+// Note that `reap` alone will not update a caller's Provision in storage
 @external
 func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
@@ -794,8 +796,8 @@ func get_absorbed_assets_for_provider_outer_loop{
     );
 }
 
-// Inner loop iterating over absorption IDs from the ID right after the last absorption ID tracked for a user
-// up to the latest absorption ID tracked for a user, for a given asset.
+// Inner loop iterating over absorption IDs starting from the ID right after the last absorption ID tracked
+// for a provider up to the latest absorption ID, for a given asset.
 // We need to iterate from the last absorption ID upwards to the current absorption ID in order to take
 // into account the conversion rate of shares from epoch to epoch.
 func get_absorbed_assets_for_provider_inner_loop{
