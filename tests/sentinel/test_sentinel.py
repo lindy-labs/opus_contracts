@@ -13,7 +13,6 @@ from tests.utils import (
     WAD_SCALE,
     YangConfig,
     assert_event_emitted,
-    signed_int_to_felt,
     to_fixed_point,
     to_wad,
 )
@@ -152,14 +151,11 @@ async def test_set_yang_asset_max_failures(shrine, sentinel, steth_yang: YangCon
 
     # test reverting on out of bound values
     for val in WAD_RAY_OOB_VALUES:
-        input_val = signed_int_to_felt(val)
         with pytest.raises(
             StarkException,
             match=r"Sentinel: Value of `new_asset_max` \(-?\d+\) is out of bounds",
         ):
-            await sentinel.set_yang_asset_max(steth_yang.contract_address, input_val).execute(
-                caller_address=SENTINEL_OWNER
-            )
+            await sentinel.set_yang_asset_max(steth_yang.contract_address, val).execute(caller_address=SENTINEL_OWNER)
 
     # test reverting on unauthorized caller
     with pytest.raises(
