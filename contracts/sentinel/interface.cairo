@@ -19,6 +19,9 @@ namespace ISentinel {
     func get_yang(idx: ufelt) -> (yang: address) {
     }
 
+    func get_yang_asset_max(yang: address) -> (max: ufelt) {
+    }
+
     func get_asset_amt_per_yang(yang: address) -> (amt: wad) {
     }
 
