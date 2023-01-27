@@ -363,12 +363,7 @@ def gate_info(request) -> StarknetContract:
 
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -413,12 +408,7 @@ async def test_gate_setup(gate_info):
 
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -453,12 +443,7 @@ async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_
 @pytest.mark.usefixtures("rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -516,12 +501,7 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
 
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -558,12 +538,7 @@ async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_in
 
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -604,12 +579,7 @@ async def test_gate_subsequent_unique_enter_after_rebase(shrine_authed, gate_inf
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -659,12 +629,7 @@ async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cos
 @pytest.mark.usefixtures("rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -714,12 +679,7 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
 @pytest.mark.usefixtures("trove_2_enter_before_rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -842,12 +802,7 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
 @pytest.mark.usefixtures("trove_2_enter_after_rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -946,12 +901,7 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
 @pytest.mark.usefixtures("rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -1012,12 +962,7 @@ async def test_kill(shrine_authed, gate_info):
 @pytest.mark.usefixtures("shrine_authed")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -1035,12 +980,7 @@ async def test_gate_enter_insufficient_fail(gate_info):
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -1058,12 +998,7 @@ async def test_gate_exit_insufficient_fail(shrine_authed, gate_info):
 
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -1086,12 +1021,7 @@ async def test_unauthorized_enter(gate_info):
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -1110,12 +1040,7 @@ async def test_unauthorized_exit(shrine_authed, gate_info):
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    [
-        "steth_gate_info",
-        "steth_gate_taxable_info",
-        "wbtc_gate_info",
-        "wbtc_gate_taxable_info",
-    ],
+    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
     indirect=["gate_info"],
 )
 @pytest.mark.parametrize("fn", ["enter", "exit"])
