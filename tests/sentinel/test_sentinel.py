@@ -272,7 +272,7 @@ async def test_gate_fns_fail_unauthorized(sentinel, steth_yang: YangConfig):
 
 @pytest.mark.usefixtures("mock_owner_as_abbot", "sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.asyncio
-async def test_enter_fail_exceed_max(sentinel, yangs, yang_gates):
+async def test_enter_fail(sentinel, yangs, yang_gates):
     deposit_asset_amt = 5
     for yang, gate in zip(yangs, yang_gates):
         scaled_asset_deposit_amt = to_fixed_point(deposit_asset_amt, yang.decimals)
@@ -289,3 +289,9 @@ async def test_enter_fail_exceed_max(sentinel, yangs, yang_gates):
             await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
                 caller_address=SENTINEL_OWNER
             )
+
+        for amt in WAD_RAY_OOB_VALUES:
+            with pytest.raises(StarkException, match="WadRay: Out of bounds"):
+                await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, amt).execute(
+                    caller_address=SENTINEL_OWNER
+                )
