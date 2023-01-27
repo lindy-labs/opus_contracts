@@ -7,6 +7,7 @@ from starkware.cairo.common.math import assert_nn_le
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
+from contracts.absorber.interface import IAbsorber
 from contracts.oracle.interface import IEmpiric
 from contracts.sentinel.interface import ISentinel
 from contracts.shrine.interface import IShrine
@@ -167,7 +168,17 @@ func liquidate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     );
 
     let (funder: address) = get_caller_address();
-    return purge(shrine, trove_id, trove_ltv, safe_purge_amt, percentage_freed, funder, recipient);
+    let (
+        yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
+    ) = purge(shrine, trove_id, trove_ltv, safe_purge_amt, percentage_freed, funder, recipient);
+
+    // Assert new LTV < old LTV
+    let (_, updated_trove_ltv: ray, _, _) = IShrine.get_trove_info(shrine, trove_id);
+    with_attr error_message("Purger: Loan-to-value ratio increased") {
+        assert_nn_le(updated_trove_ltv, trove_ltv);
+    }
+
+    return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
 // Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
@@ -199,13 +210,15 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
 
     // This also checks that the value that is passed as `purge_amt` to `purge` cannot exceed `debt`.
+    let absorber: address = purger_absorber.read();
     let fully_absorbable: bool = is_nn_le(trove_debt, absorber_yin_balance);
     if (fully_absorbable == TRUE) {
         // Call purge with `percentage_freed` set to 100%
         let (
             yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(shrine, trove_id, trove_ltv, trove_debt, WadRay.RAY_ONE, absorber, absorber);
-        // TODO: Call Absorber to update its internal accounting
+
+        IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 
         return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     }
@@ -218,14 +231,20 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     ) = purge(
         shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
     );
+
     IShrine.redistribute(shrine, trove_id);
 
     // Update yang prices due to an appreciation in ratio of asset to yang
     let oracle: address = purger_oracle.read();
     IEmpiric.update_prices(oracle);
 
-    // TODO: Call Absorber to update its internal accounting
+    // Skip `Absorber.update` if absorber has no yin because total shares could be 0
+    // and the call would revert
+    if (absorber_yin_balance == 0) {
+        return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
+    }
 
+    IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
@@ -269,12 +288,6 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     free_yangs(
         shrine, sentinel, recipient, trove_id, yang_count, yangs, percentage_freed, freed_assets_amt
     );
-
-    // Assert new LTV < old LTV
-    let (_, updated_trove_ltv: ray, _, _) = IShrine.get_trove_info(shrine, trove_id);
-    with_attr error_message("Purger: Loan-to-value ratio increased") {
-        assert_nn_le(updated_trove_ltv, trove_ltv);
-    }
 
     Purged.emit(
         trove_id,

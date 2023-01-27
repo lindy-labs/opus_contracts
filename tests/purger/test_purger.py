@@ -12,6 +12,7 @@ from tests.purger.constants import *  # noqa: F403
 from tests.roles import EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
+    ABSORBER_OWNER,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
@@ -33,6 +34,7 @@ from tests.utils import (
     assert_event_emitted,
     calculate_max_forge,
     compile_code,
+    compile_contract,
     create_feed,
     custom_error_margin,
     estimate_gas,
@@ -234,23 +236,46 @@ async def funded_searcher(shrine, shrine_feeds, abbot, sentinel_with_yangs, stet
 
 
 @pytest.fixture
-async def prefunded_absorber(steth_token, steth_yang: YangConfig):
+async def prefunded_absorber_provider(
+    shrine, shrine_feeds, abbot, sentinel_with_yangs, absorber, steth_yang: YangConfig, steth_token
+):
     # fund the absorber with bags
-    await steth_token.mint(MOCK_ABSORBER, to_uint(MOCK_ABSORBER_STETH_WAD)).execute(caller_address=MOCK_ABSORBER)
+    await steth_token.mint(ABSORBER_PROVIDER, to_uint(ABSORBER_PROVIDER_STETH_WAD)).execute(
+        caller_address=ABSORBER_PROVIDER
+    )
 
     # Absorber approves the Aura gates to spend bags
-    await max_approve(steth_token, MOCK_ABSORBER, steth_yang.gate_address)
+    await max_approve(steth_token, ABSORBER_PROVIDER, steth_yang.gate_address)
 
-
-@pytest.fixture
-async def funded_absorber(shrine, shrine_feeds, abbot, sentinel_with_yangs, steth_yang: YangConfig, prefunded_absorber):
     await abbot.open_trove(
-        MOCK_ABSORBER_FORGE_AMT_WAD, [steth_yang.contract_address], [MOCK_ABSORBER_STETH_WAD]
-    ).execute(caller_address=MOCK_ABSORBER)
+        ABSORBER_PROVIDER_FORGE_AMT_WAD, [steth_yang.contract_address], [ABSORBER_PROVIDER_STETH_WAD]
+    ).execute(caller_address=ABSORBER_PROVIDER)
+
+    await max_approve(shrine, ABSORBER_PROVIDER, absorber.contract_address)
 
 
 @pytest.fixture
-async def purger(starknet, shrine, sentinel, empiric) -> StarknetContract:
+async def funded_absorber(absorber, prefunded_absorber_provider):
+    await absorber.provide(ABSORBER_PROVIDER_FORGE_AMT_WAD).execute(caller_address=ABSORBER_PROVIDER)
+
+
+@pytest.fixture
+async def absorber(starknet, shrine, sentinel):
+    absorber_contract = compile_contract("contracts/absorber/absorber.cairo")
+    absorber = await starknet.deploy(
+        contract_class=absorber_contract,
+        constructor_calldata=[
+            ABSORBER_OWNER,
+            shrine.contract_address,
+            sentinel.contract_address,
+        ],
+    )
+
+    return absorber
+
+
+@pytest.fixture
+async def purger(starknet, shrine, sentinel, empiric, absorber) -> StarknetContract:
     purger_code = get_contract_code_with_replacement(
         "contracts/purger/purger.cairo",
         {"func get_penalty_internal": "@view\nfunc get_penalty_internal"},
@@ -261,7 +286,7 @@ async def purger(starknet, shrine, sentinel, empiric) -> StarknetContract:
         constructor_calldata=[
             shrine.contract_address,
             sentinel.contract_address,
-            MOCK_ABSORBER,
+            absorber.contract_address,
             empiric.contract_address,
         ],
     )
@@ -274,6 +299,9 @@ async def purger(starknet, shrine, sentinel, empiric) -> StarknetContract:
 
     # Approve purger to call `update_prices` in Empiric
     await empiric.grant_role(EmpiricRoles.UPDATE_PRICES, purger.contract_address).execute(caller_address=EMPIRIC_OWNER)
+
+    # Set purger in absorber
+    await absorber.set_purger(purger.contract_address).execute(caller_address=ABSORBER_OWNER)
 
     return purger
 
@@ -583,7 +611,7 @@ async def test_liquidate_fail_insufficient_yin(starknet, shrine, purger, yangs):
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "funded_absorber")
 @pytest.mark.asyncio
-async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens, yangs, price_change):
+async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, yang_tokens, yangs, price_change):
     await advance_yang_prices_by_percentage(starknet, shrine, yangs, price_change)
 
     # Assert trove is not healthy
@@ -604,7 +632,7 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
         assert_equalish(penalty, expected_penalty)
 
     # Sanity check: absorber has sufficient yin
-    absorber_yin_balance = (await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance
+    absorber_yin_balance = (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
     assert from_wad(from_uint(absorber_yin_balance)) > before_trove_debt
 
     yangs_info = {}
@@ -612,7 +640,7 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
     for token, yang in zip(yang_tokens, yangs):
         # Get yang token balance of absorber
         adjusted_bal = from_fixed_point(
-            from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
+            from_uint((await token.balanceOf(absorber.contract_address).execute()).result.balance), yang.decimals
         )
 
         # Get yang balance of trove and calculate amount expected to be freed
@@ -645,8 +673,15 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
         absorb,
         purger.contract_address,
         "Purged",
-        lambda d: d[:4] == [TROVE_1, before_trove_info.debt, MOCK_ABSORBER, MOCK_ABSORBER]
+        lambda d: d[:4] == [TROVE_1, before_trove_info.debt, absorber.contract_address, absorber.contract_address]
         and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+    )
+
+    assert_event_emitted(
+        absorb,
+        absorber.contract_address,
+        "Gain",
+        lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
     )
 
     # Check that LTV is 0 after all debt is repaid
@@ -660,7 +695,7 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
         # Check collateral tokens balance of absorber
         error_margin = custom_error_margin(yang.decimals)
         after_absorber_bal = from_fixed_point(
-            from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
+            from_uint((await token.balanceOf(absorber.contract_address).execute()).result.balance), yang.decimals
         )
         before_absorber_bal = yangs_info[yang.contract_address]["before_absorber_bal"]
         expected_freed_asset = yangs_info[yang.contract_address]["expected_freed_asset"]
@@ -680,13 +715,14 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, purger, yang_tokens,
 # Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
-@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber")
+@pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber_provider")
 @pytest.mark.asyncio
 async def test_partial_absorb_with_redistribution_pass(
     starknet,
     shrine,
     abbot,
     sentinel,
+    absorber,
     purger,
     empiric,
     mock_empiric_impl,
@@ -719,7 +755,7 @@ async def test_partial_absorb_with_redistribution_pass(
     # in order to assert correctness after adding redistributed debt without interest
     # calculation interfering due to the change in price resulting from rebasing of assets
     for trove in other_troves:
-        await shrine.melt(MOCK_ABSORBER, trove, 0).execute(caller_address=SHRINE_OWNER)
+        await shrine.melt(ABSORBER_PROVIDER, trove, 0).execute(caller_address=SHRINE_OWNER)
 
     # Get info of all troves
     before_troves_info = {}
@@ -748,13 +784,14 @@ async def test_partial_absorb_with_redistribution_pass(
     # Fund absorber with a percentage of the debt of trove 1 so that redistribution is triggered
     liquidated_trove_debt = before_troves_info[liquidated_trove]["before_trove_debt"]
     absorber_forge_amt_wad = to_wad(percentage_absorbed * liquidated_trove_debt)
-    steth_yang = yangs[0]
-    await abbot.open_trove(absorber_forge_amt_wad, [steth_yang.contract_address], [MOCK_ABSORBER_STETH_WAD]).execute(
-        caller_address=MOCK_ABSORBER
-    )
+    if percentage_absorbed > 0:
+        await absorber.provide(absorber_forge_amt_wad).execute(caller_address=ABSORBER_PROVIDER)
 
     # Sanity check
-    assert from_uint((await shrine.balanceOf(MOCK_ABSORBER).execute()).result.balance) == absorber_forge_amt_wad
+    assert (
+        from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
+        == absorber_forge_amt_wad
+    )
 
     freed_percentage = get_freed_percentage(
         before_troves_info[liquidated_trove]["before_trove_threshold"],
@@ -769,7 +806,7 @@ async def test_partial_absorb_with_redistribution_pass(
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
         # Get yang token balance of absorber
         adjusted_bal = from_fixed_point(
-            from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
+            from_uint((await token.balanceOf(absorber.contract_address).execute()).result.balance), yang.decimals
         )
 
         # Get yang balance of trove and calculate amount expected to be freed
@@ -820,7 +857,8 @@ async def test_partial_absorb_with_redistribution_pass(
         partial_absorb,
         purger.contract_address,
         "Purged",
-        lambda d: d[:4] == [liquidated_trove, absorber_forge_amt_wad, MOCK_ABSORBER, MOCK_ABSORBER]
+        lambda d: d[:4]
+        == [liquidated_trove, absorber_forge_amt_wad, absorber.contract_address, absorber.contract_address]
         and d[5:] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
     )
 
@@ -863,8 +901,16 @@ async def test_partial_absorb_with_redistribution_pass(
                 partial_absorb,
                 yang.gate_address,
                 "Exit",
-                lambda d: d[0] == MOCK_ABSORBER,
+                lambda d: d[0] == absorber.contract_address,
             )
+
+    if percentage_absorbed > 0:
+        assert_event_emitted(
+            partial_absorb,
+            absorber.contract_address,
+            "Gain",
+            lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+        )
 
     assert (await shrine.get_redistributions_count().execute()).result.count == expected_redistribution_id
 
@@ -892,7 +938,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
         # Token: Check collateral tokens balance of absorber
         after_absorber_bal = from_fixed_point(
-            from_uint((await token.balanceOf(MOCK_ABSORBER).execute()).result.balance), yang.decimals
+            from_uint((await token.balanceOf(absorber.contract_address).execute()).result.balance), yang.decimals
         )
         before_absorber_bal = yangs_info[yang.contract_address]["before_absorber_bal"]
         expected_freed_asset = yangs_info[yang.contract_address]["expected_freed_asset"]
