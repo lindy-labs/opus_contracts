@@ -87,6 +87,7 @@ SENTINEL_OWNER = str_to_felt("sentinel owner")
 GATE_OWNER = str_to_felt("gate owner")
 SHRINE_OWNER = str_to_felt("shrine owner")
 EMPIRIC_OWNER = str_to_felt("empiric owner")
+ABSORBER_OWNER = str_to_felt("absorber owner")
 
 BAD_GUY = str_to_felt("bad guy")
 
@@ -199,6 +200,18 @@ def get_contract_code_with_replacement(rel_contract_path: str, replacements: dic
 
     code = (contract, filename)
     return code
+
+
+def get_contract_code_with_addition(code: tuple[str, str], addition: str) -> tuple[str, str]:
+    """
+    Adds code to the source code of a contract, after `get_contract_code_with_replacement`.
+    """
+    contract = code[0]
+    filename = code[1]
+
+    contract += addition
+
+    return (contract, filename)
 
 
 @cache
@@ -424,6 +437,42 @@ def calculate_max_forge(prices: list[Decimal], amounts: list[Decimal], threshold
 
 async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: int):
     await token.approve(spender_addr, MAX_UINT256).execute(caller_address=owner_addr)
+
+
+async def get_token_balances(
+    tokens_info: tuple[YangConfig],
+    tokens: tuple[StarknetContract],
+    addresses: list[int],
+) -> list[list[int]]:
+    """
+    Helper function to fetch the token balances for a list of addreses.
+
+    Arguments
+    ---------
+    tokens_info: tuple[YangConfig]
+        Ordered tuple of YangConfig for the tokens
+    tokens: tuple[StarknetContract]
+        Ordered tuple of token contract instances for the tokens
+    addresses: list[int]
+        List of addresses to fetch the balances of.
+
+    Returns
+    -------
+    An ordered 2D list of token balances for each address.
+    """
+    ret = []
+    for address in addresses:
+        address_bals = []
+        for token, token_info in zip(tokens, tokens_info):
+            bal = from_fixed_point(
+                from_uint((await token.balanceOf(address).execute()).result.balance),
+                token_info.decimals,
+            )
+            address_bals.append(bal)
+
+        ret.append(address_bals)
+
+    return ret
 
 
 #
