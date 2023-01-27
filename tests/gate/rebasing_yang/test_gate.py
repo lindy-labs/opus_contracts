@@ -28,11 +28,14 @@ from tests.utils import (
     YangConfig,
     assert_equalish,
     assert_event_emitted,
+    compile_code,
     compile_contract,
     custom_error_margin,
     from_fixed_point,
     from_uint,
     from_wad,
+    get_contract_code_with_addition,
+    get_contract_code_with_replacement,
     set_block_timestamp,
     str_to_felt,
     to_fixed_point,
@@ -104,6 +107,56 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int, deci
 
 
 @pytest.fixture
+async def taxable_gate_contract() -> StarknetContract:
+    """
+    Helper fixture to modify the taxable gate contract with a custom `compound`
+    function for testing.
+    """
+    taxable_gate_code = get_contract_code_with_replacement(
+        "contracts/gate/rebasing_yang/gate_taxable.cairo",
+        {
+            """
+func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    return ();
+}
+""": ""
+        },
+    )
+
+    # Function to simulate compounding by minting the underlying token
+    additional_code = """
+@contract_interface
+namespace MockRebasingToken {
+    func mint(recipient: felt, amount: Uint256) {
+    }
+}
+
+const REBASE_RATIO = 10 * WadRay.RAY_PERCENT;  // 10%
+
+func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    // Get asset and gate addresses
+    let asset: address = Gate.get_asset();
+    let gate: address = get_contract_address();
+
+    // Calculate rebase amount based on 10% of current gate's balance
+    let current_assets: ufelt = Gate.get_total_assets();
+    let rebase_amount: ufelt = WadRay.rmul(current_assets, REBASE_RATIO);
+    let (rebase_amount_uint: Uint256) = WadRay.to_uint(rebase_amount);
+
+    // Minting tokens
+    MockRebasingToken.mint(contract_address=asset, recipient=gate, amount=rebase_amount_uint);
+
+    return ();
+}
+    """
+
+    taxable_gate_code = get_contract_code_with_addition(taxable_gate_code, additional_code)
+    taxable_gate_contract = compile_code(taxable_gate_code)
+
+    return taxable_gate_contract
+
+
+@pytest.fixture
 async def funded_users(steth_token, wbtc_token):
     steth_token_decimals = (await steth_token.decimals().execute()).result.decimals
     steth_inital_amt = to_fixed_point(INITIAL_AMT, steth_token_decimals)
@@ -118,17 +171,15 @@ async def funded_users(steth_token, wbtc_token):
 
 @pytest.fixture
 async def steth_gate_taxable_info(
-    starknet, shrine, steth_token, steth_yang: YangConfig
+    starknet, shrine, taxable_gate_contract, steth_token, steth_yang: YangConfig
 ) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
 
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
-    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
-
     gate = await starknet.deploy(
-        contract_class=contract,
+        contract_class=taxable_gate_contract,
         constructor_calldata=[
             GATE_OWNER,
             shrine.contract_address,
@@ -157,17 +208,15 @@ async def steth_gate_info(
 
 @pytest.fixture
 async def wbtc_gate_taxable_info(
-    starknet, shrine, wbtc_token, wbtc_yang: YangConfig
+    starknet, shrine, taxable_gate_contract, wbtc_token, wbtc_yang: YangConfig
 ) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
 
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
-    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
-
     gate = await starknet.deploy(
-        contract_class=contract,
+        contract_class=taxable_gate_contract,
         constructor_calldata=[
             GATE_OWNER,
             shrine.contract_address,
@@ -209,12 +258,9 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
     set_block_timestamp(starknet, TIME_INTERVAL)
 
     # Add steth_token as Yang
-    await shrine.add_yang(
-        steth_token.contract_address,
-        to_wad(1000),
-        to_ray(Decimal("0.8")),
-        to_wad(1000),
-    ).execute(caller_address=SHRINE_OWNER)
+    await shrine.add_yang(steth_token.contract_address, to_wad(1000), to_ray(Decimal("0.8")), to_wad(1000)).execute(
+        caller_address=SHRINE_OWNER
+    )
 
     await shrine.add_yang(
         wbtc_token.contract_address,
@@ -317,7 +363,12 @@ def gate_info(request) -> StarknetContract:
 
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -362,7 +413,12 @@ async def test_gate_setup(gate_info):
 
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -397,7 +453,12 @@ async def test_gate_enter_pass(shrine_authed, gate_info, trove_1_enter, collect_
 @pytest.mark.usefixtures("rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -455,7 +516,12 @@ async def test_gate_subsequent_enter_with_rebase(shrine_authed, gate_info):
 
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -481,13 +547,23 @@ async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_in
         trove_2_enter_before_rebase,
         gate.contract_address,
         "Enter",
-        [TROVE2_OWNER, TROVE_2, to_fixed_point(FIRST_DEPOSIT_AMT, decimals), expected_yang],
+        [
+            TROVE2_OWNER,
+            TROVE_2,
+            to_fixed_point(FIRST_DEPOSIT_AMT, decimals),
+            expected_yang,
+        ],
     )
 
 
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -528,7 +604,12 @@ async def test_gate_subsequent_unique_enter_after_rebase(shrine_authed, gate_inf
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -578,7 +659,12 @@ async def test_gate_exit_before_rebase(shrine_authed, gate_info, collect_gas_cos
 @pytest.mark.usefixtures("rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -628,7 +714,12 @@ async def test_gate_exit_after_rebase_pass(shrine_authed, gate_info):
 @pytest.mark.usefixtures("trove_2_enter_before_rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -751,7 +842,12 @@ async def test_gate_multi_user_exit_without_rebase(shrine_authed, gate_info):
 @pytest.mark.usefixtures("trove_2_enter_after_rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -850,7 +946,12 @@ async def test_gate_multi_user_exit_with_rebase(shrine_authed, gate_info):
 @pytest.mark.usefixtures("rebase")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -911,7 +1012,12 @@ async def test_kill(shrine_authed, gate_info):
 @pytest.mark.usefixtures("shrine_authed")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -929,7 +1035,12 @@ async def test_gate_enter_insufficient_fail(gate_info):
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -947,7 +1058,12 @@ async def test_gate_exit_insufficient_fail(shrine_authed, gate_info):
 
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -970,7 +1086,12 @@ async def test_unauthorized_enter(gate_info):
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.asyncio
@@ -989,7 +1110,12 @@ async def test_unauthorized_exit(shrine_authed, gate_info):
 @pytest.mark.usefixtures("trove_1_enter")
 @pytest.mark.parametrize(
     "gate_info",
-    ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
+    [
+        "steth_gate_info",
+        "steth_gate_taxable_info",
+        "wbtc_gate_info",
+        "wbtc_gate_taxable_info",
+    ],
     indirect=["gate_info"],
 )
 @pytest.mark.parametrize("fn", ["enter", "exit"])
@@ -1034,7 +1160,11 @@ async def test_gate_constructor_invalid_tax(shrine, starknet, steth_token):
         )
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_set_tax_pass(gate_info):
     _, _, gate = gate_info
@@ -1046,7 +1176,11 @@ async def test_gate_set_tax_pass(gate_info):
     assert new_tax == TAX_RAY // 2
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_set_tax_collector(gate_info):
     _, _, gate = gate_info
@@ -1065,7 +1199,11 @@ async def test_gate_set_tax_collector(gate_info):
     assert res == new_tax_collector
 
 
-@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_set_tax_parameters_fail(gate_info):
     _, _, gate = gate_info
@@ -1086,7 +1224,11 @@ async def test_gate_set_tax_parameters_fail(gate_info):
 
 
 @pytest.mark.usefixtures("trove_1_enter")
-@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
+@pytest.mark.parametrize(
+    "gate_info",
+    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
+    indirect=["gate_info"],
+)
 @pytest.mark.asyncio
 async def test_gate_levy(shrine_authed, gate_info):
     token, decimals, gate = gate_info

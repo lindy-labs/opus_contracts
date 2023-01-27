@@ -231,6 +231,7 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }
 
 // Stub function for compounding by selling token rewards for underlying asset
+// TODO: To be implemented when  AMMs are ready for integrations
 func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     return ();
 }
