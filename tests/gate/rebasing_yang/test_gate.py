@@ -527,12 +527,7 @@ async def test_gate_subsequent_unique_enter_before_rebase(shrine_authed, gate_in
         trove_2_enter_before_rebase,
         gate.contract_address,
         "Enter",
-        [
-            TROVE2_OWNER,
-            TROVE_2,
-            to_fixed_point(FIRST_DEPOSIT_AMT, decimals),
-            expected_yang,
-        ],
+        [TROVE2_OWNER, TROVE_2, to_fixed_point(FIRST_DEPOSIT_AMT, decimals), expected_yang],
     )
 
 
@@ -1085,11 +1080,7 @@ async def test_gate_constructor_invalid_tax(shrine, starknet, steth_token):
         )
 
 
-@pytest.mark.parametrize(
-    "gate_info",
-    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
-    indirect=["gate_info"],
-)
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
 async def test_gate_set_tax_pass(gate_info):
     _, _, gate = gate_info
@@ -1101,11 +1092,7 @@ async def test_gate_set_tax_pass(gate_info):
     assert new_tax == TAX_RAY // 2
 
 
-@pytest.mark.parametrize(
-    "gate_info",
-    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
-    indirect=["gate_info"],
-)
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
 async def test_gate_set_tax_collector(gate_info):
     _, _, gate = gate_info
@@ -1124,11 +1111,7 @@ async def test_gate_set_tax_collector(gate_info):
     assert res == new_tax_collector
 
 
-@pytest.mark.parametrize(
-    "gate_info",
-    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
-    indirect=["gate_info"],
-)
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
 async def test_gate_set_tax_parameters_fail(gate_info):
     _, _, gate = gate_info
@@ -1149,11 +1132,7 @@ async def test_gate_set_tax_parameters_fail(gate_info):
 
 
 @pytest.mark.usefixtures("trove_1_enter")
-@pytest.mark.parametrize(
-    "gate_info",
-    ["steth_gate_taxable_info", "wbtc_gate_taxable_info"],
-    indirect=["gate_info"],
-)
+@pytest.mark.parametrize("gate_info", ["steth_gate_taxable_info", "wbtc_gate_taxable_info"], indirect=["gate_info"])
 @pytest.mark.asyncio
 async def test_gate_levy(shrine_authed, gate_info):
     token, decimals, gate = gate_info
