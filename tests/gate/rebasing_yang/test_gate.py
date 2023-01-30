@@ -29,7 +29,6 @@ from tests.utils import (
     assert_equalish,
     assert_event_emitted,
     compile_code,
-    compile_contract,
     custom_error_margin,
     from_fixed_point,
     from_uint,
@@ -171,7 +170,7 @@ async def funded_users(steth_token, wbtc_token):
 
 @pytest.fixture
 async def steth_gate_taxable_info(
-    starknet, shrine, taxable_gate_contract, steth_token, steth_yang: YangConfig
+    starknet: Starknet, shrine, taxable_gate_contract, steth_token, steth_yang: YangConfig
 ) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
@@ -208,7 +207,7 @@ async def steth_gate_info(
 
 @pytest.fixture
 async def wbtc_gate_taxable_info(
-    starknet, shrine, taxable_gate_contract, wbtc_token, wbtc_yang: YangConfig
+    starknet: Starknet, shrine, taxable_gate_contract, wbtc_token, wbtc_yang: YangConfig
 ) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
@@ -1064,12 +1063,10 @@ async def test_zero_enter_exit(shrine_authed, gate_info, fn):
 
 
 @pytest.mark.asyncio
-async def test_gate_constructor_invalid_tax(shrine, starknet, steth_token):
-    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
-
+async def test_gate_constructor_invalid_tax(starknet: Starknet, shrine, taxable_gate_contract, steth_token):
     with pytest.raises(StarkException):
         await starknet.deploy(
-            contract_class=contract,
+            contract_class=taxable_gate_contract,
             constructor_calldata=[
                 MOCK_ABBOT_WITH_SENTINEL,
                 shrine.contract_address,
