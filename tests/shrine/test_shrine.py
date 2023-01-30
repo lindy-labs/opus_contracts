@@ -698,12 +698,15 @@ async def test_advance_invalid_yang(shrine):
         await shrine.advance(FAUX_YANG_ADDRESS, to_wad(YANGS[0]["start_price"])).execute(caller_address=SHRINE_OWNER)
 
 
-@pytest.mark.parametrize("price", WAD_RAY_OOB_VALUES)
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_advance_out_of_bounds(shrine, price):
-    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
-        await shrine.advance(YANG1_ADDRESS, price).execute(caller_address=SHRINE_OWNER)
+async def test_advance_out_of_bounds(shrine):
+    for val in WAD_RAY_OOB_VALUES:
+        with pytest.raises(StarkException, match=r"Shrine: Value of `price` \(-?\d+\) is out of bounds"):
+            await shrine.advance(YANG1_ADDRESS, val).execute(caller_address=SHRINE_OWNER)
+
+    with pytest.raises(StarkException, match="Shrine: Cumulative price is out of bounds"):
+        await shrine.advance(YANG1_ADDRESS, WAD_RAY_BOUND - 1).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.usefixtures("update_feeds")
@@ -740,12 +743,15 @@ async def test_set_multiplier_unauthorized(shrine):
         await shrine.set_multiplier(RAY_SCALE).execute(caller_address=BAD_GUY)
 
 
-@pytest.mark.parametrize("multiplier", WAD_RAY_OOB_VALUES)
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_set_multiplier_out_of_bounds(shrine, multiplier):
-    with pytest.raises(StarkException, match="WadRay: Out of bounds"):
-        await shrine.set_multiplier(multiplier).execute(caller_address=SHRINE_OWNER)
+async def test_set_multiplier_out_of_bounds(shrine):
+    for val in WAD_RAY_OOB_VALUES:
+        with pytest.raises(StarkException, match=r"Shrine: Value of `new_multiplier` \(-?\d+\) is out of bounds"):
+            await shrine.set_multiplier(val).execute(caller_address=SHRINE_OWNER)
+
+    with pytest.raises(StarkException, match="Shrine: Cumulative multiplier is out of bounds"):
+        await shrine.set_multiplier(WAD_RAY_BOUND - 1).execute(caller_address=SHRINE_OWNER)
 
 
 #
