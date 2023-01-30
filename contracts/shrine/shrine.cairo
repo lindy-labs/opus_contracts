@@ -626,10 +626,8 @@ func advance{
     let (last_price: wad, last_cumulative_price: wad, last_interval: ufelt) = get_recent_price_from(
         yang_id, interval - 1
     );
-
-    let new_cumulative: wad = WadRay.unsigned_add(
-        last_cumulative_price + (interval - last_interval - 1) * last_price, price
-    );
+    // TODO: should there be an overflow check here?
+    let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + price;
 
     let price_and_cumulative_price: packed = pack_125(price, new_cumulative);
     shrine_yang_price.write(yang_id, interval, price_and_cumulative_price);
@@ -657,10 +655,8 @@ func set_multiplier{
         last_multiplier: ray, last_cumulative_multiplier: ray, last_interval: ufelt
     ) = get_recent_multiplier_from(interval - 1);
 
-    let new_cumulative_multiplier: ray = WadRay.unsigned_add(
-        last_cumulative_multiplier + (interval - last_interval - 1) * last_multiplier,
-        new_multiplier,
-    );
+    // TODO: should there be an overflow check here?
+    let new_cumulative_multiplier: ray = last_cumulative_multiplier + (interval - last_interval - 1) * last_multiplier + new_multiplier;
 
     let mul_and_cumulative_mul: packed = pack_125(new_multiplier, new_cumulative_multiplier);
     shrine_multiplier.write(interval, mul_and_cumulative_mul);
