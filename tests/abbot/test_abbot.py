@@ -94,7 +94,7 @@ async def test_open_trove(abbot, shrine, yangs, forge_amount):
         assert_event_emitted(
             tx,
             shrine.contract_address,
-            "YangUpdated",
+            "YangTotalUpdated",
             lambda d: d[:2] == [yang.contract_address, expected_yang_amt],
         )
         assert_event_emitted(
@@ -141,7 +141,9 @@ async def test_close_trove(abbot, shrine, yangs):
         )
 
         # asserts on the shrine
-        assert_event_emitted(tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [yang.contract_address, 0])
+        assert_event_emitted(
+            tx, shrine.contract_address, "YangTotalUpdated", lambda d: d[:2] == [yang.contract_address, 0]
+        )
         assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [yang.contract_address, TROVE_1, 0])
 
         # asserts on the tokens

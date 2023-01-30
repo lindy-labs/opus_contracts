@@ -884,7 +884,7 @@ async def test_partial_absorb_with_redistribution_pass(
         assert_event_emitted(
             partial_absorb,
             shrine.contract_address,
-            "YangUpdated",
+            "YangTotalUpdated",
             lambda d: d[0] == yang.contract_address,
         )
 

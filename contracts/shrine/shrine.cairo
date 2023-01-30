@@ -70,7 +70,7 @@ func YangAdded(yang: address, yang_id: ufelt, start_price: wad) {
 }
 
 @event
-func YangUpdated(yang: address, total: wad) {
+func YangTotalUpdated(yang: address, total: wad) {
 }
 
 @event
@@ -721,7 +721,7 @@ func deposit{
     shrine_deposits.write(yang_id, trove_id, new_trove_balance);
 
     // Events
-    YangUpdated.emit(yang, new_total);
+    YangTotalUpdated.emit(yang, new_total);
     DepositUpdated.emit(yang, trove_id, new_trove_balance);
 
     return ();
@@ -1182,7 +1182,7 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     shrine_deposits.write(yang_id, trove_id, new_trove_balance);
 
     // Events
-    YangUpdated.emit(yang, new_total);
+    YangTotalUpdated.emit(yang, new_total);
     DepositUpdated.emit(yang, trove_id, new_trove_balance);
 
     return ();

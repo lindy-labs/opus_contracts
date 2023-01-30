@@ -681,7 +681,7 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     assert_event_emitted(
         deposit,
         shrine.contract_address,
-        "YangUpdated",
+        "YangTotalUpdated",
         [YANG1_ADDRESS, deposit_amt_wad],
     )
     assert_event_emitted(
@@ -751,7 +751,7 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     assert_event_emitted(
         withdraw,
         shrine.contract_address,
-        "YangUpdated",
+        "YangTotalUpdated",
         [YANG1_ADDRESS, remaining_amt_wad],
     )
 
@@ -795,7 +795,7 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     assert_event_emitted(
         withdraw,
         shrine.contract_address,
-        "YangUpdated",
+        "YangTotalUpdated",
         [YANG1_ADDRESS, remaining_amt_wad],
     )
 
