@@ -17,10 +17,11 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.0.5
         with:
+          no-deps: true
           inputs: requirements-dev.txt
           ignore-vulns: PYSEC-2021-427
