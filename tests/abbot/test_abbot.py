@@ -4,6 +4,7 @@ from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
 from tests.utils import (
+    SENTINEL_OWNER,
     SHRINE_OWNER,
     STARKNET_ADDR,
     TROVE1_OWNER,
@@ -93,7 +94,7 @@ async def test_open_trove(abbot, shrine, yangs, forge_amount):
         assert_event_emitted(
             tx,
             shrine.contract_address,
-            "YangUpdated",
+            "YangTotalUpdated",
             lambda d: d[:2] == [yang.contract_address, expected_yang_amt],
         )
         assert_event_emitted(
@@ -140,7 +141,9 @@ async def test_close_trove(abbot, shrine, yangs):
         )
 
         # asserts on the shrine
-        assert_event_emitted(tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [yang.contract_address, 0])
+        assert_event_emitted(
+            tx, shrine.contract_address, "YangTotalUpdated", lambda d: d[:2] == [yang.contract_address, 0]
+        )
         assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [yang.contract_address, TROVE_1, 0])
 
         # asserts on the tokens
@@ -184,7 +187,7 @@ async def test_deposit(abbot, shrine, yangs, depositor):
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "shrine")
 @pytest.mark.asyncio
-async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
+async def test_deposit_failures(abbot, sentinel, steth_gate, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
         await abbot.deposit(0, TROVE_1, 0).execute(caller_address=TROVE1_OWNER)
 
@@ -207,6 +210,13 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
 
     with pytest.raises(StarkException, match="Abbot: Cannot deposit to a non-existing trove"):
         await abbot.deposit(steth_yang.contract_address, 999, to_wad(1)).execute(caller_address=TROVE1_OWNER)
+
+    steth_gate_bal_wad = (await steth_gate.get_total_assets().execute()).result.total
+    new_max = steth_gate_bal_wad - 1
+    await sentinel.set_yang_asset_max(steth_yang.contract_address, new_max).execute(caller_address=SENTINEL_OWNER)
+    wei = 1
+    with pytest.raises(StarkException, match="Sentinel: Exceeds maximum amount of asset allowed"):
+        await abbot.deposit(steth_yang.contract_address, TROVE_1, wei).execute(caller_address=TROVE1_OWNER)
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")

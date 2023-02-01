@@ -2,7 +2,7 @@
 
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero
+from starkware.cairo.common.math import assert_le, assert_not_zero
 
 from contracts.gate.interface import IGate
 from contracts.sentinel.roles import SentinelRoles
@@ -21,6 +21,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 
 from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, ray, ufelt, wad
+from contracts.lib.wad_ray import WadRay
 
 //
 // Events
@@ -28,6 +29,10 @@ from contracts.lib.aliases import address, ray, ufelt, wad
 
 @event
 func YangAdded(yang: address, gate: address) {
+}
+
+@event
+func YangAssetMaxUpdated(yang: address, old_max: ufelt, new_max: ufelt) {
 }
 
 //
@@ -54,6 +59,12 @@ func sentinel_yang_addresses(idx: ufelt) -> (yang: address) {
 func sentinel_shrine_address() -> (shrine: address) {
 }
 
+// mapping between a yang address and the cap on the yang's asset in the
+// asset's decimals
+@storage_var
+func sentinel_yang_asset_max(yang: address) -> (max: ufelt) {
+}
+
 //
 // Constructor
 //
@@ -63,7 +74,7 @@ func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(admin: address, shrine: address) {
     AccessControl.initializer(admin);
-    AccessControl._grant_role(SentinelRoles.ADD_YANG, admin);
+    AccessControl._grant_role(SentinelRoles.ADD_YANG + SentinelRoles.SET_YANG_ASSET_MAX, admin);
     sentinel_shrine_address.write(shrine);
     return ();
 }
@@ -95,6 +106,13 @@ func get_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(i
     yang: address
 ) {
     return sentinel_yang_addresses.read(idx);
+}
+
+@view
+func get_yang_asset_max{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    yang: address
+) -> (max: ufelt) {
+    return sentinel_yang_asset_max.read(yang);
 }
 
 @view
@@ -156,7 +174,7 @@ func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address) {
+}(yang: address, yang_asset_max: ufelt, yang_threshold: ray, yang_price: wad, gate: address) {
     AccessControl.assert_has_role(SentinelRoles.ADD_YANG);
 
     with_attr error_message("Sentinel: Address cannot be zero") {
@@ -173,16 +191,49 @@ func add_yang{
         let (asset: address) = IGate.get_asset(gate);
         assert yang = asset;
     }
+    // Assert validity of `max` argument
+    with_attr error_message(
+            "Shrine: Value of `yang_asset_max` ({yang_asset_max}) is out of bounds") {
+        WadRay.assert_valid_unsigned(yang_asset_max);
+    }
 
     let (yang_addresses_count: ufelt) = sentinel_yang_addresses_count.read();
     sentinel_yang_addresses_count.write(yang_addresses_count + 1);
     sentinel_yang_addresses.write(yang_addresses_count, yang);
     sentinel_yang_to_gate.write(yang, gate);
+    sentinel_yang_asset_max.write(yang, yang_asset_max);
 
     let (shrine: address) = sentinel_shrine_address.read();
-    IShrine.add_yang(shrine, yang, yang_max, yang_threshold, yang_price);
+    IShrine.add_yang(shrine, yang, yang_threshold, yang_price);
 
     YangAdded.emit(yang, gate);
+    YangAssetMaxUpdated.emit(yang, 0, yang_asset_max);
+
+    return ();
+}
+
+@external
+func set_yang_asset_max{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(yang: address, new_asset_max: ufelt) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(SentinelRoles.SET_YANG_ASSET_MAX);
+
+    let (gate: address) = get_gate_address(yang);
+    with_attr error_message("Sentinel: Yang {yang} is not approved") {
+        assert_not_zero(gate);
+    }
+
+    with_attr error_message(
+            "Sentinel: Value of `new_asset_max` ({new_asset_max}) is out of bounds") {
+        WadRay.assert_valid_unsigned(new_asset_max);
+    }
+
+    let old_asset_max: ufelt = sentinel_yang_asset_max.read(yang);
+    sentinel_yang_asset_max.write(yang, new_asset_max);
+
+    YangAssetMaxUpdated.emit(yang, old_asset_max, new_asset_max);
 
     return ();
 }
@@ -197,6 +248,17 @@ func enter{
 
     with_attr error_message("Sentinel: Yang {yang} is not approved") {
         assert_not_zero(gate);
+    }
+
+    let yang_asset_max: ufelt = sentinel_yang_asset_max.read(yang);
+    let current_total: ufelt = IGate.get_total_assets(gate);
+
+    // This checks that `asset_amt` is a valid unsigned value.
+    let new_total: ufelt = WadRay.unsigned_add(current_total, asset_amt);
+
+    with_attr error_message("Sentinel: Exceeds maximum amount of asset allowed") {
+        // We can use `assert_le` here because both values have been checked
+        assert_le(new_total, yang_asset_max);
     }
 
     let yang_amt: wad = IGate.enter(gate, user, trove_id, asset_amt);

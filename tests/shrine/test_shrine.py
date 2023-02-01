@@ -434,10 +434,9 @@ async def test_add_yang_pass(shrine):
     assert (await shrine.get_yangs_count().execute()).result.count == g_count
 
     new_yang_address = 987
-    new_yang_max = to_wad(42_000)
     new_yang_threshold = to_wad(Decimal("0.6"))
     new_yang_start_price = to_wad(5)
-    tx = await shrine.add_yang(new_yang_address, new_yang_max, new_yang_threshold, new_yang_start_price).execute(
+    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price).execute(
         caller_address=SHRINE_OWNER
     )
     assert (await shrine.get_yangs_count().execute()).result.count == g_count + 1
@@ -446,7 +445,7 @@ async def test_add_yang_pass(shrine):
         tx,
         shrine.contract_address,
         "YangAdded",
-        [new_yang_address, g_count + 1, new_yang_max, new_yang_start_price],
+        [new_yang_address, g_count + 1, new_yang_start_price],
     )
     assert_event_emitted(tx, shrine.contract_address, "YangsCountUpdated", [g_count + 1])
     assert_event_emitted(
@@ -457,9 +456,8 @@ async def test_add_yang_pass(shrine):
     )
 
     # Check maximum is correct
-    new_yang_info = (await shrine.get_yang(new_yang_address).execute()).result.yang
-    assert new_yang_info.total == 0
-    assert new_yang_info.max == new_yang_max
+    new_yang_total = (await shrine.get_yang_total(new_yang_address).execute()).result.total
+    assert new_yang_total == 0
 
     # Check start price is correct
     new_yang_price_info = (await shrine.get_current_yang_price(new_yang_address).execute()).result
@@ -476,7 +474,6 @@ async def test_add_yang_duplicate_fail(shrine):
     with pytest.raises(StarkException, match="Shrine: Yang already exists"):
         await shrine.add_yang(
             YANG1_ADDRESS,
-            YANG1_CEILING,
             YANG1_THRESHOLD,
             to_wad(YANGS[0]["start_price"]),
         ).execute(caller_address=SHRINE_OWNER)
@@ -486,25 +483,14 @@ async def test_add_yang_duplicate_fail(shrine):
 async def test_add_yang_unauthorized(shrine):
     # test calling the func unauthorized
     bad_guy_yang_address = 555
-    bad_guy_yang_max = to_wad(10_000)
     bad_guy_yang_threshold = to_wad(Decimal("0.5"))
     bad_guy_yang_start_price = to_wad(10)
     with pytest.raises(StarkException):
         await shrine.add_yang(
             bad_guy_yang_address,
-            bad_guy_yang_max,
             bad_guy_yang_threshold,
             bad_guy_yang_start_price,
         ).execute(caller_address=BAD_GUY)
-
-
-@pytest.mark.parametrize("max_amt", WAD_RAY_OOB_VALUES)
-@pytest.mark.asyncio
-async def test_add_yang_max_out_of_bounds(shrine, max_amt):
-    with pytest.raises(StarkException, match=r"Shrine: Value of `max` \(-?\d+\) is out of bounds"):
-        await shrine.add_yang(123, max_amt, YANG1_THRESHOLD, to_wad(YANGS[0]["start_price"])).execute(
-            caller_address=SHRINE_OWNER
-        )
 
 
 @pytest.mark.asyncio
@@ -549,66 +535,6 @@ async def test_set_threshold_unauthorized(shrine):
 async def test_set_threshold_invalid_yang(shrine):
     with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
         await shrine.set_threshold(FAUX_YANG_ADDRESS, to_wad(1000)).execute(caller_address=SHRINE_OWNER)
-
-
-@pytest.mark.asyncio
-async def test_set_yang_max(shrine):
-    async def set_and_assert(new_yang_max):
-        orig_yang = (await shrine.get_yang(YANG1_ADDRESS).execute()).result.yang
-        tx = await shrine.set_yang_max(YANG1_ADDRESS, new_yang_max).execute(caller_address=SHRINE_OWNER)
-        assert_event_emitted(
-            tx,
-            shrine.contract_address,
-            "YangUpdated",
-            [YANG1_ADDRESS, orig_yang.total, new_yang_max],
-        )
-
-        updated_yang = (await shrine.get_yang(YANG1_ADDRESS).execute()).result.yang
-        assert updated_yang.total == orig_yang.total
-        assert updated_yang.max == new_yang_max
-
-    # test increasing the max
-    new_yang_max = YANG1_CEILING * 2
-    await set_and_assert(new_yang_max)
-
-    # test decreasing the max
-    new_yang_max = YANG1_CEILING - 1
-    await set_and_assert(new_yang_max)
-
-    # test decreasing the max below yang.total
-    deposit_amt = to_wad(100)
-    # Deposit 100 yang tokens
-    await shrine.deposit(YANG1_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
-
-    new_yang_max = deposit_amt - to_wad(1)
-    await set_and_assert(new_yang_max)  # update yang_max to a value smaller than the total amount currently deposited
-
-    # This should fail, since yang.total exceeds yang.max
-    with pytest.raises(
-        StarkException,
-        match="Shrine: Exceeds maximum amount of Yang allowed for system",
-    ):
-        await shrine.deposit(YANG1_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
-
-
-@pytest.mark.asyncio
-async def test_set_yang_max_invalid_yang(shrine):
-    # test calling with a non-existing yang_address
-    with pytest.raises(StarkException, match="Shrine: Yang does not exist"):
-        await shrine.set_yang_max(FAUX_YANG_ADDRESS, YANG1_CEILING - 1).execute(caller_address=SHRINE_OWNER)
-
-
-@pytest.mark.asyncio
-async def test_set_yang_max_unauthorized(shrine):
-    with pytest.raises(StarkException):
-        await shrine.set_yang_max(YANG1_ADDRESS, 2**251).execute(caller_address=BAD_GUY)
-
-
-@pytest.mark.parametrize("max_amt", WAD_RAY_OOB_VALUES)
-@pytest.mark.asyncio
-async def test_set_yang_max_out_of_bounds(shrine, max_amt):
-    with pytest.raises(StarkException, match=r"Shrine: Value of `new_max` \(-?\d+\) is out of bounds"):
-        await shrine.set_yang_max(YANG1_ADDRESS, max_amt).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -755,8 +681,8 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
     assert_event_emitted(
         deposit,
         shrine.contract_address,
-        "YangUpdated",
-        [YANG1_ADDRESS, deposit_amt_wad, YANG1_CEILING],
+        "YangTotalUpdated",
+        [YANG1_ADDRESS, deposit_amt_wad],
     )
     assert_event_emitted(
         deposit,
@@ -765,8 +691,8 @@ async def test_shrine_deposit_pass(shrine, deposit_amt_wad, collect_gas_cost):
         [YANG1_ADDRESS, TROVE_1, deposit_amt_wad],
     )
 
-    yang = (await shrine.get_yang(YANG1_ADDRESS).execute()).result.yang
-    assert yang.total == deposit_amt_wad
+    yang_total = (await shrine.get_yang_total(YANG1_ADDRESS).execute()).result.total
+    assert yang_total == deposit_amt_wad
 
     amt = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
     assert amt == deposit_amt_wad
@@ -789,18 +715,6 @@ async def test_shrine_deposit_invalid_yang_fail(shrine):
 async def test_shrine_deposit_unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.deposit(YANG1_ADDRESS, TROVE_1, INITIAL_DEPOSIT_WAD).execute(caller_address=BAD_GUY)
-
-
-@pytest.mark.usefixtures("shrine_deposit")
-@pytest.mark.asyncio
-async def test_shrine_deposit_exceeds_max(shrine):
-    deposit_amt = YANG1_CEILING - INITIAL_DEPOSIT_WAD + 1
-    # Checks for shrine deposit that would exceed the max
-    with pytest.raises(
-        StarkException,
-        match="Shrine: Exceeds maximum amount of Yang allowed for system",
-    ):
-        await shrine.deposit(YANG1_ADDRESS, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.parametrize("deposit_amt", WAD_RAY_OOB_VALUES)
@@ -837,8 +751,8 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     assert_event_emitted(
         withdraw,
         shrine.contract_address,
-        "YangUpdated",
-        [YANG1_ADDRESS, remaining_amt_wad, YANG1_CEILING],
+        "YangTotalUpdated",
+        [YANG1_ADDRESS, remaining_amt_wad],
     )
 
     assert_event_emitted(
@@ -848,8 +762,8 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
         [YANG1_ADDRESS, TROVE_1, remaining_amt_wad],
     )
 
-    yang = (await shrine.get_yang(YANG1_ADDRESS).execute()).result.yang
-    assert yang.total == remaining_amt_wad
+    yang_total = (await shrine.get_yang_total(YANG1_ADDRESS).execute()).result.total
+    assert yang_total == remaining_amt_wad
 
     amt = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
     assert amt == remaining_amt_wad
@@ -881,8 +795,8 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     assert_event_emitted(
         withdraw,
         shrine.contract_address,
-        "YangUpdated",
-        [YANG1_ADDRESS, remaining_amt_wad, YANG1_CEILING],
+        "YangTotalUpdated",
+        [YANG1_ADDRESS, remaining_amt_wad],
     )
 
     assert_event_emitted(
@@ -892,8 +806,8 @@ async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
         [YANG1_ADDRESS, TROVE_1, remaining_amt_wad],
     )
 
-    yang = (await shrine.get_yang(YANG1_ADDRESS).execute()).result.yang
-    assert yang.total == remaining_amt_wad
+    yang_total = (await shrine.get_yang_total(YANG1_ADDRESS).execute()).result.total
+    assert yang_total == remaining_amt_wad
 
     amt = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
     assert amt == remaining_amt_wad
