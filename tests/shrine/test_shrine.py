@@ -511,9 +511,9 @@ async def test_set_threshold(shrine):
 @pytest.mark.asyncio
 async def test_set_threshold_exceeds_max(shrine):
     # test setting over the limit
-    max = RAY_SCALE
+    max_threshold = RAY_SCALE
     with pytest.raises(StarkException, match="Shrine: Threshold exceeds 100%"):
-        await shrine.set_threshold(YANG1_ADDRESS, max + 1).execute(caller_address=SHRINE_OWNER)
+        await shrine.set_threshold(YANG1_ADDRESS, max_threshold + 1).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.mark.parametrize("threshold", WAD_RAY_OOB_VALUES)
