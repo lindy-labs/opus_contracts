@@ -605,7 +605,8 @@ func advance{
     );
 
     with_attr error_message("Shrine: Cumulative price is out of bounds") {
-        let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) * last_price + price;
+        let new_cumulative: wad = last_cumulative_price + (interval - last_interval - 1) *
+            last_price + price;
         let price_and_cumulative_price: packed = pack_125(price, new_cumulative);
     }
 
@@ -640,7 +641,9 @@ func set_multiplier{
     ) = get_recent_multiplier_from(interval - 1);
 
     with_attr error_message("Shrine: Cumulative multiplier is out of bounds") {
-        let new_cumulative_multiplier: ray = last_cumulative_multiplier + (interval - last_interval - 1) * last_multiplier + new_multiplier;
+        let new_cumulative_multiplier: ray = last_cumulative_multiplier + (
+            interval - last_interval - 1
+        ) * last_multiplier + new_multiplier;
         let mul_and_cumulative_mul: packed = pack_125(new_multiplier, new_cumulative_multiplier);
     }
 
@@ -1409,7 +1412,8 @@ func round_distributed_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 ) -> (total_debt_to_distribute: wad, cumulative_redistributed_debt: wad) {
     alloc_locals;
 
-    let updated_cumulative_redistributed_debt = remaining_debt_to_distribute + cumulative_redistributed_debt;
+    let updated_cumulative_redistributed_debt = remaining_debt_to_distribute +
+        cumulative_redistributed_debt;
     let remaining_debt: wad = total_debt_to_distribute - updated_cumulative_redistributed_debt;
     let round_up: bool = is_le(remaining_debt, ROUNDING_THRESHOLD);
     if (round_up == TRUE) {
@@ -1630,7 +1634,8 @@ func get_avg_price{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
     } else {
         let cumulative_offset: wad = (end_interval - available_end_interval) * end_yang_price;
-        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + cumulative_offset;
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff +
+            cumulative_offset;
     }
 
     let (avg_price: wad, _) = unsigned_div_rem(
@@ -1696,8 +1701,10 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     if (start_interval == available_start_interval) {
         tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff;
     } else {
-        let neg_cumulative_offset: wad = (start_interval - available_start_interval) * start_multiplier;
-        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff - neg_cumulative_offset;
+        let neg_cumulative_offset: wad = (start_interval - available_start_interval) *
+            start_multiplier;
+        tempvar intermediate_adjusted_cumulative_diff: wad = cumulative_diff -
+            neg_cumulative_offset;
     }
 
     // If the end interval is not updated, adjust the cumulative difference by adding
@@ -1706,7 +1713,8 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff;
     } else {
         let pos_cumulative_offset: wad = (end_interval - available_end_interval) * end_multiplier;
-        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff + pos_cumulative_offset;
+        tempvar final_adjusted_cumulative_diff: wad = intermediate_adjusted_cumulative_diff +
+            pos_cumulative_offset;
     }
 
     let (avg_multiplier: wad, _) = unsigned_div_rem(
