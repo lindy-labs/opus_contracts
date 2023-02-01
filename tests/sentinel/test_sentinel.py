@@ -6,8 +6,10 @@ from tests.utils import (
     BAD_GUY,
     SENTINEL_OWNER,
     SENTINEL_ROLE_FOR_ABBOT,
+    SHRINE_OWNER,
     TROVE1_OWNER,
     TROVE_1,
+    WAD_RAY_OOB_VALUES,
     WAD_SCALE,
     YangConfig,
     assert_event_emitted,
@@ -49,7 +51,7 @@ async def test_add_yang(sentinel, shrine_deploy, yangs):
             tx,
             shrine.contract_address,
             "YangAdded",
-            [yang.contract_address, idx + 1, yang.ceiling, yang.price_wad],
+            [yang.contract_address, idx + 1, yang.price_wad],
         )
 
     addrs = (await sentinel.get_yang_addresses().execute()).result.addresses
@@ -98,6 +100,72 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
         ).execute(caller_address=SENTINEL_OWNER)
 
 
+@pytest.mark.usefixtures("sentinel_with_yangs")
+@pytest.mark.asyncio
+async def test_set_yang_asset_max(shrine, sentinel, steth_yang: YangConfig):
+    yang = steth_yang
+
+    async def set_and_assert(new_yang_max):
+        orig_max = (await sentinel.get_yang_asset_max(yang.contract_address).execute()).result.max
+        tx = await sentinel.set_yang_asset_max(yang.contract_address, new_yang_max).execute(
+            caller_address=SENTINEL_OWNER
+        )
+        assert_event_emitted(
+            tx,
+            sentinel.contract_address,
+            "YangAssetMaxUpdated",
+            [yang.contract_address, orig_max, new_yang_max],
+        )
+
+        updated_yang_max = (await sentinel.get_yang_asset_max(yang.contract_address).execute()).result.max
+        assert updated_yang_max == new_yang_max
+
+    # test increasing the max
+    new_yang_max = yang.ceiling * 2
+    await set_and_assert(new_yang_max)
+
+    # test decreasing the max
+    new_yang_max = yang.ceiling - 1
+    await set_and_assert(new_yang_max)
+
+    # test decreasing the max below yang.total
+    deposit_amt = to_wad(100)
+    # Deposit 100 yang tokens
+    await shrine.deposit(yang.contract_address, TROVE_1, deposit_amt).execute(caller_address=SHRINE_OWNER)
+
+    new_yang_max = deposit_amt - to_wad(1)
+    await set_and_assert(new_yang_max)  # update yang_max to a value smaller than the total amount currently deposited
+
+
+@pytest.mark.usefixtures("sentinel_with_yangs")
+@pytest.mark.asyncio
+async def test_set_yang_asset_max_failures(shrine, sentinel, steth_yang: YangConfig):
+    # test reverting on non-existent yang
+    faux_yang_address = 999
+    faux_yang_max = to_wad(1_000)
+    with pytest.raises(
+        StarkException,
+        match=f"Sentinel: Yang {faux_yang_address} is not approved",
+    ):
+        await sentinel.set_yang_asset_max(faux_yang_address, faux_yang_max).execute(caller_address=SENTINEL_OWNER)
+
+    # test reverting on out of bound values
+    for val in WAD_RAY_OOB_VALUES:
+        with pytest.raises(
+            StarkException,
+            match=r"Sentinel: Value of `new_asset_max` \(-?\d+\) is out of bounds",
+        ):
+            await sentinel.set_yang_asset_max(steth_yang.contract_address, val).execute(caller_address=SENTINEL_OWNER)
+
+    # test reverting on unauthorized caller
+    with pytest.raises(
+        StarkException, match=f"AccessControl: Caller is missing role {SentinelRoles.SET_YANG_ASSET_MAX}"
+    ):
+        await sentinel.set_yang_asset_max(steth_yang.contract_address, steth_yang.ceiling).execute(
+            caller_address=BAD_GUY
+        )
+
+
 # Tests for view functions grouped together for efficiency since none of them change the state
 @pytest.mark.usefixtures("sentinel_with_yangs")
 @pytest.mark.asyncio
@@ -113,12 +181,14 @@ async def test_view_funcs(sentinel, yangs, yang_gates):
         # Testing `get_yang`
         assert (await sentinel.get_yang(idx).execute()).result.yang == yang.contract_address
 
+        # Testing `get_yang_asset_max`
+        assert (await sentinel.get_yang_asset_max(yang.contract_address).execute()).result.max == yang.ceiling
+
     # Testing `get_yang_addresses_count`
     assert (await sentinel.get_yang_addresses_count().execute()).result.count == 3
 
 
-@pytest.mark.usefixtures("mock_owner_as_abbot")
-@pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners")
+@pytest.mark.usefixtures("mock_owner_as_abbot", "sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.asyncio
 async def test_gate_fns_pass(sentinel, yangs, yang_gates):
     deposit_asset_amt = 5
@@ -198,3 +268,30 @@ async def test_gate_fns_fail_unauthorized(sentinel, steth_yang: YangConfig):
         await sentinel.exit(steth_yang.contract_address, TROVE1_OWNER, TROVE_1, deposit_yang_amt).execute(
             caller_address=TROVE1_OWNER
         )
+
+
+@pytest.mark.usefixtures("mock_owner_as_abbot", "sentinel_with_yangs", "funded_trove_owners")
+@pytest.mark.asyncio
+async def test_enter_fail(sentinel, yangs, yang_gates):
+    deposit_asset_amt = 5
+    for yang, gate in zip(yangs, yang_gates):
+        scaled_asset_deposit_amt = to_fixed_point(deposit_asset_amt, yang.decimals)
+
+        await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
+            caller_address=SENTINEL_OWNER
+        )
+
+        new_asset_max = scaled_asset_deposit_amt - 1
+        await sentinel.set_yang_asset_max(yang.contract_address, new_asset_max).execute(caller_address=SENTINEL_OWNER)
+
+        # This should fail, since total deposited assets will exceed max
+        with pytest.raises(StarkException, match="Sentinel: Exceeds maximum amount of asset allowed"):
+            await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
+                caller_address=SENTINEL_OWNER
+            )
+
+        for amt in WAD_RAY_OOB_VALUES:
+            with pytest.raises(StarkException, match="WadRay: Out of bounds"):
+                await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, amt).execute(
+                    caller_address=SENTINEL_OWNER
+                )

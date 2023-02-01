@@ -1,7 +1,7 @@
 %lang starknet
 
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
-from contracts.lib.types import Trove, Yang
+from contracts.lib.types import Trove
 
 @contract_interface
 namespace IShrine {
@@ -14,7 +14,7 @@ namespace IShrine {
     func get_yin(user: address) -> (balance: wad) {
     }
 
-    func get_yang(yang: address) -> (yang: Yang) {
+    func get_yang_total(yang: address) -> (total: wad) {
     }
 
     func get_yangs_count() -> (count: ufelt) {
@@ -58,7 +58,7 @@ namespace IShrine {
     //
     // external
     //
-    func add_yang(yang: address, max: wad, threshold: ray, price: wad) {
+    func add_yang(yang: address, threshold: ray, price: wad) {
     }
 
     func set_yang_max(yang: address, new_max: wad) {

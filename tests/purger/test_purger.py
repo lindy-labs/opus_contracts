@@ -819,7 +819,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
         expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals)
 
-        before_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
+        before_gate_yang = from_wad((await shrine.get_yang_total(yang.contract_address).execute()).result.total)
         before_gate_asset_bal = from_fixed_point(
             from_uint((await token.balanceOf(yang.gate_address).execute()).result.balance), yang.decimals
         )
@@ -884,7 +884,7 @@ async def test_partial_absorb_with_redistribution_pass(
         assert_event_emitted(
             partial_absorb,
             shrine.contract_address,
-            "YangUpdated",
+            "YangTotalUpdated",
             lambda d: d[0] == yang.contract_address,
         )
 
@@ -965,7 +965,7 @@ async def test_partial_absorb_with_redistribution_pass(
         before_trove_yang = from_wad(yangs_info[yang.contract_address]["before_trove_yang_wad"])
         expected_yang = before_gate_yang - before_trove_yang
 
-        after_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
+        after_gate_yang = from_wad((await shrine.get_yang_total(yang.contract_address).execute()).result.total)
         assert_equalish(after_gate_yang, expected_yang)
 
         # Shrine: Yang price should have increased due to rebasing
