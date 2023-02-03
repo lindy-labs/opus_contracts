@@ -650,7 +650,8 @@ func set_multiplier{
 
     with_attr error_message("Shrine: Cumulative multiplier is out of bounds") {
         let new_cumulative_multiplier: ray = last_cumulative_multiplier + (
-            interval - last_interval - 1) * last_multiplier + new_multiplier;
+            interval - last_interval - 1
+        ) * last_multiplier + new_multiplier;
         let mul_and_cumulative_mul: packed = pack_125(new_multiplier, new_cumulative_multiplier);
     }
 
