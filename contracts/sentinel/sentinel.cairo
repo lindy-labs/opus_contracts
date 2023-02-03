@@ -212,9 +212,10 @@ func add_yang{
     sentinel_yang_to_gate.write(yang, gate);
     sentinel_yang_asset_max.write(yang, yang_asset_max);
 
+    // Require an initial deposit when adding a yang to prevent first depositor
+    // from front-running
     let caller: address = get_caller_address();
     let initial_yang_amt: wad = IGate.preview_enter(gate, INITIAL_DEPOSIT_AMT);
-
     let initial_deposit_amt_uint: Uint256 = WadRay.to_uint(INITIAL_DEPOSIT_AMT);
     IERC20.transferFrom(yang, caller, gate, initial_deposit_amt_uint);
 
