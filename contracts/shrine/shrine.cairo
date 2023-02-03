@@ -468,6 +468,9 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // Setters
 //
 
+// `initial_yang_amt` is passed as an argument from upstream to address the issue of
+// first depositor front-running by requiring an initial deposit when adding the yang
+// to the Shrine
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
