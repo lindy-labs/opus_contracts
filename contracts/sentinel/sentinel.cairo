@@ -3,6 +3,8 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero
+from starkware.cairo.common.uint256 import Uint256
+from starkware.starknet.common.syscalls import get_caller_address
 
 from contracts.gate.interface import IGate
 from contracts.sentinel.roles import SentinelRoles
@@ -21,7 +23,14 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 
 from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, ray, ufelt, wad
+from contracts.lib.interfaces import IERC20
 from contracts.lib.wad_ray import WadRay
+
+//
+// Constants
+//
+
+const INITIAL_DEPOSIT_AMT = 10 ** 3;
 
 //
 // Events
@@ -203,8 +212,14 @@ func add_yang{
     sentinel_yang_to_gate.write(yang, gate);
     sentinel_yang_asset_max.write(yang, yang_asset_max);
 
+    let caller: address = get_caller_address();
+    let initial_yang_amt: wad = IGate.preview_enter(gate, INITIAL_DEPOSIT_AMT);
+
+    let initial_deposit_amt_uint: Uint256 = WadRay.to_uint(INITIAL_DEPOSIT_AMT);
+    IERC20.transferFrom(yang, caller, gate, initial_deposit_amt_uint);
+
     let (shrine: address) = sentinel_shrine_address.read();
-    IShrine.add_yang(shrine, yang, yang_threshold, yang_price);
+    IShrine.add_yang(shrine, yang, yang_threshold, yang_price, initial_yang_amt);
 
     YangAdded.emit(yang, gate);
     YangAssetMaxUpdated.emit(yang, 0, yang_asset_max);
