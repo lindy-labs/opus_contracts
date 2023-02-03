@@ -952,7 +952,7 @@ async def test_kill(shrine_authed, gate_info):
     assert after_gate_yang == before_gate_yang - withdraw_yang_amt
 
 
-@pytest.mark.usefixtures("shrine_authed")
+@pytest.mark.usefixtures("shrine_authed", "funded_users")
 @pytest.mark.parametrize(
     "gate_info",
     ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
