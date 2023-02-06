@@ -19,7 +19,9 @@ async def flashmint(starknet, shrine) -> StarknetContract:
     contract = compile_contract("contracts/flashmint/flashmint.cairo")
     flashmint = await starknet.deploy(contract_class=contract, constructor_calldata=[shrine.contract_address])
 
-    await shrine.grant_role(ShrineRoles.FLASH_MINT, flashmint.contract_address).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(
+        ShrineRoles.FORGE_WITHOUT_TROVE + ShrineRoles.MELT_WITHOUT_TROVE, flashmint.contract_address
+    ).execute(caller_address=SHRINE_OWNER)
 
     return flashmint
 

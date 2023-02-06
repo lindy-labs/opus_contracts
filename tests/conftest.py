@@ -294,7 +294,7 @@ async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
     )
 
     # auth Abbot in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE + ShrineRoles.MELT
+    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE_WITH_TROVE + ShrineRoles.MELT_WITH_TROVE
     await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # auth Abbot in Sentinel
@@ -421,28 +421,6 @@ async def wbtc_gate(starknet, sentinel, shrine_deploy, wbtc_token, gates) -> Sta
 @pytest.fixture
 async def yang_gates(steth_gate, doge_gate, wbtc_gate) -> tuple[StarknetContract]:
     return steth_gate, doge_gate, wbtc_gate
-
-
-#
-# Yin
-#
-
-
-@pytest.fixture
-async def yin(starknet, shrine) -> StarknetContract:
-
-    # Deploying the yin contract
-    yin_contract = compile_contract("contracts/yin/yin.cairo")
-    deployed_yin = await starknet.deploy(
-        contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
-    )
-
-    # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine
-    roles = ShrineRoles.MOVE_YIN + ShrineRoles.FLASH_MINT
-    await shrine.grant_role(roles, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return deployed_yin
 
 
 #

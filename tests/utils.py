@@ -94,7 +94,7 @@ BAD_GUY = str_to_felt("bad guy")
 # Roles
 GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
 SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
-SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
+SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT_WITH_TROVE + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
 
 # Troves
 TROVE_1 = 1
