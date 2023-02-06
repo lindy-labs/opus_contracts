@@ -146,11 +146,11 @@ func set_beneficiaries_internal{
     alloc_locals;
 
     with_attr error_message(
-            "registrar: Input arguments mismatch: {beneficiaries_len} != {percentages_len}") {
+            "Beneficiary Registrar: Input arguments mismatch: {beneficiaries_len} != {percentages_len}") {
         assert beneficiaries_len = percentages_len;
     }
 
-    with_attr error_message("registrar: No beneficiaries selected") {
+    with_attr error_message("Beneficiary Registrar: No beneficiaries provided") {
         assert_not_zero(beneficiaries_len);
     }
 
@@ -170,7 +170,7 @@ func set_beneficiaries_internal_loop{
     alloc_locals;
 
     if (count == idx) {
-        with_attr error_message("registrar: Percentages do not sum up to 100") {
+        with_attr error_message("Beneficiary Registrar: Percentages do not sum up to a ray") {
             assert percentages_total = WadRay.RAY_ONE;
         }
         return ();
