@@ -61,8 +61,9 @@ func constructor{
     percentages: ray*,
 ) {
     AccessControl.initializer(admin);
+    AccessControl._grant_role(BeneficiaryRegistrarRoles.SET_BENEFICIARIES, admin);
 
-    set_beneficiaries(beneficiaries_len, beneficiaries, percentages_len, percentages);
+    set_beneficiaries_internal(beneficiaries_len, beneficiaries, percentages_len, percentages);
 
     return ();
 }
@@ -94,7 +95,7 @@ func get_beneficiaries{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (beneficiaries: address*) = alloc();
     let (percentages: ray*) = alloc();
 
-    get_beneficiaries_loop(beneficiaries_count, 0, 0, beneficiaries, percentages);
+    get_beneficiaries_loop(beneficiaries_count, 0, beneficiaries, percentages);
 
     return (beneficiaries_count, beneficiaries, beneficiaries_count, percentages);
 }
@@ -111,18 +112,7 @@ func set_beneficiaries{
 
     AccessControl.assert_has_role(BeneficiaryRegistrarRoles.SET_BENEFICIARIES);
 
-    with_attr error_message(
-            "registrar: Input arguments mismatch: {beneficiaries_len} != {percentages_len}") {
-        assert beneficiaries_len = percentages_len;
-    }
-
-    with_attr error_message("registrar: No beneficiaries selected") {
-        assert_not_zero(beneficiaries_len);
-    }
-
-    set_beneficiaries_loop(beneficiaries_len, 0, 0, beneficiaries, percentages);
-
-    BeneficiariesUpdated.emit(beneficiaries_len, beneficiaries, percentages_len, percentages);
+    set_beneficiaries_internal(beneficiaries_len, beneficiaries, percentages_len, percentages);
 
     return ();
 }
@@ -132,14 +122,10 @@ func set_beneficiaries{
 //
 
 // Fetch the list of beneficiary addresses and their percentages.
-// Asserts that the total percentage is equal to one ray scale
 func get_beneficiaries_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    count: ufelt, idx: ufelt, percentages_total: ray, beneficiaries: address*, percentages: ray*
+    count: ufelt, idx: ufelt, beneficiaries: address*, percentages: ray*
 ) {
     if (count == idx) {
-        with_attr error_message("registrar: Percentages do not sum up to 100") {
-            assert percentages_total = WadRay.RAY_ONE;
-        }
         return ();
     }
 
@@ -149,18 +135,38 @@ func get_beneficiaries_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     let (percentage: ray) = registrar_beneficiaries_percentage.read(idx);
     assert [percentages] = percentage;
 
-    let updated_percentages_total: ray = percentages_total + percentage;
+    return get_beneficiaries_loop(count, idx + 1, beneficiaries + 1, percentages + 1);
+}
 
-    return get_beneficiaries_loop(
-        count, idx + 1, updated_percentages_total, beneficiaries + 1, percentages + 1
-    );
+// Asserts that percentages sum up to one ray scale
+@external
+func set_beneficiaries_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(beneficiaries_len: ufelt, beneficiaries: address*, percentages_len: ufelt, percentages: ray*) {
+    alloc_locals;
+
+    with_attr error_message(
+            "registrar: Input arguments mismatch: {beneficiaries_len} != {percentages_len}") {
+        assert beneficiaries_len = percentages_len;
+    }
+
+    with_attr error_message("registrar: No beneficiaries selected") {
+        assert_not_zero(beneficiaries_len);
+    }
+
+    registrar_beneficiaries_count.write(beneficiaries_len);
+    set_beneficiaries_internal_loop(beneficiaries_len, 0, 0, beneficiaries, percentages);
+
+    BeneficiariesUpdated.emit(beneficiaries_len, beneficiaries, percentages_len, percentages);
+
+    return ();
 }
 
 // Store the list of beneficiary addresses and their percentages.
 // Asserts that the total percentage is equal to one ray scale
-func set_beneficiaries_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    count: ufelt, idx: ufelt, percentages_total: ray, beneficiaries: address*, percentages: ray*
-) {
+func set_beneficiaries_internal_loop{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(count: ufelt, idx: ufelt, percentages_total: ray, beneficiaries: address*, percentages: ray*) {
     alloc_locals;
 
     if (count == idx) {
@@ -177,7 +183,7 @@ func set_beneficiaries_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 
     let updated_percentages_total: ray = percentages_total + percentage;
 
-    return set_beneficiaries_loop(
+    return set_beneficiaries_internal_loop(
         count, idx + 1, updated_percentages_total, beneficiaries + 1, percentages + 1
     );
 }
