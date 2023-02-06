@@ -88,10 +88,10 @@ namespace IShrine {
     func withdraw(yang: address, trove_id: ufelt, amount: wad) {
     }
 
-    func forge(user: address, trove_id: ufelt, amount: wad) {
+    func forge_with_trove(user: address, trove_id: ufelt, amount: wad) {
     }
 
-    func melt(user: address, trove_id: ufelt, amount: wad) {
+    func melt_with_trove(user: address, trove_id: ufelt, amount: wad) {
     }
 
     func seize(yang: address, trove_id: ufelt, amount: wad) {
@@ -100,10 +100,10 @@ namespace IShrine {
     func redistribute(trove_id: ufelt) {
     }
 
-    func start_flash_mint(receiver: address, amount: wad) {
+    func forge_without_trove(receiver: address, amount: wad) {
     }
 
-    func end_flash_mint(receiver: address, amount: wad) {
+    func melt_without_trove(receiver: address, amount: wad) {
     }
 
     //

@@ -107,7 +107,7 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (shrine: address) = flashmint_shrine.read();
     let felt_amount: wad = WadRay.from_uint(amount);
-    IShrine.start_flash_mint(shrine, receiver, felt_amount);
+    IShrine.forge_without_trove(shrine, receiver, felt_amount);
 
     let (initiator: address) = get_caller_address();
 
@@ -121,7 +121,7 @@ func flashLoan{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     // this function in Shrine takes care of balance validation
-    IShrine.end_flash_mint(shrine, receiver, felt_amount);
+    IShrine.melt_without_trove(shrine, receiver, felt_amount);
 
     FlashMint.emit(initiator, receiver, token, amount);
 

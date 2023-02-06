@@ -761,12 +761,12 @@ func withdraw{
 
 // Mint a specified amount of synthetic for a Trove
 @external
-func forge{
+func forge_with_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(user: address, trove_id: ufelt, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FORGE);
+    AccessControl.assert_has_role(ShrineRoles.FORGE_WITH_TROVE);
 
     // Check system is live
     assert_live();
@@ -830,12 +830,12 @@ func forge{
 
 // Repay a specified amount of synthetic for a Trove
 @external
-func melt{
+func melt_with_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(user: address, trove_id: ufelt, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.MELT);
+    AccessControl.assert_has_role(ShrineRoles.MELT_WITH_TROVE);
 
     with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -931,12 +931,12 @@ func redistribute{
 }
 
 @external
-func start_flash_mint{
+func forge_without_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(receiver: address, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
+    AccessControl.assert_has_role(ShrineRoles.FORGE_WITHOUT_TROVE);
 
     with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -949,15 +949,16 @@ func start_flash_mint{
 }
 
 @external
-func end_flash_mint{
+func melt_without_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(receiver: address, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
+    AccessControl.assert_has_role(ShrineRoles.MELT_WITHOUT_TROVE);
 
-    // skipping amount validation because it already had to
-    // pass validation in start_flash_loan
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
 
     // Update balances
     melt_internal(receiver, amount);

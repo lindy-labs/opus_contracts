@@ -142,7 +142,7 @@ func open_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
     let (shrine: address) = abbot_shrine.read();
     let (sentinel: address) = abbot_sentinel.read();
     do_deposits(shrine, sentinel, user, new_trove_id, yangs_len, yangs, amounts);
-    IShrine.forge(shrine, user, new_trove_id, forge_amount);
+    IShrine.forge_with_trove(shrine, user, new_trove_id, forge_amount);
 
     TroveOpened.emit(user, new_trove_id);
 
@@ -159,7 +159,7 @@ func close_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert_trove_owner(user, trove_id);
 
     let (shrine: address) = abbot_shrine.read();
-    IShrine.melt(shrine, user, trove_id, WadRay.BOUND);
+    IShrine.melt_with_trove(shrine, user, trove_id, WadRay.BOUND);
 
     let (sentinel: address) = abbot_sentinel.read();
     let (yang_addresses_count: ufelt) = ISentinel.get_yang_addresses_count(sentinel);
@@ -234,7 +234,7 @@ func forge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     assert_trove_owner(user, trove_id);
 
     let (shrine: address) = abbot_shrine.read();
-    IShrine.forge(shrine, user, trove_id, amount);
+    IShrine.forge_with_trove(shrine, user, trove_id, amount);
 
     return ();
 }
@@ -248,7 +248,7 @@ func melt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (user: address) = get_caller_address();
     let (shrine: address) = abbot_shrine.read();
-    IShrine.melt(shrine, user, trove_id, amount);
+    IShrine.melt_with_trove(shrine, user, trove_id, amount);
 
     return ();
 }
