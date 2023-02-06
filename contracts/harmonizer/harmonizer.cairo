@@ -5,6 +5,7 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le
 
 from contracts.harmonizer.interface import IBeneficiaryRegistrar
+from contracts.harmonizer.roles import HarmonizerRoles
 from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface
@@ -22,20 +23,6 @@ from contracts.lib.aliases import address, ray, ufelt, wad
 from contracts.lib.wad_ray import WadRay
 
 //
-// Events
-//
-
-@event
-func Restore(
-    beneficiaries_len: ufelt,
-    beneficiaries: address*,
-    percentages_len: ufelt,
-    percentages: ray*,
-    amount: wad,
-) {
-}
-
-//
 // Storage
 //
 
@@ -45,6 +32,24 @@ func harmonizer_beneficiary_registrar() -> (registrar: address) {
 
 @storage_var
 func harmonizer_shrine() -> (shrine: address) {
+}
+
+//
+// Events
+//
+
+@event
+func BeneficiaryRegistrarUpdated(old_address: address, new_address: address) {
+}
+
+@event
+func Restore(
+    beneficiaries_len: ufelt,
+    beneficiaries: address*,
+    percentages_len: ufelt,
+    percentages: ray*,
+    amount: wad,
+) {
 }
 
 //
@@ -58,6 +63,35 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     AccessControl.initializer(admin);
     harmonizer_shrine.write(shrine);
     harmonizer_beneficiary_registrar.write(registrar);
+    return ();
+}
+
+//
+// View
+//
+
+@view
+func get_beneficiary_registrar{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (registrar: address) {
+    let registrar: address = harmonizer_beneficiary_registrar.read();
+    return (registrar,);
+}
+
+//
+// Setters
+//
+
+@external
+func set_beneficiary_registrar{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(registrar: address) {
+    AccessControl.assert_has_role(HarmonizerRoles.SET_BENEFICIARY_REGISTRAR);
+
+    let old_address: address = harmonizer_beneficiary_registrar.read();
+    harmonizer_beneficiary_registrar.write(registrar);
+
+    BeneficiaryRegistrarUpdated.emit(old_address, registrar);
+
     return ();
 }
 
