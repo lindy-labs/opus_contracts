@@ -109,7 +109,6 @@ func restore{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     let (total_yin: wad) = IShrine.get_total_yin(shrine);
 
     let surplus: wad = WadRay.unsigned_sub(total_debt, total_yin);
-
     if (surplus == 0) {
         return ();
     }
@@ -126,7 +125,7 @@ func restore{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     // Assert total debt is less than yin
     // It may not be equal due to rounding errors
     let (updated_total_yin: wad) = IShrine.get_total_yin(shrine);
-    with_attr error_message("Harmonizer: Total yin is not equal to total debt") {
+    with_attr error_message("Harmonizer: Total yin exceeds total debt") {
         // We can use `assert_le` here because both values have been checked in Shrine
         assert_le(updated_total_yin, total_debt);
     }
@@ -153,7 +152,7 @@ func restore_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let amount: wad = WadRay.rmul([percentages], surplus);
 
     let shrine: address = harmonizer_shrine.read();
-    IShrine.forge_without_trove(shrine, amount, [beneficiaries]);
+    IShrine.forge_without_trove(shrine, [beneficiaries], amount);
 
     return restore_loop(surplus, count, idx + 1, beneficiaries + 1, percentages + 1);
 }
