@@ -139,6 +139,8 @@ func get_beneficiaries_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 func set_beneficiaries_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(beneficiaries_len: ufelt, beneficiaries: address*, percentages_len: ufelt, percentages: ray*) {
+    alloc_locals;
+
     with_attr error_message(
             "Beneficiary Registrar: Input arguments mismatch: {beneficiaries_len} != {percentages_len}") {
         assert beneficiaries_len = percentages_len;
