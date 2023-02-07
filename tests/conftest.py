@@ -49,6 +49,7 @@ from tests.utils import (
     estimate_gas,
     from_wad,
     get_block_timestamp,
+    get_contract_code_with_addition,
     get_contract_code_with_replacement,
     max_approve,
     set_block_timestamp,
@@ -208,6 +209,19 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
         },
     )
 
+    # Function to simulate accrued interest and fees by increasing the system debt while
+    # minted yin stays constant
+    additional_code = """
+@external
+func increase_total_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
+    let current_total: wad = shrine_total_debt.read();
+    let new_total: wad = WadRay.unsigned_add(current_total, amount);
+    shrine_total_debt.write(new_total);
+    return ();
+}
+    """
+
+    shrine_code = get_contract_code_with_addition(shrine_code, additional_code)
     shrine_contract = compile_code(shrine_code)
 
     shrine = await starknet.deploy(
@@ -275,7 +289,7 @@ async def shrine_deposit(shrine) -> StarknetCallInfo:
 
 @pytest.fixture
 async def shrine_forge(shrine, shrine_deposit) -> StarknetCallInfo:
-    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge_with_trove(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
     return forge
 
 

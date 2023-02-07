@@ -2,12 +2,11 @@ import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.harmonizer.constants import *  # noqa: F403
-from tests.utils import RAY_SCALE, assert_event_emitted
+from tests.utils import BAD_GUY, RAY_SCALE, assert_event_emitted
 
 
 @pytest.mark.asyncio
 async def test_setup(beneficiary_registrar):
-
     res = (await beneficiary_registrar.get_beneficiaries().execute()).result
 
     assert res.beneficiaries == INITIAL_BENEFICIARIES
@@ -72,3 +71,12 @@ async def test_set_beneficiaries_fail(beneficiary_registrar):
             await beneficiary_registrar.set_beneficiaries(INITIAL_BENEFICIARIES, invalid_percentages).execute(
                 caller_address=BENEFICIARY_REGISTRAR_OWNER
             )
+
+    # unauthorized
+    with pytest.raises(
+        StarkException, match=f"AccessControl: Caller is missing role {HarmonizerRoles.SET_BENEFICIARY_REGISTRAR}"
+    ):
+        await beneficiary_registrar.set_beneficiaries(
+            SUBSEQUENT_BENEFICIARIES,
+            SUBSEQUENT_PERCENTAGES_RAY,
+        ).execute(caller_address=BAD_GUY)

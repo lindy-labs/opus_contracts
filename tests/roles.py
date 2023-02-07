@@ -1,13 +1,6 @@
 from enum import IntEnum
 
 
-class SentinelRoles(IntEnum):
-    ADD_YANG = 2**0
-    ENTER = 2**1
-    EXIT = 2**2
-    SET_YANG_ASSET_MAX = 2**3
-
-
 class EmpiricRoles(IntEnum):
     ADD_YANG = 2**0
     SET_ORACLE_ADDRESS = 2**1
@@ -22,6 +15,17 @@ class GateRoles(IntEnum):
     KILL = 2**2
     SET_TAX = 2**3
     SET_TAX_COLLECTOR = 2**4
+
+
+class HarmonizerRoles(IntEnum):
+    SET_BENEFICIARY_REGISTRAR = 2**0
+
+
+class SentinelRoles(IntEnum):
+    ADD_YANG = 2**0
+    ENTER = 2**1
+    EXIT = 2**2
+    SET_YANG_ASSET_MAX = 2**3
 
 
 class ShrineRoles(IntEnum):

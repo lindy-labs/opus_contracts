@@ -1,12 +1,13 @@
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
+from starkware.starknet.testing.starknet import Starknet
 
 from tests.harmonizer.constants import *  # noqa: F403
 from tests.utils import compile_contract
 
 
 @pytest.fixture
-async def beneficiary_registrar(starknet) -> StarknetContract:
+async def beneficiary_registrar(starknet: Starknet) -> StarknetContract:
     registrar_contract = compile_contract("contracts/harmonizer/beneficiary_registrar.cairo")
     registrar = await starknet.deploy(
         contract_class=registrar_contract,

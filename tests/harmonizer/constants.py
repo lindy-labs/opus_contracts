@@ -1,8 +1,9 @@
 from decimal import Decimal
 
-from tests.utils import RAY_SCALE, str_to_felt
+from tests.utils import RAY_SCALE, str_to_felt, to_wad
 
 BENEFICIARY_REGISTRAR_OWNER = str_to_felt("beneficiary registrar")
+HARMONIZER_OWNER = str_to_felt("harmonizer owner")
 
 BENEFICIARY_1 = str_to_felt("beneficiary 1")
 BENEFICIARY_2 = str_to_felt("beneficiary 2")
@@ -23,3 +24,6 @@ INITIAL_PERCENTAGES_RAY = [int(i * RAY_SCALE) for i in INITIAL_PERCENTAGES]
 SUBSEQUENT_BENEFICIARIES = [BENEFICIARY_3, BENEFICIARY_4, BENEFICIARY_5]
 SUBSEQUENT_PERCENTAGES = [BENEFICIARY_3_PERCENTAGE, BENEFICIARY_4_PERCENTAGE, BENEFICIARY_5_PERCENTAGE]
 SUBSEQUENT_PERCENTAGES_RAY = [int(i * RAY_SCALE) for i in SUBSEQUENT_PERCENTAGES]
+
+DEBT_INCREMENT = Decimal("10_000")
+DEBT_INCREMENT_WAD = to_wad(DEBT_INCREMENT)
