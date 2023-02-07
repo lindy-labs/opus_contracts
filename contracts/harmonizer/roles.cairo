@@ -1,7 +1,7 @@
-namespace BeneficiaryRegistrarRoles {
-    const SET_BENEFICIARIES = 2 ** 0;
+namespace AllocatorRoles {
+    const SET_ALLOCATION = 2 ** 0;
 }
 
 namespace HarmonizerRoles {
-    const SET_BENEFICIARY_REGISTRAR = 2 ** 0;
+    const SET_ALLOCATOR = 2 ** 0;
 }

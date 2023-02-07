@@ -1,8 +1,8 @@
 from enum import IntEnum
 
 
-class BeneficiaryRegistrarRoles(IntEnum):
-    SET_BENEFICIARIES = 2**0
+class AllocatorRoles(IntEnum):
+    SET_ALLOCATION = 2**0
 
 
 class EmpiricRoles(IntEnum):
@@ -22,7 +22,7 @@ class GateRoles(IntEnum):
 
 
 class HarmonizerRoles(IntEnum):
-    SET_BENEFICIARY_REGISTRAR = 2**0
+    SET_ALLOCATOR = 2**0
 
 
 class SentinelRoles(IntEnum):

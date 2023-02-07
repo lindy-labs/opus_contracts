@@ -23,14 +23,14 @@ from tests.utils import (
 
 
 @pytest.fixture
-async def harmonizer(starknet: Starknet, shrine, beneficiary_registrar) -> StarknetContract:
+async def harmonizer(starknet: Starknet, shrine, allocator) -> StarknetContract:
     harmonizer_contract = compile_contract("contracts/harmonizer/harmonizer.cairo")
     harmonizer = await starknet.deploy(
         contract_class=harmonizer_contract,
         constructor_calldata=[
             HARMONIZER_OWNER,
             shrine.contract_address,
-            beneficiary_registrar.contract_address,
+            allocator.contract_address,
         ],
     )
 
@@ -42,20 +42,20 @@ async def harmonizer(starknet: Starknet, shrine, beneficiary_registrar) -> Stark
 
 
 @pytest.fixture
-async def alt_beneficiary_registrar(starknet: Starknet) -> StarknetContract:
-    registrar_contract = compile_contract("contracts/harmonizer/beneficiary_registrar.cairo")
-    registrar = await starknet.deploy(
-        contract_class=registrar_contract,
+async def alt_allocator(starknet: Starknet) -> StarknetContract:
+    allocator_contract = compile_contract("contracts/harmonizer/allocator.cairo")
+    allocator = await starknet.deploy(
+        contract_class=allocator_contract,
         constructor_calldata=[
-            BENEFICIARY_REGISTRAR_OWNER,
-            len(SUBSEQUENT_BENEFICIARIES),
-            *SUBSEQUENT_BENEFICIARIES,
+            ALLOCATOR_OWNER,
+            len(SUBSEQUENT_RECIPIENTS),
+            *SUBSEQUENT_RECIPIENTS,
             len(SUBSEQUENT_PERCENTAGES_RAY),
             *SUBSEQUENT_PERCENTAGES_RAY,
         ],
     )
 
-    return registrar
+    return allocator
 
 
 #
@@ -64,9 +64,9 @@ async def alt_beneficiary_registrar(starknet: Starknet) -> StarknetContract:
 
 
 @pytest.mark.asyncio
-async def test_setup(harmonizer, beneficiary_registrar):
-    registrar = (await harmonizer.get_beneficiary_registrar().execute()).result.registrar
-    assert registrar == beneficiary_registrar.contract_address
+async def test_setup(harmonizer, allocator):
+    allocator_address = (await harmonizer.get_allocator().execute()).result.allocator
+    assert allocator_address == allocator.contract_address
 
 
 @pytest.mark.parametrize("surplus_wad", [0, DEBT_INCREMENT_WAD])
@@ -74,21 +74,21 @@ async def test_setup(harmonizer, beneficiary_registrar):
 async def test_restore_pass(shrine, harmonizer, surplus_wad):
     await shrine.increase_total_debt(surplus_wad).execute(caller_address=SHRINE_OWNER)
 
-    expected_beneficiary_count = len(INITIAL_BENEFICIARIES)
-    expected_beneficiaries = INITIAL_BENEFICIARIES
+    expected_recipients_count = len(INITIAL_RECIPIENTS)
+    expected_recipients = INITIAL_RECIPIENTS
     expected_percentages_ray = INITIAL_PERCENTAGES_RAY
 
     before_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
-    before_beneficiary_bals = (await get_token_balances([shrine], expected_beneficiaries))[0]
+    before_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
 
     tx = await harmonizer.restore().execute()
 
-    after_beneficiary_bals = (await get_token_balances([shrine], expected_beneficiaries))[0]
+    after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
     expected_percentages = INITIAL_PERCENTAGES
     surplus = from_wad(surplus_wad)
 
-    for beneficiary, percentage, before_bal, after_bal in zip(
-        expected_beneficiaries, expected_percentages, before_beneficiary_bals, after_beneficiary_bals
+    for recipient, percentage, before_bal, after_bal in zip(
+        expected_recipients, expected_percentages, before_recipients_bal, after_recipients_bal
     ):
         expected_increment = percentage * surplus
         assert_equalish(after_bal, before_bal + expected_increment)
@@ -98,7 +98,7 @@ async def test_restore_pass(shrine, harmonizer, surplus_wad):
                 tx,
                 shrine.contract_address,
                 "Transfer",
-                lambda d: d[:2] == [ZERO_ADDRESS, beneficiary],
+                lambda d: d[:2] == [ZERO_ADDRESS, recipient],
             )
 
     after_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
@@ -110,9 +110,9 @@ async def test_restore_pass(shrine, harmonizer, surplus_wad):
             harmonizer.contract_address,
             "Restore",
             [
-                expected_beneficiary_count,
-                *expected_beneficiaries,
-                expected_beneficiary_count,
+                expected_recipients_count,
+                *expected_recipients,
+                expected_recipients_count,
                 *expected_percentages_ray,
                 surplus_wad,
             ],
@@ -120,37 +120,35 @@ async def test_restore_pass(shrine, harmonizer, surplus_wad):
 
 
 @pytest.mark.asyncio
-async def test_set_beneficiary_registrar_pass(shrine, harmonizer, beneficiary_registrar, alt_beneficiary_registrar):
-    tx = await harmonizer.set_beneficiary_registrar(alt_beneficiary_registrar.contract_address).execute(
-        caller_address=HARMONIZER_OWNER
-    )
+async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
+    tx = await harmonizer.set_allocator(alt_allocator.contract_address).execute(caller_address=HARMONIZER_OWNER)
 
     assert_event_emitted(
         tx,
         harmonizer.contract_address,
-        "BeneficiaryRegistrarUpdated",
-        [beneficiary_registrar.contract_address, alt_beneficiary_registrar.contract_address],
+        "AllocatorUpdated",
+        [allocator.contract_address, alt_allocator.contract_address],
     )
 
     # Check `restore`
     surplus_wad = DEBT_INCREMENT_WAD
     await shrine.increase_total_debt(surplus_wad).execute(caller_address=SHRINE_OWNER)
 
-    expected_beneficiary_count = len(SUBSEQUENT_BENEFICIARIES)
-    expected_beneficiaries = SUBSEQUENT_BENEFICIARIES
+    expected_recipients_count = len(SUBSEQUENT_RECIPIENTS)
+    expected_recipients = SUBSEQUENT_RECIPIENTS
     expected_percentages_ray = SUBSEQUENT_PERCENTAGES_RAY
 
     before_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
-    before_beneficiary_bals = (await get_token_balances([shrine], expected_beneficiaries))[0]
+    before_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
 
     tx = await harmonizer.restore().execute()
 
-    after_beneficiary_bals = (await get_token_balances([shrine], expected_beneficiaries))[0]
+    after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
     expected_percentages = SUBSEQUENT_PERCENTAGES
     surplus = from_wad(surplus_wad)
 
-    for beneficiary, percentage, before_bal, after_bal in zip(
-        expected_beneficiaries, expected_percentages, before_beneficiary_bals, after_beneficiary_bals
+    for recipient, percentage, before_bal, after_bal in zip(
+        expected_recipients, expected_percentages, before_recipients_bal, after_recipients_bal
     ):
         expected_increment = percentage * surplus
         assert_equalish(after_bal, before_bal + expected_increment)
@@ -159,7 +157,7 @@ async def test_set_beneficiary_registrar_pass(shrine, harmonizer, beneficiary_re
             tx,
             shrine.contract_address,
             "Transfer",
-            lambda d: d[:2] == [ZERO_ADDRESS, beneficiary],
+            lambda d: d[:2] == [ZERO_ADDRESS, recipient],
         )
 
     after_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
@@ -170,9 +168,9 @@ async def test_set_beneficiary_registrar_pass(shrine, harmonizer, beneficiary_re
         harmonizer.contract_address,
         "Restore",
         [
-            expected_beneficiary_count,
-            *expected_beneficiaries,
-            expected_beneficiary_count,
+            expected_recipients_count,
+            *expected_recipients,
+            expected_recipients_count,
             *expected_percentages_ray,
             surplus_wad,
         ],
@@ -180,11 +178,7 @@ async def test_set_beneficiary_registrar_pass(shrine, harmonizer, beneficiary_re
 
 
 @pytest.mark.asyncio
-async def test_set_beneficiary_registrar_fail(harmonizer, alt_beneficiary_registrar):
+async def test_set_allocator_fail(harmonizer, alt_allocator):
     # unauthorized
-    with pytest.raises(
-        StarkException, match=f"AccessControl: Caller is missing role {HarmonizerRoles.SET_BENEFICIARY_REGISTRAR}"
-    ):
-        await harmonizer.set_beneficiary_registrar(alt_beneficiary_registrar.contract_address).execute(
-            caller_address=BAD_GUY
-        )
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {HarmonizerRoles.SET_ALLOCATOR}"):
+        await harmonizer.set_allocator(alt_allocator.contract_address).execute(caller_address=BAD_GUY)

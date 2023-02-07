@@ -7,17 +7,17 @@ from tests.utils import compile_contract
 
 
 @pytest.fixture
-async def beneficiary_registrar(starknet: Starknet) -> StarknetContract:
-    registrar_contract = compile_contract("contracts/harmonizer/beneficiary_registrar.cairo")
-    registrar = await starknet.deploy(
-        contract_class=registrar_contract,
+async def allocator(starknet: Starknet) -> StarknetContract:
+    allocator_contract = compile_contract("contracts/harmonizer/allocator.cairo")
+    allocator = await starknet.deploy(
+        contract_class=allocator_contract,
         constructor_calldata=[
-            BENEFICIARY_REGISTRAR_OWNER,
-            len(INITIAL_BENEFICIARIES),
-            *INITIAL_BENEFICIARIES,
+            ALLOCATOR_OWNER,
+            len(INITIAL_RECIPIENTS),
+            *INITIAL_RECIPIENTS,
             len(INITIAL_PERCENTAGES_RAY),
             *INITIAL_PERCENTAGES_RAY,
         ],
     )
 
-    return registrar
+    return allocator
