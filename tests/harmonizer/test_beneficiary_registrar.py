@@ -2,6 +2,7 @@ import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.harmonizer.constants import *  # noqa: F403
+from tests.roles import BeneficiaryRegistrarRoles
 from tests.utils import BAD_GUY, RAY_SCALE, assert_event_emitted
 
 
@@ -74,7 +75,7 @@ async def test_set_beneficiaries_fail(beneficiary_registrar):
 
     # unauthorized
     with pytest.raises(
-        StarkException, match=f"AccessControl: Caller is missing role {HarmonizerRoles.SET_BENEFICIARY_REGISTRAR}"
+        StarkException, match=f"AccessControl: Caller is missing role {BeneficiaryRegistrarRoles.SET_BENEFICIARIES}"
     ):
         await beneficiary_registrar.set_beneficiaries(
             SUBSEQUENT_BENEFICIARIES,

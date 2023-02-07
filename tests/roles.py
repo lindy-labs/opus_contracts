@@ -1,6 +1,10 @@
 from enum import IntEnum
 
 
+class BeneficiaryRegistrarRoles(IntEnum):
+    SET_BENEFICIARIES = 2**0
+
+
 class EmpiricRoles(IntEnum):
     ADD_YANG = 2**0
     SET_ORACLE_ADDRESS = 2**1
