@@ -57,10 +57,12 @@ func Restore(
 //
 
 @constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    admin: address, shrine: address, registrar: address
-) {
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, shrine: address, registrar: address) {
     AccessControl.initializer(admin);
+    AccessControl._grant_role(HarmonizerRoles.SET_BENEFICIARY_REGISTRAR, admin);
+
     harmonizer_shrine.write(shrine);
     harmonizer_beneficiary_registrar.write(registrar);
     return ();
