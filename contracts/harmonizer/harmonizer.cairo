@@ -144,8 +144,6 @@ func restore{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
 func restore_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     surplus: wad, count: ufelt, idx: ufelt, beneficiaries: address*, percentages: ray*
 ) {
-    alloc_locals;
-
     if (count == idx) {
         return ();
     }

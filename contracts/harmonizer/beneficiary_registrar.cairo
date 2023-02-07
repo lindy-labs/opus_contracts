@@ -108,8 +108,6 @@ func get_beneficiaries{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func set_beneficiaries{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(beneficiaries_len: ufelt, beneficiaries: address*, percentages_len: ufelt, percentages: ray*) {
-    alloc_locals;
-
     AccessControl.assert_has_role(BeneficiaryRegistrarRoles.SET_BENEFICIARIES);
 
     set_beneficiaries_internal(beneficiaries_len, beneficiaries, percentages_len, percentages);
@@ -138,13 +136,9 @@ func get_beneficiaries_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     return get_beneficiaries_loop(count, idx + 1, beneficiaries + 1, percentages + 1);
 }
 
-// Asserts that percentages sum up to one ray scale
-@external
 func set_beneficiaries_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(beneficiaries_len: ufelt, beneficiaries: address*, percentages_len: ufelt, percentages: ray*) {
-    alloc_locals;
-
     with_attr error_message(
             "Beneficiary Registrar: Input arguments mismatch: {beneficiaries_len} != {percentages_len}") {
         assert beneficiaries_len = percentages_len;
@@ -167,8 +161,6 @@ func set_beneficiaries_internal{
 func set_beneficiaries_internal_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(count: ufelt, idx: ufelt, percentages_total: ray, beneficiaries: address*, percentages: ray*) {
-    alloc_locals;
-
     if (count == idx) {
         with_attr error_message("Beneficiary Registrar: Percentages do not sum up to a ray") {
             assert percentages_total = WadRay.RAY_ONE;
