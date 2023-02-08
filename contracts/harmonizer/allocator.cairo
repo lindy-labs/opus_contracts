@@ -94,7 +94,7 @@ func set_allocation_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 ) {
     if (count == idx) {
         with_attr error_message("Allocator: Percentages do not sum up to a ray") {
-            assert percentages_total = WadRay.RAY_ONE;
+            assert percentages_total = 100 * WadRay.RAY_PERCENT;
         }
         return ();
     }
