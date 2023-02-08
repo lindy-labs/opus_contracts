@@ -1,0 +1,31 @@
+name: Compile Cairo 1.0
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Rust setup
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2022-11-03
+
+      - name: Env setup
+        run: make install
+
+      - name: Compile Cairo 0.x code
+        run: find contracts-1.0 -type f -name '*.cairo' | xargs starknet-compile
