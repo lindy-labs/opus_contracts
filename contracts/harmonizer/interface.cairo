@@ -14,14 +14,6 @@ namespace IAllocator {
         recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
     ) {
     }
-
-    //
-    // external
-    //
-    func set_allocation(
-        recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
-    ) {
-    }
 }
 
 @contract_interface

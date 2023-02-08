@@ -1,34 +1,11 @@
 %lang starknet
 
 from starkware.cairo.common.alloc import alloc
-from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
+from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.cairo.common.math import assert_not_zero
 
-from contracts.harmonizer.roles import AllocatorRoles
-
-// these imported public functions are part of the contract's interface
-from contracts.lib.accesscontrol.accesscontrol_external import (
-    change_admin,
-    get_admin,
-    get_roles,
-    grant_role,
-    has_role,
-    renounce_role,
-    revoke_role,
-)
-from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, ray, ufelt, wad
 from contracts.lib.wad_ray import WadRay
-
-//
-// Events
-//
-
-@event
-func AllocationUpdated(
-    recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
-) {
-}
 
 //
 // Storage
@@ -51,19 +28,20 @@ func allocator_recipient_percentage(recipient: address) -> (percentage: ray) {
 //
 
 @constructor
-func constructor{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(
-    admin: address,
-    recipients_len: ufelt,
-    recipients: address*,
-    percentages_len: ufelt,
-    percentages: ray*,
+func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
 ) {
-    AccessControl.initializer(admin);
-    AccessControl._grant_role(AllocatorRoles.SET_ALLOCATION, admin);
+    with_attr error_message(
+            "Allocator: Input arguments mismatch: {recipients_len} != {percentages_len}") {
+        assert recipients_len = percentages_len;
+    }
 
-    set_allocation_internal(recipients_len, recipients, percentages_len, percentages);
+    with_attr error_message("Allocator: No recipients provided") {
+        assert_not_zero(recipients_len);
+    }
+
+    allocator_recipients_count.write(recipients_len);
+    set_allocation_loop(recipients_len, 0, 0, recipients, percentages);
 
     return ();
 }
@@ -101,21 +79,6 @@ func get_allocation{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 //
-// Setters
-//
-
-@external
-func set_allocation{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*) {
-    AccessControl.assert_has_role(AllocatorRoles.SET_ALLOCATION);
-
-    set_allocation_internal(recipients_len, recipients, percentages_len, percentages);
-
-    return ();
-}
-
-//
 // Internal
 //
 
@@ -136,31 +99,9 @@ func get_allocation_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     return get_allocation_loop(count, idx + 1, recipients + 1, percentages + 1);
 }
 
-func set_allocation_internal{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*) {
-    alloc_locals;
-
-    with_attr error_message(
-            "Allocator: Input arguments mismatch: {recipients_len} != {percentages_len}") {
-        assert recipients_len = percentages_len;
-    }
-
-    with_attr error_message("Allocator: No recipients provided") {
-        assert_not_zero(recipients_len);
-    }
-
-    allocator_recipients_count.write(recipients_len);
-    set_allocation_internal_loop(recipients_len, 0, 0, recipients, percentages);
-
-    AllocationUpdated.emit(recipients_len, recipients, percentages_len, percentages);
-
-    return ();
-}
-
-// Store the list of recipient addresses and their percentages.
-// Asserts that the total percentage is equal to one ray scale
-func set_allocation_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+// Loop over recipients, and write their addresses and percentages to storage.
+// Asserts that the total percentage is equal to one ray scale.
+func set_allocation_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     count: ufelt, idx: ufelt, percentages_total: ray, recipients: address*, percentages: ray*
 ) {
     if (count == idx) {
@@ -175,9 +116,9 @@ func set_allocation_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     allocator_recipients.write(idx, recipient);
     allocator_recipient_percentage.write(recipient, percentage);
 
-    let updated_percentages_total: ray = percentages_total + percentage;
+    let updated_percentages_total: ray = WadRay.unsigned_add(percentages_total, percentage);
 
-    return set_allocation_internal_loop(
+    return set_allocation_loop(
         count, idx + 1, updated_percentages_total, recipients + 1, percentages + 1
     );
 }

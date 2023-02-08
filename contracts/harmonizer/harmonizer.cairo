@@ -27,7 +27,7 @@ from contracts.lib.wad_ray import WadRay
 //
 
 @storage_var
-func harmonizer_allocator() -> (registrar: address) {
+func harmonizer_allocator() -> (allocator: address) {
 }
 
 @storage_var
@@ -59,12 +59,12 @@ func Restore(
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address, shrine: address, registrar: address) {
+}(admin: address, shrine: address, allocator: address) {
     AccessControl.initializer(admin);
     AccessControl._grant_role(HarmonizerRoles.SET_ALLOCATOR, admin);
 
     harmonizer_shrine.write(shrine);
-    harmonizer_allocator.write(registrar);
+    harmonizer_allocator.write(allocator);
     return ();
 }
 
@@ -129,10 +129,10 @@ func restore{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     }
 
     // Get array of addresses and percentages
-    let registrar: address = harmonizer_allocator.read();
+    let allocator: address = harmonizer_allocator.read();
     let (
         recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
-    ) = IAllocator.get_allocation(registrar);
+    ) = IAllocator.get_allocation(allocator);
 
     // Loop over and forge yin to recipients
     let minted_surplus: wad = restore_loop(surplus, 0, recipients_len, 0, recipients, percentages);
