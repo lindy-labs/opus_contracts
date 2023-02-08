@@ -47,18 +47,6 @@ func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }
 
 //
-// Getters
-//
-
-@view
-func get_recipients_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    count: ufelt
-) {
-    let (count: ufelt) = allocator_recipients_count.read();
-    return (count,);
-}
-
-//
 // View
 //
 

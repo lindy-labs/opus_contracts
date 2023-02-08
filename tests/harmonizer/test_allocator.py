@@ -15,10 +15,6 @@ async def test_setup(allocator):
     assert len(res.recipients) == len(res.percentages)
     assert sum(res.percentages) == RAY_SCALE
 
-    recipient_count = (await allocator.get_recipients_count().execute()).result.count
-    expected_recipient_count = len(INITIAL_RECIPIENTS)
-    assert recipient_count == expected_recipient_count
-
 
 @pytest.mark.asyncio
 async def test_deploy_fail(starknet: Starknet, allocator_contract):

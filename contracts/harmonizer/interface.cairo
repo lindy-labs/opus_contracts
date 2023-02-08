@@ -7,9 +7,6 @@ namespace IAllocator {
     //
     // view
     //
-    func get_recipients_count() -> (count: ufelt) {
-    }
-
     func get_allocation() -> (
         recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
     ) {
