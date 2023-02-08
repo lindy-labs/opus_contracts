@@ -36,9 +36,8 @@ repos:
     entry: cairo-format -i
     files: contracts\.cairo$
 
-- repo: local
-  hooks:
   - id: cairo-1.x-format
     name: cairo-1.x-format
     language: system
-    entry: make format
+    entry: make check-format
+    files: contracts-1.0\.cairo$
