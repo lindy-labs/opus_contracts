@@ -2,10 +2,10 @@ import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.roles import ShrineRoles
 from tests.utils import (
     MAX_UINT256,
     SHRINE_OWNER,
+    SHRINE_ROLE_FOR_FLASHMINT,
     assert_event_emitted,
     compile_contract,
     from_uint,
@@ -19,9 +19,7 @@ async def flashmint(starknet, shrine) -> StarknetContract:
     contract = compile_contract("contracts/flashmint/flashmint.cairo")
     flashmint = await starknet.deploy(contract_class=contract, constructor_calldata=[shrine.contract_address])
 
-    await shrine.grant_role(
-        ShrineRoles.FORGE_WITHOUT_TROVE + ShrineRoles.MELT_WITHOUT_TROVE, flashmint.contract_address
-    ).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(SHRINE_ROLE_FOR_FLASHMINT, flashmint.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return flashmint
 
