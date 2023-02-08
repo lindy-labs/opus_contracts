@@ -32,12 +32,15 @@ namespace IHarmonizer {
     func get_allocator() -> (allocator: address) {
     }
 
+    func get_surplus() -> (amount: wad) {
+    }
+
     //
     // external
     //
     func set_allocator(allocator: address) {
     }
 
-    func restore() {
+    func restore() -> (minted_surplus: wad) {
     }
 }

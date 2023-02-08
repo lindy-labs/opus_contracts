@@ -69,10 +69,22 @@ async def test_setup(harmonizer, allocator):
     assert allocator_address == allocator.contract_address
 
 
-@pytest.mark.parametrize("surplus_wad", [0, DEBT_INCREMENT_WAD])
+@pytest.mark.parametrize(
+    "initial_surplus_wad",
+    [
+        0,
+        DEBT_INCREMENT_WAD - 1,  # Test loss of precision from fixed point division
+        DEBT_INCREMENT_WAD,
+    ],
+)
 @pytest.mark.asyncio
-async def test_restore_pass(shrine, harmonizer, surplus_wad):
-    await shrine.increase_total_debt(surplus_wad).execute(caller_address=SHRINE_OWNER)
+async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
+    before_surplus = (await harmonizer.get_surplus().execute()).result.amount
+
+    await shrine.increase_total_debt(initial_surplus_wad).execute(caller_address=SHRINE_OWNER)
+
+    after_surplus = (await harmonizer.get_surplus().execute()).result.amount
+    assert after_surplus == before_surplus + initial_surplus_wad
 
     expected_recipients_count = len(INITIAL_RECIPIENTS)
     expected_recipients = INITIAL_RECIPIENTS
@@ -82,18 +94,20 @@ async def test_restore_pass(shrine, harmonizer, surplus_wad):
     before_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
 
     tx = await harmonizer.restore().execute()
+    minted_surplus_wad = tx.result.minted_surplus
 
     after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
     expected_percentages = INITIAL_PERCENTAGES
-    surplus = from_wad(surplus_wad)
+    initial_surplus = from_wad(initial_surplus_wad)
+    minted_surplus = from_wad(minted_surplus_wad)
 
     for recipient, percentage, before_bal, after_bal in zip(
         expected_recipients, expected_percentages, before_recipients_bal, after_recipients_bal
     ):
-        expected_increment = percentage * surplus
+        expected_increment = percentage * initial_surplus
         assert_equalish(after_bal, before_bal + expected_increment)
 
-        if surplus > 0:
+        if minted_surplus > 0:
             assert_event_emitted(
                 tx,
                 shrine.contract_address,
@@ -102,9 +116,9 @@ async def test_restore_pass(shrine, harmonizer, surplus_wad):
             )
 
     after_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
-    assert after_yin_supply == before_yin_supply + surplus_wad
+    assert after_yin_supply == before_yin_supply + minted_surplus_wad
 
-    if surplus > 0:
+    if minted_surplus > 0:
         assert_event_emitted(
             tx,
             harmonizer.contract_address,
@@ -114,9 +128,17 @@ async def test_restore_pass(shrine, harmonizer, surplus_wad):
                 *expected_recipients,
                 expected_recipients_count,
                 *expected_percentages_ray,
-                surplus_wad,
+                minted_surplus_wad,
             ],
         )
+
+    updated_surplus_wad = (await harmonizer.get_surplus().execute()).result.amount
+    assert_equalish(from_wad(updated_surplus_wad), Decimal("0"))
+
+    if initial_surplus_wad % 10 == 0:
+        assert updated_surplus_wad == 0
+    else:
+        assert updated_surplus_wad > 0
 
 
 @pytest.mark.asyncio
