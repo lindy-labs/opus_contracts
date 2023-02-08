@@ -251,7 +251,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
 
 
 @pytest.fixture(scope="function")
-async def update_feeds_intermittent(request, starknet, shrine, shrine_forge) -> list[Decimal]:
+async def update_feeds_intermittent(request, starknet, shrine, shrine_forge_trove1) -> list[Decimal]:
     """
     Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
 
