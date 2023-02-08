@@ -26,12 +26,14 @@ from tests.utils import (
     WAD_RAY_BOUND,
     WAD_RAY_OOB_VALUES,
     WAD_SCALE,
+    ZERO_ADDRESS,
     assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
     calculate_trove_threshold_and_value,
     create_feed,
     from_ray,
+    from_uint,
     from_wad,
     get_block_timestamp,
     get_interval,
@@ -151,9 +153,9 @@ async def shrine_withdraw(shrine, shrine_deposit) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def update_feeds(starknet, shrine, shrine_forge) -> list[Decimal]:
+async def update_feeds(starknet, shrine, shrine_forge_trove1) -> list[Decimal]:
     """
-    Additional price feeds for yang 0 after `shrine_forge`
+    Additional price feeds for yang 0 after `shrine_forge_trove1`
     """
 
     yang0_address = YANG1_ADDRESS
@@ -168,6 +170,11 @@ async def update_feeds(starknet, shrine, shrine_forge) -> list[Decimal]:
         await shrine.set_multiplier(MULTIPLIER_FEED[i]).execute(caller_address=SHRINE_OWNER)
 
     return list(map(from_wad, yang0_feed))
+
+
+@pytest.fixture
+async def shrine_bare_forge(shrine):
+    await shrine.forge_without_trove(TROVE1_OWNER, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.fixture
@@ -186,7 +193,7 @@ async def shrine_deposit_trove2(shrine) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def shrine_melt(shrine, shrine_forge) -> StarknetCallInfo:
+async def shrine_melt_trove1(shrine, shrine_forge_trove1) -> StarknetCallInfo:
     estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
     melt = await shrine.melt_with_trove(TROVE1_OWNER, TROVE_1, estimated_debt).execute(caller_address=SHRINE_OWNER)
     return melt
@@ -202,7 +209,7 @@ async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo
 
 
 @pytest.fixture
-async def update_feeds_with_trove2(shrine_forge, shrine_forge_trove2, update_feeds) -> list[Decimal]:
+async def update_feeds_with_trove2(shrine_forge_trove1, shrine_forge_trove2, update_feeds) -> list[Decimal]:
     """
     Helper fixture for `update_feeds` with two troves.
     """
@@ -803,7 +810,7 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
     assert_equalish(max_forge_amt, expected_limit)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.parametrize("withdraw_amt_wad", [0, to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
 async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
@@ -913,7 +920,7 @@ async def test_shrine_withdraw_amount_out_of_bounds(shrine, withdraw_amt):
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_forge_pass(shrine, forge_amt_wad):
+async def test_shrine_forge_with_trove_pass(shrine, forge_amt_wad):
     forge = await shrine.forge_with_trove(TROVE1_OWNER, TROVE_1, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
@@ -949,9 +956,30 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
     assert_equalish(max_forge_amt, expected_limit - current_debt)
 
 
+@pytest.mark.parametrize(
+    "forge_amt_wad",
+    [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD - 1, FORGE_AMT_WAD],
+)
+@pytest.mark.asyncio
+async def test_shrine_forge_without_trove_pass(shrine, forge_amt_wad):
+    before_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
+
+    forge = await shrine.forge_without_trove(TROVE1_OWNER, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
+
+    assert_event_emitted(
+        forge,
+        shrine.contract_address,
+        "Transfer",
+        [ZERO_ADDRESS, TROVE1_OWNER, *to_uint(forge_amt_wad)],
+    )
+
+    after_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
+    assert after_yin_supply == before_yin_supply + forge_amt_wad
+
+
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_zero_deposit_fail(shrine):
+async def test_shrine_forge_with_trove_zero_deposit_fail(shrine):
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine.forge_with_trove(TROVE3_OWNER, TROVE_3, to_wad(1_000)).execute(caller_address=SHRINE_OWNER)
@@ -959,7 +987,7 @@ async def test_shrine_forge_zero_deposit_fail(shrine):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_unsafe_fail(shrine):
+async def test_shrine_forge_with_trove_unsafe_fail(shrine):
     # Increase debt ceiling
     new_ceiling = to_wad(100_000)
     await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
@@ -970,7 +998,7 @@ async def test_shrine_forge_unsafe_fail(shrine):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_ceiling_fail(shrine):
+async def test_shrine_forge_with_trove_ceiling_fail(shrine):
     # Deposit more yang
     await shrine.deposit(YANG1_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
     updated_deposit = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
@@ -986,6 +1014,9 @@ async def test_shrine_forge_unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.forge_with_trove(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=BAD_GUY)
 
+    with pytest.raises(StarkException):
+        await shrine.forge_without_trove(TROVE1_OWNER, FORGE_AMT_WAD).execute(caller_address=BAD_GUY)
+
 
 @pytest.mark.parametrize("forge_amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
@@ -995,16 +1026,19 @@ async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
     with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
         await shrine.forge_with_trove(TROVE1_OWNER, TROVE_1, forge_amt).execute(caller_address=SHRINE_OWNER)
 
+    with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
+        await shrine.forge_without_trove(TROVE1_OWNER, forge_amt).execute(caller_address=SHRINE_OWNER)
+
 
 #
 # Tests - Trove melt
 #
 
 
-@pytest.mark.usefixtures("shrine_forge", "shrine_forge_trove2")
+@pytest.mark.usefixtures("shrine_forge_trove1", "shrine_forge_trove2")
 @pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD, 2**125])
 @pytest.mark.asyncio
-async def test_shrine_melt_pass(shrine, melt_amt_wad):
+async def test_shrine_melt_with_trove_pass(shrine, melt_amt_wad):
     price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
 
     total_debt_wad = (await shrine.get_total_debt().execute()).result.total_debt
@@ -1051,12 +1085,34 @@ async def test_shrine_melt_pass(shrine, melt_amt_wad):
     assert_equalish(max_forge_amt, expected_max_forge_amt)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_bare_forge")
+@pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD])
+@pytest.mark.asyncio
+async def test_shrine_melt_without_trove_pass(shrine, melt_amt_wad):
+    before_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
+
+    melt = await shrine.melt_without_trove(TROVE1_OWNER, melt_amt_wad).execute(caller_address=SHRINE_OWNER)
+
+    assert_event_emitted(
+        melt,
+        shrine.contract_address,
+        "Transfer",
+        [TROVE1_OWNER, ZERO_ADDRESS, *to_uint(melt_amt_wad)],
+    )
+
+    after_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
+    assert after_yin_supply == before_yin_supply - melt_amt_wad
+
+
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_shrine_melt_unauthorized(shrine):
     estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
     with pytest.raises(StarkException):
         await shrine.melt_with_trove(TROVE1_OWNER, TROVE_1, estimated_debt).execute(caller_address=BAD_GUY)
+
+    with pytest.raises(StarkException):
+        await shrine.melt_without_trove(TROVE1_OWNER, estimated_debt).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.parametrize("melt_amt", WAD_RAY_OOB_VALUES)
@@ -1067,14 +1123,20 @@ async def test_shrine_melt_amount_out_of_bounds(shrine, melt_amt):
     with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
         await shrine.melt_with_trove(TROVE1_OWNER, TROVE_1, melt_amt).execute(caller_address=SHRINE_OWNER)
 
+    with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
+        await shrine.melt_without_trove(TROVE1_OWNER, melt_amt).execute(caller_address=SHRINE_OWNER)
 
-@pytest.mark.usefixtures("shrine_forge", "shrine_forge_trove2")
+
+@pytest.mark.usefixtures("shrine_forge_trove1", "shrine_forge_trove2")
 @pytest.mark.asyncio
 async def test_shrine_melt_insufficient_yin(shrine):
     # Set up trove 2 to have less yin than trove 1's debt
     await shrine.transfer(TROVE1_OWNER, to_uint(1)).execute(caller_address=TROVE2_OWNER)
     with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
         await shrine.melt_with_trove(TROVE2_OWNER, TROVE_1, WAD_RAY_BOUND).execute(caller_address=SHRINE_OWNER)
+
+    with pytest.raises(StarkException, match="Shrine: Not enough yin to melt debt"):
+        await shrine.melt_without_trove(TROVE2_OWNER, WAD_RAY_BOUND).execute(caller_address=SHRINE_OWNER)
 
 
 #
@@ -1629,7 +1691,7 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
 
 
 @pytest.mark.parametrize("move_amt", [0, to_wad(Decimal("1E-18")), 1, INITIAL_DEPOSIT // 2])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
     # Check max forge amount
@@ -1671,14 +1733,14 @@ async def test_move_yang_pass(shrine, move_amt, collect_gas_cost):
     assert_equalish(max_forge_amt, expected_max_forge_amt - current_debt)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_move_yang_insufficient_fail(shrine):
     with pytest.raises(StarkException, match="Shrine: Insufficient yang"):
         await shrine.move_yang(YANG1_ADDRESS, TROVE_1, TROVE_2, to_wad(11)).execute(caller_address=SHRINE_OWNER)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_move_yang_unsafe_fail(shrine):
     # Get latest price
@@ -1714,7 +1776,7 @@ async def test_move_yang_invalid_yang(shrine):
 #
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
 async def test_yin_transfer_pass(shrine_both):
@@ -1743,7 +1805,7 @@ async def test_yin_transfer_pass(shrine_both):
     await shrine.transfer(YIN_USER1, to_uint(0)).execute(caller_address=TROVE1_OWNER)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_yin_transfer_fail(shrine):
     # Attempting to transfer more yin than TROVE1_OWNER owns
@@ -1755,7 +1817,7 @@ async def test_yin_transfer_fail(shrine):
         await shrine.transfer(TROVE1_OWNER, to_uint(1)).execute(caller_address=YIN_USER1)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
 async def test_yin_transfer_from_pass(shrine_both):
@@ -1785,7 +1847,7 @@ async def test_yin_transfer_from_pass(shrine_both):
     assert (await shrine.allowance(TROVE1_OWNER, YIN_USER1).execute()).result.allowance == to_uint(0)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_yin_infinite_allowance(shrine):
     # infinite allowance test
@@ -1796,7 +1858,7 @@ async def test_yin_infinite_allowance(shrine):
     )
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_yin_transfer_from_fail(shrine):
     # Calling `transferFrom` with an allowance of zero
@@ -1841,7 +1903,7 @@ async def test_yin_approve_invalid_inputs(shrine, amount):
         await shrine.approve(YIN_USER1, amount).execute(caller_address=TROVE1_OWNER)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.parametrize("shrine_both", ["shrine", "shrine_killed"], indirect=["shrine_both"])
 @pytest.mark.asyncio
 async def test_yin_melt_after_transfer(shrine_both):
@@ -1887,7 +1949,7 @@ async def test_shrine_advance_set_multiplier_invalid_fail(shrine_deploy):
 #
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_shrine_unhealthy(shrine):
     # Calculate unsafe yang price
