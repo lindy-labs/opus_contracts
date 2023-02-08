@@ -47,4 +47,4 @@ jobs:
       - name: Compile Cairo 1.x code
         run:
           find contracts-1.0 -type f -name '*.cairo' |
-          xargs -n1 cargo run --manifest-path=./cairo/Cargo.toml --bin starknet-compile
+          xargs -n1 cargo run --manifest-path=./cairo/Cargo.toml --bin starknet-compile > /dev/null
