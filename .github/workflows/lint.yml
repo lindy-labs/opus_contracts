@@ -26,6 +26,9 @@ jobs:
           cache: pip
           cache-dependency-path: '**/requirements-dev.txt'
 
+      - name: Env setup
+        run: pip install -r requirements-dev.txt
+
       - name: Lint Cairo 0.x code
         run: find contracts -type f -name '*.cairo' | xargs cairo-format -c
 
