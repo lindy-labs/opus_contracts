@@ -180,7 +180,7 @@ func restore_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     }
 
     // `rmul` of a wad and a ray returns a wad
-    let amount: wad = WadRay.rmul([percentages], surplus);
+    let amount: wad = WadRay.rmul(surplus, [percentages]);
 
     let shrine: address = harmonizer_shrine.read();
     IShrine.forge_without_trove(shrine, [recipients], amount);

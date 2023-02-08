@@ -12,6 +12,7 @@ from tests.utils import (
     assert_equalish,
     assert_event_emitted,
     compile_contract,
+    from_ray,
     from_uint,
     from_wad,
     get_token_balances,
@@ -95,13 +96,13 @@ async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
     minted_surplus_wad = tx.result.minted_surplus
 
     after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
-    expected_percentages = INITIAL_PERCENTAGES
     initial_surplus = from_wad(initial_surplus_wad)
     minted_surplus = from_wad(minted_surplus_wad)
 
-    for recipient, percentage, before_bal, after_bal in zip(
-        expected_recipients, expected_percentages, before_recipients_bal, after_recipients_bal
+    for recipient, percentage_ray, before_bal, after_bal in zip(
+        expected_recipients, expected_percentages_ray, before_recipients_bal, after_recipients_bal
     ):
+        percentage = from_ray(percentage_ray)
         expected_increment = percentage * initial_surplus
         assert_equalish(after_bal, before_bal + expected_increment)
 
@@ -164,12 +165,12 @@ async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
     tx = await harmonizer.restore().execute()
 
     after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
-    expected_percentages = SUBSEQUENT_PERCENTAGES
     surplus = from_wad(surplus_wad)
 
-    for recipient, percentage, before_bal, after_bal in zip(
-        expected_recipients, expected_percentages, before_recipients_bal, after_recipients_bal
+    for recipient, percentage_ray, before_bal, after_bal in zip(
+        expected_recipients, expected_percentages_ray, before_recipients_bal, after_recipients_bal
     ):
+        percentage = from_ray(percentage_ray)
         expected_increment = percentage * surplus
         assert_equalish(after_bal, before_bal + expected_increment)
 
