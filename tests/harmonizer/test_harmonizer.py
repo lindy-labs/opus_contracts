@@ -77,12 +77,12 @@ async def test_setup(harmonizer, allocator):
 )
 @pytest.mark.asyncio
 async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
-    before_surplus = (await harmonizer.get_surplus().execute()).result.amount
+    initial_surplus = (await harmonizer.get_surplus().execute()).result.amount
 
     await shrine.increase_total_debt(initial_surplus_wad).execute(caller_address=SHRINE_OWNER)
 
-    after_surplus = (await harmonizer.get_surplus().execute()).result.amount
-    assert after_surplus == before_surplus + initial_surplus_wad
+    before_surplus = (await harmonizer.get_surplus().execute()).result.amount
+    assert before_surplus == initial_surplus + initial_surplus_wad
 
     expected_recipients_count = len(INITIAL_RECIPIENTS)
     expected_recipients = INITIAL_RECIPIENTS
@@ -130,13 +130,13 @@ async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
             ],
         )
 
-    updated_surplus_wad = (await harmonizer.get_surplus().execute()).result.amount
-    assert_equalish(from_wad(updated_surplus_wad), Decimal("0"))
+    after_surplus_wad = (await harmonizer.get_surplus().execute()).result.amount
+    assert_equalish(from_wad(after_surplus_wad), Decimal("0"))
 
     if initial_surplus_wad % 10 == 0:
-        assert updated_surplus_wad == 0
+        assert after_surplus_wad == 0
     else:
-        assert updated_surplus_wad > 0
+        assert after_surplus_wad > 0
 
 
 @pytest.mark.asyncio
@@ -195,6 +195,9 @@ async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
             surplus_wad,
         ],
     )
+
+    after_surplus_wad = (await harmonizer.get_surplus().execute()).result.amount
+    assert_equalish(from_wad(after_surplus_wad), Decimal("0"))
 
 
 @pytest.mark.asyncio
