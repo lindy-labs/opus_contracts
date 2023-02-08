@@ -23,3 +23,21 @@ namespace IAllocator {
     ) {
     }
 }
+
+@contract_interface
+namespace IHarmonizer {
+    //
+    // view
+    //
+    func get_allocator() -> (allocator: address) {
+    }
+
+    //
+    // external
+    //
+    func set_allocator(allocator: address) {
+    }
+
+    func restore() {
+    }
+}
