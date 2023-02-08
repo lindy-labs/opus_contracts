@@ -1,4 +1,4 @@
-name: Compile Cairo 1.0
+name: Cairo 1.0
 
 on:
   push:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Env setup
         run: make install
+
+      - name: Lint Cairo 1.x code
+        run: make check-format
 
       - name: Compile Cairo 0.x code
         run: find contracts-1.0 -type f -name '*.cairo' | xargs starknet-compile

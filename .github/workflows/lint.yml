@@ -19,11 +19,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Rust setup
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly-2022-11-03
-
       - name: Python setup
         uses: actions/setup-python@v3
         with:
@@ -31,14 +26,8 @@ jobs:
           cache: pip
           cache-dependency-path: '**/requirements-dev.txt'
 
-      - name: Env setup
-        run: pip install -r requirements-dev.txt | make install
-
       - name: Lint Cairo 0.x code
         run: find contracts -type f -name '*.cairo' | xargs cairo-format -c
-
-      - name: Lint Cairo 1.x code
-        run: make check-format
 
       - name: Run black
         run: black --line-length=120 --check .
