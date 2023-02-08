@@ -30,5 +30,7 @@ jobs:
       - name: Lint Cairo 1.x code
         run: make check-format
 
-      - name: Compile Cairo 0.x code
-        run: find contracts-1.0 -type f -name '*.cairo' | xargs starknet-compile
+      - name: Compile Cairo 1.x code
+        run:
+          find contracts-1.0 -type f -name '*.cairo' |
+          xargs -n1 cargo run --manifest-path=./cairo/Cargo.toml --bin starknet-compile
