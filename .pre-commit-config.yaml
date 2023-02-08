@@ -6,6 +6,7 @@ repos:
   rev: v4.2.0
   hooks:
   - id: trailing-whitespace
+    exclude: ^contracts-1.0/
   - id: end-of-file-fixer
   - id: check-yaml
   - id: check-json
