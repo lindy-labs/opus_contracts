@@ -759,7 +759,7 @@ func withdraw{
     return ();
 }
 
-// Mint a specified amount of synthetic for a Trove
+// Mint a specified amount of synthetic and attribute the debt to a Trove
 @external
 func forge_with_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -828,7 +828,7 @@ func forge_with_trove{
     return ();
 }
 
-// Repay a specified amount of synthetic for a Trove
+// Repay a specified amount of synthetic and deattribute the debt from a Trove
 @external
 func melt_with_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -930,6 +930,7 @@ func redistribute{
     return ();
 }
 
+// Mint a specified amount of synthetic without attributing the debt to a Trove
 @external
 func forge_without_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -948,6 +949,7 @@ func forge_without_trove{
     return ();
 }
 
+// Repay a specified amount of synthetic without deattributing the debt from a Trove
 @external
 func melt_without_trove{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
