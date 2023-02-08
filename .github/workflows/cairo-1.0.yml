@@ -24,6 +24,9 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
+      - name: Pull Cairo 1.0 repository
+        run: make initialize-cairo
+
       - name: Cache setup
         uses: actions/cache@v3
         with:
@@ -33,10 +36,10 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('./cairo/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Env setup
-        run: make install
+        run: make build
 
       - name: Lint Cairo 1.x code
         run: make check-format
