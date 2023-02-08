@@ -30,8 +30,15 @@ repos:
 
 - repo: local
   hooks:
-  - id: cairo-format
-    name: cairo-format
+  - id: cairo-0.x-format
+    name: cairo-0.x-format
     language: system
     entry: cairo-format -i
-    files: \.cairo$
+    files: contracts\.cairo$
+
+- repo: local
+  hooks:
+  - id: cairo-1.x-format
+    name: cairo-1.x-format
+    language: system
+    entry: make format
