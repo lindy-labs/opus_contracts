@@ -42,12 +42,10 @@ async def harmonizer(starknet: Starknet, shrine, allocator) -> StarknetContract:
 
 
 @pytest.fixture
-async def alt_allocator(starknet: Starknet) -> StarknetContract:
-    allocator_contract = compile_contract("contracts/harmonizer/allocator.cairo")
+async def alt_allocator(starknet: Starknet, allocator_contract) -> StarknetContract:
     allocator = await starknet.deploy(
         contract_class=allocator_contract,
         constructor_calldata=[
-            ALLOCATOR_OWNER,
             len(SUBSEQUENT_RECIPIENTS),
             *SUBSEQUENT_RECIPIENTS,
             len(SUBSEQUENT_PERCENTAGES_RAY),

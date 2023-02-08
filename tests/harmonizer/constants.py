@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from tests.utils import RAY_SCALE, str_to_felt, to_wad
 
-ALLOCATOR_OWNER = str_to_felt("allocator")
 HARMONIZER_OWNER = str_to_felt("harmonizer owner")
 
 RECIPIENT_1 = str_to_felt("recipient 1")
