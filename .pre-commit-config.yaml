@@ -34,10 +34,12 @@ repos:
     name: cairo-0.x-format
     language: system
     entry: cairo-format -i
-    files: contracts\.cairo$
+    files: \.cairo$
+    exclude: ^contracts-1.0/
 
   - id: cairo-1.x-format
     name: cairo-1.x-format
     language: system
-    entry: make check-format
-    files: contracts-1.0\.cairo$
+    entry: make format
+    files: \.cairo$
+    exclude: ^contracts/
