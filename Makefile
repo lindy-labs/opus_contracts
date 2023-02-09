@@ -1,7 +1,5 @@
 # Won't write the called command in the console
 .SILENT:
-# Because we have a folder called test we need PHONY to avoid collision
-.PHONY: test
 
 INSTALLATION_FOLDER=./cairo
 SOURCE_FOLDER=./contracts-1.0
