@@ -32,6 +32,7 @@ jobs:
         run: make initialize-cairo
 
       - name: Cache setup
+        id: cache
         uses: actions/cache@v3
         with:
           path: |
@@ -43,6 +44,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Env setup
+        if: steps.cache.outputs.cache-hit != 'true'
         run: make build
 
       - name: Lint Cairo 1.x code
