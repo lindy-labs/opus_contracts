@@ -1,3 +1,5 @@
+use contracts::dummy_syscalls;
+
 // 2 ** 128
 const LOW_UPPER_BOUND: felt = 340282366920938463463374607431768211456;
 
@@ -32,5 +34,5 @@ fn pack_125(high: felt, low: felt) -> felt {
 
 // TODO: to be implemented once `split_int` is in corelib
 fn unpack_125(packed: felt) -> (felt, felt) {
-    (1, 2)
+    dummy_syscalls::split_int()
 }

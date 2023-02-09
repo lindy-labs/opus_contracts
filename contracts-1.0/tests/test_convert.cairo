@@ -48,3 +48,10 @@ fn test_pack_125_fail() {
     convert::pack_125(invalid_lower_bound, 0);
     convert::pack_125(0, invalid_lower_bound);
 }
+
+#[test]
+fn test_unpack_125_pass() {
+    let (low, high) = convert::unpack_125(1);
+    assert(low == 1, 'invalid result');
+    assert(high == 2, 'invalid result');
+}
