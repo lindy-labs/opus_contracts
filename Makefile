@@ -31,10 +31,10 @@ test:
 	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-test -- --starknet --path $(SOURCE_FOLDER)
 
 format:
-	cargo run --quiet --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --recursive $(SOURCE_FOLDER)
+	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --recursive $(SOURCE_FOLDER) --print-parsing-errors
 
 check-format:
-	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --check --recursive $(SOURCE_FOLDER)
+	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --check --recursive $(SOURCE_FOLDER) --print-parsing-errors
 
 compile:
 	find contracts-1.0 -type f -name '*.cairo' | \
