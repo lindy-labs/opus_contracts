@@ -29,9 +29,8 @@ jobs:
 
       - name: Get latest commit hash
         run: |
-          cd cairo |
-          echo "CAIRO_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV |
-          cd ..
+          cd ./cairo |
+          echo "CAIRO_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
       - name: Cache setup
         uses: actions/cache@v3
