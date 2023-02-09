@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Get latest commit hash
         run: |
-          echo "CAIRO_HASH=sha::$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
+          echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
