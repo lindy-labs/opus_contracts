@@ -40,7 +40,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Env setup
-        run: make build
+        run: make install
 
       - name: Lint Cairo 1.x code
         run: make check-format
