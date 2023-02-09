@@ -16,6 +16,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Get latest commit hash
+        id: cairo-hash
+        run: |
+          echo ::set-output name=sha::$( curl -u "u:${{github.token}}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )
+
       - name: Checkout
         uses: actions/checkout@v2
 
@@ -27,11 +32,6 @@ jobs:
       - name: Pull Cairo 1.0 repository
         run: make initialize-cairo
 
-      - name: Get latest commit hash
-        run: |
-          cd ./cairo |
-          echo "CAIRO_HASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
-
       - name: Cache setup
         uses: actions/cache@v3
         with:
@@ -41,7 +41,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+          key: ${{ runner.os }}-cargo-${{ steps.cairo-hash.outputs.sha }}
 
       - name: Env setup
         run: make build
