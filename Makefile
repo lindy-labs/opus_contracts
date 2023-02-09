@@ -35,3 +35,7 @@ format:
 
 check-format:
 	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --check --recursive $(SOURCE_FOLDER)
+
+compile:
+	find contracts-1.0 -type f -name '*.cairo' | \
+    xargs -n1 cargo run --manifest-path=./cairo/Cargo.toml --bin starknet-compile > /dev/null
