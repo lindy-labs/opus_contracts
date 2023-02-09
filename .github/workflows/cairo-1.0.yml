@@ -17,9 +17,8 @@ jobs:
 
     steps:
       - name: Get latest commit hash
-        id: cairo-hash
         run: |
-          echo ::set-output name=sha::$( curl -u "u:${{github.token}}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )
+          echo "CAIRO_HASH=sha::$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -41,7 +40,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ steps.cairo-hash.outputs.sha }}
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Env setup
         run: make build
