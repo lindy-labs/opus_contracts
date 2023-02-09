@@ -7,15 +7,12 @@ INSTALLATION_FOLDER=./cairo
 SOURCE_FOLDER=./contracts-1.0
 
 install:
-	$(MAKE) initialize-cairo
-	$(MAKE) build
-
-initialize-cairo:
 	if [ -d $(INSTALLATION_FOLDER) ]; then \
 		$(MAKE) update-cairo; \
 	else \
 		$(MAKE) clone-cairo; \
 	fi
+	$(MAKE) build
 
 clone-cairo:
 	mkdir -p $(INSTALLATION_FOLDER)

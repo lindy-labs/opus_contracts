@@ -28,9 +28,6 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
-      - name: Pull Cairo 1.0 repository
-        run: make initialize-cairo
-
       - name: Cache setup
         uses: actions/cache@v3
         with:
