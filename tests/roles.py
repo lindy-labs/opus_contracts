@@ -3,6 +3,7 @@ from enum import IntEnum
 
 class AbsorberRoles(IntEnum):
     KILL = 2**0
+    SET_PURGER = 2**1
 
 
 class SentinelRoles(IntEnum):
