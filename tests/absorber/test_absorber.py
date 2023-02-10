@@ -10,6 +10,7 @@ from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
     BAD_GUY,
+    FALSE,
     MAX_UINT256,
     SHRINE_OWNER,
     TIME_INTERVAL,
@@ -327,6 +328,9 @@ async def test_absorber_setup(shrine, absorber):
 
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
+
+    is_live = (await absorber.get_live().execute()).result.is_live
+    assert is_live == TRUE
 
 
 @pytest.mark.asyncio
@@ -1011,3 +1015,18 @@ async def test_purger_zero_address(absorber_deploy, yangs, first_update_assets):
     asset_addresses, asset_amts, _ = first_update_assets
     with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
         await absorber.update(asset_addresses, asset_amts).execute(caller_address=MOCK_PURGER)
+
+
+@pytest.mark.asyncio
+async def test_kill(absorber):
+    tx = await absorber.kill().execute(caller_address=ABSORBER_OWNER)
+
+    assert_event_emitted(tx, absorber.contract_address, "Killed")
+
+    is_live = (await absorber.get_live().execute()).result.is_live
+    assert is_live == FALSE
+
+    provider = PROVIDER_1
+    provide_amt = 1
+    with pytest.raises(StarkException, match="Absorber: Absorber is not live"):
+        await absorber.provide(provide_amt).execute(caller_address=provider)
