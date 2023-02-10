@@ -2,12 +2,13 @@
 
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
+from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
 
 // these imported public functions are part of the contract's interface
@@ -52,6 +53,10 @@ func absorber_sentinel() -> (sentinel: address) {
 
 @storage_var
 func absorber_shrine() -> (shrine: address) {
+}
+
+@storage_var
+func absorber_live() -> (is_live: bool) {
 }
 
 // Epoch starts from 0.
@@ -147,17 +152,24 @@ func Gain(
 ) {
 }
 
+@event
+func Killed() {
+}
+
 //
 // Constructor
 //
 
 @constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    admin: address, shrine: address, sentinel: address
-) {
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, shrine: address, sentinel: address) {
     AccessControl.initializer(admin);
+    AccessControl._grant_role(AbsorberRoles.DEFAULT_ABSORBER_ADMIN_ROLE, admin);
+
     absorber_shrine.write(shrine);
     absorber_sentinel.write(sentinel);
+    absorber_live.write(TRUE);
     return ();
 }
 
@@ -229,6 +241,13 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     return (info,);
 }
 
+@view
+func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    is_live: bool
+) {
+    return absorber_live.read();
+}
+
 //
 // View
 //
@@ -271,10 +290,12 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 //
 
 @external
-func set_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(purger: address) {
+func set_purger{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(purger: address) {
     alloc_locals;
 
-    AccessControl.assert_admin();
+    AccessControl.assert_has_role(AbsorberRoles.SET_PURGER);
 
     with_attr error_message("Absorber: Purger address cannot be zero") {
         assert_not_zero(purger);
@@ -308,6 +329,8 @@ func set_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 @external
 func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
+
+    assert_live();
 
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -517,6 +540,16 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // If absorber is emptied, this will be set to 0.
     absorber_total_shares.write(yin_balance);
     EpochChanged.emit(current_epoch, new_epoch);
+    return ();
+}
+
+@external
+func kill{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    AccessControl.assert_has_role(AbsorberRoles.KILL);
+    absorber_live.write(FALSE);
+    Killed.emit();
     return ();
 }
 
@@ -865,5 +898,14 @@ func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     let asset_amt_uint: Uint256 = WadRay.to_uint(asset_amt);
     IERC20.transfer(asset_address, provider, asset_amt_uint);
 
+    return ();
+}
+
+func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    // Check system is live
+    let (is_live: bool) = absorber_live.read();
+    with_attr error_message("Absorber: Absorber is not live") {
+        assert is_live = TRUE;
+    }
     return ();
 }
