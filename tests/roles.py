@@ -1,6 +1,10 @@
 from enum import IntEnum
 
 
+class AbsorberRoles(IntEnum):
+    KILL = 2**0
+
+
 class SentinelRoles(IntEnum):
     ADD_YANG = 2**0
     ENTER = 2**1

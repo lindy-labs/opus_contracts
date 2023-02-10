@@ -189,6 +189,20 @@ async def absorber(absorber_deploy):
 
 
 @pytest.fixture
+async def absorber_killed(absorber):
+    await absorber.kill().execute(caller_address=ABSORBER_OWNER)
+    return absorber
+
+
+@pytest.fixture
+def absorber_both(request) -> StarknetContract:
+    """
+    Wrapper fixture to pass the regular and killed instances of absorber to `pytest.parametrize`.
+    """
+    return request.getfixturevalue(request.param)
+
+
+@pytest.fixture
 async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[list[int]]:
     # Creating the price feeds
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
@@ -396,10 +410,13 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
 
 
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_update(shrine, absorber, update, yangs, yang_tokens):
+async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
+    absorber = absorber_both
+
     tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
 
@@ -441,10 +458,13 @@ async def test_update(shrine, absorber, update, yangs, yang_tokens):
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
 
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_reap(shrine, absorber, update, yangs, yang_tokens):
+async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
+    absorber = absorber_both
+
     provider = PROVIDER_1
 
     _, _, _, _, _, assets, asset_amts, asset_amts_dec = update
@@ -490,11 +510,14 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_to_remove):
+async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove):
+    absorber = absorber_both
+
     provider = PROVIDER_1
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
@@ -764,10 +787,12 @@ async def test_reap_different_epochs(
             assert_equalish(after_bal, before_bal + absorbed_amt, error_margin)
 
 
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
-    shrine, absorber, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
+    shrine, absorber_both, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
 ):
     """
     Sequence of events:
@@ -775,6 +800,8 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     2. Absorption happens (`update`)
     3. Providers 1 and 2 reaps
     """
+    absorber = absorber_both
+
     _, _, _, _, _, asset_addresses, _, absorbed_amts_dec = update
     asset_count = len(asset_addresses)
 
