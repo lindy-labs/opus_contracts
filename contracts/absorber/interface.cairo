@@ -61,4 +61,7 @@ namespace IAbsorber {
 
     func update(assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*) {
     }
+
+    func kill() {
+    }
 }
