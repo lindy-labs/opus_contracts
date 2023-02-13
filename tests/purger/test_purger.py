@@ -809,6 +809,8 @@ async def test_partial_absorb_with_redistribution_pass(
         from_wad(absorber_forge_amt_wad),
     )
 
+    print("liquidated trove ltv: ", before_troves_info[liquidated_trove]["before_trove_ltv"])
+
     yangs_info = {}
 
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
@@ -1019,17 +1021,17 @@ async def test_partial_absorb_with_redistribution_pass(
 
         # If liquidated trove is undercollateralized, LTV of other troves must be same or worse off after redistribution
         # Otherwise, LTV could be slightly better/worse off or remain the same.
+        debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
+        yang_value_increment = (
+            after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
+        )
         if is_undercollateralized:
-            debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
-            yang_value_increment = (
-                after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
-            )
             assert yang_value_increment < debt_increment
-
             assert after_trove_ltv >= before_trove_ltv
         else:
             ltv_error_margin = RAY_DECIMALS // 2
             assert_equalish(after_trove_ltv, before_trove_ltv, ltv_error_margin)
+            assert yang_value_increment >= debt_increment
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
