@@ -852,6 +852,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
     actual_freed_assets = partial_absorb.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
         error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
