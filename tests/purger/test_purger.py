@@ -712,7 +712,6 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
     assert after_trove_debt == 0
 
 
-@flaky
 # Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
