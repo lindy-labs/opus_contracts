@@ -443,7 +443,7 @@ async def test_add_yang_pass(shrine):
     new_yang_address = 987
     new_yang_threshold = to_wad(Decimal("0.6"))
     new_yang_start_price = to_wad(5)
-    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price).execute(
+    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, 0).execute(
         caller_address=SHRINE_OWNER
     )
     assert (await shrine.get_yangs_count().execute()).result.count == g_count + 1
@@ -461,8 +461,9 @@ async def test_add_yang_pass(shrine):
         "ThresholdUpdated",
         [new_yang_address, new_yang_threshold],
     )
+    assert_event_emitted(tx, shrine.contract_address, "YangTotalUpdated", [new_yang_address, 0])
 
-    # Check maximum is correct
+    # Check starting yang supply is correct
     new_yang_total = (await shrine.get_yang_total(new_yang_address).execute()).result.total
     assert new_yang_total == 0
 
@@ -483,6 +484,7 @@ async def test_add_yang_duplicate_fail(shrine):
             YANG1_ADDRESS,
             YANG1_THRESHOLD,
             to_wad(YANGS[0]["start_price"]),
+            0,
         ).execute(caller_address=SHRINE_OWNER)
 
 
@@ -497,6 +499,7 @@ async def test_add_yang_unauthorized(shrine):
             bad_guy_yang_address,
             bad_guy_yang_threshold,
             bad_guy_yang_start_price,
+            0,
         ).execute(caller_address=BAD_GUY)
 
 

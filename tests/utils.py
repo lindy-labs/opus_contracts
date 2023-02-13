@@ -114,6 +114,9 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 # Yin constants
 INFINITE_YIN_ALLOWANCE = 2**256 - 1
 
+# Initial deposit amount to Gate to prevent first depositor front-running
+INITIAL_ASSET_DEPOSIT_AMT = 10**3
+
 
 def as_address(value: Addressable) -> int:
     if isinstance(value, StarknetContract):
@@ -443,7 +446,7 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 async def get_token_balances(
     tokens: tuple[StarknetContract],
     addresses: list[int],
-) -> list[list[int]]:
+) -> list[list[Decimal]]:
     """
     Helper function to fetch the token balances for a list of addreses.
 
@@ -456,7 +459,7 @@ async def get_token_balances(
 
     Returns
     -------
-    An ordered 2D list of token balances for each address.
+    An ordered 2D list of token balances in Decimal for each address.
     """
     ret = []
     for address in addresses:
@@ -470,6 +473,32 @@ async def get_token_balances(
             address_bals.append(bal)
 
         ret.append(address_bals)
+
+    return ret
+
+
+async def get_yangs_total(
+    shrine: StarknetContract,
+    tokens_info: tuple[YangConfig],
+) -> list[list[int]]:
+    """
+    Helper function to fetch the yang balances.
+
+    Arguments
+    ---------
+    shrine: StarknetContract
+        Deployed instance of Shrine.
+    tokens_info: tuple[YangConfig]
+        Ordered tuple of YangConfig
+
+    Returns
+    -------
+    An ordered list of total yang in wad for each asset.
+    """
+    ret = []
+    for token_info in tokens_info:
+        total = (await shrine.get_yang_total(token_info.contract_address).execute()).result.total
+        ret.append(total)
 
     return ret
 

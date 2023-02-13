@@ -468,10 +468,13 @@ func allowance{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // Setters
 //
 
+// `initial_yang_amt` is passed as an argument from upstream to address the issue of
+// first depositor front-running by requiring an initial deposit when adding the yang
+// to the Shrine
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, threshold: ray, initial_price: wad) {
+}(yang: address, threshold: ray, initial_price: wad, initial_yang_amt: wad) {
     alloc_locals;
 
     AccessControl.assert_has_role(ShrineRoles.ADD_YANG);
@@ -497,6 +500,10 @@ func add_yang{
     // Set threshold
     set_threshold(yang, threshold);
 
+    // Update initial yang supply
+    // Used upstream to prevent first depositor front running
+    shrine_yang_total.write(yang_id, initial_yang_amt);
+
     // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
     let init_price_and_cumulative_price: packed = pack_125(initial_price, initial_price);
 
@@ -513,6 +520,7 @@ func add_yang{
     // Events
     YangAdded.emit(yang, yang_id, initial_price);
     YangsCountUpdated.emit(yang_id);
+    YangTotalUpdated.emit(yang, initial_yang_amt);
 
     return ();
 }

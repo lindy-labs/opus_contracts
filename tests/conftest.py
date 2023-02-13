@@ -29,6 +29,7 @@ from tests.utils import (
     EMPIRIC_OWNER,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
+    INITIAL_ASSET_DEPOSIT_AMT,
     RAY_PERCENT,
     SENTINEL_OWNER,
     SENTINEL_ROLE_FOR_ABBOT,
@@ -247,7 +248,7 @@ async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
-        await shrine.add_yang(YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])).execute(
+        await shrine.add_yang(YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), 0).execute(
             caller_address=SHRINE_OWNER
         )
 
@@ -475,12 +476,21 @@ async def sentinel(starknet, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang, wbtc_yang) -> StarknetContract:
+async def funded_sentinel_owner(sentinel, yang_tokens):
+    for token in yang_tokens:
+        # Fund sentinel owner with tokens for initial deposit
+        amt_uint = to_uint(INITIAL_ASSET_DEPOSIT_AMT)
+        await token.mint(SENTINEL_OWNER, amt_uint).execute(caller_address=SENTINEL_OWNER)
+        await max_approve(token, SENTINEL_OWNER, sentinel.contract_address)
+
+
+@pytest.fixture
+async def sentinel_with_yangs(starknet, sentinel, funded_sentinel_owner, yangs) -> StarknetContract:
     # Setting block timestamp to interval 1, because add_yang assigns the initial
     # price to current interval - 1 (i.e. 0 in this case)
     set_block_timestamp(starknet, TIME_INTERVAL)
 
-    for yang in (steth_yang, doge_yang, wbtc_yang):
+    for yang in yangs:
         await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
