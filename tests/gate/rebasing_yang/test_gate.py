@@ -257,7 +257,7 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
     set_block_timestamp(starknet, TIME_INTERVAL)
 
     # Add steth_token as Yang
-    await shrine.add_yang(steth_token.contract_address, to_ray(Decimal("0.8")), to_wad(1000)).execute(
+    await shrine.add_yang(steth_token.contract_address, to_ray(Decimal("0.8")), to_wad(1000), 0).execute(
         caller_address=SHRINE_OWNER
     )
 
@@ -265,6 +265,7 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
         wbtc_token.contract_address,
         to_ray(Decimal("0.8")),
         to_wad(10_000),
+        0,
     ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
@@ -952,7 +953,7 @@ async def test_kill(shrine_authed, gate_info):
     assert after_gate_yang == before_gate_yang - withdraw_yang_amt
 
 
-@pytest.mark.usefixtures("shrine_authed")
+@pytest.mark.usefixtures("shrine_authed", "funded_users")
 @pytest.mark.parametrize(
     "gate_info",
     ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],

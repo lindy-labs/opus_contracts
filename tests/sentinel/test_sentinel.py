@@ -4,6 +4,7 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.roles import SentinelRoles
 from tests.utils import (
     BAD_GUY,
+    INITIAL_ASSET_DEPOSIT_AMT,
     SENTINEL_OWNER,
     SENTINEL_ROLE_FOR_ABBOT,
     SHRINE_OWNER,
@@ -13,6 +14,7 @@ from tests.utils import (
     WAD_SCALE,
     YangConfig,
     assert_event_emitted,
+    from_uint,
     to_fixed_point,
     to_wad,
 )
@@ -35,11 +37,14 @@ async def test_sentinel_setup(sentinel, yangs):
         assert yang.contract_address in yang_addrs
 
 
+@pytest.mark.usefixtures("funded_sentinel_owner")
 @pytest.mark.asyncio
-async def test_add_yang(sentinel, shrine_deploy, yangs):
+async def test_add_yang(sentinel, shrine_deploy, yangs, yang_tokens, yang_gates):
     shrine = shrine_deploy
 
-    for idx, yang in enumerate(yangs):
+    for idx, (yang, token, gate) in enumerate(zip(yangs, yang_tokens, yang_gates)):
+        expected_initial_yang = (await gate.preview_enter(INITIAL_ASSET_DEPOSIT_AMT).execute()).result.yang_amt
+
         tx = await sentinel.add_yang(
             yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
@@ -54,12 +59,26 @@ async def test_add_yang(sentinel, shrine_deploy, yangs):
             [yang.contract_address, idx + 1, yang.price_wad],
         )
 
+        assert_event_emitted(
+            tx,
+            shrine.contract_address,
+            "YangTotalUpdated",
+            [yang.contract_address, expected_initial_yang],
+        )
+
+        initial_yang = (await shrine.get_yang_total(yang.contract_address).execute()).result.total
+        assert initial_yang == expected_initial_yang
+
+        initial_gate_bal = from_uint((await token.balanceOf(yang.gate_address).execute()).result.balance)
+        assert initial_gate_bal == INITIAL_ASSET_DEPOSIT_AMT
+
     addrs = (await sentinel.get_yang_addresses().execute()).result.addresses
     assert len(addrs) == len(yangs)
     for i in range(len(yangs)):
         assert addrs[i] in (y.contract_address for y in yangs)
 
 
+@pytest.mark.usefixtures("funded_sentinel_owner")
 @pytest.mark.asyncio
 async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: YangConfig):
 
@@ -190,9 +209,12 @@ async def test_view_funcs(sentinel, yangs, yang_gates):
 
 @pytest.mark.usefixtures("mock_owner_as_abbot", "sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.asyncio
-async def test_gate_fns_pass(sentinel, yangs, yang_gates):
+async def test_gate_fns_pass(shrine, sentinel, yangs, yang_gates, yang_tokens):
     deposit_asset_amt = 5
-    for yang, gate in zip(yangs, yang_gates):
+    for yang, gate, token in zip(yangs, yang_gates, yang_tokens):
+        initial_asset_bal = from_uint((await token.balanceOf(gate.contract_address).execute()).result.balance)
+        assert initial_asset_bal == INITIAL_ASSET_DEPOSIT_AMT
+
         scaled_asset_deposit_amt = to_fixed_point(deposit_asset_amt, yang.decimals)
         scaled_yang_withdraw_amt = to_wad(deposit_asset_amt)
 
@@ -203,6 +225,9 @@ async def test_gate_fns_pass(sentinel, yangs, yang_gates):
 
         enter = await sentinel.enter(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_asset_deposit_amt).execute(
             caller_address=SENTINEL_OWNER
+        )
+        await shrine.deposit(yang.contract_address, TROVE_1, scaled_yang_withdraw_amt).execute(
+            caller_address=SHRINE_OWNER
         )
 
         expected_asset_amt_per_yang = (
@@ -222,6 +247,9 @@ async def test_gate_fns_pass(sentinel, yangs, yang_gates):
 
         exit_ = await sentinel.exit(yang.contract_address, TROVE1_OWNER, TROVE_1, scaled_yang_withdraw_amt).execute(
             caller_address=SENTINEL_OWNER
+        )
+        await shrine.withdraw(yang.contract_address, TROVE_1, scaled_yang_withdraw_amt).execute(
+            caller_address=SHRINE_OWNER
         )
 
         # Check if `Gate.exit` is called

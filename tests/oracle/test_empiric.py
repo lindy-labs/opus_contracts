@@ -24,6 +24,7 @@ from tests.utils import (
     EMPIRIC_OWNER,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
+    INITIAL_ASSET_DEPOSIT_AMT,
     RAY_PERCENT,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -31,6 +32,7 @@ from tests.utils import (
     TROVE1_OWNER,
     assert_event_emitted,
     compile_contract,
+    from_wad,
     max_approve,
     set_block_timestamp,
     signed_int_to_felt,
@@ -107,7 +109,17 @@ async def eth_gate(starknet, shrine, sentinel, eth_token, gates) -> StarknetCont
 
 
 @pytest.fixture
-async def with_btc(starknet, shrine, sentinel, empiric, btc_token, btc_gate, mock_empiric_impl):
+async def funded_sentinel_owner(sentinel, btc_token, eth_token):
+    mint_amt_uint = to_uint(INITIAL_ASSET_DEPOSIT_AMT)
+    await btc_token.mint(SENTINEL_OWNER, mint_amt_uint).execute(caller_address=SENTINEL_OWNER)
+    await max_approve(btc_token, SENTINEL_OWNER, sentinel.contract_address)
+
+    await eth_token.mint(SENTINEL_OWNER, mint_amt_uint).execute(caller_address=SENTINEL_OWNER)
+    await max_approve(eth_token, SENTINEL_OWNER, sentinel.contract_address)
+
+
+@pytest.fixture
+async def with_btc(starknet, shrine, sentinel, empiric, funded_sentinel_owner, btc_token, btc_gate, mock_empiric_impl):
     await mock_empiric_impl.next_get_spot_median(BTC_EMPIRIC_ID, 20_000, EMPIRIC_DECIMALS, 5000, 6).execute()
 
     await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
@@ -118,7 +130,9 @@ async def with_btc(starknet, shrine, sentinel, empiric, btc_token, btc_gate, moc
 
 
 @pytest.fixture
-async def with_yangs(starknet, shrine, sentinel, empiric, eth_token, eth_gate, mock_empiric_impl, with_btc):
+async def with_yangs(
+    starknet, shrine, sentinel, empiric, eth_token, funded_sentinel_owner, eth_gate, mock_empiric_impl, with_btc
+):
     await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 1300, EMPIRIC_DECIMALS, 5000, 6).execute()
 
     await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
@@ -243,6 +257,7 @@ async def test_set_update_interval_failures(empiric):
         await empiric.set_update_interval(EMPIRIC_UPDATE_INTERVAL * 2).execute(caller_address=BAD_GUY)
 
 
+@pytest.mark.usefixtures("funded_sentinel_owner")
 @pytest.mark.asyncio
 async def test_add_yang(eth_token, empiric, mock_empiric_impl):
     await mock_empiric_impl.next_get_spot_median(ETH_EMPIRIC_ID, 100, EMPIRIC_DECIMALS, 5000, 3).execute()
@@ -250,6 +265,7 @@ async def test_add_yang(eth_token, empiric, mock_empiric_impl):
     assert_event_emitted(tx, empiric.contract_address, "YangAdded", [0, ETH_EMPIRIC_ID, eth_token.contract_address])
 
 
+@pytest.mark.usefixtures("funded_sentinel_owner")
 @pytest.mark.asyncio
 async def test_add_yang_failures(btc_token, eth_token, empiric, mock_empiric_impl):
     with pytest.raises(StarkException):
@@ -280,7 +296,7 @@ async def test_add_yang_failures(btc_token, eth_token, empiric, mock_empiric_imp
     "rebase_percentage", [Decimal("0"), Decimal("0.01"), Decimal("0.1"), Decimal("0.5"), Decimal("1")]
 )
 @pytest.mark.asyncio
-async def test_update_prices(
+async def test_update_prices_pass(
     btc_token, eth_token, btc_gate, eth_gate, empiric, mock_empiric_impl, shrine, starknet, rebase_percentage
 ):
     # simulate rebase by sending tokens to the gate
@@ -294,16 +310,17 @@ async def test_update_prices(
     oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
     oracle_update_interval = oracle_update_ts // TIME_INTERVAL
 
-    price_multiplier = Decimal("1") + rebase_percentage
+    eth_asset_amt_per_yang = from_wad((await eth_gate.get_asset_amt_per_yang().execute()).result.amt)
+    btc_asset_amt_per_yang = from_wad((await btc_gate.get_asset_amt_per_yang().execute()).result.amt)
 
     # the multiplying by 2 here is because add_yang sets the
     # sentinel value in the interval _previous_ to current
     new_eth_price = 1293
-    new_eth_yang_price = price_multiplier * new_eth_price
+    new_eth_yang_price = eth_asset_amt_per_yang * new_eth_price
     eth_cumulative_price = ETH_INIT_PRICE * 2 + new_eth_yang_price
 
     new_btc_price = 19330
-    new_btc_yang_price = price_multiplier * new_btc_price
+    new_btc_yang_price = btc_asset_amt_per_yang * new_btc_price
     btc_cumulative_price = BTC_INIT_PRICE * 2 + new_btc_yang_price
 
     await mock_empiric_impl.next_get_spot_median(

@@ -58,7 +58,7 @@ namespace IShrine {
     //
     // external
     //
-    func add_yang(yang: address, threshold: ray, price: wad) {
+    func add_yang(yang: address, threshold: ray, price: wad, initial_yang_amt: wad) {
     }
 
     func set_yang_max(yang: address, new_max: wad) {
