@@ -516,7 +516,9 @@ async def test_liquidate_pass(
 
     actual_freed_assets = liquidate.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
 
@@ -539,9 +541,11 @@ async def test_liquidate_pass(
     assert_equalish(after_trove_value, expected_after_trove_value)
     assert_equalish(after_trove_debt, expected_after_trove_debt)
 
+    # Check collateral tokens balance of searcher
     for token, yang in zip(yang_tokens, yangs):
-        # Check collateral tokens balance of searcher
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2 - 1)
         after_searcher_bal = from_fixed_point(
             from_uint((await token.balanceOf(SEARCHER).execute()).result.balance), yang.decimals
         )
@@ -853,6 +857,7 @@ async def test_partial_absorb_with_redistribution_pass(
     actual_freed_assets = partial_absorb.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
         # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
         error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
