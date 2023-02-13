@@ -716,7 +716,9 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
 
 # Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
-@pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
+@pytest.mark.parametrize(
+    "price_change", [Decimal("-0.2"), Decimal("-0.4"), Decimal("-0.5"), Decimal("-0.7"), Decimal("-0.9")]
+)
 @pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber_provider")
 @pytest.mark.asyncio
 async def test_partial_absorb_with_redistribution_pass(
@@ -1018,6 +1020,12 @@ async def test_partial_absorb_with_redistribution_pass(
         # If liquidated trove is undercollateralized, LTV of other troves must be same or worse off after redistribution
         # Otherwise, LTV could be slightly better/worse off or remain the same.
         if is_undercollateralized:
+            debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
+            yang_value_increment = (
+                after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
+            )
+            assert yang_value_increment < debt_increment
+
             assert after_trove_ltv >= before_trove_ltv
         else:
             ltv_error_margin = RAY_DECIMALS // 2
