@@ -1,7 +1,6 @@
 from decimal import ROUND_DOWN, Decimal
 
 import pytest
-from flaky import flaky
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
@@ -412,7 +411,6 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     assert_equalish(penalty, expected_penalty)
 
 
-@flaky
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize(
     "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
