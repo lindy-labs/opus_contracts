@@ -1,7 +1,6 @@
 from decimal import ROUND_DOWN, Decimal
 
 import pytest
-from flaky import flaky
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
@@ -412,7 +411,6 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     assert_equalish(penalty, expected_penalty)
 
 
-@flaky
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize(
     "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
@@ -516,7 +514,9 @@ async def test_liquidate_pass(
 
     actual_freed_assets = liquidate.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
 
@@ -539,9 +539,11 @@ async def test_liquidate_pass(
     assert_equalish(after_trove_value, expected_after_trove_value)
     assert_equalish(after_trove_debt, expected_after_trove_debt)
 
+    # Check collateral tokens balance of searcher
     for token, yang in zip(yang_tokens, yangs):
-        # Check collateral tokens balance of searcher
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2 - 1)
         after_searcher_bal = from_fixed_point(
             from_uint((await token.balanceOf(SEARCHER).execute()).result.balance), yang.decimals
         )
@@ -714,7 +716,9 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
 
 # Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
-@pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
+@pytest.mark.parametrize(
+    "price_change", [Decimal("-0.2"), Decimal("-0.4"), Decimal("-0.5"), Decimal("-0.7"), Decimal("-0.9")]
+)
 @pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber_provider")
 @pytest.mark.asyncio
 async def test_partial_absorb_with_redistribution_pass(
@@ -853,6 +857,7 @@ async def test_partial_absorb_with_redistribution_pass(
     actual_freed_assets = partial_absorb.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
         # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
         error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
@@ -1012,13 +1017,21 @@ async def test_partial_absorb_with_redistribution_pass(
         before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
         after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
 
-        # If liquidated trove is undercollateralized, LTV of other troves must be same or worse off after redistribution
-        # Otherwise, LTV could be slightly better/worse off or remain the same.
+        # If liquidated trove is undercollateralized, LTV of other troves must be worse off after redistribution
+        # because the debt increment > trove value increment.
+        # Otherwise, given 88.88% < LTV of liquidated trove <= 100%, the LTV of other troves
+        # should remain approximately the same because trove value increment >= debt increment.
+        debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
+        yang_value_increment = (
+            after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
+        )
         if is_undercollateralized:
-            assert after_trove_ltv >= before_trove_ltv
+            assert yang_value_increment < debt_increment
+            assert after_trove_ltv > before_trove_ltv
         else:
             ltv_error_margin = RAY_DECIMALS // 2
             assert_equalish(after_trove_ltv, before_trove_ltv, ltv_error_margin)
+            assert yang_value_increment >= debt_increment
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
