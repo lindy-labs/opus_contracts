@@ -926,10 +926,17 @@ async def test_non_provider_fail(shrine, absorber):
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_unauthorized_update(shrine, absorber, first_update_assets):
+async def test_unauthorized_update(absorber, first_update_assets):
     asset_addresses, asset_amts, _ = first_update_assets
-    with pytest.raises(StarkException, match="Absorber: Only Purger can call `update`"):
+    with pytest.raises(StarkException, match="Absorber: Only Purger can call this function"):
         await absorber.update(asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_compensate(absorber, first_update_assets):
+    asset_addresses, asset_amts, _ = first_update_assets
+    with pytest.raises(StarkException, match="Absorber: Only Purger can call this function"):
+        await absorber.compensate(BAD_GUY, asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.usefixtures("funded_absorber_providers")
