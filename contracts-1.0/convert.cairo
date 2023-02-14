@@ -19,16 +19,14 @@ fn uint_to_felt_unchecked(value: u256) -> felt {
 // Packs `low` into the first 128 bits, packs `high` into the last 123 bits
 // Requires that 0 <= low < 2**128 and 0 <= high < 2**123
 fn pack_felt(high: felt, low: felt) -> felt {
-    assert(0 <= low & low < LOW_UPPER_BOUND, 'Convert: `low` in `pack_felt` is out of range');
-    assert(0 <= high & high < HIGH_UPPER_BOUND, 'Convert: "`high` in `pack_felt` is out of range');
+    assert(0 <= low & low < LOW_UPPER_BOUND, 'Convert: `low` is out of range');
+    assert(0 <= high & high < HIGH_UPPER_BOUND, 'Convert: `high` is out of range');
     low + high * LOW_UPPER_BOUND
 }
 
 fn pack_125(high: felt, low: felt) -> felt {
-    assert(0 <= low & low < PACKED_125_UPPER_BOUND, 'Convert: `low` in `pack_125` is out of range');
-    assert(
-        0 <= high & high < PACKED_125_UPPER_BOUND, 'Convert: `high` in `pack_125` is out of range'
-    );
+    assert(0 <= low & low < PACKED_125_UPPER_BOUND, 'Convert: `low` is out of range');
+    assert(0 <= high & high < PACKED_125_UPPER_BOUND, 'Convert: `high` is out of range');
     low + high * PACKED_125_UPPER_BOUND
 }
 
