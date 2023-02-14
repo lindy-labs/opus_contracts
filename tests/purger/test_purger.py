@@ -809,8 +809,6 @@ async def test_partial_absorb_with_redistribution_pass(
         from_wad(absorber_forge_amt_wad),
     )
 
-    print("liquidated trove ltv: ", before_troves_info[liquidated_trove]["before_trove_ltv"])
-
     yangs_info = {}
 
     for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
@@ -1021,8 +1019,8 @@ async def test_partial_absorb_with_redistribution_pass(
 
         # If liquidated trove is undercollateralized, LTV of other troves must be worse off after redistribution
         # because the debt increment > trove value increment.
-        # Otherwise, LTV should remain approximately the same because the debt and trove value increment would be
-        # approximately the same.
+        # Otherwise, given 88.88% < LTV of liquidated trove <= 100%, the LTV of other troves
+        # should remain approximately the same because trove value increment >= debt increment.
         debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
         yang_value_increment = (
             after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
