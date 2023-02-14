@@ -1019,15 +1019,17 @@ async def test_partial_absorb_with_redistribution_pass(
         before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
         after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
 
-        # If liquidated trove is undercollateralized, LTV of other troves must be same or worse off after redistribution
-        # Otherwise, LTV could be slightly better/worse off or remain the same.
+        # If liquidated trove is undercollateralized, LTV of other troves must be worse off after redistribution
+        # because the debt increment > trove value increment.
+        # Otherwise, LTV should remain approximately the same because the debt and trove value increment would be
+        # approximately the same.
         debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
         yang_value_increment = (
             after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
         )
         if is_undercollateralized:
             assert yang_value_increment < debt_increment
-            assert after_trove_ltv >= before_trove_ltv
+            assert after_trove_ltv > before_trove_ltv
         else:
             ltv_error_margin = RAY_DECIMALS // 2
             assert_equalish(after_trove_ltv, before_trove_ltv, ltv_error_margin)
