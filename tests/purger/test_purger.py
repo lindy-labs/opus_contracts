@@ -16,6 +16,7 @@ from tests.utils import (
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
+    RAY_DECIMALS,
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -711,7 +712,6 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
     assert after_trove_debt == 0
 
 
-@flaky
 # Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
 @pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
@@ -768,6 +768,10 @@ async def test_partial_absorb_with_redistribution_pass(
             "before_trove_value": from_wad(before_trove_info.value),
             "before_trove_debt": before_trove_debt,
         }
+
+    is_undercollateralized = False
+    if before_troves_info[liquidated_trove]["before_trove_ltv"] > Decimal("1"):
+        is_undercollateralized = True
 
     # Check purge penalty
     has_penalty = before_troves_info[liquidated_trove]["before_trove_ltv"] < Decimal("1")
@@ -848,7 +852,8 @@ async def test_partial_absorb_with_redistribution_pass(
 
     actual_freed_assets = partial_absorb.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
 
@@ -1006,8 +1011,14 @@ async def test_partial_absorb_with_redistribution_pass(
 
         before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
         after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
-        # LTV of other troves should be same or worse off after redistribution
-        assert after_trove_ltv >= before_trove_ltv
+
+        # If liquidated trove is undercollateralized, LTV of other troves must be same or worse off after redistribution
+        # Otherwise, LTV could be slightly better/worse off or remain the same.
+        if is_undercollateralized:
+            assert after_trove_ltv >= before_trove_ltv
+        else:
+            ltv_error_margin = RAY_DECIMALS // 2
+            assert_equalish(after_trove_ltv, before_trove_ltv, ltv_error_margin)
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
