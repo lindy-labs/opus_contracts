@@ -699,11 +699,11 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
-@pytest.mark.parametrize("skip_second_asset", [True, False])  # Test asset not involved in absorption
+@pytest.mark.parametrize("skipped_asset_idx", [None, 0, 1, 2])  # Test asset not involved in absorption
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_reap_different_epochs(
-    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skip_second_asset
+    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skipped_asset_idx
 ):
     """
     Sequence of events:
@@ -738,9 +738,9 @@ async def test_reap_different_epochs(
 
     # Step 4: Absorber is fully drained
     asset_addresses, asset_amts, asset_amts_dec = second_update_assets
-    if skip_second_asset is True:
-        asset_amts[1] = 0
-        asset_amts_dec[1] = Decimal("0")
+    if skipped_asset_idx is not None:
+        asset_amts[skipped_asset_idx] = 0
+        asset_amts_dec[skipped_asset_idx] = Decimal("0")
 
     await simulate_update(
         shrine,
@@ -784,15 +784,15 @@ async def test_reap_different_epochs(
         print("absorber address: ", absorber.contract_address)
         print("provider address: ", provider)
         for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
-            if asset == yang_tokens[1] and skip_second_asset is True:
+            if absorbed_amt == 0:
                 continue
+
+            assert absorbed_amt > 0
 
             after_bal = from_fixed_point(
                 from_uint((await asset.balanceOf(provider).execute()).result.balance),
                 asset_info.decimals,
             )
-
-            assert absorbed_amt > 0
 
             # Relax error margin by half due to loss of precision from fixed point arithmetic
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
