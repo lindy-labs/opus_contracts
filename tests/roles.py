@@ -1,6 +1,11 @@
 from enum import IntEnum
 
 
+class AbsorberRoles(IntEnum):
+    COMPENSATE = 2**0
+    UPDATE = 2**1
+
+
 class SentinelRoles(IntEnum):
     ADD_YANG = 2**0
     ENTER = 2**1

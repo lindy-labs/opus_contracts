@@ -2,12 +2,13 @@
 
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
+from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
 
 // these imported public functions are part of the contract's interface
@@ -144,6 +145,16 @@ func Gain(
     asset_amts: wad*,
     total_shares: wad,
     epoch: ufelt,
+) {
+}
+
+@event
+func Compensate(
+    recipient: address,
+    assets_len: ufelt,
+    assets: address*,
+    asset_amts_len: ufelt,
+    asset_amts: ufelt*,
 ) {
 }
 
@@ -448,21 +459,12 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
 // Update assets received after an absorption
 @external
-func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*
-) {
+func update{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*) {
     alloc_locals;
 
-    // Purger is not set during deployment
-    let purger: address = absorber_purger.read();
-    with_attr error_message("Absorber: Purger address cannot be zero") {
-        assert_not_zero(purger);
-    }
-
-    let caller: address = get_caller_address();
-    with_attr error_message("Absorber: Only Purger can call `update`") {
-        assert caller = purger;
-    }
+    AccessControl.assert_has_role(AbsorberRoles.UPDATE);
 
     // Increment absorption ID
     let prev_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -517,6 +519,27 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // If absorber is emptied, this will be set to 0.
     absorber_total_shares.write(yin_balance);
     EpochChanged.emit(current_epoch, new_epoch);
+    return ();
+}
+
+@external
+func compensate{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(
+    recipient: address,
+    assets_len: ufelt,
+    assets: address*,
+    asset_amts_len: ufelt,
+    asset_amts: ufelt*,
+) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(AbsorberRoles.COMPENSATE);
+
+    transfer_assets(recipient, assets_len, assets, asset_amts);
+
+    Compensate.emit(recipient, assets_len, assets, asset_amts_len, asset_amts);
+
     return ();
 }
 
@@ -845,25 +868,25 @@ func get_absorbed_assets_for_provider_inner_loop{
 
 // Helper function to iterate over an array of assets to transfer to an address
 func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address, asset_count: ufelt, assets: address*, asset_amts: ufelt*
+    recipient: address, asset_count: ufelt, assets: address*, asset_amts: ufelt*
 ) {
     if (asset_count == 0) {
         return ();
     }
-    transfer_asset(provider, [assets], [asset_amts]);
-    return transfer_assets(provider, asset_count - 1, assets + 1, asset_amts + 1);
+    transfer_asset(recipient, [assets], [asset_amts]);
+    return transfer_assets(recipient, asset_count - 1, assets + 1, asset_amts + 1);
 }
 
 // Helper function to transfer an asset to an address
 func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address, asset_address: address, asset_amt: ufelt
+    recipient: address, asset_address: address, asset_amt: ufelt
 ) {
     if (asset_amt == 0) {
         return ();
     }
 
     let asset_amt_uint: Uint256 = WadRay.to_uint(asset_amt);
-    IERC20.transfer(asset_address, provider, asset_amt_uint);
+    IERC20.transfer(asset_address, recipient, asset_amt_uint);
 
     return ();
 }
