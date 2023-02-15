@@ -1025,6 +1025,13 @@ async def test_partial_absorb_with_redistribution_pass(
         yang_value_increment = (
             after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
         )
+        print("before trove value: ", before_troves_info[trove]["before_trove_value"])
+        print("before trove debt: ", before_troves_info[trove]["before_trove_debt"])
+        print("before trove ltv: ", before_troves_info[trove]["before_trove_ltv"])
+        print("after trove value: ", after_troves_info[trove]["after_trove_value"])
+        print("after trove debt: ", after_troves_info[trove]["after_trove_debt"])
+        print("after trove ltv: ", after_troves_info[trove]["after_trove_ltv"])
+
         if is_undercollateralized:
             assert yang_value_increment < debt_increment
             assert after_trove_ltv > before_trove_ltv
