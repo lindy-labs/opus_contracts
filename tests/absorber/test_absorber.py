@@ -740,7 +740,9 @@ async def test_reap_different_epochs(
     assert second_provider_last_absorption == expected_last_absorption
 
     # Step 4: Absorber is fully drained
-    asset_addresses, asset_amts, asset_amts_dec = second_update_assets
+    asset_addresses, asset_amts_orig, asset_amts_dec_orig = second_update_assets
+    asset_amts = asset_amts_orig.copy()
+    asset_amts_dec = asset_amts_dec_orig.copy()
     if skipped_asset_idx is not None:
         asset_amts[skipped_asset_idx] = 0
         asset_amts_dec[skipped_asset_idx] = Decimal("0")
@@ -786,7 +788,7 @@ async def test_reap_different_epochs(
         for idx, (asset, asset_info, before_bal, absorbed_amt) in enumerate(
             zip(yang_tokens, yangs, before_bals, absorbed_amts)
         ):
-            if skipped_asset_idx is not None and idx == skipped_asset_idx:
+            if provider == second_provider and skipped_asset_idx is not None and idx == skipped_asset_idx:
                 continue
 
             assert absorbed_amt > 0
