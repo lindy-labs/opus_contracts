@@ -2,12 +2,13 @@
 
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
-from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
+from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
 
 // these imported public functions are part of the contract's interface
@@ -458,13 +459,12 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
 // Update assets received after an absorption
 @external
-func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*
-) {
+func update{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*) {
     alloc_locals;
 
-    // only the purger contract can call this func
-    assert_caller_is_purger();
+    AccessControl.assert_has_role(AbsorberRoles.UPDATE);
 
     // Increment absorption ID
     let prev_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -523,7 +523,9 @@ func update{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 @external
-func compensate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func compensate{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(
     recipient: address,
     assets_len: ufelt,
     assets: address*,
@@ -532,8 +534,7 @@ func compensate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 ) {
     alloc_locals;
 
-    // only the purger contract can call this func
-    assert_caller_is_purger();
+    AccessControl.assert_has_role(AbsorberRoles.COMPENSATE);
 
     transfer_assets(recipient, assets_len, assets, asset_amts);
 
@@ -661,21 +662,6 @@ func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 //
 // Internal - helpers for `update`
 //
-
-func assert_caller_is_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    // Purger is not set during deployment
-    let purger: address = absorber_purger.read();
-    with_attr error_message("Absorber: Purger address cannot be zero") {
-        assert_not_zero(purger);
-    }
-
-    let caller: address = get_caller_address();
-    with_attr error_message("Absorber: Only Purger can call this function") {
-        assert caller = purger;
-    }
-
-    return ();
-}
 
 // Helper function to iterate over an array of assets received from an absorption for updating
 // each provider's entitlement

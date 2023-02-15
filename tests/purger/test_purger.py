@@ -9,7 +9,7 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.purger.constants import *  # noqa: F403
-from tests.roles import EmpiricRoles, SentinelRoles
+from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
@@ -303,8 +303,11 @@ async def purger(starknet, shrine, sentinel, empiric, absorber) -> StarknetContr
     # Approve purger to call `update_prices` in Empiric
     await empiric.grant_role(EmpiricRoles.UPDATE_PRICES, purger.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
-    # Set purger in absorber
+    # Set purger in absorber and setup roles
     await absorber.set_purger(purger.contract_address).execute(caller_address=ABSORBER_OWNER)
+    await absorber.grant_role(AbsorberRoles.COMPENSATE | AbsorberRoles.UPDATE, purger.contract_address).execute(
+        caller_address=ABSORBER_OWNER
+    )
 
     return purger
 
