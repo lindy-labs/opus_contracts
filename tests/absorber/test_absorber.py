@@ -780,7 +780,9 @@ async def test_reap_different_epochs(
 
         # Step 5: Provider 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
-
+        print("raw events: ", tx.raw_events)
+        print("absorber address: ", absorber.contract_address)
+        print("provider address: ", provider)
         for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
             if asset == yang_tokens[1] and skip_second_asset is True:
                 continue
