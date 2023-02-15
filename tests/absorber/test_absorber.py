@@ -792,6 +792,8 @@ async def test_reap_different_epochs(
                 asset_info.decimals,
             )
 
+            assert absorbed_amt > 0
+
             # Relax error margin by half due to loss of precision from fixed point arithmetic
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             assert_equalish(after_bal, before_bal + absorbed_amt, error_margin)
