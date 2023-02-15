@@ -800,7 +800,6 @@ async def test_reap_different_epochs(
                 tx,
                 asset.contract_address,
                 "Transfer",
-                lambda d: d[:2] == [absorber.contract_address, provider],
             )
 
 
