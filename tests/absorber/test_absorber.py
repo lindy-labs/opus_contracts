@@ -6,6 +6,7 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.absorber.constants import *  # noqa: F403
+from tests.roles import AbsorberRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
@@ -332,6 +333,9 @@ async def test_absorber_setup(shrine, absorber):
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
 
+    admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
+
 
 @pytest.mark.asyncio
 async def test_set_purger(shrine, absorber):
@@ -352,6 +356,13 @@ async def test_set_purger(shrine, absorber):
 
     new_purger_allowance = (await shrine.allowance(absorber.contract_address, new_purger).execute()).result.allowance
     assert new_purger_allowance == MAX_UINT256
+
+
+@pytest.mark.asyncio
+async def test_set_purger_unauthorized_fail(shrine, absorber):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_PURGER}"):
+        new_purger = NEW_MOCK_PURGER
+        await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -1030,3 +1041,9 @@ async def test_kill(absorber):
     provide_amt = 1
     with pytest.raises(StarkException, match="Absorber: Absorber is not live"):
         await absorber.provide(provide_amt).execute(caller_address=provider)
+
+
+@pytest.mark.asyncio
+async def test_kill_unauthorized_fail(absorber):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.KILL}"):
+        await absorber.kill().execute(caller_address=BAD_GUY)
