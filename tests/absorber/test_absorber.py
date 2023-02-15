@@ -767,7 +767,6 @@ async def test_reap_different_epochs(
     absorbed_amts_arrs = [first_absorbed_amts_dec, asset_amts_dec]
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
-
         absorbed = (await absorber.preview_reap(provider).execute()).result
         assert absorbed.assets == asset_addresses
         for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.asset_amts):
@@ -780,11 +779,11 @@ async def test_reap_different_epochs(
 
         # Step 5: Provider 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
-        print("raw events: ", tx.raw_events)
-        print("absorber address: ", absorber.contract_address)
-        print("provider address: ", provider)
-        for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
-            if absorbed_amt == 0:
+
+        for idx, (asset, asset_info, before_bal, absorbed_amt) in enumerate(
+            zip(yang_tokens, yangs, before_bals, absorbed_amts)
+        ):
+            if idx == skipped_asset_idx:
                 continue
 
             assert absorbed_amt > 0
