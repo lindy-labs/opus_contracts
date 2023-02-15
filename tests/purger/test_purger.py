@@ -15,7 +15,6 @@ from tests.utils import (
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
-    RAY_DECIMALS,
     RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
@@ -793,10 +792,6 @@ async def test_partial_absorb_with_redistribution_pass(
             "before_trove_debt": before_trove_debt,
         }
 
-    is_undercollateralized = False
-    if before_troves_info[liquidated_trove]["before_trove_ltv"] > Decimal("1"):
-        is_undercollateralized = True
-
     # Check purge penalty
     has_penalty = before_troves_info[liquidated_trove]["before_trove_ltv"] < Decimal("1")
     penalty = from_ray((await purger.get_penalty(liquidated_trove).execute()).result.penalty)
@@ -1049,24 +1044,8 @@ async def test_partial_absorb_with_redistribution_pass(
         expected_debt = after_troves_info[trove]["expected_trove_debt"]
         assert_equalish(after_trove_debt, expected_debt)
 
-        before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
-        after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
-
-        # If liquidated trove is undercollateralized, LTV of other troves must be worse off after redistribution
-        # because the debt increment > trove value increment.
-        # Otherwise, given 88.88% < LTV of liquidated trove <= 100%, the LTV of other troves
-        # should remain approximately the same because trove value increment >= debt increment.
-        debt_increment = after_trove_debt - before_troves_info[trove]["before_trove_debt"]
-        yang_value_increment = (
-            after_troves_info[trove]["after_trove_value"] - before_troves_info[trove]["before_trove_value"]
-        )
-        if is_undercollateralized:
-            assert yang_value_increment < debt_increment
-            assert after_trove_ltv > before_trove_ltv
-        else:
-            ltv_error_margin = RAY_DECIMALS // 2
-            assert_equalish(after_trove_ltv, before_trove_ltv, ltv_error_margin)
-            assert yang_value_increment >= debt_increment
+        # LTV may worsen or improve regardless of the troves' LTV.
+        # Therefore, we do not make any assertions.
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
