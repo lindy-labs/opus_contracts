@@ -787,13 +787,6 @@ async def test_reap_different_epochs(
             if asset == yang_tokens[1] and skip_second_asset is True:
                 continue
 
-            assert_event_emitted(
-                tx,
-                asset.contract_address,
-                "Transfer",
-                lambda d: d[:2] == [absorber.contract_address, provider],
-            )
-
             after_bal = from_fixed_point(
                 from_uint((await asset.balanceOf(provider).execute()).result.balance),
                 asset_info.decimals,
@@ -802,6 +795,13 @@ async def test_reap_different_epochs(
             # Relax error margin by half due to loss of precision from fixed point arithmetic
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             assert_equalish(after_bal, before_bal + absorbed_amt, error_margin)
+
+            assert_event_emitted(
+                tx,
+                asset.contract_address,
+                "Transfer",
+                lambda d: d[:2] == [absorber.contract_address, provider],
+            )
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
