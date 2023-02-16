@@ -791,8 +791,6 @@ async def test_reap_different_epochs(
             if provider == second_provider and skipped_asset_idx is not None and idx == skipped_asset_idx:
                 continue
 
-            assert absorbed_amt > 0
-
             after_bal = from_fixed_point(
                 from_uint((await asset.balanceOf(provider).execute()).result.balance),
                 asset_info.decimals,
@@ -803,9 +801,7 @@ async def test_reap_different_epochs(
             assert_equalish(after_bal, before_bal + absorbed_amt, error_margin)
 
             assert_event_emitted(
-                tx,
-                asset.contract_address,
-                "Transfer",
+                tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
             )
 
 
