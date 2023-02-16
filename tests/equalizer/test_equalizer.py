@@ -45,6 +45,7 @@ async def alt_allocator(starknet: Starknet, allocator_contract) -> StarknetContr
     allocator = await starknet.deploy(
         contract_class=allocator_contract,
         constructor_calldata=[
+            ALLOCATOR_OWNER,
             len(SUBSEQUENT_RECIPIENTS),
             *SUBSEQUENT_RECIPIENTS,
             len(SUBSEQUENT_PERCENTAGES_RAY),

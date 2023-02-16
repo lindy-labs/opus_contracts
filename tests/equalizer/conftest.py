@@ -18,6 +18,7 @@ async def allocator(starknet: Starknet, allocator_contract) -> StarknetContract:
     allocator = await starknet.deploy(
         contract_class=allocator_contract,
         constructor_calldata=[
+            ALLOCATOR_OWNER,
             len(INITIAL_RECIPIENTS),
             *INITIAL_RECIPIENTS,
             len(INITIAL_PERCENTAGES_RAY),

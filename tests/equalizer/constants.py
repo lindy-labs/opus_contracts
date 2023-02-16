@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from tests.utils import RAY_PERCENT, str_to_felt, to_wad
 
+ALLOCATOR_OWNER = str_to_felt("allocator")
 EQUALIZER_OWNER = str_to_felt("equalizer owner")
 
 RECIPIENT_1 = str_to_felt("recipient 1")
