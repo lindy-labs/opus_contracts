@@ -544,5 +544,5 @@ def estimate_gas_inner(call_info: FunctionInvocation):
 
 
 # Flaky filter for Starknet
-def is_not_starknet_error(err, *args):
-    return not issubclass(err[0], StarkException)
+def is_starknet_error(err, *args):
+    return issubclass(err[0], StarkException)
