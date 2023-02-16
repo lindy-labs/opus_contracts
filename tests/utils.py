@@ -543,6 +543,9 @@ def estimate_gas_inner(call_info: FunctionInvocation):
     return sum_gas
 
 
-# Flaky filter for Starknet
 def is_starknet_error(err, *args):
+    """
+    Filter function to be passed to `flaky` to determine if a failed test should be retried.
+    Returns True if the failure is due to a `StarkException`.
+    """
     return issubclass(err[0], StarkException)
