@@ -5,11 +5,11 @@ namespace ShrineRoles {
     const ADD_YANG = 2 ** 0;
     const ADVANCE = 2 ** 1;
     const DEPOSIT = 2 ** 2;
-    const FORGE_WITH_TROVE = 2 ** 3;
-    const FORGE_WITHOUT_TROVE = 2 ** 4;
-    const KILL = 2 ** 5;
-    const MELT_WITH_TROVE = 2 ** 6;
-    const MELT_WITHOUT_TROVE = 2 ** 7;
+    const EJECT = 2 ** 3;
+    const FORGE = 2 ** 4;
+    const INJECT = 2 ** 5;
+    const KILL = 2 ** 6;
+    const MELT = 2 ** 7;
     const MOVE_YANG = 2 ** 8;
     const REDISTRIBUTE = 2 ** 9;
     const SEIZE = 2 ** 10;
@@ -23,5 +23,5 @@ namespace ShrineRoles {
     // Constants
     //
     const DEFAULT_SHRINE_ADMIN_ROLE = ADD_YANG + SET_YANG_MAX + SET_CEILING + SET_THRESHOLD + KILL;
-    const FLASH_MINT = FORGE_WITHOUT_TROVE + MELT_WITHOUT_TROVE;
+    const FLASH_MINT = INJECT + EJECT;
 }

@@ -290,7 +290,7 @@ async def shrine_deposit(shrine) -> StarknetCallInfo:
 
 @pytest.fixture
 async def shrine_forge_trove1(shrine, shrine_deposit) -> StarknetCallInfo:
-    forge = await shrine.forge_with_trove(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
+    forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
     return forge
 
 
@@ -309,7 +309,7 @@ async def abbot(starknet, shrine_deploy, sentinel) -> StarknetContract:
     )
 
     # auth Abbot in Shrine
-    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE_WITH_TROVE + ShrineRoles.MELT_WITH_TROVE
+    roles = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW + ShrineRoles.FORGE + ShrineRoles.MELT
     await shrine.grant_role(roles, abbot.contract_address).execute(caller_address=SHRINE_OWNER)
 
     # auth Abbot in Sentinel

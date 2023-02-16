@@ -755,7 +755,7 @@ async def test_partial_absorb_with_redistribution_pass(
     # in order to assert correctness after adding redistributed debt without interest
     # calculation interfering due to the change in price resulting from rebasing of assets
     for trove in other_troves:
-        await shrine.melt_with_trove(ABSORBER_PROVIDER, trove, 0).execute(caller_address=SHRINE_OWNER)
+        await shrine.melt(ABSORBER_PROVIDER, trove, 0).execute(caller_address=SHRINE_OWNER)
 
     # Get info of all troves
     before_troves_info = {}
@@ -1010,7 +1010,7 @@ async def test_partial_absorb_with_redistribution_pass(
         assert after_trove_ltv >= before_trove_ltv
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
-    await shrine.melt_with_trove(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
     assert (
         await shrine.get_trove_redistribution_id(TROVE_2).execute()
     ).result.redistribution_id == expected_redistribution_id

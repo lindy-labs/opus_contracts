@@ -183,7 +183,7 @@ func equalize_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let amount: wad = WadRay.rmul(surplus, [percentages]);
 
     let shrine: address = equalizer_shrine.read();
-    IShrine.forge_without_trove(shrine, [recipients], amount);
+    IShrine.inject(shrine, [recipients], amount);
 
     let updated_minted_surplus: wad = minted_surplus + amount;
 

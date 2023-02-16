@@ -278,7 +278,7 @@ func purge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) -> (yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*) {
     alloc_locals;
     // Melt from the funder address directly
-    IShrine.melt_with_trove(shrine, funder, trove_id, purge_amt);
+    IShrine.melt(shrine, funder, trove_id, purge_amt);
 
     // Loop through yang addresses and transfer to recipient
     let (sentinel: address) = purger_sentinel.read();

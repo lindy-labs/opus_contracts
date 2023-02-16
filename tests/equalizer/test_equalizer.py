@@ -35,9 +35,7 @@ async def equalizer(starknet: Starknet, shrine, allocator) -> StarknetContract:
         ],
     )
 
-    await shrine.grant_role(ShrineRoles.FORGE_WITHOUT_TROVE, equalizer.contract_address).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.grant_role(ShrineRoles.INJECT, equalizer.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return equalizer
 

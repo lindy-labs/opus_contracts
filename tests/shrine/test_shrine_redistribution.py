@@ -97,7 +97,7 @@ async def redistribution_setup(request) -> list[int]:
 
         max_forge_amt = (await shrine.get_max_forge(trove).execute()).result.max
         forge_amt = max_forge_amt // 2
-        await shrine.forge_with_trove(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
+        await shrine.forge(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
 
     return request.param
 
@@ -135,7 +135,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
     estimated_trove2_debt = (await shrine.get_trove_info(TROVE_2).execute()).result.debt
 
     # Simulate purge with 0 yin
-    await shrine.melt_with_trove(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
     redistribute_trove1 = await shrine.redistribute(TROVE_1).execute(caller_address=MOCK_PURGER)
     assert_event_emitted(
         redistribute_trove1,
@@ -181,7 +181,7 @@ async def test_shrine_one_redistribution(shrine, redistribution_setup):
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     # Check cost of update
-    update_trove2 = await shrine.melt_with_trove(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+    update_trove2 = await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
 
     assert (
         await shrine.get_trove_redistribution_id(TROVE_2).execute()
@@ -202,7 +202,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
 
     # Skip to tests for 2nd redistribution
     # Simulate purge with 0 yin
-    await shrine.melt_with_trove(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE1_OWNER, TROVE_1, 0).execute(caller_address=SHRINE_OWNER)
     await shrine.redistribute(TROVE_1).execute(caller_address=MOCK_PURGER)
 
     updated_estimated_trove2_debt = (await shrine.get_trove_info(TROVE_2).execute()).result.debt
@@ -219,7 +219,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
 
     estimated_trove3_debt = from_wad((await shrine.get_trove_info(TROVE_3).execute()).result.debt)
 
-    await shrine.melt_with_trove(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
+    await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)
     redistribute_trove2 = await shrine.redistribute(TROVE_2).execute(caller_address=MOCK_PURGER)
 
     assert (await shrine.get_redistributions_count().execute()).result.count == SECOND_REDISTRIBUTION_ID
@@ -254,7 +254,7 @@ async def test_shrine_two_redistributions(shrine, redistribution_setup):
 
     assert (await shrine.get_trove_redistribution_id(TROVE_3).execute()).result.redistribution_id == 0
     # Check cost of update
-    update_trove3 = await shrine.melt_with_trove(TROVE3_OWNER, TROVE_3, 0).execute(caller_address=SHRINE_OWNER)
+    update_trove3 = await shrine.melt(TROVE3_OWNER, TROVE_3, 0).execute(caller_address=SHRINE_OWNER)
 
     assert (
         await shrine.get_trove_redistribution_id(TROVE_3).execute()
@@ -290,7 +290,7 @@ async def test_last_error(shrine):
 
         max_forge_amt = (await shrine.get_max_forge(trove).execute()).result.max
         forge_amt = max_forge_amt // 2
-        await shrine.forge_with_trove(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
+        await shrine.forge(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
 
     redistribution_id = (await shrine.get_redistributions_count().execute()).result.count
 
@@ -351,7 +351,7 @@ async def test_shrine_redistribute_with_dust_yang(shrine):
 
         max_forge_amt = (await shrine.get_max_forge(trove).execute()).result.max
         forge_amt = max_forge_amt // 2
-        await shrine.forge_with_trove(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
+        await shrine.forge(trove_owner, trove, forge_amt).execute(caller_address=SHRINE_OWNER)
 
     before_yang_vals = []
     for yang_addr, amt in zip(yang_addresses, (trove1_yang1_deposit_amt, trove1_yang2_deposit_amt)):

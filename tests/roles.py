@@ -32,11 +32,11 @@ class ShrineRoles(IntEnum):
     ADD_YANG = 2**0
     ADVANCE = 2**1
     DEPOSIT = 2**2
-    FORGE_WITH_TROVE = 2**3
-    FORGE_WITHOUT_TROVE = 2**4
-    KILL = 2**5
-    MELT_WITH_TROVE = 2**6
-    MELT_WITHOUT_TROVE = 2**7
+    FORGE = 2**3
+    EJECT = 2**4
+    INJECT = 2**5
+    KILL = 2**6
+    MELT = 2**7
     MOVE_YANG = 2**8
     REDISTRIBUTE = 2**9
     SEIZE = 2**10

@@ -769,12 +769,12 @@ func withdraw{
 
 // Mint a specified amount of synthetic and attribute the debt to a Trove
 @external
-func forge_with_trove{
+func forge{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(user: address, trove_id: ufelt, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FORGE_WITH_TROVE);
+    AccessControl.assert_has_role(ShrineRoles.FORGE);
 
     // Check system is live
     assert_live();
@@ -838,12 +838,12 @@ func forge_with_trove{
 
 // Repay a specified amount of synthetic and deattribute the debt from a Trove
 @external
-func melt_with_trove{
+func melt{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(user: address, trove_id: ufelt, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.MELT_WITH_TROVE);
+    AccessControl.assert_has_role(ShrineRoles.MELT);
 
     with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -940,12 +940,12 @@ func redistribute{
 
 // Mint a specified amount of synthetic without attributing the debt to a Trove
 @external
-func forge_without_trove{
+func inject{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(receiver: address, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FORGE_WITHOUT_TROVE);
+    AccessControl.assert_has_role(ShrineRoles.INJECT);
 
     with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -959,12 +959,12 @@ func forge_without_trove{
 
 // Repay a specified amount of synthetic without deattributing the debt from a Trove
 @external
-func melt_without_trove{
+func eject{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(receiver: address, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.MELT_WITHOUT_TROVE);
+    AccessControl.assert_has_role(ShrineRoles.EJECT);
 
     with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
