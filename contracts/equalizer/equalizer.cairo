@@ -135,9 +135,11 @@ func equalize{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}()
     ) = IAllocator.get_allocation(allocator);
 
     // Loop over and forge yin to recipients
-    let minted_surplus: wad = equalize_loop(surplus, 0, recipients_len, 0, recipients, percentages);
+    let minted_surplus: wad = equalize_loop(
+        shrine, surplus, 0, recipients_len, 0, recipients, percentages
+    );
 
-    // Assert total debt is less than yin
+    // Assert yin is less than or equal to total debt
     // It may not be equal due to rounding errors
     let (updated_total_yin: wad) = IShrine.get_total_yin(shrine);
     with_attr error_message("Equalizer: Total yin exceeds total debt") {
@@ -168,6 +170,7 @@ func get_debt_and_surplus{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 }
 
 func equalize_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    shrine: address,
     surplus: wad,
     minted_surplus: wad,
     count: ufelt,
@@ -182,12 +185,11 @@ func equalize_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // `rmul` of a wad and a ray returns a wad
     let amount: wad = WadRay.rmul(surplus, [percentages]);
 
-    let shrine: address = equalizer_shrine.read();
     IShrine.inject(shrine, [recipients], amount);
 
     let updated_minted_surplus: wad = minted_surplus + amount;
 
     return equalize_loop(
-        surplus, updated_minted_surplus, count, idx + 1, recipients + 1, percentages + 1
+        shrine, surplus, updated_minted_surplus, count, idx + 1, recipients + 1, percentages + 1
     );
 }
