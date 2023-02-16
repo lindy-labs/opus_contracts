@@ -3,7 +3,9 @@ from enum import IntEnum
 
 class AbsorberRoles(IntEnum):
     COMPENSATE = 2**0
-    UPDATE = 2**1
+    KILL = 2**1
+    SET_PURGER = 2**2
+    UPDATE = 2**3
 
 
 class SentinelRoles(IntEnum):

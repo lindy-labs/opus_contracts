@@ -16,6 +16,7 @@ from starkware.starknet.services.api.feeder_gateway.response_objects import Func
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
+from starkware.starkware_utils.error_handling import StarkException
 
 from tests.roles import GateRoles, SentinelRoles, ShrineRoles
 
@@ -540,3 +541,11 @@ def estimate_gas_inner(call_info: FunctionInvocation):
         sum_gas += estimate_gas_inner(call)
 
     return sum_gas
+
+
+def is_starknet_error(err, *args):
+    """
+    Filter function to be passed to `flaky` to determine if a failed test should be retried.
+    Returns True if the failure is due to a `StarkException`.
+    """
+    return issubclass(err[0], StarkException)
