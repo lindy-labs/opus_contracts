@@ -6,6 +6,7 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.absorber.constants import *  # noqa: F403
+from tests.roles import AbsorberRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
@@ -185,6 +186,9 @@ async def absorber(absorber_deploy):
     absorber = absorber_deploy
     # Set purger in absorber
     await absorber.set_purger(MOCK_PURGER).execute(caller_address=ABSORBER_OWNER)
+    await absorber.grant_role(AbsorberRoles.COMPENSATE | AbsorberRoles.UPDATE, MOCK_PURGER).execute(
+        caller_address=ABSORBER_OWNER
+    )
     return absorber
 
 
@@ -926,10 +930,17 @@ async def test_non_provider_fail(shrine, absorber):
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_unauthorized_update(shrine, absorber, first_update_assets):
+async def test_unauthorized_update(absorber, first_update_assets):
     asset_addresses, asset_amts, _ = first_update_assets
-    with pytest.raises(StarkException, match="Absorber: Only Purger can call `update`"):
+    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
         await absorber.update(asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_compensate(absorber, first_update_assets):
+    asset_addresses, asset_amts, _ = first_update_assets
+    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
+        await absorber.compensate(BAD_GUY, asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.usefixtures("funded_absorber_providers")
@@ -976,11 +987,7 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
 
 
 @pytest.mark.asyncio
-async def test_purger_zero_address(absorber_deploy, yangs, first_update_assets):
+async def test_set_purger_zero_address_fail(absorber_deploy):
     absorber = absorber_deploy
     with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
         await absorber.set_purger(ZERO_ADDRESS).execute(caller_address=ABSORBER_OWNER)
-
-    asset_addresses, asset_amts, _ = first_update_assets
-    with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
-        await absorber.update(asset_addresses, asset_amts).execute(caller_address=MOCK_PURGER)

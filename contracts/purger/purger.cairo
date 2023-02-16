@@ -3,7 +3,7 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_nn_le
+from starkware.cairo.common.math import assert_nn_le, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.starknet.common.syscalls import get_caller_address
 
@@ -35,6 +35,10 @@ const PENALTY_DIFF = MAX_PENALTY - MIN_PENALTY;
 
 // LTV at the maximum liquidation penalty
 const MAX_PENALTY_LTV = 8888 * 10 ** 23;  // 0.8888
+
+// percentage of each asset being purged in `absorb`
+// that's transferred to the caller as compensation
+const COMPENSATION_PCT = 3;
 
 //
 // Storage
@@ -206,6 +210,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         assert is_absorbable = FALSE;
     }
 
+    let (caller: address) = get_caller_address();
     let (absorber: address) = purger_absorber.read();
     let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
 
@@ -218,7 +223,15 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
             yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
         ) = purge(shrine, trove_id, trove_ltv, trove_debt, WadRay.RAY_ONE, absorber, absorber);
 
-        IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
+        // split freed amounts to compensate caller for keeping protocol stable
+        let (absorbed_assets: ufelt*, compensations: ufelt*) = split_purged_assets(
+            freed_assets_amt_len, freed_assets_amt
+        );
+
+        IAbsorber.compensate(
+            absorber, caller, yangs_len, yangs, freed_assets_amt_len, compensations
+        );
+        IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, absorbed_assets);
 
         return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     }
@@ -231,8 +244,14 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     ) = purge(
         shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
     );
+    // split freed amounts to compensate caller for keeping protocol stable
+    let (absorbed_assets: ufelt*, compensations: ufelt*) = split_purged_assets(
+        freed_assets_amt_len, freed_assets_amt
+    );
 
     IShrine.redistribute(shrine, trove_id);
+
+    IAbsorber.compensate(absorber, caller, yangs_len, yangs, freed_assets_amt_len, compensations);
 
     // Update yang prices due to an appreciation in ratio of asset to yang
     let oracle: address = purger_oracle.read();
@@ -244,7 +263,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     }
 
-    IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
+    IAbsorber.update(absorber, yangs_len, yangs, freed_assets_amt_len, absorbed_assets);
     return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
 }
 
@@ -465,4 +484,43 @@ func free_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ReentrancyGuard._end();
 
     return ();
+}
+
+// Divide the purged assets into two groups - one that's kept in the Absorber and
+// another one that's sent to the caller as compensation. `freed_assets_amt` values
+// are in decimals of each token (hence using `ufelt`).
+func split_purged_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    freed_assets_amt_len: felt, freed_assets_amt: ufelt*
+) -> (absorbed_assets: ufelt*, compensations: ufelt*) {
+    alloc_locals;
+
+    let (absorbed_assets: ufelt*) = alloc();
+    let (compensations: ufelt*) = alloc();
+
+    split_purged_assets_loop(
+        freed_assets_amt_len, freed_assets_amt, absorbed_assets, compensations
+    );
+
+    return (absorbed_assets, compensations);
+}
+
+func split_purged_assets_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    freed_assets_amt_len: felt,
+    freed_assets_amt: ufelt*,
+    absorbed_assets: ufelt*,
+    compensations: ufelt*,
+) {
+    if (freed_assets_amt_len == 0) {
+        return ();
+    }
+
+    let amount: felt = [freed_assets_amt];
+    // rounding benefits the protocol
+    let (one_percent, _) = unsigned_div_rem(amount, 100);
+    assert [compensations] = one_percent * COMPENSATION_PCT;
+    assert [absorbed_assets] = amount - [compensations];  // can't underflow
+
+    return split_purged_assets_loop(
+        freed_assets_amt_len - 1, freed_assets_amt + 1, absorbed_assets + 1, compensations + 1
+    );
 }
