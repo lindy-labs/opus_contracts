@@ -4,8 +4,8 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le
 
-from contracts.harmonizer.interface import IAllocator
-from contracts.harmonizer.roles import HarmonizerRoles
+from contracts.equalizer.interface import IAllocator
+from contracts.equalizer.roles import EqualizerRoles
 from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface
@@ -27,11 +27,11 @@ from contracts.lib.wad_ray import WadRay
 //
 
 @storage_var
-func harmonizer_allocator() -> (allocator: address) {
+func equalizer_allocator() -> (allocator: address) {
 }
 
 @storage_var
-func harmonizer_shrine() -> (shrine: address) {
+func equalizer_shrine() -> (shrine: address) {
 }
 
 //
@@ -43,7 +43,7 @@ func AllocatorUpdated(old_address: address, new_address: address) {
 }
 
 @event
-func Restore(
+func Equalize(
     recipients_len: ufelt,
     recipients: address*,
     percentages_len: ufelt,
@@ -61,10 +61,10 @@ func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(admin: address, shrine: address, allocator: address) {
     AccessControl.initializer(admin);
-    AccessControl._grant_role(HarmonizerRoles.SET_ALLOCATOR, admin);
+    AccessControl._grant_role(EqualizerRoles.SET_ALLOCATOR, admin);
 
-    harmonizer_shrine.write(shrine);
-    harmonizer_allocator.write(allocator);
+    equalizer_shrine.write(shrine);
+    equalizer_allocator.write(allocator);
     return ();
 }
 
@@ -76,7 +76,7 @@ func constructor{
 func get_allocator{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     allocator: address
 ) {
-    let allocator: address = harmonizer_allocator.read();
+    let allocator: address = equalizer_allocator.read();
     return (allocator,);
 }
 
@@ -84,7 +84,7 @@ func get_allocator{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 func get_surplus{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     amount: wad
 ) {
-    let shrine: address = harmonizer_shrine.read();
+    let shrine: address = equalizer_shrine.read();
     let (_, surplus: wad) = get_debt_and_surplus(shrine);
     return (surplus,);
 }
@@ -97,10 +97,10 @@ func get_surplus{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func set_allocator{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(allocator: address) {
-    AccessControl.assert_has_role(HarmonizerRoles.SET_ALLOCATOR);
+    AccessControl.assert_has_role(EqualizerRoles.SET_ALLOCATOR);
 
-    let old_address: address = harmonizer_allocator.read();
-    harmonizer_allocator.write(allocator);
+    let old_address: address = equalizer_allocator.read();
+    equalizer_allocator.write(allocator);
 
     AllocatorUpdated.emit(old_address, allocator);
 
@@ -115,13 +115,13 @@ func set_allocator{
 // Returns the actual amount of surplus minted. This may differ from the return value of
 // `get_surplus` due to loss of precision.
 @external
-func restore{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+func equalize{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     minted_surplus: wad
 ) {
     alloc_locals;
 
     // Check total debt vs total yin
-    let shrine: address = harmonizer_shrine.read();
+    let shrine: address = equalizer_shrine.read();
     let (total_debt: wad, surplus: wad) = get_debt_and_surplus(shrine);
 
     if (surplus == 0) {
@@ -129,23 +129,23 @@ func restore{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     }
 
     // Get array of addresses and percentages
-    let allocator: address = harmonizer_allocator.read();
+    let allocator: address = equalizer_allocator.read();
     let (
         recipients_len: ufelt, recipients: address*, percentages_len: ufelt, percentages: ray*
     ) = IAllocator.get_allocation(allocator);
 
     // Loop over and forge yin to recipients
-    let minted_surplus: wad = restore_loop(surplus, 0, recipients_len, 0, recipients, percentages);
+    let minted_surplus: wad = equalize_loop(surplus, 0, recipients_len, 0, recipients, percentages);
 
     // Assert total debt is less than yin
     // It may not be equal due to rounding errors
     let (updated_total_yin: wad) = IShrine.get_total_yin(shrine);
-    with_attr error_message("Harmonizer: Total yin exceeds total debt") {
+    with_attr error_message("Equalizer: Total yin exceeds total debt") {
         // We can use `assert_le` here because both values have been checked in Shrine
         assert_le(updated_total_yin, total_debt);
     }
 
-    Restore.emit(recipients_len, recipients, percentages_len, percentages, minted_surplus);
+    Equalize.emit(recipients_len, recipients, percentages_len, percentages, minted_surplus);
 
     return (minted_surplus,);
 }
@@ -167,7 +167,7 @@ func get_debt_and_surplus{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     return (total_debt, surplus);
 }
 
-func restore_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func equalize_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     surplus: wad,
     minted_surplus: wad,
     count: ufelt,
@@ -182,12 +182,12 @@ func restore_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     // `rmul` of a wad and a ray returns a wad
     let amount: wad = WadRay.rmul(surplus, [percentages]);
 
-    let shrine: address = harmonizer_shrine.read();
+    let shrine: address = equalizer_shrine.read();
     IShrine.forge_without_trove(shrine, [recipients], amount);
 
     let updated_minted_surplus: wad = minted_surplus + amount;
 
-    return restore_loop(
+    return equalize_loop(
         surplus, updated_minted_surplus, count, idx + 1, recipients + 1, percentages + 1
     );
 }

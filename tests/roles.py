@@ -9,16 +9,16 @@ class EmpiricRoles(IntEnum):
     UPDATE_PRICES = 2**4
 
 
+class EqualizerRoles(IntEnum):
+    SET_ALLOCATOR = 2**0
+
+
 class GateRoles(IntEnum):
     ENTER = 2**0
     EXIT = 2**1
     KILL = 2**2
     SET_TAX = 2**3
     SET_TAX_COLLECTOR = 2**4
-
-
-class HarmonizerRoles(IntEnum):
-    SET_ALLOCATOR = 2**0
 
 
 class SentinelRoles(IntEnum):

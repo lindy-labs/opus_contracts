@@ -3,8 +3,8 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.harmonizer.constants import *  # noqa: F403
-from tests.roles import HarmonizerRoles, ShrineRoles
+from tests.equalizer.constants import *  # noqa: F403
+from tests.roles import EqualizerRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
     SHRINE_OWNER,
@@ -24,22 +24,22 @@ from tests.utils import (
 
 
 @pytest.fixture
-async def harmonizer(starknet: Starknet, shrine, allocator) -> StarknetContract:
-    harmonizer_contract = compile_contract("contracts/harmonizer/harmonizer.cairo")
-    harmonizer = await starknet.deploy(
-        contract_class=harmonizer_contract,
+async def equalizer(starknet: Starknet, shrine, allocator) -> StarknetContract:
+    equalizer_contract = compile_contract("contracts/equalizer/equalizer.cairo")
+    equalizer = await starknet.deploy(
+        contract_class=equalizer_contract,
         constructor_calldata=[
-            HARMONIZER_OWNER,
+            EQUALIZER_OWNER,
             shrine.contract_address,
             allocator.contract_address,
         ],
     )
 
-    await shrine.grant_role(ShrineRoles.FORGE_WITHOUT_TROVE, harmonizer.contract_address).execute(
+    await shrine.grant_role(ShrineRoles.FORGE_WITHOUT_TROVE, equalizer.contract_address).execute(
         caller_address=SHRINE_OWNER
     )
 
-    return harmonizer
+    return equalizer
 
 
 @pytest.fixture
@@ -63,8 +63,8 @@ async def alt_allocator(starknet: Starknet, allocator_contract) -> StarknetContr
 
 
 @pytest.mark.asyncio
-async def test_setup(harmonizer, allocator):
-    allocator_address = (await harmonizer.get_allocator().execute()).result.allocator
+async def test_setup(equalizer, allocator):
+    allocator_address = (await equalizer.get_allocator().execute()).result.allocator
     assert allocator_address == allocator.contract_address
 
 
@@ -77,12 +77,12 @@ async def test_setup(harmonizer, allocator):
     ],
 )
 @pytest.mark.asyncio
-async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
-    initial_surplus = (await harmonizer.get_surplus().execute()).result.amount
+async def test_equalize_pass(shrine, equalizer, initial_surplus_wad):
+    initial_surplus = (await equalizer.get_surplus().execute()).result.amount
 
     await shrine.increase_total_debt(initial_surplus_wad).execute(caller_address=SHRINE_OWNER)
 
-    before_surplus = (await harmonizer.get_surplus().execute()).result.amount
+    before_surplus = (await equalizer.get_surplus().execute()).result.amount
     assert before_surplus == initial_surplus + initial_surplus_wad
 
     expected_recipients_count = len(INITIAL_RECIPIENTS)
@@ -92,7 +92,7 @@ async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
     before_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
     before_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
 
-    tx = await harmonizer.restore().execute()
+    tx = await equalizer.equalize().execute()
     minted_surplus_wad = tx.result.minted_surplus
 
     after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
@@ -120,8 +120,8 @@ async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
     if minted_surplus > 0:
         assert_event_emitted(
             tx,
-            harmonizer.contract_address,
-            "Restore",
+            equalizer.contract_address,
+            "Equalize",
             [
                 expected_recipients_count,
                 *expected_recipients,
@@ -131,7 +131,7 @@ async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
             ],
         )
 
-    after_surplus_wad = (await harmonizer.get_surplus().execute()).result.amount
+    after_surplus_wad = (await equalizer.get_surplus().execute()).result.amount
     assert_equalish(from_wad(after_surplus_wad), Decimal("0"))
 
     if initial_surplus_wad % 10 == 0:
@@ -141,17 +141,17 @@ async def test_restore_pass(shrine, harmonizer, initial_surplus_wad):
 
 
 @pytest.mark.asyncio
-async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
-    tx = await harmonizer.set_allocator(alt_allocator.contract_address).execute(caller_address=HARMONIZER_OWNER)
+async def test_set_allocator_pass(shrine, equalizer, allocator, alt_allocator):
+    tx = await equalizer.set_allocator(alt_allocator.contract_address).execute(caller_address=EQUALIZER_OWNER)
 
     assert_event_emitted(
         tx,
-        harmonizer.contract_address,
+        equalizer.contract_address,
         "AllocatorUpdated",
         [allocator.contract_address, alt_allocator.contract_address],
     )
 
-    # Check `restore`
+    # Check `equalize`
     surplus_wad = DEBT_INCREMENT_WAD
     await shrine.increase_total_debt(surplus_wad).execute(caller_address=SHRINE_OWNER)
 
@@ -162,7 +162,7 @@ async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
     before_yin_supply = from_uint((await shrine.totalSupply().execute()).result.total_supply)
     before_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
 
-    tx = await harmonizer.restore().execute()
+    tx = await equalizer.equalize().execute()
 
     after_recipients_bal = (await get_token_balances([shrine], expected_recipients))[0]
     surplus = from_wad(surplus_wad)
@@ -186,8 +186,8 @@ async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
 
     assert_event_emitted(
         tx,
-        harmonizer.contract_address,
-        "Restore",
+        equalizer.contract_address,
+        "Equalize",
         [
             expected_recipients_count,
             *expected_recipients,
@@ -197,12 +197,12 @@ async def test_set_allocator_pass(shrine, harmonizer, allocator, alt_allocator):
         ],
     )
 
-    after_surplus_wad = (await harmonizer.get_surplus().execute()).result.amount
+    after_surplus_wad = (await equalizer.get_surplus().execute()).result.amount
     assert_equalish(from_wad(after_surplus_wad), Decimal("0"))
 
 
 @pytest.mark.asyncio
-async def test_set_allocator_fail(harmonizer, alt_allocator):
+async def test_set_allocator_fail(equalizer, alt_allocator):
     # unauthorized
-    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {HarmonizerRoles.SET_ALLOCATOR}"):
-        await harmonizer.set_allocator(alt_allocator.contract_address).execute(caller_address=BAD_GUY)
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {EqualizerRoles.SET_ALLOCATOR}"):
+        await equalizer.set_allocator(alt_allocator.contract_address).execute(caller_address=BAD_GUY)

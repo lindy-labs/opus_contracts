@@ -14,7 +14,7 @@ namespace IAllocator {
 }
 
 @contract_interface
-namespace IHarmonizer {
+namespace IEqualizer {
     //
     // view
     //
@@ -30,6 +30,6 @@ namespace IHarmonizer {
     func set_allocator(allocator: address) {
     }
 
-    func restore() -> (minted_surplus: wad) {
+    func equalize() -> (minted_surplus: wad) {
     }
 }

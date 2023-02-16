@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from tests.utils import RAY_PERCENT, str_to_felt, to_wad
 
-HARMONIZER_OWNER = str_to_felt("harmonizer owner")
+EQUALIZER_OWNER = str_to_felt("equalizer owner")
 
 RECIPIENT_1 = str_to_felt("recipient 1")
 RECIPIENT_2 = str_to_felt("recipient 2")

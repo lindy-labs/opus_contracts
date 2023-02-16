@@ -2,7 +2,7 @@ import pytest
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.harmonizer.constants import *  # noqa: F403
+from tests.equalizer.constants import *  # noqa: F403
 from tests.utils import RAY_SCALE
 
 
