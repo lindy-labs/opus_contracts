@@ -43,6 +43,7 @@ from tests.utils import (
     from_wad,
     get_block_timestamp,
     get_contract_code_with_replacement,
+    is_not_starknet_error,
     max_approve,
     price_bounds,
     set_block_timestamp,
@@ -415,6 +416,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     assert_equalish(penalty, expected_penalty)
 
 
+@pytest.mark.flaky(rerun_filter=is_not_starknet_error)
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize(
     "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
