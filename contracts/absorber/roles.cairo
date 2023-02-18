@@ -1,4 +1,11 @@
 namespace AbsorberRoles {
+    //
+    // Roles
+    //
     const COMPENSATE = 2 ** 0;
-    const UPDATE = 2 ** 1;
+    const KILL = 2 ** 1;
+    const SET_PURGER = 2 ** 2;
+    const UPDATE = 2 ** 3;
+
+    const DEFAULT_ABSORBER_ADMIN_ROLE = KILL + SET_PURGER;
 }
