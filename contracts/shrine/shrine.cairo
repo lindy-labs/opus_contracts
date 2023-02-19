@@ -1743,41 +1743,6 @@ func pull_redistributed_debt_inner_loop{
     );
 }
 
-// base rate function:
-//
-//  rLTV = relative loan-to-value ratio
-//
-//
-//            { 0.02*rLTV                   if 0 <= rLTV <= 0.5
-//            { 0.1*rLTV - 0.04             if 0.5 < rLTV <= 0.75
-//  r(rLTV) = { rLTV - 0.715                if 0.75 < rLTV <= 0.9215
-//            { 3.101908*rLTV - 2.65190822  if 0.9215 < rLTV < \infinity
-//
-//
-
-func get_base_rate{range_check_ptr}(ltv: ray) -> ray {
-    alloc_locals;
-
-    if (is_le(ltv, RATE_BOUND1) == TRUE) {
-        return linear(ltv, RATE_M1, RATE_B1);
-    }
-
-    if (is_le(ltv, RATE_BOUND2) == TRUE) {
-        return linear(ltv, RATE_M2, RATE_B2);
-    }
-
-    if (is_le(ltv, RATE_BOUND3) == TRUE) {
-        return linear(ltv, RATE_M3, RATE_B3);
-    }
-
-    return linear(ltv, RATE_M4, RATE_B4);
-}
-
-// y = m*x + b
-func linear{range_check_ptr}(x: ray, m: ray, b: ray) -> ray {
-    return WadRay.add(WadRay.rmul(m, x), b);
-}
-
 // Returns the price for `yang_id` at `interval` if it is non-zero.
 // Otherwise, check `interval` - 1 recursively for the last available price.
 func get_recent_price_from{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
