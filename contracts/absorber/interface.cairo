@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import address, ufelt, wad
+from contracts.lib.aliases import address, bool, ufelt, wad
 from contracts.lib.types import AssetApportion, Checkpoint, Provision
 
 @contract_interface
@@ -13,7 +13,12 @@ namespace IAbsorber {
     }
 
     func get_blessings() -> (
-        assets_len: ufelt, assets: address*, blessers_len: ufelt, blessers: address*
+        assets_len: ufelt,
+        assets: address*,
+        blessers_len: ufelt,
+        blessers: address*,
+        is_active_len: ufelt,
+        is_active: bool*,
     ) {
     }
 

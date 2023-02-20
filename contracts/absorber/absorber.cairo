@@ -236,13 +236,20 @@ func get_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 
 @view
 func get_blessings{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    assets_len: ufelt, assets: address*, blessers_len: ufelt, blessers: address*
+    assets_len: ufelt,
+    assets: address*,
+    blessers_len: ufelt,
+    blessers: address*,
+    is_active_len: ufelt,
+    is_active: bool*,
 ) {
     alloc_locals;
 
     let blessings_count: ufelt = absorber_blessings_count.read();
-    let (assets: address*, blessers: address*) = get_blessings_internal(blessings_count);
-    return (blessings_count, assets, blessings_count, blessers);
+    let (assets: address*, blessers: address*, is_active: bool*) = get_blessings_internal(
+        blessings_count
+    );
+    return (blessings_count, assets, blessings_count, blessers, blessings_count, is_active);
 }
 
 @view
@@ -305,7 +312,7 @@ func get_provider_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func get_provider_checkpoint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
 ) -> (checkpoint: Checkpoint) {
-    let checkpoint: Checkpoint = absorber_provider_checkpoint.read(provider);
+    let checkpoint: Checkpoint = get_checkpoint(provider);
     return (checkpoint,);
 }
 
@@ -367,23 +374,20 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     alloc_locals;
 
     let provision: Provision = get_provision(provider);
-    let checkpoint: packed = absorber_provider_checkpoint.read(provider);
-    let (provider_last_absorption_id: ufelt, provider_last_blessing_id: ufelt) = split_felt(
-        checkpoint
-    );
+    let checkpoint: Checkpoint = get_provider_checkpoint(provider);
 
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
     let (
         absorbed_assets_len, absorbed_assets: address*, absorbed_asset_amts: ufelt*
     ) = get_apportioned_assets_for_provider_internal(
-        provider, provision, provider_last_absorption_id, current_absorption_id, TRUE
+        provider, provision, checkpoint.last_absorption_id, current_absorption_id, TRUE
     );
 
     let current_blessing_id: ufelt = absorber_blessings_count.read();
     let (
         blessed_assets_len, blessed_assets: address*, blessed_asset_amts: ufelt*
     ) = get_apportioned_assets_for_provider_internal(
-        provider, provision, provider_last_blessing_id, current_blessing_id, FALSE
+        provider, provision, checkpoint.last_blessing_id, current_blessing_id, FALSE
     );
 
     return (
@@ -443,7 +447,7 @@ func add_blessing{
     let new_count: ufelt = prev_count + 1;
     absorber_blessings_count.write(new_count);
 
-    let blessing: Blessing = Blessing(asset, blesser);
+    let blessing: Blessing = Blessing(asset, blesser, TRUE);
     absorber_blessings.write(new_count, blessing);
 
     return ();
@@ -702,6 +706,17 @@ func compensate{
 // Internal - helpers for packed structs
 //
 
+func get_checkpoint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (checkpoint: Checkpoint) {
+    let (checkpoint_packed: packed) = absorber_provider_checkpoint.read(provider);
+    let (last_absorption_id: ufelt, last_blessing_id: ufelt) = split_felt(checkpoint_packed);
+    let checkpoint: Checkpoint = Checkpoint(
+        last_absorption_id=last_absorption_id, last_blessing_id=last_blessing_id
+    );
+    return (checkpoint,);
+}
+
 func get_provision{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
 ) -> (provision: Provision) {
@@ -911,11 +926,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) {
     alloc_locals;
 
-    let checkpoint: packed = absorber_provider_checkpoint.read(provider);
-    let (provider_last_absorption_id: ufelt, provider_last_blessing_id: ufelt) = split_felt(
-        checkpoint
-    );
-    let provider_last_absorption_id: ufelt = absorber_provider_checkpoint.read(provider);
+    let checkpoint: Checkpoint = get_provider_checkpoint(provider);
 
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
     let current_blessing_id: ufelt = absorber_blessings_count.read();
@@ -932,7 +943,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (
         absorbed_assets_len: ufelt, absorbed_assets: address*, absorbed_asset_amts: ufelt*
     ) = get_apportioned_assets_for_provider_internal(
-        provider, provision, provider_last_absorption_id, current_absorption_id, TRUE
+        provider, provision, checkpoint.last_absorption_id, current_absorption_id, TRUE
     );
     transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
@@ -940,7 +951,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (
         blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: wad*
     ) = get_apportioned_assets_for_provider_internal(
-        provider, provision, provider_last_blessing_id, current_blessing_id, FALSE
+        provider, provision, checkpoint.last_blessing_id, current_blessing_id, FALSE
     );
     transfer_assets(provider, blessed_assets_len, blessed_assets, blessed_asset_amts);
 
@@ -1001,7 +1012,7 @@ func get_apportioned_assets_for_provider_internal{
         return (assets_len, assets, asset_amts);
     } else {
         let assets_len: ufelt = absorber_blessings_count.read();
-        let (assets: address*, _) = get_blessings_internal(assets_len);
+        let (assets: address*, _, _) = get_blessings_internal(assets_len);
 
         get_apportioned_assets_for_provider_outer_loop(
             provision,
@@ -1173,19 +1184,20 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // Helper function to fetch all Blessings as an array
 func get_blessings_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     blessings_count: ufelt
-) -> (assets: address*, blessers: address*) {
+) -> (assets: address*, blessers: address*, is_active: bool*) {
     alloc_locals;
 
     let (assets: address*) = alloc();
     let (blessers: address*) = alloc();
+    let (is_active: bool*) = alloc();
 
-    get_blessings_internal_loop(blessings_count, assets, blessers);
+    get_blessings_internal_loop(blessings_count, assets, blessers, is_active);
 
-    return (assets, blessers);
+    return (assets, blessers, is_active);
 }
 
 func get_blessings_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    blessings_count: ufelt, assets: address*, blessers: address*
+    blessings_count: ufelt, assets: address*, blessers: address*, is_active: bool*
 ) {
     if (blessings_count == 0) {
         return ();
@@ -1194,8 +1206,11 @@ func get_blessings_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     let blessing: Blessing = absorber_blessings.read(blessings_count);
     assert [assets] = blessing.asset;
     assert [blessers] = blessing.blesser;
+    assert [is_active] = blessing.is_active;
 
-    return get_blessings_internal_loop(blessings_count - 1, assets + 1, blessers + 1);
+    return get_blessings_internal_loop(
+        blessings_count - 1, assets + 1, blessers + 1, is_active + 1
+    );
 }
 
 // Helper function to trigger issuance of reward tokens and update rewards received
@@ -1214,11 +1229,13 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     absorber_blessing_epoch.write(current_blessing_id, current_epoch);
 
     // Retrieve arrays of reward tokens and their vesting contracts
-    let (assets: address*, blessers: address*) = get_blessings_internal(blessings_count);
+    let (assets: address*, blessers: address*, is_active: bool*) = get_blessings_internal(
+        blessings_count
+    );
 
     // Loop through reward tokens and call `IBlesser.bless` to get amounts
     let (blessed_amts: wad*) = alloc();
-    invoke_loop(blessings_count, blessers, blessed_amts);
+    invoke_loop(blessings_count, blessers, is_active, blessed_amts);
 
     // Loop through reward tokens and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
@@ -1236,14 +1253,20 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
 // Helper function to loop over vesting contracts and trigger an issuance of reward tokens
 func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    blessings_count: ufelt, blessers: address*, blessed_amts: wad*
+    blessings_count: ufelt, blessers: address*, is_active: bool*, blessed_amts: wad*
 ) {
     if (blessings_count == 0) {
         return ();
     }
 
+    let should_invoke: bool = [is_active];
+    if (should_invoke == FALSE) {
+        assert [blessed_amts] = 0;
+        return invoke_loop(blessings_count - 1, blessers + 1, is_active + 1, blessed_amts + 1);
+    }
+
     let (blessed_amt: wad) = IBlesser.bless([blessers]);
     assert [blessed_amts] = blessed_amt;
 
-    return invoke_loop(blessings_count - 1, blessers + 1, blessed_amts + 1);
+    return invoke_loop(blessings_count - 1, blessers + 1, is_active + 1, blessed_amts + 1);
 }

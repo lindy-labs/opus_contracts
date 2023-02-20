@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import address, ufelt, wad
+from contracts.lib.aliases import address, bool, ufelt, wad
 
 //
 // Shrine
@@ -28,11 +28,12 @@ struct AssetApportion {
 struct Blessing {
     asset: address,  // ERC20 address of token
     blesser: address,  // Address of contract implementing `IBlesser` for distributing the token
+    is_active: bool,  // Rewards are actively being distributed
 }
 
 struct Checkpoint {
-    last_absorption: ufelt,
-    last_blessing: ufelt,
+    last_absorption_id: ufelt,  // Last absorption ID of a provider
+    last_blessing_id: ufelt,  // Last blessing ID of a provider
 }
 
 struct Provision {
