@@ -1,7 +1,7 @@
 %lang starknet
 
 from contracts.lib.aliases import address, ufelt, wad
-from contracts.lib.types import AssetAbsorption, Provision
+from contracts.lib.types import AssetApportion, Checkpoint, Provision
 
 @contract_interface
 namespace IAbsorber {
@@ -12,13 +12,24 @@ namespace IAbsorber {
     func get_purger() -> (purger: address) {
     }
 
+    func get_blessings() -> (
+        assets_len: ufelt, assets: address*, blessers_len: ufelt, blessers: address*
+    ) {
+    }
+
     func get_current_epoch() -> (epoch: ufelt) {
     }
 
     func get_absorptions_count() -> (count: ufelt) {
     }
 
+    func get_blessings_count() -> (count: ufelt) {
+    }
+
     func get_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
+    }
+
+    func get_blessing_epoch(blessing_id: ufelt) -> (epoch: ufelt) {
     }
 
     func get_total_shares_for_current_epoch() -> (total: wad) {
@@ -27,19 +38,27 @@ namespace IAbsorber {
     func get_provider_info(provider: address) -> (provision: Provision) {
     }
 
-    func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
+    func get_provider_checkpoint(provider: address) -> (checkpoint: Checkpoint) {
     }
 
-    func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (
-        info: AssetAbsorption
-    ) {
+    func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (info: AssetApportion) {
+    }
+
+    func get_asset_blessing_info(asset: address, blessing_id: ufelt) -> (info: AssetApportion) {
     }
 
     func preview_remove(provider: address) -> (amount: wad) {
     }
 
     func preview_reap(provider: address) -> (
-        assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*
+        absorbed_assets_len: ufelt,
+        absorbed_assets: address*,
+        absorbed_asset_amts_len: ufelt,
+        absorbed_asset_amts: ufelt*,
+        blessed_assets_len: ufelt,
+        blessed_assets: address*,
+        blessed_asset_amts_len: ufelt,
+        blessed_asset_amts: ufelt*,
     ) {
     }
 
@@ -48,6 +67,9 @@ namespace IAbsorber {
     //
 
     func set_purger(purger: address) {
+    }
+
+    func add_blessing(asset: address, blesser: address) {
     }
 
     func provide(amount: wad) {
@@ -72,5 +94,11 @@ namespace IAbsorber {
         asset_amts_len: ufelt,
         asset_amts: ufelt*,
     ) {
+    }
+}
+
+@contract_interface
+namespace IBlesser {
+    func bless() -> (amount: wad) {
     }
 }

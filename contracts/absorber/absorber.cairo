@@ -8,6 +8,7 @@ from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
+from contracts.absorber.interface import IBlesser
 from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
 
@@ -25,7 +26,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
 from contracts.lib.convert import pack_felt
 from contracts.lib.interfaces import IERC20
-from contracts.lib.types import AssetAbsorption, Provision
+from contracts.lib.types import AssetApportion, Blessing, Checkpoint, Provision
 from contracts.lib.wad_ray import WadRay
 
 // Constants
@@ -74,7 +75,7 @@ func absorber_absorptions_count() -> (absorption_id: ufelt) {
 
 // Mapping from a provider to the last absorption ID accounted for
 @storage_var
-func absorber_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
+func absorber_provider_checkpoint(provider: address) -> (checkpoint: packed) {
 }
 
 // Mapping of address to a packed struct of
@@ -111,6 +112,29 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 }
 
+// Total number of reward tokens
+// A reward token cannot be removed once added.
+@storage_var
+func absorber_blessings_count() -> (count: ufelt) {
+}
+
+// Mapping from a reward token ID to its token address and vesting contract (blesser)
+@storage_var
+func absorber_blessings(idx: ufelt) -> (blessing: Blessing) {
+}
+
+// Mapping from an absorption to its epoch
+@storage_var
+func absorber_blessing_epoch(blessing_id: ufelt) -> (epoch: ufelt) {
+}
+
+// Mapping of a tuple of absorption ID and asset to a packed struct of
+// 1. the amount of that asset in its decimal precision rewarded per share wad for a blessing
+// 2. the rounding error from calculating (1) that is to be added to the next blessing
+@storage_var
+func absorber_asset_blessing(blessing_id: ufelt, asset: address) -> (info: packed) {
+}
+
 //
 // Events
 //
@@ -134,15 +158,30 @@ func Remove(provider: address, epoch: ufelt, yin: wad) {
 @event
 func Reap(
     provider: address,
-    assets_len: ufelt,
-    assets: address*,
-    asset_amts_len: ufelt,
-    asset_amts: ufelt*,
+    absorbed_assets_len: ufelt,
+    absorbed_assets: address*,
+    absorbed_asset_amts_len: ufelt,
+    absorbed_asset_amts: ufelt*,
+    blessed_assets_len: ufelt,
+    blessed_assets: address*,
+    blessed_asset_amts_len: wad,
+    blessed_asset_amts: wad*,
 ) {
 }
 
 @event
 func Gain(
+    assets_len: ufelt,
+    assets: address*,
+    asset_amts_len: ufelt,
+    asset_amts: wad*,
+    total_shares: wad,
+    epoch: ufelt,
+) {
+}
+
+@event
+func Invoke(
     assets_len: ufelt,
     assets: address*,
     asset_amts_len: ufelt,
@@ -196,6 +235,17 @@ func get_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 }
 
 @view
+func get_blessings{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    assets_len: ufelt, assets: address*, blessers_len: ufelt, blessers: address*
+) {
+    alloc_locals;
+
+    let blessings_count: ufelt = absorber_blessings_count.read();
+    let (assets: address*, blessers: address*) = get_blessings_internal(blessings_count);
+    return (blessings_count, assets, blessings_count, blessers);
+}
+
+@view
 func get_current_epoch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     epoch: ufelt
 ) {
@@ -212,10 +262,26 @@ func get_absorptions_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 }
 
 @view
+func get_blessings_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    count: ufelt
+) {
+    let count: ufelt = absorber_blessings_count.read();
+    return (count,);
+}
+
+@view
 func get_absorption_epoch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     absorption_id: ufelt
 ) -> (epoch: ufelt) {
     let epoch: ufelt = absorber_absorption_epoch.read(absorption_id);
+    return (epoch,);
+}
+
+@view
+func get_blessing_epoch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    blessing_id: ufelt
+) -> (epoch: ufelt) {
+    let epoch: ufelt = absorber_blessing_epoch.read(blessing_id);
     return (epoch,);
 }
 
@@ -236,18 +302,26 @@ func get_provider_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 }
 
 @view
-func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_provider_checkpoint{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
-) -> (absorption_id: ufelt) {
-    let absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
-    return (absorption_id,);
+) -> (checkpoint: Checkpoint) {
+    let checkpoint: Checkpoint = absorber_provider_checkpoint.read(provider);
+    return (checkpoint,);
 }
 
 @view
 func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
-) -> (info: AssetAbsorption) {
-    let info: AssetAbsorption = get_asset_absorption(asset, absorption_id);
+) -> (info: AssetApportion) {
+    let info: AssetApportion = get_asset_absorption(asset, absorption_id);
+    return (info,);
+}
+
+@view
+func get_asset_blessing_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    asset: address, blessing_id: ufelt
+) -> (info: AssetApportion) {
+    let info: AssetApportion = get_asset_blessing(asset, blessing_id);
     return (info,);
 }
 
@@ -280,19 +354,48 @@ func preview_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 @view
 func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
-) -> (assets_len: ufelt, assets: address*, asset_amts_len: ufelt, asset_amts: ufelt*) {
+) -> (
+    absorbed_assets_len: ufelt,
+    absorbed_assets: address*,
+    absorbed_asset_amts_len: ufelt,
+    absorbed_asset_amts: ufelt*,
+    blessed_assets_len: ufelt,
+    blessed_assets: address*,
+    blessed_asset_amts_len: wad,
+    blessed_asset_amts: wad*,
+) {
     alloc_locals;
 
     let provision: Provision = get_provision(provider);
-    let provider_last_absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
-    let current_absorption_id: ufelt = absorber_absorptions_count.read();
-
-    let (
-        assets_len, assets: address*, asset_amts: ufelt*
-    ) = get_absorbed_assets_for_provider_internal(
-        provider, provision, provider_last_absorption_id, current_absorption_id
+    let checkpoint: packed = absorber_provider_checkpoint.read(provider);
+    let (provider_last_absorption_id: ufelt, provider_last_blessing_id: ufelt) = split_felt(
+        checkpoint
     );
-    return (assets_len, assets, assets_len, asset_amts);
+
+    let current_absorption_id: ufelt = absorber_absorptions_count.read();
+    let (
+        absorbed_assets_len, absorbed_assets: address*, absorbed_asset_amts: ufelt*
+    ) = get_apportioned_assets_for_provider_internal(
+        provider, provision, provider_last_absorption_id, current_absorption_id, TRUE
+    );
+
+    let current_blessing_id: ufelt = absorber_blessings_count.read();
+    let (
+        blessed_assets_len, blessed_assets: address*, blessed_asset_amts: ufelt*
+    ) = get_apportioned_assets_for_provider_internal(
+        provider, provision, provider_last_blessing_id, current_blessing_id, FALSE
+    );
+
+    return (
+        absorbed_assets_len,
+        absorbed_assets,
+        absorbed_assets_len,
+        absorbed_asset_amts,
+        blessed_assets_len,
+        blessed_assets,
+        blessed_assets_len,
+        blessed_asset_amts,
+    );
 }
 
 //
@@ -326,6 +429,22 @@ func set_purger{
         IERC20.approve(shrine, old_address, zero_allowance);
         return ();
     }
+
+    return ();
+}
+
+@external
+func add_blessing{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(asset: address, blesser: address) {
+    AccessControl.assert_has_role(AbsorberRoles.ADD_BLESSING);
+
+    let prev_count: ufelt = absorber_blessings_count.read();
+    let new_count: ufelt = prev_count + 1;
+    absorber_blessings_count.write(new_count);
+
+    let blessing: Blessing = Blessing(asset, blesser);
+    absorber_blessings.write(new_count, blessing);
 
     return ();
 }
@@ -488,18 +607,21 @@ func update{
 
     AccessControl.assert_has_role(AbsorberRoles.UPDATE);
 
+    // Trigger issuance of rewards
+    invoke();
+
     // Increment absorption ID
     let prev_absorption_id: ufelt = absorber_absorptions_count.read();
-    let current_absorption_id: ufelt = prev_absorption_id + 1;
-    absorber_absorptions_count.write(current_absorption_id);
+    let current_apportion_id: ufelt = prev_absorption_id + 1;
+    absorber_absorptions_count.write(current_apportion_id);
 
     // Update epoch for absorption ID
     let current_epoch: ufelt = absorber_current_epoch.read();
-    absorber_absorption_epoch.write(current_absorption_id, current_epoch);
+    absorber_absorption_epoch.write(current_apportion_id, current_epoch);
 
     // Loop through assets and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
-    update_assets_loop(current_absorption_id, total_shares, assets_len, assets, asset_amts);
+    apportion_assets_loop(current_apportion_id, total_shares, assets_len, assets, asset_amts, TRUE);
 
     // Emit `Gain` event
     Gain.emit(assets_len, assets, asset_amts_len, asset_amts, total_shares, current_epoch);
@@ -599,12 +721,19 @@ func set_provision{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
 func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
-) -> (info: AssetAbsorption) {
+) -> (info: AssetApportion) {
     let (info_packed: packed) = absorber_asset_absorption.read(absorption_id, asset);
     let (asset_amt_per_share: wad, error: wad) = split_felt(info_packed);
-    let info: AssetAbsorption = AssetAbsorption(
-        asset_amt_per_share=asset_amt_per_share, error=error
-    );
+    let info: AssetApportion = AssetApportion(asset_amt_per_share=asset_amt_per_share, error=error);
+    return (info,);
+}
+
+func get_asset_blessing{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    asset: address, blessing_id: ufelt
+) -> (info: AssetApportion) {
+    let (info_packed: packed) = absorber_asset_blessing.read(blessing_id, asset);
+    let (asset_amt_per_share: wad, error: wad) = split_felt(info_packed);
+    let info: AssetApportion = AssetApportion(asset_amt_per_share=asset_amt_per_share, error=error);
     return (info,);
 }
 
@@ -696,57 +825,79 @@ func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 // Internal - helpers for `update`
 //
 
-// Helper function to iterate over an array of assets received from an absorption for updating
+// Helper function to iterate over an array of assets received from an absorption or blessing for updating
 // each provider's entitlement
-func update_assets_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    absorption_id: ufelt, total_shares: wad, asset_count: ufelt, assets: address*, amounts: ufelt*
+// `apportion_id` is either an absorption ID or a blessing ID
+func apportion_assets_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    apportion_id: ufelt,
+    total_shares: wad,
+    asset_count: ufelt,
+    assets: address*,
+    amounts: ufelt*,
+    is_absorption: bool,
 ) {
     if (asset_count == 0) {
         return ();
     }
-    update_asset(absorption_id, total_shares, [assets], [amounts]);
-    return update_assets_loop(
-        absorption_id, total_shares, asset_count - 1, assets + 1, amounts + 1
+    apportion_asset(apportion_id, total_shares, [assets], [amounts], is_absorption);
+    return apportion_assets_loop(
+        apportion_id, total_shares, asset_count - 1, assets + 1, amounts + 1, is_absorption
     );
 }
 
 // Helper function to update each provider's entitlement of an absorbed asset
-func update_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    absorption_id: ufelt, total_shares: wad, asset: address, amount: ufelt
+// `apportion_id` is either an absorption ID or a blessing ID
+func apportion_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    apportion_id: ufelt, total_shares: wad, asset: address, amount: ufelt, is_absorption: bool
 ) {
     if (amount == 0) {
         return ();
     }
 
-    let last_error: wad = get_recent_asset_absorption_error(asset, absorption_id);
+    let last_error: wad = get_recent_asset_apportion_error(asset, apportion_id, is_absorption);
+
     let total_amount_to_distribute: wad = WadRay.unsigned_add(amount, last_error);
 
     let asset_amt_per_share: wad = WadRay.wunsigned_div(total_amount_to_distribute, total_shares);
     let actual_amount_distributed: wad = WadRay.wmul(asset_amt_per_share, total_shares);
     let error: wad = WadRay.unsigned_sub(total_amount_to_distribute, actual_amount_distributed);
 
-    let packed_asset_absorption: packed = pack_felt(asset_amt_per_share, error);
-    absorber_asset_absorption.write(absorption_id, asset, packed_asset_absorption);
+    let packed_asset_apportion: packed = pack_felt(asset_amt_per_share, error);
+
+    if (is_absorption == TRUE) {
+        absorber_asset_absorption.write(apportion_id, asset, packed_asset_apportion);
+    } else {
+        absorber_asset_blessing.write(apportion_id, asset, packed_asset_apportion);
+    }
 
     return ();
 }
 
-// Returns the last error for an asset at a given `absorption_id` if the packed value is non-zero.
-// Otherwise, check `absorption_id - 1` recursively for the last error.
-func get_recent_asset_absorption_error{
+// `apportion_id` is either an absorption ID or a blessing ID
+// Returns the last error for an asset at a given `apportion_id` if the packed value is non-zero.
+// Otherwise, check `apportion_id - 1` recursively for the last error.
+// Return type is `ufelt` for absorptions, and `wad` for blessings.
+func get_recent_asset_apportion_error{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(asset: address, absorption_id: ufelt) -> (error: wad) {
-    if (absorption_id == 0) {
+}(asset: address, apportion_id: ufelt, is_absorption: bool) -> (error: ufelt) {
+    if (apportion_id == 0) {
         return (0,);
     }
 
-    let (packed_info: packed) = absorber_asset_absorption.read(absorption_id, asset);
+    if (is_absorption == TRUE) {
+        let (packed_info: packed) = absorber_asset_absorption.read(apportion_id, asset);
+        tempvar packed_info = packed_info;
+    } else {
+        let (packed_info: packed) = absorber_asset_blessing.read(apportion_id, asset);
+        tempvar packed_info = packed_info;
+    }
+
     if (packed_info != 0) {
         let (_, error: wad) = split_felt(packed_info);
         return (error,);
     }
 
-    return get_recent_asset_absorption_error(asset, absorption_id - 1);
+    return get_recent_asset_apportion_error(asset, apportion_id - 1, is_absorption);
 }
 
 //
@@ -760,35 +911,64 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) {
     alloc_locals;
 
-    let provider_last_absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
+    let checkpoint: packed = absorber_provider_checkpoint.read(provider);
+    let (provider_last_absorption_id: ufelt, provider_last_blessing_id: ufelt) = split_felt(
+        checkpoint
+    );
+    let provider_last_absorption_id: ufelt = absorber_provider_checkpoint.read(provider);
+
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
+    let current_blessing_id: ufelt = absorber_blessings_count.read();
 
     // This should be updated before early return so that first provision by a new
     // address is properly updated.
-    absorber_provider_last_absorption.write(provider, current_absorption_id);
+    let new_checkpoint: packed = pack_felt(current_absorption_id, current_blessing_id);
+    absorber_provider_checkpoint.write(provider, new_checkpoint);
 
+    // Trigger issuance of rewards
+    invoke();
+
+    // Loop over absorbed assets and transfer
     let (
-        assets_len: ufelt, assets: address*, asset_amts: ufelt*
-    ) = get_absorbed_assets_for_provider_internal(
-        provider, provision, provider_last_absorption_id, current_absorption_id
+        absorbed_assets_len: ufelt, absorbed_assets: address*, absorbed_asset_amts: ufelt*
+    ) = get_apportioned_assets_for_provider_internal(
+        provider, provision, provider_last_absorption_id, current_absorption_id, TRUE
     );
+    transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
-    // Loop over assets and transfer
-    transfer_assets(provider, assets_len, assets, asset_amts);
+    // Loop over absorbed assets and transfer
+    let (
+        blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: wad*
+    ) = get_apportioned_assets_for_provider_internal(
+        provider, provision, provider_last_blessing_id, current_blessing_id, FALSE
+    );
+    transfer_assets(provider, blessed_assets_len, blessed_assets, blessed_asset_amts);
 
-    Reap.emit(provider, assets_len, assets, assets_len, asset_amts);
+    Reap.emit(
+        provider,
+        absorbed_assets_len,
+        absorbed_assets,
+        absorbed_assets_len,
+        absorbed_asset_amts,
+        blessed_assets_len,
+        blessed_assets,
+        blessed_assets_len,
+        blessed_asset_amts,
+    );
 
     return ();
 }
 
-// Internal function to calculate the absorbed assets that a provider is entitled to
-func get_absorbed_assets_for_provider_internal{
+// Internal function to calculate the apportioned assets that a provider is entitled to
+// `apportion_id` is either an absorption ID or a blessing ID
+func get_apportioned_assets_for_provider_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     provider: address,
     provision: Provision,
-    provided_absorption_id: ufelt,
-    current_absorption_id: ufelt,
+    provided_apportion_id: ufelt,
+    current_apportion_id: ufelt,
+    is_absorption: bool,
 ) -> (assets_len: ufelt, assets: address*, asset_amts: ufelt*) {
     alloc_locals;
 
@@ -799,34 +979,61 @@ func get_absorbed_assets_for_provider_internal{
         return (0, asset_amts, asset_amts);
     }
 
-    if (current_absorption_id == provided_absorption_id) {
+    if (current_apportion_id == provided_apportion_id) {
         return (0, asset_amts, asset_amts);
     }
 
-    let sentinel: address = absorber_sentinel.read();
-    let (assets_len: ufelt, assets: address*) = ISentinel.get_yang_addresses(sentinel);
+    if (is_absorption == TRUE) {
+        let sentinel: address = absorber_sentinel.read();
+        let (assets_len: ufelt, assets: address*) = ISentinel.get_yang_addresses(sentinel);
 
-    get_absorbed_assets_for_provider_outer_loop(
-        provision, provided_absorption_id, current_absorption_id, assets_len, 0, assets, asset_amts
-    );
+        get_apportioned_assets_for_provider_outer_loop(
+            provision,
+            provided_apportion_id,
+            current_apportion_id,
+            assets_len,
+            0,
+            assets,
+            asset_amts,
+            is_absorption,
+        );
 
-    return (assets_len, assets, asset_amts);
+        return (assets_len, assets, asset_amts);
+    } else {
+        let assets_len: ufelt = absorber_blessings_count.read();
+        let (assets: address*, _) = get_blessings_internal(assets_len);
+
+        get_apportioned_assets_for_provider_outer_loop(
+            provision,
+            provided_apportion_id,
+            current_apportion_id,
+            assets_len,
+            0,
+            assets,
+            asset_amts,
+            is_absorption,
+        );
+
+        return (assets_len, assets, asset_amts);
+    }
 }
 
 // Outer loop iterating over yangs
 // Since we can only write to an array once, we need to compute
-// the total amount to transfer for a given asset across all absorption IDs.
+// the total amount to transfer for a given asset across all apportion IDs.
+// `apportion_id` is either an absorption ID or a blessing ID
 // Therefore, we iterate over yangs first.
-func get_absorbed_assets_for_provider_outer_loop{
+func get_apportioned_assets_for_provider_outer_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     provision: Provision,
-    last_absorption_id: ufelt,
-    current_absorption_id: ufelt,
+    last_apportion_id: ufelt,
+    current_apportion_id: ufelt,
     asset_count: ufelt,
     asset_idx: ufelt,
     assets: address*,
     asset_amts: ufelt*,
+    is_absorption: bool,
 ) {
     alloc_locals;
 
@@ -835,48 +1042,57 @@ func get_absorbed_assets_for_provider_outer_loop{
     }
 
     let asset: address = assets[asset_idx];
-    let asset_amt: ufelt = get_absorbed_assets_for_provider_inner_loop(
-        provision.shares, provision.epoch, last_absorption_id, current_absorption_id, asset, 0
+    let asset_amt: ufelt = get_apportioned_assets_for_provider_inner_loop(
+        provision.shares,
+        provision.epoch,
+        last_apportion_id,
+        current_apportion_id,
+        asset,
+        0,
+        is_absorption,
     );
 
     assert asset_amts[asset_idx] = asset_amt;
 
-    return get_absorbed_assets_for_provider_outer_loop(
+    return get_apportioned_assets_for_provider_outer_loop(
         provision,
-        last_absorption_id,
-        current_absorption_id,
+        last_apportion_id,
+        current_apportion_id,
         asset_count,
         asset_idx + 1,
         assets,
         asset_amts,
+        is_absorption,
     );
 }
 
-// Inner loop iterating over absorption IDs starting from the ID right after the last absorption ID tracked
-// for a provider up to the latest absorption ID, for a given asset.
-// We need to iterate from the last absorption ID upwards to the current absorption ID in order to take
+// `apportion_id` is either an absorption ID or a blessing ID
+// Inner loop iterating over apportion IDs starting from the ID right after the last apportion ID tracked
+// for a provider up to the latest apportion ID, for a given asset.
+// We need to iterate from the last apportion ID upwards to the current apportion ID in order to take
 // into account the conversion rate of shares from epoch to epoch.
-func get_absorbed_assets_for_provider_inner_loop{
+func get_apportioned_assets_for_provider_inner_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     provided_shares: wad,
     current_epoch: ufelt,
-    start_absorption_id: ufelt,
-    end_absorption_id: ufelt,
+    start_apportion_id: ufelt,
+    end_apportion_id: ufelt,
     asset: address,
     cumulative: ufelt,
+    is_absorption: bool,
 ) -> ufelt {
     alloc_locals;
 
-    if (start_absorption_id == end_absorption_id) {
+    if (start_apportion_id == end_apportion_id) {
         return cumulative;
     }
-    let next_absorption_id: ufelt = start_absorption_id + 1;
-    let absorption_epoch: ufelt = absorber_absorption_epoch.read(next_absorption_id);
+    let next_apportion_id: ufelt = start_apportion_id + 1;
+    let apportion_epoch = get_apportion_epoch(next_apportion_id, is_absorption);
 
-    // If `current_epoch == absorption_epoch`, then `adjusted_shares == provided_shares`.
+    // If `current_epoch == apportion_epoch`, then `adjusted_shares == provided_shares`.
     let adjusted_shares: wad = convert_epoch_shares(
-        current_epoch, absorption_epoch, provided_shares
+        current_epoch, apportion_epoch, provided_shares
     );
 
     // Terminate if provider does not have any shares for current epoch,
@@ -884,19 +1100,40 @@ func get_absorbed_assets_for_provider_inner_loop{
         return cumulative;
     }
 
-    let asset_absorption_info: AssetAbsorption = get_asset_absorption(asset, next_absorption_id);
-    let provider_assets: ufelt = WadRay.wmul(
-        adjusted_shares, asset_absorption_info.asset_amt_per_share
-    );
+    if (is_absorption == TRUE) {
+        let asset_absorption_info: AssetApportion = get_asset_absorption(asset, next_apportion_id);
+        let provider_assets: ufelt = WadRay.wmul(
+            adjusted_shares, asset_absorption_info.asset_amt_per_share
+        );
+    } else {
+        let asset_absorption_info: AssetApportion = get_asset_blessing(asset, next_apportion_id);
+        let provider_assets: ufelt = WadRay.wmul(
+            adjusted_shares, asset_absorption_info.asset_amt_per_share
+        );
+    }
 
-    return get_absorbed_assets_for_provider_inner_loop(
+    return get_apportioned_assets_for_provider_inner_loop(
         adjusted_shares,
-        absorption_epoch,
-        next_absorption_id,
-        end_absorption_id,
+        apportion_epoch,
+        next_apportion_id,
+        end_apportion_id,
         asset,
         cumulative + provider_assets,
+        is_absorption,
     );
+}
+
+// Helper function to return the epoch for an apportion ID to avoid revoked references
+// `apportion_id` is either an absorption ID or a blessing ID
+func get_apportion_epoch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    apportion_id: ufelt, is_absorption: bool
+) -> ufelt {
+    if (is_absorption == TRUE) {
+        let absorption_epoch: ufelt = absorber_absorption_epoch.read(apportion_id);
+        return absorption_epoch;
+    }
+    let blessing_epoch: ufelt = absorber_blessing_epoch.read(apportion_id);
+    return blessing_epoch;
 }
 
 // Helper function to iterate over an array of assets to transfer to an address
@@ -931,4 +1168,82 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert is_live = TRUE;
     }
     return ();
+}
+
+// Helper function to fetch all Blessings as an array
+func get_blessings_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    blessings_count: ufelt
+) -> (assets: address*, blessers: address*) {
+    alloc_locals;
+
+    let (assets: address*) = alloc();
+    let (blessers: address*) = alloc();
+
+    get_blessings_internal_loop(blessings_count, assets, blessers);
+
+    return (assets, blessers);
+}
+
+func get_blessings_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    blessings_count: ufelt, assets: address*, blessers: address*
+) {
+    if (blessings_count == 0) {
+        return ();
+    }
+
+    let blessing: Blessing = absorber_blessings.read(blessings_count);
+    assert [assets] = blessing.asset;
+    assert [blessers] = blessing.blesser;
+
+    return get_blessings_internal_loop(blessings_count - 1, assets + 1, blessers + 1);
+}
+
+// Helper function to trigger issuance of reward tokens and update rewards received
+func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+
+    let blessings_count: ufelt = absorber_blessings_count.read();
+
+    // Increment blessing ID
+    let prev_blessing_id: ufelt = absorber_blessings_count.read();
+    let current_blessing_id: ufelt = prev_blessing_id + 1;
+    absorber_blessings_count.write(current_blessing_id);
+
+    // Update epoch for absorption ID
+    let current_epoch: ufelt = absorber_current_epoch.read();
+    absorber_blessing_epoch.write(current_blessing_id, current_epoch);
+
+    // Retrieve arrays of reward tokens and their vesting contracts
+    let (assets: address*, blessers: address*) = get_blessings_internal(blessings_count);
+
+    // Loop through reward tokens and call `IBlesser.bless` to get amounts
+    let (blessed_amts: wad*) = alloc();
+    invoke_loop(blessings_count, blessers, blessed_amts);
+
+    // Loop through reward tokens and calculate amount entitled per share
+    let total_shares: wad = absorber_total_shares.read();
+    apportion_assets_loop(
+        current_blessing_id, total_shares, blessings_count, assets, blessed_amts, FALSE
+    );
+
+    // Emit `Invoke` event
+    Invoke.emit(
+        blessings_count, assets, blessings_count, blessed_amts, total_shares, current_epoch
+    );
+
+    return ();
+}
+
+// Helper function to loop over vesting contracts and trigger an issuance of reward tokens
+func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    blessings_count: ufelt, blessers: address*, blessed_amts: wad*
+) {
+    if (blessings_count == 0) {
+        return ();
+    }
+
+    let (blessed_amt: wad) = IBlesser.bless([blessers]);
+    assert [blessed_amts] = blessed_amt;
+
+    return invoke_loop(blessings_count - 1, blessers + 1, blessed_amts + 1);
 }

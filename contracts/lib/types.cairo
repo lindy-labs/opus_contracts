@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import ufelt, wad
+from contracts.lib.aliases import address, ufelt, wad
 
 //
 // Shrine
@@ -20,12 +20,22 @@ struct YangRedistribution {
 // Absorber
 //
 
+struct AssetApportion {
+    asset_amt_per_share: wad,  // Amount of asset in its decimal precision per share wad
+    error: wad,  // Error to be added to next absorption
+}
+
+struct Blessing {
+    asset: address,  // ERC20 address of token
+    blesser: address,  // Address of contract implementing `IBlesser` for distributing the token
+}
+
+struct Checkpoint {
+    last_absorption: ufelt,
+    last_blessing: ufelt,
+}
+
 struct Provision {
     epoch: ufelt,  // Epoch in which shares are issued
     shares: wad,  // Amount of shares for provider in the above epoch
-}
-
-struct AssetAbsorption {
-    asset_amt_per_share: wad,  // Amount of asset in its decimal precision per share wad
-    error: wad,  // Error to be added to next absorption
 }
