@@ -731,7 +731,7 @@ func update_rates{
     shrine_rates_intervals.write(new_idx, new_interval);
 
     // Loop over yangs and update rates
-    update_rates_loop(new_idx, new_rates_len, new_rates, 0);
+    update_rates_loop(new_idx, new_rates_len, new_rates, 1);
 
     return ();
 }
@@ -1295,7 +1295,7 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     alloc_locals;
 
     // Termination condition
-    if (current_yang_id == new_rates_len) {
+    if (current_yang_id == new_rates_len + 1) {
         return ();
     }
 
@@ -1345,6 +1345,10 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     // Update trove
     let updated_trove: Trove = Trove(charge_from=current_interval, debt=new_debt);
     set_trove(trove_id, updated_trove);
+
+    // Update trove's interest rate index
+    let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
+    shrine_last_trove_rate_idx.write(trove_id, latest_idx);
 
     // Get old system debt amount
     let (old_system_debt: wad) = shrine_total_debt.read();
