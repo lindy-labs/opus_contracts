@@ -2,10 +2,10 @@ from enum import IntEnum
 
 
 class AbsorberRoles(IntEnum):
-    ADD_BLESSING = 2**0
-    COMPENSATE = 2**1
-    KILL = 2**2
-    SET_PURGER = 2**3
+    COMPENSATE = 2**0
+    KILL = 2**1
+    SET_PURGER = 2**2
+    SET_REWARD = 2**3
     UPDATE = 2**4
 
 

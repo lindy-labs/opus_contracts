@@ -337,7 +337,7 @@ async def test_absorber_setup(shrine, absorber):
     assert is_live == TRUE
 
     admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
-    assert admin_role == AbsorberRoles.ADD_BLESSING + AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_PURGER + AbsorberRoles.SET_REWARD
 
 
 @pytest.mark.asyncio

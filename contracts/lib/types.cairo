@@ -25,7 +25,7 @@ struct AssetApportion {
     error: wad,  // Error to be added to next absorption
 }
 
-struct Blessing {
+struct Reward {
     asset: address,  // ERC20 address of token
     blesser: address,  // Address of contract implementing `IBlesser` for distributing the token
     is_active: bool,  // Rewards are actively being distributed

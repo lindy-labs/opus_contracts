@@ -12,20 +12,13 @@ namespace IAbsorber {
     func get_purger() -> (purger: address) {
     }
 
-    func get_blessings() -> (
-        assets_len: ufelt,
-        assets: address*,
-        blessers_len: ufelt,
-        blessers: address*,
-        is_active_len: ufelt,
-        is_active: bool*,
-    ) {
-    }
-
     func get_current_epoch() -> (epoch: ufelt) {
     }
 
     func get_absorptions_count() -> (count: ufelt) {
+    }
+
+    func get_rewards_count() -> (count: ufelt) {
     }
 
     func get_blessings_count() -> (count: ufelt) {
@@ -52,6 +45,16 @@ namespace IAbsorber {
     func get_asset_blessing_info(asset: address, blessing_id: ufelt) -> (info: AssetApportion) {
     }
 
+    func get_rewards() -> (
+        assets_len: ufelt,
+        assets: address*,
+        blessers_len: ufelt,
+        blessers: address*,
+        is_active_len: ufelt,
+        is_active: bool*,
+    ) {
+    }
+
     func preview_remove(provider: address) -> (amount: wad) {
     }
 
@@ -74,7 +77,7 @@ namespace IAbsorber {
     func set_purger(purger: address) {
     }
 
-    func add_blessing(asset: address, blesser: address) {
+    func set_reward(asset: address, blesser: address, is_active: bool) {
     }
 
     func provide(amount: wad) {
