@@ -337,7 +337,7 @@ async def test_absorber_setup(shrine, absorber):
     assert is_live == TRUE
 
     admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
-    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
+    assert admin_role == AbsorberRoles.ADD_BLESSING + AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
 
 
 @pytest.mark.asyncio
@@ -374,9 +374,8 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
 
     tx, initial_yin_amt_provided = first_epoch_first_provider
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
-    before_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(provider).execute()
-    ).result.absorption_id
+    before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
+    before_provider_last_absorption = before_provider_checkpoint.last_absorption_id
     before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
     assert before_provider_info.shares + INITIAL_SHARES_WAD == before_total_shares_wad == initial_yin_amt_provided
@@ -407,9 +406,8 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
 
     assert after_provider_info.epoch == before_provider_info.epoch
 
-    after_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(provider).execute()
-    ).result.absorption_id
+    after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
+    after_provider_last_absorption = after_provider_checkpoint.last_absorption_id
     assert after_provider_last_absorption == before_provider_last_absorption
 
     assert_event_emitted(
@@ -489,8 +487,8 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
     asset_count = len(assets)
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
-    assert absorbed.assets == assets
-    for asset_info, expected, actual in zip(yangs, asset_amts, absorbed.asset_amts):
+    assert absorbed.absorbed_assets == assets
+    for asset_info, expected, actual in zip(yangs, asset_amts, absorbed.absorbed_asset_amts):
         error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
         adjusted_expected = from_fixed_point(expected, asset_info.decimals)
         adjusted_actual = from_fixed_point(actual, asset_info.decimals)
@@ -499,8 +497,8 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
     # Fetch user balances before `reap`
     before_provider_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
     before_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(provider).execute()
-    ).result.absorption_id
+        await absorber.get_provider_checkpoint(provider).execute()
+    ).result.checkpoint.last_absorption_id
 
     tx = await absorber.reap().execute(caller_address=provider)
 
@@ -523,8 +521,8 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
         assert_equalish(after_provider_asset_bal, before_bal + absorbed_amt, error_margin)
 
     after_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(provider).execute()
-    ).result.absorption_id
+        await absorber.get_provider_checkpoint(provider).execute()
+    ).result.checkpoint.last_absorption_id
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
@@ -543,8 +541,8 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
     before_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     before_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(provider).execute()
-    ).result.absorption_id
+        await absorber.get_provider_checkpoint(provider).execute()
+    ).result.checkpoint.last_absorption_id
 
     before_absorber_yin_bal_wad = from_uint(
         (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
@@ -576,8 +574,8 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
     assert after_provider_info.epoch == expected_epoch
 
     after_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(provider).execute()
-    ).result.absorption_id
+        await absorber.get_provider_checkpoint(provider).execute()
+    ).result.checkpoint.last_absorption_id
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
     assert_event_emitted(
@@ -615,7 +613,9 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
     expected_epoch = 1
     assert provider_info.epoch == expected_epoch
 
-    provider_last_absorption = (await absorber.get_provider_last_absorption(provider).execute()).result.absorption_id
+    provider_last_absorption = (
+        await absorber.get_provider_checkpoint(provider).execute()
+    ).result.checkpoint.last_absorption_id
     expected_absorption_id = 1
     assert provider_last_absorption == expected_absorption_id
 
@@ -734,8 +734,8 @@ async def test_reap_different_epochs(
     assert second_provider_info.epoch == expected_epoch
 
     second_provider_last_absorption = (
-        await absorber.get_provider_last_absorption(second_provider).execute()
-    ).result.absorption_id
+        await absorber.get_provider_checkpoint(second_provider).execute()
+    ).result.checkpoint.last_absorption_id
     expected_last_absorption = 1
     assert second_provider_last_absorption == expected_last_absorption
 
@@ -773,8 +773,8 @@ async def test_reap_different_epochs(
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
         absorbed = (await absorber.preview_reap(provider).execute()).result
-        assert absorbed.assets == asset_addresses
-        for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.asset_amts):
+        assert absorbed.absorbed_assets == asset_addresses
+        for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.absorbed_asset_amts):
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             adjusted_actual = from_fixed_point(actual, asset_info.decimals)
             assert_equalish(adjusted_expected, adjusted_actual, error_margin)
@@ -965,8 +965,8 @@ async def test_non_provider_fail(shrine, absorber):
     assert removable_yin == 0
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
-    assert absorbed.assets == []
-    assert absorbed.asset_amts == []
+    assert absorbed.absorbed_assets == []
+    assert absorbed.absorbed_asset_amts == []
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
