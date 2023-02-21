@@ -19,6 +19,7 @@ MOCK_PURGER = str_to_felt("mock purger")
 NEW_MOCK_PURGER = str_to_felt("new mock purger")
 BURNER = str_to_felt("burner")
 NON_PROVIDER = str_to_felt("non-provider")
+BLESSER_OWNER = str_to_felt("blesser owner")
 
 MAX_REMOVE_AMT = 2**125
 

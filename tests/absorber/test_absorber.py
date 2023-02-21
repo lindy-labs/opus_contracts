@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
@@ -23,6 +24,7 @@ from tests.utils import (
     assert_event_emitted,
     calculate_max_forge,
     compile_code,
+    compile_contract,
     create_feed,
     custom_error_margin,
     from_fixed_point,
@@ -208,6 +210,50 @@ def absorber_both(request) -> StarknetContract:
 
 
 @pytest.fixture
+def blesser_contract() -> ContractClass:
+    blesser_contract = compile_contract("contracts/absorber/blesser.cairo")
+    return blesser_contract
+
+
+@pytest.fixture
+async def aura_token_blesser(starknet, shrine, absorber, aura_token, blesser_contract) -> StarknetContract:
+    blesser = await starknet.deploy(
+        contract_class=blesser_contract,
+        constructor_calldata=[
+            BLESSER_OWNER,
+            shrine.contract_address,
+            absorber.contract_address,
+        ],
+    )
+
+    # Mint tokens to blesser contract
+    vesting_amt = to_uint(to_wad(1_000_000))
+    await aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
+
+    return blesser
+
+
+@pytest.fixture
+async def vested_aura_token_blesser(
+    starknet, shrine, absorber, vested_aura_token, blesser_contract
+) -> StarknetContract:
+    blesser = await starknet.deploy(
+        contract_class=blesser_contract,
+        constructor_calldata=[
+            BLESSER_OWNER,
+            shrine.contract_address,
+            absorber.contract_address,
+        ],
+    )
+
+    # Mint tokens to blesser contract
+    vesting_amt = to_uint(to_wad(5_000_000))
+    await vested_aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
+
+    return blesser
+
+
+@pytest.fixture
 async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[list[int]]:
     # Creating the price feeds
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
@@ -314,8 +360,30 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
     )
 
 
+@pytest.fixture
+async def aura_reward(absorber, aura_token, aura_token_blesser):
+    tx = await absorber.set_reward(
+        aura_token.contract_address,
+        aura_token_blesser.contract_address,
+        TRUE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    return tx
+
+
+@pytest.fixture
+async def vested_aura_reward(absorber, vested_aura_token, vested_aura_token_blesser):
+    tx = await absorber.set_reward(
+        vested_aura_token.contract_address,
+        vested_aura_token_blesser.contract_address,
+        TRUE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    return tx
+
+
 #
-# Tests
+# Tests - Setup and admin functions
 #
 
 
@@ -332,6 +400,15 @@ async def test_absorber_setup(shrine, absorber):
 
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
+
+    blessings_count = (await absorber.get_blessings_count().execute()).result.count
+    assert blessings_count == 0
+
+    rewards_count = (await absorber.get_rewards_count().execute()).result.count
+    assert rewards_count == 0
+
+    rewards = (await absorber.get_rewards().execute()).result
+    rewards.assets == rewards.blessers == rewards.is_active == []
 
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
@@ -366,6 +443,165 @@ async def test_set_purger_unauthorized_fail(shrine, absorber):
     with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_PURGER}"):
         new_purger = NEW_MOCK_PURGER
         await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_set_purger_zero_address_fail(absorber_deploy):
+    absorber = absorber_deploy
+    with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
+        await absorber.set_purger(ZERO_ADDRESS).execute(caller_address=ABSORBER_OWNER)
+
+
+@pytest.mark.asyncio
+async def test_kill(absorber):
+    tx = await absorber.kill().execute(caller_address=ABSORBER_OWNER)
+
+    assert_event_emitted(tx, absorber.contract_address, "Killed")
+
+    is_live = (await absorber.get_live().execute()).result.is_live
+    assert is_live == FALSE
+
+    provider = PROVIDER_1
+    provide_amt = 1
+    with pytest.raises(StarkException, match="Absorber: Absorber is not live"):
+        await absorber.provide(provide_amt).execute(caller_address=provider)
+
+
+@pytest.mark.asyncio
+async def test_kill_unauthorized_fail(absorber):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.KILL}"):
+        await absorber.kill().execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_set_reward_pass(
+    absorber, aura_token, vested_aura_token, aura_token_blesser, vested_aura_token_blesser, aura_reward
+):
+    assert_event_emitted(
+        aura_reward,
+        absorber.contract_address,
+        "RewardSet",
+        [aura_token.contract_address, aura_token_blesser.contract_address, TRUE],
+    )
+
+    rewards_count = (await absorber.get_rewards_count().execute()).result.count
+    assert rewards_count == 1
+
+    rewards = (await absorber.get_rewards().execute()).result
+    assert rewards.assets == [aura_token.contract_address]
+    assert rewards.blessers == [aura_token_blesser.contract_address]
+    assert rewards.is_active == [TRUE]
+
+    # Add another reward
+    tx = await absorber.set_reward(
+        vested_aura_token.contract_address,
+        vested_aura_token_blesser.contract_address,
+        FALSE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "RewardSet",
+        [vested_aura_token.contract_address, vested_aura_token_blesser.contract_address, FALSE],
+    )
+
+    rewards_count = (await absorber.get_rewards_count().execute()).result.count
+    assert rewards_count == 2
+
+    rewards = (await absorber.get_rewards().execute()).result
+
+    # Order is reversed because iteration starts at current count and ends at 0
+    assert rewards.assets == [vested_aura_token.contract_address, aura_token.contract_address]
+    assert rewards.blessers == [vested_aura_token_blesser.contract_address, aura_token_blesser.contract_address]
+    assert rewards.is_active == [FALSE, TRUE]
+
+    # Update existing reward
+    tx = await absorber.set_reward(
+        aura_token.contract_address,
+        aura_token_blesser.contract_address,
+        FALSE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    rewards = (await absorber.get_rewards().execute()).result
+
+    # Order is reversed because iteration starts at current count and ends at 0
+    assert rewards.assets == [vested_aura_token.contract_address, aura_token.contract_address]
+    assert rewards.blessers == [vested_aura_token_blesser.contract_address, aura_token_blesser.contract_address]
+    assert rewards.is_active == [FALSE, FALSE]
+
+
+#
+# Tests - Update, compensate
+#
+
+
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
+@pytest.mark.asyncio
+async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
+    absorber = absorber_both
+
+    tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
+    asset_count = len(assets)
+
+    before_total_shares = from_wad(before_total_shares_wad)
+
+    expected_gain_epoch = 0
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "Gain",
+        [asset_count, *assets, asset_count, *asset_amts, before_total_shares_wad, expected_gain_epoch],
+    )
+
+    expected_absorption_id = 1
+    actual_absorption_id = (await absorber.get_absorptions_count().execute()).result.count
+    assert actual_absorption_id == expected_absorption_id
+
+    for asset, amt in zip(yangs, asset_amts_dec):
+        asset_address = asset.contract_address
+        asset_absorption_info = (
+            await absorber.get_asset_absorption_info(asset_address, expected_absorption_id).execute()
+        ).result.info
+        actual_asset_amt_per_share = from_fixed_point(asset_absorption_info.asset_amt_per_share, asset.decimals)
+
+        expected_asset_amt_per_share = Decimal(amt) / before_total_shares
+
+        error_margin = custom_error_margin(asset.decimals)
+        assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share, error_margin)
+
+    # If absorber is fully drained of its yin balance, check that epoch has increased
+    # and total shares is set to 0.
+    if percentage_to_drain == Decimal("1"):
+        current_epoch = (await absorber.get_current_epoch().execute()).result.epoch
+        assert current_epoch == before_epoch + 1
+
+        after_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
+        assert after_total_shares_wad == 0
+
+        assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
+
+
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_unauthorized_update(absorber, first_update_assets):
+    asset_addresses, asset_amts, _ = first_update_assets
+    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
+        await absorber.update(asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_compensate(absorber, first_update_assets):
+    asset_addresses, asset_amts, _ = first_update_assets
+    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
+        await absorber.compensate(BAD_GUY, asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
+
+
+#
+# Tests - Provider functions (provide, remove, reap)
+#
 
 
 @pytest.mark.asyncio
@@ -422,54 +658,6 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
 
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
-
-
-@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
-@pytest.mark.usefixtures("first_epoch_first_provider")
-@pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
-@pytest.mark.asyncio
-async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
-    absorber = absorber_both
-
-    tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
-    asset_count = len(assets)
-
-    before_total_shares = from_wad(before_total_shares_wad)
-
-    expected_gain_epoch = 0
-    assert_event_emitted(
-        tx,
-        absorber.contract_address,
-        "Gain",
-        [asset_count, *assets, asset_count, *asset_amts, before_total_shares_wad, expected_gain_epoch],
-    )
-
-    expected_absorption_id = 1
-    actual_absorption_id = (await absorber.get_absorptions_count().execute()).result.count
-    assert actual_absorption_id == expected_absorption_id
-
-    for asset, amt in zip(yangs, asset_amts_dec):
-        asset_address = asset.contract_address
-        asset_absorption_info = (
-            await absorber.get_asset_absorption_info(asset_address, expected_absorption_id).execute()
-        ).result.info
-        actual_asset_amt_per_share = from_fixed_point(asset_absorption_info.asset_amt_per_share, asset.decimals)
-
-        expected_asset_amt_per_share = Decimal(amt) / before_total_shares
-
-        error_margin = custom_error_margin(asset.decimals)
-        assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share, error_margin)
-
-    # If absorber is fully drained of its yin balance, check that epoch has increased
-    # and total shares is set to 0.
-    if percentage_to_drain == Decimal("1"):
-        current_epoch = (await absorber.get_current_epoch().execute()).result.epoch
-        assert current_epoch == before_epoch + 1
-
-        after_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
-        assert after_total_shares_wad == 0
-
-        assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
@@ -955,21 +1143,6 @@ async def test_non_provider_fail(shrine, absorber):
     assert absorbed.absorbed_asset_amts == []
 
 
-@pytest.mark.usefixtures("first_epoch_first_provider")
-@pytest.mark.asyncio
-async def test_unauthorized_update(absorber, first_update_assets):
-    asset_addresses, asset_amts, _ = first_update_assets
-    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
-        await absorber.update(asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
-
-
-@pytest.mark.asyncio
-async def test_unauthorized_compensate(absorber, first_update_assets):
-    asset_addresses, asset_amts, _ = first_update_assets
-    with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
-        await absorber.compensate(BAD_GUY, asset_addresses, asset_amts).execute(caller_address=BAD_GUY)
-
-
 @pytest.mark.usefixtures("funded_absorber_providers")
 @pytest.mark.asyncio
 async def test_provide_fail(shrine, absorber):
@@ -1011,31 +1184,3 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
     provider = PROVIDER_1
     with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
         await absorber.remove(amt).execute(caller_address=provider)
-
-
-@pytest.mark.asyncio
-async def test_set_purger_zero_address_fail(absorber_deploy):
-    absorber = absorber_deploy
-    with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
-        await absorber.set_purger(ZERO_ADDRESS).execute(caller_address=ABSORBER_OWNER)
-
-
-@pytest.mark.asyncio
-async def test_kill(absorber):
-    tx = await absorber.kill().execute(caller_address=ABSORBER_OWNER)
-
-    assert_event_emitted(tx, absorber.contract_address, "Killed")
-
-    is_live = (await absorber.get_live().execute()).result.is_live
-    assert is_live == FALSE
-
-    provider = PROVIDER_1
-    provide_amt = 1
-    with pytest.raises(StarkException, match="Absorber: Absorber is not live"):
-        await absorber.provide(provide_amt).execute(caller_address=provider)
-
-
-@pytest.mark.asyncio
-async def test_kill_unauthorized_fail(absorber):
-    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.KILL}"):
-        await absorber.kill().execute(caller_address=BAD_GUY)
