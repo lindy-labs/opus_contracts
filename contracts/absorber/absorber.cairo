@@ -466,6 +466,11 @@ func set_reward{
 }(asset: address, blesser: address, is_active: bool) {
     AccessControl.assert_has_role(AbsorberRoles.SET_REWARD);
 
+    with_attr error_message("Absorber: Address cannot be zero") {
+        assert_not_zero(asset);
+        assert_not_zero(blesser);
+    }
+
     let reward: Reward = Reward(asset, blesser, is_active);
 
     let (reward_id: ufelt) = absorber_reward_id.read(asset);

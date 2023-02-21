@@ -531,6 +531,32 @@ async def test_set_reward_pass(
     assert rewards.is_active == [FALSE, FALSE]
 
 
+@pytest.mark.asyncio
+async def test_set_reward_fail(absorber, aura_token, aura_token_blesser):
+    # zero address
+    with pytest.raises(StarkException, match="Absorber: Address cannot be zero"):
+        await absorber.set_reward(
+            ZERO_ADDRESS,
+            aura_token_blesser.contract_address,
+            TRUE,
+        ).execute(caller_address=ABSORBER_OWNER)
+
+    with pytest.raises(StarkException, match="Absorber: Address cannot be zero"):
+        await absorber.set_reward(
+            aura_token.contract_address,
+            ZERO_ADDRESS,
+            TRUE,
+        ).execute(caller_address=ABSORBER_OWNER)
+
+    # unauthorized
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_REWARD}"):
+        await absorber.set_reward(
+            aura_token.contract_address,
+            aura_token_blesser.contract_address,
+            TRUE,
+        ).execute(caller_address=BAD_GUY)
+
+
 #
 # Tests - Update, compensate
 #
