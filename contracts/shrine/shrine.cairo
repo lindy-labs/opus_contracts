@@ -1328,7 +1328,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
         return ();
     }
 
-    // Get current interval
+    // Get current interva
     let current_interval: ufelt = now();
 
     // Get new debt amount

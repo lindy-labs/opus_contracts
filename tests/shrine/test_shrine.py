@@ -43,51 +43,84 @@ from tests.utils import (
     to_wad,
 )
 
+
 #
 # Structs
 #
-
-
-def linear(x: Decimal, m: Decimal, b: Decimal) -> Decimal:
+def compound(
+    yang_base_rate_history: list[list[Decimal]],
+    yang_rate_update_intervals: list[int],
+    yangs_amt: list[Decimal],
+    yang_avg_prices: list[list[Decimal]],
+    avg_multipliers: list[Decimal],
+    start_interval: int,
+    end_interval: int,
+    debt: Decimal,
+) -> Decimal:
     """
-    Helper function for y = m*x + b
+    Helper function to calculate the compounded debt
 
     Arguments
     ---------
-    x : Decimal
-        Value of x.
-    m : Decimal
-        Value of m.
-    b : Decimal
-        Value of b.
-
-    Returns
-    -------
-    Value of the given equation in Decimal.
+    yang_base_rate_history : list[list[Decimal]]
+        Ordered list of the lists of base rates of each yang for the time period `end_interval - start_interval`
+    yang_rate_update_intervals : list[int]
+        Ordered list of the intervals at which each of the updates to the base rates were made.
+        The first interval in this list should be <= `start_interval`.
+    yangs_amt : list[Decimal]
+        Ordered list of the amounts of each Yang over the given time period
+    yang_avg_prices : list[list[Decimal]]
+        Ordered list of the average prices of each yang over each
+        base rate "era" (time period over which the base rate doesn't change).
+        The first average price of each yang should be from `start_interval` to `yang_rate_update_intervals[1]`,
+        and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
+    avg_multipliers : list[Decimal]
+        List of average multipliers over each base rate "era"
+        (time period over which the base rate doesn't change).
+        The first average multiplier should be from `start_interval` to `yang_rate_update_intervals[1]`,
+        and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
+    start_interval : int
+        Start interval for the compounding period
+    end_interval : int
+        End interval for the compounding period
+    debt : Decimal
+        Amount of debt at `start_interval`.
     """
-    return (m * x) + b
 
+    for i in range(1, len(yang_base_rate_history)):
+        assert len(yang_base_rate_history[0]) == len(yang_base_rate_history[i])
 
-def base_rate(ltv: Decimal) -> Decimal:
-    """
-    Helper function to calculate base rate given loan-to-threshold-value ratio.
+    assert len(yang_base_rate_history[0]) == len(yang_rate_update_intervals)
 
-    Arguments
-    ---------
-    ltv : Decimal
-        Loan-to-threshold-value ratio in Decimal
+    assert yang_rate_update_intervals[0] <= start_interval
+    assert yang_rate_update_intervals[-1] <= end_interval
 
-    Returns
-    -------
-    Value of the base rate in Decimal.
-    """
-    if ltv <= RATE_BOUND1:
-        return linear(ltv, RATE_M1, RATE_B1)
-    elif ltv <= RATE_BOUND2:
-        return linear(ltv, RATE_M2, RATE_B2)
-    elif ltv <= RATE_BOUND3:
-        return linear(ltv, RATE_M3, RATE_B3)
-    return linear(ltv, RATE_M4, RATE_B4)
+    # Setting first update interval to start interval for cleaner iteration in the for loop
+    yang_rate_update_intervals[0] = start_interval
+
+    for i in range(len(yang_base_rate_history[0])):
+        # Getting the base rate
+        yang_value_weighted_rate_sum = 0
+        total_collateral_value = 0
+        for j in range(len(yangs_amt)):
+            yang_value = yangs_amt[j] * yangs_avg_prices[j][i]
+            total_collateral_value += yang_value
+
+            weighted_rate = yang_base_rate_history[j][i]
+            yang_value_weighted_rate_sum += weighted_rate
+
+        base_rate = yang_value_weighted_rate_sum / total_collateral_value
+
+        rate = base_rate * avg_multipliers[i]
+
+        if i < len(yang_base_rate_history[0]) - 1:
+            num_intervals_to_compound = yang_rate_update_intervals[i + 1] - yang_rate_update_intervals[i + 1]
+        else:
+            num_intervals_to_compound = end_interval - yang_rate_update_intervals[i + 1]
+
+        debt = debt * Decimal(exp(rate * num_intervals_to_compound * TIME_INTERVAL_DIV_YEAR))
+
+    return debt
 
 
 def compound_with_avg_price(
@@ -493,11 +526,7 @@ async def test_add_yang_unauthorized(shrine):
     bad_guy_yang_rate = to_ray(0.6)
     with pytest.raises(StarkException):
         await shrine.add_yang(
-            bad_guy_yang_address,
-            bad_guy_yang_threshold,
-            bad_guy_yang_start_price,
-            0,
-            bad_guy_yang_rate
+            bad_guy_yang_address, bad_guy_yang_threshold, bad_guy_yang_start_price, 0, bad_guy_yang_rate
         ).execute(caller_address=BAD_GUY)
 
 
