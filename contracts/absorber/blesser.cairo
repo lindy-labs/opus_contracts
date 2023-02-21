@@ -1,0 +1,83 @@
+%lang starknet
+
+from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
+from starkware.starknet.common.syscalls import get_contract_address
+from starkware.cairo.common.uint256 import Uint256
+
+from contracts.absorber.roles import BlesserRoles
+
+// these imported public functions are part of the contract's interface
+from contracts.lib.accesscontrol.accesscontrol_external import (
+    change_admin,
+    get_admin,
+    get_roles,
+    grant_role,
+    has_role,
+    renounce_role,
+    revoke_role,
+)
+from contracts.lib.accesscontrol.library import AccessControl
+from contracts.lib.aliases import address, bool, ufelt, wad
+from contracts.lib.interfaces import IERC20
+from contracts.lib.wad_ray import WadRay
+
+//
+// Constants
+//
+
+// 0.01
+const BLESS_PERCENTAGE = WadRay.RAY_PERCENT;
+
+//
+// Storage
+//
+
+@storage_var
+func blesser_asset() -> (asset: address) {
+}
+
+@storage_var
+func blesser_absorber() -> (absorber: address) {
+}
+
+//
+// Constructor
+//
+
+@constructor
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, asset: address, absorber: address) {
+    AccessControl.initializer(admin);
+    AccessControl._grant_role(BlesserRoles.BLESS, absorber);
+
+    blesser_asset.write(asset);
+    blesser_absorber.write(absorber);
+
+    return ();
+}
+
+//
+// External
+//
+
+@external
+func bless{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() -> (amount: wad) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(BlesserRoles.BLESS);
+
+    let asset: address = blesser_asset.read();
+    let blesser: address = get_contract_address();
+    let balance_uint: Uint256 = IERC20.balanceOf(asset, blesser);
+    let balance: wad = WadRay.from_uint(balance_uint);
+
+    let bless_amt: wad = WadRay.rmul(balance, BLESS_PERCENTAGE);
+    let bless_amt_uint: Uint256 = WadRay.to_uint(bless_amt);
+    let absorber: address = blesser_absorber.read();
+    IERC20.transfer(blesser, absorber, bless_amt_uint);
+
+    return (bless_amt,);
+}

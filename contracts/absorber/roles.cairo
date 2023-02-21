@@ -10,3 +10,7 @@ namespace AbsorberRoles {
 
     const DEFAULT_ABSORBER_ADMIN_ROLE = KILL + SET_PURGER + SET_REWARD;
 }
+
+namespace BlesserRoles {
+    const BLESS = 2 ** 0;
+}

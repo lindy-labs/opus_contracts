@@ -155,6 +155,10 @@ func PurgerUpdated(old_address: address, new_address: address) {
 }
 
 @event
+func RewardSet(asset: address, blesser: address, is_active: bool) {
+}
+
+@event
 func EpochChanged(old_epoch: ufelt, new_epoch: ufelt) {
 }
 
@@ -468,12 +472,17 @@ func set_reward{
     if (reward_id == 0) {
         let prev_count: ufelt = absorber_rewards_count.read();
         let new_count: ufelt = prev_count + 1;
+
         absorber_rewards_count.write(new_count);
+        absorber_reward_id.write(asset, new_count);
         absorber_rewards.write(new_count, reward);
+
+        RewardSet.emit(asset, blesser, is_active);
         return ();
     }
 
     absorber_rewards.write(reward_id, reward);
+    RewardSet.emit(asset, blesser, is_active);
 
     return ();
 }
