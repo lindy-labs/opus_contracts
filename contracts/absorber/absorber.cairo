@@ -1254,6 +1254,12 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
+    // Defer rewards until a provider deposits
+    let total_shares: wad = absorber_total_shares.read();
+    if (total_shares == 0) {
+        return ();
+    }
+
     let rewards_count: ufelt = absorber_rewards_count.read();
 
     // Increment blessing ID
@@ -1275,7 +1281,6 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     invoke_loop(0, rewards_count, blessers, is_active, blessed_amts);
 
     // Loop through reward tokens and calculate amount entitled per share
-    let total_shares: wad = absorber_total_shares.read();
     apportion_assets_loop(
         current_blessing_id, total_shares, rewards_count, assets, blessed_amts, FALSE
     );
