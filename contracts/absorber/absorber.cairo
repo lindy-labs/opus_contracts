@@ -965,6 +965,9 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 ) {
     alloc_locals;
 
+    // Trigger issuance of rewards
+    invoke();
+
     let checkpoint: Checkpoint = get_provider_checkpoint(provider);
 
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -974,9 +977,6 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // address is properly updated.
     let new_checkpoint: packed = pack_felt(current_absorption_id, current_blessing_id);
     absorber_provider_checkpoint.write(provider, new_checkpoint);
-
-    // Trigger issuance of rewards
-    invoke();
 
     // Loop over absorbed assets and transfer
     let (
