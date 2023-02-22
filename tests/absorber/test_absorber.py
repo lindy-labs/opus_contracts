@@ -810,8 +810,8 @@ async def test_reap_pass(
         assert_equalish(adjusted_expected, adjusted_actual, error_margin)
 
     # Fetch user balances before `reap`
-    before_provider_absorbed_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
-    before_provider_reward_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
+    before_provider_absorbed_asset_bals = (await get_token_balances(yang_tokens, [provider]))[0]
+    before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
@@ -841,7 +841,6 @@ async def test_reap_pass(
     after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
 
-    # Check provider 1 receives all rewards
     if before_total_shares_wad > 0:
         assert_event_emitted(tx, absorber.contract_address, "Invoke")
         expected_blessing_id = before_blessing_id + 1
@@ -853,6 +852,7 @@ async def test_reap_pass(
     after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
     assert after_blessing_id == expected_blessing_id
 
+    # Check provider 1 receives all rewards
     for asset, asset_address, before_bal, blessed_amt_wad in zip(
         reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
@@ -966,6 +966,7 @@ async def test_provide_second_epoch(
     yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     yin_amt_to_provide_wad = from_uint(yin_amt_to_provide_uint)
     before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     tx = await absorber.provide(yin_amt_to_provide_wad).execute(caller_address=provider)
 
@@ -995,11 +996,17 @@ async def test_provide_second_epoch(
 
     after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
     assert after_blessing_id == before_blessing_id
-
     assert provider_checkpoint.last_absorption_id == before_blessing_id
 
     # Rewards from first epoch's deposit should be transferred
-    for asset_contract in reward_tokens:
+    for asset, asset_address, before_bal, blessed_amt_wad in zip(
+        reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
+    ):
+        blessed_amt = from_wad(blessed_amt_wad * before_blessing_id)
+
+        after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
+        assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
+
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
