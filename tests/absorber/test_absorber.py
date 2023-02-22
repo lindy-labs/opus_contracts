@@ -799,7 +799,7 @@ async def test_reap_pass(
     _, _, _, _, _, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
 
-    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
+    _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
     assert absorbed.absorbed_assets == assets
@@ -853,8 +853,8 @@ async def test_reap_pass(
     assert after_blessing_id == expected_blessing_id
 
     # Check provider 1 receives all rewards
-    for asset, asset_address, before_bal, blessed_amt_wad in zip(
-        reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
+    for asset, before_bal, blessed_amt_wad in zip(
+        reward_tokens, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
         blessed_amt = from_wad(blessed_amt_wad * expected_blessing_id)
 
@@ -1002,10 +1002,10 @@ async def test_provide_second_epoch(
     for asset, asset_address, before_bal, blessed_amt_wad in zip(
         reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
-        blessed_amt = from_wad(blessed_amt_wad * before_blessing_id)
+        expected_blessed_amt = from_wad(blessed_amt_wad * before_blessing_id)
 
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
-        assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
+        assert_equalish(after_provider_asset_bal, before_bal + expected_blessed_amt)
 
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
@@ -1017,9 +1017,11 @@ async def test_provide_second_epoch(
     [Decimal("0.999000000000000001"), Decimal("0.9999999991"), Decimal("0.99999999999999")],
     indirect=["update"],
 )
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_provide_after_threshold_absorption(shrine, absorber, update, yangs, yang_tokens):
+async def test_provide_after_threshold_absorption(
+    shrine, absorber, update, yangs, yang_tokens, reward_tokens, expected_rewards_per_blessing
+):
     """
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
@@ -1031,6 +1033,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     second_provider = PROVIDER_2
 
     tx, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
+    _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     # Assert epoch is updated
     epoch = (await absorber.get_current_epoch().execute()).result.epoch
@@ -1051,6 +1054,14 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 
     await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
 
+    second_provider_checkpoint = (await absorber.get_provider_checkpoint(second_provider).execute()).result.checkpoint
+
+    # Blessing ID should increase when second provider provides because there is dust amount of shares for provider 1
+
+    expected_blessing_id = 2
+    assert (await absorber.get_blessings_count().execute()).result.count == expected_blessing_id
+    assert second_provider_checkpoint.last_blessing_id == expected_blessing_id
+
     # Provider 2 can withdraw up to amount provided
     max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(second_provider).execute()).result.amount)
     assert_equalish(max_withdrawable_yin_amt, second_provider_yin_amt)
@@ -1059,9 +1070,17 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     # absorber after absorption past the threshold
     before_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
     before_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
+    before_first_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [first_provider]))[0]
+    before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
     # Step 4: Provider 1 withdraws
-    await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=first_provider)
+    tx = await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=first_provider)
+
+    expected_blessing_id = 3
+    assert (await absorber.get_blessings_count().execute()).result.count == expected_blessing_id
+
+    first_provider_checkpoint = (await absorber.get_provider_checkpoint(first_provider).execute()).result.checkpoint
+    assert first_provider_checkpoint.last_blessing_id == expected_blessing_id
 
     after_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
     assert after_first_provider_info.shares == 0
@@ -1078,6 +1097,24 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
         ).result.shares
     )
     assert_equalish(removed_yin, expected_converted_shares)
+
+    for asset, before_bal, blessed_amt_wad in zip(
+        reward_tokens, before_first_provider_reward_asset_bals, expected_rewards_assets_amts
+    ):
+        after_threshold_rewards_perc = from_wad(before_first_provider_info.shares) / from_wad(before_total_shares_wad)
+
+        # Provider 1 should receive 1 full round of blessings in the old epoch, and
+        # 2 partial rounds of blessings in the new epoch
+        expected_bless_amt = (Decimal("1") + 2 * after_threshold_rewards_perc) * from_wad(blessed_amt_wad)
+
+        after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(first_provider).execute()).result.balance))
+        # Relax error margin due to loss of precision
+        error_margin = Decimal("1")
+        assert_equalish(after_provider_asset_bal, before_bal + expected_bless_amt, error_margin)
+
+        assert_event_emitted(
+            tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, first_provider]
+        )
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
