@@ -961,7 +961,7 @@ async def test_provide_second_epoch(
     # Epoch and total shares are already checked in `test_update` so we do not repeat here
     provider = PROVIDER_1
 
-    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
+    _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     yin_amt_to_provide_wad = from_uint(yin_amt_to_provide_uint)
@@ -999,8 +999,8 @@ async def test_provide_second_epoch(
     assert provider_checkpoint.last_absorption_id == before_blessing_id
 
     # Rewards from first epoch's deposit should be transferred
-    for asset, asset_address, before_bal, blessed_amt_wad in zip(
-        reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
+    for asset, before_bal, blessed_amt_wad in zip(
+        reward_tokens, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
         expected_blessed_amt = from_wad(blessed_amt_wad * before_blessing_id)
 
@@ -1119,10 +1119,18 @@ async def test_provide_after_threshold_absorption(
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("skipped_asset_idx", [None, 0, 1, 2])  # Test asset not involved in absorption
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_reap_different_epochs(
-    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skipped_asset_idx
+    shrine,
+    absorber,
+    yangs,
+    yang_tokens,
+    update,
+    second_update_assets,
+    skipped_asset_idx,
+    reward_tokens,
+    expected_rewards_per_blessing,
 ):
     """
     Sequence of events:
@@ -1135,6 +1143,7 @@ async def test_reap_different_epochs(
        Provider 2 should receive assets from second update.
     """
     first_absorbed_amts_dec = update[-1]
+    _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
@@ -1182,10 +1191,17 @@ async def test_reap_different_epochs(
     assert total_shares == 0
 
     providers = [first_provider, second_provider]
-    before_provider_bals = await get_token_balances(yang_tokens, providers)
+    before_providers_absorbed_bals = await get_token_balances(yang_tokens, providers)
     absorbed_amts_arrs = [first_absorbed_amts_dec, asset_amts_dec]
 
-    for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
+    before_providers_reward_bals = await get_token_balances(reward_tokens, providers)
+
+    before_reap_blessings_id = (await absorber.get_blessings_count().execute()).result.count
+    assert before_reap_blessings_id == 2
+
+    for provider, before_absorbed_bals, before_reward_bals, absorbed_amts in zip(
+        providers, before_providers_absorbed_bals, before_providers_reward_bals, absorbed_amts_arrs
+    ):
         absorbed = (await absorber.preview_reap(provider).execute()).result
         assert absorbed.absorbed_assets == asset_addresses
         for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.absorbed_asset_amts):
@@ -1197,22 +1213,36 @@ async def test_reap_different_epochs(
         assert max_withdrawable_yin_amt == 0
 
         # Step 5: Provider 1 and 2 reaps
+        # There should be no rewards for this action since Absorber is emptied and there are no shares
         tx = await absorber.reap().execute(caller_address=provider)
 
-        for idx, (asset, asset_info, before_bal, absorbed_amt) in enumerate(
-            zip(yang_tokens, yangs, before_bals, absorbed_amts)
+        for idx, (asset, asset_info, before_absorbed_bal, absorbed_amt) in enumerate(
+            zip(yang_tokens, yangs, before_absorbed_bals, absorbed_amts)
         ):
             if provider == second_provider and skipped_asset_idx is not None and idx == skipped_asset_idx:
                 continue
 
-            after_bal = from_fixed_point(
+            after_absorbed_bal = from_fixed_point(
                 from_uint((await asset.balanceOf(provider).execute()).result.balance),
                 asset_info.decimals,
             )
 
             # Relax error margin by half due to loss of precision from fixed point arithmetic
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
-            assert_equalish(after_bal, before_bal + absorbed_amt, error_margin)
+            assert_equalish(after_absorbed_bal, before_absorbed_bal + absorbed_amt, error_margin)
+
+            assert_event_emitted(
+                tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
+            )
+
+        for asset, before_reward_bal, blessed_amt_wad in zip(
+            reward_tokens, before_reward_bals, expected_rewards_assets_amts
+        ):
+            # Each provider should receive
+            blessed_amt = from_wad(blessed_amt_wad)
+
+            after_reward_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
+            assert_equalish(after_reward_bal, before_reward_bal + blessed_amt)
 
             assert_event_emitted(
                 tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
