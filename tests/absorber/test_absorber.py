@@ -753,6 +753,7 @@ async def test_provide_first_epoch(
 
     after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id
+    assert after_provider_checkpoint.last_blessing_id == before_provider_checkpoint.last_blessing_id + 1
 
     assert_event_emitted(
         tx,
@@ -785,16 +786,20 @@ async def test_provide_first_epoch(
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
+async def test_reap_pass(
+    shrine, absorber_both, update, yangs, yang_tokens, reward_tokens, expected_rewards_per_blessing
+):
     absorber = absorber_both
 
     provider = PROVIDER_1
 
     _, _, _, _, _, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
+
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
     assert absorbed.absorbed_assets == assets
@@ -805,8 +810,13 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
         assert_equalish(adjusted_expected, adjusted_actual, error_margin)
 
     # Fetch user balances before `reap`
-    before_provider_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
+    before_provider_absorbed_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
+    before_provider_reward_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
+
     before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
+    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+
+    before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
     tx = await absorber.reap().execute(caller_address=provider)
 
@@ -814,7 +824,7 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
 
     # Check that provider 1 receives all assets from first provision
     for asset_contract, asset_info, before_bal, absorbed_amt in zip(
-        yang_tokens, yangs, before_provider_asset_bals, asset_amts_dec
+        yang_tokens, yangs, before_provider_absorbed_asset_bals, asset_amts_dec
     ):
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
@@ -830,6 +840,25 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
 
     after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
+
+    if before_total_shares_wad > 0:
+        assert_event_emitted(tx, absorber.contract_address, "Invoke")
+        expected_blessing_id = before_blessing_id + 1
+    else:
+        expected_blessing_id = before_blessing_id
+
+    assert after_provider_checkpoint.last_blessing_id == expected_blessing_id
+
+    after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    assert after_blessing_id == expected_blessing_id
+
+    for asset, asset_address, before_bal, blessed_amt_wad in zip(
+        reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
+    ):
+        blessed_amt = from_wad(blessed_amt_wad * expected_blessing_id)
+
+        after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
+        assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
