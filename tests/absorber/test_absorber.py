@@ -26,6 +26,7 @@ from tests.utils import (
     compile_contract,
     create_feed,
     custom_error_margin,
+    estimate_gas,
     from_fixed_point,
     from_ray,
     from_uint,
@@ -1286,3 +1287,30 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
     provider = PROVIDER_1
     with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
         await absorber.remove(amt).execute(caller_address=provider)
+
+
+# TODO: enchmarking; delete before merge
+@pytest.mark.usefixtures("first_epoch_first_provider", "add_aura_reward", "add_vested_aura_reward")
+@pytest.mark.parametrize("blessings_count", [35, 100])
+@pytest.mark.asyncio
+async def test_provide_varying_blessings_count(
+    shrine, absorber, yang_tokens, first_update_assets, blessings_count, aura_token, expected_rewards_per_blessing
+):
+    provider = PROVIDER_1
+
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
+    before_aura_token_bal = from_uint((await aura_token.balanceOf(provider).execute()).result.balance)
+
+    for i in range(blessings_count):
+        await absorber.provide(0).execute(caller_address=provider)
+
+    tx = await absorber.reap().execute(caller_address=provider)
+
+    after_aura_token_bal = from_uint((await aura_token.balanceOf(provider).execute()).result.balance)
+    assert_equalish(
+        from_wad(after_aura_token_bal),
+        from_wad(before_aura_token_bal + blessings_count * expected_rewards_assets_amts[1]),
+    )
+
+    print("Reap for {} blessings: {}".format(blessings_count, estimate_gas(tx)))
+    print("Resources: ", tx.call_info.execution_resources)
