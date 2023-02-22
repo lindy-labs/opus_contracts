@@ -1555,6 +1555,7 @@ async def test_provide_varying_blessings_count(
         await absorber.provide(0).execute(caller_address=provider)
 
     tx = await absorber.reap().execute(caller_address=provider)
+    blessings_count += 1
 
     after_aura_token_bal = from_uint((await aura_token.balanceOf(provider).execute()).result.balance)
     assert_equalish(
