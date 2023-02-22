@@ -1138,7 +1138,7 @@ async def test_reap_different_epochs(
     assert total_shares == 0
 
     providers = [first_provider, second_provider]
-    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+    before_provider_bals = await get_token_balances(yang_tokens, providers)
     absorbed_amts_arrs = [first_absorbed_amts_dec, asset_amts_dec]
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
@@ -1201,7 +1201,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     total_provided_amt = first_provider_amt + second_provider_amt
 
     providers = [PROVIDER_1, PROVIDER_2]
-    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+    before_provider_bals = await get_token_balances(yang_tokens, providers)
 
     provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
     for provider, percentage, before_bals in zip(providers, provided_perc, before_provider_bals):
@@ -1276,7 +1276,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 
     providers = [first_provider, second_provider]
     providers_remaining_yin = [first_provider_amt, second_provider_amt]
-    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+    before_provider_bals = await get_token_balances(yang_tokens, providers)
 
     provided_perc = [amt / total_provided_amt for amt in providers_remaining_yin]
     for provider, percentage, remaining_yin, before_bals in zip(

@@ -869,7 +869,7 @@ func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
     let epoch_conversion_rate: ray = absorber_epoch_share_conversion_rate.read(start_epoch);
 
-    // `rmul` of a wad an a ray returns a wad
+    // `rmul` of a wad and a ray returns a wad
     let new_shares: wad = WadRay.rmul(start_shares, epoch_conversion_rate);
 
     return convert_epoch_shares(start_epoch + 1, end_epoch, new_shares);
