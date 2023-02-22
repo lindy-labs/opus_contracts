@@ -1,8 +1,10 @@
 %lang starknet
 
+from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.starknet.common.syscalls import get_contract_address
+from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import Uint256
+from starkware.starknet.common.syscalls import get_contract_address
 
 from contracts.absorber.roles import BlesserRoles
 
@@ -73,7 +75,11 @@ func bless{
     let blesser: address = get_contract_address();
     let bal_uint: Uint256 = IERC20.balanceOf(asset, blesser);
     let bal: wad = WadRay.from_uint(bal_uint);
-    %{ print("blesser balance: ", ids.bal) %}
+
+    let is_completed: bool = is_nn_le(bal, BLESS_AMT_WAD);
+    if (is_completed == TRUE) {
+        return (0,);
+    }
 
     let bless_amt_uint: Uint256 = WadRay.to_uint(BLESS_AMT_WAD);
     let absorber: address = blesser_absorber.read();

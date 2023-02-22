@@ -669,7 +669,6 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_
 
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
-    """
     expected_blessing_id = 2
     actual_blessing_id = (await absorber.get_blessings_count().execute()).result.count
     assert actual_blessing_id == expected_blessing_id
@@ -677,14 +676,12 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_
     for asset, asset_address, blessed_amt_wad in zip(
         reward_tokens, expected_rewards_assets, expected_rewards_assets_amts
     ):
-        asset_blessing_info = (await absorber.get_asset_blessing_info(asset_address).execute()).result.info
+        asset_blessing_info = (
+            await absorber.get_asset_blessing_info(asset_address, expected_blessing_id).execute()
+        ).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / before_total_shares
         assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share)
-
-        expected_error = blessed_amt // before_total_shares_wad
-        assert asset_blessing_info.error == expected_error
-    """
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
