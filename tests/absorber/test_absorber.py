@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 import pytest
-from starkware.starknet.services.api.contract_class import ContractClass
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
@@ -210,44 +209,44 @@ def absorber_both(request) -> StarknetContract:
 
 
 @pytest.fixture
-def blesser_contract() -> ContractClass:
-    blesser_contract = compile_contract("contracts/absorber/blesser.cairo")
-    return blesser_contract
-
-
-@pytest.fixture
-async def aura_token_blesser(starknet, shrine, absorber, aura_token, blesser_contract) -> StarknetContract:
+async def aura_token_blesser(starknet, absorber, aura_token) -> StarknetContract:
+    blesser_contract = compile_contract("tests/absorber/mock_blesser.cairo")
     blesser = await starknet.deploy(
         contract_class=blesser_contract,
         constructor_calldata=[
             BLESSER_OWNER,
-            shrine.contract_address,
+            aura_token.contract_address,
             absorber.contract_address,
         ],
     )
 
     # Mint tokens to blesser contract
-    vesting_amt = to_uint(to_wad(1_000_000))
+    vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
     await aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
     return blesser
 
 
 @pytest.fixture
-async def vested_aura_token_blesser(
-    starknet, shrine, absorber, vested_aura_token, blesser_contract
-) -> StarknetContract:
+async def vested_aura_token_blesser(starknet, absorber, vested_aura_token) -> StarknetContract:
+    blesser_code = get_contract_code_with_replacement(
+        "tests/absorber/mock_blesser.cairo",
+        {
+            "1000 * WadRay.WAD_SCALE": f"{VESTED_AURA_BLESS_AMT} * WadRay.WAD_SCALE",
+        },
+    )
+    blesser_contract = compile_code(blesser_code)
     blesser = await starknet.deploy(
         contract_class=blesser_contract,
         constructor_calldata=[
             BLESSER_OWNER,
-            shrine.contract_address,
+            vested_aura_token.contract_address,
             absorber.contract_address,
         ],
     )
 
     # Mint tokens to blesser contract
-    vesting_amt = to_uint(to_wad(5_000_000))
+    vesting_amt = to_uint(to_wad(VESTED_AURA_BLESSER_STARTING_BAL))
     await vested_aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
     return blesser
@@ -361,7 +360,7 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
 
 
 @pytest.fixture
-async def aura_reward(absorber, aura_token, aura_token_blesser):
+async def add_aura_reward(absorber, aura_token, aura_token_blesser):
     tx = await absorber.set_reward(
         aura_token.contract_address,
         aura_token_blesser.contract_address,
@@ -372,7 +371,13 @@ async def aura_reward(absorber, aura_token, aura_token_blesser):
 
 
 @pytest.fixture
-async def vested_aura_reward(absorber, vested_aura_token, vested_aura_token_blesser):
+async def reward_tokens(aura_token, vested_aura_token) -> tuple[StarknetContract]:
+    # Match order of `get_rewards`
+    return (vested_aura_token, aura_token)
+
+
+@pytest.fixture
+async def add_vested_aura_reward(absorber, vested_aura_token, vested_aura_token_blesser):
     tx = await absorber.set_reward(
         vested_aura_token.contract_address,
         vested_aura_token_blesser.contract_address,
@@ -380,6 +385,35 @@ async def vested_aura_reward(absorber, vested_aura_token, vested_aura_token_bles
     ).execute(caller_address=ABSORBER_OWNER)
 
     return tx
+
+
+@pytest.fixture
+async def expected_rewards_per_blessing(aura_token, vested_aura_token):
+    # When reward tokens are fetched, order is reversed.
+    expected_assets = [vested_aura_token.contract_address, aura_token.contract_address]
+    expected_asset_amts = [VESTED_AURA_BLESS_AMT_WAD, AURA_BLESS_AMT_WAD]
+    return expected_assets, expected_asset_amts
+
+
+#
+# Tests - Fixtures setup
+#
+
+
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward")
+@pytest.mark.asyncio
+async def test_blessers_setup(absorber, aura_token, aura_token_blesser, vested_aura_token, vested_aura_token_blesser):
+    aura_bal = from_wad(
+        from_uint((await aura_token.balanceOf(aura_token_blesser.contract_address).execute()).result.balance)
+    )
+    assert aura_bal == AURA_BLESSER_STARTING_BAL
+
+    vested_aura_bal = from_wad(
+        from_uint(
+            (await vested_aura_token.balanceOf(vested_aura_token_blesser.contract_address).execute()).result.balance
+        )
+    )
+    assert vested_aura_bal == VESTED_AURA_BLESSER_STARTING_BAL
 
 
 #
@@ -475,10 +509,10 @@ async def test_kill_unauthorized_fail(absorber):
 
 @pytest.mark.asyncio
 async def test_set_reward_pass(
-    absorber, aura_token, vested_aura_token, aura_token_blesser, vested_aura_token_blesser, aura_reward
+    absorber, aura_token, vested_aura_token, aura_token_blesser, vested_aura_token_blesser, add_aura_reward
 ):
     assert_event_emitted(
-        aura_reward,
+        add_aura_reward,
         absorber.contract_address,
         "RewardSet",
         [aura_token.contract_address, aura_token_blesser.contract_address, TRUE],
@@ -563,13 +597,23 @@ async def test_set_reward_fail(absorber, aura_token, aura_token_blesser):
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("first_epoch_first_provider", "add_aura_reward", "add_vested_aura_reward")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
+async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_tokens, expected_rewards_per_blessing):
     absorber = absorber_both
 
-    tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
+    (
+        tx,
+        percentage_to_drain,
+        _,
+        before_epoch,
+        before_total_shares_wad,
+        assets,
+        absorbed_asset_amts,
+        absorbed_asset_amts_dec,
+    ) = update
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
     asset_count = len(assets)
 
     before_total_shares = from_wad(before_total_shares_wad)
@@ -579,14 +623,29 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
         tx,
         absorber.contract_address,
         "Gain",
-        [asset_count, *assets, asset_count, *asset_amts, before_total_shares_wad, expected_gain_epoch],
+        [asset_count, *assets, asset_count, *absorbed_asset_amts, before_total_shares_wad, expected_gain_epoch],
+    )
+
+    expected_rewards_count = 2
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "Invoke",
+        [
+            expected_rewards_count,
+            *expected_rewards_assets,
+            expected_rewards_count,
+            *expected_rewards_assets_amts,
+            before_total_shares_wad,
+            expected_gain_epoch,
+        ],
     )
 
     expected_absorption_id = 1
     actual_absorption_id = (await absorber.get_absorptions_count().execute()).result.count
     assert actual_absorption_id == expected_absorption_id
 
-    for asset, amt in zip(yangs, asset_amts_dec):
+    for asset, amt in zip(yangs, absorbed_asset_amts_dec):
         asset_address = asset.contract_address
         asset_absorption_info = (
             await absorber.get_asset_absorption_info(asset_address, expected_absorption_id).execute()
@@ -608,6 +667,23 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
         assert after_total_shares_wad == 0
 
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
+
+    """
+    expected_blessing_id = 2
+    actual_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    assert actual_blessing_id == expected_blessing_id
+
+    for asset, asset_address, blessed_amt_wad in zip(
+        reward_tokens, expected_rewards_assets, expected_rewards_assets_amts
+    ):
+        asset_blessing_info = (await absorber.get_asset_blessing_info(asset_address).execute()).result.info
+        actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
+        expected_asset_amt_per_share = from_wad(blessed_amt_wad) / before_total_shares
+        assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share)
+
+        expected_error = blessed_amt // before_total_shares_wad
+        assert asset_blessing_info.error == expected_error
+    """
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")

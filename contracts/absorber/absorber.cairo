@@ -124,7 +124,7 @@ func absorber_rewards_count() -> (count: ufelt) {
 func absorber_reward_id(reward: address) -> (id: ufelt) {
 }
 
-// Mapping from a reward token ID to its token address and vesting contract (blesser)
+// Mapping from a reward token ID to its tokenR address and vesting contract (blesser)
 @storage_var
 func absorber_rewards(idx: ufelt) -> (reward: Reward) {
 }
@@ -475,8 +475,8 @@ func set_reward{
 
     let (reward_id: ufelt) = absorber_reward_id.read(asset);
     if (reward_id == 0) {
-        let prev_count: ufelt = absorber_rewards_count.read();
-        let new_count: ufelt = prev_count + 1;
+        let current_count: ufelt = absorber_rewards_count.read();
+        let new_count: ufelt = current_count + 1;
 
         absorber_rewards_count.write(new_count);
         absorber_reward_id.write(asset, new_count);
@@ -1254,7 +1254,7 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
-    let blessings_count: ufelt = absorber_blessings_count.read();
+    let rewards_count: ufelt = absorber_rewards_count.read();
 
     // Increment blessing ID
     let prev_blessing_id: ufelt = absorber_blessings_count.read();
@@ -1267,43 +1267,49 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
     // Retrieve arrays of reward tokens and their vesting contracts
     let (assets: address*, blessers: address*, is_active: bool*) = get_rewards_internal(
-        blessings_count
+        rewards_count
     );
 
     // Loop through reward tokens and call `IBlesser.bless` to get amounts
     let (blessed_amts: wad*) = alloc();
-    invoke_loop(blessings_count, blessers, is_active, blessed_amts);
+    invoke_loop(0, rewards_count, blessers, is_active, blessed_amts);
 
     // Loop through reward tokens and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
     apportion_assets_loop(
-        current_blessing_id, total_shares, blessings_count, assets, blessed_amts, FALSE
+        current_blessing_id, total_shares, rewards_count, assets, blessed_amts, FALSE
     );
 
     // Emit `Invoke` event
-    Invoke.emit(
-        blessings_count, assets, blessings_count, blessed_amts, total_shares, current_epoch
-    );
+    Invoke.emit(rewards_count, assets, rewards_count, blessed_amts, total_shares, current_epoch);
 
     return ();
 }
 
 // Helper function to loop over vesting contracts and trigger an issuance of reward tokens
 func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    blessings_count: ufelt, blessers: address*, is_active: bool*, blessed_amts: wad*
+    current_idx: ufelt,
+    rewards_count: ufelt,
+    blessers: address*,
+    is_active: bool*,
+    blessed_amts: wad*,
 ) {
-    if (blessings_count == 0) {
+    if (current_idx == rewards_count) {
         return ();
     }
 
     let should_invoke: bool = [is_active];
     if (should_invoke == FALSE) {
         assert [blessed_amts] = 0;
-        return invoke_loop(blessings_count - 1, blessers + 1, is_active + 1, blessed_amts + 1);
+        return invoke_loop(
+            current_idx + 1, rewards_count, blessers + 1, is_active + 1, blessed_amts + 1
+        );
     }
 
     let (blessed_amt: wad) = IBlesser.bless([blessers]);
     assert [blessed_amts] = blessed_amt;
 
-    return invoke_loop(blessings_count - 1, blessers + 1, is_active + 1, blessed_amts + 1);
+    return invoke_loop(
+        current_idx + 1, rewards_count, blessers + 1, is_active + 1, blessed_amts + 1
+    );
 }

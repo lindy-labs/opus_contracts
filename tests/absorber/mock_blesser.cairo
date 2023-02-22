@@ -25,8 +25,7 @@ from contracts.lib.wad_ray import WadRay
 // Constants
 //
 
-// 0.01
-const BLESS_PERCENTAGE = WadRay.RAY_PERCENT;
+const BLESS_AMT_WAD = 1000 * WadRay.WAD_SCALE;
 
 //
 // Storage
@@ -61,6 +60,7 @@ func constructor{
 // External
 //
 
+// Transfers a fixed number of tokens to the absorber
 @external
 func bless{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -71,13 +71,13 @@ func bless{
 
     let asset: address = blesser_asset.read();
     let blesser: address = get_contract_address();
-    let balance_uint: Uint256 = IERC20.balanceOf(asset, blesser);
-    let balance: wad = WadRay.from_uint(balance_uint);
+    let bal_uint: Uint256 = IERC20.balanceOf(asset, blesser);
+    let bal: wad = WadRay.from_uint(bal_uint);
+    %{ print("blesser balance: ", ids.bal) %}
 
-    let bless_amt: wad = WadRay.rmul(balance, BLESS_PERCENTAGE);
-    let bless_amt_uint: Uint256 = WadRay.to_uint(bless_amt);
+    let bless_amt_uint: Uint256 = WadRay.to_uint(BLESS_AMT_WAD);
     let absorber: address = blesser_absorber.read();
-    IERC20.transfer(blesser, absorber, bless_amt_uint);
+    IERC20.transfer(asset, absorber, bless_amt_uint);
 
-    return (bless_amt,);
+    return (BLESS_AMT_WAD,);
 }
