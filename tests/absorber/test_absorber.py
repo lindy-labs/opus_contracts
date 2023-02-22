@@ -704,11 +704,16 @@ async def test_unauthorized_compensate(absorber, first_update_assets):
 #
 
 
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward")
 @pytest.mark.asyncio
-async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider):
+async def test_provide_first_epoch(
+    shrine, absorber, first_epoch_first_provider, reward_tokens, expected_rewards_per_blessing
+):
     provider = PROVIDER_1
 
     tx, initial_yin_amt_provided = first_epoch_first_provider
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
+
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
@@ -727,6 +732,11 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
         (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
     )
     assert before_absorber_yin_bal_wad == initial_yin_amt_provided
+
+    # Rewards should not be triggered when total shares are 0
+    blessings_count = (await absorber.get_blessings_count().execute()).result.count
+    expected_blessing_id = 0
+    assert blessings_count == expected_blessing_id
 
     # Test subsequent deposit
     subsequent_yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
@@ -758,6 +768,20 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
 
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
+
+    blessings_count = (await absorber.get_blessings_count().execute()).result.count
+    expected_blessing_id = 1
+    assert blessings_count == expected_blessing_id
+
+    for asset, asset_address, blessed_amt_wad in zip(
+        reward_tokens, expected_rewards_assets, expected_rewards_assets_amts
+    ):
+        asset_blessing_info = (
+            await absorber.get_asset_blessing_info(asset_address, expected_blessing_id).execute()
+        ).result.info
+        actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
+        expected_asset_amt_per_share = from_wad(blessed_amt_wad) / from_wad(before_total_shares_wad)
+        assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share)
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
