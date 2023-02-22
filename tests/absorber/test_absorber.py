@@ -598,7 +598,7 @@ async def test_set_reward_fail(absorber, aura_token, aura_token_blesser):
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
-@pytest.mark.usefixtures("first_epoch_first_provider", "add_aura_reward", "add_vested_aura_reward")
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
 async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_tokens, expected_rewards_per_blessing):
@@ -669,7 +669,7 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_
 
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
-    expected_blessing_id = 2
+    expected_blessing_id = 1
     actual_blessing_id = (await absorber.get_blessings_count().execute()).result.count
     assert actual_blessing_id == expected_blessing_id
 
@@ -796,14 +796,14 @@ async def test_reap_pass(
 
     provider = PROVIDER_1
 
-    _, _, _, _, _, assets, asset_amts, asset_amts_dec = update
+    _, _, _, _, _, assets, absorbed_asset_amts, absorbed_asset_amts_dec = update
     asset_count = len(assets)
 
     _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
     assert absorbed.absorbed_assets == assets
-    for asset_info, expected, actual in zip(yangs, asset_amts, absorbed.absorbed_asset_amts):
+    for asset_info, expected, actual in zip(yangs, absorbed_asset_amts, absorbed.absorbed_asset_amts):
         error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
         adjusted_expected = from_fixed_point(expected, asset_info.decimals)
         adjusted_actual = from_fixed_point(actual, asset_info.decimals)
@@ -824,7 +824,7 @@ async def test_reap_pass(
 
     # Check that provider 1 receives all assets from first provision
     for asset_contract, asset_info, before_bal, absorbed_amt in zip(
-        yang_tokens, yangs, before_provider_absorbed_asset_bals, asset_amts_dec
+        yang_tokens, yangs, before_provider_absorbed_asset_bals, absorbed_asset_amts_dec
     ):
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
@@ -881,13 +881,14 @@ async def test_remove(
 
     provider = PROVIDER_1
 
-    _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
+    _, percentage_drained, _, _, total_shares_wad, assets, absorbed_asset_amts, absorbed_asset_amts_dec = update
     expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     before_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     before_absorber_yin_bal_wad = from_uint(
         (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
@@ -1163,19 +1164,19 @@ async def test_reap_different_epochs(
     assert second_provider_checkpoint.last_absorption_id == expected_last_absorption
 
     # Step 4: Absorber is fully drained
-    asset_addresses, asset_amts_orig, asset_amts_dec_orig = second_update_assets
-    asset_amts = asset_amts_orig.copy()
-    asset_amts_dec = asset_amts_dec_orig.copy()
+    asset_addresses, absorbed_asset_amts_orig, absorbed_asset_amts_dec_orig = second_update_assets
+    absorbed_asset_amts = absorbed_asset_amts_orig.copy()
+    absorbed_asset_amts_dec = absorbed_asset_amts_dec_orig.copy()
     if skipped_asset_idx is not None:
-        asset_amts[skipped_asset_idx] = 0
-        asset_amts_dec[skipped_asset_idx] = Decimal("0")
+        absorbed_asset_amts[skipped_asset_idx] = 0
+        absorbed_asset_amts_dec[skipped_asset_idx] = Decimal("0")
 
     await simulate_update(
         shrine,
         absorber,
         yang_tokens,
         asset_addresses,
-        asset_amts,
+        absorbed_asset_amts,
         second_provider_yin_amt_wad,
     )
 
@@ -1192,7 +1193,7 @@ async def test_reap_different_epochs(
 
     providers = [first_provider, second_provider]
     before_providers_absorbed_bals = await get_token_balances(yang_tokens, providers)
-    absorbed_amts_arrs = [first_absorbed_amts_dec, asset_amts_dec]
+    absorbed_amts_arrs = [first_absorbed_amts_dec, absorbed_asset_amts_dec]
 
     before_providers_reward_bals = await get_token_balances(reward_tokens, providers)
 
@@ -1352,7 +1353,9 @@ async def test_multi_user_reap_same_epoch_single_absorption(
 
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("0.5")], indirect=["update"])
 @pytest.mark.parametrize("second_absorption_percentage", [Decimal("0.2"), Decimal("0.5")])
-@pytest.mark.usefixtures("first_epoch_first_provider", "funded_absorber_providers")
+@pytest.mark.usefixtures(
+    "add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider", "funded_absorber_providers"
+)
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_multi_absorptions(
     shrine, absorber, yangs, yang_tokens, update, second_update_assets, second_absorption_percentage
@@ -1395,11 +1398,11 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 
     providers = [first_provider, second_provider]
     providers_remaining_yin = [first_provider_amt, second_provider_amt]
-    before_provider_bals = await get_token_balances(yang_tokens, providers)
+    before_provider_absorbed_bals = await get_token_balances(yang_tokens, providers)
 
     provided_perc = [amt / total_provided_amt for amt in providers_remaining_yin]
-    for provider, percentage, remaining_yin, before_bals in zip(
-        providers, provided_perc, providers_remaining_yin, before_provider_bals
+    for provider, percentage, remaining_yin, before_absorbed_bals in zip(
+        providers, provided_perc, providers_remaining_yin, before_provider_absorbed_bals
     ):
         # Step 5: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
@@ -1408,8 +1411,8 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
             tx, absorber.contract_address, "Reap", lambda d: d[:5] == [provider, asset_count, *asset_addresses]
         )
 
-        for asset, asset_info, before_bal, first_absorbed_amt, second_absorbed_amt in zip(
-            yang_tokens, yangs, before_bals, first_absorbed_amts_dec, second_absorbed_amts_dec
+        for asset, asset_info, before_absorbed_bal, first_absorbed_amt, second_absorbed_amt in zip(
+            yang_tokens, yangs, before_absorbed_bals, first_absorbed_amts_dec, second_absorbed_amts_dec
         ):
             assert_event_emitted(
                 tx,
@@ -1430,7 +1433,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
             if provider == first_provider:
                 expected_reaped_amt += first_absorbed_amt
 
-            assert_equalish(after_bal, before_bal + expected_reaped_amt, error_margin)
+            assert_equalish(after_bal, before_absorbed_bal + expected_reaped_amt, error_margin)
 
         max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(provider).execute()).result.amount)
         expected_remaining_yin = remaining_yin - (percentage * from_wad(second_update_burn_amt_wad))
@@ -1502,7 +1505,7 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
 
 
 # TODO: enchmarking; delete before merge
-@pytest.mark.usefixtures("first_epoch_first_provider", "add_aura_reward", "add_vested_aura_reward")
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.parametrize("blessings_count", [35, 100])
 @pytest.mark.asyncio
 async def test_provide_varying_blessings_count(
