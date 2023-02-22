@@ -841,6 +841,7 @@ async def test_reap_pass(
     after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
 
+    # Check provider 1 receives all rewards
     if before_total_shares_wad > 0:
         assert_event_emitted(tx, absorber.contract_address, "Invoke")
         expected_blessing_id = before_blessing_id + 1
@@ -864,18 +865,29 @@ async def test_reap_pass(
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove):
+async def test_remove(
+    shrine,
+    absorber_both,
+    update,
+    yangs,
+    yang_tokens,
+    reward_tokens,
+    percentage_to_remove,
+    expected_rewards_per_blessing,
+):
     absorber = absorber_both
 
     provider = PROVIDER_1
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     before_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
+    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
 
     before_absorber_yin_bal_wad = from_uint(
         (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
@@ -885,6 +897,7 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
         yin_to_remove_wad = 0
         expected_shares = Decimal("0")
         expected_epoch = before_provider_info.epoch + 1
+        expected_blessing_id = before_blessing_id
 
     else:
         max_removable_yin = (await absorber.preview_remove(provider).execute()).result.amount
@@ -894,6 +907,7 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
         )
         expected_shares = from_wad(before_provider_info.shares) - expected_shares_removed
         expected_epoch = before_provider_info.epoch
+        expected_blessing_id = before_blessing_id + 1
 
     tx = await absorber.remove(yin_to_remove_wad).execute(caller_address=provider)
 
@@ -908,6 +922,7 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
 
     after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
+    assert after_provider_checkpoint.last_blessing_id == expected_blessing_id
 
     assert_event_emitted(
         tx,
@@ -923,6 +938,11 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
 
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
+
+    for asset_contract in reward_tokens:
+        assert_event_emitted(
+            tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
+        )
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
