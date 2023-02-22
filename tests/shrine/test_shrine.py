@@ -43,10 +43,49 @@ from tests.utils import (
     to_wad,
 )
 
-
 #
 # Structs
 #
+
+
+def linear(x: Decimal, m: Decimal, b: Decimal) -> Decimal:
+    """
+    Helper function for y = m*x + b
+    Arguments
+    ---------
+    x : Decimal
+        Value of x.
+    m : Decimal
+        Value of m.
+    b : Decimal
+        Value of b.
+    Returns
+    -------
+    Value of the given equation in Decimal.
+    """
+    return (m * x) + b
+
+
+def base_rate(ltv: Decimal) -> Decimal:
+    """
+    Helper function to calculate base rate given loan-to-threshold-value ratio.
+    Arguments
+    ---------
+    ltv : Decimal
+        Loan-to-threshold-value ratio in Decimal
+    Returns
+    -------
+    Value of the base rate in Decimal.
+    """
+    if ltv <= RATE_BOUND1:
+        return linear(ltv, RATE_M1, RATE_B1)
+    elif ltv <= RATE_BOUND2:
+        return linear(ltv, RATE_M2, RATE_B2)
+    elif ltv <= RATE_BOUND3:
+        return linear(ltv, RATE_M3, RATE_B3)
+    return linear(ltv, RATE_M4, RATE_B4)
+
+
 def compound(
     yang_base_rate_history: list[list[Decimal]],
     yang_rate_update_intervals: list[int],
@@ -103,10 +142,10 @@ def compound(
         yang_value_weighted_rate_sum = 0
         total_collateral_value = 0
         for j in range(len(yangs_amt)):
-            yang_value = yangs_amt[j] * yangs_avg_prices[j][i]
+            yang_value = yangs_amt[j] * yang_avg_prices[j][i]
             total_collateral_value += yang_value
 
-            weighted_rate = yang_base_rate_history[j][i]
+            weighted_rate = yang_base_rate_history[j][i] * yang_value
             yang_value_weighted_rate_sum += weighted_rate
 
         base_rate = yang_value_weighted_rate_sum / total_collateral_value
@@ -114,10 +153,13 @@ def compound(
         rate = base_rate * avg_multipliers[i]
 
         if i < len(yang_base_rate_history[0]) - 1:
-            num_intervals_to_compound = yang_rate_update_intervals[i + 1] - yang_rate_update_intervals[i + 1]
+            num_intervals_to_compound = yang_rate_update_intervals[i + 1] - yang_rate_update_intervals[i]
         else:
-            num_intervals_to_compound = end_interval - yang_rate_update_intervals[i + 1]
+            num_intervals_to_compound = end_interval - yang_rate_update_intervals[i]
 
+        print("Base Rate: " + str(base_rate))
+        print("Rate: " + str(rate))
+        print("# Intervals to Compound: " + str(num_intervals_to_compound))
         debt = debt * Decimal(exp(rate * num_intervals_to_compound * TIME_INTERVAL_DIV_YEAR))
 
     return debt
@@ -261,12 +303,24 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
     expected_avg_price = from_wad(end_cumulative_price - start_cumulative_price) / FEED_LEN
     expected_avg_multiplier = from_ray(end_cumulative_multiplier - start_cumulative_multiplier) / FEED_LEN
 
+    """
     expected_debt = compound_with_avg_price(
         [Decimal(INITIAL_DEPOSIT)],
         [from_ray(YANG1_THRESHOLD)],
         [expected_avg_price],
         expected_avg_multiplier,
         FEED_LEN,
+        from_wad(trove.debt),
+    )"""
+
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
+        [Decimal(INITIAL_DEPOSIT)],
+        [[expected_avg_price]],
+        [expected_avg_multiplier],
+        trove.charge_from,
+        trove.charge_from + FEED_LEN,
         from_wad(trove.debt),
     )
 
