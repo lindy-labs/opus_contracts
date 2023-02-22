@@ -48,44 +48,6 @@ from tests.utils import (
 #
 
 
-def linear(x: Decimal, m: Decimal, b: Decimal) -> Decimal:
-    """
-    Helper function for y = m*x + b
-    Arguments
-    ---------
-    x : Decimal
-        Value of x.
-    m : Decimal
-        Value of m.
-    b : Decimal
-        Value of b.
-    Returns
-    -------
-    Value of the given equation in Decimal.
-    """
-    return (m * x) + b
-
-
-def base_rate(ltv: Decimal) -> Decimal:
-    """
-    Helper function to calculate base rate given loan-to-threshold-value ratio.
-    Arguments
-    ---------
-    ltv : Decimal
-        Loan-to-threshold-value ratio in Decimal
-    Returns
-    -------
-    Value of the base rate in Decimal.
-    """
-    if ltv <= RATE_BOUND1:
-        return linear(ltv, RATE_M1, RATE_B1)
-    elif ltv <= RATE_BOUND2:
-        return linear(ltv, RATE_M2, RATE_B2)
-    elif ltv <= RATE_BOUND3:
-        return linear(ltv, RATE_M3, RATE_B3)
-    return linear(ltv, RATE_M4, RATE_B4)
-
-
 def compound(
     yang_base_rate_history: list[list[Decimal]],
     yang_rate_update_intervals: list[int],
@@ -157,59 +119,9 @@ def compound(
         else:
             num_intervals_to_compound = end_interval - yang_rate_update_intervals[i]
 
-        print("Base Rate: " + str(base_rate))
-        print("Rate: " + str(rate))
-        print("# Intervals to Compound: " + str(num_intervals_to_compound))
         debt = debt * Decimal(exp(rate * num_intervals_to_compound * TIME_INTERVAL_DIV_YEAR))
 
     return debt
-
-
-def compound_with_avg_price(
-    yangs_amt: list[Decimal],
-    yangs_thresholds: list[Decimal],
-    yang_prices: list[Decimal],
-    multiplier: Decimal,
-    intervals: int,
-    debt: Decimal,
-) -> Decimal:
-    """
-    Helper function to calculate the compound debt using average price and multiplier values.
-
-    Arguments
-    ---------
-    yangs_amt : list[Decimal]
-        Ordered list of the amount of each Yang
-    yangs_thresholds : list[Decimal]
-        Ordered list of the threshold for each Yang
-    yang_prices: list[Decimal]
-        The price of each yang
-    multiplier : Decimal
-        The multiplier value
-    intervals: int
-        Number of intervals to compound
-    debt : Decimal
-        Amount of debt at the start interval
-
-    Returns
-    -------
-    Value of the compounded debt from start interval to end interval in Decimal
-    """
-
-    # Sanity check on input data
-    assert len(yangs_amt) == len(yang_prices) == len(yangs_thresholds)
-
-    avg_max_debt = Decimal("0")
-    for i in range(len(yangs_amt)):
-        avg_max_debt += yangs_amt[i] * yang_prices[i] * yangs_thresholds[i]
-
-    relative_ltv = debt / avg_max_debt
-
-    trove_base_rate = base_rate(relative_ltv)
-    true_rate = trove_base_rate * multiplier
-
-    new_debt = debt * Decimal(exp(true_rate * intervals * TIME_INTERVAL_DIV_YEAR))
-    return new_debt
 
 
 #
@@ -302,16 +214,6 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
 
     expected_avg_price = from_wad(end_cumulative_price - start_cumulative_price) / FEED_LEN
     expected_avg_multiplier = from_ray(end_cumulative_multiplier - start_cumulative_multiplier) / FEED_LEN
-
-    """
-    expected_debt = compound_with_avg_price(
-        [Decimal(INITIAL_DEPOSIT)],
-        [from_ray(YANG1_THRESHOLD)],
-        [expected_avg_price],
-        expected_avg_multiplier,
-        FEED_LEN,
-        from_wad(trove.debt),
-    )"""
 
     expected_debt = compound(
         [[YANGS[0]["rate"]]],
@@ -1354,12 +1256,14 @@ async def test_charge_scenario_1b(starknet, shrine, update_feeds_intermittent):
     expected_avg_price = (from_wad(end_cumulative_price) - from_wad(start_cumulative_price)) / FEED_LEN
     expected_avg_multiplier = (from_ray(end_cumulative_multiplier) - from_ray(start_cumulative_multiplier)) / FEED_LEN
 
-    expected_debt = compound_with_avg_price(
-        [Decimal("10")],
-        [from_ray(YANG1_THRESHOLD)],
-        [expected_avg_price],
-        expected_avg_multiplier,
-        FEED_LEN,
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
+        [Decimal(INITIAL_DEPOSIT)],
+        [[expected_avg_price]],
+        [expected_avg_multiplier],
+        original_trove.charge_from,
+        original_trove.charge_from + FEED_LEN,
         from_wad(original_trove_debt),
     )
 
@@ -1415,14 +1319,17 @@ async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge,
     # Sanity check that compounded debt is greater than original debt
     assert updated_trove_debt > original_trove_debt
 
-    expected_debt = compound_with_avg_price(
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
         [Decimal(INITIAL_DEPOSIT)],
-        [from_ray(YANG1_THRESHOLD)],
-        [start_price],
-        Decimal("1"),
-        intervals_after_start,
+        [[start_price]],
+        [Decimal("1")],
+        start_interval,
+        start_interval + intervals_after_start,
         original_trove_debt,
     )
+
     assert_equalish(expected_debt, updated_trove_debt)
 
     # Check average price
@@ -1469,14 +1376,17 @@ async def test_charge_scenario_3(starknet, shrine, interval_count):
     # Sanity check that compounded debt is greater than original debt
     assert updated_trove_debt > original_trove_debt
 
-    expected_debt = compound_with_avg_price(
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
         [Decimal(INITIAL_DEPOSIT)],
-        [from_ray(YANG1_THRESHOLD)],
-        [start_price],
-        Decimal("1"),
-        interval_count,
+        [[start_price]],
+        [Decimal("1")],
+        start_interval,
+        start_interval + interval_count,
         original_trove_debt,
     )
+
     assert_equalish(expected_debt, updated_trove_debt)
 
     # Check average price
@@ -1538,14 +1448,26 @@ async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_s
         + available_end_price * intervals_after_last_update
     ) / intervals_lapsed
 
-    expected_debt = compound_with_avg_price(
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
         [Decimal(INITIAL_DEPOSIT)],
-        [from_ray(YANG1_THRESHOLD)],
-        [expected_avg_price],
-        Decimal("1"),
-        intervals_lapsed,
+        [[expected_avg_price]],
+        [Decimal("1")],
+        start_interval,
+        start_interval + intervals_lapsed,
         original_trove_debt,
     )
+
+    """
+      yang_base_rate_history: list[list[Decimal]],
+    yang_rate_update_intervals: list[int],
+    yangs_amt: list[Decimal],
+    yang_avg_prices: list[list[Decimal]],
+    avg_multipliers: list[Decimal],
+    start_interval: int,
+    end_interval: int,
+    debt: Decimal,"""
     assert_equalish(expected_debt, updated_trove_debt)
 
     # Check average price
@@ -1624,14 +1546,17 @@ async def test_charge_scenario_5(
         + (intervals_after_last_update * available_end_price)
     ) / interval_diff
 
-    expected_debt = compound_with_avg_price(
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
         [Decimal(INITIAL_DEPOSIT)],
-        [from_ray(YANG1_THRESHOLD)],
-        [expected_avg_price],
-        Decimal("1"),
-        interval_diff,
+        [[expected_avg_price]],
+        [Decimal("1")],
+        start_interval,
+        start_interval + interval_diff,
         original_trove_debt,
     )
+
     assert_equalish(expected_debt, updated_trove_debt)
 
     # Check average price
@@ -1699,14 +1624,17 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
         - (missed_intervals_before_start * available_start_price)
     ) / Decimal(interval_count)
 
-    expected_debt = compound_with_avg_price(
+    expected_debt = compound(
+        [[YANGS[0]["rate"]]],
+        [0],
         [Decimal(INITIAL_DEPOSIT)],
-        [from_ray(YANG1_THRESHOLD)],
-        [expected_avg_price],
-        Decimal("1"),
-        Decimal(interval_count),
+        [[expected_avg_price]],
+        [Decimal("1")],
+        start_interval,
+        start_interval + int(interval_count),
         original_trove_debt,
     )
+
     assert_equalish(expected_debt, updated_trove_debt)
 
     # Check average price
