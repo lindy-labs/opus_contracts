@@ -1238,7 +1238,7 @@ async def test_reap_different_epochs(
         for asset, before_reward_bal, blessed_amt_wad in zip(
             reward_tokens, before_reward_bals, expected_rewards_assets_amts
         ):
-            # Each provider should receive
+            # Each provider should receive 1 round of rewards
             blessed_amt = from_wad(blessed_amt_wad)
 
             after_reward_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
@@ -1249,12 +1249,22 @@ async def test_reap_different_epochs(
             )
 
 
-@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
+@pytest.mark.usefixtures(
+    "add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider", "first_epoch_second_provider"
+)
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
-    shrine, absorber_both, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
+    shrine,
+    absorber_both,
+    first_epoch_first_provider,
+    first_epoch_second_provider,
+    yangs,
+    yang_tokens,
+    reward_tokens,
+    update,
+    expected_rewards_per_blessing,
 ):
     """
     Sequence of events:
@@ -1264,8 +1274,9 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     """
     absorber = absorber_both
 
-    _, _, _, _, _, asset_addresses, _, absorbed_amts_dec = update
+    _, drain_perc, _, _, _, asset_addresses, _, absorbed_amts_dec = update
     asset_count = len(asset_addresses)
+    _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     _, first_provider_amt_wad = first_epoch_first_provider
     _, second_provider_amt_wad = first_epoch_second_provider
@@ -1275,18 +1286,34 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     total_provided_amt = first_provider_amt + second_provider_amt
 
     providers = [PROVIDER_1, PROVIDER_2]
-    before_provider_bals = await get_token_balances(yang_tokens, providers)
+    before_providers_absorbed_bals = await get_token_balances(yang_tokens, providers)
+    before_providers_reward_bals = await get_token_balances(reward_tokens, providers)
 
+    before_reap_blessings_id = (await absorber.get_blessings_count().execute()).result.count
+    assert before_reap_blessings_id == 2
+
+    expected_blessing_id = before_reap_blessings_id
     provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
-    for provider, percentage, before_bals in zip(providers, provided_perc, before_provider_bals):
+    for provider, percentage, before_absorbed_bals, before_reward_bals in zip(
+        providers, provided_perc, before_providers_absorbed_bals, before_providers_reward_bals
+    ):
         # Step 3: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
+
+        # Rewards are distributed only if there are shares in current epoch
+        if drain_perc < Decimal("1"):
+            expected_blessing_id += 1
+
+        blessings_id = (await absorber.get_blessings_count().execute()).result.count
+        assert blessings_id == expected_blessing_id
 
         assert_event_emitted(
             tx, absorber.contract_address, "Reap", lambda d: d[:5] == [provider, asset_count, *asset_addresses]
         )
 
-        for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts_dec):
+        for asset, asset_info, before_absorbed_bal, absorbed_amt in zip(
+            yang_tokens, yangs, before_absorbed_bals, absorbed_amts_dec
+        ):
             assert_event_emitted(
                 tx,
                 asset.contract_address,
@@ -1294,7 +1321,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
                 lambda d: d[:2] == [absorber.contract_address, provider],
             )
 
-            after_bal = from_fixed_point(
+            after_absorbed_bal = from_fixed_point(
                 from_uint((await asset.balanceOf(provider).execute()).result.balance),
                 asset_info.decimals,
             )
@@ -1302,7 +1329,25 @@ async def test_multi_user_reap_same_epoch_single_absorption(
             # Relax error margin by half due to loss of precision from fixed point arithmetic
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             expected_reaped_amt = percentage * absorbed_amt
-            assert_equalish(after_bal, before_bal + expected_reaped_amt, error_margin)
+            assert_equalish(after_absorbed_bal, before_absorbed_bal + expected_reaped_amt, error_margin)
+
+        expected_reward_multiplier = (expected_blessing_id - 1) * percentage
+
+        # First provider gets a full round of rewards when second provider first provides
+        if provider == PROVIDER_1:
+            expected_reward_multiplier += Decimal("1")
+
+        for asset, before_reward_bal, blessed_amt_wad in zip(
+            reward_tokens, before_reward_bals, expected_rewards_assets_amts
+        ):
+            # Each provider should receive 1 full round, and (current count - 1 full round) of their share of rewards
+            blessed_amt = expected_reward_multiplier * from_wad(blessed_amt_wad)
+            after_reward_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
+            assert_equalish(after_reward_bal, before_reward_bal + blessed_amt)
+
+            assert_event_emitted(
+                tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
+            )
 
 
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("0.5")], indirect=["update"])
