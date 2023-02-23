@@ -796,10 +796,10 @@ async def test_reap_pass(
 
     provider = PROVIDER_1
 
-    _, _, _, _, _, assets, absorbed_asset_amts, absorbed_asset_amts_dec = update
+    _, drain_perc, _, _, _, assets, absorbed_asset_amts, absorbed_asset_amts_dec = update
     asset_count = len(assets)
 
-    _, expected_rewards_assets_amts = expected_rewards_per_blessing
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     absorbed = (await absorber.preview_reap(provider).execute()).result
     assert absorbed.absorbed_assets == assets
@@ -841,8 +841,23 @@ async def test_reap_pass(
     after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
     assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
 
-    if before_total_shares_wad > 0:
-        assert_event_emitted(tx, absorber.contract_address, "Invoke")
+    # Assert `Invoke` is emitted if absorber is not completely drained
+    if drain_perc < Decimal("1"):
+        expected_rewards_count = 2
+        expected_epoch = 0
+        assert_event_emitted(
+            tx,
+            absorber.contract_address,
+            "Invoke",
+            [
+                expected_rewards_count,
+                *expected_rewards_assets,
+                expected_rewards_count,
+                *expected_rewards_assets_amts,
+                before_total_shares_wad,
+                expected_epoch,
+            ],
+        )
         expected_blessing_id = before_blessing_id + 1
     else:
         expected_blessing_id = before_blessing_id
@@ -931,6 +946,24 @@ async def test_remove(
         "Remove",
         lambda d: d[:3] == [provider, expected_epoch, yin_to_remove_wad],
     )
+
+    # Assert `Invoke` is emitted if absorber is not completely drained
+    if percentage_drained < Decimal("1"):
+        expected_rewards_count = 2
+        expected_invoke_epoch = before_provider_info.epoch
+        assert_event_emitted(
+            tx,
+            absorber.contract_address,
+            "Invoke",
+            [
+                expected_rewards_count,
+                *expected_rewards_assets,
+                expected_rewards_count,
+                *expected_rewards_assets_amts,
+                total_shares_wad,
+                expected_invoke_epoch,
+            ],
+        )
 
     for asset_contract in yang_tokens:
         assert_event_emitted(
@@ -1027,14 +1060,14 @@ async def test_provide_after_threshold_absorption(
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
     2. Absorption occurs; yin per share falls below threshold (`update`), provider 1 receives 1 round of rewards
-    3. Provider 2 provides, no rewards
+    3. Provider 2 provides, provider 1 receives 1 round of rewards
     4. Provider 1 withdraws
     """
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
     tx, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
-    _, expected_rewards_assets_amts = expected_rewards_per_blessing
+    expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     # Assert epoch is updated
     epoch = (await absorber.get_current_epoch().execute()).result.epoch
@@ -1053,12 +1086,27 @@ async def test_provide_after_threshold_absorption(
     second_provider_yin_amt_wad = from_uint(second_provider_yin_amt_uint)
     second_provider_yin_amt = from_wad(second_provider_yin_amt_wad)
 
-    await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
+    tx = await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
+
+    # Assert `Invoke` is emitted
+    expected_rewards_count = 2
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "Invoke",
+        [
+            expected_rewards_count,
+            *expected_rewards_assets,
+            expected_rewards_count,
+            *expected_rewards_assets_amts,
+            total_shares_wad,
+            expected_epoch,
+        ],
+    )
 
     second_provider_checkpoint = (await absorber.get_provider_checkpoint(second_provider).execute()).result.checkpoint
 
     # Blessing ID should increase when second provider provides because there is dust amount of shares for provider 1
-
     expected_blessing_id = 2
     assert (await absorber.get_blessings_count().execute()).result.count == expected_blessing_id
     assert second_provider_checkpoint.last_blessing_id == expected_blessing_id
@@ -1312,6 +1360,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
         assert_event_emitted(
             tx, absorber.contract_address, "Reap", lambda d: d[:5] == [provider, asset_count, *asset_addresses]
         )
+        assert_event_emitted(tx, absorber.contract_address, "Invoke")
 
         for asset, asset_info, before_absorbed_bal, absorbed_amt in zip(
             yang_tokens, yangs, before_absorbed_bals, absorbed_amts_dec
@@ -1426,6 +1475,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         assert_event_emitted(
             tx, absorber.contract_address, "Reap", lambda d: d[:5] == [provider, asset_count, *asset_addresses]
         )
+        assert_event_emitted(tx, absorber.contract_address, "Invoke")
 
         expected_blessing_id += 1
 
