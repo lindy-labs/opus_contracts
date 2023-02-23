@@ -76,8 +76,8 @@ func bless{
     let bal_uint: Uint256 = IERC20.balanceOf(asset, blesser);
     let bal: wad = WadRay.from_uint(bal_uint);
 
-    let is_completed: bool = is_nn_le(bal, BLESS_AMT_WAD);
-    if (is_completed == TRUE) {
+    let is_depleted: bool = is_nn_le(bal, BLESS_AMT_WAD);
+    if (is_depleted == TRUE) {
         return (0,);
     }
 

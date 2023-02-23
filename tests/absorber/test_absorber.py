@@ -221,10 +221,6 @@ async def aura_token_blesser(starknet, absorber, aura_token) -> StarknetContract
         ],
     )
 
-    # Mint tokens to blesser contract
-    vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
-    await aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
-
     return blesser
 
 
@@ -245,10 +241,6 @@ async def vested_aura_token_blesser(starknet, absorber, vested_aura_token) -> St
             absorber.contract_address,
         ],
     )
-
-    # Mint tokens to blesser contract
-    vesting_amt = to_uint(to_wad(VESTED_AURA_BLESSER_STARTING_BAL))
-    await vested_aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
     return blesser
 
@@ -368,6 +360,10 @@ async def add_aura_reward(absorber, aura_token, aura_token_blesser):
         TRUE,
     ).execute(caller_address=ABSORBER_OWNER)
 
+    # Mint tokens to blesser contract
+    vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
+    await aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
+
     return tx
 
 
@@ -384,6 +380,10 @@ async def add_vested_aura_reward(absorber, vested_aura_token, vested_aura_token_
         vested_aura_token_blesser.contract_address,
         TRUE,
     ).execute(caller_address=ABSORBER_OWNER)
+
+    # Mint tokens to blesser contract
+    vesting_amt = to_uint(to_wad(VESTED_AURA_BLESSER_STARTING_BAL))
+    await vested_aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
     return tx
 
@@ -1598,9 +1598,7 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
 
 @pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_invoke_inactive_reward(
-    absorber, aura_token, vested_aura_token, aura_token_blesser, vested_aura_token_blesser
-):
+async def test_invoke_inactive_reward(absorber, aura_token, vested_aura_token, vested_aura_token_blesser):
     """
     Inactive rewards should be skipped when `invoke` is called.
     """
@@ -1638,6 +1636,120 @@ async def test_invoke_inactive_reward(
 
     vested_aura_distribution = (
         await absorber.get_asset_blessing_info(vested_aura_token.contract_address, blessing_id).execute()
+    ).result.info
+    assert vested_aura_distribution.asset_amt_per_share == 0
+
+
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_invoke_no_active_rewards(
+    absorber, aura_token, aura_token_blesser, vested_aura_token, vested_aura_token_blesser
+):
+    """
+    Check for early return when no rewards are distributed because there are no active rewards
+    """
+    provider = PROVIDER_1
+
+    # Set rewards to inactive
+    await absorber.set_reward(
+        vested_aura_token.contract_address,
+        vested_aura_token_blesser.contract_address,
+        FALSE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    await absorber.set_reward(
+        aura_token.contract_address,
+        aura_token_blesser.contract_address,
+        FALSE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    blessing_id = (await absorber.get_blessings_count().execute()).result.count
+
+    # Trigger an invoke
+    await absorber.provide(0).execute(caller_address=provider)
+
+    assert (await absorber.get_blessings_count().execute()).result.count == blessing_id
+
+
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_invoke_zero_distribution_from_active_rewards(
+    absorber, reward_tokens, aura_token_blesser, vested_aura_token_blesser
+):
+    """
+    Check for early return when no rewards are distributed because the vesting contracts
+    of active rewards did not distribute any
+    """
+    provider = PROVIDER_1
+
+    blessers = [aura_token_blesser, vested_aura_token_blesser]
+    for asset, blesser in zip(reward_tokens, blessers):
+        await absorber.set_reward(
+            asset.contract_address,
+            blesser.contract_address,
+            TRUE,
+        ).execute(caller_address=ABSORBER_OWNER)
+
+    blessing_id = (await absorber.get_blessings_count().execute()).result.count
+
+    # Trigger an invoke
+    await absorber.provide(0).execute(caller_address=provider)
+
+    assert (await absorber.get_blessings_count().execute()).result.count == blessing_id
+
+
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_invoke_pass_with_depleted_active_reward(
+    absorber, aura_token, aura_token_blesser, vested_aura_token, vested_aura_token_blesser
+):
+    """
+    Check that `invoke` works as intended when one of more than one active rewards does not have any distribution
+    """
+    provider = PROVIDER_1
+
+    rewards = [aura_token, vested_aura_token]
+    blessers = [aura_token_blesser, vested_aura_token_blesser]
+    for asset, blesser in zip(rewards, blessers):
+        await absorber.set_reward(
+            asset.contract_address,
+            blesser.contract_address,
+            TRUE,
+        ).execute(caller_address=ABSORBER_OWNER)
+
+    # Mint tokens to AURA's blesser contract
+    vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
+    await aura_token.mint(aura_token_blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
+
+    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+
+    # Trigger an invoke
+    tx = await absorber.provide(0).execute(caller_address=provider)
+    expected_rewards_count = 2
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "Invoke",
+        lambda d: d[:6]
+        == [
+            expected_rewards_count,
+            *[vested_aura_token.contract_address, aura_token.contract_address],
+            expected_rewards_count,
+            *[0, AURA_BLESS_AMT_WAD],
+        ],
+    )
+
+    expected_blessing_id = before_blessing_id + 1
+    after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    assert after_blessing_id == expected_blessing_id
+
+    aura_distribution = (
+        await absorber.get_asset_blessing_info(aura_token.contract_address, after_blessing_id).execute()
+    ).result.info
+    assert aura_distribution.asset_amt_per_share > 0
+
+    vested_aura_distribution = (
+        await absorber.get_asset_blessing_info(vested_aura_token.contract_address, after_blessing_id).execute()
     ).result.info
     assert vested_aura_distribution.asset_amt_per_share == 0
 
