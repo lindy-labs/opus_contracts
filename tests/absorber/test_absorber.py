@@ -1591,6 +1591,57 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
         await absorber.remove(amt).execute(caller_address=provider)
 
 
+#
+# Tests - Invoke
+#
+
+
+@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_invoke_inactive_reward(
+    absorber, aura_token, vested_aura_token, aura_token_blesser, vested_aura_token_blesser
+):
+    """
+    Inactive rewards should be skipped when `invoke` is called.
+    """
+    provider = PROVIDER_1
+
+    # Set vested AURA to inactive
+    await absorber.set_reward(
+        vested_aura_token.contract_address,
+        vested_aura_token_blesser.contract_address,
+        FALSE,
+    ).execute(caller_address=ABSORBER_OWNER)
+
+    # Trigger an invoke
+    tx = await absorber.provide(0).execute(caller_address=provider)
+
+    expected_rewards_count = 1
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "Invoke",
+        lambda d: d[:4]
+        == [
+            expected_rewards_count,
+            *[aura_token.contract_address],
+            expected_rewards_count,
+            *[AURA_BLESS_AMT_WAD],
+        ],
+    )
+
+    blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    aura_distribution = (
+        await absorber.get_asset_blessing_info(aura_token.contract_address, blessing_id).execute()
+    ).result.info
+    assert aura_distribution.asset_amt_per_share > 0
+
+    vested_aura_distribution = (
+        await absorber.get_asset_blessing_info(vested_aura_token.contract_address, blessing_id).execute()
+    ).result.info
+    assert vested_aura_distribution.asset_amt_per_share == 0
+
+
 # TODO: enchmarking; delete before merge
 @pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.parametrize("blessings_count", [35, 100])
