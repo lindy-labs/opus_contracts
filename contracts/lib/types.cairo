@@ -31,11 +31,6 @@ struct Reward {
     is_active: bool,  // Whether the blesser (vesting contract) should be called
 }
 
-struct Checkpoint {
-    last_absorption_id: ufelt,  // Last absorption ID of a provider
-    last_blessing_id: ufelt,  // Last blessing ID of a provider
-}
-
 struct Provision {
     epoch: ufelt,  // Epoch in which shares are issued
     shares: wad,  // Amount of shares for provider in the above epoch

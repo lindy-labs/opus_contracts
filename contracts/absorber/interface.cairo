@@ -1,8 +1,9 @@
 %lang starknet
 
 from contracts.lib.aliases import address, bool, ufelt, wad
-from contracts.lib.types import AssetApportion, Checkpoint, Provision
+from contracts.lib.types import AssetApportion, Provision
 
+// TODO: update interface
 @contract_interface
 namespace IAbsorber {
     //
@@ -36,7 +37,7 @@ namespace IAbsorber {
     func get_provider_info(provider: address) -> (provision: Provision) {
     }
 
-    func get_provider_checkpoint(provider: address) -> (checkpoint: Checkpoint) {
+    func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
     func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (info: AssetApportion) {
