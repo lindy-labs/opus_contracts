@@ -438,9 +438,6 @@ async def test_absorber_setup(shrine, absorber):
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
 
-    blessings_count = (await absorber.get_blessings_count().execute()).result.count
-    assert blessings_count == 0
-
     rewards_count = (await absorber.get_rewards_count().execute()).result.count
     assert rewards_count == 0
 
@@ -603,7 +600,7 @@ async def test_set_reward_fail(absorber, aura_token, aura_token_blesser):
 @pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_tokens, expected_rewards_per_blessing):
+async def test_update(shrine, absorber_both, update, yangs, yang_tokens, expected_rewards_per_blessing):
     absorber = absorber_both
 
     (
@@ -671,15 +668,9 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, reward_
 
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
-    expected_blessing_id = 1
-    actual_blessing_id = (await absorber.get_blessings_count().execute()).result.count
-    assert actual_blessing_id == expected_blessing_id
-
-    for asset, asset_address, blessed_amt_wad in zip(
-        reward_tokens, expected_rewards_assets, expected_rewards_assets_amts
-    ):
+    for asset_address, blessed_amt_wad in zip(expected_rewards_assets, expected_rewards_assets_amts):
         asset_blessing_info = (
-            await absorber.get_asset_blessing_info(asset_address, expected_blessing_id).execute()
+            await absorber.get_asset_blessing_info(before_epoch, asset_address).execute()
         ).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / before_total_shares
@@ -708,16 +699,16 @@ async def test_unauthorized_compensate(absorber, first_update_assets):
 
 @pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward")
 @pytest.mark.asyncio
-async def test_provide_first_epoch(
-    shrine, absorber, first_epoch_first_provider, reward_tokens, expected_rewards_per_blessing
-):
+async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider, expected_rewards_per_blessing):
     provider = PROVIDER_1
 
     tx, initial_yin_amt_provided = first_epoch_first_provider
     expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
-    before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
+    before_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
     before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
     assert before_provider_info.shares + INITIAL_SHARES_WAD == before_total_shares_wad == initial_yin_amt_provided
@@ -735,11 +726,6 @@ async def test_provide_first_epoch(
     )
     assert before_absorber_yin_bal_wad == initial_yin_amt_provided
 
-    # Rewards should not be triggered when total shares are 0
-    blessings_count = (await absorber.get_blessings_count().execute()).result.count
-    expected_blessing_id = 0
-    assert blessings_count == expected_blessing_id
-
     # Test subsequent deposit
     subsequent_yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     subsequent_yin_amt_to_provide = from_uint(subsequent_yin_amt_to_provide_uint)
@@ -753,9 +739,10 @@ async def test_provide_first_epoch(
 
     assert after_provider_info.epoch == before_provider_info.epoch
 
-    after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
-    assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id
-    assert after_provider_checkpoint.last_blessing_id == before_provider_checkpoint.last_blessing_id + 1
+    after_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
+    assert after_provider_last_absorption == before_provider_last_absorption
 
     assert_event_emitted(
         tx,
@@ -772,15 +759,9 @@ async def test_provide_first_epoch(
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
 
-    blessings_count = (await absorber.get_blessings_count().execute()).result.count
-    expected_blessing_id = 1
-    assert blessings_count == expected_blessing_id
-
-    for asset, asset_address, blessed_amt_wad in zip(
-        reward_tokens, expected_rewards_assets, expected_rewards_assets_amts
-    ):
+    for asset_address, blessed_amt_wad in zip(expected_rewards_assets, expected_rewards_assets_amts):
         asset_blessing_info = (
-            await absorber.get_asset_blessing_info(asset_address, expected_blessing_id).execute()
+            await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
         ).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / from_wad(before_total_shares_wad)
@@ -815,9 +796,9 @@ async def test_reap_pass(
     before_provider_absorbed_asset_bals = (await get_token_balances(yang_tokens, [provider]))[0]
     before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
-    before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
-    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
-
+    before_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
     before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
     tx = await absorber.reap().execute(caller_address=provider)
@@ -840,9 +821,12 @@ async def test_reap_pass(
         error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
         assert_equalish(after_provider_asset_bal, before_bal + absorbed_amt, error_margin)
 
-    after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
-    assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
+    after_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
+    assert after_provider_last_absorption == before_provider_last_absorption + 1
 
+    expected_blessings_count = 1
     # Assert `Invoke` is emitted if absorber is not completely drained
     if drain_perc < Decimal("1"):
         expected_rewards_count = 2
@@ -860,21 +844,18 @@ async def test_reap_pass(
                 expected_epoch,
             ],
         )
-        expected_blessing_id = before_blessing_id + 1
-    else:
-        expected_blessing_id = before_blessing_id
 
-    assert after_provider_checkpoint.last_blessing_id == expected_blessing_id
-
-    after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
-    assert after_blessing_id == expected_blessing_id
+        expected_blessings_count += 1
 
     # Check provider 1 receives all rewards
     for asset, before_bal, blessed_amt_wad in zip(
         reward_tokens, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
-        blessed_amt = from_wad(blessed_amt_wad * expected_blessing_id)
+        assert_event_emitted(
+            tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
+        )
 
+        blessed_amt = from_wad(expected_blessings_count * blessed_amt_wad)
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
         assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
 
@@ -903,8 +884,9 @@ async def test_remove(
 
     before_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
     before_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
-    before_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
-    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    before_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
     before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     before_absorber_yin_bal_wad = from_uint(
@@ -915,7 +897,7 @@ async def test_remove(
         yin_to_remove_wad = 0
         expected_shares = Decimal("0")
         expected_epoch = before_provider_info.epoch + 1
-        expected_blessing_id = before_blessing_id
+        expected_blessings_count = 1
 
     else:
         max_removable_yin = (await absorber.preview_remove(provider).execute()).result.amount
@@ -925,7 +907,7 @@ async def test_remove(
         )
         expected_shares = from_wad(before_provider_info.shares) - expected_shares_removed
         expected_epoch = before_provider_info.epoch
-        expected_blessing_id = before_blessing_id + 1
+        expected_blessings_count = 2
 
     tx = await absorber.remove(yin_to_remove_wad).execute(caller_address=provider)
 
@@ -938,9 +920,10 @@ async def test_remove(
 
     assert after_provider_info.epoch == expected_epoch
 
-    after_provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
-    assert after_provider_checkpoint.last_absorption_id == before_provider_checkpoint.last_absorption_id + 1
-    assert after_provider_checkpoint.last_blessing_id == expected_blessing_id
+    after_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
+    assert after_provider_last_absorption == before_provider_last_absorption.last_absorption_id + 1
 
     assert_event_emitted(
         tx,
@@ -978,7 +961,7 @@ async def test_remove(
     for asset, asset_address, before_bal, blessed_amt_wad in zip(
         reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
-        blessed_amt = from_wad(blessed_amt_wad * expected_blessing_id)
+        blessed_amt = from_wad(blessed_amt_wad * expected_blessings_count)
 
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
         assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
@@ -1001,7 +984,6 @@ async def test_provide_second_epoch(
 
     yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     yin_amt_to_provide_wad = from_uint(yin_amt_to_provide_uint)
-    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
     before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     tx = await absorber.provide(yin_amt_to_provide_wad).execute(caller_address=provider)
@@ -1013,9 +995,9 @@ async def test_provide_second_epoch(
     expected_epoch = 1
     assert provider_info.epoch == expected_epoch
 
-    provider_checkpoint = (await absorber.get_provider_checkpoint(provider).execute()).result.checkpoint
+    provider_last_absorption = (await absorber.get_provider_last_absorption(provider).execute()).result.absorption_id
     expected_absorption_id = 1
-    assert provider_checkpoint.last_absorption_id == expected_absorption_id
+    assert provider_last_absorption == expected_absorption_id
 
     assert_event_emitted(
         tx,
@@ -1030,15 +1012,12 @@ async def test_provide_second_epoch(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
 
-    after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
-    assert after_blessing_id == before_blessing_id
-    assert provider_checkpoint.last_absorption_id == before_blessing_id
-
+    expected_blessings_count = 1
     # Rewards from first epoch's deposit should be transferred
     for asset, before_bal, blessed_amt_wad in zip(
         reward_tokens, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
-        expected_blessed_amt = from_wad(blessed_amt_wad * before_blessing_id)
+        expected_blessed_amt = from_wad(blessed_amt_wad * expected_blessings_count)
 
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
         assert_equalish(after_provider_asset_bal, before_bal + expected_blessed_amt)
@@ -1106,13 +1085,6 @@ async def test_provide_after_threshold_absorption(
         ],
     )
 
-    second_provider_checkpoint = (await absorber.get_provider_checkpoint(second_provider).execute()).result.checkpoint
-
-    # Blessing ID should increase when second provider provides because there is dust amount of shares for provider 1
-    expected_blessing_id = 2
-    assert (await absorber.get_blessings_count().execute()).result.count == expected_blessing_id
-    assert second_provider_checkpoint.last_blessing_id == expected_blessing_id
-
     # Provider 2 can withdraw up to amount provided
     max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(second_provider).execute()).result.amount)
     assert_equalish(max_withdrawable_yin_amt, second_provider_yin_amt)
@@ -1126,12 +1098,6 @@ async def test_provide_after_threshold_absorption(
 
     # Step 4: Provider 1 withdraws
     tx = await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=first_provider)
-
-    expected_blessing_id = 3
-    assert (await absorber.get_blessings_count().execute()).result.count == expected_blessing_id
-
-    first_provider_checkpoint = (await absorber.get_provider_checkpoint(first_provider).execute()).result.checkpoint
-    assert first_provider_checkpoint.last_blessing_id == expected_blessing_id
 
     after_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
     assert after_first_provider_info.shares == 0
@@ -1209,7 +1175,9 @@ async def test_reap_different_epochs(
     expected_epoch = 1
     assert second_provider_info.epoch == expected_epoch
 
-    second_provider_checkpoint = (await absorber.get_provider_checkpoint(second_provider).execute()).result.checkpoint
+    second_provider_checkpoint = (
+        await absorber.get_provider_last_absorption(second_provider).execute()
+    ).result.absorption_id
     expected_last_absorption = 1
     assert second_provider_checkpoint.last_absorption_id == expected_last_absorption
 
@@ -1246,9 +1214,6 @@ async def test_reap_different_epochs(
     absorbed_amts_arrs = [first_absorbed_amts_dec, absorbed_asset_amts_dec]
 
     before_providers_reward_bals = await get_token_balances(reward_tokens, providers)
-
-    before_reap_blessings_id = (await absorber.get_blessings_count().execute()).result.count
-    assert before_reap_blessings_id == 2
 
     for provider, before_absorbed_bals, before_reward_bals, absorbed_amts in zip(
         providers, before_providers_absorbed_bals, before_providers_reward_bals, absorbed_amts_arrs
@@ -1341,10 +1306,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     before_providers_absorbed_bals = await get_token_balances(yang_tokens, providers)
     before_providers_reward_bals = await get_token_balances(reward_tokens, providers)
 
-    before_reap_blessings_id = (await absorber.get_blessings_count().execute()).result.count
-    assert before_reap_blessings_id == 2
-
-    expected_blessing_id = before_reap_blessings_id
+    expected_blessings_count = 2
     provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
     for provider, percentage, before_absorbed_bals, before_reward_bals in zip(
         providers, provided_perc, before_providers_absorbed_bals, before_providers_reward_bals
@@ -1384,7 +1346,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
             expected_reaped_amt = percentage * absorbed_amt
             assert_equalish(after_absorbed_bal, before_absorbed_bal + expected_reaped_amt, error_margin)
 
-        expected_reward_multiplier = (expected_blessing_id - 1) * percentage
+        expected_reward_multiplier = (expected_blessings_count - 1) * percentage
 
         # First provider gets a full round of rewards when second provider first provides
         if provider == PROVIDER_1:
@@ -1463,10 +1425,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     before_providers_absorbed_bals = await get_token_balances(yang_tokens, providers)
     before_providers_reward_bals = await get_token_balances(reward_tokens, providers)
 
-    before_reap_blessings_id = (await absorber.get_blessings_count().execute()).result.count
-    assert before_reap_blessings_id == 3
-
-    expected_blessing_id = before_reap_blessings_id
+    expected_blessings_count = 3
     provided_perc = [amt / total_provided_amt for amt in providers_remaining_yin]
     for provider, percentage, remaining_yin, before_absorbed_bals, before_reward_bals in zip(
         providers, provided_perc, providers_remaining_yin, before_providers_absorbed_bals, before_providers_reward_bals
@@ -1479,10 +1438,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         )
         assert_event_emitted(tx, absorber.contract_address, "Invoke")
 
-        expected_blessing_id += 1
-
-        blessings_id = (await absorber.get_blessings_count().execute()).result.count
-        assert blessings_id == expected_blessing_id
+        expected_blessings_count += 1
 
         for asset, asset_info, before_absorbed_bal, first_absorbed_amt, second_absorbed_amt in zip(
             yang_tokens, yangs, before_absorbed_bals, first_absorbed_amts_dec, second_absorbed_amts_dec
@@ -1512,7 +1468,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         expected_remaining_yin = remaining_yin - (percentage * from_wad(second_update_burn_amt_wad))
         assert_equalish(max_withdrawable_yin_amt, expected_remaining_yin)
 
-        expected_reward_multiplier = (expected_blessing_id - 2) * percentage
+        expected_reward_multiplier = (expected_blessings_count - 2) * percentage
         # First provider gets 2 rounds of rewards
         if provider == PROVIDER_1:
             expected_reward_multiplier += Decimal("2")
@@ -1630,7 +1586,6 @@ async def test_invoke_inactive_reward(absorber, aura_token, vested_aura_token, v
         ],
     )
 
-    blessing_id = (await absorber.get_blessings_count().execute()).result.count
     aura_distribution = (
         await absorber.get_asset_blessing_info(aura_token.contract_address, blessing_id).execute()
     ).result.info
@@ -1665,12 +1620,10 @@ async def test_invoke_no_active_rewards(
         FALSE,
     ).execute(caller_address=ABSORBER_OWNER)
 
-    blessing_id = (await absorber.get_blessings_count().execute()).result.count
+    # TODO: check asset info before and after
 
     # Trigger an invoke
     await absorber.provide(0).execute(caller_address=provider)
-
-    assert (await absorber.get_blessings_count().execute()).result.count == blessing_id
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -1692,12 +1645,10 @@ async def test_invoke_zero_distribution_from_active_rewards(
             TRUE,
         ).execute(caller_address=ABSORBER_OWNER)
 
-    blessing_id = (await absorber.get_blessings_count().execute()).result.count
-
     # Trigger an invoke
     await absorber.provide(0).execute(caller_address=provider)
 
-    assert (await absorber.get_blessings_count().execute()).result.count == blessing_id
+    # TODO: check asset info before and after
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -1723,8 +1674,6 @@ async def test_invoke_pass_with_depleted_active_reward(
     vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
     await aura_token.mint(aura_token_blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
-    before_blessing_id = (await absorber.get_blessings_count().execute()).result.count
-
     # Trigger an invoke
     tx = await absorber.provide(0).execute(caller_address=provider)
     expected_rewards_count = 2
@@ -1740,10 +1689,6 @@ async def test_invoke_pass_with_depleted_active_reward(
             *[0, AURA_BLESS_AMT_WAD],
         ],
     )
-
-    expected_blessing_id = before_blessing_id + 1
-    after_blessing_id = (await absorber.get_blessings_count().execute()).result.count
-    assert after_blessing_id == expected_blessing_id
 
     aura_distribution = (
         await absorber.get_asset_blessing_info(aura_token.contract_address, after_blessing_id).execute()
