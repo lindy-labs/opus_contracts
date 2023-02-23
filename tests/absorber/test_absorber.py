@@ -362,7 +362,7 @@ async def add_aura_reward(absorber, aura_token, aura_token_blesser):
 
     # Mint tokens to blesser contract
     vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
-    await aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
+    await aura_token.mint(aura_token_blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
     return tx
 
@@ -383,7 +383,9 @@ async def add_vested_aura_reward(absorber, vested_aura_token, vested_aura_token_
 
     # Mint tokens to blesser contract
     vesting_amt = to_uint(to_wad(VESTED_AURA_BLESSER_STARTING_BAL))
-    await vested_aura_token.mint(blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
+    await vested_aura_token.mint(vested_aura_token_blesser.contract_address, vesting_amt).execute(
+        caller_address=BLESSER_OWNER
+    )
 
     return tx
 
@@ -1756,7 +1758,7 @@ async def test_invoke_pass_with_depleted_active_reward(
 
 # TODO: enchmarking; delete before merge
 @pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
-@pytest.mark.parametrize("blessings_count", [35, 100])
+@pytest.mark.parametrize("blessings_count", [0, 1, 2, 5, 10, 35, 100, 200, 500])
 @pytest.mark.asyncio
 async def test_provide_varying_blessings_count(
     shrine, absorber, yang_tokens, first_update_assets, blessings_count, aura_token, expected_rewards_per_blessing
@@ -1766,8 +1768,9 @@ async def test_provide_varying_blessings_count(
     expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
     before_aura_token_bal = from_uint((await aura_token.balanceOf(provider).execute()).result.balance)
 
+    other_provider = PROVIDER_2
     for i in range(blessings_count):
-        await absorber.provide(0).execute(caller_address=provider)
+        await absorber.provide(1).execute(caller_address=other_provider)
 
     tx = await absorber.reap().execute(caller_address=provider)
     blessings_count += 1

@@ -656,16 +656,16 @@ func update{
 
     // Increment absorption ID
     let prev_absorption_id: ufelt = absorber_absorptions_count.read();
-    let current_apportion_id: ufelt = prev_absorption_id + 1;
-    absorber_absorptions_count.write(current_apportion_id);
+    let end_apportion_id: ufelt = prev_absorption_id + 1;
+    absorber_absorptions_count.write(end_apportion_id);
 
     // Update epoch for absorption ID
     let current_epoch: ufelt = absorber_current_epoch.read();
-    absorber_absorption_epoch.write(current_apportion_id, current_epoch);
+    absorber_absorption_epoch.write(end_apportion_id, current_epoch);
 
     // Loop through assets and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
-    apportion_assets_loop(current_apportion_id, total_shares, assets_len, assets, asset_amts, TRUE);
+    apportion_assets_loop(end_apportion_id, total_shares, assets_len, assets, asset_amts, TRUE);
 
     // Emit `Gain` event
     Gain.emit(assets_len, assets, asset_amts_len, asset_amts, total_shares, current_epoch);
@@ -1017,8 +1017,8 @@ func get_apportioned_assets_for_provider_internal{
 }(
     provider: address,
     provision: Provision,
-    provided_apportion_id: ufelt,
-    current_apportion_id: ufelt,
+    start_apportion_id: ufelt,
+    end_apportion_id: ufelt,
     is_absorption: bool,
 ) -> (assets_len: ufelt, assets: address*, asset_amts: ufelt*) {
     alloc_locals;
@@ -1030,7 +1030,7 @@ func get_apportioned_assets_for_provider_internal{
         return (0, asset_amts, asset_amts);
     }
 
-    if (current_apportion_id == provided_apportion_id) {
+    if (end_apportion_id == start_apportion_id) {
         return (0, asset_amts, asset_amts);
     }
 
@@ -1040,8 +1040,8 @@ func get_apportioned_assets_for_provider_internal{
 
         get_apportioned_assets_for_provider_outer_loop(
             provision,
-            provided_apportion_id,
-            current_apportion_id,
+            start_apportion_id,
+            end_apportion_id,
             assets_len,
             0,
             assets,
@@ -1056,8 +1056,8 @@ func get_apportioned_assets_for_provider_internal{
 
         get_apportioned_assets_for_provider_outer_loop(
             provision,
-            provided_apportion_id,
-            current_apportion_id,
+            start_apportion_id,
+            end_apportion_id,
             assets_len,
             0,
             assets,
@@ -1069,7 +1069,7 @@ func get_apportioned_assets_for_provider_internal{
     }
 }
 
-// Outer loop iterating over yangs
+// Outer loop iterating over an asset (yang or reward)
 // Since we can only write to an array once, we need to compute
 // the total amount to transfer for a given asset across all apportion IDs.
 // `apportion_id` is either an absorption ID or a blessing ID
@@ -1078,8 +1078,8 @@ func get_apportioned_assets_for_provider_outer_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     provision: Provision,
-    last_apportion_id: ufelt,
-    current_apportion_id: ufelt,
+    start_apportion_id: ufelt,
+    end_apportion_id: ufelt,
     asset_count: ufelt,
     asset_idx: ufelt,
     assets: address*,
@@ -1096,8 +1096,8 @@ func get_apportioned_assets_for_provider_outer_loop{
     let asset_amt: ufelt = get_apportioned_assets_for_provider_inner_loop(
         provision.shares,
         provision.epoch,
-        last_apportion_id,
-        current_apportion_id,
+        start_apportion_id,
+        end_apportion_id,
         asset,
         0,
         is_absorption,
@@ -1107,8 +1107,8 @@ func get_apportioned_assets_for_provider_outer_loop{
 
     return get_apportioned_assets_for_provider_outer_loop(
         provision,
-        last_apportion_id,
-        current_apportion_id,
+        start_apportion_id,
+        end_apportion_id,
         asset_count,
         asset_idx + 1,
         assets,
@@ -1119,7 +1119,7 @@ func get_apportioned_assets_for_provider_outer_loop{
 
 // `apportion_id` is either an absorption ID or a blessing ID
 // Inner loop iterating over apportion IDs starting from the ID right after the last apportion ID tracked
-// for a provider up to the latest apportion ID, for a given asset.
+// for a provider up to the latest apportion ID, for a given asset (yang or reward).
 // We need to iterate from the last apportion ID upwards to the current apportion ID in order to take
 // into account the conversion rate of shares from epoch to epoch.
 func get_apportioned_assets_for_provider_inner_loop{
