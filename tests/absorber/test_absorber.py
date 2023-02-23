@@ -303,7 +303,7 @@ async def funded_absorber_providers(shrine, shrine_feeds, abbot, absorber, steth
 async def first_epoch_first_provider(shrine, absorber, funded_absorber_providers):
     provider = PROVIDER_1
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
-    provider_yin_amt = from_uint(provider_yin_amt_uint) // 2
+    provider_yin_amt = int(from_uint(provider_yin_amt_uint) / Decimal("3.5"))
 
     tx = await absorber.provide(provider_yin_amt).execute(caller_address=provider)
     return tx, provider_yin_amt
@@ -1026,8 +1026,8 @@ async def test_provide_after_threshold_absorption(
     """
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
-    2. Absorption occurs; yin per share falls below threshold (`update`)
-    3. Provider 2 provides
+    2. Absorption occurs; yin per share falls below threshold (`update`), provider 1 receives 1 round of rewards
+    3. Provider 2 provides, no rewards
     4. Provider 1 withdraws
     """
     first_provider = PROVIDER_1
@@ -1102,15 +1102,15 @@ async def test_provide_after_threshold_absorption(
     for asset, before_bal, blessed_amt_wad in zip(
         reward_tokens, before_first_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
-        after_threshold_rewards_perc = from_wad(before_first_provider_info.shares) / from_wad(before_total_shares_wad)
+        after_threshold_rewards_perc = expected_converted_shares / from_wad(before_total_shares_wad)
 
         # Provider 1 should receive 1 full round of blessings in the old epoch, and
         # 2 partial rounds of blessings in the new epoch
-        expected_bless_amt = (Decimal("1") + 2 * after_threshold_rewards_perc) * from_wad(blessed_amt_wad)
+        expected_bless_amt = (Decimal("2") + 1 * after_threshold_rewards_perc) * from_wad(blessed_amt_wad)
 
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(first_provider).execute()).result.balance))
-        # Relax error margin due to loss of precision
-        error_margin = Decimal("1")
+        # Relax error margin due to loss of precision from the small amount of converted shares in new epoch
+        error_margin = Decimal("0.01")
         assert_equalish(after_provider_asset_bal, before_bal + expected_bless_amt, error_margin)
 
         assert_event_emitted(
@@ -1136,10 +1136,10 @@ async def test_reap_different_epochs(
     """
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
-    2. Entire absorber's balance is used for an absorption (`update`)
-    3. Provider 2 provides
-    4. Entire absorber's balance is used for an absorption
-    5. Provider 1 and 2 reaps.
+    2. Entire absorber's balance is used for an absorption (`update`), provider 1 receives 1 round of rewards
+    3. Provider 2 provides, no rewards are distributed.
+    4. Entire absorber's balance is used for an absorption, provider 2 receives 1 round of rewards
+    5. Provider 1 and 2 reaps, no rewards are distributed each call.
        Provider 1 should receive assets from first update.
        Provider 2 should receive assets from second update.
     """
@@ -1269,9 +1269,10 @@ async def test_multi_user_reap_same_epoch_single_absorption(
 ):
     """
     Sequence of events:
-    1. Providers 1 and 2 provide (`first_epoch_first_provider`, `first_epoch_second_provider`)
-    2. Absorption happens (`update`)
-    3. Providers 1 and 2 reaps
+    1. Provider 1 provides (`first_epoch_first_provider`)
+    2. Provider 2 provides (`first_epoch_second_provider`), provider 1 receives 1 round of rewards
+    3. Absorption happens (`update`), providers share 1 round of rewards
+    4. Providers 1 and 2 reaps, providers share 1 round of rewards if absorber is not drained
     """
     absorber = absorber_both
 
@@ -1298,7 +1299,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     for provider, percentage, before_absorbed_bals, before_reward_bals in zip(
         providers, provided_perc, before_providers_absorbed_bals, before_providers_reward_bals
     ):
-        # Step 3: Providers 1 and 2 reaps
+        # Step 4: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
         # Rewards are distributed only if there are shares in current epoch
@@ -1369,11 +1370,12 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 ):
     """
     Sequence of events:
-    1. Provider 1 provides (`first_epoch_first_provider`)
-    2. Partial absorption happens (`update`)
-    3. Provider 2 provides
-    4. Partial absorption happens
-    5. Providers 1 and 2 reaps
+    1. Provider 1 provides (`first_epoch_first_provider`).
+    2. Partial absorption happens (`update`), provider 1 receives 1 round of rewards.
+    3. Provider 2 provides, provider 1 receives 1 round of rewards.
+    4. Partial absorption happens, providers share 1 round of rewards.
+    5. Provider 1 reaps, providers share 1 round of rewards
+    6. Provider 2 reaps, providers share 1 round of rewards
     """
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
@@ -1418,7 +1420,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     for provider, percentage, remaining_yin, before_absorbed_bals, before_reward_bals in zip(
         providers, provided_perc, providers_remaining_yin, before_providers_absorbed_bals, before_providers_reward_bals
     ):
-        # Step 5: Providers 1 and 2 reaps
+        # Steps 5 and 6: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
         assert_event_emitted(
@@ -1458,10 +1460,10 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         expected_remaining_yin = remaining_yin - (percentage * from_wad(second_update_burn_amt_wad))
         assert_equalish(max_withdrawable_yin_amt, expected_remaining_yin)
 
-        expected_reward_multiplier = (expected_blessing_id - 1) * percentage
-        # First provider gets a full round of rewards when second provider first provides
+        expected_reward_multiplier = (expected_blessing_id - 2) * percentage
+        # First provider gets 2 rounds of rewards
         if provider == PROVIDER_1:
-            expected_reward_multiplier += Decimal("1")
+            expected_reward_multiplier += Decimal("2")
 
         for asset, before_reward_bal, blessed_amt_wad in zip(
             reward_tokens, before_reward_bals, expected_rewards_assets_amts
