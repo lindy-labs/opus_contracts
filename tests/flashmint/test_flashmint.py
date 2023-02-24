@@ -2,10 +2,10 @@ import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.roles import ShrineRoles
 from tests.utils import (
     MAX_UINT256,
     SHRINE_OWNER,
+    SHRINE_ROLE_FOR_FLASHMINT,
     assert_event_emitted,
     compile_contract,
     from_uint,
@@ -19,7 +19,7 @@ async def flashmint(starknet, shrine) -> StarknetContract:
     contract = compile_contract("contracts/flashmint/flashmint.cairo")
     flashmint = await starknet.deploy(contract_class=contract, constructor_calldata=[shrine.contract_address])
 
-    await shrine.grant_role(ShrineRoles.FLASH_MINT, flashmint.contract_address).execute(caller_address=SHRINE_OWNER)
+    await shrine.grant_role(SHRINE_ROLE_FOR_FLASHMINT, flashmint.contract_address).execute(caller_address=SHRINE_OWNER)
 
     return flashmint
 
@@ -42,7 +42,7 @@ async def test_flashFee_unsupported_token(flashmint):
         await flashmint.flashFee(0xDEADCA7, to_uint(3000)).execute()
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_maxFlashLoan(flashmint, shrine):
     total_yin_uint = (await shrine.totalSupply().execute()).result.total_supply
@@ -60,7 +60,7 @@ async def test_maxFlashLoan_unsupported_token(flashmint):
     assert (await flashmint.maxFlashLoan(0xDEADCA7).execute()).result.amount == (0, 0)
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_flashLoan(flashmint, shrine, flash_minter):
     mintooor = str_to_felt("mintooor")
@@ -96,14 +96,14 @@ async def test_flashLoan(flashmint, shrine, flash_minter):
     assert (await shrine.balanceOf(mintooor).execute()).result.balance == initial_balance
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_flashLoan_asking_too_much(flashmint, shrine):
     with pytest.raises(StarkException, match="Flashmint: Amount exceeds maximum allowed mint limit"):
         await flashmint.flashLoan(0xC0FFEE, shrine.contract_address, MAX_UINT256, []).execute()
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_flashLoan_incorrect_callback_return(flashmint, shrine, flash_minter):
     mint_amount = (await flashmint.maxFlashLoan(shrine.contract_address).execute()).result.amount
@@ -114,7 +114,7 @@ async def test_flashLoan_incorrect_callback_return(flashmint, shrine, flash_mint
         ).execute()
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_flashLoan_trying_to_steal(flashmint, shrine, flash_minter):
     mint_amount = (await flashmint.maxFlashLoan(shrine.contract_address).execute()).result.amount
@@ -125,7 +125,7 @@ async def test_flashLoan_trying_to_steal(flashmint, shrine, flash_minter):
         ).execute()
 
 
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_flashLoan_not_reentrant(flashmint, shrine, flash_minter):
     mint_amount = (await flashmint.maxFlashLoan(shrine.contract_address).execute()).result.amount

@@ -50,6 +50,7 @@ from tests.utils import (
     estimate_gas,
     from_wad,
     get_block_timestamp,
+    get_contract_code_with_addition,
     get_contract_code_with_replacement,
     max_approve,
     set_block_timestamp,
@@ -210,6 +211,19 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
         },
     )
 
+    # Function to simulate accrued interest and fees by increasing the system debt while
+    # minted yin stays constant
+    additional_code = """
+@external
+func increase_total_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
+    let current_total: wad = shrine_total_debt.read();
+    let new_total: wad = WadRay.unsigned_add(current_total, amount);
+    shrine_total_debt.write(new_total);
+    return ();
+}
+    """
+
+    shrine_code = get_contract_code_with_addition(shrine_code, additional_code)
     shrine_contract = compile_code(shrine_code)
 
     shrine = await starknet.deploy(
@@ -235,9 +249,9 @@ async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
-        await shrine.add_yang(YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), 0, to_ray(YANGS[i]["rate"])).execute(
-            caller_address=SHRINE_OWNER
-        )
+        await shrine.add_yang(
+            YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), 0, to_ray(YANGS[i]["rate"])
+        ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
 
@@ -276,7 +290,7 @@ async def shrine_deposit(shrine) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def shrine_forge(shrine, shrine_deposit) -> StarknetCallInfo:
+async def shrine_forge_trove1(shrine, shrine_deposit) -> StarknetCallInfo:
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
     return forge
 
@@ -435,28 +449,6 @@ async def wbtc_gate(starknet, sentinel, shrine_deploy, wbtc_token, gates) -> Sta
 @pytest.fixture
 async def yang_gates(steth_gate, doge_gate, wbtc_gate) -> tuple[StarknetContract]:
     return steth_gate, doge_gate, wbtc_gate
-
-
-#
-# Yin
-#
-
-
-@pytest.fixture
-async def yin(starknet, shrine) -> StarknetContract:
-
-    # Deploying the yin contract
-    yin_contract = compile_contract("contracts/yin/yin.cairo")
-    deployed_yin = await starknet.deploy(
-        contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
-    )
-
-    # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine
-    roles = ShrineRoles.MOVE_YIN + ShrineRoles.FLASH_MINT
-    await shrine.grant_role(roles, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return deployed_yin
 
 
 #

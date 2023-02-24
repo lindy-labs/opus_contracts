@@ -11,6 +11,7 @@ from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
     BAD_GUY,
+    FALSE,
     MAX_UINT256,
     SHRINE_OWNER,
     TIME_INTERVAL,
@@ -193,6 +194,20 @@ async def absorber(absorber_deploy):
 
 
 @pytest.fixture
+async def absorber_killed(absorber):
+    await absorber.kill().execute(caller_address=ABSORBER_OWNER)
+    return absorber
+
+
+@pytest.fixture
+def absorber_both(request) -> StarknetContract:
+    """
+    Wrapper fixture to pass the regular and killed instances of absorber to `pytest.parametrize`.
+    """
+    return request.getfixturevalue(request.param)
+
+
+@pytest.fixture
 async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[list[int]]:
     # Creating the price feeds
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
@@ -318,6 +333,12 @@ async def test_absorber_setup(shrine, absorber):
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
 
+    is_live = (await absorber.get_live().execute()).result.is_live
+    assert is_live == TRUE
+
+    admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
+
 
 @pytest.mark.asyncio
 async def test_set_purger(shrine, absorber):
@@ -338,6 +359,13 @@ async def test_set_purger(shrine, absorber):
 
     new_purger_allowance = (await shrine.allowance(absorber.contract_address, new_purger).execute()).result.allowance
     assert new_purger_allowance == MAX_UINT256
+
+
+@pytest.mark.asyncio
+async def test_set_purger_unauthorized_fail(shrine, absorber):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_PURGER}"):
+        new_purger = NEW_MOCK_PURGER
+        await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -400,10 +428,13 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
 
 
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_update(shrine, absorber, update, yangs, yang_tokens):
+async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
+    absorber = absorber_both
+
     tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
 
@@ -445,10 +476,13 @@ async def test_update(shrine, absorber, update, yangs, yang_tokens):
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
 
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_reap(shrine, absorber, update, yangs, yang_tokens):
+async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
+    absorber = absorber_both
+
     provider = PROVIDER_1
 
     _, _, _, _, _, assets, asset_amts, asset_amts_dec = update
@@ -463,7 +497,7 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
         assert_equalish(adjusted_expected, adjusted_actual, error_margin)
 
     # Fetch user balances before `reap`
-    before_provider_asset_bals = (await get_token_balances(yangs, yang_tokens, [provider]))[0]
+    before_provider_asset_bals = (await get_token_balances(yang_tokens, [provider]))[0]
     before_provider_last_absorption = (
         await absorber.get_provider_last_absorption(provider).execute()
     ).result.absorption_id
@@ -494,11 +528,14 @@ async def test_reap(shrine, absorber, update, yangs, yang_tokens):
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_remove(shrine, absorber, update, yangs, yang_tokens, percentage_to_remove):
+async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove):
+    absorber = absorber_both
+
     provider = PROVIDER_1
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
@@ -665,11 +702,11 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
-@pytest.mark.parametrize("skip_second_asset", [True, False])  # Test asset not involved in absorption
+@pytest.mark.parametrize("skipped_asset_idx", [None, 0, 1, 2])  # Test asset not involved in absorption
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_reap_different_epochs(
-    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skip_second_asset
+    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skipped_asset_idx
 ):
     """
     Sequence of events:
@@ -703,10 +740,12 @@ async def test_reap_different_epochs(
     assert second_provider_last_absorption == expected_last_absorption
 
     # Step 4: Absorber is fully drained
-    asset_addresses, asset_amts, asset_amts_dec = second_update_assets
-    if skip_second_asset is True:
-        asset_amts[1] = 0
-        asset_amts_dec[1] = Decimal("0")
+    asset_addresses, asset_amts_orig, asset_amts_dec_orig = second_update_assets
+    asset_amts = asset_amts_orig.copy()
+    asset_amts_dec = asset_amts_dec_orig.copy()
+    if skipped_asset_idx is not None:
+        asset_amts[skipped_asset_idx] = 0
+        asset_amts_dec[skipped_asset_idx] = Decimal("0")
 
     await simulate_update(
         shrine,
@@ -729,11 +768,10 @@ async def test_reap_different_epochs(
     assert total_shares == 0
 
     providers = [first_provider, second_provider]
-    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+    before_provider_bals = await get_token_balances(yang_tokens, providers)
     absorbed_amts_arrs = [first_absorbed_amts_dec, asset_amts_dec]
 
     for provider, before_bals, absorbed_amts in zip(providers, before_provider_bals, absorbed_amts_arrs):
-
         absorbed = (await absorber.preview_reap(provider).execute()).result
         assert absorbed.assets == asset_addresses
         for asset_info, adjusted_expected, actual in zip(yangs, absorbed_amts, absorbed.asset_amts):
@@ -747,16 +785,11 @@ async def test_reap_different_epochs(
         # Step 5: Provider 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
-        for asset, asset_info, before_bal, absorbed_amt in zip(yang_tokens, yangs, before_bals, absorbed_amts):
-            if asset == yang_tokens[1] and skip_second_asset is True:
+        for idx, (asset, asset_info, before_bal, absorbed_amt) in enumerate(
+            zip(yang_tokens, yangs, before_bals, absorbed_amts)
+        ):
+            if provider == second_provider and skipped_asset_idx is not None and idx == skipped_asset_idx:
                 continue
-
-            assert_event_emitted(
-                tx,
-                asset.contract_address,
-                "Transfer",
-                lambda d: d[:2] == [absorber.contract_address, provider],
-            )
 
             after_bal = from_fixed_point(
                 from_uint((await asset.balanceOf(provider).execute()).result.balance),
@@ -767,11 +800,17 @@ async def test_reap_different_epochs(
             error_margin = custom_error_margin(asset_info.decimals // 2 - 1)
             assert_equalish(after_bal, before_bal + absorbed_amt, error_margin)
 
+            assert_event_emitted(
+                tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
+            )
 
+
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
+@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
-    shrine, absorber, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
+    shrine, absorber_both, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
 ):
     """
     Sequence of events:
@@ -779,6 +818,8 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     2. Absorption happens (`update`)
     3. Providers 1 and 2 reaps
     """
+    absorber = absorber_both
+
     _, _, _, _, _, asset_addresses, _, absorbed_amts_dec = update
     asset_count = len(asset_addresses)
 
@@ -790,7 +831,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     total_provided_amt = first_provider_amt + second_provider_amt
 
     providers = [PROVIDER_1, PROVIDER_2]
-    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+    before_provider_bals = await get_token_balances(yang_tokens, providers)
 
     provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
     for provider, percentage, before_bals in zip(providers, provided_perc, before_provider_bals):
@@ -865,7 +906,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 
     providers = [first_provider, second_provider]
     providers_remaining_yin = [first_provider_amt, second_provider_amt]
-    before_provider_bals = await get_token_balances(yangs, yang_tokens, providers)
+    before_provider_bals = await get_token_balances(yang_tokens, providers)
 
     provided_perc = [amt / total_provided_amt for amt in providers_remaining_yin]
     for provider, percentage, remaining_yin, before_bals in zip(
@@ -991,3 +1032,24 @@ async def test_set_purger_zero_address_fail(absorber_deploy):
     absorber = absorber_deploy
     with pytest.raises(StarkException, match="Absorber: Purger address cannot be zero"):
         await absorber.set_purger(ZERO_ADDRESS).execute(caller_address=ABSORBER_OWNER)
+
+
+@pytest.mark.asyncio
+async def test_kill(absorber):
+    tx = await absorber.kill().execute(caller_address=ABSORBER_OWNER)
+
+    assert_event_emitted(tx, absorber.contract_address, "Killed")
+
+    is_live = (await absorber.get_live().execute()).result.is_live
+    assert is_live == FALSE
+
+    provider = PROVIDER_1
+    provide_amt = 1
+    with pytest.raises(StarkException, match="Absorber: Absorber is not live"):
+        await absorber.provide(provide_amt).execute(caller_address=provider)
+
+
+@pytest.mark.asyncio
+async def test_kill_unauthorized_fail(absorber):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.KILL}"):
+        await absorber.kill().execute(caller_address=BAD_GUY)

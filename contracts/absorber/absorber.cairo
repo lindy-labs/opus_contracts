@@ -55,6 +55,10 @@ func absorber_sentinel() -> (sentinel: address) {
 func absorber_shrine() -> (shrine: address) {
 }
 
+@storage_var
+func absorber_live() -> (is_live: bool) {
+}
+
 // Epoch starts from 0.
 // Both shares and absorptions are tied to an epoch.
 // The epoch is incremented when the amount of yin per share drops below the threshold.
@@ -149,6 +153,10 @@ func Gain(
 }
 
 @event
+func Killed() {
+}
+
+@event
 func Compensate(
     recipient: address,
     assets_len: ufelt,
@@ -163,12 +171,15 @@ func Compensate(
 //
 
 @constructor
-func constructor{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    admin: address, shrine: address, sentinel: address
-) {
+func constructor{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(admin: address, shrine: address, sentinel: address) {
     AccessControl.initializer(admin);
+    AccessControl._grant_role(AbsorberRoles.DEFAULT_ABSORBER_ADMIN_ROLE, admin);
+
     absorber_shrine.write(shrine);
     absorber_sentinel.write(sentinel);
+    absorber_live.write(TRUE);
     return ();
 }
 
@@ -240,6 +251,13 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     return (info,);
 }
 
+@view
+func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    is_live: bool
+) {
+    return absorber_live.read();
+}
+
 //
 // View
 //
@@ -282,10 +300,12 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 //
 
 @external
-func set_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(purger: address) {
+func set_purger{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(purger: address) {
     alloc_locals;
 
-    AccessControl.assert_admin();
+    AccessControl.assert_has_role(AbsorberRoles.SET_PURGER);
 
     with_attr error_message("Absorber: Purger address cannot be zero") {
         assert_not_zero(purger);
@@ -319,6 +339,8 @@ func set_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 @external
 func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
+
+    assert_live();
 
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -523,6 +545,17 @@ func update{
 }
 
 @external
+func kill{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}() {
+    AccessControl.assert_has_role(AbsorberRoles.KILL);
+    absorber_live.write(FALSE);
+    Killed.emit();
+
+    return ();
+}
+
+@external
 func compensate{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(
@@ -653,7 +686,7 @@ func convert_epoch_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
     let epoch_conversion_rate: ray = absorber_epoch_share_conversion_rate.read(start_epoch);
 
-    // `rmul` of a wad an a ray returns a wad
+    // `rmul` of a wad and a ray returns a wad
     let new_shares: wad = WadRay.rmul(start_shares, epoch_conversion_rate);
 
     return convert_epoch_shares(start_epoch + 1, end_epoch, new_shares);
@@ -888,5 +921,14 @@ func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     let asset_amt_uint: Uint256 = WadRay.to_uint(asset_amt);
     IERC20.transfer(asset_address, recipient, asset_amt_uint);
 
+    return ();
+}
+
+func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    // Check system is live
+    let (is_live: bool) = absorber_live.read();
+    with_attr error_message("Absorber: Absorber is not live") {
+        assert is_live = TRUE;
+    }
     return ();
 }

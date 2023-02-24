@@ -100,10 +100,10 @@ namespace IShrine {
     func redistribute(trove_id: ufelt) {
     }
 
-    func start_flash_mint(receiver: address, amount: wad) {
+    func inject(receiver: address, amount: wad) {
     }
 
-    func end_flash_mint(receiver: address, amount: wad) {
+    func eject(receiver: address, amount: wad) {
     }
 
     //

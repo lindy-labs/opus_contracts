@@ -16,6 +16,7 @@ from starkware.starknet.services.api.feeder_gateway.response_objects import Func
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
+from starkware.starkware_utils.error_handling import StarkException
 
 from tests.roles import GateRoles, SentinelRoles, ShrineRoles
 
@@ -97,6 +98,7 @@ BAD_GUY = str_to_felt("bad guy")
 GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
 SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
 SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
+SHRINE_ROLE_FOR_FLASHMINT = ShrineRoles.INJECT + ShrineRoles.EJECT
 
 # Troves
 TROVE_1 = 1
@@ -445,7 +447,6 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 
 
 async def get_token_balances(
-    tokens_info: tuple[YangConfig],
     tokens: tuple[StarknetContract],
     addresses: list[int],
 ) -> list[list[Decimal]]:
@@ -454,8 +455,6 @@ async def get_token_balances(
 
     Arguments
     ---------
-    tokens_info: tuple[YangConfig]
-        Ordered tuple of YangConfig for the tokens
     tokens: tuple[StarknetContract]
         Ordered tuple of token contract instances for the tokens
     addresses: list[int]
@@ -468,10 +467,11 @@ async def get_token_balances(
     ret = []
     for address in addresses:
         address_bals = []
-        for token, token_info in zip(tokens, tokens_info):
+        for token in tokens:
+            decimals = (await token.decimals().execute()).result.decimals
             bal = from_fixed_point(
                 from_uint((await token.balanceOf(address).execute()).result.balance),
-                token_info.decimals,
+                decimals,
             )
             address_bals.append(bal)
 
@@ -542,3 +542,11 @@ def estimate_gas_inner(call_info: FunctionInvocation):
         sum_gas += estimate_gas_inner(call)
 
     return sum_gas
+
+
+def is_starknet_error(err, *args):
+    """
+    Filter function to be passed to `flaky` to determine if a failed test should be retried.
+    Returns True if the failure is due to a `StarkException`.
+    """
+    return issubclass(err[0], StarkException)

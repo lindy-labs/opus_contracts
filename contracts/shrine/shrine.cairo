@@ -841,7 +841,7 @@ func withdraw{
     return ();
 }
 
-// Mint a specified amount of synthetic for a Trove
+// Mint a specified amount of synthetic and attribute the debt to a Trove
 @external
 func forge{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -910,7 +910,7 @@ func forge{
     return ();
 }
 
-// Repay a specified amount of synthetic for a Trove
+// Repay a specified amount of synthetic and deattribute the debt from a Trove
 @external
 func melt{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
@@ -1012,13 +1012,14 @@ func redistribute{
     return ();
 }
 
+// Mint a specified amount of synthetic without attributing the debt to a Trove
 @external
-func start_flash_mint{
+func inject{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(receiver: address, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
+    AccessControl.assert_has_role(ShrineRoles.INJECT);
 
     with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -1030,16 +1031,18 @@ func start_flash_mint{
     return ();
 }
 
+// Repay a specified amount of synthetic without deattributing the debt from a Trove
 @external
-func end_flash_mint{
+func eject{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(receiver: address, amount: wad) {
     alloc_locals;
 
-    AccessControl.assert_has_role(ShrineRoles.FLASH_MINT);
+    AccessControl.assert_has_role(ShrineRoles.EJECT);
 
-    // skipping amount validation because it already had to
-    // pass validation in start_flash_loan
+    with_attr error_message("Shrine: Value of `amount` ({amount}) is out of bounds") {
+        WadRay.assert_valid_unsigned(amount);
+    }
 
     // Update balances
     melt_internal(receiver, amount);
