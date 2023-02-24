@@ -846,18 +846,60 @@ async def test_reap_pass(
         )
 
         expected_blessings_count += 1
+    else:
+        expected_epoch = 1
+        after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
+        assert after_provider_info.epoch == expected_epoch
+        assert after_provider_info.shares == 0
 
+    after_provider_reward_bals = []
     # Check provider 1 receives all rewards
     for asset, before_bal, blessed_amt_wad in zip(
         reward_tokens, before_provider_reward_asset_bals, expected_rewards_assets_amts
     ):
-        assert_event_emitted(
-            tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
-        )
+        asset_address = asset.contract_address
+
+        assert_event_emitted(tx, asset_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider])
 
         blessed_amt = from_wad(expected_blessings_count * blessed_amt_wad)
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
         assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
+
+        after_provider_reward_bals.append(after_provider_asset_bal)
+
+        # Check provider's cumulative is updated
+        current_cumulative = (
+            await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+        ).result.info.asset_amt_per_share
+        provider_cumulative = (
+            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+        ).result.cumulative
+        assert provider_cumulative == current_cumulative
+
+    # Assert that provider does not receive rewards twice
+    if drain_perc < Decimal("1"):
+        await absorber.reap().execute(caller_address=provider)
+
+        for asset, after_bal, blessed_amt_wad in zip(
+            reward_tokens, after_provider_reward_bals, expected_rewards_assets_amts
+        ):
+            blessed_amt = from_wad(blessed_amt_wad)
+            assert_equalish(
+                from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance)), after_bal + blessed_amt
+            )
+
+            # Check provider's cumulative is updated
+            current_cumulative = (
+                await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+            ).result.info.asset_amt_per_share
+            provider_cumulative = (
+                await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+            ).result.cumulative
+            assert provider_cumulative == current_cumulative
+
+    else:
+        with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
+            await absorber.reap().execute(caller_address=provider)
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
@@ -933,6 +975,7 @@ async def test_remove(
     )
 
     # Assert `Invoke` is emitted if absorber is not completely drained
+    # Otherwise, check that user provision is updated
     if percentage_drained < Decimal("1"):
         expected_rewards_count = 2
         expected_invoke_epoch = before_provider_info.epoch
@@ -955,6 +998,7 @@ async def test_remove(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
 
+    # Check rewards
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
 
@@ -1489,13 +1533,13 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 @pytest.mark.asyncio
 async def test_non_provider_fail(shrine, absorber):
     provider = NON_PROVIDER
-    with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
+    with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
         await absorber.remove(0).execute(caller_address=provider)
 
-    with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
+    with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
         await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
-    with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
+    with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
         await absorber.reap().execute(caller_address=provider)
 
     removable_yin = (await absorber.preview_remove(provider).execute()).result.amount
