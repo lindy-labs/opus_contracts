@@ -393,10 +393,16 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         provider, provision, provider_last_absorption_id, current_absorption_id
     );
 
+    // Get all rewards
+    let rewards_count: ufelt = absorber_rewards_count.read();
+    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
+
     let current_epoch: ufelt = absorber_current_epoch.read();
     let (
         blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: ufelt*
-    ) = get_accumulated_rewards_for_provider_internal(provider, provision, current_epoch);
+    ) = get_accumulated_rewards_for_provider_internal(
+        provider, provision, current_epoch, rewards_count, reward_assets
+    );
 
     return (
         absorbed_assets_len,
@@ -951,16 +957,20 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     );
     transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
-    // Loop over absorbed assets and transfer
+    // Get all rewards
+    let rewards_count: ufelt = absorber_rewards_count.read();
+    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
+
+    // Loop over accumulated rewards and transfer
     let (
         blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: ufelt*
-    ) = get_accumulated_rewards_for_provider_internal(provider, provision, current_epoch);
+    ) = get_accumulated_rewards_for_provider_internal(
+        provider, provision, current_epoch, rewards_count, reward_assets
+    );
     transfer_assets(provider, blessed_assets_len, blessed_assets, blessed_asset_amts);
 
     // Update provider's rewards cumulative
-    update_provider_cumulative_rewards_loop(
-        provider, current_epoch, 0, blessed_assets_len, blessed_assets
-    );
+    update_provider_cumulative_rewards_loop(provider, current_epoch, rewards_count, reward_assets);
 
     Reap.emit(
         provider,
@@ -1291,13 +1301,15 @@ func receive_blessing{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 }
 
 // Helper function to get all reward token amounts for a provider
-// If `should_update` is set to TRUE, the provider's cumulative amount for reward tokens
-// will be updated to the current epoch.
 func get_accumulated_rewards_for_provider_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(provider: address, provision: Provision, current_epoch: ufelt) -> (
-    assets_len: ufelt, assets: address*, asset_amts: ufelt*
-) {
+}(
+    provider: address,
+    provision: Provision,
+    current_epoch: ufelt,
+    rewards_count: ufelt,
+    assets: address*,
+) -> (assets_len: ufelt, assets: address*, asset_amts: ufelt*) {
     alloc_locals;
 
     let (asset_amts: ufelt*) = alloc();
@@ -1306,11 +1318,6 @@ func get_accumulated_rewards_for_provider_internal{
     if (provision.shares == 0) {
         return (0, asset_amts, asset_amts);
     }
-
-    // Get rewards
-    let rewards_count: ufelt = absorber_rewards_count.read();
-    let (_, assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
-
     // Loop over rewards, calculate provider's share and write to asset_amts
     get_accumulated_rewards_for_provider_outer_loop(
         provider, provision, current_epoch, 0, rewards_count, assets, asset_amts
@@ -1335,9 +1342,11 @@ func get_accumulated_rewards_for_provider_outer_loop{
         return ();
     }
 
+    let asset: address = [assets];
     let asset_amt: ufelt = get_accumulated_rewards_for_provider_inner_loop(
-        provider, provision.shares, provision.epoch, provision.epoch, current_epoch, [assets], 0
+        provider, provision.shares, provision.epoch, provision.epoch, current_epoch, asset, 0
     );
+
     assert [asset_amts] = asset_amt;
 
     return get_accumulated_rewards_for_provider_outer_loop(
@@ -1364,11 +1373,11 @@ func get_provider_cumulative_reward_in_epoch{
         let provider_epoch_reward_cumulative: ufelt = absorber_provider_reward_cumulative.read(
             provider, asset
         );
-        let accumulated: ufelt = WadRay.unsigned_sub(
+        let cumulative_diff: ufelt = WadRay.unsigned_sub(
             epoch_reward_info.asset_amt_per_share, provider_epoch_reward_cumulative
         );
 
-        return (epoch_reward_info.asset_amt_per_share, accumulated);
+        return (epoch_reward_info.asset_amt_per_share, cumulative_diff);
     } else {
         return (epoch_reward_info.asset_amt_per_share, epoch_reward_info.asset_amt_per_share);
     }
@@ -1424,14 +1433,8 @@ func get_accumulated_rewards_for_provider_inner_loop{
 
 func update_provider_cumulative_rewards_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(
-    provider: address,
-    current_epoch: ufelt,
-    current_rewards_idx: ufelt,
-    end_rewards_idx: ufelt,
-    assets: address*,
-) {
-    if (current_rewards_idx == end_rewards_idx) {
+}(provider: address, current_epoch: ufelt, rewards_count: ufelt, assets: address*) {
+    if (rewards_count == 0) {
         return ();
     }
 
@@ -1442,7 +1445,7 @@ func update_provider_cumulative_rewards_loop{
     );
 
     return update_provider_cumulative_rewards_loop(
-        provider, current_epoch, current_rewards_idx + 1, end_rewards_idx, assets + 1
+        provider, current_epoch, rewards_count - 1, assets + 1
     );
 }
 
