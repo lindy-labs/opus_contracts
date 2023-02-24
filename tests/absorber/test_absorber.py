@@ -670,7 +670,7 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, expecte
 
     for asset_address, blessed_amt_wad in zip(expected_rewards_assets, expected_rewards_assets_amts):
         asset_blessing_info = (
-            await absorber.get_asset_blessing_info(before_epoch, asset_address).execute()
+            await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
         ).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / before_total_shares
@@ -761,7 +761,7 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
 
     for asset_address, blessed_amt_wad in zip(expected_rewards_assets, expected_rewards_assets_amts):
         asset_blessing_info = (
-            await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
         ).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / from_wad(before_total_shares_wad)
@@ -779,7 +779,7 @@ async def test_reap_pass(
 
     provider = PROVIDER_1
 
-    _, drain_perc, _, _, _, assets, absorbed_asset_amts, absorbed_asset_amts_dec = update
+    _, drain_perc, _, before_epoch, _, assets, absorbed_asset_amts, absorbed_asset_amts_dec = update
     asset_count = len(assets)
 
     expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
@@ -869,7 +869,7 @@ async def test_reap_pass(
 
         # Check provider's cumulative is updated
         current_cumulative = (
-            await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
             await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -890,7 +890,7 @@ async def test_reap_pass(
 
             # Check provider's cumulative is updated
             current_cumulative = (
-                await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+                await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
                 await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -900,6 +900,16 @@ async def test_reap_pass(
     else:
         with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
             await absorber.reap().execute(caller_address=provider)
+
+        # Check that reward error has been transferred if epoch is incremented
+        for asset_address in expected_rewards_assets:
+            before_epoch_error = (
+                await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
+            ).result.info.error
+            after_epoch_error = (
+                await absorber.get_reward_info_by_epoch(asset_address, before_epoch + 1).execute()
+            ).result.info.error
+            assert before_epoch_error == after_epoch_error
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
@@ -1015,7 +1025,7 @@ async def test_remove(
 
         # Check provider's cumulative is updated
         current_cumulative = (
-            await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
             await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1639,12 +1649,12 @@ async def test_invoke_inactive_reward(absorber, aura_token, vested_aura_token, v
     )
 
     aura_distribution = (
-        await absorber.get_asset_blessing_info(aura_token.contract_address, blessing_id).execute()
+        await absorber.get_reward_info_by_epoch(aura_token.contract_address, blessing_id).execute()
     ).result.info
     assert aura_distribution.asset_amt_per_share > 0
 
     vested_aura_distribution = (
-        await absorber.get_asset_blessing_info(vested_aura_token.contract_address, blessing_id).execute()
+        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, blessing_id).execute()
     ).result.info
     assert vested_aura_distribution.asset_amt_per_share == 0
 
@@ -1743,12 +1753,12 @@ async def test_invoke_pass_with_depleted_active_reward(
     )
 
     aura_distribution = (
-        await absorber.get_asset_blessing_info(aura_token.contract_address, after_blessing_id).execute()
+        await absorber.get_reward_info_by_epoch(aura_token.contract_address, after_blessing_id).execute()
     ).result.info
     assert aura_distribution.asset_amt_per_share > 0
 
     vested_aura_distribution = (
-        await absorber.get_asset_blessing_info(vested_aura_token.contract_address, after_blessing_id).execute()
+        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, after_blessing_id).execute()
     ).result.info
     assert vested_aura_distribution.asset_amt_per_share == 0
 
