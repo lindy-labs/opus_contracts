@@ -1008,10 +1008,10 @@ async def test_remove(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
 
-    # Check rewards
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
 
+    # Check rewards
     for asset, before_bal, blessed_amt_wad in zip(
         reward_tokens, before_provider_reward_bals, expected_rewards_assets_amts
     ):
@@ -1042,11 +1042,12 @@ async def test_provide_second_epoch(
     # Epoch and total shares are already checked in `test_update` so we do not repeat here
     provider = PROVIDER_1
 
+    _, _, _, before_epoch, _, _, _, _ = update
     _, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     yin_amt_to_provide_wad = from_uint(yin_amt_to_provide_uint)
-    before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
+    before_provider_reward_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     tx = await absorber.provide(yin_amt_to_provide_wad).execute(caller_address=provider)
 
@@ -1077,16 +1078,36 @@ async def test_provide_second_epoch(
     expected_blessings_count = 1
     # Rewards from first epoch's deposit should be transferred
     for asset, before_bal, blessed_amt_wad in zip(
-        reward_tokens, before_provider_reward_asset_bals, expected_rewards_assets_amts
+        reward_tokens, before_provider_reward_bals, expected_rewards_assets_amts
     ):
-        expected_blessed_amt = from_wad(blessed_amt_wad * expected_blessings_count)
+        asset_address = asset.contract_address
 
+        assert_event_emitted(tx, asset_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider])
+
+        blessed_amt = from_wad(expected_blessings_count * blessed_amt_wad)
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
-        assert_equalish(after_provider_asset_bal, before_bal + expected_blessed_amt)
+        assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
 
-        assert_event_emitted(
-            tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
-        )
+        # Check provider's cumulative is updated
+        current_cumulative = (
+            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+        ).result.info.asset_amt_per_share
+        provider_cumulative = (
+            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+        ).result.cumulative
+        assert provider_cumulative == current_cumulative
+
+        # Check that error has been transferred to new epoch, and no rewards were distributed
+        # when provider 2 provided
+        before_epoch_error = (
+            await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
+        ).result.info.error
+        after_epoch_reward_info = (
+            await absorber.get_reward_info_by_epoch(asset_address, before_epoch + 1).execute()
+        ).result.info
+
+        assert before_epoch_error == after_epoch_reward_info.error
+        assert after_epoch_reward_info.asset_amt_per_share == 0
 
 
 @pytest.mark.parametrize(
@@ -1104,12 +1125,12 @@ async def test_provide_after_threshold_absorption(
     1. Provider 1 provides (`first_epoch_first_provider`)
     2. Absorption occurs; yin per share falls below threshold (`update`), provider 1 receives 1 round of rewards
     3. Provider 2 provides, provider 1 receives 1 round of rewards
-    4. Provider 1 withdraws
+    4. Provider 1 withdraws, both providers share 1 round of rewards
     """
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    tx, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
+    tx, _, remaining_absorber_yin_wad, before_epoch, total_shares_wad, _, _, _ = update
     expected_rewards_assets, expected_rewards_assets_amts = expected_rewards_per_blessing
 
     # Assert epoch is updated
@@ -1155,7 +1176,7 @@ async def test_provide_after_threshold_absorption(
     # absorber after absorption past the threshold
     before_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
     before_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
-    before_first_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [first_provider]))[0]
+    before_first_provider_bals = (await get_token_balances(reward_tokens, [first_provider]))[0]
     before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
     # Step 4: Provider 1 withdraws
@@ -1177,23 +1198,37 @@ async def test_provide_after_threshold_absorption(
     )
     assert_equalish(removed_yin, expected_converted_shares)
 
+    first_provider_after_threshold_rewards_perc = expected_converted_shares / from_wad(before_total_shares_wad)
     for asset, before_bal, blessed_amt_wad in zip(
-        reward_tokens, before_first_provider_reward_asset_bals, expected_rewards_assets_amts
+        reward_tokens, before_first_provider_bals, expected_rewards_assets_amts
     ):
-        after_threshold_rewards_perc = expected_converted_shares / from_wad(before_total_shares_wad)
+        asset_address = asset.contract_address
+
+        assert_event_emitted(
+            tx, asset_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, first_provider]
+        )
 
         # Provider 1 should receive 1 full round of blessings in the old epoch, and
         # 2 partial rounds of blessings in the new epoch
-        expected_bless_amt = (Decimal("2") + 1 * after_threshold_rewards_perc) * from_wad(blessed_amt_wad)
-
+        expected_bless_amt = (Decimal("2") + first_provider_after_threshold_rewards_perc) * from_wad(blessed_amt_wad)
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(first_provider).execute()).result.balance))
-        # Relax error margin due to loss of precision from the small amount of converted shares in new epoch
+
+        # Relax error margin due to precision loss from shares conversion across epochs
         error_margin = Decimal("0.01")
         assert_equalish(after_provider_asset_bal, before_bal + expected_bless_amt, error_margin)
 
-        assert_event_emitted(
-            tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, first_provider]
-        )
+        # Check provider's cumulative is updated
+        current_cumulative = (
+            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+        ).result.info.asset_amt_per_share
+        provider_cumulative = (
+            await absorber.get_provider_cumulative_reward(first_provider, asset_address).execute()
+        ).result.cumulative
+        assert provider_cumulative == current_cumulative
+
+    # Provider 1 can no longer call reap
+    with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
+        await absorber.reap().execute(caller_address=first_provider)
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
@@ -1237,11 +1272,11 @@ async def test_reap_different_epochs(
     expected_epoch = 1
     assert second_provider_info.epoch == expected_epoch
 
-    second_provider_checkpoint = (
+    second_provider_last_absorption = (
         await absorber.get_provider_last_absorption(second_provider).execute()
     ).result.absorption_id
     expected_last_absorption = 1
-    assert second_provider_checkpoint.last_absorption_id == expected_last_absorption
+    assert second_provider_last_absorption == expected_last_absorption
 
     # Step 4: Absorber is fully drained
     asset_addresses, absorbed_asset_amts_orig, absorbed_asset_amts_dec_orig = second_update_assets
@@ -1316,15 +1351,29 @@ async def test_reap_different_epochs(
         for asset, before_reward_bal, blessed_amt_wad in zip(
             reward_tokens, before_reward_bals, expected_rewards_assets_amts
         ):
+            asset_address = asset.contract_address
+
+            assert_event_emitted(
+                tx, asset_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
+            )
+
             # Each provider should receive 1 round of rewards
             blessed_amt = from_wad(blessed_amt_wad)
 
             after_reward_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
             assert_equalish(after_reward_bal, before_reward_bal + blessed_amt)
 
-            assert_event_emitted(
-                tx, asset.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
-            )
+            # Check provider's cumulative is updated
+            current_cumulative = (
+                await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            ).result.info.asset_amt_per_share
+            provider_cumulative = (
+                await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+            ).result.cumulative
+            assert provider_cumulative == current_cumulative
+
+        after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
+        assert after_provider_info.epoch == expected_epoch
 
 
 @pytest.mark.usefixtures(
