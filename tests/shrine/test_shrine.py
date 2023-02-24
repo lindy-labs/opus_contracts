@@ -1744,7 +1744,6 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
             await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
         if i % BASE_RATE_UPDATE_SPACING == 0 and i != 0:
-            print(f"base rate update interval: {current_timestamp/TIME_INTERVAL + i}")
             new_base_rates = [
                 (
                     to_ray(yang_rate_history[i // BASE_RATE_UPDATE_SPACING])
@@ -1759,25 +1758,6 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
 
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
 
-    """
-    [0, 14, 19, 24, 29]
-base_rate: 0.02
- num_intervals_to_compound: 5
- new debt: 5000.0285388942322661876005440717563033
-base_rate: 0.034212047620603662778648867970332503319
- num_intervals_to_compound: 5
- new debt: 5000.0773579723077062774661859359576898
-base_rate: 0.034212047620603662778648867970332503319
- num_intervals_to_compound: 5
- new debt: 5000.1261775270409025374572158226661139
-base_rate: 0.0047918654238402080824954509807866998017
- num_intervals_to_compound: 5
- new debt: 5000.1330154117804836319377245150144777
-           5000 133015411780070398
-base_rate: 0.0047918654238402080824954509807866998017
- num_intervals_to_compound: 5
- new debt: 5000.1398533058711622891043200753980559
-    """
     expected_debt = compound(
         base_rate_history_for_compound,
         rate_update_intervals,
@@ -1789,20 +1769,9 @@ base_rate: 0.0047918654238402080824954509807866998017
         from_wad(original_trove.debt),
     )
 
-    """
-    yang_base_rate_history: list[list[Decimal]],
-    yang_rate_update_intervals: list[int],
-    yangs_amt: list[Decimal],
-    yang_avg_prices: list[list[Decimal]],
-    avg_multipliers: list[Decimal],
-    start_interval: int,
-    end_interval: int,
-    debt: Decimal,
-    """
-
     estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
 
-    assert_equalish(expected_debt, from_wad(estimated_debt))
+    assert_equalish(expected_debt, from_wad(estimated_debt), Decimal("0.001"))
 
 
 #

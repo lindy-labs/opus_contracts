@@ -1382,7 +1382,6 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, current_debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> wad {
     alloc_locals;
-    %{ print(f"start interval: {ids.start_interval}, end interval: {ids.end_interval}") %}
     let (trove_last_rate_idx: ufelt) = shrine_last_trove_rate_idx.read(trove_id);
     let (latest_rate_idx: ufelt) = shrine_rates_latest_idx.read();
 
@@ -1418,12 +1417,10 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         let avg_base_rate: ray = WadRay.wunsigned_div(weighted_rate_sum, total_avg_trove_value);  // wad division of a ray by a wad yields a ray
         let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
         let avg_rate: ray = WadRay.rmul(avg_base_rate, avg_multiplier);
-
         let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
         let compounded_scalar: wad = exp(WadRay.rmul(avg_rate, t));
         let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
 
-        %{ print(f"start_interval: {ids.start_interval}, end_interval: {ids.end_interval}, compounded_debt: {ids.compounded_debt}\n") %}
         return compounded_debt;
     } else {
         let next_trove_idx: ufelt = trove_last_rate_idx + 1;
@@ -1435,12 +1432,10 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         let avg_base_rate: ray = WadRay.wunsigned_div(weighted_rate_sum, total_avg_trove_value);  // wad division of a ray by a wad yields a ray
         let avg_multiplier: ray = get_avg_multiplier(start_interval, next_trove_idx_interval);
         let avg_rate: ray = WadRay.rmul(avg_base_rate, avg_multiplier);
-
         let t: wad = (next_trove_idx_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
         let compounded_scalar: wad = exp(WadRay.rmul(avg_rate, t));
         let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
 
-        %{ print(f"start_interval: {ids.start_interval}, next_trove_idx_interval: {ids.next_trove_idx_interval}, compounded_debt: {ids.compounded_debt}\n") %}
         return compound_inner_loop(
             trove_id,
             compounded_debt,
