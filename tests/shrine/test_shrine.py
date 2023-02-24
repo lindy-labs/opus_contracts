@@ -1,3 +1,4 @@
+import random
 from decimal import ROUND_DOWN, Decimal
 from math import exp
 
@@ -96,22 +97,22 @@ def compound(
     assert yang_rate_update_intervals[0] <= start_interval
     assert yang_rate_update_intervals[-1] <= end_interval
 
+    assert len(yangs_amt) == len(yang_avg_prices)
+
     # Setting first update interval to start interval for cleaner iteration in the for loop
     yang_rate_update_intervals[0] = start_interval
 
     for i in range(len(yang_base_rate_history[0])):
         # Getting the base rate
-        yang_value_weighted_rate_sum = 0
-        total_collateral_value = 0
+        weighted_rate_sum = 0
+        total_yang_value = 0
         for j in range(len(yangs_amt)):
             yang_value = yangs_amt[j] * yang_avg_prices[j][i]
-            total_collateral_value += yang_value
-
+            total_yang_value += yang_value
             weighted_rate = yang_base_rate_history[j][i] * yang_value
-            yang_value_weighted_rate_sum += weighted_rate
+            weighted_rate_sum += weighted_rate
 
-        base_rate = yang_value_weighted_rate_sum / total_collateral_value
-
+        base_rate = weighted_rate_sum / total_yang_value
         rate = base_rate * avg_multipliers[i]
 
         if i < len(yang_base_rate_history[0]) - 1:
@@ -1277,7 +1278,7 @@ async def test_charge_scenario_1b(starknet, shrine, update_feeds_intermittent):
 
 @pytest.mark.parametrize("intervals_before_last_charge", [2, 4, 7, 10])
 @pytest.mark.parametrize("intervals_after_start", [1, 5, 10, 50])
-@pytest.mark.usefixtures("estimate")
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge, intervals_after_start):
     """
@@ -1338,7 +1339,7 @@ async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge,
 
 
 @pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
-@pytest.mark.usefixtures("estimate")
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_charge_scenario_3(starknet, shrine, interval_count):
     """
@@ -1396,7 +1397,7 @@ async def test_charge_scenario_3(starknet, shrine, interval_count):
 
 @pytest.mark.parametrize("last_updated_interval_after_start", [2, 5, 10])
 @pytest.mark.parametrize("intervals_after_last_update", [1, 5, 10, 50])
-@pytest.mark.usefixtures("estimate")
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_start, intervals_after_last_update):
     """
@@ -1478,7 +1479,7 @@ async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_s
 @pytest.mark.parametrize("missed_intervals_before_start", [2, 4, 7, 10])
 @pytest.mark.parametrize("last_updated_interval_after_start", [2, 4, 7, 10])
 @pytest.mark.parametrize("intervals_after_last_update", [1, 5, 10, 50])
-@pytest.mark.usefixtures("estimate")
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_charge_scenario_5(
     starknet, shrine, missed_intervals_before_start, last_updated_interval_after_start, intervals_after_last_update
@@ -1566,7 +1567,7 @@ async def test_charge_scenario_5(
 
 @pytest.mark.parametrize("missed_intervals_before_start", [2, 4, 7, 10])
 @pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
-@pytest.mark.usefixtures("estimate")
+@pytest.mark.usefixtures("shrine_forge")
 @pytest.mark.asyncio
 async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start, interval_count):
     """
@@ -1640,6 +1641,168 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
     # Check average price
     avg_price = from_wad((await shrine.get_avg_price(YANG1_ID, start_interval, end_interval).execute()).result.price)
     assert_equalish(avg_price, expected_avg_price)
+
+
+@pytest.mark.parametrize("num_yangs_deposited", [1, 2, 3, 4])
+@pytest.mark.parametrize("num_base_rate_updates", [1, 2, 4])
+@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.asyncio
+async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base_rate_updates):
+    """
+    Tests for `charge` with multiple base rate updates and varying
+    amounts of yangs deposited into the trove
+    """
+    random.seed(69)  # Seeding the random functions for repeatable tests
+
+    base_rate_history = []  # Will store base rate history of all yangs
+    base_rate_history_for_compound = (
+        []
+    )  # Base rate history, but in the format the `compound` test helper function requires
+    for i in range(num_yangs_deposited):
+        # Base rate history of individual yang
+        # Initializing with the initial base rates is necessary in order for the
+        # `compound` function to work properly.
+        yang_base_rate_history = [YANGS[i]["rate"]]
+        yang_base_rate_history_for_compound = [YANGS[i]["rate"]]
+        for j in range(num_base_rate_updates):
+            """
+            This if-else block sets the base rates to -1 in the following alternating pattern:
+            O X O X O X
+            X O X O X O
+            O X O X O X
+
+            where X's are -1s. This is done to test that `update_rates` correctly sets the new base rate
+            to the previous base rate if a yang's new given base rate is -1.
+            """
+
+            if (i % 2 == 0 and (j + 1) % 2 == 0) or ((i + 1) % 2 == 0 and j % 2 == 0):
+                yang_base_rate_history.append(Decimal("-1"))
+                yang_base_rate_history_for_compound.append(yang_base_rate_history_for_compound[-1])
+            else:
+                next_base_rate = Decimal(random.uniform(0, 5)) / Decimal("100")
+                yang_base_rate_history.append(next_base_rate)
+                yang_base_rate_history_for_compound.append(next_base_rate)
+
+        base_rate_history.append(yang_base_rate_history)
+        base_rate_history_for_compound.append(yang_base_rate_history_for_compound)
+
+    # Unused yangs also need a base rate history (for the call to `update_rates`)
+    for i in range(num_yangs_deposited, len(YANGS)):
+        base_rate_history.append([YANGS[i]["rate"]] + ([Decimal("-1")] * num_base_rate_updates))
+
+    # The number of intervals actually between two base rates will be this number minus one
+    BASE_RATE_UPDATE_SPACING = 5
+    # The number of time periods where the base rates remain constant.
+    # We add one because there is also the time period between
+    # the base rates set in `add_yang` and the first base rate update
+    num_eras = num_base_rate_updates + 1
+    current_timestamp = get_block_timestamp(starknet)
+    start_interval = get_interval(current_timestamp)
+    end_interval = start_interval + BASE_RATE_UPDATE_SPACING * num_eras
+    charging_period = end_interval - start_interval
+    # Generating the list of intervals at which the base rates will be updated (needed for `compound`)
+    # Adding zero as the first interval since that's when the base rates were first added in `add_yang`
+    rate_update_intervals = [0] + [
+        start_interval + (i + 1) * BASE_RATE_UPDATE_SPACING for i in list(range(num_base_rate_updates))
+    ]
+
+    avg_multipliers = [1] * (num_eras)
+
+    price_feeds = []
+    avg_prices = []
+    for i in range(num_yangs_deposited):
+        current_price = from_wad((await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price)
+        price_feeds.append(create_feed(current_price, charging_period, MAX_PRICE_CHANGE))
+
+        # Calculating the average price over each era (set of intervals where base rates are constant)
+        yang_avg_prices = []
+        yang_price_feed = list(map(from_wad, price_feeds[i]))
+        for j in range(num_eras):
+            yang_avg_prices.append(
+                sum(
+                    yang_price_feed[
+                        j * BASE_RATE_UPDATE_SPACING : j * BASE_RATE_UPDATE_SPACING + BASE_RATE_UPDATE_SPACING
+                    ]
+                )
+                / Decimal(BASE_RATE_UPDATE_SPACING)
+            )
+        avg_prices.append(yang_avg_prices)
+
+    # Depositing additional yangs into the trove
+    for i in range(1, num_yangs_deposited):
+        await shrine.deposit(YANGS[i]["address"], TROVE_1, to_wad(INITIAL_DEPOSIT)).execute(caller_address=SHRINE_OWNER)
+
+    # Pushing the price and multiplier feeds on-chain, updating base rates at the correct intervals
+    for i in range(charging_period):
+        # Incrementing the timestamp by an interval
+        set_block_timestamp(starknet, current_timestamp + i * TIME_INTERVAL)
+        if i != 0:
+            for j in range(num_yangs_deposited):
+                await shrine.advance(YANGS[j]["address"], price_feeds[j][i]).execute(caller_address=SHRINE_OWNER)
+
+        if i % BASE_RATE_UPDATE_SPACING == 0:
+            await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
+
+        if i % BASE_RATE_UPDATE_SPACING == 0 and i != 0:
+            print(f"base rate update interval: {current_timestamp/TIME_INTERVAL + i}")
+            new_base_rates = [
+                (
+                    to_ray(yang_rate_history[i // BASE_RATE_UPDATE_SPACING])
+                    if yang_rate_history[i // BASE_RATE_UPDATE_SPACING] != Decimal("-1")
+                    else -1
+                )
+                for yang_rate_history in base_rate_history
+            ]
+            await shrine.update_rates(new_base_rates).execute(caller_address=SHRINE_OWNER)
+
+    set_block_timestamp(starknet, end_interval * TIME_INTERVAL)
+
+    original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+
+    """
+    [0, 14, 19, 24, 29]
+base_rate: 0.02
+ num_intervals_to_compound: 5
+ new debt: 5000.0285388942322661876005440717563033
+base_rate: 0.034212047620603662778648867970332503319
+ num_intervals_to_compound: 5
+ new debt: 5000.0773579723077062774661859359576898
+base_rate: 0.034212047620603662778648867970332503319
+ num_intervals_to_compound: 5
+ new debt: 5000.1261775270409025374572158226661139
+base_rate: 0.0047918654238402080824954509807866998017
+ num_intervals_to_compound: 5
+ new debt: 5000.1330154117804836319377245150144777
+           5000 133015411780070398
+base_rate: 0.0047918654238402080824954509807866998017
+ num_intervals_to_compound: 5
+ new debt: 5000.1398533058711622891043200753980559
+    """
+    expected_debt = compound(
+        base_rate_history_for_compound,
+        rate_update_intervals,
+        [Decimal(INITIAL_DEPOSIT)] * (num_yangs_deposited),
+        avg_prices,
+        avg_multipliers,
+        start_interval,
+        end_interval,
+        from_wad(original_trove.debt),
+    )
+
+    """
+    yang_base_rate_history: list[list[Decimal]],
+    yang_rate_update_intervals: list[int],
+    yangs_amt: list[Decimal],
+    yang_avg_prices: list[list[Decimal]],
+    avg_multipliers: list[Decimal],
+    start_interval: int,
+    end_interval: int,
+    debt: Decimal,
+    """
+
+    estimated_debt = (await shrine.get_trove_info(TROVE_1).execute()).result.debt
+
+    assert_equalish(expected_debt, from_wad(estimated_debt))
 
 
 #
