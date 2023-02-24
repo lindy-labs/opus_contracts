@@ -183,7 +183,14 @@ func preview_exit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 @external
 func add_yang{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(yang: address, yang_asset_max: ufelt, yang_threshold: ray, yang_price: wad, yang_rate: ray, gate: address) {
+}(
+    yang: address,
+    yang_asset_max: ufelt,
+    yang_threshold: ray,
+    yang_price: wad,
+    yang_rate: ray,
+    gate: address,
+) {
     AccessControl.assert_has_role(SentinelRoles.ADD_YANG);
 
     with_attr error_message("Sentinel: Address cannot be zero") {
