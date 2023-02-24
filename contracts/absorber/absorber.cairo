@@ -335,6 +335,14 @@ func get_asset_blessing_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
 }
 
 @view
+func get_provider_cumulative_reward{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(provider: address, reward: address) -> (cumulative: ufelt) {
+    let cumulative: ufelt = absorber_provider_reward_cumulative.read(provider, reward);
+    return (cumulative,);
+}
+
+@view
 func get_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     is_live: bool
 ) {
@@ -485,11 +493,12 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
         WadRay.assert_valid_unsigned(amount);
     }
 
+    let current_epoch: ufelt = absorber_current_epoch.read();
     let provider: address = get_caller_address();
 
     // Withdraw absorbed collateral before updating shares
     let provision: Provision = get_provision(provider);
-    reap_internal(provider, provision);
+    reap_internal(provider, provision, current_epoch);
 
     // Calculate number of shares to issue to provider and to add to total for current epoch
     // The two values deviate only when it is the first provision of an epoch and
@@ -497,7 +506,6 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     let (new_provision_shares: wad, issued_shares: wad) = convert_to_shares(amount, FALSE);
 
     // If epoch has changed, convert shares in previous epoch to new epoch's shares
-    let current_epoch: ufelt = absorber_current_epoch.read();
     let converted_shares: wad = convert_epoch_shares(
         provision.epoch, current_epoch, provision.shares
     );
@@ -538,15 +546,16 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
     let provision: Provision = get_provision(provider);
 
     // Early termination if caller is not a provider
-    with_attr error_message("Absorber: Caller is not a provider") {
+    with_attr error_message("Absorber: Caller is not a provider in the current epoch") {
         assert_not_zero(provision.shares);
     }
 
+    let current_epoch: ufelt = absorber_current_epoch.read();
+
     // Withdraw absorbed collateral before updating shares
-    reap_internal(provider, provision);
+    reap_internal(provider, provision, current_epoch);
 
     // Fetch the shares for current epoch
-    let current_epoch: ufelt = absorber_current_epoch.read();
     let current_provider_shares: wad = convert_epoch_shares(
         provision.epoch, current_epoch, provision.shares
     );
@@ -609,11 +618,21 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
 
-    with_attr error_message("Absorber: Caller is not a provider") {
+    with_attr error_message("Absorber: Caller is not a provider in the current epoch") {
         assert_not_zero(provision.shares);
     }
 
-    reap_internal(provider, provision);
+    let current_epoch: ufelt = absorber_current_epoch.read();
+
+    reap_internal(provider, provision, current_epoch);
+
+    // Update provider's epoch and shares to current epoch's
+    // Epoch must be updated to prevent double counting of rewards
+    let current_provider_shares: wad = convert_epoch_shares(
+        provision.epoch, current_epoch, provision.shares
+    );
+    let new_provision: Provision = Provision(current_epoch, current_provider_shares);
+    set_provision(provider, new_provision);
 
     return ();
 }
@@ -906,13 +925,12 @@ func get_recent_asset_absorption_error{
 // Internal function to be called whenever a provider takes an action to ensure absorbed assets
 // are properly transferred to the provider before updating the provider's information
 func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address, provision: Provision
+    provider: address, provision: Provision, current_epoch: ufelt
 ) {
     alloc_locals;
 
     // Trigger issuance of rewards
-    let epoch: ufelt = absorber_current_epoch.read();
-    invoke(epoch);
+    invoke(current_epoch);
 
     let provider_last_absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -930,7 +948,6 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
     // Loop over absorbed assets and transfer
-    let current_epoch: ufelt = absorber_current_epoch.read();
     let (
         blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: ufelt*
     ) = get_rewards_for_provider_internal(provider, provision, current_epoch, TRUE);
@@ -1154,7 +1171,7 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 }
 
 // Helper function to trigger issuance of reward tokens and update rewards received
-func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(epoch: ufelt) {
+func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(current_epoch: ufelt) {
     alloc_locals;
 
     // Defer rewards until a provider deposits
@@ -1180,7 +1197,6 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(epo
     }
 
     // Loop through reward tokens and calculate amount entitled per share
-    let current_epoch: ufelt = absorber_current_epoch.read();
     receive_blessings_loop(
         current_epoch, total_shares, 0, active_rewards_count, assets, blessed_amts
     );
@@ -1221,8 +1237,8 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return invoke_loop(current_idx + 1, rewards_count, blessers + 1, blessed_amts + 1, has_rewards);
 }
 
-// Helper function to iterate over an array of rewards received from a blessing for updating
-// each provider's entitlement
+// Helper function to iterate over an array of rewards received from a blessing in a given epoch
+// and update the cumulative asset amount per share wad
 func receive_blessings_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     epoch: ufelt,
     total_shares: wad,
@@ -1266,6 +1282,9 @@ func receive_blessing{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     return ();
 }
 
+// Helper function to get all reward token amounts for a provider
+// If `should_update` is set to TRUE, the provider's cumulative amount for reward tokens
+// will be updated to the current epoch.
 func get_rewards_for_provider_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(provider: address, provision: Provision, current_epoch: ufelt, should_update: bool) -> (
