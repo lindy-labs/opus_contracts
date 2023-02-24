@@ -929,7 +929,7 @@ async def test_remove(
     before_provider_last_absorption = (
         await absorber.get_provider_last_absorption(provider).execute()
     ).result.absorption_id
-    before_provider_reward_asset_bals = (await get_token_balances(reward_tokens, [provider]))[0]
+    before_provider_reward_bals = (await get_token_balances(reward_tokens, [provider]))[0]
 
     before_absorber_yin_bal_wad = from_uint(
         (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
@@ -965,7 +965,7 @@ async def test_remove(
     after_provider_last_absorption = (
         await absorber.get_provider_last_absorption(provider).execute()
     ).result.absorption_id
-    assert after_provider_last_absorption == before_provider_last_absorption.last_absorption_id + 1
+    assert after_provider_last_absorption == before_provider_last_absorption + 1
 
     assert_event_emitted(
         tx,
@@ -1002,17 +1002,25 @@ async def test_remove(
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
 
-    for asset, asset_address, before_bal, blessed_amt_wad in zip(
-        reward_tokens, expected_rewards_assets, before_provider_reward_asset_bals, expected_rewards_assets_amts
+    for asset, before_bal, blessed_amt_wad in zip(
+        reward_tokens, before_provider_reward_bals, expected_rewards_assets_amts
     ):
-        blessed_amt = from_wad(blessed_amt_wad * expected_blessings_count)
+        asset_address = asset.contract_address
 
+        assert_event_emitted(tx, asset_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider])
+
+        blessed_amt = from_wad(expected_blessings_count * blessed_amt_wad)
         after_provider_asset_bal = from_wad(from_uint((await asset.balanceOf(provider).execute()).result.balance))
         assert_equalish(after_provider_asset_bal, before_bal + blessed_amt)
 
-        assert_event_emitted(
-            tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
-        )
+        # Check provider's cumulative is updated
+        current_cumulative = (
+            await absorber.get_asset_blessing_info(expected_epoch, asset_address).execute()
+        ).result.info.asset_amt_per_share
+        provider_cumulative = (
+            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+        ).result.cumulative
+        assert provider_cumulative == current_cumulative
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
