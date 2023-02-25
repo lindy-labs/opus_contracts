@@ -770,7 +770,7 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
         assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share)
 
         provider_cumulative = (
-            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+            await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
         ).result.cumulative
         current_cumulative = (
             await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
@@ -880,7 +880,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
             await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
-            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+            await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
         ).result.cumulative
         assert provider_cumulative == current_cumulative
 
@@ -913,7 +913,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
                 await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
-                await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+                await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
             ).result.cumulative
             assert provider_cumulative == current_cumulative
 
@@ -1031,7 +1031,7 @@ async def test_remove(
             await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
-            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+            await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
         ).result.cumulative
         assert provider_cumulative == current_cumulative
 
@@ -1092,7 +1092,7 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
             await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
-            await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+            await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
         ).result.cumulative
         assert provider_cumulative == current_cumulative
 
@@ -1217,7 +1217,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
             await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
-            await absorber.get_provider_cumulative_reward(first_provider, asset_address).execute()
+            await absorber.get_provider_reward_last_cumulative(first_provider, asset_address).execute()
         ).result.cumulative
         assert provider_cumulative == current_cumulative
 
@@ -1360,7 +1360,7 @@ async def test_reap_different_epochs(
                 await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
-                await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+                await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
             ).result.cumulative
             assert provider_cumulative == current_cumulative
 
@@ -1471,7 +1471,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
                 await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
-                await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+                await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
             ).result.cumulative
             assert provider_cumulative == current_cumulative
 
@@ -1619,7 +1619,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
                 await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
-                await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
+                await absorber.get_provider_reward_last_cumulative(provider, asset_address).execute()
             ).result.cumulative
             assert provider_cumulative == current_cumulative
 

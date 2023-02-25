@@ -40,7 +40,9 @@ namespace IAbsorber {
     func get_asset_reward_info(asset: address, epoch: ufelt) -> (info: AssetApportion) {
     }
 
-    func get_provider_cumulative_reward(provider: address, asset: address) -> (cumulative: ufelt) {
+    func get_provider_reward_last_cumulative(provider: address, asset: address) -> (
+        cumulative: ufelt
+    ) {
     }
 
     func get_rewards() -> (
