@@ -124,9 +124,9 @@ func absorber_reward_id(asset: address) -> (id: ufelt) {
 }
 
 // Mapping from a reward token ID to its Reward struct:
-// 1. the token address
-// 2. the vesting contract (blesser)
-// 3. a boolean indicating if the blesser should be called to trigger an issuance
+// 1. the ERC-20 token address
+// 2. the address of the vesting contract (blesser) implementing `IBlesser` for the ERC-20 token
+// 3. a boolean indicating if the blesser should be called
 @storage_var
 func absorber_rewards(idx: ufelt) -> (reward: Reward) {
 }
