@@ -1429,6 +1429,7 @@ func get_provider_reward_last_cumulative_diff{
 }
 
 // Update a provider's cumulative rewards to the given epoch
+// TODO: Can we update active rewards only?
 func update_provider_cumulative_rewards_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(provider: address, epoch: ufelt, rewards_count: ufelt, assets: address*) {
