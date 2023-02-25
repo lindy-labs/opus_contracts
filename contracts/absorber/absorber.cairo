@@ -171,10 +171,10 @@ func Reap(
     absorbed_assets: address*,
     absorbed_asset_amts_len: ufelt,
     absorbed_asset_amts: ufelt*,
-    blessed_assets_len: ufelt,
-    blessed_assets: address*,
-    blessed_asset_amts_len: wad,
-    blessed_asset_amts: wad*,
+    reward_assets_len: ufelt,
+    reward_assets: address*,
+    reward_asset_amts_len: wad,
+    reward_asset_amts: wad*,
 ) {
 }
 
@@ -376,10 +376,10 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     absorbed_assets: address*,
     absorbed_asset_amts_len: ufelt,
     absorbed_asset_amts: ufelt*,
-    blessed_assets_len: ufelt,
-    blessed_assets: address*,
-    blessed_asset_amts_len: wad,
-    blessed_asset_amts: wad*,
+    reward_assets_len: ufelt,
+    reward_assets: address*,
+    reward_asset_amts_len: wad,
+    reward_asset_amts: wad*,
 ) {
     alloc_locals;
 
@@ -399,7 +399,7 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
     let current_epoch: ufelt = absorber_current_epoch.read();
     let (
-        blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: ufelt*
+        reward_assets_len: ufelt, reward_assets: address*, reward_asset_amts: ufelt*
     ) = get_accumulated_rewards_for_provider_internal(
         provider, provision, current_epoch, rewards_count, reward_assets
     );
@@ -409,10 +409,10 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         absorbed_assets,
         absorbed_assets_len,
         absorbed_asset_amts,
-        blessed_assets_len,
-        blessed_assets,
-        blessed_assets_len,
-        blessed_asset_amts,
+        reward_assets_len,
+        reward_assets,
+        reward_assets_len,
+        reward_asset_amts,
     );
 }
 
@@ -963,13 +963,15 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
     // Loop over accumulated rewards and transfer
     let (
-        blessed_assets_len: ufelt, blessed_assets: address*, blessed_asset_amts: ufelt*
+        reward_assets_len: ufelt, reward_assets: address*, reward_asset_amts: ufelt*
     ) = get_accumulated_rewards_for_provider_internal(
         provider, provision, current_epoch, rewards_count, reward_assets
     );
-    transfer_assets(provider, blessed_assets_len, blessed_assets, blessed_asset_amts);
+    transfer_assets(provider, reward_assets_len, reward_assets, reward_asset_amts);
 
     // Update provider's rewards cumulative
+    // Array of reward of assets needs to be re-read from storage
+    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
     update_provider_cumulative_rewards_loop(provider, current_epoch, rewards_count, reward_assets);
 
     Reap.emit(
@@ -978,10 +980,10 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
         absorbed_assets,
         absorbed_assets_len,
         absorbed_asset_amts,
-        blessed_assets_len,
-        blessed_assets,
-        blessed_assets_len,
-        blessed_asset_amts,
+        reward_assets_len,
+        reward_assets,
+        reward_assets_len,
+        reward_asset_amts,
     );
 
     return ();
@@ -1434,6 +1436,8 @@ func get_accumulated_rewards_for_provider_inner_loop{
 func update_provider_cumulative_rewards_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(provider: address, current_epoch: ufelt, rewards_count: ufelt, assets: address*) {
+    alloc_locals;
+
     if (rewards_count == 0) {
         return ();
     }
