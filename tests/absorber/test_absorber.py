@@ -672,9 +672,7 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, blessin
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
     for asset_address, blessed_amt_wad in zip(reward_tokens_addresses, expected_rewards_amts):
-        asset_blessing_info = (
-            await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
-        ).result.info
+        asset_blessing_info = (await absorber.get_asset_reward_info(asset_address, before_epoch).execute()).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / before_total_shares
         assert_equalish(actual_asset_amt_per_share, expected_asset_amt_per_share)
@@ -765,7 +763,7 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
     for asset, blessed_amt_wad in zip(reward_tokens, expected_rewards_amts):
         asset_address = asset.contract_address
         asset_blessing_info = (
-            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info
         actual_asset_amt_per_share = from_wad(asset_blessing_info.asset_amt_per_share)
         expected_asset_amt_per_share = from_wad(blessed_amt_wad) / from_wad(before_total_shares_wad)
@@ -775,7 +773,7 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
             await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
         ).result.cumulative
         current_cumulative = (
-            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         assert provider_cumulative == current_cumulative
 
@@ -879,7 +877,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
 
         # Check provider's cumulative is updated
         current_cumulative = (
-            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
             await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -895,10 +893,10 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
         for asset in reward_tokens:
             asset_address = asset.contract_address
             before_epoch_error = (
-                await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
+                await absorber.get_asset_reward_info(asset_address, before_epoch).execute()
             ).result.info.error
             after_epoch_error = (
-                await absorber.get_reward_info_by_epoch(asset_address, before_epoch + 1).execute()
+                await absorber.get_asset_reward_info(asset_address, before_epoch + 1).execute()
             ).result.info.error
             assert before_epoch_error == after_epoch_error
     else:
@@ -912,7 +910,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
 
             # Check provider's cumulative is updated
             current_cumulative = (
-                await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+                await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
                 await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1030,7 +1028,7 @@ async def test_remove(
 
         # Check provider's cumulative is updated
         current_cumulative = (
-            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
             await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1091,7 +1089,7 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
 
         # Check provider's cumulative is updated
         current_cumulative = (
-            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
             await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1101,10 +1099,10 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
         # Check that error has been transferred to new epoch, and no rewards were distributed
         # when provider 2 provided
         before_epoch_error = (
-            await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, before_epoch).execute()
         ).result.info.error
         after_epoch_reward_info = (
-            await absorber.get_reward_info_by_epoch(asset_address, before_epoch + 1).execute()
+            await absorber.get_asset_reward_info(asset_address, before_epoch + 1).execute()
         ).result.info
 
         assert before_epoch_error == after_epoch_reward_info.error
@@ -1216,7 +1214,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
 
         # Check provider's cumulative is updated
         current_cumulative = (
-            await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         provider_cumulative = (
             await absorber.get_provider_cumulative_reward(first_provider, asset_address).execute()
@@ -1359,7 +1357,7 @@ async def test_reap_different_epochs(
 
             # Check provider's cumulative is updated
             current_cumulative = (
-                await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+                await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
                 await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1470,7 +1468,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
 
             # Check provider's cumulative is updated
             current_cumulative = (
-                await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+                await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
                 await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1489,10 +1487,10 @@ async def test_multi_user_reap_same_epoch_single_absorption(
             for asset in reward_tokens:
                 asset_address = asset.contract_address
                 before_epoch_error = (
-                    await absorber.get_reward_info_by_epoch(asset_address, before_epoch).execute()
+                    await absorber.get_asset_reward_info(asset_address, before_epoch).execute()
                 ).result.info.error
                 after_epoch_error = (
-                    await absorber.get_reward_info_by_epoch(asset_address, before_epoch + 1).execute()
+                    await absorber.get_asset_reward_info(asset_address, before_epoch + 1).execute()
                 ).result.info.error
                 assert before_epoch_error == after_epoch_error
 
@@ -1618,7 +1616,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 
             # Check provider's cumulative is updated
             current_cumulative = (
-                await absorber.get_reward_info_by_epoch(asset_address, expected_epoch).execute()
+                await absorber.get_asset_reward_info(asset_address, expected_epoch).execute()
             ).result.info.asset_amt_per_share
             provider_cumulative = (
                 await absorber.get_provider_cumulative_reward(provider, asset_address).execute()
@@ -1717,10 +1715,10 @@ async def test_invoke_inactive_reward(
 
     expected_epoch = 0
     before_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
     before_vested_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(vested_aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
 
     # Trigger an invoke
@@ -1741,10 +1739,10 @@ async def test_invoke_inactive_reward(
     )
 
     after_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
     after_vested_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(vested_aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
 
     assert after_aura_cumulative > before_aura_cumulative
@@ -1758,10 +1756,10 @@ async def test_invoke_inactive_reward(
     ).execute(caller_address=ABSORBER_OWNER)
 
     final_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
     final_vested_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(vested_aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
 
     assert final_aura_cumulative == after_aura_cumulative
@@ -1792,7 +1790,7 @@ async def test_invoke_zero_distribution_from_active_rewards(
     before_rewards_cumulative = []
     for asset in reward_tokens:
         cumulative = (
-            await absorber.get_reward_info_by_epoch(asset.contract_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset.contract_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         before_rewards_cumulative.append(cumulative)
 
@@ -1802,7 +1800,7 @@ async def test_invoke_zero_distribution_from_active_rewards(
     after_rewards_cumulative = []
     for asset in reward_tokens:
         cumulative = (
-            await absorber.get_reward_info_by_epoch(asset.contract_address, expected_epoch).execute()
+            await absorber.get_asset_reward_info(asset.contract_address, expected_epoch).execute()
         ).result.info.asset_amt_per_share
         after_rewards_cumulative.append(cumulative)
 
@@ -1830,10 +1828,10 @@ async def test_invoke_pass_with_depleted_active_reward(
 
     expected_epoch = 0
     before_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
     before_vested_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(vested_aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
 
     # Mint tokens to AURA's blesser contract
@@ -1857,10 +1855,10 @@ async def test_invoke_pass_with_depleted_active_reward(
     )
 
     after_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
     after_vested_aura_cumulative = (
-        await absorber.get_reward_info_by_epoch(vested_aura_token.contract_address, expected_epoch).execute()
+        await absorber.get_asset_reward_info(vested_aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
 
     assert after_aura_cumulative > before_aura_cumulative

@@ -22,13 +22,7 @@ namespace IAbsorber {
     func get_rewards_count() -> (count: ufelt) {
     }
 
-    func get_blessings_count() -> (count: ufelt) {
-    }
-
     func get_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
-    }
-
-    func get_blessing_epoch(blessing_id: ufelt) -> (epoch: ufelt) {
     }
 
     func get_total_shares_for_current_epoch() -> (total: wad) {
@@ -43,7 +37,10 @@ namespace IAbsorber {
     func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (info: AssetApportion) {
     }
 
-    func get_asset_blessing_info(asset: address, blessing_id: ufelt) -> (info: AssetApportion) {
+    func get_asset_reward_info(asset: address, epoch: ufelt) -> (info: AssetApportion) {
+    }
+
+    func get_provider_cumulative_reward(provider: address, asset: address) -> (cumulative: ufelt) {
     }
 
     func get_rewards() -> (
@@ -64,10 +61,10 @@ namespace IAbsorber {
         absorbed_assets: address*,
         absorbed_asset_amts_len: ufelt,
         absorbed_asset_amts: ufelt*,
-        blessed_assets_len: ufelt,
-        blessed_assets: address*,
-        blessed_asset_amts_len: ufelt,
-        blessed_asset_amts: ufelt*,
+        reward_assets_len: ufelt,
+        reward_assets: address*,
+        reward_asset_amts_len: ufelt,
+        reward_asset_amts: ufelt*,
     ) {
     }
 

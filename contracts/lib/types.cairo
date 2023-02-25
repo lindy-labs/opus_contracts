@@ -21,8 +21,8 @@ struct YangRedistribution {
 //
 
 struct AssetApportion {
-    asset_amt_per_share: wad,  // Amount of asset in its decimal precision per share wad
-    error: wad,  // Error to be added to next absorption
+    asset_amt_per_share: ufelt,  // Amount of asset in its decimal precision per share wad
+    error: ufelt,  // Error to be added to next absorption
 }
 
 struct Reward {
