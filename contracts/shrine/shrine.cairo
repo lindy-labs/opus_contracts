@@ -1379,6 +1379,10 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, current_debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> wad {
     alloc_locals;
+    // Saves gas and prevents bugs for troves with no yangs deposited
+    if (current_debt == 0) {
+        return 0;
+    }
     let (trove_last_rate_idx: ufelt) = shrine_trove_last_rate_idx.read(trove_id);
     let (latest_rate_idx: ufelt) = shrine_rates_latest_idx.read();
 
@@ -1408,10 +1412,13 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         let (weighted_rate_sum: ray, total_avg_trove_value: wad) = get_avg_rate_over_era(
             trove_id, start_interval, end_interval, latest_rate_idx, 0, 0, num_yangs
         );
+        // `total_avg_trove_value` cannot be zero because a trove with no yangs deposited
+        // cannot have any debt, meaning this code would never run (see `compound`)
         let avg_base_rate: ray = WadRay.wunsigned_div(weighted_rate_sum, total_avg_trove_value);  // wad division of a ray by a wad yields a ray
         let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
-        %{ print(f"avg_multiplier: {ids.avg_multiplier}, avg_base_rate: {ids.avg_base_rate}") %}
+
         let avg_rate: ray = WadRay.rmul(avg_base_rate, avg_multiplier);
+
         let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
         let compounded_scalar: wad = exp(WadRay.rmul(avg_rate, t));
         let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
@@ -1863,6 +1870,9 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     // If the last available multiplier for both start and end intervals are the same,
     // return that last available multiplier
     // This also catches `start_interval == end_interval`
+    %{ print(f"available_start_interval: {ids.available_start_interval}, available_end_interval: {ids.available_end_interval}") %}
+    %{ print(f"start_interval: {ids.start_interval}, end_interval: {ids.end_interval}") %}
+
     if (available_start_interval == available_end_interval) {
         return (start_multiplier,);
     }
