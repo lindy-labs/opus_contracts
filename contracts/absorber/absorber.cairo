@@ -132,8 +132,8 @@ func absorber_rewards(idx: ufelt) -> (reward: Reward) {
 }
 
 // Mapping from a reward token address and epoch to a packed struct of
-// 1. the cumulative amount of that reward per share wad in that epoch
-// 2. the rounding error from calculating (1) that is to be added to the next blessing
+// 1. the cumulative amount of that reward asset in its decimal precision per share wad in that epoch
+// 2. the rounding error from calculating (1) that is to be added to the next reward distribution
 @storage_var
 func absorber_reward_by_epoch(asset: address, epoch: ufelt) -> (info: packed) {
 }
@@ -1237,7 +1237,7 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(epo
 
 // Helper function to loop over vesting contracts and trigger an issuance of reward tokens
 // and update the amount distributed per share wad
-// Returns a boolean for whether the current loop of blessings has any rewards
+// Returns a boolean for whether the current round of blessings has any rewards
 func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     epoch: ufelt,
     total_shares: wad,
@@ -1429,7 +1429,9 @@ func get_provider_reward_last_cumulative_diff{
 }
 
 // Update a provider's cumulative rewards to the given epoch
-// TODO: Can we update active rewards only?
+// All rewards should be updated because an inactive reward may be set to active, receive a
+// distribution, and set to inactive again. If a provider's cumulative is not updated for this
+// reward, the provider can repeatedly claim the difference and drain the absorber.
 func update_provider_cumulative_rewards_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(provider: address, epoch: ufelt, rewards_count: ufelt, assets: address*) {

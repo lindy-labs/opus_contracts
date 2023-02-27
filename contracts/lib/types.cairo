@@ -20,6 +20,8 @@ struct YangRedistribution {
 // Absorber
 //
 
+// For absorptions, the `asset_amt_per_share` is tied to an absorption ID and is not changed once set.
+// For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
 struct AssetApportion {
     asset_amt_per_share: ufelt,  // Amount of asset in its decimal precision per share wad
     error: ufelt,  // Error to be added to next absorption
@@ -27,7 +29,7 @@ struct AssetApportion {
 
 struct Reward {
     asset: address,  // ERC20 address of token
-    blesser: address,  // Address of contract implementing `IBlesser` for distributing the token
+    blesser: address,  // Address of contract implementing `IBlesser` for distributing the token to the absorber
     is_active: bool,  // Whether the blesser (vesting contract) should be called
 }
 
