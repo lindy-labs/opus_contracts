@@ -1410,6 +1410,7 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         );
         let avg_base_rate: ray = WadRay.wunsigned_div(weighted_rate_sum, total_avg_trove_value);  // wad division of a ray by a wad yields a ray
         let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
+        %{ print(f"avg_multiplier: {ids.avg_multiplier}, avg_base_rate: {ids.avg_base_rate}") %}
         let avg_rate: ray = WadRay.rmul(avg_base_rate, avg_multiplier);
         let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
         let compounded_scalar: wad = exp(WadRay.rmul(avg_rate, t));
@@ -1473,7 +1474,6 @@ func get_avg_rate_over_era{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 
     // Early termination if this yang hasn't been deposited in the trove
     let yang_deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
-    %{ print(ids.yang_deposited) %}
     if (yang_deposited == 0) {
         return get_avg_rate_over_era(
             trove_id,
