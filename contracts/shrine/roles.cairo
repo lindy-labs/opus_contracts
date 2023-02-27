@@ -15,10 +15,10 @@ namespace ShrineRoles {
     const SEIZE = 2 ** 10;
     const SET_CEILING = 2 ** 11;
     const SET_MULTIPLIER = 2 ** 12;
-    const SET_THRESHOLD = 2 ** 13;
-    const SET_YANG_MAX = 2 ** 14;
-    const WITHDRAW = 2 ** 15;
-    const SET_RATES = 2 ** 16;
+    const SET_RATES = 2 ** 13;
+    const SET_THRESHOLD = 2 ** 14;
+    const SET_YANG_MAX = 2 ** 15;
+    const WITHDRAW = 2 ** 16;
 
     //
     // Constants

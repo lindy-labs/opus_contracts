@@ -53,7 +53,7 @@ class ShrineRoles(IntEnum):
     SEIZE = 2**10
     SET_CEILING = 2**11
     SET_MULTIPLIER = 2**12
-    SET_THRESHOLD = 2**13
-    SET_YANG_MAX = 2**14
-    WITHDRAW = 2**15
-    SET_RATES = 2**16
+    SET_RATES = 2**13
+    SET_THRESHOLD = 2**14
+    SET_YANG_MAX = 2**15
+    WITHDRAW = 2**16

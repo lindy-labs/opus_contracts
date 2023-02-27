@@ -2,14 +2,8 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import (
-    assert_le,
-    assert_nn_le,
-    assert_not_zero,
-    split_felt,
-    unsigned_div_rem,
-)
-from starkware.cairo.common.math_cmp import is_le, is_not_zero
+from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math_cmp import is_le, is_nn_le, is_not_zero
 from starkware.cairo.common.uint256 import (
     ALL_ONES,
     Uint256,
@@ -68,7 +62,7 @@ const RATE_BOUND3 = 9215 * 10 ** 23;  // 0.9215
 const ROUNDING_THRESHOLD = 10 ** 9;
 
 // Maximum interest rate a yang can have (ray)
-const MAX_YANG_RATE = 10 * 10 ** 25;  // 0.1 = 10%
+const MAX_YANG_RATE = 10 * WadRay.RAY_PERCENT;
 
 //
 // Events
@@ -218,12 +212,12 @@ func shrine_rates_intervals(idx: ufelt) -> (interval: ufelt) {
 
 // Keeps track of the interest rate of each yang at each index
 @storage_var
-func shrine_rates(yang_id: ufelt, idx: ufelt) -> (rate: ray) {
+func shrine_yang_rates(yang_id: ufelt, idx: ufelt) -> (rate: ray) {
 }
 
 // Keeps track of the last index at which each trove was updated
 @storage_var
-func shrine_last_trove_rate_idx(trove_id: ufelt) -> (idx: ufelt) {
+func shrine_trove_last_rate_idx(trove_id: ufelt) -> (idx: ufelt) {
 }
 
 // Liquidation threshold per yang (as LTV) - ray
@@ -405,7 +399,7 @@ func get_yang_rate{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     yang: address, idx: ufelt
 ) -> (rate: ray) {
     let (yang_id: ufelt) = shrine_yang_id.read(yang);
-    return shrine_rates.read(yang_id, idx);
+    return shrine_yang_rates.read(yang_id, idx);
 }
 
 @view
@@ -561,7 +555,7 @@ func add_yang{
 
     // Setting the base rate for the new yang
     let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
-    shrine_rates.write(yang_id, latest_idx, initial_rate);
+    shrine_yang_rates.write(yang_id, latest_idx, initial_rate);
 
     // Events
     YangAdded.emit(yang, yang_id, initial_price, initial_rate);
@@ -1302,18 +1296,18 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return ();
     }
 
-    if ([new_rates] == -1) {
-        let (prev_rate: ray) = shrine_rates.read(current_yang_id, new_idx - 1);
-        shrine_rates.write(current_yang_id, new_idx, prev_rate);
+    // If the given rate is within bounds, we set the yang's new rate to this rate
+    // Otherwise, we set the yang's new rate to its previous rate.
+    let rate_is_within_bounds: bool = is_nn_le([new_rates], MAX_YANG_RATE);
+
+    if (rate_is_within_bounds == FALSE) {
+        let (prev_rate: ray) = shrine_yang_rates.read(current_yang_id, new_idx - 1);
+        shrine_yang_rates.write(current_yang_id, new_idx, prev_rate);
         YangRateUpdated.emit(current_yang_id, prev_rate);
         update_rates_loop(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
         return ();
     } else {
-        with_attr error_message(
-                "Shrine: `new_rates` value of ({[new_rates]}) for `yang_id` ({current_yang_id}) is out of bounds") {
-            assert_nn_le([new_rates], MAX_YANG_RATE);
-        }
-        shrine_rates.write(current_yang_id, new_idx, [new_rates]);
+        shrine_yang_rates.write(current_yang_id, new_idx, [new_rates]);
         YangRateUpdated.emit(current_yang_id, [new_rates]);
         update_rates_loop(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
         return ();
@@ -1351,7 +1345,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 
     // Update trove's interest rate index
     let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
-    shrine_last_trove_rate_idx.write(trove_id, latest_idx);
+    shrine_trove_last_rate_idx.write(trove_id, latest_idx);
 
     // Get old system debt amount
     let (old_system_debt: wad) = shrine_total_debt.read();
@@ -1385,7 +1379,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, current_debt: wad, start_interval: ufelt, end_interval: ufelt
 ) -> wad {
     alloc_locals;
-    let (trove_last_rate_idx: ufelt) = shrine_last_trove_rate_idx.read(trove_id);
+    let (trove_last_rate_idx: ufelt) = shrine_trove_last_rate_idx.read(trove_id);
     let (latest_rate_idx: ufelt) = shrine_rates_latest_idx.read();
 
     return compound_inner_loop(
@@ -1398,9 +1392,6 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // P_0 = principal
 // r = nominal interest rate (what the interest rate would be if there was no compounding
 // t = time elapsed, in years
-
-// ******** TODO ***********
-// Check if start_interval and end_interval are included in the interest charged, and whether it makes sense
 func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt,
     current_debt: wad,
@@ -1426,33 +1417,44 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 
         return compounded_debt;
     } else {
-        let next_trove_idx: ufelt = trove_last_rate_idx + 1;
-        let (next_trove_idx_interval: ufelt) = shrine_rates_intervals.read(next_trove_idx);
+        let next_rate_update_idx: ufelt = trove_last_rate_idx + 1;
+        let (next_rate_update_idx_interval: ufelt) = shrine_rates_intervals.read(
+            next_rate_update_idx
+        );
 
         let (weighted_rate_sum: ray, total_avg_trove_value: wad) = get_avg_rate_over_era(
-            trove_id, start_interval, next_trove_idx_interval, trove_last_rate_idx, 0, 0, num_yangs
+            trove_id,
+            start_interval,
+            next_rate_update_idx_interval,
+            trove_last_rate_idx,
+            0,
+            0,
+            num_yangs,
         );
         let avg_base_rate: ray = WadRay.wunsigned_div(weighted_rate_sum, total_avg_trove_value);  // wad division of a ray by a wad yields a ray
-        let avg_multiplier: ray = get_avg_multiplier(start_interval, next_trove_idx_interval);
+        let avg_multiplier: ray = get_avg_multiplier(start_interval, next_rate_update_idx_interval);
         let avg_rate: ray = WadRay.rmul(avg_base_rate, avg_multiplier);
-        let t: wad = (next_trove_idx_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
+        let t: wad = (next_rate_update_idx_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula
         let compounded_scalar: wad = exp(WadRay.rmul(avg_rate, t));
         let compounded_debt: wad = WadRay.wmul(current_debt, compounded_scalar);
 
         return compound_inner_loop(
             trove_id,
             compounded_debt,
-            next_trove_idx_interval,
+            next_rate_update_idx_interval,
             end_interval,
-            next_trove_idx,
+            next_rate_update_idx,
             latest_rate_idx,
         );
     }
 }
 
 // Returns the average interest rate charged to a trove from `start_interval` to `end_interval`,
-// Assumes that `rate_idx` (and subsequently all yang interest rates), the trove's debt,
-// and the trove's yang deposits remain constant over the entire time period
+// Assumes that the time from `start_interval` to `end_interval` spans only a single "era".
+// An era is the time between two interest rate updates, during which all yang interest rates are constant.
+//
+// Also assumes that the trove's debt, and the trove's yang deposits
+// remain constant over the entire time period.
 // Should start at current_yang_id = yang_count, and recurses until it hits yang_id == 0
 func get_avg_rate_over_era{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt,
@@ -1471,6 +1473,7 @@ func get_avg_rate_over_era{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 
     // Early termination if this yang hasn't been deposited in the trove
     let yang_deposited: wad = shrine_deposits.read(current_yang_id, trove_id);
+    %{ print(ids.yang_deposited) %}
     if (yang_deposited == 0) {
         return get_avg_rate_over_era(
             trove_id,
@@ -1483,7 +1486,7 @@ func get_avg_rate_over_era{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
         );
     }
 
-    let yang_rate: ray = shrine_rates.read(current_yang_id, rate_idx);
+    let yang_rate: ray = shrine_yang_rates.read(current_yang_id, rate_idx);
     let (avg_price: wad) = get_avg_price(current_yang_id, start_interval, end_interval);
     let yang_value: wad = WadRay.wmul(yang_deposited, avg_price);
     let weighted_rate: ray = WadRay.wmul(yang_value, yang_rate);  // wmul of wad and ray is a ray

@@ -52,7 +52,7 @@ from tests.utils import (
 
 
 def compound(
-    yang_base_rate_history: list[list[Decimal]],
+    yangs_base_rate_history: list[list[Decimal]],
     yang_rate_update_intervals: list[int],
     yangs_amt: list[Decimal],
     yang_avg_prices: list[list[Decimal]],
@@ -66,8 +66,11 @@ def compound(
 
     Arguments
     ---------
-    yang_base_rate_history : list[list[Decimal]]
-        Ordered list of the lists of base rates of each yang for the time period `end_interval - start_interval`
+    yangs_base_rate_history : list[list[Decimal]]
+        Ordered list of the lists of base rates of each yang at each rate update interval
+        over the time period `end_interval - start_interval`.
+        e.g. [[rate at update interval 1 for yang 1, ..., rate at update interval n for yang 1],
+              [rate at update interval 1 for yang 2, ..., rate at update interval n for yang 2]]`
     yang_rate_update_intervals : list[int]
         Ordered list of the intervals at which each of the updates to the base rates were made.
         The first interval in this list should be <= `start_interval`.
@@ -89,12 +92,16 @@ def compound(
         End interval for the compounding period
     debt : Decimal
         Amount of debt at `start_interval`.
+
+    Returns
+    -------
+    Value of the compounded debt from start interval to end interval in Decimal.
     """
 
-    for i in range(1, len(yang_base_rate_history)):
-        assert len(yang_base_rate_history[0]) == len(yang_base_rate_history[i])
+    # Checking that all base rate update arrays are of the same length
+    assert len(set(len(yang_history) for yang_history in yangs_base_rate_history)) == 1
 
-    assert len(yang_base_rate_history[0]) == len(yang_rate_update_intervals)
+    assert len(yangs_base_rate_history[0]) == len(yang_rate_update_intervals)
 
     assert yang_rate_update_intervals[0] <= start_interval
     assert yang_rate_update_intervals[-1] <= end_interval
@@ -104,20 +111,20 @@ def compound(
     # Setting first update interval to start interval for cleaner iteration in the for loop
     yang_rate_update_intervals[0] = start_interval
 
-    for i in range(len(yang_base_rate_history[0])):
+    for i in range(len(yangs_base_rate_history[0])):
         # Getting the base rate
         weighted_rate_sum = 0
         total_yang_value = 0
         for j in range(len(yangs_amt)):
             yang_value = yangs_amt[j] * yang_avg_prices[j][i]
             total_yang_value += yang_value
-            weighted_rate = yang_base_rate_history[j][i] * yang_value
+            weighted_rate = yangs_base_rate_history[j][i] * yang_value
             weighted_rate_sum += weighted_rate
 
         base_rate = weighted_rate_sum / total_yang_value
         rate = base_rate * avg_multipliers[i]
 
-        if i < len(yang_base_rate_history[0]) - 1:
+        if i < len(yangs_base_rate_history[0]) - 1:
             num_intervals_to_compound = yang_rate_update_intervals[i + 1] - yang_rate_update_intervals[i]
         else:
             num_intervals_to_compound = end_interval - yang_rate_update_intervals[i]
@@ -188,7 +195,7 @@ async def shrine_melt_trove1(shrine, shrine_forge_trove1) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo:
+async def _trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo:
     """
     Replicate forge for another trove.
     """
@@ -197,7 +204,7 @@ async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo
 
 
 @pytest.fixture
-async def update_feeds_with_trove2(shrine_forge_trove1, shrine_forge_trove2, update_feeds) -> list[Decimal]:
+async def update_feeds_with_trove2(shrine_forge_trove1, _trove2, update_feeds) -> list[Decimal]:
     """
     Helper fixture for `update_feeds` with two troves.
     """
@@ -243,7 +250,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
 @pytest.fixture(scope="function")
 async def update_feeds_intermittent(request, starknet, shrine, shrine_forge_trove1) -> list[Decimal]:
     """
-    Additional price feeds for yang 0 after `shrine_forge` with intermittent missed updates.
+    Additional price feeds for yang 0 after `` with intermittent missed updates.
 
     This fixture takes in an index as argument, and skips that index when updating the
     price and multiplier values.
@@ -807,7 +814,7 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
 @pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.parametrize("withdraw_amt_wad", [0, to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
-async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
+async def test_d_partial_withdraw_pass(shrine, withdraw_amt_wad):
     price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
 
     initial_amt_wad = INITIAL_DEPOSIT_WAD
@@ -914,7 +921,7 @@ async def test_shrine_withdraw_amount_out_of_bounds(shrine, withdraw_amt):
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_forge_pass(shrine, forge_amt_wad):
+async def test__pass(shrine, forge_amt_wad):
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
@@ -973,7 +980,7 @@ async def test_shrine_inject_pass(shrine, forge_amt_wad):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_zero_deposit_fail(shrine):
+async def test__zero_deposit_fail(shrine):
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine.forge(TROVE3_OWNER, TROVE_3, to_wad(1_000)).execute(caller_address=SHRINE_OWNER)
@@ -981,7 +988,7 @@ async def test_shrine_forge_zero_deposit_fail(shrine):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_unsafe_fail(shrine):
+async def test__unsafe_fail(shrine):
     # Increase debt ceiling
     new_ceiling = to_wad(100_000)
     await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
@@ -992,7 +999,7 @@ async def test_shrine_forge_unsafe_fail(shrine):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test_shrine_forge_ceiling_fail(shrine):
+async def test__ceiling_fail(shrine):
     # Deposit more yang
     await shrine.deposit(YANG1_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
     updated_deposit = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
@@ -1004,7 +1011,7 @@ async def test_shrine_forge_ceiling_fail(shrine):
 
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test_shrine_forge_unauthorized(shrine):
+async def test__unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=BAD_GUY)
 
@@ -1014,7 +1021,7 @@ async def test_shrine_forge_unauthorized(shrine):
 
 @pytest.mark.parametrize("forge_amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
-async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
+async def test__amount_out_of_bounds(shrine, forge_amt):
     # no need to have any setup for the test,
     # amount check happens before checking balances
     with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):
@@ -1029,7 +1036,7 @@ async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
 #
 
 
-@pytest.mark.usefixtures("shrine_forge_trove1", "shrine_forge_trove2")
+@pytest.mark.usefixtures("shrine_forge_trove1", "_trove2")
 @pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD, 2**125])
 @pytest.mark.asyncio
 async def test_shrine_melt_pass(shrine, melt_amt_wad):
@@ -1121,7 +1128,7 @@ async def test_shrine_melt_amount_out_of_bounds(shrine, melt_amt):
         await shrine.eject(TROVE1_OWNER, melt_amt).execute(caller_address=SHRINE_OWNER)
 
 
-@pytest.mark.usefixtures("shrine_forge_trove1", "shrine_forge_trove2")
+@pytest.mark.usefixtures("shrine_forge_trove1", "_trove2")
 @pytest.mark.asyncio
 async def test_shrine_melt_insufficient_yin(shrine):
     # Set up trove 2 to have less yin than trove 1's debt
@@ -1340,7 +1347,7 @@ async def test_charge_scenario_1b(starknet, shrine, update_feeds_intermittent):
 
 @pytest.mark.parametrize("intervals_before_last_charge", [2, 4, 7, 10])
 @pytest.mark.parametrize("intervals_after_start", [1, 5, 10, 50])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge, intervals_after_start):
     """
@@ -1401,7 +1408,7 @@ async def test_charge_scenario_2(starknet, shrine, intervals_before_last_charge,
 
 
 @pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_3(starknet, shrine, interval_count):
     """
@@ -1459,7 +1466,7 @@ async def test_charge_scenario_3(starknet, shrine, interval_count):
 
 @pytest.mark.parametrize("last_updated_interval_after_start", [2, 5, 10])
 @pytest.mark.parametrize("intervals_after_last_update", [1, 5, 10, 50])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_start, intervals_after_last_update):
     """
@@ -1522,15 +1529,6 @@ async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_s
         original_trove_debt,
     )
 
-    """
-      yang_base_rate_history: list[list[Decimal]],
-    yang_rate_update_intervals: list[int],
-    yangs_amt: list[Decimal],
-    yang_avg_prices: list[list[Decimal]],
-    avg_multipliers: list[Decimal],
-    start_interval: int,
-    end_interval: int,
-    debt: Decimal,"""
     assert_equalish(expected_debt, updated_trove_debt)
 
     # Check average price
@@ -1541,7 +1539,7 @@ async def test_charge_scenario_4(starknet, shrine, last_updated_interval_after_s
 @pytest.mark.parametrize("missed_intervals_before_start", [2, 4, 7, 10])
 @pytest.mark.parametrize("last_updated_interval_after_start", [2, 4, 7, 10])
 @pytest.mark.parametrize("intervals_after_last_update", [1, 5, 10, 50])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_5(
     starknet, shrine, missed_intervals_before_start, last_updated_interval_after_start, intervals_after_last_update
@@ -1629,7 +1627,7 @@ async def test_charge_scenario_5(
 
 @pytest.mark.parametrize("missed_intervals_before_start", [2, 4, 7, 10])
 @pytest.mark.parametrize("interval_count", [1, 5, 10, 50])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start, interval_count):
     """
@@ -1707,7 +1705,7 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
 
 @pytest.mark.parametrize("num_yangs_deposited", [1, 2, 3, 4])
 @pytest.mark.parametrize("num_base_rate_updates", [1, 2, 4])
-@pytest.mark.usefixtures("shrine_forge")
+@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base_rate_updates):
     """
@@ -1724,8 +1722,8 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
         # Base rate history of individual yang
         # Initializing with the initial base rates is necessary in order for the
         # `compound` function to work properly.
-        yang_base_rate_history = [YANGS[i]["rate"]]
-        yang_base_rate_history_for_compound = [YANGS[i]["rate"]]
+        yangs_base_rate_history = [YANGS[i]["rate"]]
+        yangs_base_rate_history_for_compound = [YANGS[i]["rate"]]
         for j in range(num_base_rate_updates):
             """
             This if-else block sets the base rates to -1 in the following alternating pattern:
@@ -1738,15 +1736,15 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
             """
 
             if (i % 2 == 0 and (j + 1) % 2 == 0) or ((i + 1) % 2 == 0 and j % 2 == 0):
-                yang_base_rate_history.append(Decimal("-1"))
-                yang_base_rate_history_for_compound.append(yang_base_rate_history_for_compound[-1])
+                yangs_base_rate_history.append(Decimal("-1"))
+                yangs_base_rate_history_for_compound.append(yangs_base_rate_history_for_compound[-1])
             else:
                 next_base_rate = Decimal(random.uniform(0, 5)) / Decimal("100")
-                yang_base_rate_history.append(next_base_rate)
-                yang_base_rate_history_for_compound.append(next_base_rate)
+                yangs_base_rate_history.append(next_base_rate)
+                yangs_base_rate_history_for_compound.append(next_base_rate)
 
-        base_rate_history.append(yang_base_rate_history)
-        base_rate_history_for_compound.append(yang_base_rate_history_for_compound)
+        base_rate_history.append(yangs_base_rate_history)
+        base_rate_history_for_compound.append(yangs_base_rate_history_for_compound)
 
     # Unused yangs also need a base rate history (for the call to `update_rates`)
     for i in range(num_yangs_deposited, len(YANGS)):
@@ -2173,7 +2171,6 @@ async def test_get_trove_info_variable_thresholds(shrine, thresholds):
     assert_equalish(from_ray(trove_info.threshold), expected_threshold)
 
 
-@pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
 async def test_zero_value_trove(shrine):
     # Trove with zero value
