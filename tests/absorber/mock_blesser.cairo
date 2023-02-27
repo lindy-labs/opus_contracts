@@ -19,7 +19,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
     revoke_role,
 )
 from contracts.lib.accesscontrol.library import AccessControl
-from contracts.lib.aliases import address, bool, ufelt, wad
+from contracts.lib.aliases import address, bool, ufelt
 from contracts.lib.interfaces import IERC20
 from contracts.lib.wad_ray import WadRay
 
@@ -66,7 +66,7 @@ func constructor{
 @external
 func bless{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}() -> (amount: wad) {
+}() -> (amount: ufelt) {
     alloc_locals;
 
     AccessControl.assert_has_role(BlesserRoles.BLESS);
@@ -74,7 +74,7 @@ func bless{
     let asset: address = blesser_asset.read();
     let blesser: address = get_contract_address();
     let bal_uint: Uint256 = IERC20.balanceOf(asset, blesser);
-    let bal: wad = WadRay.from_uint(bal_uint);
+    let bal: ufelt = WadRay.from_uint(bal_uint);
 
     let is_depleted: bool = is_nn_le(bal, BLESS_AMT_WAD);
     if (is_depleted == TRUE) {

@@ -1371,7 +1371,7 @@ func get_provider_accumulated_rewards_inner_loop{
 ) -> ufelt {
     alloc_locals;
 
-    let cumulative_asset_amt_per_share_wad: ufelt = get_provider_reward_last_cumulative_diff(
+    let cumulative_asset_amt_per_share_wad: ufelt = get_provider_reward_cumulative_diff_for_epoch(
         provider, provided_epoch, current_epoch, asset
     );
 
@@ -1406,7 +1406,7 @@ func get_provider_accumulated_rewards_inner_loop{
 
 // Returns the accumulated reward asset amount per share wad due to the provider for the given epoch
 // Workaround to avoid revoked references
-func get_provider_reward_last_cumulative_diff{
+func get_provider_reward_cumulative_diff_for_epoch{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(provider: address, provided_epoch: ufelt, epoch: ufelt, asset: address) -> ufelt {
     let epoch_reward_info: AssetApportion = get_asset_reward(asset, epoch);
