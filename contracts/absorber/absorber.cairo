@@ -1316,7 +1316,7 @@ func get_provider_accumulated_rewards_internal{
     if (provision.shares == 0) {
         return (0, asset_amts, asset_amts);
     }
-    // Loop over rewards, calculate provider's share and write to asset_amts
+    // Loop over rewards, calculate provider's share and write to array
     get_provider_accumulated_rewards_outer_loop(
         provider, provision, current_epoch, 0, rewards_count, assets, asset_amts
     );
@@ -1364,7 +1364,7 @@ func get_provider_accumulated_rewards_inner_loop{
     provider: address,
     provided_shares: wad,
     provided_epoch: ufelt,
-    current_epoch: ufelt,
+    epoch: ufelt,
     end_epoch: ufelt,
     asset: address,
     cumulative_asset_amt: ufelt,
@@ -1372,7 +1372,7 @@ func get_provider_accumulated_rewards_inner_loop{
     alloc_locals;
 
     let cumulative_asset_amt_per_share_wad: ufelt = get_provider_reward_cumulative_diff_for_epoch(
-        provider, provided_epoch, current_epoch, asset
+        provider, provided_epoch, epoch, asset
     );
 
     let asset_amt: ufelt = WadRay.wmul(provided_shares, cumulative_asset_amt_per_share_wad);
@@ -1380,13 +1380,11 @@ func get_provider_accumulated_rewards_inner_loop{
 
     // Terminating condition is at the end because we need to calculate rewards for end epoch first
     // and next epoch has not started.
-    if (current_epoch == end_epoch) {
+    if (epoch == end_epoch) {
         return updated_cumulative_asset_amt;
     }
 
-    let next_epoch_shares: wad = convert_epoch_shares(
-        current_epoch, current_epoch + 1, provided_shares
-    );
+    let next_epoch_shares: wad = convert_epoch_shares(epoch, epoch + 1, provided_shares);
 
     // Early termination if no shares
     if (next_epoch_shares == 0) {
@@ -1397,7 +1395,7 @@ func get_provider_accumulated_rewards_inner_loop{
         provider,
         next_epoch_shares,
         provided_epoch,
-        current_epoch + 1,
+        epoch + 1,
         end_epoch,
         asset,
         updated_cumulative_asset_amt,
@@ -1459,15 +1457,15 @@ func propagate_reward_errors{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     let rewards_count: ufelt = absorber_rewards_count.read();
     let (_, assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
 
-    propagate_reward_errors_loop(0, rewards_count, epoch, assets);
+    propagate_reward_errors_loop(rewards_count, epoch, assets);
 
     return ();
 }
 
 func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    current_idx: ufelt, rewards_count: ufelt, epoch: ufelt, assets: address*
+    rewards_count: ufelt, epoch: ufelt, assets: address*
 ) {
-    if (current_idx == rewards_count) {
+    if (rewards_count == 0) {
         return ();
     }
 
@@ -1476,5 +1474,5 @@ func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     let next_epoch_reward_info: packed = pack_felt(0, epoch_reward_info.error);
     absorber_reward_by_epoch.write(asset, epoch + 1, next_epoch_reward_info);
 
-    return propagate_reward_errors_loop(current_idx + 1, rewards_count, epoch, assets + 1);
+    return propagate_reward_errors_loop(rewards_count - 1, epoch, assets + 1);
 }
