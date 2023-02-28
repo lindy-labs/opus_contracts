@@ -40,7 +40,7 @@ async def shrine(shrine_deploy) -> StarknetContract:
 @pytest.fixture
 def shitcoin_yang(shitcoin) -> YangConfig:
     empiric_id = str_to_felt("SHIT/USD")
-    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0, empiric_id)
+    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0, empiric_id, 0.069)
 
 
 @pytest.fixture
