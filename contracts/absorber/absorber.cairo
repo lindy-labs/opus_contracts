@@ -661,7 +661,8 @@ func update{
     let current_epoch: ufelt = absorber_current_epoch.read();
 
     // Trigger issuance of rewards
-    invoke(current_epoch);
+    let rewards_count: ufelt = absorber_rewards_count.read();
+    invoke(current_epoch, rewards_count);
 
     // Increment absorption ID
     let prev_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -719,7 +720,7 @@ func update{
     EpochChanged.emit(current_epoch, new_epoch);
 
     // Transfer reward errors of current epoch to the next epoch
-    propagate_reward_errors(current_epoch);
+    propagate_reward_errors(current_epoch, rewards_count);
 
     return ();
 }
@@ -948,7 +949,8 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     alloc_locals;
 
     // Trigger issuance of rewards
-    invoke(current_epoch);
+    let rewards_count: ufelt = absorber_rewards_count.read();
+    invoke(current_epoch, rewards_count);
 
     let provider_last_absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -965,11 +967,8 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     );
     transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
-    // Get all rewards
-    let rewards_count: ufelt = absorber_rewards_count.read();
-    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
-
     // Loop over accumulated rewards and transfer
+    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
     let (
         reward_assets_len: ufelt, reward_assets: address*, reward_asset_amts: ufelt*
     ) = get_provider_accumulated_rewards_internal(
@@ -1200,7 +1199,9 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 }
 
 // Helper function to trigger issuance of reward tokens and update rewards received
-func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(epoch: ufelt) {
+func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    epoch: ufelt, rewards_count: ufelt
+) {
     alloc_locals;
 
     // Defer rewards until a provider deposits
@@ -1208,8 +1209,6 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(epo
     if (total_shares == 0) {
         return ();
     }
-
-    let rewards_count: ufelt = absorber_rewards_count.read();
 
     // Retrieve arrays of active reward tokens and their vesting contracts
     let (
@@ -1450,13 +1449,11 @@ func update_provider_cumulative_rewards_loop{
 
 // Loops over all reward tokens and transfer the error from the given epoch to the next epoch
 func propagate_reward_errors{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    epoch: ufelt
+    epoch: ufelt, rewards_count: ufelt
 ) {
     alloc_locals;
 
-    let rewards_count: ufelt = absorber_rewards_count.read();
     let (_, assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
-
     propagate_reward_errors_loop(rewards_count, epoch, assets);
 
     return ();
