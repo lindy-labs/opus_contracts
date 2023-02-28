@@ -2,8 +2,14 @@
 
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_le, is_nn_le, is_not_zero
+from starkware.cairo.common.math import (
+    assert_le,
+    assert_nn_le,
+    assert_not_zero,
+    split_felt,
+    unsigned_div_rem,
+)
+from starkware.cairo.common.math_cmp import is_le, is_not_zero
 from starkware.cairo.common.uint256 import (
     ALL_ONES,
     Uint256,
@@ -321,19 +327,20 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
     // Calculate debt
     let (trove: Trove) = get_trove(trove_id);
-    let debt: wad = compound(trove_id, trove.debt, trove.charge_from, interval);
-    let debt: wad = pull_redistributed_debt(trove_id, debt, FALSE);
 
     // Catch troves with no value
     if (value == 0) {
-        let has_debt: bool = is_not_zero(debt);
+        let has_debt: bool = is_not_zero(trove.debt);
         if (has_debt == TRUE) {
             // Handles corner case: forging non-zero debt for a trove with zero value
-            return (threshold, WadRay.BOUND, value, debt);
+            return (threshold, WadRay.BOUND, value, trove.debt);
         } else {
-            return (threshold, 0, value, debt);
+            return (threshold, 0, value, trove.debt);
         }
     }
+
+    let debt: wad = compound(trove_id, trove.debt, trove.charge_from, interval);
+    let debt: wad = pull_redistributed_debt(trove_id, debt, FALSE);
 
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
     return (threshold, ltv, value, debt);
@@ -690,7 +697,8 @@ func set_multiplier{
 
     with_attr error_message("Shrine: Cumulative multiplier is out of bounds") {
         let new_cumulative_multiplier: ray = last_cumulative_multiplier + (
-            interval - last_interval - 1) * last_multiplier + new_multiplier;
+            interval - last_interval - 1
+        ) * last_multiplier + new_multiplier;
         let mul_and_cumulative_mul: packed = pack_125(new_multiplier, new_cumulative_multiplier);
     }
 
@@ -1296,17 +1304,17 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         return ();
     }
 
-    // If the given rate is within bounds, we set the yang's new rate to this rate
-    // Otherwise, we set the yang's new rate to its previous rate.
-    let rate_is_within_bounds: bool = is_nn_le([new_rates], MAX_YANG_RATE);
-
-    if (rate_is_within_bounds == FALSE) {
+    if ([new_rates] == -1) {
         let (prev_rate: ray) = shrine_yang_rates.read(current_yang_id, new_idx - 1);
         shrine_yang_rates.write(current_yang_id, new_idx, prev_rate);
         YangRateUpdated.emit(current_yang_id, prev_rate);
         update_rates_loop(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
         return ();
     } else {
+        with_attr error_message(
+                "Shrine: `new_rates` value of ({[new_rates]}) for `yang_id` ({current_yang_id}) is out of bounds") {
+            assert_nn_le([new_rates], MAX_YANG_RATE);
+        }
         shrine_yang_rates.write(current_yang_id, new_idx, [new_rates]);
         YangRateUpdated.emit(current_yang_id, [new_rates]);
         update_rates_loop(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
@@ -1416,7 +1424,6 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
         // cannot have any debt, meaning this code would never run (see `compound`)
         let avg_base_rate: ray = WadRay.wunsigned_div(weighted_rate_sum, total_avg_trove_value);  // wad division of a ray by a wad yields a ray
         let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
-
         let avg_rate: ray = WadRay.rmul(avg_base_rate, avg_multiplier);
 
         let t: wad = (end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR;  // represents `t` in the compound interest formula

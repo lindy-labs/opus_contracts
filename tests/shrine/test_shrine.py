@@ -1705,13 +1705,17 @@ async def test_charge_scenario_6(starknet, shrine, missed_intervals_before_start
 
 @pytest.mark.parametrize("num_yangs_deposited", [1, 2, 3, 4])
 @pytest.mark.parametrize("num_base_rate_updates", [1, 2, 4])
-@pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.asyncio
 async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base_rate_updates):
     """
     Tests for `charge` with multiple base rate updates and varying
     amounts of yangs deposited into the trove
     """
+
+    #
+    # Creating input data
+    #
+
     random.seed(69)  # Seeding the random functions for repeatable tests
 
     base_rate_history = []  # Will store base rate history of all yangs
@@ -1750,8 +1754,9 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
     for i in range(num_yangs_deposited, len(YANGS)):
         base_rate_history.append([YANGS[i]["rate"]] + ([Decimal("-1")] * num_base_rate_updates))
 
-    # The number of intervals actually between two base rates will be this number minus one
+    # The number of intervals actually between two base rate updates will be this number minus one
     BASE_RATE_UPDATE_SPACING = 5
+
     # The number of time periods where the base rates remain constant.
     # We add one because there is also the time period between
     # the base rates set in `add_yang` and the first base rate update
@@ -1763,7 +1768,7 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
     # Generating the list of intervals at which the base rates will be updated (needed for `compound`)
     # Adding zero as the first interval since that's when the base rates were first added in `add_yang`
     rate_update_intervals = [0] + [
-        start_interval + (i + 1) * BASE_RATE_UPDATE_SPACING for i in list(range(num_base_rate_updates))
+        start_interval + (i + 1) * BASE_RATE_UPDATE_SPACING for i in range(num_base_rate_updates)
     ]
 
     avg_multipliers = [1] * (num_eras)
@@ -1788,14 +1793,24 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
             )
         avg_prices.append(yang_avg_prices)
 
-    # Depositing additional yangs into the trove
-    for i in range(1, num_yangs_deposited):
+    #
+    # Setting up the contract
+    #
+
+    # Depositing yangs into the trove
+    for i in range(num_yangs_deposited):
         await shrine.deposit(YANGS[i]["address"], TROVE_1, to_wad(INITIAL_DEPOSIT)).execute(caller_address=SHRINE_OWNER)
+
+    # Creating some debt
+    await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
 
     # Pushing the price and multiplier feeds on-chain, updating base rates at the correct intervals
     for i in range(charging_period):
         # Incrementing the timestamp by an interval
         set_block_timestamp(starknet, current_timestamp + i * TIME_INTERVAL)
+
+        # We skip over the first price update in the price feeds,
+        # since the price is already equal to that at the current interval
         if i != 0:
             for j in range(num_yangs_deposited):
                 await shrine.advance(YANGS[j]["address"], price_feeds[j][i]).execute(caller_address=SHRINE_OWNER)
@@ -1803,6 +1818,8 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
         if i % BASE_RATE_UPDATE_SPACING == 0:
             await shrine.set_multiplier(RAY_SCALE).execute(caller_address=SHRINE_OWNER)
 
+        # We skip over the first base rate update here since the first set of base rates in
+        # `base_rate_history` has already been set on-chain (when the yangs were added).
         if i % BASE_RATE_UPDATE_SPACING == 0 and i != 0:
             new_base_rates = [
                 (
@@ -1817,6 +1834,10 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
     set_block_timestamp(starknet, end_interval * TIME_INTERVAL)
 
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
+
+    #
+    # Tests
+    #
 
     expected_debt = compound(
         base_rate_history_for_compound,

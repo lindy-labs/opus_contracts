@@ -46,7 +46,7 @@ async def test_add_yang(sentinel, shrine_deploy, yangs, yang_tokens, yang_gates)
         expected_initial_yang = (await gate.preview_enter(INITIAL_ASSET_DEPOSIT_AMT).execute()).result.yang_amt
 
         tx = await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
 
         assert_event_emitted(tx, sentinel.contract_address, "YangAdded", [yang.contract_address, yang.gate_address])
@@ -87,35 +87,35 @@ async def test_add_yang_failures(sentinel, steth_yang: YangConfig, doge_yang: Ya
     # test reverting on unathorized actor calling add_yang
     with pytest.raises(StarkException, match=r"AccessControl: Caller is missing role \d+"):
         await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, yang.gate_address
         ).execute(caller_address=BAD_GUY)
 
     # test reverting on yang address equal 0
     with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
-        await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, 0xDEADBEEF).execute(
+        await sentinel.add_yang(0, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, 0xDEADBEEF).execute(
             caller_address=SENTINEL_OWNER
         )
 
     # test reverting on gate address equal 0
     with pytest.raises(StarkException, match="Sentinel: Address cannot be zero"):
-        await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, 0).execute(
+        await sentinel.add_yang(0xDEADBEEF, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, 0).execute(
             caller_address=SENTINEL_OWNER
         )
 
     # test reverting on trying to add the same yang / gate combo
     await sentinel.add_yang(
-        yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+        yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, yang.gate_address
     ).execute(caller_address=SENTINEL_OWNER)
     with pytest.raises(StarkException, match="Sentinel: Yang already added"):
         await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
 
     # test reverting when the Gate is for a different yang
     yang = doge_yang
     with pytest.raises(StarkException, match="Sentinel: Yang address does not match Gate's asset"):
         await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, steth_yang.gate_address
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, steth_yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
 
 
