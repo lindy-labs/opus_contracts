@@ -56,7 +56,7 @@ async def test_add_yang(sentinel, shrine_deploy, yangs, yang_tokens, yang_gates)
             tx,
             shrine.contract_address,
             "YangAdded",
-            [yang.contract_address, idx + 1, yang.price_wad],
+            [yang.contract_address, idx + 1, yang.price_wad, yang.rate],
         )
 
         assert_event_emitted(

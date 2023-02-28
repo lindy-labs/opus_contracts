@@ -23,6 +23,7 @@ namespace ShrineRoles {
     //
     // Constants
     //
-    const DEFAULT_SHRINE_ADMIN_ROLE = ADD_YANG + SET_YANG_MAX + SET_CEILING + SET_THRESHOLD + KILL + SET_RATES;
+    const DEFAULT_SHRINE_ADMIN_ROLE = ADD_YANG + SET_YANG_MAX + SET_CEILING + SET_THRESHOLD + KILL +
+        SET_RATES;
     const FLASH_MINT = INJECT + EJECT;
 }
