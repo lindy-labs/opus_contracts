@@ -1,6 +1,6 @@
 import asyncio
 from collections import namedtuple
-from decimal import getcontext
+from decimal import Decimal, getcontext
 from typing import Awaitable, Callable
 
 import pytest
@@ -354,7 +354,7 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
-    rate = to_ray(0.02)
+    rate = to_ray(Decimal("0.02"))
     empiric_id = str_to_felt("stETH/USD")
     return YangConfig(
         steth_token.contract_address,
@@ -373,7 +373,7 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     ceiling = to_wad(100_000_000)
     threshold = 20 * RAY_PERCENT
     price_wad = to_wad(0.07)
-    rate = to_ray(0.05)
+    rate = to_ray(Decimal("0.05"))
     empiric_id = str_to_felt("DOGE/USD")
     return YangConfig(
         doge_token.contract_address,
@@ -392,7 +392,7 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     ceiling = to_wad(1_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(10_000)
-    rate = to_ray(0.01)
+    rate = to_ray(Decimal("0.01"))
     empiric_id = str_to_felt("WBTC/USD")
     return YangConfig(
         wbtc_token.contract_address,

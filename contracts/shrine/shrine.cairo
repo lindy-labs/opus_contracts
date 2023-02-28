@@ -1870,9 +1870,6 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     // If the last available multiplier for both start and end intervals are the same,
     // return that last available multiplier
     // This also catches `start_interval == end_interval`
-    %{ print(f"available_start_interval: {ids.available_start_interval}, available_end_interval: {ids.available_end_interval}") %}
-    %{ print(f"start_interval: {ids.start_interval}, end_interval: {ids.end_interval}") %}
-
     if (available_start_interval == available_end_interval) {
         return (start_multiplier,);
     }
