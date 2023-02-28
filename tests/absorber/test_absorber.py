@@ -1839,9 +1839,9 @@ async def test_invoke_pass_with_depleted_active_reward(
         lambda d: d[:6]
         == [
             expected_rewards_count,
-            *[vested_aura_token.contract_address, aura_token.contract_address],
+            *[aura_token.contract_address, vested_aura_token.contract_address],
             expected_rewards_count,
-            *[0, AURA_BLESS_AMT_WAD],
+            *[AURA_BLESS_AMT_WAD, 0],
         ],
     )
 
@@ -1878,7 +1878,7 @@ async def test_provide_varying_blessings_count(
     after_aura_token_bal = from_uint((await aura_token.balanceOf(provider).execute()).result.balance)
     assert_equalish(
         from_wad(after_aura_token_bal),
-        from_wad(before_aura_token_bal + blessings_count * reward_amts[1]),
+        from_wad(before_aura_token_bal + blessings_count * reward_amts[0]),
     )
 
     print("Reap for {} blessings: {}".format(blessings_count, estimate_gas(tx)))
