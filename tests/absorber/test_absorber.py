@@ -121,9 +121,9 @@ async def assert_provider_rewarded(
     epoch: int,
     reward_assets: list[StarknetContract],
     before_reward_assets_bals: list[Decimal],
-    base_reward_assets_amts: list[int],
+    base_reward_assets_amts_wad: list[int],
     blessings_multiplier: Union[int, Decimal],
-    preview_reward_assets_amt_wad: Optional[list[int]] = None,
+    preview_reward_assets_amts_wad: Optional[list[int]] = None,
     error_margin: Optional[Decimal] = ERROR_MARGIN,
 ):
     """
@@ -131,14 +131,14 @@ async def assert_provider_rewarded(
     1. a provider has received the correct amount of reward tokens and, if provided,
        that the previewed amount returned by `preview_reap` is correct.
     2. a provider's last cumulative asset amount per share wad value is updated for all reward tokens.
-
-    The order of yangs in `before_reward_assets_bals` and `base_reward_assets_amts` should be equal.
     """
     # Set preview amounts to dummy value if it is not provided
-    preview_amts = base_reward_assets_amts if preview_reward_assets_amt_wad is None else preview_reward_assets_amt_wad
+    preview_amts = (
+        base_reward_assets_amts_wad if preview_reward_assets_amts_wad is None else preview_reward_assets_amts_wad
+    )
 
     for asset, before_bal, blessed_amt_wad, preview_amt_wad in zip(
-        reward_assets, before_reward_assets_bals, base_reward_assets_amts, preview_amts
+        reward_assets, before_reward_assets_bals, base_reward_assets_amts_wad, preview_amts
     ):
         # Check reward token transfer and balance
         asset_address = asset.contract_address
@@ -151,7 +151,7 @@ async def assert_provider_rewarded(
         assert_equalish(after_provider_asset_bal, before_bal + blessed_amt, error_margin)
 
         # Check preview amounts if provided
-        if preview_reward_assets_amt_wad is not None:
+        if preview_reward_assets_amts_wad is not None:
             preview_amt = from_wad(preview_amt_wad)
             assert_equalish(blessed_amt, preview_amt, error_margin)
 
@@ -465,36 +465,11 @@ async def blessing(aura_token, vested_aura_token):
     3. an ordered list of the reward tokens addresses
     4. an ordered list of the amount distributed by the Blesser to the Absorber per distribution
 
-
-    The order is the reverse of that in which the rewards were added to match the return values of
-    `get_rewards`.
     """
-    # When reward tokens are fetched, order is reversed.
-    reward_assets = [vested_aura_token, aura_token]
+    reward_assets = [aura_token, vested_aura_token]
     reward_assets_addresses = [asset.contract_address for asset in reward_assets]
-    expected_asset_amts = [VESTED_AURA_BLESS_AMT_WAD, AURA_BLESS_AMT_WAD]
+    expected_asset_amts = [AURA_BLESS_AMT_WAD, VESTED_AURA_BLESS_AMT_WAD]
     return len(reward_assets), reward_assets, reward_assets_addresses, expected_asset_amts
-
-
-#
-# Tests - Fixtures setup
-#
-
-
-@pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward")
-@pytest.mark.asyncio
-async def test_blessers_setup(absorber, aura_token, aura_token_blesser, vested_aura_token, vested_aura_token_blesser):
-    aura_bal = from_wad(
-        from_uint((await aura_token.balanceOf(aura_token_blesser.contract_address).execute()).result.balance)
-    )
-    assert aura_bal == AURA_BLESSER_STARTING_BAL
-
-    vested_aura_bal = from_wad(
-        from_uint(
-            (await vested_aura_token.balanceOf(vested_aura_token_blesser.contract_address).execute()).result.balance
-        )
-    )
-    assert vested_aura_bal == VESTED_AURA_BLESSER_STARTING_BAL
 
 
 #
@@ -623,10 +598,9 @@ async def test_set_reward_pass(
 
     rewards = (await absorber.get_rewards().execute()).result
 
-    # Order is reversed because iteration starts at current count and ends at 0
-    assert rewards.assets == [vested_aura_token.contract_address, aura_token.contract_address]
-    assert rewards.blessers == [vested_aura_token_blesser.contract_address, aura_token_blesser.contract_address]
-    assert rewards.is_active == [FALSE, TRUE]
+    assert rewards.assets == [aura_token.contract_address, vested_aura_token.contract_address]
+    assert rewards.blessers == [aura_token_blesser.contract_address, vested_aura_token_blesser.contract_address]
+    assert rewards.is_active == [TRUE, FALSE]
 
     # Update existing reward
     tx = await absorber.set_reward(
@@ -637,9 +611,8 @@ async def test_set_reward_pass(
 
     rewards = (await absorber.get_rewards().execute()).result
 
-    # Order is reversed because iteration starts at current count and ends at 0
-    assert rewards.assets == [vested_aura_token.contract_address, aura_token.contract_address]
-    assert rewards.blessers == [vested_aura_token_blesser.contract_address, aura_token_blesser.contract_address]
+    assert rewards.assets == [aura_token.contract_address, vested_aura_token.contract_address]
+    assert rewards.blessers == [aura_token_blesser.contract_address, vested_aura_token_blesser.contract_address]
     assert rewards.is_active == [FALSE, FALSE]
 
 
@@ -954,7 +927,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
         before_provider_reward_asset_bals,
         rewards_amts,
         expected_blessings_count,
-        preview_reward_assets_amt_wad=reap_info.reward_asset_amts,
+        preview_reward_assets_amts_wad=reap_info.reward_asset_amts,
     )
 
     # Assert that provider does not receive rewards twice
@@ -1380,7 +1353,7 @@ async def test_reap_different_epochs(
             before_reward_bals,
             rewards_amts,
             expected_blessings_count,
-            preview_reward_assets_amt_wad=reap_info.reward_asset_amts,
+            preview_reward_assets_amts_wad=reap_info.reward_asset_amts,
         )
 
         after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision

@@ -112,7 +112,7 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 }
 
-// Total number of reward tokens
+// Total number of reward tokens, starting from 1
 // A reward token cannot be removed once added.
 @storage_var
 func absorber_rewards_count() -> (count: ufelt) {
@@ -1152,10 +1152,10 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // Internal - helpers for rewards
 //
 
-// Helper function to fetch all rewards as an array
+// Helper function to fetch all rewards as an array in order of their ID (which they were added).
 // If `only_active` is set to TRUE, only active rewards are returned.
 func get_rewards_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    total_count: ufelt, only_active: bool
+    rewards_count: ufelt, only_active: bool
 ) -> (retrieved_count: ufelt, assets: address*, blessers: address*, is_active: bool*) {
     alloc_locals;
 
@@ -1163,29 +1163,44 @@ func get_rewards_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     let (blessers: address*) = alloc();
     let (is_active: bool*) = alloc();
 
+    if (rewards_count == 0) {
+        return (0, assets, blessers, is_active);
+    }
+
     let retrieved_count: ufelt = get_rewards_internal_loop(
-        total_count, only_active, 0, assets, blessers, is_active
+        1, rewards_count, only_active, assets, blessers, is_active, 0
     );
 
     return (retrieved_count, assets, blessers, is_active);
 }
 
+// Loop from the start index to the current rewards count.
+// To get all rewards in the order in which they were added, `current_idx` should be set to `1`.
 func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    total_count: ufelt,
+    current_idx: ufelt,
+    rewards_count: ufelt,
     only_active: bool,
-    retrieved_count: ufelt,
     assets: address*,
     blessers: address*,
     is_active: bool*,
+    retrieved_count: ufelt,
 ) -> ufelt {
-    if (total_count == 0) {
+    // Terminate when the number of rewards is exceeded.
+    // The total count is the ID of the latest added reward.
+    if (current_idx == rewards_count + 1) {
         return (retrieved_count);
     }
 
-    let reward: Reward = absorber_rewards.read(total_count);
+    let reward: Reward = absorber_rewards.read(current_idx);
     if (only_active == TRUE and reward.is_active == FALSE) {
         return get_rewards_internal_loop(
-            total_count - 1, only_active, retrieved_count, assets, blessers, is_active
+            current_idx + 1,
+            rewards_count,
+            only_active,
+            assets,
+            blessers,
+            is_active,
+            retrieved_count,
         );
     }
 
@@ -1194,7 +1209,13 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     assert [is_active] = reward.is_active;
 
     return get_rewards_internal_loop(
-        total_count - 1, only_active, retrieved_count + 1, assets + 1, blessers + 1, is_active + 1
+        current_idx + 1,
+        rewards_count,
+        only_active,
+        assets + 1,
+        blessers + 1,
+        is_active + 1,
+        retrieved_count + 1,
     );
 }
 
