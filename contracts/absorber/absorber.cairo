@@ -394,7 +394,7 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
 
     // Get all rewards
     let rewards_count: ufelt = absorber_rewards_count.read();
-    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
+    let (_, reward_assets: address*, _) = get_rewards_internal(rewards_count, FALSE);
 
     let current_epoch: ufelt = absorber_current_epoch.read();
     let (reward_asset_amts: ufelt*) = alloc();
@@ -967,7 +967,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
     // Loop over accumulated rewards, transfer and update provider's rewards cumulative
-    let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
+    let (_, reward_assets: address*, _) = get_rewards_internal(rewards_count, FALSE);
     let (reward_asset_amts: ufelt*) = alloc();
     get_provider_accumulated_rewards_outer_loop(
         provider, provision, current_epoch, 0, rewards_count, reward_assets, reward_asset_amts, TRUE
@@ -1162,27 +1162,26 @@ func get_rewards_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     return get_rewards_loop(current_idx + 1, rewards_count, rewards + 3);
 }
 
-// Helper function to fetch all rewards as separate arrays of the Reward struct members in order
+// Helper function to fetch the asset and blesser of all rewards as separate arrays in the order
 //  of their ID (which they were added).
 // If `only_active` is set to TRUE, only active rewards are returned.
 func get_rewards_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     rewards_count: ufelt, only_active: bool
-) -> (retrieved_count: ufelt, assets: address*, blessers: address*, is_active: bool*) {
+) -> (retrieved_count: ufelt, assets: address*, blessers: address*) {
     alloc_locals;
 
     let (assets: address*) = alloc();
     let (blessers: address*) = alloc();
-    let (is_active: bool*) = alloc();
 
     if (rewards_count == 0) {
-        return (0, assets, blessers, is_active);
+        return (0, assets, blessers);
     }
 
     let retrieved_count: ufelt = get_rewards_internal_loop(
-        1, rewards_count, only_active, assets, blessers, is_active, 0
+        1, rewards_count, only_active, assets, blessers, 0
     );
 
-    return (retrieved_count, assets, blessers, is_active);
+    return (retrieved_count, assets, blessers);
 }
 
 // Loop from the start index to the current rewards count.
@@ -1193,7 +1192,6 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     only_active: bool,
     assets: address*,
     blessers: address*,
-    is_active: bool*,
     retrieved_count: ufelt,
 ) -> ufelt {
     // Terminate when the number of rewards is exceeded.
@@ -1205,28 +1203,15 @@ func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     let reward: Reward = absorber_rewards.read(current_idx);
     if (only_active == TRUE and reward.is_active == FALSE) {
         return get_rewards_internal_loop(
-            current_idx + 1,
-            rewards_count,
-            only_active,
-            assets,
-            blessers,
-            is_active,
-            retrieved_count,
+            current_idx + 1, rewards_count, only_active, assets, blessers, retrieved_count
         );
     }
 
     assert [assets] = reward.asset;
     assert [blessers] = reward.blesser;
-    assert [is_active] = reward.is_active;
 
     return get_rewards_internal_loop(
-        current_idx + 1,
-        rewards_count,
-        only_active,
-        assets + 1,
-        blessers + 1,
-        is_active + 1,
-        retrieved_count + 1,
+        current_idx + 1, rewards_count, only_active, assets + 1, blessers + 1, retrieved_count + 1
     );
 }
 
@@ -1243,9 +1228,9 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     }
 
     // Retrieve arrays of active reward tokens and their vesting contracts
-    let (
-        active_rewards_count: ufelt, assets: address*, blessers: address*, _
-    ) = get_rewards_internal(rewards_count, TRUE);
+    let (active_rewards_count: ufelt, assets: address*, blessers: address*) = get_rewards_internal(
+        rewards_count, TRUE
+    );
 
     // Loop through reward tokens and call `IBlesser.bless` to trigger issuance
     // and update cumulative reward amount per share
@@ -1461,7 +1446,7 @@ func propagate_reward_errors{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
 ) {
     alloc_locals;
 
-    let (_, assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
+    let (_, assets: address*, _) = get_rewards_internal(rewards_count, FALSE);
     propagate_reward_errors_loop(rewards_count, epoch, assets);
 
     return ();
