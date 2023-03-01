@@ -1042,9 +1042,8 @@ func get_absorbed_assets_for_provider_outer_loop{
         return ();
     }
 
-    let asset: address = assets[asset_idx];
     let asset_amt: ufelt = get_absorbed_assets_for_provider_inner_loop(
-        provision.shares, provision.epoch, last_absorption_id, current_absorption_id, asset, 0
+        provision.shares, provision.epoch, last_absorption_id, current_absorption_id, [assets], 0
     );
 
     assert asset_amts[asset_idx] = asset_amt;
@@ -1337,16 +1336,15 @@ func get_provider_accumulated_rewards_outer_loop{
         return ();
     }
 
-    let asset: address = [assets];
     let asset_amt: ufelt = get_provider_accumulated_rewards_inner_loop(
-        provider, provision.shares, provision.epoch, provision.epoch, current_epoch, asset, 0
+        provider, provision.shares, provision.epoch, provision.epoch, current_epoch, [assets], 0
     );
     assert [asset_amts] = asset_amt;
 
     if (should_update == TRUE) {
-        let end_epoch_reward_info: AssetApportion = get_asset_reward(asset, current_epoch);
+        let end_epoch_reward_info: AssetApportion = get_asset_reward([assets], current_epoch);
         absorber_provider_last_reward_cumulative.write(
-            provider, asset, end_epoch_reward_info.asset_amt_per_share
+            provider, [assets], end_epoch_reward_info.asset_amt_per_share
         );
 
         return get_provider_accumulated_rewards_outer_loop(
@@ -1459,10 +1457,9 @@ func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
         return ();
     }
 
-    let asset: address = [assets];
-    let epoch_reward_info: AssetApportion = get_asset_reward(asset, epoch);
+    let epoch_reward_info: AssetApportion = get_asset_reward([assets], epoch);
     let next_epoch_reward_info: packed = pack_felt(0, epoch_reward_info.error);
-    absorber_reward_by_epoch.write(asset, epoch + 1, next_epoch_reward_info);
+    absorber_reward_by_epoch.write([assets], epoch + 1, next_epoch_reward_info);
 
     return propagate_reward_errors_loop(rewards_count - 1, epoch, assets + 1);
 }
