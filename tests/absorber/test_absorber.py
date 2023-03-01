@@ -524,8 +524,8 @@ async def test_absorber_setup(shrine, absorber):
     rewards_count = (await absorber.get_rewards_count().execute()).result.count
     assert rewards_count == 0
 
-    rewards = (await absorber.get_rewards().execute()).result
-    rewards.assets == rewards.blessers == rewards.is_active == []
+    rewards = (await absorber.get_rewards().execute()).result.rewards
+    rewards == []
 
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
@@ -604,10 +604,8 @@ async def test_set_reward_pass(
     rewards_count = (await absorber.get_rewards_count().execute()).result.count
     assert rewards_count == 1
 
-    rewards = (await absorber.get_rewards().execute()).result
-    assert rewards.assets == [aura_token.contract_address]
-    assert rewards.blessers == [aura_token_blesser.contract_address]
-    assert rewards.is_active == [TRUE]
+    rewards = (await absorber.get_rewards().execute()).result.rewards
+    assert rewards == [(aura_token.contract_address, aura_token_blesser.contract_address, TRUE)]
 
     # Add another reward
     tx = await absorber.set_reward(
@@ -626,11 +624,12 @@ async def test_set_reward_pass(
     rewards_count = (await absorber.get_rewards_count().execute()).result.count
     assert rewards_count == 2
 
-    rewards = (await absorber.get_rewards().execute()).result
+    rewards = (await absorber.get_rewards().execute()).result.rewards
 
-    assert rewards.assets == [aura_token.contract_address, vested_aura_token.contract_address]
-    assert rewards.blessers == [aura_token_blesser.contract_address, vested_aura_token_blesser.contract_address]
-    assert rewards.is_active == [TRUE, FALSE]
+    assert rewards == [
+        (aura_token.contract_address, aura_token_blesser.contract_address, TRUE),
+        (vested_aura_token.contract_address, vested_aura_token_blesser.contract_address, FALSE),
+    ]
 
     # Update existing reward
     tx = await absorber.set_reward(
@@ -639,11 +638,12 @@ async def test_set_reward_pass(
         FALSE,
     ).execute(caller_address=ABSORBER_OWNER)
 
-    rewards = (await absorber.get_rewards().execute()).result
+    rewards = (await absorber.get_rewards().execute()).result.rewards
 
-    assert rewards.assets == [aura_token.contract_address, vested_aura_token.contract_address]
-    assert rewards.blessers == [aura_token_blesser.contract_address, vested_aura_token_blesser.contract_address]
-    assert rewards.is_active == [FALSE, FALSE]
+    assert rewards == [
+        (aura_token.contract_address, aura_token_blesser.contract_address, FALSE),
+        (vested_aura_token.contract_address, vested_aura_token_blesser.contract_address, FALSE),
+    ]
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 %lang starknet
 
 from contracts.lib.aliases import address, bool, ufelt, wad
-from contracts.lib.types import AssetApportion, Provision
+from contracts.lib.types import AssetApportion, Provision, Reward
 
 // TODO: update interface
 @contract_interface
@@ -45,14 +45,7 @@ namespace IAbsorber {
     ) {
     }
 
-    func get_rewards() -> (
-        assets_len: ufelt,
-        assets: address*,
-        blessers_len: ufelt,
-        blessers: address*,
-        is_active_len: ufelt,
-        is_active: bool*,
-    ) {
+    func get_rewards() -> (rewards_len: ufelt, rewards: Reward*) {
     }
 
     func preview_remove(provider: address) -> (amount: wad) {

@@ -139,9 +139,9 @@ func absorber_reward_by_epoch(asset: address, epoch: ufelt) -> (info: packed) {
 }
 
 // Mapping from a provider and reward token address to its last cumulative amount of that reward
-// per share wad in the provider's Provision's epoch
+// per share wad in the epoch of the provider's Provision struct
 @storage_var
-func absorber_provider_reward_last_cumulative(provider: address, asset: address) -> (
+func absorber_provider_last_reward_cumulative(provider: address, asset: address) -> (
     cumulative: ufelt
 ) {
 }
@@ -257,23 +257,16 @@ func get_rewards_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return (count,);
 }
 
-// Returns all reward tokens, both active and inactive
 @view
 func get_rewards{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    assets_len: ufelt,
-    assets: address*,
-    blessers_len: ufelt,
-    blessers: address*,
-    is_active_len: ufelt,
-    is_active: bool*,
+    rewards_len: ufelt, rewards: Reward*
 ) {
     alloc_locals;
 
     let rewards_count: ufelt = absorber_rewards_count.read();
-    let (_, assets: address*, blessers: address*, is_active: bool*) = get_rewards_internal(
-        rewards_count, FALSE
-    );
-    return (rewards_count, assets, rewards_count, blessers, rewards_count, is_active);
+    let rewards: Reward* = alloc();
+    get_rewards_loop(1, rewards_count, rewards);
+    return (rewards_count, rewards);
 }
 
 @view
@@ -341,10 +334,10 @@ func get_asset_reward_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 }
 
 @view
-func get_provider_reward_last_cumulative{
+func get_provider_last_reward_cumulative{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(provider: address, asset: address) -> (cumulative: ufelt) {
-    let cumulative: ufelt = absorber_provider_reward_last_cumulative.read(provider, asset);
+    let cumulative: ufelt = absorber_provider_last_reward_cumulative.read(provider, asset);
     return (cumulative,);
 }
 
@@ -973,7 +966,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     );
     transfer_assets(provider, absorbed_assets_len, absorbed_assets, absorbed_asset_amts);
 
-    // Loop over accumulated rewards, transfer and pdate provider's rewards cumulative
+    // Loop over accumulated rewards, transfer and update provider's rewards cumulative
     let (_, reward_assets: address*, _, _) = get_rewards_internal(rewards_count, FALSE);
     let (reward_asset_amts: ufelt*) = alloc();
     get_provider_accumulated_rewards_outer_loop(
@@ -1152,7 +1145,25 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 // Internal - helpers for rewards
 //
 
-// Helper function to fetch all rewards as an array in order of their ID (which they were added).
+// Helper function to get all rewards in the Reward struct
+// To get all rewards in the order in which they were added, `current_idx` should be set to `1`.
+func get_rewards_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    current_idx: ufelt, rewards_count: ufelt, rewards: Reward*
+) {
+    // Terminate when the number of rewards is exceeded.
+    // The total count is the ID of the latest added reward.
+    if (current_idx == rewards_count + 1) {
+        return ();
+    }
+
+    let reward: Reward = absorber_rewards.read(current_idx);
+    assert [rewards] = reward;
+
+    return get_rewards_loop(current_idx + 1, rewards_count, rewards + 3);
+}
+
+// Helper function to fetch all rewards as separate arrays of the Reward struct members in order
+//  of their ID (which they were added).
 // If `only_active` is set to TRUE, only active rewards are returned.
 func get_rewards_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     rewards_count: ufelt, only_active: bool
@@ -1349,7 +1360,7 @@ func get_provider_accumulated_rewards_outer_loop{
 
     if (should_update == TRUE) {
         let end_epoch_reward_info: AssetApportion = get_asset_reward(asset, current_epoch);
-        absorber_provider_reward_last_cumulative.write(
+        absorber_provider_last_reward_cumulative.write(
             provider, asset, end_epoch_reward_info.asset_amt_per_share
         );
 
@@ -1430,7 +1441,7 @@ func get_reward_cumulative_diff{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
     // Calculate the difference with the provider's cumulative value if it is the
     // same epoch as the provider's Provision epoch.
     if (provided_epoch == epoch) {
-        let provider_epoch_reward_cumulative: ufelt = absorber_provider_reward_last_cumulative.read(
+        let provider_epoch_reward_cumulative: ufelt = absorber_provider_last_reward_cumulative.read(
             provider, asset
         );
         let cumulative_diff: ufelt = WadRay.unsigned_sub(
