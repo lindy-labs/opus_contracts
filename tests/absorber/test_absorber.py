@@ -741,7 +741,7 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, blessin
 
     # If absorber is fully drained of its yin balance, check that epoch has increased
     # and total shares is set to 0.
-    if is_drained is True:
+    if is_drained:
         current_epoch = (await absorber.get_current_epoch().execute()).result.epoch
         assert current_epoch == before_epoch + 1
 
@@ -817,7 +817,6 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
     after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     expected_provider_shares = from_wad(before_provider_info.shares + expected_new_shares_wad)
     assert_equalish(from_wad(after_provider_info.shares), expected_provider_shares)
-
     assert after_provider_info.epoch == before_provider_info.epoch
 
     after_provider_last_absorption = (
@@ -919,7 +918,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
 
     reward_multiplier = 1
     # Assert `Invoke` is emitted if absorber is not completely drained
-    if is_drained is True:
+    if is_drained:
         expected_epoch = 1
         after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
         assert after_provider_info.epoch == expected_epoch
@@ -955,7 +954,7 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
     )
 
     # Assert that provider does not receive rewards twice
-    if is_drained is True:
+    if is_drained:
         with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
             await absorber.reap().execute(caller_address=provider)
 
@@ -1006,7 +1005,7 @@ async def test_remove(
         (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
     )
 
-    if is_drained is True:
+    if is_drained:
         yin_to_remove_wad = 0
         expected_shares = Decimal("0")
         expected_epoch = before_provider_info.epoch + 1
@@ -1030,7 +1029,6 @@ async def test_remove(
 
     after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     assert_equalish(from_wad(after_provider_info.shares), expected_shares)
-
     assert after_provider_info.epoch == expected_epoch
 
     after_provider_last_absorption = (
@@ -1047,7 +1045,7 @@ async def test_remove(
 
     # Assert `Invoke` is emitted if absorber is not completely drained
     # Otherwise, check that user provision is updated
-    if is_drained is False:
+    if not is_drained:
         expected_invoke_epoch = before_provider_info.epoch
         assert_event_emitted(
             tx,
@@ -1381,7 +1379,7 @@ async def test_reap_different_epochs(
 @pytest.mark.usefixtures(
     "add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider", "first_epoch_second_provider"
 )
-@pytest.mark.parametrize("update", [Decimal("0.2")], indirect=["update"])
+@pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
@@ -1421,6 +1419,9 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     before_providers_reward_bals = await get_token_balances(reward_assets, providers)
 
     expected_epoch = 0
+    if is_drained:
+        expected_epoch += 1
+
     expected_blessings_count = 2
     provided_perc = [first_provider_amt / total_provided_amt, second_provider_amt / total_provided_amt]
     for provider, percentage, before_absorbed_bals, before_reward_bals in zip(
@@ -1430,10 +1431,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
         tx = await absorber.reap().execute(caller_address=provider)
 
         # Rewards are distributed only if there are shares in current epoch
-        # Otherwise, absorber is drained and epoch is incremented
-        if is_drained is True:
-            expected_epoch += 1
-        else:
+        if not is_drained:
             expected_blessings_count += 1
             assert_event_emitted(
                 tx,
@@ -1490,11 +1488,11 @@ async def test_multi_user_reap_same_epoch_single_absorption(
         assert after_provider_info.epoch == expected_epoch
 
         # Assert that provider cannot reap earlier rewards again if it was drained
-        if is_drained is True:
+        if is_drained:
             with pytest.raises(StarkException, match="Absorber: Caller is not a provider in the current epoch"):
                 await absorber.reap().execute(caller_address=provider)
 
-    if is_drained is True:
+    if is_drained:
         assert_reward_errors_propagated_to_next_epoch(absorber, reward_assets_addresses, before_epoch)
 
 
