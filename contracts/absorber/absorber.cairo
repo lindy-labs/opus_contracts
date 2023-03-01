@@ -1176,6 +1176,7 @@ func get_rewards_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         return (0, assets, blessers);
     }
 
+    // Rewards count start from index 1
     let retrieved_count: ufelt = get_rewards_internal_loop(
         1, rewards_count, only_active, assets, blessers, 0
     );
@@ -1183,7 +1184,7 @@ func get_rewards_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     return (retrieved_count, assets, blessers);
 }
 
-// Loop from the start index to the current rewards count.
+// Loop from the start index to the end index to fetch all rewards.
 // To get all rewards in the order in which they were added, `current_idx` should be set to `1`.
 func get_rewards_internal_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     current_idx: ufelt,
@@ -1220,19 +1221,16 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 ) {
     alloc_locals;
 
-    // Defer rewards until a provider deposits
+    // Defer rewards until at least one provider deposits
     let total_shares: wad = absorber_total_shares.read();
     if (total_shares == 0) {
         return ();
     }
 
-    // Retrieve arrays of active reward tokens and their vesting contracts
+    // Fetch active rewards only and trigger issuance
     let (active_rewards_count: ufelt, assets: address*, blessers: address*) = get_rewards_internal(
         rewards_count, TRUE
     );
-
-    // Loop through reward tokens and call `IBlesser.bless` to trigger issuance
-    // and update cumulative reward amount per share
     let (blessed_amts: ufelt*) = alloc();
     let has_rewards: bool = invoke_loop(
         epoch, total_shares, active_rewards_count, assets, blessers, blessed_amts, FALSE
@@ -1313,8 +1311,7 @@ func receive_blessing{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     return ();
 }
 
-// Loop over all active rewards for a provider, calculate the accumulated amounts and write to
-// the provided array.
+// Helper function to iterate over all rewards and calculate the accumulated amounts for a provider.
 // If `should_update` is set to TRUE, update the provider's last cumulative reward values to
 // the current epoch's.
 // All rewards should be updated for a provider because an inactive reward may be set to active,
@@ -1371,8 +1368,8 @@ func get_provider_accumulated_rewards_outer_loop{
     );
 }
 
-// Loop over epochs for a given reward, starting from the provider's Provision epoch up to the
-// the end epoch, and calculate the accumulated amount.
+// For a reward, iterate from the provider's Provision epoch up to the current epoch, and
+// calculate the accumulated amount.
 func get_provider_accumulated_rewards_inner_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
