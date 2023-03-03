@@ -719,7 +719,8 @@ func update{
     EpochChanged.emit(current_epoch, new_epoch);
 
     // Transfer reward errors of current epoch to the next epoch
-    propagate_reward_errors(current_epoch, rewards_count);
+    let (_, reward_assets: address*, _) = get_rewards_internal(rewards_count, FALSE);
+    propagate_reward_errors_loop(rewards_count, current_epoch, reward_assets);
 
     return ();
 }
@@ -1439,18 +1440,7 @@ func get_reward_cumulative_diff{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
     return epoch_reward_info.asset_amt_per_share;
 }
 
-// Loops over all reward tokens and transfer the error from the given epoch to the next epoch
-func propagate_reward_errors{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    epoch: ufelt, rewards_count: ufelt
-) {
-    alloc_locals;
-
-    let (_, assets: address*, _) = get_rewards_internal(rewards_count, FALSE);
-    propagate_reward_errors_loop(rewards_count, epoch, assets);
-
-    return ();
-}
-
+// Transfers the error for a reward from the given epoch to the next epoch
 func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     rewards_count: ufelt, epoch: ufelt, assets: address*
 ) {
