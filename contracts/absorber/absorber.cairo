@@ -24,7 +24,7 @@ from contracts.lib.accesscontrol.accesscontrol_external import (
 )
 from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
-from contracts.lib.convert import pack_felt
+from contracts.lib.convert import pack_felt, pack_125, unpack_125
 from contracts.lib.interfaces import IERC20
 from contracts.lib.types import AssetApportion, Reward, Provision
 from contracts.lib.wad_ray import WadRay
@@ -780,8 +780,10 @@ func set_provision{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
 ) -> (info: AssetApportion) {
+    alloc_locals;
+
     let (info_packed: packed) = absorber_asset_absorption.read(absorption_id, asset);
-    let (asset_amt_per_share: ufelt, error: ufelt) = split_felt(info_packed);
+    let (asset_amt_per_share: ufelt, error: ufelt) = unpack_125(info_packed);
     let info: AssetApportion = AssetApportion(asset_amt_per_share=asset_amt_per_share, error=error);
     return (info,);
 }
@@ -789,8 +791,10 @@ func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 func get_asset_reward{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, epoch: ufelt
 ) -> (info: AssetApportion) {
+    alloc_locals;
+
     let (info_packed: packed) = absorber_reward_by_epoch.read(asset, epoch);
-    let (asset_amt_per_share: ufelt, error: ufelt) = split_felt(info_packed);
+    let (asset_amt_per_share: ufelt, error: ufelt) = unpack_125(info_packed);
     let info: AssetApportion = AssetApportion(asset_amt_per_share=asset_amt_per_share, error=error);
     return (info,);
 }
@@ -912,7 +916,7 @@ func update_absorbed_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     let actual_amount_distributed: ufelt = WadRay.wmul(asset_amt_per_share, total_shares);
     let error: ufelt = WadRay.unsigned_sub(total_amount_to_distribute, actual_amount_distributed);
 
-    let packed_asset_absorption: packed = pack_felt(asset_amt_per_share, error);
+    let packed_asset_absorption: packed = pack_125(asset_amt_per_share, error);
     absorber_asset_absorption.write(absorption_id, asset, packed_asset_absorption);
 
     return ();
@@ -923,13 +927,15 @@ func update_absorbed_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 func get_recent_asset_absorption_error{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(asset: address, absorption_id: ufelt) -> (error: ufelt) {
+    alloc_locals;
+
     if (absorption_id == 0) {
         return (0,);
     }
 
     let (packed_info: packed) = absorber_asset_absorption.read(absorption_id, asset);
     if (packed_info != 0) {
-        let (_, error: ufelt) = split_felt(packed_info);
+        let (_, error: ufelt) = unpack_125(packed_info);
         return (error,);
     }
 
@@ -1261,6 +1267,8 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     blessed_amts: ufelt*,
     has_rewards: bool,
 ) -> bool {
+    alloc_locals;
+
     if (rewards_count == 0) {
         return has_rewards;
     }
@@ -1269,7 +1277,27 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     assert [blessed_amts] = blessed_amt;
 
     if (blessed_amt != 0) {
-        receive_blessing(epoch, total_shares, [assets], blessed_amt);
+        let asset: address = [assets];
+        let epoch_reward_info: AssetApportion = get_asset_reward(asset, epoch);
+        let total_amount_to_distribute: ufelt = WadRay.unsigned_add(
+            blessed_amt, epoch_reward_info.error
+        );
+
+        let asset_amt_per_share: ufelt = WadRay.wunsigned_div(
+            total_amount_to_distribute, total_shares
+        );
+        let actual_amount_distributed: ufelt = WadRay.wmul(asset_amt_per_share, total_shares);
+        let error: ufelt = WadRay.unsigned_sub(
+            total_amount_to_distribute, actual_amount_distributed
+        );
+
+        let updated_asset_amt_per_share: ufelt = WadRay.unsigned_add(
+            epoch_reward_info.asset_amt_per_share, asset_amt_per_share
+        );
+        let packed_reward_asset_info: packed = pack_125(updated_asset_amt_per_share, error);
+
+        absorber_reward_by_epoch.write(asset, epoch, packed_reward_asset_info);
+
         return invoke_loop(
             epoch, total_shares, rewards_count - 1, assets + 1, blessers + 1, blessed_amts + 1, TRUE
         );
@@ -1284,32 +1312,6 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         blessed_amts + 1,
         has_rewards,
     );
-}
-
-// Helper function to update the cumulative asset amount per share wad and error for a reward
-// in the given epoch
-func receive_blessing{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    epoch: ufelt, total_shares: wad, asset: address, amount: ufelt
-) {
-    if (amount == 0) {
-        return ();
-    }
-
-    let epoch_reward_info: AssetApportion = get_asset_reward(asset, epoch);
-    let total_amount_to_distribute: ufelt = WadRay.unsigned_add(amount, epoch_reward_info.error);
-
-    let asset_amt_per_share: ufelt = WadRay.wunsigned_div(total_amount_to_distribute, total_shares);
-    let actual_amount_distributed: ufelt = WadRay.wmul(asset_amt_per_share, total_shares);
-    let error: ufelt = WadRay.unsigned_sub(total_amount_to_distribute, actual_amount_distributed);
-
-    let updated_asset_amt_per_share: ufelt = WadRay.unsigned_add(
-        epoch_reward_info.asset_amt_per_share, asset_amt_per_share
-    );
-    let packed_reward_asset_info: packed = pack_felt(updated_asset_amt_per_share, error);
-
-    absorber_reward_by_epoch.write(asset, epoch, packed_reward_asset_info);
-
-    return ();
 }
 
 // Helper function to iterate over all rewards and calculate the accumulated amounts for a provider.
@@ -1458,7 +1460,7 @@ func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
     let asset: address = [assets];
     let epoch_reward_info: AssetApportion = get_asset_reward(asset, epoch);
-    let next_epoch_reward_info: packed = pack_felt(0, epoch_reward_info.error);
+    let next_epoch_reward_info: packed = pack_125(0, epoch_reward_info.error);
     absorber_reward_by_epoch.write(asset, epoch + 1, next_epoch_reward_info);
 
     return propagate_reward_errors_loop(rewards_count - 1, epoch, assets + 1);
