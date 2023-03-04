@@ -104,4 +104,7 @@ namespace IBlesser {
     // instead of reverting.
     func bless() -> (amount: ufelt) {
     }
+
+    func preview_bless() -> (amount: ufelt) {
+    }
 }

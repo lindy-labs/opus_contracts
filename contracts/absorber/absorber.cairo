@@ -392,13 +392,25 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         provider, provision, provider_last_absorption_id, current_absorption_id
     );
 
-    // Get all rewards
+    // Get accumulated rewards
     let rewards_count: ufelt = absorber_rewards_count.read();
     let current_epoch: ufelt = absorber_current_epoch.read();
     let (reward_assets: address*) = alloc();
     let (reward_asset_amts: ufelt*) = alloc();
     get_provider_accumulated_rewards(
         provider, provision, current_epoch, 1, rewards_count, reward_assets, reward_asset_amts
+    );
+
+    // Add pending rewards
+    let (updated_reward_asset_amts: ufelt*) = alloc();
+    get_provider_pending_rewards(
+        provider,
+        provision,
+        current_epoch,
+        1,
+        rewards_count,
+        reward_asset_amts,
+        updated_reward_asset_amts,
     );
 
     return (
@@ -409,7 +421,7 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
         rewards_count,
         reward_assets,
         rewards_count,
-        reward_asset_amts,
+        updated_reward_asset_amts,
     );
 }
 
@@ -1433,4 +1445,80 @@ func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     absorber_reward_by_epoch.write(reward.asset, epoch + 1, next_epoch_reward_info);
 
     return propagate_reward_errors_loop(current_idx + 1, rewards_count, epoch, assets + 1);
+}
+
+// Helper function to iterate over all rewards and calculate the pending reward amounts
+// for a provider.
+// Takes in an array of accumulated amounts, and writes the sum of the accumulated amount and
+// the pending amount to a new array.
+// To get all rewards, `current_rewards_idx` should start at `1`.
+func get_provider_pending_rewards{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address,
+    provision: Provision,
+    current_epoch: ufelt,
+    current_rewards_idx: ufelt,
+    rewards_count: ufelt,
+    accumulated_asset_amts: ufelt*,
+    updated_asset_amts: ufelt*,
+) {
+    alloc_locals;
+
+    if (current_rewards_idx == rewards_count + 1) {
+        return ();
+    }
+
+    let reward: Reward = absorber_rewards.read(current_rewards_idx);
+    let pending_amt: ufelt = IBlesser.preview_bless(reward.blesser);
+    let reward_info: AssetApportion = get_asset_reward(reward.asset, current_epoch);
+
+    let provider_accumulated_amt: ufelt = [accumulated_asset_amts];
+    let total_shares: wad = absorber_total_shares.read();
+    if (total_shares == 0) {
+        assert [updated_asset_amts] = provider_accumulated_amt;
+
+        return get_provider_pending_rewards(
+            provider,
+            provision,
+            current_epoch,
+            current_rewards_idx + 1,
+            rewards_count,
+            accumulated_asset_amts + 1,
+            updated_asset_amts + 1,
+        );
+    }
+
+    let pending_amt_per_share: ufelt = WadRay.wunsigned_div(
+        pending_amt + reward_info.error, total_shares
+    );
+    let current_provider_shares: wad = convert_epoch_shares(
+        provision.epoch, current_epoch, provision.shares
+    );
+
+    if (current_provider_shares == 0) {
+        assert [updated_asset_amts] = provider_accumulated_amt;
+
+        return get_provider_pending_rewards(
+            provider,
+            provision,
+            current_epoch,
+            current_rewards_idx + 1,
+            rewards_count,
+            accumulated_asset_amts + 1,
+            updated_asset_amts + 1,
+        );
+    }
+    let provider_pending_amt: ufelt = WadRay.wmul(pending_amt_per_share, current_provider_shares);
+    let provider_updated_amt: ufelt = provider_accumulated_amt + provider_pending_amt;
+
+    assert [updated_asset_amts] = provider_updated_amt;
+
+    return get_provider_pending_rewards(
+        provider,
+        provision,
+        current_epoch,
+        current_rewards_idx + 1,
+        rewards_count,
+        accumulated_asset_amts + 1,
+        updated_asset_amts + 1,
+    );
 }

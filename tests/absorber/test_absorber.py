@@ -807,6 +807,8 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
     )
     assert before_absorber_yin_bal_wad == initial_yin_amt_provided
 
+    reap_info = (await absorber.preview_reap(provider).execute()).result
+
     # Test subsequent deposit
     subsequent_yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     subsequent_yin_amt_to_provide = from_uint(subsequent_yin_amt_to_provide_uint)
@@ -850,7 +852,14 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider,
 
     reward_multiplier = 1
     assert_provider_rewarded(
-        absorber, provider, expected_epoch, reward_assets, before_reward_bals, reward_amts, reward_multiplier
+        absorber,
+        provider,
+        expected_epoch,
+        reward_assets,
+        before_reward_bals,
+        reward_amts,
+        reward_multiplier,
+        preview_amts=reap_info.reward_asset_amts,
     )
 
 
@@ -1021,6 +1030,8 @@ async def test_remove(
         expected_epoch = before_provider_info.epoch
         reward_multiplier = 2
 
+    reap_info = (await absorber.preview_reap(provider).execute()).result
+
     tx = await absorber.remove(yin_to_remove_wad).execute(caller_address=provider)
 
     after_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
@@ -1077,6 +1088,7 @@ async def test_remove(
         before_reward_bals,
         reward_amts,
         reward_multiplier,
+        preview_amts=reap_info.reward_asset_amts,
     )
 
 
@@ -1093,6 +1105,8 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
     yin_amt_to_provide_uint = (await shrine.balanceOf(provider).execute()).result.balance
     yin_amt_to_provide_wad = from_uint(yin_amt_to_provide_uint)
     before_reward_bals = (await get_token_balances(reward_assets, [provider]))[0]
+
+    reap_info = (await absorber.preview_reap(provider).execute()).result
 
     tx = await absorber.provide(yin_amt_to_provide_wad).execute(caller_address=provider)
 
@@ -1129,6 +1143,7 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
         before_reward_bals,
         reward_amts,
         reward_multiplier,
+        preview_amts=reap_info.reward_asset_amts,
     )
 
     # Check that error has been transferred to new epoch, and no rewards were distributed
@@ -1202,6 +1217,8 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     before_first_provider_reward_bals = (await get_token_balances(reward_assets, [first_provider]))[0]
     before_total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
 
+    reap_info = (await absorber.preview_reap(first_provider).execute()).result
+
     # Step 4: Provider 1 withdraws
     tx = await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=first_provider)
 
@@ -1237,6 +1254,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
         reward_amts,
         reward_multiplier,
         error_margin=error_margin,
+        preview_amts=reap_info.reward_asset_amts,
     )
 
     # Provider 1 can no longer call reap
@@ -1427,6 +1445,8 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     for provider, percentage, before_absorbed_bals, before_reward_bals in zip(
         providers, provided_perc, before_providers_absorbed_bals, before_providers_reward_bals
     ):
+        reap_info = (await absorber.preview_reap(provider).execute()).result
+
         # Step 4: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
@@ -1481,7 +1501,14 @@ async def test_multi_user_reap_same_epoch_single_absorption(
             reward_multiplier += Decimal("1")
 
         assert_provider_rewarded(
-            absorber, provider, expected_epoch, reward_assets, before_reward_bals, reward_amts, reward_multiplier
+            absorber,
+            provider,
+            expected_epoch,
+            reward_assets,
+            before_reward_bals,
+            reward_amts,
+            reward_multiplier,
+            preview_amts=reap_info.reward_asset_amts,
         )
 
         after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
@@ -1561,6 +1588,8 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     for provider, percentage, remaining_yin, before_absorbed_bals, before_reward_bals in zip(
         providers, provided_perc, providers_remaining_yin, before_providers_absorbed_bals, before_providers_reward_bals
     ):
+        reap_info = (await absorber.preview_reap(provider).execute()).result
+
         # Steps 5 and 6: Providers 1 and 2 reaps
         tx = await absorber.reap().execute(caller_address=provider)
 
@@ -1609,7 +1638,14 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
             reward_multiplier += Decimal("2")
 
         assert_provider_rewarded(
-            absorber, provider, expected_epoch, reward_assets, before_reward_bals, reward_amts, reward_multiplier
+            absorber,
+            provider,
+            expected_epoch,
+            reward_assets,
+            before_reward_bals,
+            reward_amts,
+            reward_multiplier,
+            preview_amts=reap_info.reward_asset_amts,
         )
 
         after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
