@@ -95,7 +95,9 @@ func MultiplierUpdated(multiplier: ray, cumulative_multiplier: ray, interval: uf
 }
 
 @event
-func YangRateUpdated(yang_id: ufelt, new_rate: ray) {
+func YangRatesUpdated(
+    new_rate_idx: ufelt, yangs_len: ufelt, yangs: address*, new_rates_len: ufelt, new_rates: ray*
+) {
 }
 
 @event
@@ -711,17 +713,25 @@ func set_multiplier{
 
 // Update the base rates of all yangs
 // A base rate of -1 means the base rate for the yang stays the same
+// Takes an array of yangs and their updated rates.
+// yangs[i]'s base rate will be set to new_rates[i]
+// yangs's length must equal the number of yangs available.
 @external
 func update_rates{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(new_rates_len: ufelt, new_rates: ray*) {
+}(yangs_len: ufelt, yangs: address*, new_rates_len: ufelt, new_rates: ray*) {
     alloc_locals;
     AccessControl.assert_has_role(ShrineRoles.SET_RATES);
 
-    // Checking that the length of the given rates array is equal to the number of yangs
-    let (yang_count: ufelt) = shrine_yangs_count.read();
-    with_attr error_message("Shrine: rates array length not equal to yang count") {
-        assert new_rates_len = yang_count;
+    // Checking that the lengths of the given rates and yangs arrays are equal to the number of yangs
+    let (num_yangs: ufelt) = shrine_yangs_count.read();
+
+    with_attr error_message("Shrine: new rates array length is not equal to yang count") {
+        assert new_rates_len = num_yangs;
+    }
+
+    with_attr error_message("Shrine: yang addresses array length is not equal to yang count") {
+        assert yangs_len = num_yangs;
     }
 
     // Increment index and interval
@@ -732,9 +742,12 @@ func update_rates{
     shrine_rates_latest_idx.write(new_idx);
     shrine_rates_intervals.write(new_idx, new_interval);
 
-    // Loop over yangs and update rates
-    update_rates_loop(new_idx, new_rates_len, new_rates, 1);
+    // Loop over yangs and update rates, and then verify that
+    // all yangs' base rates were updated correctly
+    update_rates_loop(new_idx, yangs_len, yangs, new_rates);
+    verify_yang_rates_updated_loop(new_idx, num_yangs);
 
+    YangRatesUpdated.emit(new_idx, yangs_len, yangs, new_rates_len, new_rates);
     return ();
 }
 
@@ -1293,33 +1306,54 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 // Internal function for looping over all yangs and updating their base rates
 // ALL yangs must have a new rate value. A new rate value of `-1` means the
 // yang's rate isn't being updated, and so we get the previous value.
-
 func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    new_idx: ufelt, new_rates_len: ufelt, new_rates: ray*, current_yang_id: ufelt
+    new_idx: ufelt, num_yangs: ufelt, yangs: address*, new_rates: ray*
 ) {
     alloc_locals;
 
     // Termination condition
-    if (current_yang_id == new_rates_len + 1) {
+    if (num_yangs == 0) {
         return ();
     }
 
-    if ([new_rates] == -1) {
+    let current_yang_id: ufelt = get_valid_yang_id([yangs]);
+    let current_new_rate: ray = [new_rates];
+
+    if (current_new_rate == -1) {
         let (prev_rate: ray) = shrine_yang_rates.read(current_yang_id, new_idx - 1);
         shrine_yang_rates.write(current_yang_id, new_idx, prev_rate);
-        YangRateUpdated.emit(current_yang_id, prev_rate);
-        update_rates_loop(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
+        update_rates_loop(new_idx, num_yangs - 1, yangs + 1, new_rates + 1);
         return ();
     } else {
         with_attr error_message(
                 "Shrine: `new_rates` value of ({[new_rates]}) for `yang_id` ({current_yang_id}) is out of bounds") {
-            assert_nn_le([new_rates], MAX_YANG_RATE);
+            assert_nn_le(current_new_rate, MAX_YANG_RATE);
         }
-        shrine_yang_rates.write(current_yang_id, new_idx, [new_rates]);
-        YangRateUpdated.emit(current_yang_id, [new_rates]);
-        update_rates_loop(new_idx, new_rates_len, new_rates + 1, current_yang_id + 1);
+        shrine_yang_rates.write(current_yang_id, new_idx, current_new_rate);
+        update_rates_loop(new_idx, num_yangs - 1, yangs + 1, new_rates + 1);
         return ();
     }
+}
+
+// Function that loops over all yangs and checks that their base rates have all been updated
+// A value of zero is taken to mean that the yang's rate hasn't been updated
+// This means that no yang can have an interest rate of exactly 0.
+// `current_yang_id` must start at `yangs_count` in order to iterate over all yangs
+func verify_yang_rates_updated_loop{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(rate_idx: ufelt, current_yang_id: ufelt) {
+    let (rate: ray) = shrine_yang_rates.read(current_yang_id, rate_idx);
+    with_attr error_message("Shrine: Yang with ID ({current_yang_id}) was not correctly updated") {
+        assert_not_zero(rate);
+    }
+
+    // End the loop once all yangs have been checked
+    if (current_yang_id == 1) {
+        return ();
+    }
+
+    verify_yang_rates_updated_loop(rate_idx, current_yang_id - 1);
+    return ();
 }
 
 // Adds the accumulated interest as debt to the trove

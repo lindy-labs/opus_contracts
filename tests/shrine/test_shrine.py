@@ -1829,7 +1829,9 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
                 )
                 for yang_rate_history in base_rate_history
             ]
-            await shrine.update_rates(new_base_rates).execute(caller_address=SHRINE_OWNER)
+            await shrine.update_rates([yang["address"] for yang in YANGS], new_base_rates).execute(
+                caller_address=SHRINE_OWNER
+            )
 
     set_block_timestamp(starknet, end_interval * TIME_INTERVAL)
 
