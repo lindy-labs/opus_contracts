@@ -317,7 +317,7 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     // Get threshold and trove value
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let (threshold: ray, value: wad) = get_trove_threshold_and_value_internal(
-        trove_id, interval, interval, yang_count, 0, 0
+        trove_id, interval, yang_count, 0, 0
     );
 
     // Calculate debt
@@ -999,7 +999,7 @@ func redistribute{
     let (yang_count: ufelt) = shrine_yangs_count.read();
     let interval: ufelt = now();
     let (_, trove_value: wad) = get_trove_threshold_and_value_internal(
-        trove_id, interval, interval, yang_count, 0, 0
+        trove_id, interval, yang_count, 0, 0
     );
 
     // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
@@ -1983,8 +1983,7 @@ func get_trove_threshold_and_value_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
     trove_id: ufelt,
-    start_interval: ufelt,
-    end_interval: ufelt,
+    interval: ufelt,
     current_yang_id: ufelt,
     cumulative_weighted_threshold: ray,
     cumulative_trove_value: wad,
@@ -2009,8 +2008,7 @@ func get_trove_threshold_and_value_internal{
     if (deposited == 0) {
         return get_trove_threshold_and_value_internal(
             trove_id,
-            start_interval,
-            end_interval,
+            interval,
             current_yang_id - 1,
             cumulative_weighted_threshold,
             cumulative_trove_value,
@@ -2019,7 +2017,7 @@ func get_trove_threshold_and_value_internal{
 
     let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
 
-    let price: wad = get_avg_price(current_yang_id, start_interval, end_interval);
+    let price: wad = get_recent_price_from(current_yang_id, interval);
     let deposited_value: wad = WadRay.wmul(price, deposited);
 
     let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
@@ -2032,8 +2030,7 @@ func get_trove_threshold_and_value_internal{
 
     return get_trove_threshold_and_value_internal(
         trove_id,
-        start_interval,
-        end_interval,
+        interval,
         current_yang_id - 1,
         cumulative_weighted_threshold,
         cumulative_trove_value,
