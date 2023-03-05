@@ -1719,14 +1719,15 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
     random.seed(69)  # Seeding the random functions for repeatable tests
 
     base_rate_history = []  # Will store base rate history of all yangs
-    base_rate_history_for_compound = (
-        []
-    )  # Base rate history, but in the format the `compound` test helper function requires
-    for i in range(num_yangs_deposited):
+    # Base rate history, but in the format the `compound` test helper function requires
+    base_rate_history_for_compound = []
+
+    for i in range(len(YANGS)):
         # Base rate history of individual yang
         # Initializing with the initial base rates is necessary in order for the
         # `compound` function to work properly.
         yangs_base_rate_history = [YANGS[i]["rate"]]
+
         yangs_base_rate_history_for_compound = [YANGS[i]["rate"]]
         for j in range(num_base_rate_updates):
             """
@@ -1749,10 +1750,6 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
 
         base_rate_history.append(yangs_base_rate_history)
         base_rate_history_for_compound.append(yangs_base_rate_history_for_compound)
-
-    # Unused yangs also need a base rate history (for the call to `update_rates`)
-    for i in range(num_yangs_deposited, len(YANGS)):
-        base_rate_history.append([YANGS[i]["rate"]] + ([Decimal("-1")] * num_base_rate_updates))
 
     # The number of intervals actually between two base rate updates will be this number minus one
     BASE_RATE_UPDATE_SPACING = 5
@@ -1829,8 +1826,27 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
                 )
                 for yang_rate_history in base_rate_history
             ]
-            await shrine.update_rates([yang["address"] for yang in YANGS], new_base_rates).execute(
-                caller_address=SHRINE_OWNER
+
+            # Same as the previously generated array, but there are no -1's, only the actual base rate values
+            new_base_rates_no_placeholders = [
+                to_ray(yang_rate_history[i // BASE_RATE_UPDATE_SPACING])
+                for yang_rate_history in base_rate_history_for_compound
+            ]
+
+            yang_addresses = [yang["address"] for yang in YANGS]
+            tx = await shrine.update_rates(yang_addresses, new_base_rates).execute(caller_address=SHRINE_OWNER)
+
+            assert_event_emitted(
+                tx,
+                shrine.contract_address,
+                "YangRatesUpdated",
+                [
+                    i // BASE_RATE_UPDATE_SPACING,
+                    len(YANGS),
+                    *yang_addresses,
+                    len(YANGS),
+                    *new_base_rates_no_placeholders,
+                ],
             )
 
     set_block_timestamp(starknet, end_interval * TIME_INTERVAL)

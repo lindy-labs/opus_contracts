@@ -1,5 +1,6 @@
 %lang starknet
 
+from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import (
@@ -744,10 +745,11 @@ func update_rates{
 
     // Loop over yangs and update rates, and then verify that
     // all yangs' base rates were updated correctly
-    update_rates_loop(new_idx, yangs_len, yangs, new_rates);
+    let updated_rates: ray* = alloc();
+    update_rates_loop(new_idx, yangs_len, yangs, new_rates, updated_rates);
     verify_yang_rates_updated_loop(new_idx, num_yangs);
 
-    YangRatesUpdated.emit(new_idx, yangs_len, yangs, new_rates_len, new_rates);
+    YangRatesUpdated.emit(new_idx, yangs_len, yangs, new_rates_len, updated_rates);
     return ();
 }
 
@@ -1307,7 +1309,7 @@ func withdraw_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 // ALL yangs must have a new rate value. A new rate value of `-1` means the
 // yang's rate isn't being updated, and so we get the previous value.
 func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    new_idx: ufelt, num_yangs: ufelt, yangs: address*, new_rates: ray*
+    new_idx: ufelt, num_yangs: ufelt, yangs: address*, new_rates: ray*, updated_rates: ray*
 ) {
     alloc_locals;
 
@@ -1322,7 +1324,8 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     if (current_new_rate == -1) {
         let (prev_rate: ray) = shrine_yang_rates.read(current_yang_id, new_idx - 1);
         shrine_yang_rates.write(current_yang_id, new_idx, prev_rate);
-        update_rates_loop(new_idx, num_yangs - 1, yangs + 1, new_rates + 1);
+        assert [updated_rates] = prev_rate;
+        update_rates_loop(new_idx, num_yangs - 1, yangs + 1, new_rates + 1, updated_rates + 1);
         return ();
     } else {
         with_attr error_message(
@@ -1330,7 +1333,8 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
             assert_nn_le(current_new_rate, MAX_YANG_RATE);
         }
         shrine_yang_rates.write(current_yang_id, new_idx, current_new_rate);
-        update_rates_loop(new_idx, num_yangs - 1, yangs + 1, new_rates + 1);
+        assert [updated_rates] = current_new_rate;
+        update_rates_loop(new_idx, num_yangs - 1, yangs + 1, new_rates + 1, updated_rates + 1);
         return ();
     }
 }
