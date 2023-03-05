@@ -765,7 +765,7 @@ func move_yang{
     charge(src_trove_id);
 
     // Charge interest for destination trove since its collateral balance will be changed,
-    // affecting its personalized interest rate due to the underlying assumption in `get_trove_threshold_and_value_internal`
+    // affecting its personalized interest rate due to the underlying assumption in `compound`
     // TODO: maybe move this under `assert_healthy` call so failed `move_yang` calls are cheaper?
     // It depends on starknet handles fees for failed transactions
     charge(dst_trove_id);
@@ -1976,9 +1976,9 @@ func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return ();
 }
 
-// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value.
-// This function uses historical prices but the currently deposited yang amounts to calculate value.
-// The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
+// Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value, at a given interval.
+// This function can use historical prices but the currently deposited yang amounts to calculate value.
+// The underlying assumption is that the amount of each yang deposited at `interval` is the same as the amount currently deposited.
 func get_trove_threshold_and_value_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(

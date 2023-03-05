@@ -929,7 +929,7 @@ async def test__pass(shrine, forge_amt_wad):
         forge,
         shrine.contract_address,
         "TroveUpdated",
-        [TROVE_1, FEED_LEN - 1, forge_amt_wad],
+        [TROVE_1, FEED_LEN - 1, forge_amt_wad, 0],
     )
 
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
@@ -1060,7 +1060,7 @@ async def test_shrine_melt_pass(shrine, melt_amt_wad):
         melt,
         shrine.contract_address,
         "TroveUpdated",
-        [TROVE_1, FEED_LEN - 1, outstanding_amt_wad],
+        [TROVE_1, FEED_LEN - 1, outstanding_amt_wad, 0],
     )
 
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
@@ -1231,7 +1231,7 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
         tx,
         shrine.contract_address,
         "TroveUpdated",
-        [TROVE_1, updated_trove1.charge_from, updated_trove1.debt],
+        [TROVE_1, updated_trove1.charge_from, updated_trove1.debt, 0],
     )
 
     # `charge` should not have any effect if `Trove.charge_from` is the current interval
@@ -1257,7 +1257,7 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
             tx,
             shrine.contract_address,
             "TroveUpdated",
-            [TROVE_2, updated_trove2.charge_from, updated_trove2.debt],
+            [TROVE_2, updated_trove2.charge_from, updated_trove2.debt, 0],
         )
 
         # `charge` should not have any effect if `Trove.charge_from` is current interval + 1
@@ -1273,7 +1273,7 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
     [0, 1, FEED_LEN - 2],
     indirect=["update_feeds_intermittent"],
 )
-async def test_charge_scenario_1b(starknet, shrine, update_feeds_intermittent):
+async def test_charge_scenario_1b(shrine, update_feeds_intermittent):
     """
     Slight variation of `test_charge_scenario_1` where there is an interval between start and end
     that does not have a price update.
