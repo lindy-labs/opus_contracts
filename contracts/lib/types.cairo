@@ -1,14 +1,23 @@
 %lang starknet
 
-from contracts.lib.aliases import ufelt, wad
+from contracts.lib.aliases import ufelt, wad, packed
 
 //
 // Shrine
 //
 
+struct PackedTrove {
+    // Packed felt of:
+    // - Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation (lower 125 bits)
+    // - the amount of debt in the trove. (upper 125 bits)
+    info: packed,
+    last_rate_idx: ufelt,
+}
+
 struct Trove {
     charge_from: ufelt,  // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     debt: wad,  // Normalized debt
+    last_rate_idx: ufelt,
 }
 
 struct YangRedistribution {

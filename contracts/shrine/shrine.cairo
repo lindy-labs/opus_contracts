@@ -36,7 +36,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, str, ufelt, wad
 from contracts.lib.convert import pack_felt, pack_125, unpack_125
 from contracts.lib.exp import exp
-from contracts.lib.types import Trove, YangRedistribution
+from contracts.lib.types import PackedTrove, Trove, YangRedistribution
 from contracts.lib.wad_ray import WadRay
 
 //
@@ -143,11 +143,8 @@ func Approval(owner: address, spender: address, value: Uint256) {
 //
 
 // A trove can forge debt up to its threshold depending on the yangs deposited.
-// This mapping maps a trove to a `packed` felt containing its information.
-// The first 128 bits stores the amount of debt in the trove.
-// The last 123 bits stores the start time interval of the next interest accumulation period.
 @storage_var
-func shrine_troves(trove_id: ufelt) -> (trove: packed) {
+func shrine_troves(trove_id: ufelt) -> (trove: PackedTrove) {
 }
 
 // Stores the amount of the "yin" (synthetic) each user owns.
@@ -222,11 +219,6 @@ func shrine_rates_intervals(idx: ufelt) -> (interval: ufelt) {
 // Keeps track of the interest rate of each yang at each index
 @storage_var
 func shrine_yang_rates(yang_id: ufelt, idx: ufelt) -> (rate: ray) {
-}
-
-// Keeps track of the last index at which each trove was updated
-@storage_var
-func shrine_trove_last_rate_idx(trove_id: ufelt) -> (idx: ufelt) {
 }
 
 // Liquidation threshold per yang (as LTV) - ray
@@ -342,7 +334,7 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         }
     }
 
-    let debt: wad = compound(trove_id, trove.debt, trove.charge_from, interval);
+    let debt: wad = compound(trove_id, trove, interval);
     let debt: wad = pull_redistributed_debt(trove_id, debt, FALSE);
 
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
@@ -911,7 +903,9 @@ func forge{
 
     // Update trove information
     let new_debt: wad = WadRay.add(old_trove_info.debt, amount);
-    let new_trove_info: Trove = Trove(charge_from=new_charge_from, debt=new_debt);
+    let new_trove_info: Trove = Trove(
+        charge_from=new_charge_from, debt=new_debt, last_rate_idx=old_trove_info.last_rate_idx
+    );
     set_trove(trove_id, new_trove_info);
 
     // Check if Trove is within limits
@@ -963,7 +957,9 @@ func melt{
 
     // Will not revert because amount is capped to trove's debt
     let new_debt: wad = WadRay.unsigned_sub(old_trove_info.debt, melt_amt);
-    let new_trove_info: Trove = Trove(charge_from=current_interval, debt=new_debt);
+    let new_trove_info: Trove = Trove(
+        charge_from=current_interval, debt=new_debt, last_rate_idx=old_trove_info.last_rate_idx
+    );
     set_trove(trove_id, new_trove_info);
 
     // Update balances
@@ -1021,7 +1017,9 @@ func redistribute{
         redistribution_id, trove_id, trove_value, trove.debt, yang_count, interval, 0
     );
 
-    let updated_trove_info: Trove = Trove(charge_from=interval, debt=0);
+    let updated_trove_info: Trove = Trove(
+        charge_from=interval, debt=0, last_rate_idx=trove.last_rate_idx
+    );
     set_trove(trove_id, updated_trove_info);
 
     TroveRedistributed.emit(redistribution_id, trove_id, redistributed_debt);
@@ -1184,17 +1182,20 @@ func get_valid_yang_id{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func get_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt
 ) -> (trove: Trove) {
-    let (trove_packed: packed) = shrine_troves.read(trove_id);
-    let (charge_from: ufelt, debt: wad) = split_felt(trove_packed);
-    let trove: Trove = Trove(charge_from=charge_from, debt=debt);
+    alloc_locals;
+    let (trove_packed: PackedTrove) = shrine_troves.read(trove_id);
+    let (charge_from: ufelt, debt: wad) = unpack_125(trove_packed.info);
+    let trove: Trove = Trove(
+        charge_from=charge_from, debt=debt, last_rate_idx=trove_packed.last_rate_idx
+    );
     return (trove,);
 }
 
 func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, trove: Trove
 ) {
-    let packed_trove: packed = pack_felt(trove.charge_from, trove.debt);
-    shrine_troves.write(trove_id, packed_trove);
+    let info: packed = pack_125(trove.charge_from, trove.debt);
+    shrine_troves.write(trove_id, PackedTrove(info=info, last_rate_idx=trove.last_rate_idx));
     return ();
 }
 
@@ -1375,7 +1376,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     let current_interval: ufelt = now();
 
     // Get new debt amount
-    let compounded_debt: wad = compound(trove_id, trove.debt, trove.charge_from, current_interval);
+    let compounded_debt: wad = compound(trove_id, trove, current_interval);
 
     // Pull undistributed debt and update state
     let new_debt: wad = pull_redistributed_debt(trove_id, compounded_debt, TRUE);
@@ -1386,12 +1387,11 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     }
 
     // Update trove
-    let updated_trove: Trove = Trove(charge_from=current_interval, debt=new_debt);
-    set_trove(trove_id, updated_trove);
-
-    // Update trove's interest rate index
     let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
-    shrine_trove_last_rate_idx.write(trove_id, latest_idx);
+    let updated_trove: Trove = Trove(
+        charge_from=current_interval, debt=new_debt, last_rate_idx=latest_idx
+    );
+    set_trove(trove_id, updated_trove);
 
     // Get old system debt amount
     let (old_system_debt: wad) = shrine_total_debt.read();
@@ -1422,18 +1422,18 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 // t = time elapsed, in years
 
 func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, current_debt: wad, start_interval: ufelt, end_interval: ufelt
+    trove_id: ufelt, trove: Trove, end_interval: ufelt
 ) -> wad {
     alloc_locals;
     // Saves gas and prevents bugs for troves with no yangs deposited
-    if (current_debt == 0) {
+    if (trove.debt == 0) {
         return 0;
     }
-    let (trove_last_rate_idx: ufelt) = shrine_trove_last_rate_idx.read(trove_id);
+
     let (latest_rate_idx: ufelt) = shrine_rates_latest_idx.read();
 
     return compound_inner_loop(
-        trove_id, current_debt, start_interval, end_interval, trove_last_rate_idx, latest_rate_idx
+        trove_id, trove.debt, trove.charge_from, end_interval, trove.last_rate_idx, latest_rate_idx
     );
 }
 
@@ -1956,27 +1956,6 @@ func get_avg_multiplier{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         final_adjusted_cumulative_diff, end_interval - start_interval
     );
     return (avg_multiplier,);
-}
-
-// Returns the average relative LTV of a trove over the specified time period
-// Assumes debt remains constant over this period
-func get_avg_relative_ltv{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    trove_id: ufelt, debt: wad, start_interval: ufelt, end_interval: ufelt
-) -> ray {
-    let (num_yangs: ufelt) = shrine_yangs_count.read();
-    let (avg_threshold: ray, avg_val: wad) = get_trove_threshold_and_value_internal(
-        trove_id, start_interval, end_interval, num_yangs, 0, 0
-    );
-
-    // Catch troves with zero value
-    if (avg_val == 0) {
-        return 0;
-    }
-
-    let avg_ltv: ray = WadRay.runsigned_div(debt, avg_val);
-    let avg_relative_ltv: ray = WadRay.runsigned_div(avg_ltv, avg_threshold);
-
-    return avg_relative_ltv;
 }
 
 //
