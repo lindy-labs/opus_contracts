@@ -336,7 +336,6 @@ func get_trove_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
     let debt: wad = compound(trove_id, trove, interval);
     let debt: wad = pull_redistributed_debt(trove_id, debt, FALSE);
-
     let ltv: ray = WadRay.runsigned_div(debt, value);  // Using WadRay.runsigned_div on two wads returns a ray
     return (threshold, ltv, value, debt);
 }
@@ -2017,7 +2016,7 @@ func get_trove_threshold_and_value_internal{
 
     let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
 
-    let price: wad = get_recent_price_from(current_yang_id, interval);
+    let (price: wad, _, _) = get_recent_price_from(current_yang_id, interval);
     let deposited_value: wad = WadRay.wmul(price, deposited);
 
     let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
