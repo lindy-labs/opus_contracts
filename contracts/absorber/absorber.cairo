@@ -118,9 +118,9 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 func absorber_rewards_count() -> (count: ufelt) {
 }
 
-// Mapping from a reward token address to its ID for iteration
+// Mapping from a reward token address to its idx for iteration
 @storage_var
-func absorber_reward_id(asset: address) -> (id: ufelt) {
+func absorber_reward_idx(asset: address) -> (idx: ufelt) {
 }
 
 // Mapping from a reward token ID to its Reward struct:
@@ -473,20 +473,20 @@ func set_reward{
 
     let reward: Reward = Reward(asset, blesser, is_active);
 
-    let (reward_id: ufelt) = absorber_reward_id.read(asset);
-    if (reward_id == 0) {
+    let (reward_idx: ufelt) = absorber_reward_idx.read(asset);
+    if (reward_idx == 0) {
         let current_count: ufelt = absorber_rewards_count.read();
         let new_count: ufelt = current_count + 1;
 
         absorber_rewards_count.write(new_count);
-        absorber_reward_id.write(asset, new_count);
+        absorber_reward_idx.write(asset, new_count);
         absorber_rewards.write(new_count, reward);
 
         RewardSet.emit(asset, blesser, is_active);
         return ();
     }
 
-    absorber_rewards.write(reward_id, reward);
+    absorber_rewards.write(reward_idx, reward);
     RewardSet.emit(asset, blesser, is_active);
 
     return ();
@@ -723,8 +723,7 @@ func update{
     EpochChanged.emit(current_epoch, new_epoch);
 
     // Transfer reward errors of current epoch to the next epoch
-    let (reward_assets: address*) = alloc();
-    propagate_reward_errors_loop(1, rewards_count, current_epoch, reward_assets);
+    propagate_reward_errors_loop(1, rewards_count, current_epoch);
 
     return ();
 }
@@ -1161,20 +1160,19 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 //
 
 // Helper function to get all rewards in the Reward struct
-// To get all rewards in the order in which they were added, `current_idx` should be set to `1`.
+// To get all rewards in the order in which they were added, `current_rewards_idx` should be set to `1`.
 func get_rewards_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    current_idx: ufelt, rewards_count: ufelt, rewards: Reward*
+    current_rewards_idx: ufelt, rewards_count: ufelt, rewards: Reward*
 ) {
-    // Terminate when the number of rewards is exceeded.
-    // The total count is the ID of the latest added reward.
-    if (current_idx == rewards_count + 1) {
+    // Terminate when the number of rewards is exceeded
+    if (current_rewards_idx == rewards_count + 1) {
         return ();
     }
 
-    let reward: Reward = absorber_rewards.read(current_idx);
+    let reward: Reward = absorber_rewards.read(current_rewards_idx);
     assert [rewards] = reward;
 
-    return get_rewards_loop(current_idx + 1, rewards_count, rewards + 3);
+    return get_rewards_loop(current_rewards_idx + 1, rewards_count, rewards + 3);
 }
 
 // Helper function to trigger issuance of reward tokens and update rewards received
@@ -1217,7 +1215,7 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     epoch: ufelt,
     total_shares: wad,
-    current_idx: ufelt,
+    current_rewards_idx: ufelt,
     rewards_count: ufelt,
     assets: address*,
     blessed_amts: ufelt*,
@@ -1226,17 +1224,17 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 ) -> (active_rewards_count: ufelt, has_rewards: bool) {
     alloc_locals;
 
-    if (current_idx == rewards_count + 1) {
+    if (current_rewards_idx == rewards_count + 1) {
         return (active_rewards_count, has_rewards);
     }
 
-    let reward: Reward = absorber_rewards.read(current_idx);
+    let reward: Reward = absorber_rewards.read(current_rewards_idx);
 
     if (reward.is_active == FALSE) {
         return invoke_loop(
             epoch,
             total_shares,
-            current_idx + 1,
+            current_rewards_idx + 1,
             rewards_count,
             assets,
             blessed_amts,
@@ -1276,7 +1274,7 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         return invoke_loop(
             epoch,
             total_shares,
-            current_idx + 1,
+            current_rewards_idx + 1,
             rewards_count,
             assets + 1,
             blessed_amts + 1,
@@ -1288,7 +1286,7 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return invoke_loop(
         epoch,
         total_shares,
-        current_idx + 1,
+        current_rewards_idx + 1,
         rewards_count,
         assets + 1,
         blessed_amts + 1,
@@ -1409,10 +1407,16 @@ func get_reward_cumulative_diff{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
 // for this reward, the provider can repeatedly claim the difference and drain the absorber.
 func update_provider_cumulative_rewards_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(provider: address, epoch: ufelt, current_idx: ufelt, rewards_count: ufelt, assets: address*) {
+}(
+    provider: address,
+    epoch: ufelt,
+    current_rewards_idx: ufelt,
+    rewards_count: ufelt,
+    assets: address*,
+) {
     alloc_locals;
 
-    if (current_idx == rewards_count + 1) {
+    if (current_rewards_idx == rewards_count + 1) {
         return ();
     }
 
@@ -1423,28 +1427,28 @@ func update_provider_cumulative_rewards_loop{
     );
 
     return update_provider_cumulative_rewards_loop(
-        provider, epoch, current_idx + 1, rewards_count, assets + 1
+        provider, epoch, current_rewards_idx + 1, rewards_count, assets + 1
     );
 }
 
 // Transfers the error for a reward from the given epoch to the next epoch
+// `current_rewards_idx` should start at `1`.
 func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    current_idx: ufelt, rewards_count: ufelt, epoch: ufelt, assets: address*
+    current_rewards_idx: ufelt, rewards_count: ufelt, epoch: ufelt
 ) {
     alloc_locals;
 
-    if (current_idx == rewards_count + 1) {
+    // Terminate when the number of rewards is exceeded
+    if (current_rewards_idx == rewards_count + 1) {
         return ();
     }
 
-    let reward: Reward = absorber_rewards.read(current_idx);
-    assert [assets] = reward.asset;
-
+    let reward: Reward = absorber_rewards.read(current_rewards_idx);
     let epoch_reward_info: AssetApportion = get_asset_reward(reward.asset, epoch);
     let next_epoch_reward_info: packed = pack_125(0, epoch_reward_info.error);
     absorber_reward_by_epoch.write(reward.asset, epoch + 1, next_epoch_reward_info);
 
-    return propagate_reward_errors_loop(current_idx + 1, rewards_count, epoch, assets + 1);
+    return propagate_reward_errors_loop(current_rewards_idx + 1, rewards_count, epoch);
 }
 
 // Helper function to iterate over all rewards and calculate the pending reward amounts
