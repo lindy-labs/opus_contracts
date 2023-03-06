@@ -1194,7 +1194,7 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         epoch, total_shares, 1, rewards_count, reward_assets, blessed_amts, 0, FALSE
     );
 
-    // Early termination if no rewards were distributed
+    // Do not emit event if no rewards were distributed
     if (has_rewards == FALSE) {
         return ();
     }

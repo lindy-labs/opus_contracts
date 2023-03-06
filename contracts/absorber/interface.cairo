@@ -100,8 +100,8 @@ namespace IAbsorber {
 
 @contract_interface
 namespace IBlesser {
-    // If no reward tokens are transferred to the absorber, `bless` should return 0
-    // instead of reverting.
+    // If no reward tokens are to be distributed to the absorber, `preview_bless` and `bless`
+    // should return 0 instead of reverting.
     func bless() -> (amount: ufelt) {
     }
 
