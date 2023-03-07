@@ -392,6 +392,18 @@ func get_yang_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 }
 
 @view
+func get_shrine_threshold_and_value{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}() -> (threshold: ray, value: wad) {
+    let current_interval: ufelt = now();
+    let (yang_count: ufelt) = shrine_yangs_count.read();
+    let (threshold: ray, value: wad) = get_shrine_threshold_and_value_internal(
+        current_interval, yang_count, 0, 0
+    );
+    return (threshold, value);
+}
+
+@view
 func get_redistributions_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ) -> (count: ufelt) {
     return shrine_redistributions_count.read();
@@ -1834,6 +1846,57 @@ func get_trove_threshold_and_value_internal{
         current_yang_id - 1,
         cumulative_weighted_threshold,
         cumulative_trove_value,
+    );
+}
+
+// Returns a tuple of the threshold and value of all troves combined.
+// This function uses historical prices but the currently deposited yang amounts to calculate value.
+func get_shrine_threshold_and_value_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(
+    current_interval: ufelt,
+    current_yang_id: ufelt,
+    cumulative_weighted_threshold: ray,
+    cumulative_value: wad,
+) -> (threshold: ray, value: wad) {
+    alloc_locals;
+
+    if (current_yang_id == 0) {
+        if (cumulative_value != 0) {
+            // WadRay.wunsigned_div, with the numerator a ray, and the denominator a wad, returns a ray
+            let threshold: ray = WadRay.wunsigned_div(
+                cumulative_weighted_threshold, cumulative_value
+            );
+            return (threshold=threshold, value=cumulative_value);
+        } else {
+            return (threshold=0, value=0);
+        }
+    }
+
+    let (deposited: wad) = shrine_yang_total.read(current_yang_id);
+
+    // Gas optimization - skip over the current yang if none has been deposited
+    if (deposited == 0) {
+        return get_shrine_threshold_and_value_internal(
+            current_interval, current_yang_id - 1, cumulative_weighted_threshold, cumulative_value
+        );
+    }
+
+    let (yang_threshold: ray) = shrine_thresholds.read(current_yang_id);
+
+    let (price: wad, _, _) = get_recent_price_from(current_yang_id, current_interval);
+    let deposited_value: wad = WadRay.wmul(price, deposited);
+
+    let weighted_threshold: ray = WadRay.wmul(yang_threshold, deposited_value);
+
+    // WadRay.unsigned_add includes overflow check on result
+    let cumulative_value: wad = WadRay.unsigned_add(cumulative_value, deposited_value);
+    let cumulative_weighted_threshold: ray = WadRay.unsigned_add(
+        cumulative_weighted_threshold, weighted_threshold
+    );
+
+    return get_shrine_threshold_and_value_internal(
+        current_interval, current_yang_id - 1, cumulative_weighted_threshold, cumulative_value
     );
 }
 
