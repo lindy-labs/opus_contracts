@@ -741,7 +741,7 @@ func update_rates{
     // all yangs' base rates were updated correctly
     let updated_rates: ray* = alloc();
     update_rates_loop(new_idx, yangs_len, yangs, new_rates, updated_rates);
-    verify_yang_rates_updated_loop(new_idx, num_yangs);
+    assert_yang_rates_updated_loop(new_idx, num_yangs);
 
     YangRatesUpdated.emit(new_idx, yangs_len, yangs, new_rates_len, updated_rates);
     return ();
@@ -1349,7 +1349,7 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 // A value of zero is taken to mean that the yang's rate hasn't been updated
 // This means that no yang can have an interest rate of exactly 0.
 // `current_yang_id` must start at `yangs_count` in order to iterate over all yangs
-func verify_yang_rates_updated_loop{
+func assert_yang_rates_updated_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(rate_idx: ufelt, current_yang_id: ufelt) {
     let (rate: ray) = shrine_yang_rates.read(current_yang_id, rate_idx);
@@ -1362,7 +1362,7 @@ func verify_yang_rates_updated_loop{
         return ();
     }
 
-    verify_yang_rates_updated_loop(rate_idx, current_yang_id - 1);
+    assert_yang_rates_updated_loop(rate_idx, current_yang_id - 1);
     return ();
 }
 
