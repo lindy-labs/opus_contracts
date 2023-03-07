@@ -250,7 +250,7 @@ async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     # Creating the yangs
     for i in range(len(YANGS)):
         await shrine.add_yang(
-            YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), 0, to_ray(YANGS[i]["rate"])
+            YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), to_ray(YANGS[i]["rate"]), 0
         ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
@@ -291,9 +291,7 @@ async def shrine_deposit(shrine) -> StarknetCallInfo:
 
 @pytest.fixture
 async def shrine_forge_trove1(shrine, shrine_deposit) -> StarknetCallInfo:
-    print("before")
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
-    print("after")
     return forge
 
 

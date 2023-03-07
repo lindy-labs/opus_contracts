@@ -442,7 +442,7 @@ async def test_add_yang_pass(shrine):
     new_yang_start_price = to_wad(5)
     new_yang_rate = to_ray(0.06)
 
-    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, 0, new_yang_rate).execute(
+    tx = await shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, new_yang_rate, 0).execute(
         caller_address=SHRINE_OWNER
     )
     assert (await shrine.get_yangs_count().execute()).result.count == g_count + 1
@@ -483,8 +483,8 @@ async def test_add_yang_duplicate_fail(shrine):
             YANG1_ADDRESS,
             YANG1_THRESHOLD,
             to_wad(YANGS[0]["start_price"]),
-            0,
             to_ray(YANGS[0]["rate"]),
+            0,
         ).execute(caller_address=SHRINE_OWNER)
 
 
@@ -497,7 +497,7 @@ async def test_add_yang_unauthorized(shrine):
     bad_guy_yang_rate = to_ray(0.6)
     with pytest.raises(StarkException):
         await shrine.add_yang(
-            bad_guy_yang_address, bad_guy_yang_threshold, bad_guy_yang_start_price, 0, bad_guy_yang_rate
+            bad_guy_yang_address, bad_guy_yang_threshold, bad_guy_yang_start_price, bad_guy_yang_rate, 0
         ).execute(caller_address=BAD_GUY)
 
 
@@ -1744,7 +1744,7 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
                 yangs_base_rate_history.append(Decimal("-1"))
                 yangs_base_rate_history_for_compound.append(yangs_base_rate_history_for_compound[-1])
             else:
-                next_base_rate = Decimal(random.uniform(0, 5)) / Decimal("100")
+                next_base_rate = Decimal(random.uniform(1 / RAY_SCALE, MAX_BASE_RATE)) / Decimal("100")
                 yangs_base_rate_history.append(next_base_rate)
                 yangs_base_rate_history_for_compound.append(next_base_rate)
 

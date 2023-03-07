@@ -227,7 +227,7 @@ func add_yang{
     IERC20.transferFrom(yang, caller, gate, initial_deposit_amt_uint);
 
     let (shrine: address) = sentinel_shrine_address.read();
-    IShrine.add_yang(shrine, yang, yang_threshold, yang_price, initial_yang_amt, yang_rate);
+    IShrine.add_yang(shrine, yang, yang_threshold, yang_price, yang_rate, initial_yang_amt);
 
     YangAdded.emit(yang, gate);
     YangAssetMaxUpdated.emit(yang, 0, yang_asset_max);
