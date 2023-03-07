@@ -211,7 +211,7 @@ func shrine_multiplier(interval: ufelt) -> (mul_and_cumulative_mul: packed) {
 // Keeps track of the most recent rates index
 // Each index is associated with an update to the interest rates of all yangs.
 @storage_var
-func shrine_rates_latest_idx() -> (idx: ufelt) {
+func shrine_rates_latest_era() -> (idx: ufelt) {
 }
 
 // Keeps track of the interval at which the rate update at `idx` was made.
@@ -558,7 +558,7 @@ func add_yang{
     shrine_yang_price.write(yang_id, previous_interval, init_price_and_cumulative_price);
 
     // Setting the base rate for the new yang
-    let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
+    let (latest_idx: ufelt) = shrine_rates_latest_era.read();
     shrine_yang_rates.write(yang_id, latest_idx, initial_rate);
 
     // Events
@@ -730,11 +730,11 @@ func update_rates{
     }
 
     // Increment index and interval
-    let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
+    let (latest_idx: ufelt) = shrine_rates_latest_era.read();
     let new_idx: ufelt = latest_idx + 1;
     let new_interval: ufelt = now();
 
-    shrine_rates_latest_idx.write(new_idx);
+    shrine_rates_latest_era.write(new_idx);
     shrine_rates_intervals.write(new_idx, new_interval);
 
     // Loop over yangs and update rates, and then verify that
@@ -1393,7 +1393,7 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     }
 
     // Update trove
-    let (latest_idx: ufelt) = shrine_rates_latest_idx.read();
+    let (latest_idx: ufelt) = shrine_rates_latest_era.read();
     let updated_trove: Trove = Trove(
         charge_from=current_interval, debt=new_debt, last_rate_idx=latest_idx
     );
@@ -1436,7 +1436,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return 0;
     }
 
-    let (latest_rate_idx: ufelt) = shrine_rates_latest_idx.read();
+    let (latest_rate_idx: ufelt) = shrine_rates_latest_era.read();
 
     return compound_inner_loop(
         trove_id,
