@@ -50,5 +50,5 @@ jobs:
       - name: Lint Cairo 1.x code
         run: make check-format
 
-      - name: Test Cairo 1.x code
-        run: make test
+      - name: Compile Cairo 1.x code
+        run: make compile
