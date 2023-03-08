@@ -4,7 +4,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_nn_le
+from starkware.cairo.common.math_cmp import is_nn_le, is_not_zero
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
@@ -402,10 +402,33 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     );
 
     // Add pending rewards
+    let total_shares: wad = absorber_total_shares.read();
+    let has_providers: bool = is_not_zero(total_shares);
+
+    let current_provider_shares: wad = convert_epoch_shares(
+        provision.epoch, current_epoch, provision.shares
+    );
+    let has_shares: bool = is_not_zero(current_provider_shares);
+
+    let has_pending_rewards: bool = has_providers * has_shares;
+    if (has_pending_rewards == FALSE) {
+        return (
+            absorbed_assets_len,
+            absorbed_assets,
+            absorbed_assets_len,
+            absorbed_asset_amts,
+            rewards_count,
+            reward_assets,
+            rewards_count,
+            reward_asset_amts,
+        );
+    }
+
     let (updated_reward_asset_amts: ufelt*) = alloc();
     get_provider_pending_rewards(
         provider,
-        provision,
+        current_provider_shares,
+        total_shares,
         current_epoch,
         1,
         rewards_count,
@@ -1458,7 +1481,8 @@ func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 // To get all rewards, `current_rewards_id` should start at `1`.
 func get_provider_pending_rewards{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address,
-    provision: Provision,
+    current_provider_shares: wad,
+    total_shares: wad,
     current_epoch: ufelt,
     current_rewards_id: ufelt,
     rewards_count: ufelt,
@@ -1471,46 +1495,16 @@ func get_provider_pending_rewards{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
         return ();
     }
 
+    let provider_accumulated_amt: ufelt = [accumulated_asset_amts];
+
     let reward: Reward = absorber_rewards.read(current_rewards_id);
     let pending_amt: ufelt = IBlesser.preview_bless(reward.blesser);
     let reward_info: AssetApportion = get_asset_reward(reward.asset, current_epoch);
 
-    let provider_accumulated_amt: ufelt = [accumulated_asset_amts];
-    let total_shares: wad = absorber_total_shares.read();
-    if (total_shares == 0) {
-        assert [updated_asset_amts] = provider_accumulated_amt;
-
-        return get_provider_pending_rewards(
-            provider,
-            provision,
-            current_epoch,
-            current_rewards_id + 1,
-            rewards_count,
-            accumulated_asset_amts + 1,
-            updated_asset_amts + 1,
-        );
-    }
-
     let pending_amt_per_share: ufelt = WadRay.wunsigned_div(
         pending_amt + reward_info.error, total_shares
     );
-    let current_provider_shares: wad = convert_epoch_shares(
-        provision.epoch, current_epoch, provision.shares
-    );
 
-    if (current_provider_shares == 0) {
-        assert [updated_asset_amts] = provider_accumulated_amt;
-
-        return get_provider_pending_rewards(
-            provider,
-            provision,
-            current_epoch,
-            current_rewards_id + 1,
-            rewards_count,
-            accumulated_asset_amts + 1,
-            updated_asset_amts + 1,
-        );
-    }
     let provider_pending_amt: ufelt = WadRay.wmul(pending_amt_per_share, current_provider_shares);
     let provider_updated_amt: ufelt = provider_accumulated_amt + provider_pending_amt;
 
@@ -1518,7 +1512,8 @@ func get_provider_pending_rewards{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 
     return get_provider_pending_rewards(
         provider,
-        provision,
+        current_provider_shares,
+        total_shares,
         current_epoch,
         current_rewards_id + 1,
         rewards_count,
