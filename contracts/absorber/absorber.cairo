@@ -3,13 +3,14 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math import assert_nn_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
+from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
@@ -38,6 +39,9 @@ const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 
 // Shares to be minted without a provider to avoid first provider front-running
 const INITIAL_SHARES = 10 ** 3;
+
+// Maximum limit of the Shrine's LTV to threshold for restricting withdrawals
+const MAX_LTV_TO_THRESHOLD_LIMIT = 90 * WadRay.RAY_PERCENT;
 
 //
 // Storage
@@ -111,6 +115,11 @@ func absorber_asset_absorption(absorption_id: ufelt, asset: address) -> (info: p
 func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 }
 
+// Removals are temporarily suspended if the shrine's LTV to threshold exceeds this limit
+@storage_var
+func absorber_shrine_ltv_to_threshold_limit() -> (limit: ray) {
+}
+
 //
 // Events
 //
@@ -121,6 +130,10 @@ func PurgerUpdated(old_address: address, new_address: address) {
 
 @event
 func EpochChanged(old_epoch: ufelt, new_epoch: ufelt) {
+}
+
+@event
+func LtvToThresholdLimitUpdated(old_limit: ray, new_limit: ray) {
 }
 
 @event
@@ -173,13 +186,16 @@ func Compensate(
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address, shrine: address, sentinel: address) {
+}(admin: address, shrine: address, sentinel: address, ltv_to_threshold_limit: ray) {
+    alloc_locals;
+
     AccessControl.initializer(admin);
     AccessControl._grant_role(AbsorberRoles.DEFAULT_ABSORBER_ADMIN_ROLE, admin);
 
     absorber_shrine.write(shrine);
     absorber_sentinel.write(sentinel);
     absorber_live.write(TRUE);
+    set_ltv_to_threshold_limit_internal(ltv_to_threshold_limit);
     return ();
 }
 
@@ -249,6 +265,13 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 ) -> (info: AssetAbsorption) {
     let info: AssetAbsorption = get_asset_absorption(asset, absorption_id);
     return (info,);
+}
+
+@view
+func get_ltv_to_threshold_limit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (limit: ray) {
+    let limit: ray = absorber_shrine_ltv_to_threshold_limit.read();
+    return (limit,);
 }
 
 @view
@@ -390,6 +413,8 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
 @external
 func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
+
+    assert_valid_remove();
 
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -572,6 +597,33 @@ func compensate{
     transfer_assets(recipient, assets_len, assets, asset_amts);
 
     Compensate.emit(recipient, assets_len, assets, asset_amts_len, asset_amts);
+
+    return ();
+}
+
+//
+// Internal
+//
+
+func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    // Check system is live
+    let (is_live: bool) = absorber_live.read();
+    with_attr error_message("Absorber: Absorber is not live") {
+        assert is_live = TRUE;
+    }
+    return ();
+}
+
+func set_ltv_to_threshold_limit_internal{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(limit: ray) {
+    with_attr error_message("Absorber: Limit cannot exceed {MAX_LTV_TO_THRESHOLD_LIMIT}") {
+        assert_nn_le(limit, MAX_LTV_TO_THRESHOLD_LIMIT);
+    }
+
+    let prev_limit: ray = absorber_shrine_ltv_to_threshold_limit.read();
+    absorber_shrine_ltv_to_threshold_limit.write(limit);
+    LtvToThresholdLimitUpdated.emit(prev_limit, limit);
 
     return ();
 }
@@ -899,6 +951,10 @@ func get_absorbed_assets_for_provider_inner_loop{
     );
 }
 
+//
+// Internal - helpers for asset transfers
+//
+
 // Helper function to iterate over an array of assets to transfer to an address
 func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     recipient: address, asset_count: ufelt, assets: address*, asset_amts: ufelt*
@@ -924,11 +980,27 @@ func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return ();
 }
 
-func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    // Check system is live
-    let (is_live: bool) = absorber_live.read();
-    with_attr error_message("Absorber: Absorber is not live") {
-        assert is_live = TRUE;
+//
+// Internal - helpers for remove
+//
+
+func get_shrine_ltv_to_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (ratio: ray) {
+    let shrine: address = absorber_shrine.read();
+    let (threshold: ray, value: wad) = IShrine.get_shrine_threshold_and_value(shrine);
+    let (debt: wad) = IShrine.get_total_debt(shrine);
+
+    let ltv: ray = WadRay.runsigned_div(debt, value);
+    let ltv_to_threshold: ray = WadRay.runsigned_div(ltv, threshold);
+    return (ltv_to_threshold,);
+}
+
+func assert_valid_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
+    let (limit: ray) = absorber_shrine_ltv_to_threshold_limit.read();
+    with_attr error_message("Absorber: Relative LTV is too high") {
+        assert_nn_le(ltv_to_threshold, limit);
     }
+
     return ();
 }

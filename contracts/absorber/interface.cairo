@@ -35,6 +35,12 @@ namespace IAbsorber {
     ) {
     }
 
+    func get_ltv_to_threshold_limit() -> (limit: ray) {
+    }
+
+    func get_live() -> (is_live: bool) {
+    }
+
     func preview_remove(provider: address) -> (amount: wad) {
     }
 
