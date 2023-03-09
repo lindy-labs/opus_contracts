@@ -40,8 +40,8 @@ const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 // Shares to be minted without a provider to avoid first provider front-running
 const INITIAL_SHARES = 10 ** 3;
 
-// Maximum limit of the Shrine's LTV to threshold for restricting withdrawals
-const MAX_LTV_TO_THRESHOLD_LIMIT = 90 * WadRay.RAY_PERCENT;
+// Lower bound of the Shrine's LTV to threshold for restricting withdrawals
+const MIN_LTV_TO_THRESHOLD_LIMIT = 50 * WadRay.RAY_PERCENT;
 
 //
 // Storage
@@ -353,6 +353,21 @@ func set_purger{
     return ();
 }
 
+@external
+func set_ltv_to_threshold_limit{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(limit: ray) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT);
+
+    let prev_limit: ray = absorber_shrine_ltv_to_threshold_limit.read();
+    set_ltv_to_threshold_limit_internal(limit);
+    LtvToThresholdLimitUpdated.emit(prev_limit, limit);
+
+    return ();
+}
+
 //
 // External
 //
@@ -617,14 +632,11 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func set_ltv_to_threshold_limit_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(limit: ray) {
-    with_attr error_message("Absorber: Limit cannot exceed {MAX_LTV_TO_THRESHOLD_LIMIT}") {
-        assert_nn_le(limit, MAX_LTV_TO_THRESHOLD_LIMIT);
+    with_attr error_message("Absorber: Limit is too low") {
+        assert_nn_le(MIN_LTV_TO_THRESHOLD_LIMIT - 1, limit);
     }
 
-    let prev_limit: ray = absorber_shrine_ltv_to_threshold_limit.read();
     absorber_shrine_ltv_to_threshold_limit.write(limit);
-    LtvToThresholdLimitUpdated.emit(prev_limit, limit);
-
     return ();
 }
 
