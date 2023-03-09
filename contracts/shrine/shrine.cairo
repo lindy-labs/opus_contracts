@@ -565,8 +565,8 @@ func add_yang{
     shrine_yang_price.write(yang_id, previous_interval, init_price_and_cumulative_price);
 
     // Setting the base rate for the new yang
-    let (latest_idx: ufelt) = shrine_rates_latest_era.read();
-    shrine_yang_rates.write(yang_id, latest_idx, initial_rate);
+    let (latest_era: ufelt) = shrine_rates_latest_era.read();
+    shrine_yang_rates.write(yang_id, latest_era, initial_rate);
 
     // Events
     YangAdded.emit(yang, yang_id, initial_price, initial_rate);
@@ -736,37 +736,37 @@ func update_rates{
         assert yangs_len = num_yangs;
     }
 
-    let (latest_idx: ufelt) = shrine_rates_latest_era.read();
-    let (latest_idx_interval: ufelt) = shrine_rates_intervals.read(latest_idx);
+    let (latest_era: ufelt) = shrine_rates_latest_era.read();
+    let (latest_era_interval: ufelt) = shrine_rates_intervals.read(latest_era);
     let current_interval: ufelt = now();
 
     // If the interest rates were already updated in the current interval, don't increment the era
     // Otherwise, increment the era
     // This way, there is at most one set of base rate updates in every interval
-    tempvar new_idx = latest_idx;
+    tempvar new_era = latest_era;
 
-    if (latest_idx_interval == current_interval) {
-        tempvar new_idx = new_idx;
+    if (latest_era_interval == current_interval) {
+        tempvar new_era = new_era;
     } else {
-        tempvar new_idx = new_idx + 1;
+        tempvar new_era = new_era + 1;
     }
 
-    local new_idx: ufelt = new_idx;  // Revoked references workaround
+    local new_era: ufelt = new_era;  // Revoked references workaround
 
-    // If new_idx = latest_idx, then the caller will not be charged additional gas
+    // If new_era = latest_era, then the caller will not be charged additional gas
     // for these storage updates.
-    shrine_rates_latest_era.write(new_idx);
-    shrine_rates_intervals.write(new_idx, current_interval);
+    shrine_rates_latest_era.write(new_era);
+    shrine_rates_intervals.write(new_era, current_interval);
 
     // Loop over yangs and update rates, and then verify that
     // all yangs' base rates were updated correctly
 
     let updated_rates: ray* = alloc();
-    update_rates_loop(new_idx, yangs_len, yangs, new_rates, updated_rates);
-    assert_yang_rates_updated_loop(new_idx, num_yangs);
+    update_rates_loop(new_era, yangs_len, yangs, new_rates, updated_rates);
+    assert_yang_rates_updated_loop(new_era, num_yangs);
 
     YangRatesUpdated.emit(
-        new_idx, current_interval, yangs_len, yangs, new_rates_len, updated_rates
+        new_era, current_interval, yangs_len, yangs, new_rates_len, updated_rates
     );
     return ();
 }
@@ -930,7 +930,7 @@ func forge{
     // Update trove information
     let new_debt: wad = WadRay.add(old_trove_info.debt, amount);
     let new_trove_info: Trove = Trove(
-        charge_from=new_charge_from, debt=new_debt, last_rate_idx=old_trove_info.last_rate_idx
+        charge_from=new_charge_from, debt=new_debt, last_rate_era=old_trove_info.last_rate_era
     );
     set_trove(trove_id, new_trove_info);
 
@@ -984,7 +984,7 @@ func melt{
     // Will not revert because amount is capped to trove's debt
     let new_debt: wad = WadRay.unsigned_sub(old_trove_info.debt, melt_amt);
     let new_trove_info: Trove = Trove(
-        charge_from=current_interval, debt=new_debt, last_rate_idx=old_trove_info.last_rate_idx
+        charge_from=current_interval, debt=new_debt, last_rate_era=old_trove_info.last_rate_era
     );
     set_trove(trove_id, new_trove_info);
 
@@ -1044,7 +1044,7 @@ func redistribute{
     );
 
     let updated_trove_info: Trove = Trove(
-        charge_from=interval, debt=0, last_rate_idx=trove.last_rate_idx
+        charge_from=interval, debt=0, last_rate_era=trove.last_rate_era
     );
     set_trove(trove_id, updated_trove_info);
 
@@ -1212,7 +1212,7 @@ func get_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (trove_packed: PackedTrove) = shrine_troves.read(trove_id);
     let (charge_from: ufelt, debt: wad) = unpack_125(trove_packed.info);
     let trove: Trove = Trove(
-        charge_from=charge_from, debt=debt, last_rate_idx=trove_packed.last_rate_idx
+        charge_from=charge_from, debt=debt, last_rate_era=trove_packed.last_rate_era
     );
     return (trove,);
 }
@@ -1221,7 +1221,7 @@ func set_trove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     trove_id: ufelt, trove: Trove
 ) {
     let info: packed = pack_125(trove.charge_from, trove.debt);
-    shrine_troves.write(trove_id, PackedTrove(info=info, last_rate_idx=trove.last_rate_idx));
+    shrine_troves.write(trove_id, PackedTrove(info=info, last_rate_era=trove.last_rate_era));
     return ();
 }
 
@@ -1424,9 +1424,9 @@ func charge{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     }
 
     // Update trove
-    let (latest_idx: ufelt) = shrine_rates_latest_era.read();
+    let (latest_era: ufelt) = shrine_rates_latest_era.read();
     let updated_trove: Trove = Trove(
-        charge_from=current_interval, debt=new_debt, last_rate_idx=latest_idx
+        charge_from=current_interval, debt=new_debt, last_rate_era=latest_era
     );
     set_trove(trove_id, updated_trove);
 
@@ -1467,7 +1467,7 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return 0;
     }
 
-    let (latest_rate_idx: ufelt) = shrine_rates_latest_era.read();
+    let (latest_rate_era: ufelt) = shrine_rates_latest_era.read();
 
     return compound_inner_loop(
         trove_id,
@@ -1475,12 +1475,12 @@ func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         num_yangs,
         trove.charge_from,
         end_interval,
-        trove.last_rate_idx,
-        latest_rate_idx,
+        trove.last_rate_era,
+        latest_rate_era,
     );
 }
 
-// `trove_last_rate_idx` should always be less than or equal to `latest_rate_idx`
+// `trove_last_rate_era` should always be less than or equal to `latest_rate_era`
 // Compound interest formula: P(t) = P_0 * e^(rt)
 // P_0 = principal
 // r = nominal interest rate (what the interest rate would be if there was no compounding
@@ -1491,14 +1491,14 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     num_yangs: ufelt,
     start_interval: ufelt,
     end_interval: ufelt,
-    trove_last_rate_idx: ufelt,
-    latest_rate_idx: ufelt,
+    trove_last_rate_era: ufelt,
+    latest_rate_era: ufelt,
 ) -> wad {
     alloc_locals;
 
-    if (trove_last_rate_idx == latest_rate_idx) {
+    if (trove_last_rate_era == latest_rate_era) {
         let avg_base_rate: ray = get_avg_rate_over_era(
-            trove_id, start_interval, end_interval, latest_rate_idx, 0, 0, num_yangs
+            trove_id, start_interval, end_interval, latest_rate_era, 0, 0, num_yangs
         );
 
         let avg_multiplier: ray = get_avg_multiplier(start_interval, end_interval);
@@ -1510,7 +1510,7 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 
         return compounded_debt;
     } else {
-        let next_rate_update_idx: ufelt = trove_last_rate_idx + 1;
+        let next_rate_update_idx: ufelt = trove_last_rate_era + 1;
         let (next_rate_update_idx_interval: ufelt) = shrine_rates_intervals.read(
             next_rate_update_idx
         );
@@ -1519,7 +1519,7 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
             trove_id,
             start_interval,
             next_rate_update_idx_interval,
-            trove_last_rate_idx,
+            trove_last_rate_era,
             0,
             0,
             num_yangs,
@@ -1537,7 +1537,7 @@ func compound_inner_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
             next_rate_update_idx_interval,
             end_interval,
             next_rate_update_idx,
-            latest_rate_idx,
+            latest_rate_era,
         );
     }
 }

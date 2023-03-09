@@ -11,13 +11,13 @@ struct PackedTrove {
     // - Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation (lower 125 bits)
     // - the amount of debt in the trove. (upper 125 bits)
     info: packed,
-    last_rate_idx: ufelt,
+    last_rate_era: ufelt,
 }
 
 struct Trove {
     charge_from: ufelt,  // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     debt: wad,  // Normalized debt
-    last_rate_idx: ufelt,
+    last_rate_era: ufelt,
 }
 
 struct YangRedistribution {
