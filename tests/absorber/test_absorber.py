@@ -343,7 +343,7 @@ async def test_absorber_setup(shrine, absorber):
     assert is_live == TRUE
 
     admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
-    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT + AbsorberRoles.SET_PURGER
 
 
 @pytest.mark.asyncio
@@ -372,6 +372,33 @@ async def test_set_purger_unauthorized_fail(shrine, absorber):
     with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_PURGER}"):
         new_purger = NEW_MOCK_PURGER
         await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.asyncio
+async def test_set_ltv_to_threshold_limit_pass(absorber):
+    new_limit = to_ray(Decimal("0.7"))
+    tx = await absorber.set_ltv_to_threshold_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
+
+    old_limit = to_ray(LTV_TO_THRESHOLD_LIMIT)
+    assert_event_emitted(tx, absorber.contract_address, "LtvToThresholdLimitUpdated", [old_limit, new_limit])
+
+    assert (await absorber.get_ltv_to_threshold_limit().execute()).result.limit == new_limit
+
+
+@pytest.mark.asyncio
+async def test_set_ltv_to_threshold_limit_too_low_fail(absorber):
+    invalid_limit = to_ray(Decimal("0.49"))
+    with pytest.raises(StarkException, match="Absorber: Limit is too low"):
+        await absorber.set_ltv_to_threshold_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
+
+
+@pytest.mark.asyncio
+async def test_set_ltv_to_threshold_limit_unauthorized_fail(shrine, absorber):
+    with pytest.raises(
+        StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT}"
+    ):
+        new_limit = to_ray(Decimal("0.7"))
+        await absorber.set_ltv_to_threshold_limit(new_limit).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
