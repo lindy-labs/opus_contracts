@@ -100,7 +100,12 @@ func MultiplierUpdated(multiplier: ray, cumulative_multiplier: ray, interval: uf
 
 @event
 func YangRatesUpdated(
-    new_rate_idx: ufelt, yangs_len: ufelt, yangs: address*, new_rates_len: ufelt, new_rates: ray*
+    new_rate_idx: ufelt,
+    current_interval: ufelt,
+    yangs_len: ufelt,
+    yangs: address*,
+    new_rates_len: ufelt,
+    new_rates: ray*,
 ) {
 }
 
@@ -525,6 +530,8 @@ func add_yang{
         assert potential_yang_id = 0;
     }
 
+    assert_rate_is_valid(initial_rate);
+
     // Validity of `threshold` is asserted in set_threshold
     // Validity of `initial_price` is asserted in pack_125
 
@@ -729,21 +736,38 @@ func update_rates{
         assert yangs_len = num_yangs;
     }
 
-    // Increment index and interval
     let (latest_idx: ufelt) = shrine_rates_latest_era.read();
-    let new_idx: ufelt = latest_idx + 1;
-    let new_interval: ufelt = now();
+    let (latest_idx_interval: ufelt) = shrine_rates_intervals.read(latest_idx);
+    let current_interval: ufelt = now();
 
+    // If the interest rates were already updated in the current interval, don't increment the era
+    // Otherwise, increment the era
+    // This way, there is at most one set of base rate updates in every interval
+    tempvar new_idx = latest_idx;
+
+    if (latest_idx_interval == current_interval) {
+        tempvar new_idx = new_idx;
+    } else {
+        tempvar new_idx = new_idx + 1;
+    }
+
+    local new_idx: ufelt = new_idx;  // Revoked references workaround
+
+    // If new_idx = latest_idx, then the caller will not be charged additional gas
+    // for these storage updates.
     shrine_rates_latest_era.write(new_idx);
-    shrine_rates_intervals.write(new_idx, new_interval);
+    shrine_rates_intervals.write(new_idx, current_interval);
 
     // Loop over yangs and update rates, and then verify that
     // all yangs' base rates were updated correctly
+
     let updated_rates: ray* = alloc();
     update_rates_loop(new_idx, yangs_len, yangs, new_rates, updated_rates);
     assert_yang_rates_updated_loop(new_idx, num_yangs);
 
-    YangRatesUpdated.emit(new_idx, yangs_len, yangs, new_rates_len, updated_rates);
+    YangRatesUpdated.emit(
+        new_idx, current_interval, yangs_len, yangs, new_rates_len, updated_rates
+    );
     return ();
 }
 
@@ -1335,7 +1359,7 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         with_attr error_message(
                 "Shrine: `new_rates` value of ({[new_rates]}) for `yang_id` ({current_yang_id}) is out of bounds") {
             // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
-            assert_in_range(current_new_rate, 1, MAX_YANG_RATE + 1);
+            assert_rate_is_valid(current_new_rate);
         }
         shrine_yang_rates.write(current_yang_id, new_idx, current_new_rate);
         assert [updated_rates] = current_new_rate;
@@ -1352,6 +1376,7 @@ func update_rates_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 func assert_yang_rates_updated_loop{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(rate_idx: ufelt, current_yang_id: ufelt) {
+    alloc_locals;
     let (rate: ray) = shrine_yang_rates.read(current_yang_id, rate_idx);
     with_attr error_message("Shrine: Yang with ID ({current_yang_id}) was not correctly updated") {
         assert_not_zero(rate);
@@ -1363,6 +1388,12 @@ func assert_yang_rates_updated_loop{
     }
 
     assert_yang_rates_updated_loop(rate_idx, current_yang_id - 1);
+    return ();
+}
+
+// Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
+func assert_rate_is_valid{range_check_ptr}(rate: ray) {
+    assert_in_range(rate, 1, MAX_YANG_RATE + 1);
     return ();
 }
 

@@ -1842,6 +1842,7 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
                 "YangRatesUpdated",
                 [
                     i // BASE_RATE_UPDATE_SPACING,
+                    start_interval + i,
                     len(YANGS),
                     *yang_addresses,
                     len(YANGS),
