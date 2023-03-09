@@ -35,6 +35,7 @@ from tests.utils import (
     max_approve,
     set_block_timestamp,
     to_fixed_point,
+    to_ray,
     to_uint,
     to_wad,
 )
@@ -152,6 +153,7 @@ async def absorber_deploy(starknet, shrine, sentinel) -> StarknetContract:
         {
             "func convert_to_shares": "@view\nfunc convert_to_shares",
             "func convert_epoch_shares": "@view\nfunc convert_epoch_shares",
+            "func get_shrine_ltv_to_threshold": "@view\nfunc get_shrine_ltv_to_threshold",
         },
     )
 
@@ -176,6 +178,7 @@ func burn_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
             ABSORBER_OWNER,
             shrine.contract_address,
             sentinel.contract_address,
+            to_ray(LTV_TO_THRESHOLD_LIMIT),
         ],
     )
 
@@ -332,6 +335,9 @@ async def test_absorber_setup(shrine, absorber):
 
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
+
+    ltv_to_threshold_limit = (await absorber.get_ltv_to_threshold_limit().execute()).result.limit
+    assert from_ray(ltv_to_threshold_limit) == LTV_TO_THRESHOLD_LIMIT
 
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
@@ -946,6 +952,24 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         max_withdrawable_yin_amt = from_wad((await absorber.preview_remove(provider).execute()).result.amount)
         expected_remaining_yin = remaining_yin - (percentage * from_wad(second_update_burn_amt_wad))
         assert_equalish(max_withdrawable_yin_amt, expected_remaining_yin)
+
+
+@pytest.mark.parametrize("price_decrease", [Decimal("0.5"), Decimal("0.8")])
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
+@pytest.mark.asyncio
+async def test_remove_ltv_to_threshold_exceeds_limit_fail(shrine, absorber, steth_yang, price_decrease):
+
+    steth_yang_price = (await shrine.get_current_yang_price(steth_yang.contract_address).execute()).result.price
+    new_steth_yang_price = int((Decimal("1") - price_decrease) * steth_yang_price)
+    await shrine.advance(steth_yang.contract_address, new_steth_yang_price).execute(caller_address=SHRINE_OWNER)
+
+    ltv_to_threshold = from_ray((await absorber.get_shrine_ltv_to_threshold().execute()).result.ratio)
+
+    assert ltv_to_threshold > LTV_TO_THRESHOLD_LIMIT
+
+    for provider in [PROVIDER_1, PROVIDER_2]:
+        with pytest.raises(StarkException, match="Absorber: Relative LTV is too high"):
+            await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")

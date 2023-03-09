@@ -5,6 +5,8 @@ from tests.utils import str_to_felt, to_wad
 # Initial shares minted to the system if total shares are 0
 INITIAL_SHARES_WAD = Decimal("1E3")
 
+LTV_TO_THRESHOLD_LIMIT = Decimal("0.83375")
+
 DEBT_CEILING_WAD = to_wad(1_000_000)
 
 # Constants for providers to absorber
