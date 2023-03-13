@@ -921,7 +921,7 @@ async def test_shrine_withdraw_amount_out_of_bounds(shrine, withdraw_amt):
 )
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test__pass(shrine, forge_amt_wad):
+async def test_shrine_forge_pass(shrine, forge_amt_wad):
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
 
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
@@ -980,7 +980,7 @@ async def test_shrine_inject_pass(shrine, forge_amt_wad):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test__zero_deposit_fail(shrine):
+async def test_shrine_forge_zero_deposit_fail(shrine):
     # Forge without any yangs deposited
     with pytest.raises(StarkException, match="Shrine: Trove LTV is too high"):
         await shrine.forge(TROVE3_OWNER, TROVE_3, to_wad(1_000)).execute(caller_address=SHRINE_OWNER)
@@ -988,7 +988,7 @@ async def test__zero_deposit_fail(shrine):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test__unsafe_fail(shrine):
+async def test_shrine_forge_unsafe_fail(shrine):
     # Increase debt ceiling
     new_ceiling = to_wad(100_000)
     await shrine.set_ceiling(new_ceiling).execute(caller_address=SHRINE_OWNER)
@@ -999,7 +999,7 @@ async def test__unsafe_fail(shrine):
 
 @pytest.mark.usefixtures("update_feeds")
 @pytest.mark.asyncio
-async def test__ceiling_fail(shrine):
+async def test_shrine_forge_ceiling_fail(shrine):
     # Deposit more yang
     await shrine.deposit(YANG1_ADDRESS, TROVE_1, to_wad(10)).execute(caller_address=SHRINE_OWNER)
     updated_deposit = (await shrine.get_deposit(YANG1_ADDRESS, TROVE_1).execute()).result.balance
@@ -1011,7 +1011,7 @@ async def test__ceiling_fail(shrine):
 
 @pytest.mark.usefixtures("shrine_deposit")
 @pytest.mark.asyncio
-async def test__unauthorized(shrine):
+async def test_shrine_forge_unauthorized(shrine):
     with pytest.raises(StarkException):
         await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=BAD_GUY)
 
@@ -1021,7 +1021,7 @@ async def test__unauthorized(shrine):
 
 @pytest.mark.parametrize("forge_amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
-async def test__amount_out_of_bounds(shrine, forge_amt):
+async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
     # no need to have any setup for the test,
     # amount check happens before checking balances
     with pytest.raises(StarkException, match=r"Shrine: Value of `amount` \(-?\d+\) is out of bounds"):

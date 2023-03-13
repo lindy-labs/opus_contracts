@@ -565,6 +565,12 @@ func add_yang{
     shrine_yang_price.write(yang_id, previous_interval, init_price_and_cumulative_price);
 
     // Setting the base rate for the new yang
+
+    // NOTE: Eras are not incremented when a new yang is added, and the era that is being set
+    // for this base rate will have an interval that, in practice, is < now(). This would be a problem
+    // if there could be a trove containing the newly-added with `trove.last_rate_era < latest_era`.
+    // Luckily, this isn't possible because `charge` is called in `deposit`, so a trove's `last_rate_era`
+    // will always be updated to `latest_era` immediately before the newly-added yang is deposited.
     let (latest_era: ufelt) = shrine_rates_latest_era.read();
     shrine_yang_rates.write(yang_id, latest_era, initial_rate);
 
