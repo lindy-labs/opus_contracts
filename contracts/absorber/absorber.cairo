@@ -429,7 +429,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
 func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
 
-    assert_valid_remove();
+    assert_can_remove();
 
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
@@ -1007,7 +1007,7 @@ func get_shrine_ltv_to_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     return (ltv_to_threshold,);
 }
 
-func assert_valid_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
     let (limit: ray) = absorber_shrine_ltv_to_threshold_limit.read();
     with_attr error_message("Absorber: Relative LTV is too high") {
