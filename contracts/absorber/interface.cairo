@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import address, ufelt, wad
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.types import AssetAbsorption, Provision
 
 @contract_interface
