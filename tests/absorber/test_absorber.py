@@ -403,6 +403,13 @@ async def test_set_ltv_to_threshold_limit_too_low_fail(absorber):
 
 
 @pytest.mark.asyncio
+async def test_set_ltv_to_threshold_limit_oob_fail(absorber):
+    for amt in WAD_RAY_OOB_VALUES:
+        with pytest.raises(StarkException, match=r"Absorber: Value of `limit` \(-?\d+\) is out of bounds"):
+            await absorber.set_ltv_to_threshold_limit(amt).execute(caller_address=ABSORBER_OWNER)
+
+
+@pytest.mark.asyncio
 async def test_set_ltv_to_threshold_limit_unauthorized_fail(shrine, absorber):
     with pytest.raises(
         StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT}"
