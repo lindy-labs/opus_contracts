@@ -670,6 +670,10 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func set_ltv_to_threshold_limit_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(limit: ray) {
+    with_attr error_message("Absorber: Value of `limit` ({limit}) is out of bounds") {
+        WadRay.assert_valid_unsigned(limit);
+    }
+
     with_attr error_message("Absorber: Limit is too low") {
         assert_nn_le(MIN_LTV_TO_THRESHOLD_LIMIT - 1, limit);
     }
