@@ -13,6 +13,7 @@ from tests.utils import (
     BAD_GUY,
     FALSE,
     MAX_UINT256,
+    RAY_SCALE,
     SHRINE_OWNER,
     TIME_INTERVAL,
     TRUE,
@@ -179,7 +180,7 @@ func burn_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
             ABSORBER_OWNER,
             shrine.contract_address,
             sentinel.contract_address,
-            to_ray(LTV_TO_THRESHOLD_LIMIT),
+            LIMIT_RAY,
         ],
     )
 
@@ -346,14 +347,14 @@ async def test_absorber_setup(shrine, absorber):
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
 
-    ltv_to_threshold_limit = (await absorber.get_ltv_to_threshold_limit().execute()).result.limit
-    assert from_ray(ltv_to_threshold_limit) == LTV_TO_THRESHOLD_LIMIT
+    ltv_to_threshold_limit = (await absorber.get_limit().execute()).result.limit
+    assert ltv_to_threshold_limit == LIMIT_RAY
 
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
 
     admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
-    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT + AbsorberRoles.SET_PURGER
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_LIMIT + AbsorberRoles.SET_PURGER
 
 
 @pytest.mark.asyncio
@@ -384,38 +385,37 @@ async def test_set_purger_unauthorized_fail(shrine, absorber):
         await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
 
 
+@pytest.mark.parametrize("limit", [MIN_LIMIT_RAY, RAY_SCALE, RAY_SCALE + 1])
 @pytest.mark.asyncio
-async def test_set_ltv_to_threshold_limit_pass(absorber):
-    new_limit = to_ray(Decimal("0.7"))
-    tx = await absorber.set_ltv_to_threshold_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
+async def test_set_limit_pass(absorber, limit):
+    new_limit = MIN_LIMIT_RAY
+    tx = await absorber.set_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
 
-    old_limit = to_ray(LTV_TO_THRESHOLD_LIMIT)
-    assert_event_emitted(tx, absorber.contract_address, "LtvToThresholdLimitUpdated", [old_limit, new_limit])
+    old_limit = LIMIT_RAY
+    assert_event_emitted(tx, absorber.contract_address, "LimitUpdated", [old_limit, new_limit])
 
-    assert (await absorber.get_ltv_to_threshold_limit().execute()).result.limit == new_limit
+    assert (await absorber.get_limit().execute()).result.limit == new_limit
 
 
+@pytest.mark.parametrize("invalid_limit", [0, MIN_LIMIT_RAY - 1])
 @pytest.mark.asyncio
-async def test_set_ltv_to_threshold_limit_too_low_fail(absorber):
-    invalid_limit = to_ray(Decimal("0.49"))
+async def test_set_limit_too_low_fail(absorber, invalid_limit):
     with pytest.raises(StarkException, match="Absorber: Limit is too low"):
-        await absorber.set_ltv_to_threshold_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
+        await absorber.set_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
 
 
 @pytest.mark.asyncio
-async def test_set_ltv_to_threshold_limit_oob_fail(absorber):
+async def test_set_limit_oob_fail(absorber):
     for amt in WAD_RAY_OOB_VALUES:
         with pytest.raises(StarkException, match=r"Absorber: Value of `limit` \(-?\d+\) is out of bounds"):
-            await absorber.set_ltv_to_threshold_limit(amt).execute(caller_address=ABSORBER_OWNER)
+            await absorber.set_limit(amt).execute(caller_address=ABSORBER_OWNER)
 
 
 @pytest.mark.asyncio
-async def test_set_ltv_to_threshold_limit_unauthorized_fail(shrine, absorber):
-    with pytest.raises(
-        StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT}"
-    ):
+async def test_set_limit_unauthorized_fail(shrine, absorber):
+    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_LIMIT}"):
         new_limit = to_ray(Decimal("0.7"))
-        await absorber.set_ltv_to_threshold_limit(new_limit).execute(caller_address=BAD_GUY)
+        await absorber.set_limit(new_limit).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -1021,9 +1021,9 @@ async def test_remove_ltv_to_threshold_exceeds_limit_fail(shrine, absorber, stet
     new_steth_yang_price = int((Decimal("1") - price_decrease) * steth_yang_price)
     await shrine.advance(steth_yang.contract_address, new_steth_yang_price).execute(caller_address=SHRINE_OWNER)
 
-    ltv_to_threshold = from_ray((await absorber.get_shrine_ltv_to_threshold().execute()).result.ratio)
+    ltv_to_threshold = (await absorber.get_shrine_ltv_to_threshold().execute()).result.ratio
 
-    assert ltv_to_threshold > LTV_TO_THRESHOLD_LIMIT
+    assert ltv_to_threshold > LIMIT_RAY
 
     for provider in [PROVIDER_1, PROVIDER_2]:
         with pytest.raises(StarkException, match="Absorber: Relative LTV is too high"):
@@ -1050,6 +1050,7 @@ async def test_remove_invalid_request_fail(starknet, absorber):
     with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
         await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
+    # Request has expired
     set_block_timestamp(starknet, request_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1)
     with pytest.raises(StarkException, match="Absorber: Request has expired"):
         await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)

@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from tests.utils import str_to_felt, to_wad
+from tests.utils import str_to_felt, to_ray, to_wad
 
 # Constants for removal request
 REQUEST_TIMELOCK_SECONDS = 60
@@ -9,7 +9,8 @@ REQUEST_VALIDITY_PERIOD_SECONDS = 24 * 60 * 60
 # Initial shares minted to the system if total shares are 0
 INITIAL_SHARES_WAD = Decimal("1E3")
 
-LTV_TO_THRESHOLD_LIMIT = Decimal("0.83375")
+LIMIT_RAY = to_ray(Decimal("0.83375"))
+MIN_LIMIT_RAY = to_ray(Decimal("0.5"))
 
 DEBT_CEILING_WAD = to_wad(1_000_000)
 
