@@ -404,11 +404,11 @@ async def test_set_limit_too_low_fail(absorber, invalid_limit):
         await absorber.set_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
 
 
+@pytest.mark.parametrize("amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
-async def test_set_limit_oob_fail(absorber):
-    for amt in WAD_RAY_OOB_VALUES:
-        with pytest.raises(StarkException, match=r"Absorber: Value of `limit` \(-?\d+\) is out of bounds"):
-            await absorber.set_limit(amt).execute(caller_address=ABSORBER_OWNER)
+async def test_set_limit_oob_fail(absorber, amt):
+    with pytest.raises(StarkException, match=r"Absorber: Value of `limit` \(-?\d+\) is out of bounds"):
+        await absorber.set_limit(amt).execute(caller_address=ABSORBER_OWNER)
 
 
 @pytest.mark.asyncio
@@ -605,10 +605,10 @@ async def test_remove_pass(
 
     provider = PROVIDER_1
 
-    await absorber.request().execute(caller_address=PROVIDER_1)
+    await absorber.request().execute(caller_address=provider)
 
-    current_timestamp = get_block_timestamp(starknet)
-    new_timestamp = current_timestamp + seconds_since_request
+    request_timestamp = get_block_timestamp(starknet)
+    new_timestamp = request_timestamp + seconds_since_request
     set_block_timestamp(starknet, new_timestamp)
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
