@@ -45,7 +45,7 @@ const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 const INITIAL_SHARES = 10 ** 3;
 
 // Lower bound of the Shrine's LTV to threshold for restricting withdrawals
-const MIN_LTV_TO_THRESHOLD_LIMIT = 50 * WadRay.RAY_PERCENT;
+const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
 
 // Amount of time that needs to elapse after request is submitted before `remove`, in seconds
 const REQUEST_TIMELOCK = 60;
@@ -127,7 +127,7 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 
 // Removals are temporarily suspended if the shrine's LTV to threshold exceeds this limit
 @storage_var
-func absorber_shrine_ltv_to_threshold_limit() -> (limit: ray) {
+func absorber_limit() -> (limit: ray) {
 }
 
 @storage_var
@@ -147,7 +147,7 @@ func EpochChanged(old_epoch: ufelt, new_epoch: ufelt) {
 }
 
 @event
-func LtvToThresholdLimitUpdated(old_limit: ray, new_limit: ray) {
+func LimitUpdated(old_limit: ray, new_limit: ray) {
 }
 
 @event
@@ -204,7 +204,7 @@ func Compensate(
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address, shrine: address, sentinel: address, ltv_to_threshold_limit: ray) {
+}(admin: address, shrine: address, sentinel: address, limit: ray) {
     alloc_locals;
 
     AccessControl.initializer(admin);
@@ -213,7 +213,7 @@ func constructor{
     absorber_shrine.write(shrine);
     absorber_sentinel.write(sentinel);
     absorber_live.write(TRUE);
-    set_ltv_to_threshold_limit_internal(ltv_to_threshold_limit);
+    set_limit_internal(limit);
     return ();
 }
 
@@ -294,9 +294,8 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 }
 
 @view
-func get_ltv_to_threshold_limit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (limit: ray) {
-    let limit: ray = absorber_shrine_ltv_to_threshold_limit.read();
+func get_limit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (limit: ray) {
+    let limit: ray = absorber_limit.read();
     return (limit,);
 }
 
@@ -380,16 +379,16 @@ func set_purger{
 }
 
 @external
-func set_ltv_to_threshold_limit{
+func set_limit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(limit: ray) {
     alloc_locals;
 
-    AccessControl.assert_has_role(AbsorberRoles.SET_LTV_TO_THRESHOLD_LIMIT);
+    AccessControl.assert_has_role(AbsorberRoles.SET_LIMIT);
 
-    let prev_limit: ray = absorber_shrine_ltv_to_threshold_limit.read();
-    set_ltv_to_threshold_limit_internal(limit);
-    LtvToThresholdLimitUpdated.emit(prev_limit, limit);
+    let prev_limit: ray = absorber_limit.read();
+    set_limit_internal(limit);
+    LimitUpdated.emit(prev_limit, limit);
 
     return ();
 }
@@ -675,18 +674,18 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
-func set_ltv_to_threshold_limit_internal{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(limit: ray) {
+func set_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    limit: ray
+) {
     with_attr error_message("Absorber: Value of `limit` ({limit}) is out of bounds") {
         WadRay.assert_valid_unsigned(limit);
     }
 
     with_attr error_message("Absorber: Limit is too low") {
-        assert_nn_le(MIN_LTV_TO_THRESHOLD_LIMIT - 1, limit);
+        assert_nn_le(MIN_LIMIT, limit);
     }
 
-    absorber_shrine_ltv_to_threshold_limit.write(limit);
+    absorber_limit.write(limit);
     return ();
 }
 
@@ -1061,7 +1060,7 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     provider: address
 ) {
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
-    let (limit: ray) = absorber_shrine_ltv_to_threshold_limit.read();
+    let (limit: ray) = absorber_limit.read();
     with_attr error_message("Absorber: Relative LTV is too high") {
         assert_nn_le(ltv_to_threshold, limit);
     }
