@@ -278,6 +278,14 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 }
 
 @view
+func get_provider_request_timestamp{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(provider: address) -> (timestamp: ufelt) {
+    let timestamp: ufelt = absorber_provider_request_timestamp.read(provider);
+    return (timestamp,);
+}
+
+@view
 func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
 ) -> (info: AssetAbsorption) {
