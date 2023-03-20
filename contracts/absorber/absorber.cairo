@@ -47,11 +47,11 @@ const INITIAL_SHARES = 10 ** 3;
 // Lower bound of the Shrine's LTV to threshold for restricting withdrawals
 const MIN_LTV_TO_THRESHOLD_LIMIT = 50 * WadRay.RAY_PERCENT;
 
-// Minimum time interval for request to remove to be submitted before calling `remove`, in seconds
-const MIN_REMOVE_INTERVAL = 60;
+// Amount of time that needs to elapse after request is submitted before `remove`, in seconds
+const REQUEST_TIMELOCK = 60;
 
-// Period for which a request is valid, including the minimum time interval, in seconds
-const REMOVE_VALIDITY_PERIOD = 24 * 60 * 60;
+// Amount of time for which a request is valid, including the timelock, in seconds
+const REQUEST_VALIDITY_PERIOD = 24 * 60 * 60;
 
 //
 // Storage
@@ -467,19 +467,19 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
 func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
 
-    let provider: address = get_caller_address();
-    assert_can_remove(provider);
-
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
+    let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
 
     // Early termination if caller is not a provider
     with_attr error_message("Absorber: Caller is not a provider") {
         assert_not_zero(provision.shares);
     }
+
+    assert_can_remove(provider);
 
     // Withdraw absorbed collateral before updating shares
     reap_internal(provider, provision);
@@ -1057,12 +1057,16 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (remove_timestamp: ufelt) = absorber_provider_request_timestamp.read(provider);
     let (current_timestamp: ufelt) = get_block_timestamp();
 
+    with_attr error_message("Absorber: No request found") {
+        assert_not_zero(remove_timestamp);
+    }
+
     with_attr error_message("Absorber: Request is not valid yet") {
-        assert_nn_le(remove_timestamp + MIN_REMOVE_INTERVAL, current_timestamp);
+        assert_nn_le(remove_timestamp + REQUEST_TIMELOCK, current_timestamp);
     }
 
     with_attr error_message("Absorber: Request has expired") {
-        assert_nn_le(current_timestamp, remove_timestamp + REMOVE_VALIDITY_PERIOD);
+        assert_nn_le(current_timestamp, remove_timestamp + REQUEST_VALIDITY_PERIOD);
     }
 
     return ();
