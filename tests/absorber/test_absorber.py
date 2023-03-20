@@ -578,6 +578,20 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_request(starknet, absorber):
+    provider = PROVIDER_1
+
+    current_timestamp = get_block_timestamp(starknet)
+    tx = await absorber.request().execute(caller_address=provider)
+
+    assert_event_emitted(tx, absorber.contract_address, "Request", [provider, current_timestamp])
+
+    request_timestamp = (await absorber.get_provider_request_timestamp(provider).execute()).result.timestamp
+    assert request_timestamp == current_timestamp
+
+
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
