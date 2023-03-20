@@ -580,7 +580,7 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_request(starknet, absorber):
+async def test_request_pass(starknet, absorber):
     provider = PROVIDER_1
 
     current_timestamp = get_block_timestamp(starknet)
@@ -595,12 +595,21 @@ async def test_request(starknet, absorber):
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
-@pytest.mark.usefixtures("first_epoch_first_provider", "first_provider_request")
+@pytest.mark.parametrize("seconds_since_request", [REQUEST_TIMELOCK_SECONDS, REQUEST_VALIDITY_PERIOD_SECONDS])
+@pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove):
+async def test_remove_pass(
+    starknet, shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove, seconds_since_request
+):
     absorber = absorber_both
 
     provider = PROVIDER_1
+
+    await absorber.request().execute(caller_address=PROVIDER_1)
+
+    current_timestamp = get_block_timestamp(starknet)
+    new_timestamp = current_timestamp + seconds_since_request
+    set_block_timestamp(starknet, new_timestamp)
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
 
@@ -1060,6 +1069,10 @@ async def test_remove_invalid_request_fail(starknet, absorber):
 @pytest.mark.asyncio
 async def test_non_provider_fail(shrine, absorber):
     provider = NON_PROVIDER
+
+    with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
+        await absorber.request().execute(caller_address=provider)
+
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
         await absorber.remove(0).execute(caller_address=provider)
 
