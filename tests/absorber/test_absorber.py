@@ -29,6 +29,7 @@ from tests.utils import (
     from_ray,
     from_uint,
     from_wad,
+    get_block_timestamp,
     get_contract_code_with_addition,
     get_contract_code_with_replacement,
     get_token_balances,
@@ -317,6 +318,15 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
     )
 
 
+@pytest.fixture
+async def first_provider_request(starknet, absorber):
+    await absorber.request().execute(caller_address=PROVIDER_1)
+
+    current_timestamp = get_block_timestamp(starknet)
+    new_timestamp = current_timestamp + REQUEST_TIMELOCK_SECONDS
+    set_block_timestamp(starknet, new_timestamp)
+
+
 #
 # Tests
 #
@@ -564,7 +574,7 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_provider_request")
 @pytest.mark.asyncio
 async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove):
     absorber = absorber_both
@@ -671,7 +681,7 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
     [Decimal("0.999000000000000001"), Decimal("0.9999999991"), Decimal("0.99999999999999")],
     indirect=["update"],
 )
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_provider_request")
 @pytest.mark.asyncio
 async def test_provide_after_threshold_absorption(shrine, absorber, update, yangs, yang_tokens):
     """
@@ -997,6 +1007,31 @@ async def test_remove_ltv_to_threshold_exceeds_limit_fail(shrine, absorber, stet
     for provider in [PROVIDER_1, PROVIDER_2]:
         with pytest.raises(StarkException, match="Absorber: Relative LTV is too high"):
             await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+
+
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_remove_invalid_request_fail(starknet, absorber):
+    provider = PROVIDER_1
+
+    # Provider has not requested removal
+    with pytest.raises(StarkException, match="Absorber: No request found"):
+        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+
+    # Timelock has not elapsed
+    request_timestamp = get_block_timestamp(starknet)
+    await absorber.request().execute(caller_address=provider)
+
+    with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
+        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+
+    set_block_timestamp(starknet, request_timestamp + REQUEST_TIMELOCK_SECONDS - 1)
+    with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
+        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+
+    set_block_timestamp(starknet, request_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1)
+    with pytest.raises(StarkException, match="Absorber: Request has expired"):
+        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
