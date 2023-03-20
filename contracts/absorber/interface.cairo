@@ -59,6 +59,9 @@ namespace IAbsorber {
     func provide(amount: wad) {
     }
 
+    func request() {
+    }
+
     func remove(amount: wad) {
     }
 

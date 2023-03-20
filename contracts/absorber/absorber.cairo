@@ -6,7 +6,11 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_nn_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+from starkware.starknet.common.syscalls import (
+    get_block_timestamp,
+    get_caller_address,
+    get_contract_address,
+)
 
 from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
@@ -42,6 +46,12 @@ const INITIAL_SHARES = 10 ** 3;
 
 // Lower bound of the Shrine's LTV to threshold for restricting withdrawals
 const MIN_LTV_TO_THRESHOLD_LIMIT = 50 * WadRay.RAY_PERCENT;
+
+// Minimum time interval for request to remove to be submitted before calling `remove`, in seconds
+const MIN_REMOVE_INTERVAL = 60;
+
+// Period for which a request is valid, including the minimum time interval, in seconds
+const REMOVE_VALIDITY_PERIOD = 24 * 60 * 60;
 
 //
 // Storage
@@ -120,6 +130,10 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 func absorber_shrine_ltv_to_threshold_limit() -> (limit: ray) {
 }
 
+@storage_var
+func absorber_provider_request_timestamp(provider: address) -> (timestamp: ufelt) {
+}
+
 //
 // Events
 //
@@ -138,6 +152,10 @@ func LtvToThresholdLimitUpdated(old_limit: ray, new_limit: ray) {
 
 @event
 func Provide(provider: address, epoch: ufelt, yin: wad) {
+}
+
+@event
+func Request(provider: address, timestamp: ufelt) {
 }
 
 @event
@@ -424,18 +442,38 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     return ();
 }
 
+// Submit a request to `remove`
+// Prevent atomic removals with a short time interval just to avoid risk-free yield frontrunning tactics
+@external
+func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+
+    let (provider: address) = get_caller_address();
+
+    let provision: Provision = get_provision(provider);
+    with_attr error_message("Absorber: Caller is not a provider") {
+        assert_not_zero(provision.shares);
+    }
+
+    let (current_timestamp: ufelt) = get_block_timestamp();
+    absorber_provider_request_timestamp.write(provider, current_timestamp);
+    Request.emit(provider, current_timestamp);
+
+    return ();
+}
+
 // Withdraw yin (if any) and all absorbed collateral assets from the absorber.
 @external
 func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
 
-    assert_can_remove();
+    let provider: address = get_caller_address();
+    assert_can_remove(provider);
 
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
         WadRay.assert_valid_unsigned(amount);
     }
 
-    let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
 
     // Early termination if caller is not a provider
@@ -1007,11 +1045,24 @@ func get_shrine_ltv_to_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     return (ltv_to_threshold,);
 }
 
-func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) {
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
     let (limit: ray) = absorber_shrine_ltv_to_threshold_limit.read();
     with_attr error_message("Absorber: Relative LTV is too high") {
         assert_nn_le(ltv_to_threshold, limit);
+    }
+
+    let (remove_timestamp: ufelt) = absorber_provider_request_timestamp.read(provider);
+    let (current_timestamp: ufelt) = get_block_timestamp();
+
+    with_attr error_message("Absorber: Request is not valid yet") {
+        assert_nn_le(remove_timestamp + MIN_REMOVE_INTERVAL, current_timestamp);
+    }
+
+    with_attr error_message("Absorber: Request has expired") {
+        assert_nn_le(current_timestamp, remove_timestamp + REMOVE_VALIDITY_PERIOD);
     }
 
     return ();
