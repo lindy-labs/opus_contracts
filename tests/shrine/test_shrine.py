@@ -2053,9 +2053,8 @@ async def test_zero_value_trove(shrine):
 
 
 @pytest.mark.usefixtures("shrine_deposit_trove1_multiple", "shrine_deposit_trove2_multiple")
-@pytest.mark.parametrize("max_forge_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.asyncio
-async def test_get_shrine_info(shrine, max_forge_percentage):
+async def test_get_shrine_info(shrine):
     prices = []
     for d in DEPOSITS:
         price = from_wad((await shrine.get_current_yang_price(d["address"]).execute()).result.price)
