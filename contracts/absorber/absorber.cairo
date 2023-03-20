@@ -44,10 +44,10 @@ const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 // Shares to be minted without a provider to avoid first provider front-running
 const INITIAL_SHARES = 10 ** 3;
 
-// Lower bound of the Shrine's LTV to threshold for restricting withdrawals
+// Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
 const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
 
-// Amount of time that needs to elapse after request is submitted before `remove`, in seconds
+// Amount of time that needs to elapse after request is submitted before removal, in seconds
 const REQUEST_TIMELOCK = 60;
 
 // Amount of time for which a request is valid, including the timelock, in seconds
