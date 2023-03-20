@@ -450,7 +450,7 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
 }
 
 // Submit a request to `remove`
-// Prevent atomic removals with a short time interval just to avoid risk-free yield frontrunning tactics
+// Prevent atomic removals with a short time interval to avoid risk-free yield frontrunning tactics
 @external
 func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
