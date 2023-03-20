@@ -3,7 +3,7 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_nn_le, assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import (
@@ -682,7 +682,8 @@ func set_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     }
 
     with_attr error_message("Absorber: Limit is too low") {
-        assert_nn_le(MIN_LIMIT, limit);
+        // We can use `assert_le` here because the value has been checked in the previous statement
+        assert_le(MIN_LIMIT, limit);
     }
 
     absorber_limit.write(limit);
@@ -1062,7 +1063,8 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
     let (limit: ray) = absorber_limit.read();
     with_attr error_message("Absorber: Relative LTV is above limit") {
-        assert_nn_le(ltv_to_threshold, limit);
+        // We can use `assert_le` here because both values have been checked
+        assert_le(ltv_to_threshold, limit);
     }
 
     let (remove_timestamp: ufelt) = absorber_provider_request_timestamp.read(provider);
@@ -1073,11 +1075,13 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     }
 
     with_attr error_message("Absorber: Request is not valid yet") {
-        assert_nn_le(remove_timestamp + REQUEST_TIMELOCK, current_timestamp);
+        // We can use `assert_le` here because timestamp cannot be negative
+        assert_le(remove_timestamp + REQUEST_TIMELOCK, current_timestamp);
     }
 
     with_attr error_message("Absorber: Request has expired") {
-        assert_nn_le(current_timestamp, remove_timestamp + REQUEST_VALIDITY_PERIOD);
+        // We can use `assert_le` here because timestamp cannot be negative
+        assert_le(current_timestamp, remove_timestamp + REQUEST_VALIDITY_PERIOD);
     }
 
     return ();
