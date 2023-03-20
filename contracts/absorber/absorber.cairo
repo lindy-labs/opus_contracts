@@ -1061,7 +1061,7 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
 ) {
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
     let (limit: ray) = absorber_limit.read();
-    with_attr error_message("Absorber: Relative LTV is too high") {
+    with_attr error_message("Absorber: Relative LTV is above limit") {
         assert_nn_le(ltv_to_threshold, limit);
     }
 

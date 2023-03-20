@@ -347,8 +347,8 @@ async def test_absorber_setup(shrine, absorber):
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
 
-    ltv_to_threshold_limit = (await absorber.get_limit().execute()).result.limit
-    assert ltv_to_threshold_limit == LIMIT_RAY
+    limit = (await absorber.get_limit().execute()).result.limit
+    assert limit == LIMIT_RAY
 
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
@@ -1024,7 +1024,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 @pytest.mark.parametrize("price_decrease", [Decimal("0.5"), Decimal("0.8")])
 @pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.asyncio
-async def test_remove_ltv_to_threshold_exceeds_limit_fail(shrine, absorber, steth_yang, price_decrease):
+async def test_remove_exceeds_limit_fail(shrine, absorber, steth_yang, price_decrease):
 
     steth_yang_price = (await shrine.get_current_yang_price(steth_yang.contract_address).execute()).result.price
     new_steth_yang_price = int((Decimal("1") - price_decrease) * steth_yang_price)
@@ -1035,7 +1035,7 @@ async def test_remove_ltv_to_threshold_exceeds_limit_fail(shrine, absorber, stet
     assert ltv_to_threshold > LIMIT_RAY
 
     for provider in [PROVIDER_1, PROVIDER_2]:
-        with pytest.raises(StarkException, match="Absorber: Relative LTV is too high"):
+        with pytest.raises(StarkException, match="Absorber: Relative LTV is above limit"):
             await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
 
