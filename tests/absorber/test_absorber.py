@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
+from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.absorber.constants import *  # noqa: F403
@@ -95,6 +96,19 @@ async def simulate_update(
     ).execute(caller_address=MOCK_PURGER)
 
     return tx, asset_addresses, asset_amts
+
+
+async def advance_intervals(
+    starknet: Starknet,
+    shrine: StarknetContract,
+    intervals: int,
+):
+    """
+    Helper function to advance the timestamp by the given number of intervals
+    """
+    timestamp = get_block_timestamp(starknet)
+    new_timestamp = timestamp + intervals * TIME_INTERVAL
+    set_block_timestamp(starknet, new_timestamp)
 
 
 #
@@ -317,15 +331,6 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
         asset_amts,
         asset_amts_dec,
     )
-
-
-@pytest.fixture
-async def first_provider_request(starknet, absorber):
-    await absorber.request().execute(caller_address=PROVIDER_1)
-
-    current_timestamp = get_block_timestamp(starknet)
-    new_timestamp = current_timestamp + REQUEST_TIMELOCK_SECONDS
-    set_block_timestamp(starknet, new_timestamp)
 
 
 #
@@ -588,38 +593,18 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
-@pytest.mark.usefixtures("first_epoch_first_provider")
-@pytest.mark.asyncio
-async def test_request_pass(starknet, absorber):
-    provider = PROVIDER_1
-
-    current_timestamp = get_block_timestamp(starknet)
-    tx = await absorber.request().execute(caller_address=provider)
-
-    assert_event_emitted(tx, absorber.contract_address, "Request", [provider, current_timestamp])
-
-    request_timestamp = (await absorber.get_provider_request_timestamp(provider).execute()).result.timestamp
-    assert request_timestamp == current_timestamp
-
-
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
-@pytest.mark.parametrize("seconds_since_request", [REQUEST_TIMELOCK_SECONDS, REQUEST_VALIDITY_PERIOD_SECONDS])
+@pytest.mark.parametrize("intervals_since_request", [REQUEST_TIMELOCK_INTERVAL, REQUEST_TIMELOCK_INTERVAL * 2])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_remove_pass(
-    starknet, shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove, seconds_since_request
+    starknet, shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove, intervals_since_request
 ):
     absorber = absorber_both
 
     provider = PROVIDER_1
-
-    await absorber.request().execute(caller_address=provider)
-
-    request_timestamp = get_block_timestamp(starknet)
-    new_timestamp = request_timestamp + seconds_since_request
-    set_block_timestamp(starknet, new_timestamp)
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
 
@@ -647,11 +632,9 @@ async def test_remove_pass(
         expected_shares = from_wad(before_provider_info.shares) - expected_shares_removed
         expected_epoch = before_provider_info.epoch
 
-    tx = await absorber.remove(yin_to_remove_wad).execute(caller_address=provider)
+    expected_interval = (await shrine.now().execute()).result.interval
 
-    after_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
-    expected_provider_yin_bal = before_provider_yin_bal + from_wad(yin_to_remove_wad)
-    assert_equalish(after_provider_yin_bal, expected_provider_yin_bal)
+    tx = await absorber.request(yin_to_remove_wad).execute(caller_address=provider)
 
     after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
     assert_equalish(from_wad(after_provider_info.shares), expected_shares)
@@ -663,17 +646,30 @@ async def test_remove_pass(
     ).result.absorption_id
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
+    print(tx.raw_events)
+    print("expected epoch: ", expected_epoch)
+    print("expected interval: ", expected_interval)
+    print("yin to remove: ", yin_to_remove_wad)
+
     assert_event_emitted(
         tx,
         absorber.contract_address,
-        "Remove",
-        lambda d: d[:3] == [provider, expected_epoch, yin_to_remove_wad],
+        "Request",
+        lambda d: d[:4] == [provider, expected_epoch, expected_interval, yin_to_remove_wad],
     )
 
     for asset_contract in yang_tokens:
         assert_event_emitted(
             tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
+
+    await advance_intervals(starknet, shrine, intervals_since_request)
+
+    tx = await absorber.remove().execute(caller_address=provider)
+
+    after_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
+    expected_provider_yin_bal = before_provider_yin_bal + from_wad(yin_to_remove_wad)
+    assert_equalish(after_provider_yin_bal, expected_provider_yin_bal)
 
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
@@ -721,9 +717,9 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
     [Decimal("0.999000000000000001"), Decimal("0.9999999991"), Decimal("0.99999999999999")],
     indirect=["update"],
 )
-@pytest.mark.usefixtures("first_epoch_first_provider", "first_provider_request")
+@pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_provide_after_threshold_absorption(shrine, absorber, update, yangs, yang_tokens):
+async def test_provide_after_threshold_absorption(starknet, shrine, absorber, update, yangs, yang_tokens):
     """
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
@@ -765,16 +761,11 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     before_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
 
     # Step 4: Provider 1 withdraws
-    await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=first_provider)
+    await absorber.request(MAX_REMOVE_AMT).execute(caller_address=first_provider)
 
     after_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
     assert after_first_provider_info.shares == 0
     assert after_first_provider_info.epoch == expected_epoch
-
-    after_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
-    expected_removed_yin = from_wad(remaining_absorber_yin_wad)
-    removed_yin = from_wad(after_first_provider_yin_amt_wad - before_first_provider_yin_amt_wad)
-    assert_equalish(removed_yin, expected_removed_yin)
 
     expected_converted_shares = from_wad(
         (
@@ -782,6 +773,14 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
         ).result.shares
     )
     assert_equalish(removed_yin, expected_converted_shares)
+
+    await advance_intervals(starknet, shrine, intervals_since_request)
+    await absorber.remove().execute(caller_address=first_provider)
+
+    after_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
+    expected_removed_yin = from_wad(remaining_absorber_yin_wad)
+    removed_yin = from_wad(after_first_provider_yin_amt_wad - before_first_provider_yin_amt_wad)
+    assert_equalish(removed_yin, expected_removed_yin)
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
@@ -1034,7 +1033,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
 @pytest.mark.parametrize("price_decrease", [Decimal("0.5"), Decimal("0.8")])
 @pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.asyncio
-async def test_remove_exceeds_limit_fail(shrine, absorber, steth_yang, price_decrease):
+async def test_request_exceeds_limit_fail(shrine, absorber, steth_yang, price_decrease):
 
     steth_yang_price = (await shrine.get_current_yang_price(steth_yang.contract_address).execute()).result.price
     new_steth_yang_price = int((Decimal("1") - price_decrease) * steth_yang_price)
@@ -1046,7 +1045,7 @@ async def test_remove_exceeds_limit_fail(shrine, absorber, steth_yang, price_dec
 
     for provider in [PROVIDER_1, PROVIDER_2]:
         with pytest.raises(StarkException, match="Absorber: Relative LTV is above limit"):
-            await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+            await absorber.request(MAX_REMOVE_AMT).execute(caller_address=provider)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -1055,24 +1054,12 @@ async def test_remove_invalid_request_fail(starknet, absorber):
     provider = PROVIDER_1
 
     # Provider has not requested removal
-    with pytest.raises(StarkException, match="Absorber: No request found"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+    with pytest.raises(StarkException, match="Absorber: Nothing to remove"):
+        await absorber.remove().execute(caller_address=provider)
 
     # Timelock has not elapsed
-    request_timestamp = get_block_timestamp(starknet)
-    await absorber.request().execute(caller_address=provider)
-
     with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
-
-    set_block_timestamp(starknet, request_timestamp + REQUEST_TIMELOCK_SECONDS - 1)
-    with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
-
-    # Request has expired
-    set_block_timestamp(starknet, request_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1)
-    with pytest.raises(StarkException, match="Absorber: Request has expired"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+        await absorber.remove().execute(caller_address=provider)
 
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -1081,13 +1068,13 @@ async def test_non_provider_fail(shrine, absorber):
     provider = NON_PROVIDER
 
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
-        await absorber.request().execute(caller_address=provider)
+        await absorber.request(0).execute(caller_address=provider)
 
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
-        await absorber.remove(0).execute(caller_address=provider)
+        await absorber.request(MAX_REMOVE_AMT).execute(caller_address=provider)
 
-    with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+    with pytest.raises(StarkException, match="Absorber: Nothing to remove"):
+        await absorber.remove().execute(caller_address=provider)
 
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
         await absorber.reap().execute(caller_address=provider)
@@ -1152,10 +1139,10 @@ async def test_provide_fail(shrine, absorber):
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
-async def test_remove_out_of_bounds_fail(absorber, amt):
+async def test_request_out_of_bounds_fail(absorber, amt):
     provider = PROVIDER_1
     with pytest.raises(StarkException, match=r"Absorber: Value of `amount` \(-?\d+\) is out of bounds"):
-        await absorber.remove(amt).execute(caller_address=provider)
+        await absorber.request(amt).execute(caller_address=provider)
 
 
 @pytest.mark.asyncio
