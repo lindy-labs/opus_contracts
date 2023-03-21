@@ -39,18 +39,21 @@ from tests.utils import (
     str_to_felt,
     to_empiric,
     to_fixed_point,
+    to_ray,
     to_uint,
     to_wad,
 )
 
 BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
 BTC_INIT_PRICE = 19520
+BTC_INIT_RATE = to_ray(Decimal("0.01"))
 BTC_CEILING = to_wad(10_000_000)
 BTC_THRESHOLD = 85 * RAY_PERCENT
 BTC_DEPOSIT = to_fixed_point(10, 8)
 
 ETH_EMPIRIC_ID = str_to_felt("ETH/USD")
 ETH_INIT_PRICE = 1283
+ETH_INIT_RATE = to_ray(Decimal("0.02"))
 ETH_CEILING = to_wad(15_000_000)
 ETH_THRESHOLD = 80 * RAY_PERCENT
 ETH_DEPOSIT = to_wad(100)
@@ -125,7 +128,12 @@ async def with_btc(starknet, shrine, sentinel, empiric, funded_sentinel_owner, b
     await empiric.add_yang(BTC_EMPIRIC_ID, btc_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
     await sentinel.add_yang(
-        btc_token.contract_address, BTC_CEILING, BTC_THRESHOLD, to_wad(BTC_INIT_PRICE), btc_gate.contract_address
+        btc_token.contract_address,
+        BTC_CEILING,
+        BTC_THRESHOLD,
+        to_wad(BTC_INIT_PRICE),
+        BTC_INIT_RATE,
+        btc_gate.contract_address,
     ).execute(caller_address=SENTINEL_OWNER)
 
 
@@ -138,7 +146,12 @@ async def with_yangs(
     await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
     await sentinel.add_yang(
-        eth_token.contract_address, ETH_CEILING, ETH_THRESHOLD, to_wad(ETH_INIT_PRICE), eth_gate.contract_address
+        eth_token.contract_address,
+        ETH_CEILING,
+        ETH_THRESHOLD,
+        to_wad(ETH_INIT_PRICE),
+        ETH_INIT_RATE,
+        eth_gate.contract_address,
     ).execute(caller_address=SENTINEL_OWNER)
 
 
