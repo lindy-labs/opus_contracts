@@ -735,12 +735,12 @@ func deposit{
     // Update yang balance of system
     let yang_id: ufelt = get_valid_yang_id(yang);
     let (old_total: wad) = shrine_yang_total.read(yang_id);
-    let new_total: wad = WadRay.add(old_total, amount);
+    let new_total: wad = WadRay.unsigned_add(old_total, amount);
     shrine_yang_total.write(yang_id, new_total);
 
     // Update yang balance of trove
     let (trove_yang_balance: wad) = shrine_deposits.read(yang_id, trove_id);
-    let new_trove_balance: wad = WadRay.add(trove_yang_balance, amount);
+    let new_trove_balance: wad = WadRay.unsigned_add(trove_yang_balance, amount);
     shrine_deposits.write(yang_id, trove_id, new_trove_balance);
 
     // Events
@@ -796,7 +796,8 @@ func forge{
     let (current_system_debt: wad) = shrine_total_debt.read();
 
     with_attr error_message("Shrine: System debt overflow") {
-        let new_system_debt: wad = WadRay.add(current_system_debt, amount);  // WadRay.add checks for overflow
+        // WadRay.unsigned_add checks for overflow
+        let new_system_debt: wad = WadRay.unsigned_add(current_system_debt, amount);
     }
 
     let (debt_ceiling: wad) = shrine_ceiling.read();
@@ -819,7 +820,7 @@ func forge{
     }
 
     // Update trove information
-    let new_debt: wad = WadRay.add(old_trove_info.debt, amount);
+    let new_debt: wad = WadRay.unsigned_add(old_trove_info.debt, amount);
     let new_trove_info: Trove = Trove(charge_from=new_charge_from, debt=new_debt);
     set_trove(trove_id, new_trove_info);
 
@@ -1864,7 +1865,7 @@ func _transfer{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     with_attr error_message("Shrine: Transfer amount exceeds yin balance") {
         shrine_yin.write(sender, WadRay.unsigned_sub(sender_balance, amount_wad));
     }
-    shrine_yin.write(recipient, WadRay.add(recipient_balance, amount_wad));
+    shrine_yin.write(recipient, WadRay.unsigned_add(recipient_balance, amount_wad));
 
     Transfer.emit(sender, recipient, amount);
     return ();

@@ -203,6 +203,7 @@ func Invoke(
     asset_amts: ufelt*,
     total_shares: wad,
     epoch: ufelt,
+    absorption_id: ufelt,
 ) {
 }
 
@@ -705,7 +706,15 @@ func update{
     );
 
     // Emit `Gain` event
-    Gain.emit(assets_len, assets, asset_amts_len, asset_amts, total_shares, current_epoch);
+    Gain.emit(
+        assets_len,
+        assets,
+        asset_amts_len,
+        asset_amts,
+        total_shares,
+        current_epoch,
+        current_absorption_id,
+    );
 
     // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
     let shrine: address = absorber_shrine.read();
