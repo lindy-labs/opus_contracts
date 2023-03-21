@@ -1787,7 +1787,7 @@ func assert_healthy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 }
 
 // Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value.
-// This function uses historical prices but the currently deposited yang amounts to calculate value.
+// This function uses historical prices but the currently deposited yang amounts to calculate the trove's value.
 // The underlying assumption is that the amount of each yang deposited remains the same throughout the recursive call.
 func get_trove_threshold_and_value_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
@@ -1851,7 +1851,8 @@ func get_trove_threshold_and_value_internal{
 }
 
 // Returns a tuple of the threshold and value of all troves combined.
-// This function uses historical prices but the currently deposited yang amounts to calculate value.
+// This function uses historical prices but the total amount of currently deposited yangs across
+// all troves to calculate the total value of all troves.
 func get_shrine_threshold_and_value_internal{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(
