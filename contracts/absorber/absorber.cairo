@@ -127,7 +127,7 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 
 // Removals are temporarily suspended if the shrine's LTV to threshold exceeds this limit
 @storage_var
-func absorber_limit() -> (limit: ray) {
+func absorber_removal_limit() -> (limit: ray) {
 }
 
 @storage_var
@@ -147,7 +147,7 @@ func EpochChanged(old_epoch: ufelt, new_epoch: ufelt) {
 }
 
 @event
-func LimitUpdated(old_limit: ray, new_limit: ray) {
+func RemovalLimitUpdated(old_limit: ray, new_limit: ray) {
 }
 
 @event
@@ -214,7 +214,7 @@ func constructor{
     absorber_shrine.write(shrine);
     absorber_sentinel.write(sentinel);
     absorber_live.write(TRUE);
-    set_limit_internal(limit);
+    set_removal_limit_internal(limit);
     return ();
 }
 
@@ -295,8 +295,10 @@ func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
 }
 
 @view
-func get_limit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (limit: ray) {
-    let limit: ray = absorber_limit.read();
+func get_removal_limit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    limit: ray
+) {
+    let limit: ray = absorber_removal_limit.read();
     return (limit,);
 }
 
@@ -380,16 +382,16 @@ func set_purger{
 }
 
 @external
-func set_limit{
+func set_removal_limit{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(limit: ray) {
     alloc_locals;
 
-    AccessControl.assert_has_role(AbsorberRoles.SET_LIMIT);
+    AccessControl.assert_has_role(AbsorberRoles.SET_REMOVAL_LIMIT);
 
-    let prev_limit: ray = absorber_limit.read();
-    set_limit_internal(limit);
-    LimitUpdated.emit(prev_limit, limit);
+    let prev_limit: ray = absorber_removal_limit.read();
+    set_removal_limit_internal(limit);
+    RemovalLimitUpdated.emit(prev_limit, limit);
 
     return ();
 }
@@ -683,7 +685,7 @@ func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
-func set_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func set_removal_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     limit: ray
 ) {
     with_attr error_message("Absorber: Value of `limit` ({limit}) is out of bounds") {
@@ -695,7 +697,7 @@ func set_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
         assert_le(MIN_LIMIT, limit);
     }
 
-    absorber_limit.write(limit);
+    absorber_removal_limit.write(limit);
     return ();
 }
 
@@ -1070,7 +1072,7 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     provider: address
 ) {
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
-    let (limit: ray) = absorber_limit.read();
+    let (limit: ray) = absorber_removal_limit.read();
     with_attr error_message("Absorber: Relative LTV is above limit") {
         // We can use `assert_le` here because both values have been checked
         assert_le(ltv_to_threshold, limit);

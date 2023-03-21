@@ -7,7 +7,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.absorber.constants import LIMIT_RAY
+from tests.absorber.constants import REMOVAL_LIMIT_RAY
 from tests.purger.constants import *  # noqa: F403
 from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
@@ -271,7 +271,7 @@ async def absorber(starknet, shrine, sentinel):
             ABSORBER_OWNER,
             shrine.contract_address,
             sentinel.contract_address,
-            LIMIT_RAY,
+            REMOVAL_LIMIT_RAY,
         ],
     )
 

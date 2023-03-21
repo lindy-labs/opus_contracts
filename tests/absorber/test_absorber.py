@@ -180,7 +180,7 @@ func burn_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
             ABSORBER_OWNER,
             shrine.contract_address,
             sentinel.contract_address,
-            LIMIT_RAY,
+            REMOVAL_LIMIT_RAY,
         ],
     )
 
@@ -347,14 +347,14 @@ async def test_absorber_setup(shrine, absorber):
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
 
-    limit = (await absorber.get_limit().execute()).result.limit
-    assert limit == LIMIT_RAY
+    limit = (await absorber.get_removal_limit().execute()).result.limit
+    assert limit == REMOVAL_LIMIT_RAY
 
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
 
     admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
-    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_LIMIT + AbsorberRoles.SET_PURGER
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_REMOVAL_LIMIT + AbsorberRoles.SET_PURGER
 
 
 @pytest.mark.asyncio
@@ -385,37 +385,39 @@ async def test_set_purger_unauthorized_fail(shrine, absorber):
         await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
 
 
-@pytest.mark.parametrize("limit", [MIN_LIMIT_RAY, RAY_SCALE, RAY_SCALE + 1])
+@pytest.mark.parametrize("limit", [MIN_REMOVAL_LIMIT_RAY, RAY_SCALE, RAY_SCALE + 1])
 @pytest.mark.asyncio
-async def test_set_limit_pass(absorber, limit):
-    new_limit = MIN_LIMIT_RAY
-    tx = await absorber.set_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
+async def test_set_removal_limit_pass(absorber, limit):
+    new_limit = MIN_REMOVAL_LIMIT_RAY
+    tx = await absorber.set_removal_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
 
-    old_limit = LIMIT_RAY
-    assert_event_emitted(tx, absorber.contract_address, "LimitUpdated", [old_limit, new_limit])
+    old_limit = REMOVAL_LIMIT_RAY
+    assert_event_emitted(tx, absorber.contract_address, "RemovalLimitUpdated", [old_limit, new_limit])
 
-    assert (await absorber.get_limit().execute()).result.limit == new_limit
+    assert (await absorber.get_removal_limit().execute()).result.limit == new_limit
 
 
-@pytest.mark.parametrize("invalid_limit", [0, MIN_LIMIT_RAY - 1])
+@pytest.mark.parametrize("invalid_limit", [0, MIN_REMOVAL_LIMIT_RAY - 1])
 @pytest.mark.asyncio
-async def test_set_limit_too_low_fail(absorber, invalid_limit):
+async def test_set_removal_limit_too_low_fail(absorber, invalid_limit):
     with pytest.raises(StarkException, match="Absorber: Limit is too low"):
-        await absorber.set_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
+        await absorber.set_removal_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
 
 
 @pytest.mark.parametrize("amt", WAD_RAY_OOB_VALUES)
 @pytest.mark.asyncio
-async def test_set_limit_oob_fail(absorber, amt):
+async def test_set_removal_limit_oob_fail(absorber, amt):
     with pytest.raises(StarkException, match=r"Absorber: Value of `limit` \(-?\d+\) is out of bounds"):
-        await absorber.set_limit(amt).execute(caller_address=ABSORBER_OWNER)
+        await absorber.set_removal_limit(amt).execute(caller_address=ABSORBER_OWNER)
 
 
 @pytest.mark.asyncio
-async def test_set_limit_unauthorized_fail(shrine, absorber):
-    with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_LIMIT}"):
+async def test_set_removal_limit_unauthorized_fail(shrine, absorber):
+    with pytest.raises(
+        StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_REMOVAL_LIMIT}"
+    ):
         new_limit = to_ray(Decimal("0.7"))
-        await absorber.set_limit(new_limit).execute(caller_address=BAD_GUY)
+        await absorber.set_removal_limit(new_limit).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -1040,7 +1042,7 @@ async def test_remove_exceeds_limit_fail(shrine, absorber, steth_yang, price_dec
 
     ltv_to_threshold = (await absorber.get_shrine_ltv_to_threshold().execute()).result.ratio
 
-    assert ltv_to_threshold > LIMIT_RAY
+    assert ltv_to_threshold > REMOVAL_LIMIT_RAY
 
     for provider in [PROVIDER_1, PROVIDER_2]:
         with pytest.raises(StarkException, match="Absorber: Relative LTV is above limit"):

@@ -4,8 +4,8 @@ from enum import IntEnum
 class AbsorberRoles(IntEnum):
     COMPENSATE = 2**0
     KILL = 2**1
-    SET_LIMIT = 2**2
-    SET_PURGER = 2**3
+    SET_PURGER = 2**2
+    SET_REMOVAL_LIMIT = 2**3
     UPDATE = 2**4
 
 

@@ -38,7 +38,7 @@ namespace IAbsorber {
     ) {
     }
 
-    func get_limit() -> (limit: ray) {
+    func get_removal_limit() -> (limit: ray) {
     }
 
     func get_live() -> (is_live: bool) {
@@ -59,7 +59,7 @@ namespace IAbsorber {
     func set_purger(purger: address) {
     }
 
-    func set_limit(limit: ray) {
+    func set_removal_limit(limit: ray) {
     }
 
     func provide(amount: wad) {
