@@ -250,7 +250,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
 @pytest.fixture(scope="function")
 async def update_feeds_intermittent(request, starknet, shrine, shrine_forge_trove1) -> list[Decimal]:
     """
-    Additional price feeds for yang 0 after `shrine_forge_with_trove1` with intermittent missed updates.
+    Additional price feeds for yang 0 after `shrine_forge_trove1` with intermittent missed updates.
 
     This fixture takes in an index as argument, and skips that index when updating the
     price and multiplier values.
