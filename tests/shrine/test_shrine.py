@@ -195,7 +195,7 @@ async def shrine_melt_trove1(shrine, shrine_forge_trove1) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def _trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo:
+async def shrine_forge_trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo:
     """
     Replicate forge for another trove.
     """
@@ -204,7 +204,7 @@ async def _trove2(shrine, shrine_deposit_trove2) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def update_feeds_with_trove2(shrine_forge_trove1, _trove2, update_feeds) -> list[Decimal]:
+async def update_feeds_with_trove2(shrine_forge_trove1, shrine_forge_trove2, update_feeds) -> list[Decimal]:
     """
     Helper fixture for `update_feeds` with two troves.
     """
@@ -250,7 +250,7 @@ async def estimate(shrine, update_feeds_with_trove2) -> tuple[int, int, Decimal,
 @pytest.fixture(scope="function")
 async def update_feeds_intermittent(request, starknet, shrine, shrine_forge_trove1) -> list[Decimal]:
     """
-    Additional price feeds for yang 0 after `` with intermittent missed updates.
+    Additional price feeds for yang 0 after `shrine_forge_with_trove1` with intermittent missed updates.
 
     This fixture takes in an index as argument, and skips that index when updating the
     price and multiplier values.
@@ -814,7 +814,7 @@ async def test_shrine_withdraw_pass(shrine, collect_gas_cost, withdraw_amt_wad):
 @pytest.mark.usefixtures("shrine_forge_trove1")
 @pytest.mark.parametrize("withdraw_amt_wad", [0, to_wad(Decimal("1E-18")), to_wad(1), to_wad(5)])
 @pytest.mark.asyncio
-async def test_d_partial_withdraw_pass(shrine, withdraw_amt_wad):
+async def test_shrine_forged_partial_withdraw_pass(shrine, withdraw_amt_wad):
     price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
 
     initial_amt_wad = INITIAL_DEPOSIT_WAD
@@ -1036,7 +1036,7 @@ async def test_shrine_forge_amount_out_of_bounds(shrine, forge_amt):
 #
 
 
-@pytest.mark.usefixtures("shrine_forge_trove1", "_trove2")
+@pytest.mark.usefixtures("shrine_forge_trove1", "shrine_forge_trove2")
 @pytest.mark.parametrize("melt_amt_wad", [0, to_wad(Decimal("1E-18")), FORGE_AMT_WAD // 2, FORGE_AMT_WAD, 2**125])
 @pytest.mark.asyncio
 async def test_shrine_melt_pass(shrine, melt_amt_wad):
@@ -1128,7 +1128,7 @@ async def test_shrine_melt_amount_out_of_bounds(shrine, melt_amt):
         await shrine.eject(TROVE1_OWNER, melt_amt).execute(caller_address=SHRINE_OWNER)
 
 
-@pytest.mark.usefixtures("shrine_forge_trove1", "_trove2")
+@pytest.mark.usefixtures("shrine_forge_trove1", "shrine_forge_trove2")
 @pytest.mark.asyncio
 async def test_shrine_melt_insufficient_yin(shrine):
     # Set up trove 2 to have less yin than trove 1's debt
