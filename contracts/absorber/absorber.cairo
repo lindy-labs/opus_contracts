@@ -459,11 +459,8 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     alloc_locals;
 
     let (provider: address) = get_caller_address();
-
     let provision: Provision = get_provision(provider);
-    with_attr error_message("Absorber: Caller is not a provider") {
-        assert_not_zero(provision.shares);
-    }
+    assert_provider(provision);
 
     let (current_timestamp: ufelt) = get_block_timestamp();
     absorber_provider_request_timestamp.write(provider, current_timestamp);
@@ -483,12 +480,7 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
 
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
-
-    // Early termination if caller is not a provider
-    with_attr error_message("Absorber: Caller is not a provider") {
-        assert_not_zero(provision.shares);
-    }
-
+    assert_provider(provision);
     assert_can_remove(provider);
 
     // Withdraw absorbed collateral before updating shares
@@ -557,10 +549,7 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
-
-    with_attr error_message("Absorber: Caller is not a provider") {
-        assert_not_zero(provision.shares);
-    }
+    assert_provider(provision);
 
     reap_internal(provider, provision);
 
@@ -675,6 +664,15 @@ func compensate{
 //
 // Internal
 //
+
+func assert_provider{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provision: Provision
+) {
+    with_attr error_message("Absorber: Caller is not a provider") {
+        assert_not_zero(provision.shares);
+    }
+    return ();
+}
 
 func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     // Check system is live
