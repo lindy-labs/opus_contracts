@@ -34,6 +34,11 @@ struct Provision {
     shares: wad,  // Amount of shares for provider in the above epoch
 }
 
+struct Removal {
+    interval: ufelt,
+    yin: wad,
+}
+
 struct AssetAbsorption {
     asset_amt_per_share: wad,  // Amount of asset in its decimal precision per share wad
     error: wad,  // Error to be added to next absorption

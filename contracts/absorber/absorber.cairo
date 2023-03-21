@@ -6,11 +6,7 @@ from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
 from starkware.cairo.common.math_cmp import is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
-from starkware.starknet.common.syscalls import (
-    get_block_timestamp,
-    get_caller_address,
-    get_contract_address,
-)
+from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
 
 from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
@@ -30,7 +26,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
 from contracts.lib.convert import pack_felt
 from contracts.lib.interfaces import IERC20
-from contracts.lib.types import AssetAbsorption, Provision
+from contracts.lib.types import AssetAbsorption, Provision, Removal
 from contracts.lib.wad_ray import WadRay
 
 // Constants
@@ -47,11 +43,9 @@ const INITIAL_SHARES = 10 ** 3;
 // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
 const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
 
-// Amount of time that needs to elapse after request is submitted before removal, in seconds
-const REQUEST_TIMELOCK = 60;
-
-// Amount of time for which a request is valid, including the timelock, in seconds
-const REQUEST_VALIDITY_PERIOD = 24 * 60 * 60;
+// Amount of time that needs to elapse after request is submitted before removal, in intervals
+// as defined in Shrine
+const REMOVAL_TIMELOCK_INTERVAL = 1;
 
 //
 // Storage
@@ -130,8 +124,17 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 func absorber_removal_limit() -> (limit: ray) {
 }
 
+// Total amount of yin requested for removal that is not subjected to absorptions and not entitled
+// to rewards
 @storage_var
-func absorber_provider_request_timestamp(provider: address) -> (timestamp: ufelt) {
+func absorber_removed_yin() -> (yin: wad) {
+}
+
+// Mapping of a provider to a packed struct of
+// 1. the interval, as determined by Shrine, in which a request to remove yin was submitted
+// 2. the amount of yin requested to be removed
+@storage_var
+func absorber_provider_removal(provider: address) -> (removal: packed) {
 }
 
 //
@@ -155,11 +158,11 @@ func Provide(provider: address, epoch: ufelt, yin: wad) {
 }
 
 @event
-func Request(provider: address, timestamp: ufelt) {
+func Remove(provider: address, interval: ufelt, yin: wad) {
 }
 
 @event
-func Remove(provider: address, epoch: ufelt, yin: wad) {
+func Request(provider: address, epoch: ufelt, interval: ufelt, yin: wad) {
 }
 
 @event
@@ -279,11 +282,11 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 }
 
 @view
-func get_provider_request_timestamp{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(provider: address) -> (timestamp: ufelt) {
-    let timestamp: ufelt = absorber_provider_request_timestamp.read(provider);
-    return (timestamp,);
+func get_provider_removal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (removal: Removal) {
+    let removal: Removal = absorber_provider_removal.read(provider);
+    return (removal,);
 }
 
 @view
@@ -452,26 +455,45 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     return ();
 }
 
-// Submit a request to `remove`
-// Prevent atomic removals with a short time interval to avoid risk-free yield frontrunning tactics
+// Withdraw all yin submitted for removal earlier
+// Guards against front-running by requiring the removal to first be submitted
+// in an earlier interval
 @external
-func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
 
     let (provider: address) = get_caller_address();
-    let provision: Provision = get_provision(provider);
-    assert_provider(provision);
+    let removal: Removal = get_removal(provider);
+    if (removal.yin == 0) {
+        return ();
+    }
 
-    let (current_timestamp: ufelt) = get_block_timestamp();
-    absorber_provider_request_timestamp.write(provider, current_timestamp);
-    Request.emit(provider, current_timestamp);
+    let shrine: address = absorber_shrine.read();
+
+    assert_can_remove(shrine, provider, removal);
+
+    let current_total: wad = absorber_removed_yin.read();
+    let new_total: wad = WadRay.unsigned_sub(current_total, removal.yin);
+    absorber_removed_yin.write(new_total);
+
+    let yin_amt_uint: Uint256 = WadRay.to_uint(removal.yin);
+    with_attr error_message("Absorber: Transfer of yin failed") {
+        let (success: bool) = IERC20.transfer(shrine, provider, yin_amt_uint);
+        assert success = TRUE;
+    }
+
+    let current_interval: ufelt = IShrine.now(shrine);
+    let updated_removal: Removal = Removal(removal.interval, 0);
+    set_removal(provider, updated_removal);
+    Remove.emit(provider, current_interval, removal.yin);
 
     return ();
 }
 
-// Withdraw yin (if any) and all absorbed collateral assets from the absorber.
+// Submit a request to remove yin (if any)
+// Also instantly withdraws all absorbed collateral assets from the absorber.
 @external
-func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
+func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
     alloc_locals;
 
     with_attr error_message("Absorber: Value of `amount` ({amount}) is out of bounds") {
@@ -481,7 +503,11 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
     assert_provider(provision);
-    assert_can_remove(provider);
+
+    let shrine: address = absorber_shrine.read();
+    let current_interval: ufelt = IShrine.now(shrine);
+    let existing_removal: Removal = get_removal(provider);
+    assert_can_request(shrine, provider, existing_removal, current_interval);
 
     // Withdraw absorbed collateral before updating shares
     reap_internal(provider, provision);
@@ -529,13 +555,13 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         let new_provision: Provision = Provision(current_epoch, new_provider_shares);
         set_provision(provider, new_provision);
 
-        let yin_amt_uint: Uint256 = WadRay.to_uint(yin_amt);
-        let shrine: address = absorber_shrine.read();
-        with_attr error_message("Absorber: Transfer of yin failed") {
-            let (success: bool) = IERC20.transfer(shrine, provider, yin_amt_uint);
-            assert success = TRUE;
-        }
-        Remove.emit(provider, current_epoch, yin_amt);
+        let current_total_requested_yin: wad = absorber_removed_yin.read();
+        absorber_removed_yin.write(WadRay.unsigned_add(current_total_requested_yin, yin_amt));
+
+        let removal: Removal = Removal(current_interval, yin_amt);
+        set_removal(provider, removal);
+
+        Request.emit(provider, current_epoch, current_interval, yin_amt);
 
         return ();
     }
@@ -594,7 +620,9 @@ func update{
     let absorber: address = get_contract_address();
     let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
     let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
-    let yin_per_share: wad = WadRay.wunsigned_div_unchecked(yin_balance, total_shares);
+    let removed_yin: wad = absorber_removed_yin.read();
+    let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
+    let yin_per_share: wad = WadRay.wunsigned_div_unchecked(adjusted_yin_balance, total_shares);
 
     // This also checks for absorber's yin balance being emptied because yin per share will be
     // below threshold if yin balance is 0.
@@ -731,6 +759,23 @@ func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
     return (info,);
 }
 
+func get_removal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (removal: Removal) {
+    let (removal_packed: packed) = absorber_provider_removal.read(provider);
+    let (interval: ufelt, yin: wad) = split_felt(removal_packed);
+    let removal: Removal = Removal(interval=interval, yin=yin);
+    return (removal,);
+}
+
+func set_removal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address, removal: Removal
+) {
+    let packed_removal: packed = pack_felt(removal.interval, removal.yin);
+    absorber_provider_removal.write(provider, packed_removal);
+    return ();
+}
+
 //
 // Internal - helpers for accounting of shares
 //
@@ -764,9 +809,13 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         let absorber: address = get_contract_address();
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
+        let removed_yin: wad = absorber_removed_yin.read();
+        let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
 
         // replicate `WadRay.wunsigned_div_unchecked` to check remainder of integer division
-        let (computed_shares: wad, r: wad) = unsigned_div_rem(yin_amt * total_shares, yin_balance);
+        let (computed_shares: wad, r: wad) = unsigned_div_rem(
+            yin_amt * total_shares, adjusted_yin_balance
+        );
         if (round_up == TRUE and r != 0) {
             return (computed_shares + 1, computed_shares + 1);
         }
@@ -791,8 +840,10 @@ func convert_to_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
+        let removed_yin: wad = absorber_removed_yin.read();
+        let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
         let yin: wad = WadRay.wunsigned_div_unchecked(
-            WadRay.wmul(shares_amt, yin_balance), total_shares
+            WadRay.wmul(shares_amt, adjusted_yin_balance), total_shares
         );
         return yin;
     }
@@ -1066,9 +1117,11 @@ func get_shrine_ltv_to_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     return (ltv_to_threshold,);
 }
 
-func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address
+func assert_can_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    shrine: address, provider: address, removal: Removal, current_interval: ufelt
 ) {
+    alloc_locals;
+
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
     let (limit: ray) = absorber_removal_limit.read();
     with_attr error_message("Absorber: Relative LTV is above limit") {
@@ -1076,21 +1129,29 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         assert_le(ltv_to_threshold, limit);
     }
 
-    let (remove_timestamp: ufelt) = absorber_provider_request_timestamp.read(provider);
-    let (current_timestamp: ufelt) = get_block_timestamp();
-
-    with_attr error_message("Absorber: No request found") {
-        assert_not_zero(remove_timestamp);
+    with_attr error_message("Absorber: Previous removal has not been removed") {
+        assert removal.yin = 0;
     }
 
-    with_attr error_message("Absorber: Request is not valid yet") {
-        // We can use `assert_le` here because timestamp cannot be negative
-        assert_le(remove_timestamp + REQUEST_TIMELOCK, current_timestamp);
+    with_attr error_message("Absorber: Previous removal is pending") {
+        // We can use `assert_le` here because intervals cannot be negative
+        assert_le(current_interval, removal.interval + REMOVAL_TIMELOCK_INTERVAL);
     }
 
-    with_attr error_message("Absorber: Request has expired") {
-        // We can use `assert_le` here because timestamp cannot be negative
-        assert_le(current_timestamp, remove_timestamp + REQUEST_VALIDITY_PERIOD);
+    return ();
+}
+
+func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    shrine: address, provider: address, removal: Removal
+) {
+    with_attr error_message("Absorber: Nothing to remove") {
+        assert_not_zero(removal.yin);
+    }
+
+    let (current_interval: ufelt) = IShrine.now(shrine);
+    with_attr error_message("Absorber: Removal is not valid yet") {
+        // We can use `assert_le` here because intervals cannot be negative
+        assert_le(current_interval, removal.interval + REMOVAL_TIMELOCK_INTERVAL);
     }
 
     return ();
