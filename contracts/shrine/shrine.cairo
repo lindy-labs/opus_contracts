@@ -1560,7 +1560,7 @@ func get_avg_rate_over_era{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
     start_interval: ufelt,
     end_interval: ufelt,
     rate_idx: ufelt,
-    cum_weighted_sum: wad,
+    cum_weighted_sum: ray,
     cum_yang_value: wad,
     current_yang_id: ufelt,
 ) -> ray {
