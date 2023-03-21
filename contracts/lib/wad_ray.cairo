@@ -212,6 +212,9 @@ namespace WadRay {
 
         // `signed_div_rem` assumes 0 < div <= CAIRO_PRIME / rc_bound
         let div = abs_value(b);
+        // abs_value tests for positivity inside a hint, so the Cairo verifier
+        // doesn't know that it actually returns a nonnegative number, and it
+        // can be exploited by a compromised prover to return a negative number
         with_attr error_message("WadRay: Divisor must be non-negative") {
             assert_nn(div);
         }
@@ -288,6 +291,9 @@ namespace WadRay {
 
         // `signed_div_rem` assumes 0 < div <= CAIRO_PRIME / rc_bound
         let div = abs_value(b);
+        // abs_value tests for positivity inside a hint, so the Cairo verifier
+        // doesn't know that it actually returns a nonnegative number, and it
+        // can be exploited by a compromised prover to return a negative number
         with_attr error_message("WadRay: Divisor must be non-negative") {
             assert_nn(div);
         }
