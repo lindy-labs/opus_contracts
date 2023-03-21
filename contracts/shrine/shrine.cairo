@@ -248,7 +248,7 @@ func shrine_trove_redistribution_id(trove_id: ufelt) -> (redistribution_id: ufel
 // 1. amount of debt in wad to be redistributed to each wad unit of yang
 // 2. amount of debt to be added to the next redistribution to calculate (1)
 @storage_var
-func shrine_yang_redistribution(yang_id: ufelt, redistribution_id: ufelt) -> (
+func shrine_yang_redistribution(yang_id: ufelt, redistribuftion_id: ufelt) -> (
     yang_redistribution: packed
 ) {
 }
@@ -934,7 +934,7 @@ func forge{
     }
 
     // Update trove information
-    let new_debt: wad = WadRay.add(old_trove_info.debt, amount);
+    let new_debt: wad = WadRay.unsigned_add(old_trove_info.debt, amount);
     let new_trove_info: Trove = Trove(
         charge_from=new_charge_from, debt=new_debt, last_rate_era=old_trove_info.last_rate_era
     );
