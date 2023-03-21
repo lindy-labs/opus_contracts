@@ -55,4 +55,5 @@ class ShrineRoles(IntEnum):
     SET_MULTIPLIER = 2**12
     SET_THRESHOLD = 2**13
     SET_YANG_MAX = 2**14
-    WITHDRAW = 2**15
+    UPDATE_RATES = 2**15
+    WITHDRAW = 2**16

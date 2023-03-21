@@ -257,14 +257,19 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
     set_block_timestamp(starknet, TIME_INTERVAL)
 
     # Add steth_token as Yang
-    await shrine.add_yang(steth_token.contract_address, to_ray(Decimal("0.8")), to_wad(1000), 0).execute(
-        caller_address=SHRINE_OWNER
-    )
+    await shrine.add_yang(
+        steth_token.contract_address,
+        to_ray(Decimal("0.8")),
+        to_wad(1000),
+        to_ray(Decimal("0.02")),
+        0,
+    ).execute(caller_address=SHRINE_OWNER)
 
     await shrine.add_yang(
         wbtc_token.contract_address,
         to_ray(Decimal("0.8")),
         to_wad(10_000),
+        to_ray(Decimal("0.01")),
         0,
     ).execute(caller_address=SHRINE_OWNER)
 
