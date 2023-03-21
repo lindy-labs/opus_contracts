@@ -439,16 +439,24 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
     asset_count = len(assets)
 
     before_total_shares = from_wad(before_total_shares_wad)
-
     expected_gain_epoch = 0
+    expected_absorption_id = 1
+
     assert_event_emitted(
         tx,
         absorber.contract_address,
         "Gain",
-        [asset_count, *assets, asset_count, *asset_amts, before_total_shares_wad, expected_gain_epoch],
+        [
+            asset_count,
+            *assets,
+            asset_count,
+            *asset_amts,
+            before_total_shares_wad,
+            expected_gain_epoch,
+            expected_absorption_id,
+        ],
     )
 
-    expected_absorption_id = 1
     actual_absorption_id = (await absorber.get_absorptions_count().execute()).result.count
     assert actual_absorption_id == expected_absorption_id
 
