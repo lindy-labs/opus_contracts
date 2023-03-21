@@ -2,6 +2,7 @@ from starkware.cairo.common.bool import TRUE
 from starkware.cairo.common.math import (
     abs_value,
     assert_le,
+    assert_nn,
     assert_nn_le,
     sign,
     signed_div_rem,
@@ -211,6 +212,13 @@ namespace WadRay {
 
         // `signed_div_rem` assumes 0 < div <= CAIRO_PRIME / rc_bound
         let div = abs_value(b);
+        // abs_value tests for positivity inside a hint, so the Cairo verifier
+        // doesn't know that it actually returns a nonnegative number, and it
+        // can be exploited by a compromised prover to return a negative number
+        with_attr error_message("WadRay: Divisor must be non-negative") {
+            assert_nn(div);
+        }
+
         // `sign` assumes -rc_bound < value < rc_bound
         let div_sign = sign(b);
         tempvar prod = a * WAD_SCALE;
@@ -281,7 +289,16 @@ namespace WadRay {
         assert_valid(a);
         assert_valid(b);
 
+        // `signed_div_rem` assumes 0 < div <= CAIRO_PRIME / rc_bound
         let div = abs_value(b);
+        // abs_value tests for positivity inside a hint, so the Cairo verifier
+        // doesn't know that it actually returns a nonnegative number, and it
+        // can be exploited by a compromised prover to return a negative number
+        with_attr error_message("WadRay: Divisor must be non-negative") {
+            assert_nn(div);
+        }
+
+        // `sign` assumes -rc_bound < value < rc_bound
         let div_sign = sign(b);
         tempvar prod = a * RAY_SCALE;
         // `signed_div_rem` asserts -BOUND <= `ray_u` < BOUND
