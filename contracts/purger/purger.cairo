@@ -212,11 +212,11 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 
     let (caller: address) = get_caller_address();
     let (absorber: address) = purger_absorber.read();
-    let (absorber_yin_balance: wad) = IShrine.get_yin(shrine, absorber);
+    let (absorbable_balance: wad) = IAbsorber.get_absorbable_yin(absorber);
 
     // This also checks that the value that is passed as `purge_amt` to `purge` cannot exceed `debt`.
     let absorber: address = purger_absorber.read();
-    let fully_absorbable: bool = is_nn_le(trove_debt, absorber_yin_balance);
+    let fully_absorbable: bool = is_nn_le(trove_debt, absorbable_balance);
     if (fully_absorbable == TRUE) {
         // Call purge with `percentage_freed` set to 100%
         let (
@@ -237,12 +237,12 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
     }
 
     let percentage_freed: ray = get_percentage_freed(
-        trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_balance
+        trove_threshold, trove_ltv, trove_value, trove_debt, absorbable_balance
     );
     let (
         yangs_len: ufelt, yangs: address*, freed_assets_amt_len: ufelt, freed_assets_amt: ufelt*
     ) = purge(
-        shrine, trove_id, trove_ltv, absorber_yin_balance, percentage_freed, absorber, absorber
+        shrine, trove_id, trove_ltv, absorbable_balance, percentage_freed, absorber, absorber
     );
     // split freed amounts to compensate caller for keeping protocol stable
     let (absorbed_assets: ufelt*, compensations: ufelt*) = split_purged_assets(
@@ -259,7 +259,7 @@ func absorb{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(tro
 
     // Skip `Absorber.update` if absorber has no yin because total shares could be 0
     // and the call would revert
-    if (absorber_yin_balance == 0) {
+    if (absorbable_balance == 0) {
         return (yangs_len, yangs, freed_assets_amt_len, freed_assets_amt);
     }
 
