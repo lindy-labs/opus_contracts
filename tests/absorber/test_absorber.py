@@ -213,15 +213,25 @@ async def absorber(absorber_deploy):
 
 
 @pytest.fixture
+async def absorber_with_pending_removal_yin(absorber, first_epoch_third_provider):
+    """
+    Absorber after 3rd provider provides then requests a removal.
+    The effects of `update` (e.g. total number of shares) should be same as `absorber` fixture.
+    """
+    await absorber.request(MAX_REMOVE_AMT).execute(caller_address=PROVIDER_3)
+    return absorber
+
+
+@pytest.fixture
 async def absorber_killed(absorber):
     await absorber.kill().execute(caller_address=ABSORBER_OWNER)
     return absorber
 
 
 @pytest.fixture
-def absorber_both(request) -> StarknetContract:
+def absorber_wrapper(request) -> StarknetContract:
     """
-    Wrapper fixture to pass the regular and killed instances of absorber to `pytest.parametrize`.
+    Wrapper fixture to pass different instances of absorber to `pytest.parametrize`.
     """
     return request.getfixturevalue(request.param)
 
@@ -247,8 +257,8 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[lis
 
 @pytest.fixture
 async def funded_absorber_providers(shrine, shrine_feeds, abbot, absorber, steth_token, steth_yang: YangConfig):
-    troves = [PROVIDER_1_TROVE, PROVIDER_2_TROVE]
-    trove_owners = [PROVIDER_1, PROVIDER_2]
+    troves = [PROVIDER_1_TROVE, PROVIDER_2_TROVE, PROVIDER_3_TROVE]
+    trove_owners = [PROVIDER_1, PROVIDER_2, PROVIDER_3]
 
     for trove, owner in zip(troves, trove_owners):
         await steth_token.mint(owner, to_uint(PROVIDER_STETH_DEPOSIT_WAD)).execute(caller_address=owner)
@@ -293,6 +303,16 @@ async def first_epoch_second_provider(shrine, absorber, funded_absorber_provider
 
 
 @pytest.fixture
+async def first_epoch_third_provider(shrine, absorber, funded_absorber_providers):
+    provider = PROVIDER_3
+    provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
+    provider_yin_amt = from_uint(provider_yin_amt_uint)
+
+    tx = await absorber.provide(provider_yin_amt).execute(caller_address=provider)
+    return tx, provider_yin_amt
+
+
+@pytest.fixture
 async def update(request, shrine, absorber, yang_tokens, first_update_assets):
     """
     Fixture that takes in a Decimal value for the percentage of the absorber's yin balance to drain
@@ -307,7 +327,10 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
 
     # Transfer yin from absorber to burner address to simulate `absorb`
     absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
-    burn_amt_wad = int(percentage_to_drain * Decimal(absorber_yin_bal_wad))
+    pending_removal_yin_wad = (await absorber.get_pending_removal_yin().execute()).result.amount
+    expected_absorbable_yin = Decimal(absorber_yin_bal_wad - pending_removal_yin_wad)
+
+    burn_amt_wad = int(percentage_to_drain * expected_absorbable_yin)
 
     # Call `update`
     asset_addresses, asset_amts, asset_amts_dec = first_update_assets
@@ -485,12 +508,16 @@ async def test_provide_first_epoch(shrine, absorber, first_epoch_first_provider)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad + subsequent_yin_amt_to_provide
 
 
-@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
+@pytest.mark.parametrize(
+    "absorber_wrapper",
+    ["absorber", "absorber_with_pending_removal_yin", "absorber_killed"],
+    indirect=["absorber_wrapper"],
+)
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
-    absorber = absorber_both
+async def test_update(shrine, absorber_wrapper, update, yangs, yang_tokens):
+    absorber = absorber_wrapper
 
     tx, percentage_to_drain, _, before_epoch, before_total_shares_wad, assets, asset_amts, asset_amts_dec = update
     asset_count = len(assets)
@@ -541,12 +568,16 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens):
         assert_event_emitted(tx, absorber.contract_address, "EpochChanged", [before_epoch, current_epoch])
 
 
-@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
+@pytest.mark.parametrize(
+    "absorber_wrapper",
+    ["absorber", "absorber_with_pending_removal_yin", "absorber_killed"],
+    indirect=["absorber_wrapper"],
+)
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
-async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
-    absorber = absorber_both
+async def test_reap(shrine, absorber_wrapper, update, yangs, yang_tokens):
+    absorber = absorber_wrapper
 
     provider = PROVIDER_1
 
@@ -593,16 +624,20 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
-@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
+@pytest.mark.parametrize(
+    "absorber_wrapper",
+    ["absorber", "absorber_with_pending_removal_yin", "absorber_killed"],
+    indirect=["absorber_wrapper"],
+)
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
 @pytest.mark.parametrize("intervals_since_request", [REQUEST_TIMELOCK_INTERVAL, REQUEST_TIMELOCK_INTERVAL * 2])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_remove_pass(
-    starknet, shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove, intervals_since_request
+    starknet, shrine, absorber_wrapper, update, yangs, yang_tokens, percentage_to_remove, intervals_since_request
 ):
-    absorber = absorber_both
+    absorber = absorber_wrapper
 
     provider = PROVIDER_1
 
@@ -645,11 +680,6 @@ async def test_remove_pass(
         await absorber.get_provider_last_absorption(provider).execute()
     ).result.absorption_id
     assert after_provider_last_absorption == before_provider_last_absorption + 1
-
-    print(tx.raw_events)
-    print("expected epoch: ", expected_epoch)
-    print("expected interval: ", expected_interval)
-    print("yin to remove: ", yin_to_remove_wad)
 
     assert_event_emitted(
         tx,
@@ -767,20 +797,20 @@ async def test_provide_after_threshold_absorption(starknet, shrine, absorber, up
     assert after_first_provider_info.shares == 0
     assert after_first_provider_info.epoch == expected_epoch
 
-    expected_converted_shares = from_wad(
-        (
-            await absorber.convert_epoch_shares(epoch - 1, epoch, before_first_provider_info.shares).execute()
-        ).result.shares
-    )
-    assert_equalish(removed_yin, expected_converted_shares)
-
-    await advance_intervals(starknet, shrine, intervals_since_request)
+    await advance_intervals(starknet, shrine, 1)
     await absorber.remove().execute(caller_address=first_provider)
 
     after_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
     expected_removed_yin = from_wad(remaining_absorber_yin_wad)
     removed_yin = from_wad(after_first_provider_yin_amt_wad - before_first_provider_yin_amt_wad)
     assert_equalish(removed_yin, expected_removed_yin)
+
+    expected_converted_shares = from_wad(
+        (
+            await absorber.convert_epoch_shares(epoch - 1, epoch, before_first_provider_info.shares).execute()
+        ).result.shares
+    )
+    assert_equalish(removed_yin, expected_converted_shares)
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
@@ -889,10 +919,14 @@ async def test_reap_different_epochs(
 
 @pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
-@pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
+@pytest.mark.parametrize(
+    "absorber_wrapper",
+    ["absorber", "absorber_with_pending_removal_yin", "absorber_killed"],
+    indirect=["absorber_wrapper"],
+)
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
-    shrine, absorber_both, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
+    shrine, absorber_wrapper, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
 ):
     """
     Sequence of events:
@@ -900,7 +934,7 @@ async def test_multi_user_reap_same_epoch_single_absorption(
     2. Absorption happens (`update`)
     3. Providers 1 and 2 reaps
     """
-    absorber = absorber_both
+    absorber = absorber_wrapper
 
     _, _, _, _, _, asset_addresses, _, absorbed_amts_dec = update
     asset_count = len(asset_addresses)

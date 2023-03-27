@@ -20,6 +20,8 @@ PROVIDER_1 = str_to_felt("provider 1")
 PROVIDER_1_TROVE = 4
 PROVIDER_2 = str_to_felt("provider 2")
 PROVIDER_2_TROVE = 5
+PROVIDER_3 = str_to_felt("provider 3")
+PROVIDER_3_TROVE = 6
 
 MOCK_PURGER = str_to_felt("mock purger")
 NEW_MOCK_PURGER = str_to_felt("new mock purger")
