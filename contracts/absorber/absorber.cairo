@@ -26,7 +26,15 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
 from contracts.lib.convert import pack_felt
 from contracts.lib.interfaces import IERC20
-from contracts.lib.types import AssetAbsorption, Provision, Removal
+from contracts.lib.types import (
+    Absorption,
+    AssetAbsorption,
+    PackedAbsorption,
+    PackedRemoval,
+    Provision,
+    Removal,
+    Suspension,
+)
 from contracts.lib.wad_ray import WadRay
 
 // Constants
@@ -94,7 +102,7 @@ func absorber_provision(provider: address) -> (provision: packed) {
 
 // Mapping from an absorption to its epoch
 @storage_var
-func absorber_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
+func absorber_absorption(absorption_id: ufelt) -> (absorption: packed) {
 }
 
 // Total number of shares for current epoch
@@ -124,15 +132,31 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 func absorber_removal_limit() -> (limit: ray) {
 }
 
-// Total amount of yin requested for removal that is not subjected to absorptions and not entitled
-// to rewards
+// Total amount of shares to be removed at the start of the given interval
+// The yin corresponding to these shares will no longer be at risk of absorption, and will not earn
+// any rewards
 @storage_var
-func absorber_pending_removal_yin() -> (yin: wad) {
+func absorber_removed_shares(interval: ufelt) -> (shares: wad) {
+}
+
+// The last amount of yin per share for the given interval
+@storage_var
+func absorber_last_yin_per_share_for_interval(interval: ufelt) -> (yin_per_share: wad) {
+}
+
+// Packed struct of
+// 1. the total amount of yin pending removal, are no longer subject to absorption
+//    and are not entitled to rewards
+// 2. interval in which (1) was last updated
+//    the maximum possible value at any given time should be the interval before the current interval,
+@storage_var
+func absorber_suspension() -> (suspension: packed) {
 }
 
 // Mapping of a provider to a packed struct of
 // 1. the interval, as determined by Shrine, in which a request to remove yin was submitted
-// 2. the amount of yin requested to be removed
+// 2. the amount of shares requested to be removed
+// 3. epoch of the shares requested to be removed
 @storage_var
 func absorber_provider_removal(provider: address) -> (removal: packed) {
 }
@@ -234,22 +258,23 @@ func get_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 }
 
 @view
-func get_pending_removal_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    amount: wad
-) {
-    let amount: wad = absorber_pending_removal_yin.read();
-    return (amount,);
-}
-
-@view
 func get_absorbable_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
     amount: wad
 ) {
+    alloc_locals;
+
     let shrine: address = absorber_shrine.read();
     let absorber: address = get_contract_address();
     let (yin_balance: wad) = IShrine.get_yin(shrine, absorber);
-    let pending_removal_yin: wad = absorber_pending_removal_yin.read();
-    let absorbable_yin: wad = WadRay.unsigned_sub(yin_balance, pending_removal_yin);
+
+    let suspension: Suspension = absorber_suspension.read();
+    let current_interval: ufelt = IShrine.now(shrine);
+    let suspended_yin: wad = get_suspended_yin_loop(
+        suspension.interval, current_interval, yin_balance
+    );
+
+    let absorbable_yin: wad = WadRay.unsigned_sub(yin_balance, suspended_yin);
+
     return (absorbable_yin,);
 }
 
@@ -270,11 +295,11 @@ func get_absorptions_count{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 }
 
 @view
-func get_absorption_epoch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func get_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     absorption_id: ufelt
-) -> (epoch: ufelt) {
-    let epoch: ufelt = absorber_absorption_epoch.read(absorption_id);
-    return (epoch,);
+) -> (absorption: Absorption) {
+    let absorption: Absorption = get_absorption_internal(absorption_id);
+    return (absorption,);
 }
 
 @view
@@ -486,27 +511,50 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     let removal: Removal = get_removal(provider);
 
     with_attr error_message("Absorber: Nothing to remove") {
-        assert_not_zero(removal.yin);
+        assert_not_zero(removal.shares);
     }
 
     let shrine: address = absorber_shrine.read();
 
     assert_can_remove(shrine, provider, removal);
 
-    let current_total: wad = absorber_pending_removal_yin.read();
-    let new_total: wad = WadRay.unsigned_sub(current_total, removal.yin);
-    absorber_pending_removal_yin.write(new_total);
+    // TODO calculate amount of yin that can be removed
+    let current_interval: ufelt = IShrine.now(shrine);
 
-    let yin_amt_uint: Uint256 = WadRay.to_uint(removal.yin);
+    let (
+        latest_epoch_in_interval: ufelt, latest_absorption_id_in_interval: ufelt
+    ) = get_latest_epoch_and_absorption_id_in_interval(
+        removal.epoch, removal.interval, removal.absorption_id
+    );
+
+    let converted_removed_shares: wad = convert_epoch_shares(
+        removal.epoch, latest_epoch_in_interval, removal.shares
+    );
+
+    // Get yin per share of the latest absorption in the given epoch and interval
+    let latest_absorption: Absorption = get_absorption(removal.absorption_id);
+    let removable_yin_amt: wad = WadRay.wmul(
+        converted_removed_shares, latest_absorption.after_yin_per_share
+    );
+
+    // TODO update total amount of yin pending removal
+
+    let suspension: Suspension = get_suspension();
+    let new_total: wad = WadRay.unsigned_sub(suspension.yin, removable_yin_amt);
+    let new_suspension: Suspension = Suspension(new_total, suspension.interval);
+
+    let yin_amt_uint: Uint256 = WadRay.to_uint(removable_yin_amt);
     with_attr error_message("Absorber: Transfer of yin failed") {
         let (success: bool) = IERC20.transfer(shrine, provider, yin_amt_uint);
         assert success = TRUE;
     }
 
     let current_interval: ufelt = IShrine.now(shrine);
-    let updated_removal: Removal = Removal(removal.interval, 0);
+    let updated_removal: Removal = Removal(
+        removal.interval, removal.absorption_id, 0, removal.epoch
+    );
     set_removal(provider, updated_removal);
-    Remove.emit(provider, current_interval, removal.yin);
+    Remove.emit(provider, current_interval, removable_yin_amt);
 
     return ();
 }
@@ -565,23 +613,26 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
             tempvar shares_to_remove: wad = shares_to_remove_ceiled;
         }
 
-        let prev_total_shares: wad = absorber_total_shares.read();
-        let new_total_shares: wad = WadRay.unsigned_sub(prev_total_shares, shares_to_remove);
-        absorber_total_shares.write(new_total_shares);
+        // let prev_total_shares: wad = absorber_total_shares.read();
+        // let new_total_shares: wad = WadRay.unsigned_sub(prev_total_shares, shares_to_remove);
+        // absorber_total_shares.write(new_total_shares);
 
         // Update provision
-        let new_provider_shares: wad = WadRay.unsigned_sub(
-            current_provider_shares, shares_to_remove
-        );
-        let new_provision: Provision = Provision(current_epoch, new_provider_shares);
-        set_provision(provider, new_provision);
+        // let new_provider_shares: wad = WadRay.unsigned_sub(
+        //    current_provider_shares, shares_to_remove
+        // );
+        // let new_provision: Provision = Provision(current_epoch, new_provider_shares);
+        // set_provision(provider, new_provision);
 
-        let current_total_requested_yin: wad = absorber_pending_removal_yin.read();
-        absorber_pending_removal_yin.write(
-            WadRay.unsigned_add(current_total_requested_yin, yin_amt)
-        );
+        // let current_total_requested_yin: wad = absorber_pending_removal_yin.read();
+        // absorber_pending_removal_yin.write(
+        //    WadRay.unsigned_add(current_total_requested_yin, yin_amt)
+        // );
 
-        let removal: Removal = Removal(current_interval, yin_amt);
+        let current_absorption_id: ufelt = absorber_absorptions_count.read();
+        let removal: Removal = Removal(
+            current_interval, current_absorption_id, shares_to_remove, current_epoch
+        );
         set_removal(provider, removal);
 
         Request.emit(provider, current_epoch, current_interval, yin_amt);
@@ -619,13 +670,21 @@ func update{
     let current_absorption_id: ufelt = prev_absorption_id + 1;
     absorber_absorptions_count.write(current_absorption_id);
 
-    // Update epoch for absorption ID
-    let current_epoch: ufelt = absorber_current_epoch.read();
-    absorber_absorption_epoch.write(current_absorption_id, current_epoch);
-
     // Loop through assets and calculate amount entitled per share
     let total_shares: wad = absorber_total_shares.read();
     update_assets_loop(current_absorption_id, total_shares, assets_len, assets, asset_amts);
+
+    let current_epoch: ufelt = absorber_current_epoch.read();
+
+    // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
+    let absorbable_yin_balance: wad = get_absorbable_yin();
+    let yin_per_share: wad = WadRay.wunsigned_div_unchecked(absorbable_yin_balance, total_shares);
+
+    // Update absorption info for absorption ID
+    let shrine: address = absorber_shrine.read();
+    let current_interval: ufelt = IShrine.now(shrine);
+    let absorption: Absorption = Absorption(current_epoch, current_interval, yin_per_share);
+    set_absorption(current_absorption_id, absorption);
 
     // Emit `Gain` event
     Gain.emit(
@@ -637,10 +696,6 @@ func update{
         current_epoch,
         current_absorption_id,
     );
-
-    // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
-    let absorbable_yin_balance: wad = get_absorbable_yin();
-    let yin_per_share: wad = WadRay.wunsigned_div_unchecked(absorbable_yin_balance, total_shares);
 
     // This also checks for absorber's yin balance being emptied because yin per share will be
     // below threshold if yin balance is 0.
@@ -766,6 +821,27 @@ func set_provision{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     return ();
 }
 
+func get_absorption_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    absorption_id: ufelt
+) -> (absorption: Absorption) {
+    let (absorption_packed: packed) = absorber_absorption.read(absorption_id);
+    let (info: packed, after_yin_per_share: wad) = split_felt(absorption_packed);
+    let (epoch: ufelt, interval: wad) = split_felt(info);
+    let absorption: Absorption = Absorption(
+        epoch=epoch, interval=interval, after_yin_per_share=after_yin_per_share
+    );
+    return (absorption,);
+}
+
+func set_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    absorption_id: ufelt, absorption: Absorption
+) {
+    let info: packed = pack_felt(absorption.epoch, absorption.interval);
+    let packed_absorption: packed = pack_felt(info, absorption.after_yin_per_share);
+    absorber_absorption.write(absorption_id, packed_absorption);
+    return ();
+}
+
 func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
 ) -> (info: AssetAbsorption) {
@@ -781,16 +857,39 @@ func get_removal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     provider: address
 ) -> (removal: Removal) {
     let (removal_packed: packed) = absorber_provider_removal.read(provider);
-    let (interval: ufelt, yin: wad) = split_felt(removal_packed);
-    let removal: Removal = Removal(interval=interval, yin=yin);
+    let (info: packed, shares_info: wad) = split_felt(removal_packed);
+    let (interval: ufelt, absorption_id: ufelt) = split_felt(info);
+    let (shares: wad, epoch: ufelt) = split_felt(shares_info);
+    let removal: Removal = Removal(
+        interval=interval, absorption_id=absorption_id, shares=shares, epoch=epoch
+    );
     return (removal,);
 }
 
 func set_removal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address, removal: Removal
 ) {
-    let packed_removal: packed = pack_felt(removal.interval, removal.yin);
+    let info: packed = pack_felt(removal.interval, removal.absorption_id);
+    let shares_info: packed = pack_felt(removal.shares, removal.epoch);
+    let packed_removal: packed = pack_felt(info, shares_info);
     absorber_provider_removal.write(provider, packed_removal);
+    return ();
+}
+
+func get_suspension{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    suspension: Suspension
+) {
+    let (suspension_packed: packed) = absorber_suspension.read();
+    let (yin: wad, interval: ufelt) = split_felt(suspension_packed);
+    let suspension: Suspension = Suspension(yin=yin, interval=interval);
+    return (suspension,);
+}
+
+func set_suspension{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    suspension: Suspension
+) {
+    let suspension_packed: packed = pack_felt(suspension.yin, suspension.interval);
+    absorber_suspension.write(suspension_packed);
     return ();
 }
 
@@ -827,8 +926,9 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         let absorber: address = get_contract_address();
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
-        let removed_yin: wad = absorber_pending_removal_yin.read();
-        let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
+
+        let suspension: Suspension = get_suspension();
+        let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, suspension.yin);
 
         // replicate `WadRay.wunsigned_div_unchecked` to check remainder of integer division
         let (computed_shares: wad, r: wad) = unsigned_div_rem(
@@ -858,8 +958,9 @@ func convert_to_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
-        let removed_yin: wad = absorber_pending_removal_yin.read();
-        let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
+
+        let suspension: Suspension = get_suspension();
+        let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, suspension.yin);
         let yin: wad = WadRay.wunsigned_div_unchecked(
             WadRay.wmul(shares_amt, adjusted_yin_balance), total_shares
         );
@@ -1064,11 +1165,11 @@ func get_absorbed_assets_for_provider_inner_loop{
         return cumulative;
     }
     let next_absorption_id: ufelt = start_absorption_id + 1;
-    let absorption_epoch: ufelt = absorber_absorption_epoch.read(next_absorption_id);
+    let absorption: Absorption = absorber_absorption.read(next_absorption_id);
 
     // If `current_epoch == absorption_epoch`, then `adjusted_shares == provided_shares`.
     let adjusted_shares: wad = convert_epoch_shares(
-        current_epoch, absorption_epoch, provided_shares
+        current_epoch, absorption.epoch, provided_shares
     );
 
     // Terminate if provider does not have any shares for current epoch,
@@ -1083,7 +1184,7 @@ func get_absorbed_assets_for_provider_inner_loop{
 
     return get_absorbed_assets_for_provider_inner_loop(
         adjusted_shares,
-        absorption_epoch,
+        absorption.epoch,
         next_absorption_id,
         end_absorption_id,
         asset,
@@ -1148,7 +1249,7 @@ func assert_can_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
     }
 
     with_attr error_message("Absorber: Previous removal has not been removed") {
-        assert removal.yin = 0;
+        assert removal.shares = 0;
     }
 
     with_attr error_message("Absorber: Previous removal is pending") {
@@ -1163,7 +1264,7 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     shrine: address, provider: address, removal: Removal
 ) {
     with_attr error_message("Absorber: Nothing to remove") {
-        assert_not_zero(removal.yin);
+        assert_not_zero(removal.shares);
     }
 
     let (current_interval: ufelt) = IShrine.now(shrine);
@@ -1171,6 +1272,74 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         // We can use `assert_le` here because intervals cannot be negative
         assert_le(removal.interval + REMOVAL_TIMELOCK_INTERVAL, current_interval);
     }
+
+    return ();
+}
+
+// Returns the latest amount of yin per share for the given epoch and interval
+// `yin_per_share` should be initialised to `0`.
+func get_last_yin_per_share{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    epoch: ufelt, interval: ufelt, absorption_id: ufelt, yin_per_share: wad
+) -> wad {
+    alloc_locals;
+
+    if (absorption_id == 0) {
+        return yin_per_share;
+    }
+
+    let current_absorption: Absorption = get_absorption_internal(absorption_id);
+    if (current_absorption.epoch != epoch and current_absorption.interval != interval) {
+        return yin_per_share;
+    }
+
+    return get_last_yin_per_share(
+        epoch, interval, absorption_id + 1, current_absorption.after_yin_per_share
+    );
+}
+
+// Returns the latest epoch and absorption ID in the given interval
+// (e.g. absorber is drained multiple times in the same interval)
+func get_latest_epoch_and_absorption_id_in_interval{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(current_epoch: ufelt, interval: ufelt, absorption_id: ufelt) -> (
+    epoch: ufelt, absorption_id: ufelt
+) {
+    let current_absorption: Absorption = get_absorption_internal(absorption_id);
+
+    // The recursive call is easier to reason about in a conditional branch
+    if (current_absorption.interval == interval) {
+        return get_latest_epoch_and_absorption_id_in_interval(
+            current_absorption.epoch, interval, absorption_id + 1
+        );
+    }
+
+    return (current_epoch, absorption_id);
+}
+
+// Returns the total amount of yin currently subject to absorptions
+// `end_interval` should be called with `current_interval - 1`
+func get_suspended_yin_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    current_interval: ufelt, end_interval: ufelt, yin: wad
+) -> wad {
+    if (current_interval == end_interval) {
+        return yin;
+    }
+
+    let removed_shares_in_interval: wad = absorber_removed_shares.read(current_interval);
+    let yin_per_share: wad = absorber_last_yin_per_share_for_interval.read(current_interval);
+    let removed_yin: wad = WadRay.wmul(removed_shares_in_interval, yin_per_share);
+
+    let cumulative_removed_yin: wad = WadRay.unsigned_sub(yin, removed_yin);
+
+    return get_suspended_yin_loop(current_interval + 1, end_interval, cumulative_removed_yin);
+}
+
+func update_yin_per_share_for_interval{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(shrine: address, absorber: address, current_interval: ufelt) {
+    let absorbable_yin_amt: wad = get_absorbable_yin();
+
+    // TODO
 
     return ();
 }
