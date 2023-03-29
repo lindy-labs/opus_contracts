@@ -3,7 +3,8 @@ from decimal import Decimal
 from tests.utils import str_to_felt, to_ray, to_wad
 
 # Constants for removal request
-REQUEST_TIMELOCK_INTERVAL = 1
+REQUEST_TIMELOCK_SECONDS = 60
+REQUEST_VALIDITY_PERIOD_SECONDS = 24 * 60 * 60
 
 # Initial shares minted to the system if total shares are 0
 INITIAL_SHARES_WAD = Decimal("1E3")
