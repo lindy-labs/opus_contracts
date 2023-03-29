@@ -594,7 +594,7 @@ async def test_request_pass(starknet, absorber):
     provider = PROVIDER_1
 
     expected_timelock = REQUEST_BASE_TIMELOCK_SECONDS
-    for i in range(10):
+    for i in range(6):
         current_timestamp = get_block_timestamp(starknet)
         tx = await absorber.request().execute(caller_address=provider)
 
@@ -608,6 +608,25 @@ async def test_request_pass(starknet, absorber):
         request = (await absorber.get_provider_request(provider).execute()).result.request
         assert request.timestamp == current_timestamp
         assert request.timelock == expected_timelock
+
+        # Timelock has not elapsed
+        with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        set_block_timestamp(starknet, current_timestamp + expected_timelock - 1)
+        with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        # Timelock elapsed
+        removal_start_timestamp = current_timestamp + expected_timelock
+        set_block_timestamp(starknet, removal_start_timestamp)
+        await absorber.remove(1).execute(caller_address=provider)
+
+        # Request has expired
+        expiry_timestamp = removal_start_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1
+        set_block_timestamp(starknet, expiry_timestamp)
+        with pytest.raises(StarkException, match="Absorber: Request has expired"):
+            await absorber.remove(1).execute(caller_address=provider)
 
         expected_timelock *= REQUEST_TIMELOCK_MULTIPLIER
 
@@ -1061,27 +1080,11 @@ async def test_remove_exceeds_limit_fail(shrine, absorber, steth_yang, price_dec
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_remove_invalid_request_fail(starknet, absorber):
+async def test_remove_no_request_fail(starknet, absorber):
     provider = PROVIDER_1
 
     # Provider has not requested removal
     with pytest.raises(StarkException, match="Absorber: No request found"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
-
-    # Timelock has not elapsed
-    request_timestamp = get_block_timestamp(starknet)
-    await absorber.request().execute(caller_address=provider)
-
-    with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
-
-    set_block_timestamp(starknet, request_timestamp + REQUEST_BASE_TIMELOCK_SECONDS - 1)
-    with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
-        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
-
-    # Request has expired
-    set_block_timestamp(starknet, request_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1)
-    with pytest.raises(StarkException, match="Absorber: Request has expired"):
         await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
 
