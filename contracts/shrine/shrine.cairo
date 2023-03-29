@@ -1266,11 +1266,10 @@ func set_yang_redistribution{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     return ();
 }
 
-@external
-func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (interval: ufelt) {
+func now{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> ufelt {
     let (time: ufelt) = get_block_timestamp();
     let (interval: ufelt, _) = unsigned_div_rem(time, TIME_INTERVAL);
-    return (interval,);
+    return interval;
 }
 
 func forge_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(

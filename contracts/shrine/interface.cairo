@@ -55,9 +55,6 @@ namespace IShrine {
     func get_live() -> (is_live: bool) {
     }
 
-    func now() -> (interval: ufelt) {
-    }
-
     //
     // external
     //
