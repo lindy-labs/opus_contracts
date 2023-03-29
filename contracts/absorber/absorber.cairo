@@ -57,7 +57,7 @@ const REQUEST_MAX_TIMELOCK = 7 * 24 * 60 * 60;
 // before the cooldown of the previous request has elapsed
 const REQUEST_TIMELOCK_MULTIPLIER = 5;
 
-// Amount of time, in seconds, for which a request is valid, including the timelock
+// Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
 const REQUEST_VALIDITY_PERIOD = 24 * 60 * 60;
 
 // Amount of time that needs to elapse after a request is submitted before the timelock
@@ -1127,14 +1127,15 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         assert_not_zero(request.timestamp);
     }
 
+    let removal_start_timestamp: ufelt = request.timestamp + request.timelock;
     with_attr error_message("Absorber: Request is not valid yet") {
         // We can use `assert_le` here because timestamp cannot be negative
-        assert_le(request.timestamp + request.timelock, current_timestamp);
+        assert_le(removal_start_timestamp, current_timestamp);
     }
 
     with_attr error_message("Absorber: Request has expired") {
         // We can use `assert_le` here because timestamp cannot be negative
-        assert_le(current_timestamp, request.timestamp + REQUEST_VALIDITY_PERIOD);
+        assert_le(current_timestamp, removal_start_timestamp + REQUEST_VALIDITY_PERIOD);
     }
 
     return ();
