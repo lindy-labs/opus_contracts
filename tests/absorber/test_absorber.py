@@ -324,7 +324,7 @@ async def first_provider_request(starknet, absorber):
     await absorber.request().execute(caller_address=PROVIDER_1)
 
     current_timestamp = get_block_timestamp(starknet)
-    new_timestamp = current_timestamp + REQUEST_TIMELOCK_SECONDS
+    new_timestamp = current_timestamp + REQUEST_BASE_TIMELOCK_SECONDS
     set_block_timestamp(starknet, new_timestamp)
 
 
@@ -593,19 +593,29 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
 async def test_request_pass(starknet, absorber):
     provider = PROVIDER_1
 
-    current_timestamp = get_block_timestamp(starknet)
-    tx = await absorber.request().execute(caller_address=provider)
+    expected_timelock = REQUEST_BASE_TIMELOCK_SECONDS
+    for i in range(10):
+        current_timestamp = get_block_timestamp(starknet)
+        tx = await absorber.request().execute(caller_address=provider)
 
-    assert_event_emitted(tx, absorber.contract_address, "Request", [provider, current_timestamp])
+        if expected_timelock > REQUEST_MAX_TIMELOCK_SECONDS:
+            expected_timelock = REQUEST_MAX_TIMELOCK_SECONDS
 
-    request_timestamp = (await absorber.get_provider_request_timestamp(provider).execute()).result.timestamp
-    assert request_timestamp == current_timestamp
+        assert_event_emitted(
+            tx, absorber.contract_address, "RequestSubmitted", [provider, current_timestamp, expected_timelock]
+        )
+
+        request = (await absorber.get_provider_request(provider).execute()).result.request
+        assert request.timestamp == current_timestamp
+        assert request.timelock == expected_timelock
+
+        expected_timelock *= REQUEST_TIMELOCK_MULTIPLIER
 
 
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
-@pytest.mark.parametrize("seconds_since_request", [REQUEST_TIMELOCK_SECONDS, REQUEST_VALIDITY_PERIOD_SECONDS])
+@pytest.mark.parametrize("seconds_since_request", [REQUEST_BASE_TIMELOCK_SECONDS, REQUEST_VALIDITY_PERIOD_SECONDS])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_remove_pass(
@@ -1065,7 +1075,7 @@ async def test_remove_invalid_request_fail(starknet, absorber):
     with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
         await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 
-    set_block_timestamp(starknet, request_timestamp + REQUEST_TIMELOCK_SECONDS - 1)
+    set_block_timestamp(starknet, request_timestamp + REQUEST_BASE_TIMELOCK_SECONDS - 1)
     with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
         await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
 

@@ -50,6 +50,9 @@ const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
 // Amount of time, in seconds, that needs to elapse after request is submitted before removal
 const REQUEST_BASE_TIMELOCK = 60;
 
+// Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
+const REQUEST_MAX_TIMELOCK = 7 * 24 * 60 * 60;
+
 // Multiplier for each request's timelock from the last value if a new request is submitted
 // before the cooldown of the previous request has elapsed
 const REQUEST_TIMELOCK_MULTIPLIER = 5;
@@ -475,6 +478,14 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
 
     let current_timestamp: ufelt = get_block_timestamp();
 
+    // Handle first request
+    if (request.timestamp == 0) {
+        let request_packed: packed = pack_felt(current_timestamp, REQUEST_BASE_TIMELOCK);
+        absorber_provider_request.write(provider, request_packed);
+        RequestSubmitted.emit(provider, current_timestamp, REQUEST_BASE_TIMELOCK);
+        return ();
+    }
+
     // We can use `is_le` because timestamp cannot be negative
     let cooled_down: bool = is_le(request.timestamp + REQUEST_COOLDOWN, current_timestamp);
 
@@ -484,9 +495,11 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
         tempvar timelock: ufelt = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
     }
 
-    let request_packed: packed = pack_felt(current_timestamp, timelock);
+    let capped_timelock: ufelt = WadRay.unsigned_min(timelock, REQUEST_MAX_TIMELOCK);
+
+    let request_packed: packed = pack_felt(current_timestamp, capped_timelock);
     absorber_provider_request.write(provider, request_packed);
-    RequestSubmitted.emit(provider, current_timestamp, REQUEST_BASE_TIMELOCK);
+    RequestSubmitted.emit(provider, current_timestamp, capped_timelock);
 
     return ();
 }
