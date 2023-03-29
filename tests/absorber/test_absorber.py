@@ -595,6 +595,7 @@ async def test_request_pass(starknet, absorber):
 
     expected_timelock = REQUEST_BASE_TIMELOCK_SECONDS
     for i in range(6):
+        print("iteration: ", i)
         current_timestamp = get_block_timestamp(starknet)
         tx = await absorber.request().execute(caller_address=provider)
 
@@ -617,15 +618,19 @@ async def test_request_pass(starknet, absorber):
         with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
             await absorber.remove(1).execute(caller_address=provider)
 
-        # Timelock elapsed
-        removal_start_timestamp = current_timestamp + expected_timelock
-        set_block_timestamp(starknet, removal_start_timestamp)
-        await absorber.remove(1).execute(caller_address=provider)
-
         # Request has expired
+        removal_start_timestamp = current_timestamp + expected_timelock
         expiry_timestamp = removal_start_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1
         set_block_timestamp(starknet, expiry_timestamp)
         with pytest.raises(StarkException, match="Absorber: Request has expired"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        # Time-travel back so that request is now valid
+        set_block_timestamp(starknet, removal_start_timestamp)
+        await absorber.remove(1).execute(caller_address=provider)
+
+        # Only one removal per request
+        with pytest.raises(StarkException, match="Absorber: Only one removal per request"):
             await absorber.remove(1).execute(caller_address=provider)
 
         expected_timelock *= REQUEST_TIMELOCK_MULTIPLIER
