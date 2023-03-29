@@ -1,6 +1,6 @@
 %lang starknet
 
-from contracts.lib.aliases import ufelt, wad, packed
+from contracts.lib.aliases import bool, packed, ufelt, wad
 
 //
 // Shrine
@@ -37,6 +37,7 @@ struct Provision {
 struct Request {
     timestamp: ufelt,  // Timestamp of request
     timelock: ufelt,  // Amount of time that needs to elapse after the timestamp before removal
+    has_removed: bool,  // Whether provider has called `remove`
 }
 
 struct AssetAbsorption {

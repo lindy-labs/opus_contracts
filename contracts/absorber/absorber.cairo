@@ -58,7 +58,8 @@ const REQUEST_MAX_TIMELOCK = 7 * 24 * 60 * 60;
 const REQUEST_TIMELOCK_MULTIPLIER = 5;
 
 // Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
-const REQUEST_VALIDITY_PERIOD = 24 * 60 * 60;
+// 60 minutes * 60 seconds per minutes
+const REQUEST_VALIDITY_PERIOD = 60 * 60;
 
 // Amount of time that needs to elapse after a request is submitted before the timelock
 // for the next request is reset to the base value.
@@ -142,8 +143,10 @@ func absorber_epoch_share_conversion_rate(prev_epoch: ufelt) -> (rate: ray) {
 func absorber_removal_limit() -> (limit: ray) {
 }
 
+// Mapping from a provider to its latest request for removal
+// TODO: to implement packing in Cairo 1
 @storage_var
-func absorber_provider_request(provider: address) -> (request: packed) {
+func absorber_provider_request(provider: address) -> (request: Request) {
 }
 
 //
@@ -294,7 +297,7 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 func get_provider_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     provider: address
 ) -> (request: Request) {
-    let request: Request = get_request(provider);
+    let request: Request = absorber_provider_request.read(provider);
     return (request,);
 }
 
@@ -474,14 +477,14 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     let provision: Provision = get_provision(provider);
     assert_provider(provision);
 
-    let request: Request = get_request(provider);
+    let request: Request = absorber_provider_request.read(provider);
 
     let current_timestamp: ufelt = get_block_timestamp();
 
     // Handle first request
     if (request.timestamp == 0) {
-        let request_packed: packed = pack_felt(current_timestamp, REQUEST_BASE_TIMELOCK);
-        absorber_provider_request.write(provider, request_packed);
+        let new_request: Request = Request(current_timestamp, REQUEST_BASE_TIMELOCK, FALSE);
+        absorber_provider_request.write(provider, new_request);
         RequestSubmitted.emit(provider, current_timestamp, REQUEST_BASE_TIMELOCK);
         return ();
     }
@@ -496,9 +499,8 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     }
 
     let capped_timelock: ufelt = WadRay.unsigned_min(timelock, REQUEST_MAX_TIMELOCK);
-
-    let request_packed: packed = pack_felt(current_timestamp, capped_timelock);
-    absorber_provider_request.write(provider, request_packed);
+    let new_request: Request = Request(current_timestamp, capped_timelock, FALSE);
+    absorber_provider_request.write(provider, new_request);
     RequestSubmitted.emit(provider, current_timestamp, capped_timelock);
 
     return ();
@@ -515,8 +517,9 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
 
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
+    let request: Request = absorber_provider_request.read(provider);
     assert_provider(provision);
-    assert_can_remove(provider);
+    assert_can_remove(request);
 
     // Withdraw absorbed collateral before updating shares
     reap_internal(provider, provision);
@@ -563,6 +566,10 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         );
         let new_provision: Provision = Provision(current_epoch, new_provider_shares);
         set_provision(provider, new_provision);
+
+        // Limit each request to one withdrawal by setting timestamp to 0
+        let request: Request = Request(request.timestamp, request.timelock, TRUE);
+        absorber_provider_request.write(provider, request);
 
         let yin_amt_uint: Uint256 = WadRay.to_uint(yin_amt);
         let shrine: address = absorber_shrine.read();
@@ -764,15 +771,6 @@ func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         asset_amt_per_share=asset_amt_per_share, error=error
     );
     return (info,);
-}
-
-func get_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address
-) -> (request: Request) {
-    let (request_packed: packed) = absorber_provider_request.read(provider);
-    let (timestamp: ufelt, timelock: ufelt) = split_felt(request_packed);
-    let request: Request = Request(timestamp=timestamp, timelock=timelock);
-    return (request,);
 }
 
 //
@@ -1111,7 +1109,7 @@ func get_shrine_ltv_to_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
 }
 
 func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    provider: address
+    request: Request
 ) {
     let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
     let (limit: ray) = absorber_removal_limit.read();
@@ -1120,11 +1118,14 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         assert_le(ltv_to_threshold, limit);
     }
 
-    let request: Request = get_request(provider);
     let (current_timestamp: ufelt) = get_block_timestamp();
 
     with_attr error_message("Absorber: No request found") {
         assert_not_zero(request.timestamp);
+    }
+
+    with_attr error_message("Absorber: Only one removal per request") {
+        assert request.has_removed = FALSE;
     }
 
     let removal_start_timestamp: ufelt = request.timestamp + request.timelock;
