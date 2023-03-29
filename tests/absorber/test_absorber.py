@@ -343,11 +343,11 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
         burn_amt_wad,
     )
 
-    remaining_absorbable_amt_wad = expected_absorbable_yin - burn_amt_wad
+    remaining_amt_wad = absorber_yin_bal_wad - burn_amt_wad
     return (
         tx,
         percentage_to_drain,
-        remaining_absorbable_amt_wad,
+        remaining_amt_wad,
         epoch,
         total_shares_wad,
         asset_addresses,
@@ -669,71 +669,46 @@ async def test_remove_pass(
 
     expected_interval = (await shrine.now().execute()).result.interval
 
-    before_absorbable_yin_wad = (await absorber.get_absorbable_yin().execute()).result.amount
-    before_pending_removal_yin_wad = (await absorber.get_pending_removal_yin().execute()).result.amount
-
     tx = await absorber.request(yin_to_remove_wad).execute(caller_address=provider)
 
-    if percentage_to_remove > Decimal("0") and percentage_drained < Decimal("1"):
-        after_absorbable_yin_wad = (await absorber.get_absorbable_yin().execute()).result.amount
-        after_pending_removal_yin_wad = (await absorber.get_pending_removal_yin().execute()).result.amount
+    after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
+    assert_equalish(from_wad(after_provider_info.shares), expected_shares)
 
-        assert after_absorbable_yin_wad == before_absorbable_yin_wad - yin_to_remove_wad
-        assert after_pending_removal_yin_wad == before_pending_removal_yin_wad + yin_to_remove_wad
+    assert after_provider_info.epoch == expected_epoch
 
-        after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
-        assert_equalish(from_wad(after_provider_info.shares), expected_shares)
+    after_provider_last_absorption = (
+        await absorber.get_provider_last_absorption(provider).execute()
+    ).result.absorption_id
+    assert after_provider_last_absorption == before_provider_last_absorption + 1
 
-        assert after_provider_info.epoch == expected_epoch
+    assert_event_emitted(
+        tx,
+        absorber.contract_address,
+        "Request",
+        lambda d: d[:4] == [provider, expected_epoch, expected_interval, yin_to_remove_wad],
+    )
 
-        after_provider_last_absorption = (
-            await absorber.get_provider_last_absorption(provider).execute()
-        ).result.absorption_id
-        assert after_provider_last_absorption == before_provider_last_absorption + 1
-
+    for asset_contract in yang_tokens:
         assert_event_emitted(
-            tx,
-            absorber.contract_address,
-            "Request",
-            lambda d: d[:4] == [provider, expected_epoch, expected_interval, yin_to_remove_wad],
+            tx, asset_contract.contract_address, "Transfer", lambda d: d[:2] == [absorber.contract_address, provider]
         )
 
-        for asset_contract in yang_tokens:
-            assert_event_emitted(
-                tx,
-                asset_contract.contract_address,
-                "Transfer",
-                lambda d: d[:2] == [absorber.contract_address, provider],
-            )
+    await advance_intervals(starknet, shrine, intervals_since_request)
 
-        await advance_intervals(starknet, shrine, intervals_since_request)
+    tx = await absorber.remove().execute(caller_address=provider)
 
-        tx = await absorber.remove().execute(caller_address=provider)
+    after_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
+    expected_provider_yin_bal = before_provider_yin_bal + from_wad(yin_to_remove_wad)
+    assert_equalish(after_provider_yin_bal, expected_provider_yin_bal)
 
-        after_provider_yin_bal = from_wad(from_uint((await shrine.balanceOf(provider).execute()).result.balance))
-        expected_provider_yin_bal = before_provider_yin_bal + from_wad(yin_to_remove_wad)
-        assert_equalish(after_provider_yin_bal, expected_provider_yin_bal)
-
-        after_absorber_yin_bal_wad = from_uint(
-            (await shrine.balanceOf(absorber.contract_address).execute()).result.balance
-        )
-        assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
-
-        final_pending_removal_yin_wad = (await absorber.get_pending_removal_yin().execute()).result.amount
-        assert final_pending_removal_yin_wad == after_pending_removal_yin_wad - yin_to_remove_wad
+    after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
+    assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
 
 
-@pytest.mark.parametrize(
-    "absorber_wrapper",
-    ["absorber", "absorber_with_pending_removal_yin"],
-    indirect=["absorber_wrapper"],
-)
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_provide_second_epoch(shrine, absorber_wrapper, update, yangs, yang_tokens):
-    absorber = absorber_wrapper
-
+async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens):
     # Epoch and total shares are already checked in `test_update` so we do not repeat here
     provider = PROVIDER_1
 
@@ -768,18 +743,13 @@ async def test_provide_second_epoch(shrine, absorber_wrapper, update, yangs, yan
 
 
 @pytest.mark.parametrize(
-    "absorber_wrapper",
-    ["absorber", "absorber_with_pending_removal_yin"],
-    indirect=["absorber_wrapper"],
-)
-@pytest.mark.parametrize(
     "update",
     [Decimal("0.999000000000000001"), Decimal("0.9999999991"), Decimal("0.99999999999999")],
     indirect=["update"],
 )
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_provide_after_threshold_absorption(starknet, shrine, absorber_wrapper, update, yangs, yang_tokens):
+async def test_provide_after_threshold_absorption(starknet, shrine, absorber, update, yangs, yang_tokens):
     """
     Sequence of events:
     1. Provider 1 provides (`first_epoch_first_provider`)
@@ -787,12 +757,10 @@ async def test_provide_after_threshold_absorption(starknet, shrine, absorber_wra
     3. Provider 2 provides
     4. Provider 1 withdraws
     """
-    absorber = absorber_wrapper
-
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    tx, _, remaining_absorbable_yin_wad, _, total_shares_wad, _, _, _ = update
+    tx, _, remaining_absorber_yin_wad, _, total_shares_wad, _, _, _ = update
 
     # Assert epoch is updated
     epoch = (await absorber.get_current_epoch().execute()).result.epoch
@@ -803,8 +771,8 @@ async def test_provide_after_threshold_absorption(starknet, shrine, absorber_wra
 
     # Assert share
     total_shares_wad = (await absorber.get_total_shares_for_current_epoch().execute()).result.total
-    absorbable_yin_bal_wad = (await shrine.get_absorbable_yin().execute()).result.amount
-    assert total_shares_wad == absorbable_yin_bal_wad
+    absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
+    assert total_shares_wad == absorber_yin_bal_wad
 
     # Step 3: Provider 2 provides
     second_provider_yin_amt_uint = (await shrine.balanceOf(second_provider).execute()).result.balance
@@ -822,18 +790,8 @@ async def test_provide_after_threshold_absorption(starknet, shrine, absorber_wra
     before_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
     before_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
 
-    before_absorbable_yin = from_wad((await absorber.get_absorbable_yin().execute()).result.amount)
-    before_pending_removal_yin = from_wad((await absorber.get_pending_removal_yin().execute()).result.amount)
-
     # Step 4: Provider 1 withdraws
     await absorber.request(MAX_REMOVE_AMT).execute(caller_address=first_provider)
-
-    expected_removed_yin = from_wad(remaining_absorbable_yin_wad)
-    after_absorbable_yin = from_wad((await absorber.get_absorbable_yin().execute()).result.amount)
-    after_pending_removal_yin = from_wad((await absorber.get_pending_removal_yin().execute()).result.amount)
-
-    assert_equalish(after_absorbable_yin, before_absorbable_yin - expected_removed_yin)
-    assert_equalish(after_pending_removal_yin, before_pending_removal_yin + expected_removed_yin)
 
     after_first_provider_info = (await absorber.get_provider_info(first_provider).execute()).result.provision
     assert after_first_provider_info.shares == 0
@@ -843,6 +801,7 @@ async def test_provide_after_threshold_absorption(starknet, shrine, absorber_wra
     await absorber.remove().execute(caller_address=first_provider)
 
     after_first_provider_yin_amt_wad = from_uint((await shrine.balanceOf(first_provider).execute()).result.balance)
+    expected_removed_yin = from_wad(remaining_absorber_yin_wad)
     removed_yin = from_wad(after_first_provider_yin_amt_wad - before_first_provider_yin_amt_wad)
     assert_equalish(removed_yin, expected_removed_yin)
 
@@ -853,21 +812,13 @@ async def test_provide_after_threshold_absorption(starknet, shrine, absorber_wra
     )
     assert_equalish(removed_yin, expected_converted_shares)
 
-    final_pending_removal_yin = from_wad((await absorber.get_pending_removal_yin().execute()).result.amount)
-    assert_equalish(final_pending_removal_yin, after_pending_removal_yin - expected_removed_yin)
 
-
-@pytest.mark.parametrize(
-    "absorber_wrapper",
-    ["absorber", "absorber_with_pending_removal_yin"],
-    indirect=["absorber_wrapper"],
-)
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("skipped_asset_idx", [None, 0, 1, 2])  # Test asset not involved in absorption
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_reap_different_epochs(
-    shrine, absorber_wrapper, yangs, yang_tokens, update, second_update_assets, skipped_asset_idx
+    shrine, absorber, yangs, yang_tokens, update, second_update_assets, skipped_asset_idx
 ):
     """
     Sequence of events:
@@ -879,8 +830,6 @@ async def test_reap_different_epochs(
        Provider 1 should receive assets from first update.
        Provider 2 should receive assets from second update.
     """
-    absorber = absorber_wrapper
-
     first_absorbed_amts_dec = update[-1]
 
     first_provider = PROVIDER_1
@@ -968,13 +917,13 @@ async def test_reap_different_epochs(
             )
 
 
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
+@pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize(
     "absorber_wrapper",
     ["absorber", "absorber_with_pending_removal_yin", "absorber_killed"],
     indirect=["absorber_wrapper"],
 )
-@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
-@pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_single_absorption(
     shrine, absorber_wrapper, first_epoch_first_provider, first_epoch_second_provider, yangs, yang_tokens, update
@@ -1028,17 +977,12 @@ async def test_multi_user_reap_same_epoch_single_absorption(
             assert_equalish(after_bal, before_bal + expected_reaped_amt, error_margin)
 
 
-@pytest.mark.parametrize(
-    "absorber_wrapper",
-    ["absorber", "absorber_with_pending_removal_yin"],
-    indirect=["absorber_wrapper"],
-)
 @pytest.mark.parametrize("update", [Decimal("0.2"), Decimal("0.5")], indirect=["update"])
 @pytest.mark.parametrize("second_absorption_percentage", [Decimal("0.2"), Decimal("0.5")])
 @pytest.mark.usefixtures("first_epoch_first_provider", "funded_absorber_providers")
 @pytest.mark.asyncio
 async def test_multi_user_reap_same_epoch_multi_absorptions(
-    shrine, absorber_wrapper, yangs, yang_tokens, update, second_update_assets, second_absorption_percentage
+    shrine, absorber, yangs, yang_tokens, update, second_update_assets, second_absorption_percentage
 ):
     """
     Sequence of events:
@@ -1048,12 +992,10 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     4. Partial absorption happens
     5. Providers 1 and 2 reaps
     """
-    absorber = absorber_wrapper
-
     first_provider = PROVIDER_1
     second_provider = PROVIDER_2
 
-    _, _, remaining_absorbable_yin_wad, _, _, asset_addresses, _, first_absorbed_amts_dec = update
+    _, _, remaining_yin_wad, _, _, asset_addresses, _, first_absorbed_amts_dec = update
     asset_count = len(asset_addresses)
 
     # Step 3: Provider 2 pprovides
@@ -1062,7 +1004,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
     await absorber.provide(second_provider_yin_amt_wad).execute(caller_address=second_provider)
 
     # Step 4: Partial absorption
-    first_provider_amt = from_wad(remaining_absorbable_yin_wad)
+    first_provider_amt = from_wad(remaining_yin_wad)
     second_provider_amt = from_wad(second_provider_yin_amt_wad)
     total_provided_amt = first_provider_amt + second_provider_amt
 
