@@ -1,7 +1,7 @@
 %lang starknet
 
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
-from contracts.lib.types import AssetAbsorption, Provision
+from contracts.lib.types import AssetAbsorption, Provision, Request
 
 @contract_interface
 namespace IAbsorber {
@@ -30,7 +30,7 @@ namespace IAbsorber {
     func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
-    func get_provider_request_timestamp(provider: address) -> (timestamp: ufelt) {
+    func get_provider_request(provider: address) -> (request: Request) {
     }
 
     func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (

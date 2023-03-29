@@ -34,6 +34,11 @@ struct Provision {
     shares: wad,  // Amount of shares for provider in the above epoch
 }
 
+struct Request {
+    timestamp: ufelt,  // Timestamp of request
+    timelock: ufelt,  // Amount of time that needs to elapse after the timestamp before removal
+}
+
 struct AssetAbsorption {
     asset_amt_per_share: wad,  // Amount of asset in its decimal precision per share wad
     error: wad,  // Error to be added to next absorption

@@ -4,7 +4,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
 from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_nn_le
+from starkware.cairo.common.math_cmp import is_le, is_nn_le
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
 from starkware.starknet.common.syscalls import (
     get_block_timestamp,
@@ -30,7 +30,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
 from contracts.lib.convert import pack_felt
 from contracts.lib.interfaces import IERC20
-from contracts.lib.types import AssetAbsorption, Provision
+from contracts.lib.types import AssetAbsorption, Provision, Request
 from contracts.lib.wad_ray import WadRay
 
 // Constants
@@ -47,11 +47,20 @@ const INITIAL_SHARES = 10 ** 3;
 // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
 const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
 
-// Amount of time that needs to elapse after request is submitted before removal, in seconds
-const REQUEST_TIMELOCK = 60;
+// Amount of time, in seconds, that needs to elapse after request is submitted before removal
+const REQUEST_BASE_TIMELOCK = 60;
 
-// Amount of time for which a request is valid, including the timelock, in seconds
+// Multiplier for each request's timelock from the last value if a new request is submitted
+// before the cooldown of the previous request has elapsed
+const REQUEST_TIMELOCK_MULTIPLIER = 5;
+
+// Amount of time, in seconds, for which a request is valid, including the timelock
 const REQUEST_VALIDITY_PERIOD = 24 * 60 * 60;
+
+// Amount of time that needs to elapse after a request is submitted before the timelock
+// for the next request is reset to the base value.
+// 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
+const REQUEST_COOLDOWN = 7 * 24 * 60 * 60;
 
 //
 // Storage
@@ -131,7 +140,7 @@ func absorber_removal_limit() -> (limit: ray) {
 }
 
 @storage_var
-func absorber_provider_request_timestamp(provider: address) -> (timestamp: ufelt) {
+func absorber_provider_request(provider: address) -> (request: packed) {
 }
 
 //
@@ -155,7 +164,7 @@ func Provide(provider: address, epoch: ufelt, yin: wad) {
 }
 
 @event
-func Request(provider: address, timestamp: ufelt) {
+func RequestSubmitted(provider: address, timestamp: ufelt, timelock: ufelt) {
 }
 
 @event
@@ -279,11 +288,11 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 }
 
 @view
-func get_provider_request_timestamp{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(provider: address) -> (timestamp: ufelt) {
-    let timestamp: ufelt = absorber_provider_request_timestamp.read(provider);
-    return (timestamp,);
+func get_provider_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (request: Request) {
+    let request: Request = get_request(provider);
+    return (request,);
 }
 
 @view
@@ -462,9 +471,22 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     let provision: Provision = get_provision(provider);
     assert_provider(provision);
 
-    let (current_timestamp: ufelt) = get_block_timestamp();
-    absorber_provider_request_timestamp.write(provider, current_timestamp);
-    Request.emit(provider, current_timestamp);
+    let request: Request = get_request(provider);
+
+    let current_timestamp: ufelt = get_block_timestamp();
+
+    // We can use `is_le` because timestamp cannot be negative
+    let cooled_down: bool = is_le(request.timestamp + REQUEST_COOLDOWN, current_timestamp);
+
+    if (cooled_down == TRUE) {
+        tempvar timelock: ufelt = REQUEST_BASE_TIMELOCK;
+    } else {
+        tempvar timelock: ufelt = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
+    }
+
+    let request_packed: packed = pack_felt(current_timestamp, timelock);
+    absorber_provider_request.write(provider, request_packed);
+    RequestSubmitted.emit(provider, current_timestamp, REQUEST_BASE_TIMELOCK);
 
     return ();
 }
@@ -729,6 +751,15 @@ func get_asset_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
         asset_amt_per_share=asset_amt_per_share, error=error
     );
     return (info,);
+}
+
+func get_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (request: Request) {
+    let (request_packed: packed) = absorber_provider_request.read(provider);
+    let (timestamp: ufelt, timelock: ufelt) = split_felt(request_packed);
+    let request: Request = Request(timestamp=timestamp, timelock=timelock);
+    return (request,);
 }
 
 //
@@ -1076,21 +1107,21 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         assert_le(ltv_to_threshold, limit);
     }
 
-    let (remove_timestamp: ufelt) = absorber_provider_request_timestamp.read(provider);
+    let request: Request = get_request(provider);
     let (current_timestamp: ufelt) = get_block_timestamp();
 
     with_attr error_message("Absorber: No request found") {
-        assert_not_zero(remove_timestamp);
+        assert_not_zero(request.timestamp);
     }
 
     with_attr error_message("Absorber: Request is not valid yet") {
         // We can use `assert_le` here because timestamp cannot be negative
-        assert_le(remove_timestamp + REQUEST_TIMELOCK, current_timestamp);
+        assert_le(request.timestamp + request.timelock, current_timestamp);
     }
 
     with_attr error_message("Absorber: Request has expired") {
         // We can use `assert_le` here because timestamp cannot be negative
-        assert_le(current_timestamp, remove_timestamp + REQUEST_VALIDITY_PERIOD);
+        assert_le(current_timestamp, request.timestamp + REQUEST_VALIDITY_PERIOD);
     }
 
     return ();
