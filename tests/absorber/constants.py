@@ -14,7 +14,7 @@ REQUEST_TIMELOCK_MULTIPLIER = 5
 # Initial shares minted to the system if total shares are 0
 INITIAL_SHARES_WAD = Decimal("1E3")
 
-REMOVAL_LIMIT_RAY = to_ray(Decimal("0.83375"))
+REMOVAL_LIMIT_RAY = to_ray(Decimal("0.9"))
 MIN_REMOVAL_LIMIT_RAY = to_ray(Decimal("0.5"))
 
 DEBT_CEILING_WAD = to_wad(1_000_000)
