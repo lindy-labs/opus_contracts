@@ -127,7 +127,7 @@ func absorber_removal_limit() -> (limit: ray) {
 // Total amount of yin requested for removal that is not subjected to absorptions and not entitled
 // to rewards
 @storage_var
-func absorber_pending_removal_yin() -> (yin: wad) {
+func absorber_removed_yin() -> (yin: wad) {
 }
 
 // Mapping of a provider to a packed struct of
@@ -231,26 +231,6 @@ func get_purger{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
 ) {
     let purger: address = absorber_purger.read();
     return (purger,);
-}
-
-@view
-func get_pending_removal_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    amount: wad
-) {
-    let amount: wad = absorber_pending_removal_yin.read();
-    return (amount,);
-}
-
-@view
-func get_absorbable_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    amount: wad
-) {
-    let shrine: address = absorber_shrine.read();
-    let absorber: address = get_contract_address();
-    let (yin_balance: wad) = IShrine.get_yin(shrine, absorber);
-    let pending_removal_yin: wad = absorber_pending_removal_yin.read();
-    let absorbable_yin: wad = WadRay.unsigned_sub(yin_balance, pending_removal_yin);
-    return (absorbable_yin,);
 }
 
 @view
@@ -484,18 +464,17 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
     let (provider: address) = get_caller_address();
     let removal: Removal = get_removal(provider);
-
-    with_attr error_message("Absorber: Nothing to remove") {
-        assert_not_zero(removal.yin);
+    if (removal.yin == 0) {
+        return ();
     }
 
     let shrine: address = absorber_shrine.read();
 
     assert_can_remove(shrine, provider, removal);
 
-    let current_total: wad = absorber_pending_removal_yin.read();
+    let current_total: wad = absorber_removed_yin.read();
     let new_total: wad = WadRay.unsigned_sub(current_total, removal.yin);
-    absorber_pending_removal_yin.write(new_total);
+    absorber_removed_yin.write(new_total);
 
     let yin_amt_uint: Uint256 = WadRay.to_uint(removal.yin);
     with_attr error_message("Absorber: Transfer of yin failed") {
@@ -576,10 +555,8 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
         let new_provision: Provision = Provision(current_epoch, new_provider_shares);
         set_provision(provider, new_provision);
 
-        let current_total_requested_yin: wad = absorber_pending_removal_yin.read();
-        absorber_pending_removal_yin.write(
-            WadRay.unsigned_add(current_total_requested_yin, yin_amt)
-        );
+        let current_total_requested_yin: wad = absorber_removed_yin.read();
+        absorber_removed_yin.write(WadRay.unsigned_add(current_total_requested_yin, yin_amt));
 
         let removal: Removal = Removal(current_interval, yin_amt);
         set_removal(provider, removal);
@@ -639,8 +616,13 @@ func update{
     );
 
     // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
-    let absorbable_yin_balance: wad = get_absorbable_yin();
-    let yin_per_share: wad = WadRay.wunsigned_div_unchecked(absorbable_yin_balance, total_shares);
+    let shrine: address = absorber_shrine.read();
+    let absorber: address = get_contract_address();
+    let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
+    let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
+    let removed_yin: wad = absorber_removed_yin.read();
+    let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
+    let yin_per_share: wad = WadRay.wunsigned_div_unchecked(adjusted_yin_balance, total_shares);
 
     // This also checks for absorber's yin balance being emptied because yin per share will be
     // below threshold if yin balance is 0.
@@ -655,11 +637,11 @@ func update{
     // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
     // minimum shares worth of yin from the yin balance so that there is at least such amount
     // of yin that cannot be removed in the next epoch.
-    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES, absorbable_yin_balance);
+    let above_initial_shares: bool = is_nn_le(INITIAL_SHARES, yin_balance);
     if (above_initial_shares == TRUE) {
-        tempvar yin_balance_for_shares: wad = absorbable_yin_balance - INITIAL_SHARES;
+        tempvar yin_balance_for_shares: wad = yin_balance - INITIAL_SHARES;
     } else {
-        tempvar yin_balance_for_shares: wad = absorbable_yin_balance;
+        tempvar yin_balance_for_shares: wad = yin_balance;
     }
 
     let epoch_share_conversion_rate: ray = WadRay.runsigned_div_unchecked(
@@ -670,7 +652,7 @@ func update{
     absorber_epoch_share_conversion_rate.write(current_epoch, epoch_share_conversion_rate);
 
     // If absorber is emptied, this will be set to 0.
-    absorber_total_shares.write(absorbable_yin_balance);
+    absorber_total_shares.write(yin_balance);
     EpochChanged.emit(current_epoch, new_epoch);
     return ();
 }
@@ -827,7 +809,7 @@ func convert_to_shares{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
         let absorber: address = get_contract_address();
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
-        let removed_yin: wad = absorber_pending_removal_yin.read();
+        let removed_yin: wad = absorber_removed_yin.read();
         let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
 
         // replicate `WadRay.wunsigned_div_unchecked` to check remainder of integer division
@@ -858,7 +840,7 @@ func convert_to_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
         let yin_balance_uint: Uint256 = IERC20.balanceOf(shrine, absorber);
         let yin_balance: wad = WadRay.from_uint(yin_balance_uint);
-        let removed_yin: wad = absorber_pending_removal_yin.read();
+        let removed_yin: wad = absorber_removed_yin.read();
         let adjusted_yin_balance: wad = WadRay.unsigned_sub(yin_balance, removed_yin);
         let yin: wad = WadRay.wunsigned_div_unchecked(
             WadRay.wmul(shares_amt, adjusted_yin_balance), total_shares

@@ -12,12 +12,6 @@ namespace IAbsorber {
     func get_purger() -> (purger: address) {
     }
 
-    func get_pending_removal_yin() -> (amount: wad) {
-    }
-
-    func get_absorbable_yin() -> (amount: wad) {
-    }
-
     func get_current_epoch() -> (epoch: ufelt) {
     }
 
