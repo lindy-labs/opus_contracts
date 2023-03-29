@@ -525,7 +525,7 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
         let new_provision: Provision = Provision(current_epoch, 0);
         set_provision(provider, new_provision);
 
-        Request.emit(provider, current_epoch, current_interval, 0);
+        Remove.emit(provider, current_epoch, 0);
 
         return ();
     } else {
@@ -1135,7 +1135,7 @@ func assert_can_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 
     with_attr error_message("Absorber: Previous removal is pending") {
         // We can use `assert_le` here because intervals cannot be negative
-        assert_le(removal.interval + REMOVAL_TIMELOCK_INTERVAL, current_interval);
+        assert_le(current_interval, removal.interval + REMOVAL_TIMELOCK_INTERVAL);
     }
 
     return ();
@@ -1151,7 +1151,7 @@ func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     let (current_interval: ufelt) = IShrine.now(shrine);
     with_attr error_message("Absorber: Removal is not valid yet") {
         // We can use `assert_le` here because intervals cannot be negative
-        assert_le(removal.interval + REMOVAL_TIMELOCK_INTERVAL, current_interval);
+        assert_le(current_interval, removal.interval + REMOVAL_TIMELOCK_INTERVAL);
     }
 
     return ();
