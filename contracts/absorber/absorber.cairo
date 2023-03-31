@@ -192,6 +192,7 @@ func Gain(
     asset_amts: ufelt*,
     total_shares: wad,
     epoch: ufelt,
+    absorption_id: ufelt,
 ) {
 }
 
@@ -203,7 +204,6 @@ func Invoke(
     asset_amts: ufelt*,
     total_shares: wad,
     epoch: ufelt,
-    absorption_id: ufelt,
 ) {
 }
 
