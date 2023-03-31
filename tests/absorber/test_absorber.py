@@ -595,7 +595,6 @@ async def test_request_pass(starknet, absorber):
 
     expected_timelock = REQUEST_BASE_TIMELOCK_SECONDS
     for i in range(6):
-        print("iteration: ", i)
         current_timestamp = get_block_timestamp(starknet)
         tx = await absorber.request().execute(caller_address=provider)
 
@@ -628,6 +627,9 @@ async def test_request_pass(starknet, absorber):
         # Time-travel back so that request is now valid
         set_block_timestamp(starknet, removal_start_timestamp)
         await absorber.remove(1).execute(caller_address=provider)
+
+        request = (await absorber.get_provider_request(provider).execute()).result.request
+        assert request.has_removed == TRUE
 
         # Only one removal per request
         with pytest.raises(StarkException, match="Absorber: Only one removal per request"):
@@ -711,6 +713,9 @@ async def test_remove_pass(
 
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
+
+    request = (await absorber.get_provider_request(provider).execute()).result.request
+    assert request.has_removed == TRUE
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
@@ -816,6 +821,9 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
         ).result.shares
     )
     assert_equalish(removed_yin, expected_converted_shares)
+
+    request = (await absorber.get_provider_request(first_provider).execute()).result.request
+    assert request.has_removed == TRUE
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])

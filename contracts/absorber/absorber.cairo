@@ -58,7 +58,7 @@ const REQUEST_MAX_TIMELOCK = 7 * 24 * 60 * 60;
 const REQUEST_TIMELOCK_MULTIPLIER = 5;
 
 // Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
-// 60 minutes * 60 seconds per minutes
+// 60 minutes * 60 seconds per minute
 const REQUEST_VALIDITY_PERIOD = 60 * 60;
 
 // Amount of time that needs to elapse after a request is submitted before the timelock
@@ -403,10 +403,7 @@ func set_removal_limit{
     alloc_locals;
 
     AccessControl.assert_has_role(AbsorberRoles.SET_REMOVAL_LIMIT);
-
-    let prev_limit: ray = absorber_removal_limit.read();
     set_removal_limit_internal(limit);
-    RemovalLimitUpdated.emit(prev_limit, limit);
 
     return ();
 }
@@ -478,7 +475,6 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     assert_provider(provision);
 
     let request: Request = absorber_provider_request.read(provider);
-
     let current_timestamp: ufelt = get_block_timestamp();
 
     // Handle first request
@@ -491,7 +487,6 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
 
     // We can use `is_le` because timestamp cannot be negative
     let cooled_down: bool = is_le(request.timestamp + REQUEST_COOLDOWN, current_timestamp);
-
     if (cooled_down == TRUE) {
         tempvar timelock: ufelt = REQUEST_BASE_TIMELOCK;
     } else {
@@ -537,6 +532,9 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         let new_provision: Provision = Provision(current_epoch, 0);
         set_provision(provider, new_provision);
 
+        let request: Request = Request(request.timestamp, request.timelock, TRUE);
+        absorber_provider_request.write(provider, request);
+
         Remove.emit(provider, current_epoch, 0);
 
         return ();
@@ -567,7 +565,6 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         let new_provision: Provision = Provision(current_epoch, new_provider_shares);
         set_provision(provider, new_provision);
 
-        // Limit each request to one withdrawal by setting timestamp to 0
         let request: Request = Request(request.timestamp, request.timelock, TRUE);
         absorber_provider_request.write(provider, request);
 
@@ -737,7 +734,11 @@ func set_removal_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, 
         assert_le(MIN_LIMIT, limit);
     }
 
+    let prev_limit: ray = absorber_removal_limit.read();
     absorber_removal_limit.write(limit);
+
+    RemovalLimitUpdated.emit(prev_limit, limit);
+
     return ();
 }
 
