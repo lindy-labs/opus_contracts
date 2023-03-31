@@ -1,6 +1,6 @@
 import asyncio
 from collections import namedtuple
-from decimal import getcontext
+from decimal import Decimal, getcontext
 from typing import Awaitable, Callable
 
 import pytest
@@ -57,6 +57,7 @@ from tests.utils import (
     str_to_felt,
     to_empiric,
     to_fixed_point,
+    to_ray,
     to_uint,
     to_wad,
 )
@@ -248,9 +249,9 @@ async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
-        await shrine.add_yang(YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), 0).execute(
-            caller_address=SHRINE_OWNER
-        )
+        await shrine.add_yang(
+            YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), to_ray(YANGS[i]["rate"]), 0
+        ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
 
@@ -353,6 +354,7 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
+    rate = to_ray(Decimal("0.02"))
     empiric_id = str_to_felt("stETH/USD")
     return YangConfig(
         steth_token.contract_address,
@@ -360,6 +362,7 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
         ceiling,
         threshold,
         price_wad,
+        rate,
         steth_gate.contract_address,
         empiric_id,
     )
@@ -370,9 +373,17 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     ceiling = to_wad(100_000_000)
     threshold = 20 * RAY_PERCENT
     price_wad = to_wad(0.07)
+    rate = to_ray(Decimal("0.05"))
     empiric_id = str_to_felt("DOGE/USD")
     return YangConfig(
-        doge_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, doge_gate.contract_address, empiric_id
+        doge_token.contract_address,
+        WAD_DECIMALS,
+        ceiling,
+        threshold,
+        price_wad,
+        rate,
+        doge_gate.contract_address,
+        empiric_id,
     )
 
 
@@ -381,6 +392,7 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     ceiling = to_wad(1_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(10_000)
+    rate = to_ray(Decimal("0.01"))
     empiric_id = str_to_felt("WBTC/USD")
     return YangConfig(
         wbtc_token.contract_address,
@@ -388,6 +400,7 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
         ceiling,
         threshold,
         price_wad,
+        rate,
         wbtc_gate.contract_address,
         empiric_id,
     )
@@ -492,7 +505,7 @@ async def sentinel_with_yangs(starknet, sentinel, funded_sentinel_owner, yangs) 
 
     for yang in yangs:
         await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
 
     return sentinel

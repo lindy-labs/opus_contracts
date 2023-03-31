@@ -25,24 +25,28 @@ YANGS = [
         "address": YANG1_ADDRESS,
         "start_price": Decimal("2000"),
         "threshold": LIQUIDATION_THRESHOLD,
+        "rate": Decimal("0.02"),
     },
     {
         "id": 2,
         "address": YANG2_ADDRESS,
         "start_price": Decimal("500"),
         "threshold": LIQUIDATION_THRESHOLD,
+        "rate": Decimal("0.03"),
     },
     {
         "id": 3,
         "address": YANG3_ADDRESS,
         "start_price": Decimal("1.25"),
         "threshold": LIQUIDATION_THRESHOLD,
+        "rate": Decimal("0.04"),
     },
     {
         "id": 4,
         "address": YANG4_ADDRESS,
         "start_price": Decimal("17.5"),
         "threshold": LIQUIDATION_THRESHOLD,
+        "rate": Decimal("0.05"),
     },
 ]
 
@@ -58,21 +62,7 @@ MULTIPLIER_FEED = [RAY_SCALE] * FEED_LEN
 
 DEBT_CEILING = to_wad(20_000)
 
-# Interest rate piece-wise function parameters
-RATE_M1 = Decimal("0.02")
-RATE_B1 = Decimal("0")
-RATE_M2 = Decimal("0.1")
-RATE_B2 = Decimal("-0.04")
-RATE_M3 = Decimal("1")
-RATE_B3 = Decimal("-0.715")
-RATE_M4 = Decimal("3.101908")
-RATE_B4 = Decimal("-2.651908222")
-
-# Interest rate piece-wise range bounds
-RATE_BOUND1 = Decimal("0.5")
-RATE_BOUND2 = Decimal("0.75")
-RATE_BOUND3 = Decimal("0.9215")
-
+MAX_BASE_RATE = 0.1
 
 # Threshold test constants
 DEPOSITS = [
