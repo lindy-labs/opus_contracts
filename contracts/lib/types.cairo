@@ -46,3 +46,9 @@ struct Provision {
     epoch: ufelt,  // Epoch in which shares are issued
     shares: wad,  // Amount of shares for provider in the above epoch
 }
+
+struct Request {
+    timestamp: ufelt,  // Timestamp of request
+    timelock: ufelt,  // Amount of time that needs to elapse after the timestamp before removal
+    has_removed: bool,  // Whether provider has called `remove`
+}

@@ -3,14 +3,19 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.bool import FALSE, TRUE
 from starkware.cairo.common.cairo_builtins import BitwiseBuiltin, HashBuiltin
-from starkware.cairo.common.math import assert_not_zero, split_felt, unsigned_div_rem
-from starkware.cairo.common.math_cmp import is_nn_le, is_not_zero
+from starkware.cairo.common.math import assert_le, assert_not_zero, split_felt, unsigned_div_rem
+from starkware.cairo.common.math_cmp import is_le, is_nn_le, is_not_zero
 from starkware.cairo.common.uint256 import ALL_ONES, Uint256
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+from starkware.starknet.common.syscalls import (
+    get_block_timestamp,
+    get_caller_address,
+    get_contract_address,
+)
 
 from contracts.absorber.interface import IBlesser
 from contracts.absorber.roles import AbsorberRoles
 from contracts.sentinel.interface import ISentinel
+from contracts.shrine.interface import IShrine
 
 // these imported public functions are part of the contract's interface
 from contracts.lib.accesscontrol.accesscontrol_external import (
@@ -26,7 +31,7 @@ from contracts.lib.accesscontrol.library import AccessControl
 from contracts.lib.aliases import address, bool, packed, ray, ufelt, wad
 from contracts.lib.convert import pack_felt, pack_125, unpack_125
 from contracts.lib.interfaces import IERC20
-from contracts.lib.types import AssetApportion, Reward, Provision
+from contracts.lib.types import AssetApportion, Provision, Request, Reward
 from contracts.lib.wad_ray import WadRay
 
 // Constants
@@ -39,6 +44,28 @@ const YIN_PER_SHARE_THRESHOLD = 10 ** 15;
 
 // Shares to be minted without a provider to avoid first provider front-running
 const INITIAL_SHARES = 10 ** 3;
+
+// Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
+const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
+
+// Amount of time, in seconds, that needs to elapse after request is submitted before removal
+const REQUEST_BASE_TIMELOCK = 60;
+
+// Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
+const REQUEST_MAX_TIMELOCK = 7 * 24 * 60 * 60;
+
+// Multiplier for each request's timelock from the last value if a new request is submitted
+// before the cooldown of the previous request has elapsed
+const REQUEST_TIMELOCK_MULTIPLIER = 5;
+
+// Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
+// 60 minutes * 60 seconds per minute
+const REQUEST_VALIDITY_PERIOD = 60 * 60;
+
+// Amount of time that needs to elapse after a request is submitted before the timelock
+// for the next request is reset to the base value.
+// 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
+const REQUEST_COOLDOWN = 7 * 24 * 60 * 60;
 
 //
 // Storage
@@ -146,6 +173,17 @@ func absorber_provider_last_reward_cumulative(provider: address, asset: address)
 ) {
 }
 
+// Removals are temporarily suspended if the shrine's LTV to threshold exceeds this limit
+@storage_var
+func absorber_removal_limit() -> (limit: ray) {
+}
+
+// Mapping from a provider to its latest request for removal
+// TODO: to implement packing in Cairo 1
+@storage_var
+func absorber_provider_request(provider: address) -> (request: Request) {
+}
+
 //
 // Events
 //
@@ -163,7 +201,15 @@ func EpochChanged(old_epoch: ufelt, new_epoch: ufelt) {
 }
 
 @event
+func RemovalLimitUpdated(old_limit: ray, new_limit: ray) {
+}
+
+@event
 func Provide(provider: address, epoch: ufelt, yin: wad) {
+}
+
+@event
+func RequestSubmitted(provider: address, timestamp: ufelt, timelock: ufelt) {
 }
 
 @event
@@ -228,13 +274,16 @@ func Compensate(
 @constructor
 func constructor{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(admin: address, shrine: address, sentinel: address) {
+}(admin: address, shrine: address, sentinel: address, limit: ray) {
+    alloc_locals;
+
     AccessControl.initializer(admin);
     AccessControl._grant_role(AbsorberRoles.DEFAULT_ABSORBER_ADMIN_ROLE, admin);
 
     absorber_shrine.write(shrine);
     absorber_sentinel.write(sentinel);
     absorber_live.write(TRUE);
+    set_removal_limit_internal(limit);
     return ();
 }
 
@@ -319,6 +368,14 @@ func get_provider_last_absorption{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
 }
 
 @view
+func get_provider_request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provider: address
+) -> (request: Request) {
+    let request: Request = absorber_provider_request.read(provider);
+    return (request,);
+}
+
+@view
 func get_asset_absorption_info{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     asset: address, absorption_id: ufelt
 ) -> (info: AssetApportion) {
@@ -340,6 +397,14 @@ func get_provider_last_reward_cumulative{
 }(provider: address, asset: address) -> (cumulative: ufelt) {
     let cumulative: ufelt = absorber_provider_last_reward_cumulative.read(provider, asset);
     return (cumulative,);
+}
+
+@view
+func get_removal_limit{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    limit: ray
+) {
+    let limit: ray = absorber_removal_limit.read();
+    return (limit,);
 }
 
 @view
@@ -516,6 +581,18 @@ func set_reward{
     return ();
 }
 
+@external
+func set_removal_limit{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
+}(limit: ray) {
+    alloc_locals;
+
+    AccessControl.assert_has_role(AbsorberRoles.SET_REMOVAL_LIMIT);
+    set_removal_limit_internal(limit);
+
+    return ();
+}
+
 //
 // External
 //
@@ -572,6 +649,43 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     return ();
 }
 
+// Submit a request to `remove`
+// Prevent atomic removals with a short time interval to avoid risk-free yield frontrunning tactics
+@external
+func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+
+    let (provider: address) = get_caller_address();
+    let provision: Provision = get_provision(provider);
+    assert_provider(provision);
+
+    let request: Request = absorber_provider_request.read(provider);
+    let current_timestamp: ufelt = get_block_timestamp();
+
+    // Handle first request
+    if (request.timestamp == 0) {
+        let new_request: Request = Request(current_timestamp, REQUEST_BASE_TIMELOCK, FALSE);
+        absorber_provider_request.write(provider, new_request);
+        RequestSubmitted.emit(provider, current_timestamp, REQUEST_BASE_TIMELOCK);
+        return ();
+    }
+
+    // We can use `is_le` because timestamp cannot be negative
+    let cooled_down: bool = is_le(request.timestamp + REQUEST_COOLDOWN, current_timestamp);
+    if (cooled_down == TRUE) {
+        tempvar timelock: ufelt = REQUEST_BASE_TIMELOCK;
+    } else {
+        tempvar timelock: ufelt = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
+    }
+
+    let capped_timelock: ufelt = WadRay.unsigned_min(timelock, REQUEST_MAX_TIMELOCK);
+    let new_request: Request = Request(current_timestamp, capped_timelock, FALSE);
+    absorber_provider_request.write(provider, new_request);
+    RequestSubmitted.emit(provider, current_timestamp, capped_timelock);
+
+    return ();
+}
+
 // Withdraw yin (if any) and all absorbed collateral assets from the absorber.
 @external
 func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
@@ -583,11 +697,9 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
 
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
-
-    // Early termination if caller is not a provider
-    with_attr error_message("Absorber: Caller is not a provider in the current epoch") {
-        assert_not_zero(provision.shares);
-    }
+    let request: Request = absorber_provider_request.read(provider);
+    assert_provider(provision);
+    assert_can_remove(request);
 
     let current_epoch: ufelt = absorber_current_epoch.read();
 
@@ -605,6 +717,9 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         // we can update the provision to current epoch and shares.
         let new_provision: Provision = Provision(current_epoch, 0);
         set_provision(provider, new_provision);
+
+        let request: Request = Request(request.timestamp, request.timelock, TRUE);
+        absorber_provider_request.write(provider, request);
 
         Remove.emit(provider, current_epoch, 0);
 
@@ -636,6 +751,9 @@ func remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amo
         let new_provision: Provision = Provision(current_epoch, new_provider_shares);
         set_provision(provider, new_provision);
 
+        let request: Request = Request(request.timestamp, request.timelock, TRUE);
+        absorber_provider_request.write(provider, request);
+
         let yin_amt_uint: Uint256 = WadRay.to_uint(yin_amt);
         let shrine: address = absorber_shrine.read();
         with_attr error_message("Absorber: Transfer of yin failed") {
@@ -656,10 +774,7 @@ func reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
 
     let provider: address = get_caller_address();
     let provision: Provision = get_provision(provider);
-
-    with_attr error_message("Absorber: Caller is not a provider in the current epoch") {
-        assert_not_zero(provision.shares);
-    }
+    assert_provider(provision);
 
     let current_epoch: ufelt = absorber_current_epoch.read();
 
@@ -788,6 +903,48 @@ func compensate{
     transfer_assets(recipient, assets_len, assets, asset_amts);
 
     Compensate.emit(recipient, assets_len, assets, asset_amts_len, asset_amts);
+
+    return ();
+}
+
+//
+// Internal
+//
+
+func assert_provider{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    provision: Provision
+) {
+    with_attr error_message("Absorber: Caller is not a provider in the current epoch") {
+        assert_not_zero(provision.shares);
+    }
+    return ();
+}
+
+func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    // Check system is live
+    let (is_live: bool) = absorber_live.read();
+    with_attr error_message("Absorber: Absorber is not live") {
+        assert is_live = TRUE;
+    }
+    return ();
+}
+
+func set_removal_limit_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    limit: ray
+) {
+    with_attr error_message("Absorber: Value of `limit` ({limit}) is out of bounds") {
+        WadRay.assert_valid_unsigned(limit);
+    }
+
+    with_attr error_message("Absorber: Limit is too low") {
+        // We can use `assert_le` here because the value has been checked in the previous statement
+        assert_le(MIN_LIMIT, limit);
+    }
+
+    let prev_limit: ray = absorber_removal_limit.read();
+    absorber_removal_limit.write(limit);
+
+    RemovalLimitUpdated.emit(prev_limit, limit);
 
     return ();
 }
@@ -1153,6 +1310,10 @@ func get_absorbed_assets_for_provider_inner_loop{
     );
 }
 
+//
+// Internal - helpers for asset transfers
+//
+
 // Helper function to iterate over an array of assets to transfer to an address
 func transfer_assets{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     recipient: address, asset_count: ufelt, assets: address*, asset_amts: ufelt*
@@ -1178,12 +1339,52 @@ func transfer_asset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return ();
 }
 
-func assert_live{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    // Check system is live
-    let (is_live: bool) = absorber_live.read();
-    with_attr error_message("Absorber: Absorber is not live") {
-        assert is_live = TRUE;
+//
+// Internal - helpers for remove
+//
+
+func get_shrine_ltv_to_threshold{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (ratio: ray) {
+    let shrine: address = absorber_shrine.read();
+    let (threshold: ray, value: wad) = IShrine.get_shrine_threshold_and_value(shrine);
+    let (debt: wad) = IShrine.get_total_debt(shrine);
+
+    let ltv: ray = WadRay.runsigned_div(debt, value);
+    let ltv_to_threshold: ray = WadRay.runsigned_div(ltv, threshold);
+    return (ltv_to_threshold,);
+}
+
+func assert_can_remove{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    request: Request
+) {
+    let (ltv_to_threshold: ray) = get_shrine_ltv_to_threshold();
+    let (limit: ray) = absorber_removal_limit.read();
+    with_attr error_message("Absorber: Relative LTV is above limit") {
+        // We can use `assert_le` here because both values have been checked
+        assert_le(ltv_to_threshold, limit);
     }
+
+    let (current_timestamp: ufelt) = get_block_timestamp();
+
+    with_attr error_message("Absorber: No request found") {
+        assert_not_zero(request.timestamp);
+    }
+
+    with_attr error_message("Absorber: Only one removal per request") {
+        assert request.has_removed = FALSE;
+    }
+
+    let removal_start_timestamp: ufelt = request.timestamp + request.timelock;
+    with_attr error_message("Absorber: Request is not valid yet") {
+        // We can use `assert_le` here because timestamp cannot be negative
+        assert_le(removal_start_timestamp, current_timestamp);
+    }
+
+    with_attr error_message("Absorber: Request has expired") {
+        // We can use `assert_le` here because timestamp cannot be negative
+        assert_le(current_timestamp, removal_start_timestamp + REQUEST_VALIDITY_PERIOD);
+    }
+
     return ();
 }
 
