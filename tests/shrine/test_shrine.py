@@ -10,6 +10,8 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.shrine.constants import *  # noqa: F403
 from tests.utils import (
     BAD_GUY,
+    DEPLOYMENT_INTERVAL,
+    DEPLOYMENT_TIMESTAMP,
     FALSE,
     INFINITE_YIN_ALLOWANCE,
     RAY_PERCENT,
@@ -157,8 +159,8 @@ async def update_feeds(starknet, shrine, shrine_forge_trove1) -> list[Decimal]:
     yang0_feed = create_feed(YANGS[0]["start_price"], FEED_LEN, MAX_PRICE_CHANGE)
 
     for i in range(FEED_LEN):
-        # Add offset for initial feeds in `shrine`
-        timestamp = (i + FEED_LEN) * TIME_INTERVAL
+        # Add offset for initial feeds in `shrine
+        timestamp = DEPLOYMENT_TIMESTAMP + (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
         await shrine.advance(yang0_address, yang0_feed[i]).execute(caller_address=SHRINE_OWNER)
@@ -267,9 +269,10 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge_trov
 
     idx = request.param
 
+    timestamp = get_block_timestamp(starknet)
+
     for i in range(FEED_LEN):
-        # Add offset for initial feeds in `shrine`
-        timestamp = (i + FEED_LEN) * TIME_INTERVAL
+        timestamp = DEPLOYMENT_TIMESTAMP + (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
         price = yang0_feed[i]
@@ -340,6 +343,10 @@ async def test_shrine_setup(shrine_setup):
         price = (await shrine.get_current_yang_price(yang_address).execute()).result.price
         assert price == to_wad(YANGS[i]["start_price"])
 
+        # Assert that `get_current_multiplier` terminates
+        multiplier = (await shrine.get_current_multiplier().execute()).result.multiplier
+        assert multiplier == RAY_SCALE
+
     # Check shrine threshold and value
     shrine_info = (await shrine.get_shrine_threshold_and_value().execute()).result
     assert shrine_info.threshold == 0
@@ -350,27 +357,46 @@ async def test_shrine_setup(shrine_setup):
 async def test_shrine_setup_with_feed(shrine_with_feeds):
     shrine, feeds = shrine_with_feeds
 
+    start_interval = DEPLOYMENT_INTERVAL
+    end_interval = DEPLOYMENT_INTERVAL + FEED_LEN - 1
+
     # Check price feeds
+    _, start_cumulative_multiplier = (await shrine.get_multiplier(start_interval - 1).execute()).result
+
     for i in range(len(YANGS)):
+        feed = feeds[i]
         yang_address = YANGS[i]["address"]
 
-        start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).execute()).result
+        # `Shrine.add_yang` sets the initial price for `current interval - 1`
+        start_price, start_cumulative_price = (
+            await shrine.get_yang_price(yang_address, start_interval - 1).execute()
+        ).result
         assert start_price == to_wad(YANGS[i]["start_price"])
         assert start_cumulative_price == to_wad(YANGS[i]["start_price"])
 
-        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).execute()).result
+        expected_cumulative_multiplier = start_cumulative_multiplier
+        for j in range(len(feed)):
+            interval = start_interval + j
+            price, _ = (await shrine.get_yang_price(yang_address, interval).execute()).result
+            assert price == feed[j]
+
+            multiplier, cumulative_multiplier = (await shrine.get_multiplier(interval).execute()).result
+            assert multiplier == RAY_SCALE
+
+            expected_cumulative_multiplier += RAY_SCALE
+            assert expected_cumulative_multiplier == cumulative_multiplier
+
+        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, end_interval).execute()).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
+        cumulative_price_diff = end_cumulative_price - start_cumulative_price
         assert lo <= end_price <= hi
-        assert end_cumulative_price == sum(feeds[i])
+        assert cumulative_price_diff == sum(feeds[i])
 
     # Check multiplier feed
-    start_multiplier, start_cumulative_multiplier = (await shrine.get_multiplier(0).execute()).result
-    assert start_multiplier == RAY_SCALE
-    assert start_cumulative_multiplier == RAY_SCALE
-
-    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(FEED_LEN - 1).execute()).result
+    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(end_interval).execute()).result
+    cumulative_multiplier_diff = end_cumulative_multiplier - start_cumulative_multiplier
     assert end_multiplier != 0
-    assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
+    assert cumulative_multiplier_diff == RAY_SCALE * (FEED_LEN)
 
 
 @pytest.mark.usefixtures("shrine_deploy")
@@ -895,7 +921,7 @@ async def test_shrine_withdraw_zero_yang_fail(shrine):
 async def test_shrine_withdraw_unsafe_fail(shrine):
 
     # Get latest price
-    price = (await shrine.get_yang_price(YANG1_ADDRESS, 2 * FEED_LEN - 1).execute()).result.price
+    price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
     assert price != 0
 
     unsafe_amt = (5000 / Decimal("0.85")) / from_wad(price)
@@ -935,12 +961,13 @@ async def test_shrine_withdraw_amount_out_of_bounds(shrine, withdraw_amt):
 async def test_shrine_forge_pass(shrine, forge_amt_wad):
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, forge_amt_wad).execute(caller_address=SHRINE_OWNER)
 
+    expected_last_interval = DEPLOYMENT_INTERVAL + FEED_LEN - 1
     assert_event_emitted(forge, shrine.contract_address, "DebtTotalUpdated", [forge_amt_wad])
     assert_event_emitted(
         forge,
         shrine.contract_address,
         "TroveUpdated",
-        [TROVE_1, FEED_LEN - 1, forge_amt_wad, 0],
+        [TROVE_1, expected_last_interval, forge_amt_wad, 0],
     )
 
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
@@ -948,7 +975,7 @@ async def test_shrine_forge_pass(shrine, forge_amt_wad):
 
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == forge_amt_wad
-    assert trove.charge_from == FEED_LEN - 1
+    assert trove.charge_from == expected_last_interval
 
     yang_price = (await shrine.get_current_yang_price(YANG1_ADDRESS).execute()).result.price
     trove_info = (await shrine.get_trove_info(TROVE_1).execute()).result
@@ -1067,11 +1094,12 @@ async def test_shrine_melt_pass(shrine, melt_amt_wad):
 
     assert_event_emitted(melt, shrine.contract_address, "DebtTotalUpdated", [expected_total_debt_wad])
 
+    expected_last_interval = DEPLOYMENT_INTERVAL + FEED_LEN - 1
     assert_event_emitted(
         melt,
         shrine.contract_address,
         "TroveUpdated",
-        [TROVE_1, FEED_LEN - 1, outstanding_amt_wad, 0],
+        [TROVE_1, expected_last_interval, outstanding_amt_wad, 0],
     )
 
     system_debt = (await shrine.get_total_debt().execute()).result.total_debt
@@ -1079,7 +1107,7 @@ async def test_shrine_melt_pass(shrine, melt_amt_wad):
 
     trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     assert trove.debt == outstanding_amt_wad
-    assert trove.charge_from == FEED_LEN - 1
+    assert trove.charge_from == expected_last_interval
 
     shrine_ltv = (await shrine.get_trove_info(TROVE_1).execute()).result.ltv
     expected_ltv = from_wad(outstanding_amt_wad) / (INITIAL_DEPOSIT * from_wad(price))
@@ -1158,14 +1186,14 @@ async def test_shrine_melt_insufficient_yin(shrine):
 
 @pytest.mark.asyncio
 async def test_compound(shrine, estimate):
-    start_interval = FEED_LEN - 1
+    start_interval = DEPLOYMENT_INTERVAL + FEED_LEN - 1
     end_interval = start_interval + FEED_LEN
 
     trove1 = (await shrine.get_trove(TROVE_1).execute()).result.trove
-    assert trove1.charge_from == FEED_LEN - 1
+    assert trove1.charge_from == start_interval
 
     trove2 = (await shrine.get_trove(TROVE_2).execute()).result.trove
-    assert trove2.charge_from == FEED_LEN - 1
+    assert trove2.charge_from == start_interval
 
     last_updated = (await shrine.get_yang_price(YANG1_ADDRESS, end_interval).execute()).result.price
     assert last_updated != 0
@@ -1208,7 +1236,7 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
 
     estimated_trove1_debt, estimated_trove2_debt, expected_debt, expected_avg_price = estimate
 
-    start_interval = FEED_LEN - 1
+    start_interval = DEPLOYMENT_INTERVAL + FEED_LEN - 1
     end_interval = start_interval + FEED_LEN
 
     # Calculate expected system debt
@@ -1284,7 +1312,7 @@ async def test_charge_scenario_1(shrine, estimate, method, calldata):
     [0, 1, FEED_LEN - 2],
     indirect=["update_feeds_intermittent"],
 )
-async def test_charge_scenario_1b(shrine, update_feeds_intermittent):
+async def test_charge_scenario_1b(starknet, shrine, update_feeds_intermittent):
     """
     Slight variation of `test_charge_scenario_1` where there is an interval between start and end
     that does not have a price update.
@@ -1303,9 +1331,9 @@ async def test_charge_scenario_1b(shrine, update_feeds_intermittent):
 
     idx, price_feed = update_feeds_intermittent
 
-    start_interval = FEED_LEN - 1
-    end_interval = FEED_LEN * 2 - 1
-    skipped_interval = idx + FEED_LEN
+    start_interval = DEPLOYMENT_INTERVAL + FEED_LEN - 1
+    end_interval = start_interval + FEED_LEN
+    skipped_interval = start_interval + idx + 1
 
     # Assert that value for skipped index is set to 0
     assert (await shrine.get_yang_price(YANG1_ADDRESS, skipped_interval).execute()).result.price == 0
@@ -1314,6 +1342,7 @@ async def test_charge_scenario_1b(shrine, update_feeds_intermittent):
     # Get yang price and multiplier value at `trove.charge_from`
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
     original_trove_debt = original_trove.debt
+    assert original_trove.charge_from == start_interval
 
     start_cumulative_price = (
         await shrine.get_yang_price(YANG1_ADDRESS, original_trove.charge_from).execute()
@@ -1861,7 +1890,7 @@ async def test_charge_scenario_7(starknet, shrine, num_yangs_deposited, num_base
                 ],
             )
 
-    set_block_timestamp(starknet, end_interval * TIME_INTERVAL)
+    set_block_timestamp(starknet, current_timestamp + charging_period * TIME_INTERVAL)
 
     original_trove = (await shrine.get_trove(TROVE_1).execute()).result.trove
 
