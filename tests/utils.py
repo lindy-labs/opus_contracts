@@ -353,10 +353,9 @@ def get_interval(block_timestamp: int) -> int:
     return block_timestamp // TIME_INTERVAL
 
 
-# Minimum timestamp for deployment
 # Note that timestamp (and timestamp) cannot start at 0 because:
 # 1. Initial price and multiplier are assigned to current interval - 1
-# 2. Cooldown period in absorber
+# 2. Cooldown period in absorber will be automatically triggered
 DEPLOYMENT_TIMESTAMP = 7 * 24 * 60 * 60
 DEPLOYMENT_INTERVAL = get_interval(DEPLOYMENT_TIMESTAMP)
 
