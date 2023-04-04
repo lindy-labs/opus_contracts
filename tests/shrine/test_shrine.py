@@ -173,9 +173,15 @@ async def shrine_bare_forge(shrine):
 
 
 @pytest.fixture
-async def shrine_deposit_multiple(shrine):
+async def shrine_deposit_trove1_multiple(shrine):
     for d in DEPOSITS:
         await shrine.deposit(d["address"], TROVE_1, d["amount"]).execute(caller_address=SHRINE_OWNER)
+
+
+@pytest.fixture
+async def shrine_deposit_trove2_multiple(shrine):
+    for d in DEPOSITS:
+        await shrine.deposit(d["address"], TROVE_2, d["amount"]).execute(caller_address=SHRINE_OWNER)
 
 
 @pytest.fixture
@@ -333,6 +339,11 @@ async def test_shrine_setup(shrine_setup):
         # Assert that `get_current_yang_price` terminates
         price = (await shrine.get_current_yang_price(yang_address).execute()).result.price
         assert price == to_wad(YANGS[i]["start_price"])
+
+    # Check shrine threshold and value
+    shrine_info = (await shrine.get_shrine_threshold_and_value().execute()).result
+    assert shrine_info.threshold == 0
+    assert shrine_info.value == 0
 
 
 @pytest.mark.asyncio
@@ -2152,7 +2163,7 @@ async def test_shrine_unhealthy(shrine):
     assert is_healthy == FALSE
 
 
-@pytest.mark.usefixtures("shrine_deposit_multiple")
+@pytest.mark.usefixtures("shrine_deposit_trove1_multiple")
 @pytest.mark.parametrize("max_forge_percentage", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1")])
 @pytest.mark.asyncio
 async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
@@ -2184,7 +2195,7 @@ async def test_get_trove_info_variable_forge(shrine, max_forge_percentage):
     assert_equalish(from_ray(trove_info.ltv), expected_ltv)
 
 
-@pytest.mark.usefixtures("shrine_deposit_multiple")
+@pytest.mark.usefixtures("shrine_deposit_trove1_multiple")
 @pytest.mark.parametrize(
     "thresholds",
     [
@@ -2219,3 +2230,26 @@ async def test_zero_value_trove(shrine):
     assert trove_info.value == 0
     assert trove_info.debt == 0
     assert trove_info.threshold == 0
+
+
+#
+# Tests - Getter for shrine threshold and value
+#
+
+
+@pytest.mark.usefixtures("shrine_deposit_trove1_multiple", "shrine_deposit_trove2_multiple")
+@pytest.mark.asyncio
+async def test_get_shrine_info(shrine):
+    prices = []
+    for d in DEPOSITS:
+        price = from_wad((await shrine.get_current_yang_price(d["address"]).execute()).result.price)
+        prices.append(price)
+
+    # Treat the shrine as a single trove by combining all deposits
+    expected_threshold, expected_value = calculate_trove_threshold_and_value(
+        prices, [from_wad(d["amount"] * 2) for d in DEPOSITS], [from_ray(d["threshold"]) for d in DEPOSITS]
+    )
+
+    shrine_info = (await shrine.get_shrine_threshold_and_value().execute()).result
+    assert_equalish(from_ray(shrine_info.threshold), expected_threshold)
+    assert_equalish(from_wad(shrine_info.value), expected_value)

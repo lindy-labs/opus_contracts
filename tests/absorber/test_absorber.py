@@ -13,6 +13,7 @@ from tests.utils import (
     BAD_GUY,
     FALSE,
     MAX_UINT256,
+    RAY_SCALE,
     SHRINE_OWNER,
     TIME_INTERVAL,
     TRUE,
@@ -29,12 +30,14 @@ from tests.utils import (
     from_ray,
     from_uint,
     from_wad,
+    get_block_timestamp,
     get_contract_code_with_addition,
     get_contract_code_with_replacement,
     get_token_balances,
     max_approve,
     set_block_timestamp,
     to_fixed_point,
+    to_ray,
     to_uint,
     to_wad,
 )
@@ -152,6 +155,7 @@ async def absorber_deploy(starknet, shrine, sentinel) -> StarknetContract:
         {
             "func convert_to_shares": "@view\nfunc convert_to_shares",
             "func convert_epoch_shares": "@view\nfunc convert_epoch_shares",
+            "func get_shrine_ltv_to_threshold": "@view\nfunc get_shrine_ltv_to_threshold",
         },
     )
 
@@ -176,6 +180,7 @@ func burn_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
             ABSORBER_OWNER,
             shrine.contract_address,
             sentinel.contract_address,
+            REMOVAL_LIMIT_RAY,
         ],
     )
 
@@ -314,6 +319,15 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
     )
 
 
+@pytest.fixture
+async def first_provider_request(starknet, absorber):
+    await absorber.request().execute(caller_address=PROVIDER_1)
+
+    current_timestamp = get_block_timestamp(starknet)
+    new_timestamp = current_timestamp + REQUEST_BASE_TIMELOCK_SECONDS
+    set_block_timestamp(starknet, new_timestamp)
+
+
 #
 # Tests
 #
@@ -333,11 +347,14 @@ async def test_absorber_setup(shrine, absorber):
     absorptions_count = (await absorber.get_absorptions_count().execute()).result.count
     assert absorptions_count == 0
 
+    limit = (await absorber.get_removal_limit().execute()).result.limit
+    assert limit == REMOVAL_LIMIT_RAY
+
     is_live = (await absorber.get_live().execute()).result.is_live
     assert is_live == TRUE
 
     admin_role = (await absorber.get_roles(ABSORBER_OWNER).execute()).result.roles
-    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_PURGER
+    assert admin_role == AbsorberRoles.KILL + AbsorberRoles.SET_REMOVAL_LIMIT + AbsorberRoles.SET_PURGER
 
 
 @pytest.mark.asyncio
@@ -366,6 +383,41 @@ async def test_set_purger_unauthorized_fail(shrine, absorber):
     with pytest.raises(StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_PURGER}"):
         new_purger = NEW_MOCK_PURGER
         await absorber.set_purger(new_purger).execute(caller_address=BAD_GUY)
+
+
+@pytest.mark.parametrize("limit", [MIN_REMOVAL_LIMIT_RAY, RAY_SCALE, RAY_SCALE + 1])
+@pytest.mark.asyncio
+async def test_set_removal_limit_pass(absorber, limit):
+    new_limit = MIN_REMOVAL_LIMIT_RAY
+    tx = await absorber.set_removal_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
+
+    old_limit = REMOVAL_LIMIT_RAY
+    assert_event_emitted(tx, absorber.contract_address, "RemovalLimitUpdated", [old_limit, new_limit])
+
+    assert (await absorber.get_removal_limit().execute()).result.limit == new_limit
+
+
+@pytest.mark.parametrize("invalid_limit", [0, MIN_REMOVAL_LIMIT_RAY - 1])
+@pytest.mark.asyncio
+async def test_set_removal_limit_too_low_fail(absorber, invalid_limit):
+    with pytest.raises(StarkException, match="Absorber: Limit is too low"):
+        await absorber.set_removal_limit(invalid_limit).execute(caller_address=ABSORBER_OWNER)
+
+
+@pytest.mark.parametrize("amt", WAD_RAY_OOB_VALUES)
+@pytest.mark.asyncio
+async def test_set_removal_limit_oob_fail(absorber, amt):
+    with pytest.raises(StarkException, match=r"Absorber: Value of `limit` \(-?\d+\) is out of bounds"):
+        await absorber.set_removal_limit(amt).execute(caller_address=ABSORBER_OWNER)
+
+
+@pytest.mark.asyncio
+async def test_set_removal_limit_unauthorized_fail(shrine, absorber):
+    with pytest.raises(
+        StarkException, match=f"AccessControl: Caller is missing role {AbsorberRoles.SET_REMOVAL_LIMIT}"
+    ):
+        new_limit = to_ray(Decimal("0.7"))
+        await absorber.set_removal_limit(new_limit).execute(caller_address=BAD_GUY)
 
 
 @pytest.mark.asyncio
@@ -536,15 +588,74 @@ async def test_reap(shrine, absorber_both, update, yangs, yang_tokens):
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
 
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_request_pass(starknet, absorber):
+    provider = PROVIDER_1
+
+    expected_timelock = REQUEST_BASE_TIMELOCK_SECONDS
+    for i in range(6):
+        current_timestamp = get_block_timestamp(starknet)
+        tx = await absorber.request().execute(caller_address=provider)
+
+        if expected_timelock > REQUEST_MAX_TIMELOCK_SECONDS:
+            expected_timelock = REQUEST_MAX_TIMELOCK_SECONDS
+
+        assert_event_emitted(
+            tx, absorber.contract_address, "RequestSubmitted", [provider, current_timestamp, expected_timelock]
+        )
+
+        request = (await absorber.get_provider_request(provider).execute()).result.request
+        assert request.timestamp == current_timestamp
+        assert request.timelock == expected_timelock
+
+        # Timelock has not elapsed
+        with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        set_block_timestamp(starknet, current_timestamp + expected_timelock - 1)
+        with pytest.raises(StarkException, match="Absorber: Request is not valid yet"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        # Request has expired
+        removal_start_timestamp = current_timestamp + expected_timelock
+        expiry_timestamp = removal_start_timestamp + REQUEST_VALIDITY_PERIOD_SECONDS + 1
+        set_block_timestamp(starknet, expiry_timestamp)
+        with pytest.raises(StarkException, match="Absorber: Request has expired"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        # Time-travel back so that request is now valid
+        set_block_timestamp(starknet, removal_start_timestamp)
+        await absorber.remove(1).execute(caller_address=provider)
+
+        request = (await absorber.get_provider_request(provider).execute()).result.request
+        assert request.has_removed == TRUE
+
+        # Only one removal per request
+        with pytest.raises(StarkException, match="Absorber: Only one removal per request"):
+            await absorber.remove(1).execute(caller_address=provider)
+
+        expected_timelock *= REQUEST_TIMELOCK_MULTIPLIER
+
+
 @pytest.mark.parametrize("absorber_both", ["absorber", "absorber_killed"], indirect=["absorber_both"])
 @pytest.mark.parametrize("update", [Decimal("0"), Decimal("0.2"), Decimal("1")], indirect=["update"])
 @pytest.mark.parametrize("percentage_to_remove", [Decimal("0"), Decimal("0.25"), Decimal("0.667"), Decimal("1")])
+@pytest.mark.parametrize("seconds_since_request", [REQUEST_BASE_TIMELOCK_SECONDS, REQUEST_VALIDITY_PERIOD_SECONDS])
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove):
+async def test_remove_pass(
+    starknet, shrine, absorber_both, update, yangs, yang_tokens, percentage_to_remove, seconds_since_request
+):
     absorber = absorber_both
 
     provider = PROVIDER_1
+
+    await absorber.request().execute(caller_address=provider)
+
+    request_timestamp = get_block_timestamp(starknet)
+    new_timestamp = request_timestamp + seconds_since_request
+    set_block_timestamp(starknet, new_timestamp)
 
     _, percentage_drained, _, _, total_shares_wad, assets, asset_amts, asset_amts_dec = update
 
@@ -603,6 +714,9 @@ async def test_remove(shrine, absorber_both, update, yangs, yang_tokens, percent
     after_absorber_yin_bal_wad = from_uint((await shrine.balanceOf(absorber.contract_address).execute()).result.balance)
     assert after_absorber_yin_bal_wad == before_absorber_yin_bal_wad - yin_to_remove_wad
 
+    request = (await absorber.get_provider_request(provider).execute()).result.request
+    assert request.has_removed == TRUE
+
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
 @pytest.mark.usefixtures("first_epoch_first_provider")
@@ -646,7 +760,7 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
     [Decimal("0.999000000000000001"), Decimal("0.9999999991"), Decimal("0.99999999999999")],
     indirect=["update"],
 )
-@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_provider_request")
 @pytest.mark.asyncio
 async def test_provide_after_threshold_absorption(shrine, absorber, update, yangs, yang_tokens):
     """
@@ -707,6 +821,9 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
         ).result.shares
     )
     assert_equalish(removed_yin, expected_converted_shares)
+
+    request = (await absorber.get_provider_request(first_provider).execute()).result.request
+    assert request.has_removed == TRUE
 
 
 @pytest.mark.parametrize("update", [Decimal("1")], indirect=["update"])
@@ -956,10 +1073,42 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
         assert_equalish(max_withdrawable_yin_amt, expected_remaining_yin)
 
 
+@pytest.mark.parametrize("price_decrease", [Decimal("0.5"), Decimal("0.8")])
+@pytest.mark.usefixtures("first_epoch_first_provider", "first_epoch_second_provider")
+@pytest.mark.asyncio
+async def test_remove_exceeds_limit_fail(shrine, absorber, steth_yang, price_decrease):
+
+    steth_yang_price = (await shrine.get_current_yang_price(steth_yang.contract_address).execute()).result.price
+    new_steth_yang_price = int((Decimal("1") - price_decrease) * steth_yang_price)
+    await shrine.advance(steth_yang.contract_address, new_steth_yang_price).execute(caller_address=SHRINE_OWNER)
+
+    ltv_to_threshold = (await absorber.get_shrine_ltv_to_threshold().execute()).result.ratio
+
+    assert ltv_to_threshold > REMOVAL_LIMIT_RAY
+
+    for provider in [PROVIDER_1, PROVIDER_2]:
+        with pytest.raises(StarkException, match="Absorber: Relative LTV is above limit"):
+            await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+
+
+@pytest.mark.usefixtures("first_epoch_first_provider")
+@pytest.mark.asyncio
+async def test_remove_no_request_fail(starknet, absorber):
+    provider = PROVIDER_1
+
+    # Provider has not requested removal
+    with pytest.raises(StarkException, match="Absorber: No request found"):
+        await absorber.remove(MAX_REMOVE_AMT).execute(caller_address=provider)
+
+
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
 async def test_non_provider_fail(shrine, absorber):
     provider = NON_PROVIDER
+
+    with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
+        await absorber.request().execute(caller_address=provider)
+
     with pytest.raises(StarkException, match="Absorber: Caller is not a provider"):
         await absorber.remove(0).execute(caller_address=provider)
 

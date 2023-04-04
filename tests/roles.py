@@ -5,7 +5,8 @@ class AbsorberRoles(IntEnum):
     COMPENSATE = 2**0
     KILL = 2**1
     SET_PURGER = 2**2
-    UPDATE = 2**3
+    SET_REMOVAL_LIMIT = 2**3
+    UPDATE = 2**4
 
 
 class AllocatorRoles(IntEnum):

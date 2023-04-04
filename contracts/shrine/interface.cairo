@@ -111,6 +111,9 @@ namespace IShrine {
     //
     // view
     //
+    func get_shrine_threshold_and_value() -> (threshold: ray, value: wad) {
+    }
+
     func get_trove_info(trove_id: ufelt) -> (threshold: ray, ltv: ray, value: wad, debt: wad) {
     }
 

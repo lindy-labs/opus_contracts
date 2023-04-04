@@ -1,7 +1,7 @@
 %lang starknet
 
-from contracts.lib.aliases import address, ufelt, wad
-from contracts.lib.types import AssetAbsorption, Provision
+from contracts.lib.aliases import address, bool, ray, ufelt, wad
+from contracts.lib.types import AssetAbsorption, Provision, Request
 
 @contract_interface
 namespace IAbsorber {
@@ -30,9 +30,18 @@ namespace IAbsorber {
     func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
+    func get_provider_request(provider: address) -> (request: Request) {
+    }
+
     func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (
         info: AssetAbsorption
     ) {
+    }
+
+    func get_removal_limit() -> (limit: ray) {
+    }
+
+    func get_live() -> (is_live: bool) {
     }
 
     func preview_remove(provider: address) -> (amount: wad) {
@@ -50,7 +59,13 @@ namespace IAbsorber {
     func set_purger(purger: address) {
     }
 
+    func set_removal_limit(limit: ray) {
+    }
+
     func provide(amount: wad) {
+    }
+
+    func request() {
     }
 
     func remove(amount: wad) {
