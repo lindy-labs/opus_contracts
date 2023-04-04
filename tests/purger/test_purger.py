@@ -13,6 +13,8 @@ from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
+    DEPLOYMENT_INTERVAL,
+    DEPLOYMENT_TIMESTAMP,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
@@ -175,9 +177,8 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[lis
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
-    # Skipping over the first element in `feeds` since the start price is set in `add_yang`
-    for i in range(1, FEED_LEN):
-        timestamp = i * TIME_INTERVAL
+    for i in range(FEED_LEN):
+        timestamp = DEPLOYMENT_TIMESTAMP + i * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(yangs)):
@@ -335,23 +336,33 @@ async def test_shrine_setup(shrine, shrine_feeds, yangs):
     for i in range(len(yangs)):
         yang_address = yangs[i].contract_address
 
-        start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).execute()).result
+        start_price, _ = (await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL).execute()).result
         assert start_price == yangs[i].price_wad
-        assert start_cumulative_price == yangs[i].price_wad
 
-        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).execute()).result
+        end_price, end_cumulative_price = (
+            await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL + FEED_LEN - 1).execute()
+        ).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
         assert lo <= end_price <= hi
-        assert end_cumulative_price == sum(shrine_feeds[i])
+
+        _, start_cumulative_price = (
+            await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL - 1).execute()
+        ).result
+        cumulative_price_diff = end_cumulative_price - start_cumulative_price
+        assert cumulative_price_diff == sum(shrine_feeds[i])
 
     # Check multiplier feed
-    start_multiplier, start_cumulative_multiplier = (await shrine.get_multiplier(0).execute()).result
+    start_multiplier, _ = (await shrine.get_multiplier(DEPLOYMENT_INTERVAL).execute()).result
     assert start_multiplier == RAY_SCALE
-    assert start_cumulative_multiplier == RAY_SCALE
 
-    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(FEED_LEN - 1).execute()).result
+    end_multiplier, end_cumulative_multiplier = (
+        await shrine.get_multiplier(DEPLOYMENT_INTERVAL + FEED_LEN - 1).execute()
+    ).result
     assert end_multiplier != 0
-    assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
+
+    _, start_cumulative_multiplier = (await shrine.get_multiplier(DEPLOYMENT_INTERVAL - 1).execute()).result
+    cumulative_multiplier_diff = end_cumulative_multiplier - start_cumulative_multiplier
+    assert cumulative_multiplier_diff == RAY_SCALE * (FEED_LEN)
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
