@@ -4,6 +4,7 @@ from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
 from tests.utils import (
+    DEPLOYMENT_INTERVAL,
     SENTINEL_OWNER,
     SHRINE_OWNER,
     STARKNET_ADDR,
@@ -163,7 +164,9 @@ async def test_close_trove_pass(abbot, shrine, yangs):
         assert_event_emitted(tx, yang.contract_address, "Transfer", [yang.gate_address, TROVE1_OWNER, deposit_amt, 0])
 
     assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [0])  # from melt
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, 0, 0])
+
+    expected_last_interval = DEPLOYMENT_INTERVAL
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, expected_last_interval, 0, 0])
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
@@ -280,7 +283,10 @@ async def test_forge(abbot, steth_yang: YangConfig, shrine):
     tx = await abbot.forge(TROVE_1, forge_amount).execute(caller_address=TROVE1_OWNER)
 
     # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, forge_amount, 0])
+    expected_last_interval = DEPLOYMENT_INTERVAL
+    assert_event_emitted(
+        tx, shrine.contract_address, "TroveUpdated", [TROVE_1, expected_last_interval, forge_amount, 0]
+    )
     assert_event_emitted(tx, shrine.contract_address, "Transfer", [0, TROVE1_OWNER, *to_uint(forge_amount)])
 
     balance = (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance
@@ -312,7 +318,10 @@ async def test_melt(abbot, shrine, melter, melt_amt):
     remaining_amount = INITIAL_FORGED_AMOUNT - melt_amt
 
     # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount, 0])
+    expected_last_interval = DEPLOYMENT_INTERVAL
+    assert_event_emitted(
+        tx, shrine.contract_address, "TroveUpdated", [TROVE_1, expected_last_interval, remaining_amount, 0]
+    )
     assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amt)])
 
     balance = (await shrine.balanceOf(melter).execute()).result.balance
