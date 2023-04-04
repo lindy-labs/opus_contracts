@@ -269,8 +269,6 @@ async def update_feeds_intermittent(request, starknet, shrine, shrine_forge_trov
 
     idx = request.param
 
-    timestamp = get_block_timestamp(starknet)
-
     for i in range(FEED_LEN):
         timestamp = DEPLOYMENT_TIMESTAMP + (i + FEED_LEN) * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
@@ -367,11 +365,11 @@ async def test_shrine_setup_with_feed(shrine_with_feeds):
         feed = feeds[i]
         yang_address = YANGS[i]["address"]
 
-        # `Shrine.add_yang` sets the initial price for `current interval - 1`
-        start_price, start_cumulative_price = (
-            await shrine.get_yang_price(yang_address, start_interval - 1).execute()
-        ).result
+        start_price, _ = (await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL).execute()).result
         assert start_price == to_wad(YANGS[i]["start_price"])
+
+        # `Shrine.add_yang` sets the initial price for `current interval - 1`
+        _, start_cumulative_price = (await shrine.get_yang_price(yang_address, start_interval - 1).execute()).result
         assert start_cumulative_price == to_wad(YANGS[i]["start_price"])
 
         expected_cumulative_multiplier = start_cumulative_multiplier
