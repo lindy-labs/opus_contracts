@@ -11,6 +11,7 @@ from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
     BAD_GUY,
+    DEPLOYMENT_TIMESTAMP,
     FALSE,
     MAX_UINT256,
     RAY_SCALE,
@@ -218,9 +219,8 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[lis
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
-    # Skipping over the first element in `feeds` since the start price is set in `add_yang`
-    for i in range(1, FEED_LEN):
-        timestamp = i * TIME_INTERVAL
+    for i in range(FEED_LEN):
+        timestamp = DEPLOYMENT_TIMESTAMP + i * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(yangs)):
