@@ -299,7 +299,7 @@ func constructor{
     // The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
     let init_mul_cumulative_mul: packed = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER);
     // seeding initial multiplier to the previous interval to ensure `get_recent_multiplier_from` terminates
-    // otherwise, the next multiplier update will run into an endless loop of `get_recent_multiplierfrom`
+    // otherwise, the next multiplier update will run into an endless loop of `get_recent_multiplier_from`
     // since it wouldn't find the initial multiplier
     shrine_multiplier.write(previous_interval, init_mul_cumulative_mul);
 
