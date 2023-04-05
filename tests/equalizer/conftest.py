@@ -1,5 +1,5 @@
 import pytest
-from starkware.starknet.services.api.contract_class import ContractClass
+from starkware.starknet.services.api.contract_class.contract_class import ContractClass
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 
