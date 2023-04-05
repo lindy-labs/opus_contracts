@@ -14,12 +14,12 @@ from tests.oracle.constants import (
     EMPIRIC_UPPER_FRESHNESS_BOUND,
     EMPIRIC_UPPER_SOURCES_BOUND,
     EMPIRIC_UPPER_UPDATE_INTERVAL_BOUND,
-    INIT_BLOCK_TS,
     INITIAL_ASSET_AMT_PER_YANG,
 )
 from tests.roles import EmpiricRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
+    DEPLOYMENT_TIMESTAMP,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     GATE_OWNER,
@@ -67,7 +67,7 @@ ETH_DEPOSIT = to_wad(100)
 # Override fixture in conftest.py for isolated unit tests
 @pytest.fixture
 async def empiric(starknet, shrine, sentinel, mock_empiric_impl) -> StarknetContract:
-    set_block_timestamp(starknet, INIT_BLOCK_TS)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
     contract = compile_contract("contracts/oracle/empiric.cairo")
     empiric = await starknet.deploy(
         contract_class=contract,
@@ -320,7 +320,7 @@ async def test_update_prices_pass(
         caller_address=eth_gate.contract_address
     )
 
-    oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
+    oracle_update_ts = DEPLOYMENT_TIMESTAMP + TIME_INTERVAL + 1  # ensuring the update is in the next interval
     oracle_update_interval = oracle_update_ts // TIME_INTERVAL
 
     eth_asset_amt_per_yang = from_wad((await eth_gate.get_asset_amt_per_yang().execute()).result.amt)
@@ -373,21 +373,21 @@ async def test_update_prices_without_yangs(empiric):
     # just to test the module works well even if no yangs were added yet
     caller = str_to_felt("yagi")
     tx = await empiric.update_prices().execute(caller_address=caller)
-    assert_event_emitted(tx, empiric.contract_address, "PricesUpdated", [INIT_BLOCK_TS, caller])
+    assert_event_emitted(tx, empiric.contract_address, "PricesUpdated", [DEPLOYMENT_TIMESTAMP, caller])
 
 
 @pytest.mark.usefixtures("with_yangs")
 @pytest.mark.asyncio
 async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl, starknet):
     await mock_empiric_impl.next_get_spot_median(
-        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE), EMPIRIC_DECIMALS, INIT_BLOCK_TS, 3
+        ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE), EMPIRIC_DECIMALS, DEPLOYMENT_TIMESTAMP, 3
     ).execute()
 
     # first update should pass
     await empiric.update_prices().execute()
 
     # second update that's happening too soon should not pass
-    set_block_timestamp(starknet, INIT_BLOCK_TS + 1)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP + 1)
     with pytest.raises(StarkException, match="Empiric: Too soon to update prices"):
         await empiric.update_prices().execute()
 
@@ -399,7 +399,7 @@ async def test_update_prices_update_too_soon_failure(empiric, mock_empiric_impl,
 @pytest.mark.usefixtures("with_yangs")
 @pytest.mark.asyncio
 async def test_update_prices_invalid_price_updates(eth_token, empiric, mock_empiric_impl, price, ts_diff, num_sources):
-    update_ts = INIT_BLOCK_TS - ts_diff
+    update_ts = DEPLOYMENT_TIMESTAMP - ts_diff
 
     await mock_empiric_impl.next_get_spot_median(
         ETH_EMPIRIC_ID, to_empiric(price), EMPIRIC_DECIMALS, update_ts, num_sources
@@ -429,7 +429,7 @@ async def test_update_prices_invalid_gate(starknet, shrine, eth_token, empiric, 
 
     await empiric.add_yang(ETH_EMPIRIC_ID, eth_token.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
-    oracle_update_ts = INIT_BLOCK_TS + TIME_INTERVAL + 1  # ensuring the update is in the next interval
+    oracle_update_ts = DEPLOYMENT_TIMESTAMP + TIME_INTERVAL + 1  # ensuring the update is in the next interval
 
     # the multiplying by 2 here is because add_yang sets the
     # sentinel value in the interval _previous_ to current
@@ -466,7 +466,7 @@ async def test_probeTask(empiric, mock_empiric_impl, starknet):
     # initially, empiric_last_price_update is 0, so probeTask should return true
     assert (await empiric.probeTask().execute()).result.is_task_ready == 1
 
-    new_ts = INIT_BLOCK_TS + 1
+    new_ts = DEPLOYMENT_TIMESTAMP + 1
     set_block_timestamp(starknet, new_ts)
     await mock_empiric_impl.next_get_spot_median(
         ETH_EMPIRIC_ID, to_empiric(ETH_INIT_PRICE + 30), EMPIRIC_DECIMALS, new_ts, 3

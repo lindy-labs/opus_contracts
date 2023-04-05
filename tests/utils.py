@@ -1,6 +1,7 @@
 """Utilities for testing Cairo contracts."""
 import os
 from collections import namedtuple
+from datetime import datetime
 from decimal import ROUND_DOWN, Decimal
 from functools import cache
 from random import seed, uniform
@@ -11,7 +12,7 @@ from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
 from starkware.starknet.compiler.compile import compile_starknet_codes, compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
-from starkware.starknet.services.api.contract_class import ContractClass
+from starkware.starknet.services.api.contract_class.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
@@ -351,6 +352,13 @@ def get_interval(block_timestamp: int) -> int:
     Interval ID based on the given timestamp.
     """
     return block_timestamp // TIME_INTERVAL
+
+
+# Note that timestamp (and timestamp) cannot start at 0 because:
+# 1. Initial price and multiplier are assigned to current interval - 1
+# 2. Cooldown period in absorber will be automatically triggered
+DEPLOYMENT_TIMESTAMP = int(datetime.utcnow().timestamp())
+DEPLOYMENT_INTERVAL = get_interval(DEPLOYMENT_TIMESTAMP)
 
 
 #

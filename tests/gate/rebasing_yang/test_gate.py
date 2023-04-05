@@ -10,12 +10,12 @@ from tests.gate.rebasing_yang.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
+    DEPLOYMENT_TIMESTAMP,
     FALSE,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
     MAX_UINT256,
     SHRINE_OWNER,
-    TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE_1,
@@ -252,9 +252,7 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
     role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
     await shrine.grant_role(role_value, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=SHRINE_OWNER)
 
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
 
     # Add steth_token as Yang
     await shrine.add_yang(
