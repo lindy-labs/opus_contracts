@@ -25,6 +25,7 @@ from tests.shrine.constants import (
     YIN_SYMBOL,
 )
 from tests.utils import (
+    DEPLOYMENT_TIMESTAMP,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     GATE_OWNER,
@@ -126,6 +127,7 @@ async def starknet_session() -> Starknet:
 @pytest.fixture
 async def starknet() -> Starknet:
     starknet = await Starknet.empty()
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
     return starknet
 
 
@@ -241,9 +243,7 @@ func increase_total_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
 async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
 
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
 
     # Set debt ceiling
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
@@ -265,8 +265,8 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
     # Skipping over the first element in `feeds` since the start price is set in `add_yang`
-    for i in range(1, FEED_LEN):
-        timestamp = i * TIME_INTERVAL
+    for i in range(FEED_LEN):
+        timestamp = DEPLOYMENT_TIMESTAMP + (i * TIME_INTERVAL)
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(YANGS)):
@@ -499,9 +499,7 @@ async def funded_sentinel_owner(sentinel, yang_tokens):
 
 @pytest.fixture
 async def sentinel_with_yangs(starknet, sentinel, funded_sentinel_owner, yangs) -> StarknetContract:
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
 
     for yang in yangs:
         await sentinel.add_yang(

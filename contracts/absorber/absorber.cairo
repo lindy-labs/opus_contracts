@@ -485,14 +485,6 @@ func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() 
     let request: Request = absorber_provider_request.read(provider);
     let current_timestamp: ufelt = get_block_timestamp();
 
-    // Handle first request
-    if (request.timestamp == 0) {
-        let new_request: Request = Request(current_timestamp, REQUEST_BASE_TIMELOCK, FALSE);
-        absorber_provider_request.write(provider, new_request);
-        RequestSubmitted.emit(provider, current_timestamp, REQUEST_BASE_TIMELOCK);
-        return ();
-    }
-
     // We can use `is_le` because timestamp cannot be negative
     let cooled_down: bool = is_le(request.timestamp + REQUEST_COOLDOWN, current_timestamp);
     if (cooled_down == TRUE) {

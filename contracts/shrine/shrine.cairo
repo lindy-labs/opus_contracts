@@ -293,13 +293,18 @@ func constructor{
     shrine_live.write(TRUE);
 
     // Set initial multiplier value
-    let interval: ufelt = now();
+    let current_interval: ufelt = now();
+    let previous_interval: ufelt = current_interval - 1;
+
     // The initial cumulative multiplier is set to `INITIAL_MULTIPLIER`
     let init_mul_cumulative_mul: packed = pack_125(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER);
-    shrine_multiplier.write(interval, init_mul_cumulative_mul);
+    // seeding initial multiplier to the previous interval to ensure `get_recent_multiplier_from` terminates
+    // otherwise, the next multiplier update will run into an endless loop of `get_recent_multiplier_from`
+    // since it wouldn't find the initial multiplier
+    shrine_multiplier.write(previous_interval, init_mul_cumulative_mul);
 
     // Events
-    MultiplierUpdated.emit(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER, interval);
+    MultiplierUpdated.emit(INITIAL_MULTIPLIER, INITIAL_MULTIPLIER, previous_interval);
 
     // ERC20
     shrine_yin_name.write(name);
