@@ -52,6 +52,7 @@ const MIN_LIMIT = 50 * WadRay.RAY_PERCENT;
 const REQUEST_BASE_TIMELOCK = 60;
 
 // Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
+// 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
 const REQUEST_MAX_TIMELOCK = 7 * 24 * 60 * 60;
 
 // Multiplier for each request's timelock from the last value if a new request is submitted
@@ -649,8 +650,15 @@ func provide{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(am
     return ();
 }
 
-// Submit a request to `remove`
-// Prevent atomic removals with a short time interval to avoid risk-free yield frontrunning tactics
+// Submit a request to `remove` that is valid for a fixed period of time after a variable timelock.
+// - This is intended to prevent atomic removals to avoid risk-free yield (from rewards and interest)
+//   frontrunning tactics.
+//   The timelock increases if another request is submitted before the previous has cooled down.
+// - A request is expended by either (1) a removal; (2) expiry; or (3) submitting a new request.
+// - Note: A request may become valid in the next epoch if a provider in the previous epoch
+//         submitted a request, a draining absorption occurs, and the provider provides again
+//         in the next epoch. This is expected to be rare, and the maximum risk-free profit is
+//         in any event greatly limited.
 @external
 func request{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
     alloc_locals;
