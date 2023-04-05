@@ -388,13 +388,12 @@ async def test_set_purger_unauthorized_fail(shrine, absorber):
 @pytest.mark.parametrize("limit", [MIN_REMOVAL_LIMIT_RAY, RAY_SCALE, RAY_SCALE + 1])
 @pytest.mark.asyncio
 async def test_set_removal_limit_pass(absorber, limit):
-    new_limit = MIN_REMOVAL_LIMIT_RAY
-    tx = await absorber.set_removal_limit(new_limit).execute(caller_address=ABSORBER_OWNER)
+    tx = await absorber.set_removal_limit(limit).execute(caller_address=ABSORBER_OWNER)
 
     old_limit = REMOVAL_LIMIT_RAY
-    assert_event_emitted(tx, absorber.contract_address, "RemovalLimitUpdated", [old_limit, new_limit])
+    assert_event_emitted(tx, absorber.contract_address, "RemovalLimitUpdated", [old_limit, limit])
 
-    assert (await absorber.get_removal_limit().execute()).result.limit == new_limit
+    assert (await absorber.get_removal_limit().execute()).result.limit == limit
 
 
 @pytest.mark.parametrize("invalid_limit", [0, MIN_REMOVAL_LIMIT_RAY - 1])
