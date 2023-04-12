@@ -3,7 +3,6 @@
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.types import AssetApportion, Provision, Request, Reward
 
-// TODO: update interface
 @contract_interface
 namespace IAbsorber {
     //
@@ -13,13 +12,16 @@ namespace IAbsorber {
     func get_purger() -> (purger: address) {
     }
 
+    func get_rewards_count() -> (count: ufelt) {
+    }
+
+    func get_rewards() -> (rewards_len: ufelt, rewards: Reward*) {
+    }
+
     func get_current_epoch() -> (epoch: ufelt) {
     }
 
     func get_absorptions_count() -> (count: ufelt) {
-    }
-
-    func get_rewards_count() -> (count: ufelt) {
     }
 
     func get_absorption_epoch(absorption_id: ufelt) -> (epoch: ufelt) {
@@ -34,21 +36,18 @@ namespace IAbsorber {
     func get_provider_last_absorption(provider: address) -> (absorption_id: ufelt) {
     }
 
+    func get_provider_request(provider: address) -> (request: Request) {
+    }
+
     func get_asset_absorption_info(asset: address, absorption_id: ufelt) -> (info: AssetApportion) {
     }
 
     func get_asset_reward_info(asset: address, epoch: ufelt) -> (info: AssetApportion) {
     }
 
-    func get_provider_reward_last_cumulative(provider: address, asset: address) -> (
+    func get_provider_last_reward_cumulative(provider: address, asset: address) -> (
         cumulative: ufelt
     ) {
-    }
-
-    func get_rewards() -> (rewards_len: ufelt, rewards: Reward*) {
-    }
-
-    func get_provider_request(provider: address) -> (request: Request) {
     }
 
     func get_removal_limit() -> (limit: ray) {
