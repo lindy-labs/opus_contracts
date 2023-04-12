@@ -864,7 +864,7 @@ async def test_update(shrine, absorber_both, update, yangs, yang_tokens, blessin
     assert_event_emitted(
         tx,
         absorber.contract_address,
-        "Invoke",
+        "Bestow",
         [
             reward_assets_count,
             *reward_assets_addresses,
@@ -1062,20 +1062,20 @@ async def test_reap_pass(shrine, absorber_both, update, yangs, yang_tokens, bles
     assert after_provider_last_absorption == before_provider_last_absorption + 1
 
     blessings_multiplier = 1
-    # Assert `Invoke` is emitted if absorber is not completely drained
+    # Assert `Bestow` is emitted if absorber is not completely drained
     if is_drained:
         expected_epoch = 1
         after_provider_info = (await absorber.get_provider_info(provider).execute()).result.provision
         assert after_provider_info.epoch == expected_epoch
         assert after_provider_info.shares == 0
 
-        assert_event_not_emitted(tx, absorber.contract_address, "Invoke")
+        assert_event_not_emitted(tx, absorber.contract_address, "Bestow")
     else:
         expected_epoch = 0
         assert_event_emitted(
             tx,
             absorber.contract_address,
-            "Invoke",
+            "Bestow",
             [
                 reward_assets_count,
                 *reward_assets_addresses,
@@ -1272,20 +1272,20 @@ async def test_remove(
     )
 
     if is_drained:
-        assert_event_not_emitted(tx, absorber.contract_address, "Invoke")
+        assert_event_not_emitted(tx, absorber.contract_address, "Bestow")
     else:
-        expected_invoke_epoch = before_provider_info.epoch
+        expected_bestow_epoch = before_provider_info.epoch
         assert_event_emitted(
             tx,
             absorber.contract_address,
-            "Invoke",
+            "Bestow",
             [
                 reward_assets_count,
                 *reward_assets_addresses,
                 reward_assets_count,
                 *blessing_amts,
                 total_shares_wad,
-                expected_invoke_epoch,
+                expected_bestow_epoch,
             ],
         )
 
@@ -1381,7 +1381,7 @@ async def test_provide_second_epoch(shrine, absorber, update, yangs, yang_tokens
     )
 
     await assert_reward_errors_propagated_to_next_epoch(absorber, reward_assets_addresses, before_epoch)
-    assert_event_not_emitted(tx, absorber.contract_address, "Invoke")
+    assert_event_not_emitted(tx, absorber.contract_address, "Bestow")
 
 
 @pytest.mark.parametrize(
@@ -1424,7 +1424,7 @@ async def test_provide_after_threshold_absorption(shrine, absorber, update, yang
     assert_event_emitted(
         tx,
         absorber.contract_address,
-        "Invoke",
+        "Bestow",
         [
             reward_assets_count,
             *reward_assets_addresses,
@@ -1585,7 +1585,7 @@ async def test_reap_different_epochs(
         # Step 5: Provider 1 and 2 reaps
         # There should be no rewards for this action since Absorber is emptied and there are no shares
         tx = await absorber.reap().execute(caller_address=provider)
-        assert_event_not_emitted(tx, absorber.contract_address, "Invoke")
+        assert_event_not_emitted(tx, absorber.contract_address, "Bestow")
 
         skip_idx = None
         if provider == second_provider:
@@ -1678,13 +1678,13 @@ async def test_multi_user_reap_same_epoch_single_absorption(
 
         # Rewards are distributed only if there are shares in current epoch
         if is_drained:
-            assert_event_not_emitted(tx, absorber.contract_address, "Invoke")
+            assert_event_not_emitted(tx, absorber.contract_address, "Bestow")
         else:
             expected_blessings_count += 1
             assert_event_emitted(
                 tx,
                 absorber.contract_address,
-                "Invoke",
+                "Bestow",
                 lambda d: d[:6]
                 == [
                     reward_assets_count,
@@ -1819,7 +1819,7 @@ async def test_multi_user_reap_same_epoch_multi_absorptions(
             lambda d: d[:5] == [provider, absorbed_assets_count, *absorbed_assets_addresses]
             and d[9:12] == [reward_assets_count, *reward_assets_addresses],
         )
-        assert_event_emitted(tx, absorber.contract_address, "Invoke")
+        assert_event_emitted(tx, absorber.contract_address, "Bestow")
 
         expected_blessings_count += 1
 
@@ -1963,17 +1963,17 @@ async def test_remove_out_of_bounds_fail(absorber, amt):
 
 
 #
-# Tests - Invoke
+# Tests - Bestow
 #
 
 
 @pytest.mark.usefixtures("add_aura_reward", "add_vested_aura_reward", "first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_invoke_inactive_reward(
+async def test_bestow_inactive_reward(
     absorber, aura_token, vested_aura_token, aura_token_blesser, vested_aura_token_blesser
 ):
     """
-    Inactive rewards should be skipped when `invoke` is called.
+    Inactive rewards should be skipped when `bestow` is called.
     """
     provider = PROVIDER_1
 
@@ -1992,14 +1992,14 @@ async def test_invoke_inactive_reward(
         await absorber.get_asset_reward_info(vested_aura_token.contract_address, expected_epoch).execute()
     ).result.info.asset_amt_per_share
 
-    # Trigger an invoke
+    # Trigger rewards
     tx = await absorber.provide(0).execute(caller_address=provider)
 
     expected_rewards_count = 1
     assert_event_emitted(
         tx,
         absorber.contract_address,
-        "Invoke",
+        "Bestow",
         lambda d: d[:4]
         == [
             expected_rewards_count,
@@ -2039,7 +2039,7 @@ async def test_invoke_inactive_reward(
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_invoke_zero_distribution_from_active_rewards(
+async def test_bestow_zero_distribution_from_active_rewards(
     absorber, aura_token_blesser, vested_aura_token_blesser, blessing
 ):
     """
@@ -2065,7 +2065,7 @@ async def test_invoke_zero_distribution_from_active_rewards(
         ).result.info.asset_amt_per_share
         before_rewards_cumulative.append(cumulative)
 
-    # Trigger an invoke
+    # Trigger rewards
     await absorber.provide(0).execute(caller_address=provider)
 
     after_rewards_cumulative = []
@@ -2080,11 +2080,11 @@ async def test_invoke_zero_distribution_from_active_rewards(
 
 @pytest.mark.usefixtures("first_epoch_first_provider")
 @pytest.mark.asyncio
-async def test_invoke_pass_with_depleted_active_reward(
+async def test_bestow_pass_with_depleted_active_reward(
     absorber, aura_token, aura_token_blesser, vested_aura_token, vested_aura_token_blesser
 ):
     """
-    Check that `invoke` works as intended when one of more than one active rewards does not have any distribution
+    Check that `bestow` works as intended when one of more than one active rewards does not have any distribution
     """
     provider = PROVIDER_1
 
@@ -2109,13 +2109,13 @@ async def test_invoke_pass_with_depleted_active_reward(
     vesting_amt = to_uint(to_wad(AURA_BLESSER_STARTING_BAL))
     await aura_token.mint(aura_token_blesser.contract_address, vesting_amt).execute(caller_address=BLESSER_OWNER)
 
-    # Trigger an invoke
+    # Trigger rewards
     tx = await absorber.provide(0).execute(caller_address=provider)
     expected_rewards_count = len(rewards)
     assert_event_emitted(
         tx,
         absorber.contract_address,
-        "Invoke",
+        "Bestow",
         lambda d: d[:6]
         == [
             expected_rewards_count,

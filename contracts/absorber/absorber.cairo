@@ -248,7 +248,7 @@ func Gain(
 }
 
 @event
-func Invoke(
+func Bestow(
     assets_len: ufelt,
     assets: address*,
     asset_amts_len: ufelt,
@@ -814,7 +814,7 @@ func update{
 
     // Trigger issuance of rewards
     let rewards_count: ufelt = absorber_rewards_count.read();
-    invoke(current_epoch, rewards_count);
+    bestow(current_epoch, rewards_count);
 
     // Increment absorption ID
     let prev_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -1158,7 +1158,7 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
     // Trigger issuance of rewards
     let rewards_count: ufelt = absorber_rewards_count.read();
-    invoke(current_epoch, rewards_count);
+    bestow(current_epoch, rewards_count);
 
     let provider_last_absorption_id: ufelt = absorber_provider_last_absorption.read(provider);
     let current_absorption_id: ufelt = absorber_absorptions_count.read();
@@ -1425,7 +1425,7 @@ func get_rewards_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 }
 
 // Helper function to trigger issuance of reward tokens and update rewards received
-func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func bestow{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     epoch: ufelt, rewards_count: ufelt
 ) {
     alloc_locals;
@@ -1439,7 +1439,7 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // Trigger issuance of active rewards
     let (reward_assets: address*) = alloc();
     let (blessed_amts: ufelt*) = alloc();
-    let (active_rewards_count: ufelt, has_rewards: bool) = invoke_loop(
+    let (active_rewards_count: ufelt, has_rewards: bool) = bestow_loop(
         epoch,
         total_shares,
         REWARDS_LOOP_START,
@@ -1455,7 +1455,7 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
         return ();
     }
 
-    Invoke.emit(
+    Bestow.emit(
         active_rewards_count, reward_assets, active_rewards_count, blessed_amts, total_shares, epoch
     );
 
@@ -1468,7 +1468,7 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // 1. number of active rewards; and
 // 2. boolean for whether the current round of blessings has any rewards
 // It also writes the asset address and blessed amounts for active rewards to two respective arrays.
-func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func bestow_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     epoch: ufelt,
     total_shares: wad,
     current_rewards_id: ufelt,
@@ -1487,7 +1487,7 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let reward: Reward = absorber_rewards.read(current_rewards_id);
 
     if (reward.is_active == FALSE) {
-        return invoke_loop(
+        return bestow_loop(
             epoch,
             total_shares,
             current_rewards_id + 1,
@@ -1527,7 +1527,7 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
         absorber_reward_by_epoch.write(reward.asset, epoch, packed_reward_asset_info);
 
-        return invoke_loop(
+        return bestow_loop(
             epoch,
             total_shares,
             current_rewards_id + 1,
@@ -1539,7 +1539,7 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         );
     }
 
-    return invoke_loop(
+    return bestow_loop(
         epoch,
         total_shares,
         current_rewards_id + 1,
