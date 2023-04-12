@@ -3,7 +3,6 @@
 from contracts.lib.aliases import address, bool, ray, ufelt, wad
 from contracts.lib.types import AssetApportion, Provision, Request, Reward
 
-// TODO: update interface
 @contract_interface
 namespace IAbsorber {
     //
