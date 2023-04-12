@@ -68,6 +68,10 @@ const REQUEST_VALIDITY_PERIOD = 60 * 60;
 // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
 const REQUEST_COOLDOWN = 7 * 24 * 60 * 60;
 
+// Helper constant to set the starting index for iterating over the Rewards
+// in the order they were added
+const REWARDS_LOOP_START = 1;
+
 //
 // Storage
 //
@@ -316,7 +320,7 @@ func get_rewards{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
     let rewards_count: ufelt = absorber_rewards_count.read();
     let rewards: Reward* = alloc();
-    get_rewards_loop(1, rewards_count, rewards);
+    get_rewards_loop(REWARDS_LOOP_START, rewards_count, rewards);
     return (rewards_count, rewards);
 }
 
@@ -465,7 +469,13 @@ func preview_reap{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_pt
     let (reward_assets: address*) = alloc();
     let (reward_asset_amts: ufelt*) = alloc();
     get_provider_accumulated_rewards(
-        provider, provision, current_epoch, 1, rewards_count, reward_assets, reward_asset_amts
+        provider,
+        provision,
+        current_epoch,
+        REWARDS_LOOP_START,
+        rewards_count,
+        reward_assets,
+        reward_asset_amts,
     );
 
     // Add pending rewards
@@ -870,7 +880,7 @@ func update{
     EpochChanged.emit(current_epoch, new_epoch);
 
     // Transfer reward errors of current epoch to the next epoch
-    propagate_reward_errors_loop(1, rewards_count, current_epoch);
+    propagate_reward_errors_loop(REWARDS_LOOP_START, rewards_count, current_epoch);
 
     return ();
 }
@@ -1169,12 +1179,18 @@ func reap_internal{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     let (reward_assets: address*) = alloc();
     let (reward_asset_amts: ufelt*) = alloc();
     get_provider_accumulated_rewards(
-        provider, provision, current_epoch, 1, rewards_count, reward_assets, reward_asset_amts
+        provider,
+        provision,
+        current_epoch,
+        REWARDS_LOOP_START,
+        rewards_count,
+        reward_assets,
+        reward_asset_amts,
     );
     transfer_assets(provider, rewards_count, reward_assets, reward_asset_amts);
 
     update_provider_cumulative_rewards_loop(
-        provider, current_epoch, 1, rewards_count, reward_assets
+        provider, current_epoch, REWARDS_LOOP_START, rewards_count, reward_assets
     );
 
     Reap.emit(
@@ -1398,14 +1414,14 @@ func get_rewards_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     current_rewards_id: ufelt, rewards_count: ufelt, rewards: Reward*
 ) {
     // Terminate when the number of rewards is exceeded
-    if (current_rewards_id == rewards_count + 1) {
+    if (current_rewards_id == rewards_count + REWARDS_LOOP_START) {
         return ();
     }
 
     let reward: Reward = absorber_rewards.read(current_rewards_id);
     assert [rewards] = reward;
 
-    return get_rewards_loop(current_rewards_id + 1, rewards_count, rewards + 3);
+    return get_rewards_loop(current_rewards_id + 1, rewards_count, rewards + Reward.SIZE);
 }
 
 // Helper function to trigger issuance of reward tokens and update rewards received
@@ -1424,7 +1440,14 @@ func invoke{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (reward_assets: address*) = alloc();
     let (blessed_amts: ufelt*) = alloc();
     let (active_rewards_count: ufelt, has_rewards: bool) = invoke_loop(
-        epoch, total_shares, 1, rewards_count, reward_assets, blessed_amts, 0, FALSE
+        epoch,
+        total_shares,
+        REWARDS_LOOP_START,
+        rewards_count,
+        reward_assets,
+        blessed_amts,
+        0,
+        FALSE,
     );
 
     // Do not emit event if no rewards were distributed
@@ -1457,7 +1480,7 @@ func invoke_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 ) -> (active_rewards_count: ufelt, has_rewards: bool) {
     alloc_locals;
 
-    if (current_rewards_id == rewards_count + 1) {
+    if (current_rewards_id == rewards_count + REWARDS_LOOP_START) {
         return (active_rewards_count, has_rewards);
     }
 
@@ -1544,7 +1567,7 @@ func get_provider_accumulated_rewards{
 ) {
     alloc_locals;
 
-    if (current_rewards_id == rewards_count + 1) {
+    if (current_rewards_id == rewards_count + REWARDS_LOOP_START) {
         return ();
     }
 
@@ -1649,7 +1672,7 @@ func update_provider_cumulative_rewards_loop{
 ) {
     alloc_locals;
 
-    if (current_rewards_id == rewards_count + 1) {
+    if (current_rewards_id == rewards_count + REWARDS_LOOP_START) {
         return ();
     }
 
@@ -1672,7 +1695,7 @@ func propagate_reward_errors_loop{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*
     alloc_locals;
 
     // Terminate when the number of rewards is exceeded
-    if (current_rewards_id == rewards_count + 1) {
+    if (current_rewards_id == rewards_count + REWARDS_LOOP_START) {
         return ();
     }
 
