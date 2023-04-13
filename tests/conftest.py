@@ -551,3 +551,18 @@ async def empiric(starknet, shrine_deploy, sentinel_with_yangs, mock_empiric_imp
         await empiric.add_yang(yang.empiric_id, yang.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
     return empiric
+
+
+#
+# AURA tokens
+#
+
+
+@pytest.fixture
+async def aura_token(tokens) -> StarknetContract:
+    return await tokens("Aura", "AURA", WAD_DECIMALS)
+
+
+@pytest.fixture
+async def vested_aura_token(tokens) -> StarknetContract:
+    return await tokens("Vested Aura", "AURA", WAD_DECIMALS)

@@ -31,6 +31,7 @@ MOCK_PURGER = str_to_felt("mock purger")
 NEW_MOCK_PURGER = str_to_felt("new mock purger")
 BURNER = str_to_felt("burner")
 NON_PROVIDER = str_to_felt("non-provider")
+BLESSER_OWNER = str_to_felt("blesser owner")
 
 MAX_REMOVE_AMT = 2**125
 
@@ -46,3 +47,11 @@ SECOND_UPDATE_ASSETS_AMT = [
     Decimal("5_555"),  # DOGE,
     Decimal("0.234"),  # WBTC
 ]
+
+AURA_BLESS_AMT = Decimal("1_000")
+AURA_BLESS_AMT_WAD = to_wad(AURA_BLESS_AMT)
+AURA_BLESSER_STARTING_BAL = Decimal("1_000_000")
+
+VESTED_AURA_BLESS_AMT = Decimal("999")
+VESTED_AURA_BLESS_AMT_WAD = to_wad(VESTED_AURA_BLESS_AMT)
+VESTED_AURA_BLESSER_STARTING_BAL = Decimal("5_000_000")

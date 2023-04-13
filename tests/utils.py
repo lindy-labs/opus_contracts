@@ -170,6 +170,11 @@ def assert_event_emitted(
         assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
 
+def assert_event_not_emitted(tx_exec_info, from_address, name):
+    key = get_selector_from_name(name)
+    assert not any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
+
+
 def here() -> str:
     return os.path.abspath(os.path.dirname(__file__))
 
