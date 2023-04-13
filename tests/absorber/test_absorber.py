@@ -298,8 +298,8 @@ async def first_update_assets(yangs) -> tuple[Union[list[int], list[Decimal]]]:
     """
     Helper fixture to return a tuple of:
     1. a list of asset addresses;
-    2. a list of asset amounts in the asset's decimals; and
-    3. a list of asset amounts in Decimal.
+    2. a list of asset amounts in the asset's decimals
+    3. a list of asset amounts in Decimal
     """
     asset_addresses = [asset_info.contract_address for asset_info in yangs]
     asset_amts = [
@@ -318,7 +318,7 @@ async def second_update_assets(yangs) -> tuple[Union[list[int], list[Decimal]]]:
     Helper fixture to return a tuple of:
     1. a list of asset addresses
     2. a list of asset amounts in the asset's decimals
-    3. a list of asset amounts in Decimal.
+    3. a list of asset amounts in Decimal
     """
     asset_addresses = [asset_info.contract_address for asset_info in yangs]
     asset_amts = [
@@ -379,7 +379,7 @@ func burn_yin{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 
 @pytest.fixture
-async def absorber(absorber_deploy):
+async def absorber(absorber_deploy) -> StarknetContract:
     absorber = absorber_deploy
     # Set purger in absorber
     await absorber.set_purger(MOCK_PURGER).execute(caller_address=ABSORBER_OWNER)
@@ -390,7 +390,7 @@ async def absorber(absorber_deploy):
 
 
 @pytest.fixture
-async def absorber_killed(absorber):
+async def absorber_killed(absorber) -> StarknetContract:
     await absorber.kill().execute(caller_address=ABSORBER_OWNER)
     return absorber
 
@@ -485,7 +485,7 @@ async def funded_absorber_providers(shrine, shrine_feeds, abbot, absorber, steth
 
 
 @pytest.fixture
-async def first_epoch_first_provider(shrine, absorber, funded_absorber_providers):
+async def first_epoch_first_provider(shrine, absorber, funded_absorber_providers) -> tuple[StarknetCallInfo, int]:
     provider = PROVIDER_1
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
     provider_yin_amt = int(from_uint(provider_yin_amt_uint) / Decimal("3.5"))
@@ -495,7 +495,7 @@ async def first_epoch_first_provider(shrine, absorber, funded_absorber_providers
 
 
 @pytest.fixture
-async def first_epoch_second_provider(shrine, absorber, funded_absorber_providers):
+async def first_epoch_second_provider(shrine, absorber, funded_absorber_providers) -> tuple[StarknetCallInfo, int]:
     provider = PROVIDER_2
     provider_yin_amt_uint = (await shrine.balanceOf(provider).execute()).result.balance
     provider_yin_amt = from_uint(provider_yin_amt_uint)
@@ -505,7 +505,9 @@ async def first_epoch_second_provider(shrine, absorber, funded_absorber_provider
 
 
 @pytest.fixture
-async def update(request, shrine, absorber, yang_tokens, first_update_assets):
+async def update(
+    request, shrine, absorber, yang_tokens, first_update_assets
+) -> tuple[StarknetCallInfo, Decimal, int, int, int, list[int], list[int], list[Decimal]]:
     """
     Fixture that takes in a Decimal value for the percentage of the absorber's yin balance to drain
     to simulate an absorption.
@@ -546,7 +548,7 @@ async def update(request, shrine, absorber, yang_tokens, first_update_assets):
 
 
 @pytest.fixture
-async def add_aura_reward(absorber, aura_token, aura_token_blesser):
+async def add_aura_reward(absorber, aura_token, aura_token_blesser) -> StarknetCallInfo:
     tx = await absorber.set_reward(
         aura_token.contract_address,
         aura_token_blesser.contract_address,
@@ -561,7 +563,7 @@ async def add_aura_reward(absorber, aura_token, aura_token_blesser):
 
 
 @pytest.fixture
-async def add_vested_aura_reward(absorber, vested_aura_token, vested_aura_token_blesser):
+async def add_vested_aura_reward(absorber, vested_aura_token, vested_aura_token_blesser) -> StarknetCallInfo:
     tx = await absorber.set_reward(
         vested_aura_token.contract_address,
         vested_aura_token_blesser.contract_address,
@@ -578,7 +580,9 @@ async def add_vested_aura_reward(absorber, vested_aura_token, vested_aura_token_
 
 
 @pytest.fixture
-async def blessing(aura_token, vested_aura_token):
+async def blessing(
+    aura_token, vested_aura_token
+) -> tuple[int, list[StarknetContract], list[int], list[int], list[Decimal]]:
     """
     Helper fixture for tests related to rewards.
 
