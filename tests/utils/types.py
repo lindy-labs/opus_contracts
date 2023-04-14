@@ -3,7 +3,6 @@ from typing import Union
 
 from starkware.starknet.testing.contract import StarknetContract
 
-# Types
 Uint256 = namedtuple("Uint256", "low high")
 YangConfig = namedtuple(
     "YangConfig", "contract_address decimals ceiling threshold price_wad rate gate_address empiric_id"

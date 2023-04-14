@@ -6,6 +6,14 @@ from tests.constants import MAX_UINT256
 from tests.utils.types import YangConfig
 from tests.utils.wadray import from_fixed_point, from_uint
 
+#
+# Token helpers
+#
+
+
+async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: int):
+    await token.approve(spender_addr, MAX_UINT256).execute(caller_address=owner_addr)
+
 
 async def get_yangs_total(
     shrine: StarknetContract,
@@ -31,15 +39,6 @@ async def get_yangs_total(
         ret.append(total)
 
     return ret
-
-
-#
-# Token helpers
-#
-
-
-async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: int):
-    await token.approve(spender_addr, MAX_UINT256).execute(caller_address=owner_addr)
 
 
 async def get_token_balances(

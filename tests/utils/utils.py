@@ -20,6 +20,11 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.utils.types import Addressable
 from tests.utils.wadray import to_wad
 
+#
+# Constants
+#
+
+
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
 # Time Interval
@@ -354,7 +359,7 @@ def estimate_gas_inner(call_info: FunctionInvocation):
 
 
 #
-# @flaky helper
+# Others
 #
 
 
