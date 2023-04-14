@@ -40,7 +40,7 @@ from tests.shrine.constants import (
     YIN_NAME,
     YIN_SYMBOL,
 )
-from tests.utils.starknet import max_approve
+from tests.utils.asyncio import max_approve
 from tests.utils.types import Uint256, YangConfig
 from tests.utils.utils import (
     TIME_INTERVAL,

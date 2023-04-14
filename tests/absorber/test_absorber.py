@@ -20,7 +20,7 @@ from tests.constants import (
 )
 from tests.roles import AbsorberRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
-from tests.utils.starknet import get_token_balances, max_approve
+from tests.utils.asyncio import get_token_balances, max_approve
 from tests.utils.types import YangConfig
 from tests.utils.utils import (
     TIME_INTERVAL,

@@ -6,7 +6,7 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.constants import BAD_GUY, SHRINE_OWNER, ZERO_ADDRESS
 from tests.equalizer.constants import *  # noqa: F403
 from tests.roles import EqualizerRoles, ShrineRoles
-from tests.utils.starknet import get_token_balances
+from tests.utils.asyncio import get_token_balances
 from tests.utils.utils import assert_equalish, assert_event_emitted, compile_contract
 from tests.utils.wadray import from_ray, from_uint, from_wad
 
