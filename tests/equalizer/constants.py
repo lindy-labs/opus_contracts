@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-from tests.utils import RAY_PERCENT, str_to_felt, to_wad
+from tests.utils.utils import str_to_felt
+from tests.utils.wadray import RAY_PERCENT, to_wad
 
 ALLOCATOR_OWNER = str_to_felt("allocator")
 EQUALIZER_OWNER = str_to_felt("equalizer owner")

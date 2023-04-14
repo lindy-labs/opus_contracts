@@ -4,7 +4,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 
 from tests.equalizer.constants import *  # noqa: F403
-from tests.utils import compile_contract
+from tests.utils.utils import compile_contract
 
 
 @pytest.fixture
