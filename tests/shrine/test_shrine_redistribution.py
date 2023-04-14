@@ -4,22 +4,11 @@ from itertools import combinations
 import pytest
 from starkware.starknet.testing.contract import StarknetContract
 
+from tests.constants import SHRINE_OWNER, TROVE1_OWNER, TROVE2_OWNER, TROVE3_OWNER, TROVE_1, TROVE_2, TROVE_3
 from tests.roles import ShrineRoles
 from tests.shrine.constants import MOCK_PURGER, YANG1_ADDRESS, YANG2_ADDRESS, YANG3_ADDRESS, YANG4_ADDRESS
-from tests.utils import (
-    SHRINE_OWNER,
-    TROVE1_OWNER,
-    TROVE2_OWNER,
-    TROVE3_OWNER,
-    TROVE_1,
-    TROVE_2,
-    TROVE_3,
-    assert_equalish,
-    assert_event_emitted,
-    estimate_gas,
-    from_wad,
-    to_wad,
-)
+from tests.utils.utils import assert_equalish, assert_event_emitted, estimate_gas
+from tests.utils.wadray import from_wad, to_wad
 
 #
 # Constants

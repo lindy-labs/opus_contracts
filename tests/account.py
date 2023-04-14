@@ -9,7 +9,8 @@ from starkware.starknet.public.abi import EXECUTE_ENTRY_POINT_SELECTOR, get_sele
 from starkware.starknet.services.api.contract_class.contract_class import ContractClass
 from starkware.starknet.testing.starknet import Starknet
 
-from tests.utils import Addressable, Call, Calldata, as_address, compile_contract
+from tests.utils.types import Addressable, Call, Calldata
+from tests.utils.utils import as_address, compile_contract
 
 # IDEA:
 # create a context manager out of the account

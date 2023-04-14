@@ -1,8 +1,7 @@
 import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.roles import SentinelRoles
-from tests.utils import (
+from tests.constants import (
     BAD_GUY,
     INITIAL_ASSET_DEPOSIT_AMT,
     SENTINEL_OWNER,
@@ -11,13 +10,11 @@ from tests.utils import (
     TROVE1_OWNER,
     TROVE_1,
     WAD_RAY_OOB_VALUES,
-    WAD_SCALE,
-    YangConfig,
-    assert_event_emitted,
-    from_uint,
-    to_fixed_point,
-    to_wad,
 )
+from tests.roles import SentinelRoles
+from tests.utils.types import YangConfig
+from tests.utils.utils import assert_event_emitted
+from tests.utils.wadray import WAD_SCALE, from_uint, to_fixed_point, to_wad
 
 
 @pytest.fixture
