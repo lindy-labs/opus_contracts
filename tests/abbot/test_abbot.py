@@ -3,23 +3,11 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
-from tests.utils import (
-    DEPLOYMENT_INTERVAL,
-    SENTINEL_OWNER,
-    SHRINE_OWNER,
-    STARKNET_ADDR,
-    TROVE1_OWNER,
-    TROVE2_OWNER,
-    TROVE_1,
-    WAD_DECIMALS,
-    YangConfig,
-    assert_event_emitted,
-    from_uint,
-    get_yangs_total,
-    str_to_felt,
-    to_uint,
-    to_wad,
-)
+from tests.constants import DEPLOYMENT_INTERVAL, SENTINEL_OWNER, SHRINE_OWNER, TROVE1_OWNER, TROVE2_OWNER, TROVE_1
+from tests.utils.starknet import get_yangs_total
+from tests.utils.types import STARKNET_ADDR, YangConfig
+from tests.utils.utils import assert_event_emitted, str_to_felt
+from tests.utils.wadray import WAD_DECIMALS, from_uint, to_uint, to_wad
 
 #
 # fixtures

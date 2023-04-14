@@ -100,13 +100,13 @@ def here() -> str:
 
 
 def contract_path(rel_contract_path: str) -> str:
-    return os.path.join(here(), "..", rel_contract_path)
+    return os.path.join(here(), "../..", rel_contract_path)
 
 
 @cache
 def compile_contract(rel_contract_path: str) -> ContractClass:
     contract_src = contract_path(rel_contract_path)
-    tld = os.path.join(here(), "..")
+    tld = os.path.join(here(), "../..")
 
     return compile_starknet_files(
         [contract_src],
