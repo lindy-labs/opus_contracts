@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from tests.utils.math import to_ray, to_wad
+from tests.utils.math import WAD_DECIMALS, custom_error_margin, to_ray, to_wad
 from tests.utils.utils import str_to_felt
 
 TAX = Decimal("0.025")
@@ -25,3 +25,5 @@ TAX_COLLECTOR = str_to_felt("tax collector")
 
 # Minimum initial deposit to prevent first depositor front-running
 MINIMUM_INITIAL_DEPOSIT = 10**3
+
+WAD_ERROR_MARGIN = custom_error_margin(WAD_DECIMALS)

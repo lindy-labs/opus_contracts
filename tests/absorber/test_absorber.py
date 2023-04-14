@@ -235,6 +235,11 @@ async def assert_provider_received_rewards(
     for asset, before_bal, base_blessing_amt, preview_amt_wad in zip(
         reward_assets, before_balances, base_blessing_amts, preview_amts
     ):
+        if error_margin is None:
+            decimals = (await asset.decimals().execute()).result.decimals
+            # Relax error margin by half due to loss of precision from fixed point arithmetic
+            error_margin = custom_error_margin(decimals // 2 - 1)
+
         # Check reward token transfer and balance
         asset_address = asset.contract_address
 

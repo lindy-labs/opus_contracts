@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from tests.roles import GateRoles, SentinelRoles, ShrineRoles
-from tests.utils.math import WAD_RAY_BOUND, custom_error_margin, signed_int_to_felt
+from tests.utils.math import WAD_RAY_BOUND, signed_int_to_felt
 from tests.utils.utils import get_interval, str_to_felt
 
 #
@@ -46,9 +46,6 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 # Decimal precision
 WBTC_DECIMALS = 8
 EMPIRIC_DECIMALS = 8
-
-# Default error margin for fixed point calculations
-ERROR_MARGIN = custom_error_margin(10)
 
 
 #
