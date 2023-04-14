@@ -8,21 +8,16 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.absorber.constants import REMOVAL_LIMIT_RAY
-from tests.purger.constants import *  # noqa: F403
-from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
-from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
-from tests.utils import (
+from tests.constants import (
     ABSORBER_OWNER,
     DEPLOYMENT_INTERVAL,
     DEPLOYMENT_TIMESTAMP,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
-    RAY_SCALE,
     SENTINEL_OWNER,
     SHRINE_OWNER,
     SHRINE_ROLE_FOR_PURGER,
-    TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE3_OWNER,
@@ -31,7 +26,14 @@ from tests.utils import (
     TROVE_3,
     TRUE,
     WAD_RAY_OOB_VALUES,
-    YangConfig,
+)
+from tests.purger.constants import *  # noqa: F403
+from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
+from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
+from tests.utils.asyncio import max_approve
+from tests.utils.types import YangConfig
+from tests.utils.utils import (
+    TIME_INTERVAL,
     assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
@@ -40,21 +42,14 @@ from tests.utils import (
     create_feed,
     custom_error_margin,
     estimate_gas,
-    from_fixed_point,
-    from_ray,
-    from_uint,
-    from_wad,
     get_block_timestamp,
     get_contract_code_with_replacement,
     is_starknet_error,
-    max_approve,
     price_bounds,
     set_block_timestamp,
     to_empiric,
-    to_ray,
-    to_uint,
-    to_wad,
 )
+from tests.utils.wadray import RAY_SCALE, from_fixed_point, from_ray, from_uint, from_wad, to_ray, to_uint, to_wad
 
 #
 # Constants
