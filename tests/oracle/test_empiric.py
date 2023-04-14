@@ -4,6 +4,18 @@ import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
+from tests.constants import (
+    BAD_GUY,
+    DEPLOYMENT_TIMESTAMP,
+    EMPIRIC_DECIMALS,
+    EMPIRIC_OWNER,
+    GATE_OWNER,
+    GATE_ROLE_FOR_SENTINEL,
+    INITIAL_ASSET_DEPOSIT_AMT,
+    SENTINEL_OWNER,
+    SHRINE_OWNER,
+    TROVE1_OWNER,
+)
 from tests.oracle.constants import (
     EMPIRIC_FRESHNESS_THRESHOLD,
     EMPIRIC_LOWER_FRESHNESS_BOUND,
@@ -17,32 +29,17 @@ from tests.oracle.constants import (
     INITIAL_ASSET_AMT_PER_YANG,
 )
 from tests.roles import EmpiricRoles, ShrineRoles
-from tests.utils import (
-    BAD_GUY,
-    DEPLOYMENT_TIMESTAMP,
-    EMPIRIC_DECIMALS,
-    EMPIRIC_OWNER,
-    GATE_OWNER,
-    GATE_ROLE_FOR_SENTINEL,
-    INITIAL_ASSET_DEPOSIT_AMT,
-    RAY_PERCENT,
-    SENTINEL_OWNER,
-    SHRINE_OWNER,
+from tests.utils.asyncio import max_approve
+from tests.utils.utils import (
     TIME_INTERVAL,
-    TROVE1_OWNER,
     assert_event_emitted,
     compile_contract,
-    from_wad,
-    max_approve,
     set_block_timestamp,
     signed_int_to_felt,
     str_to_felt,
     to_empiric,
-    to_fixed_point,
-    to_ray,
-    to_uint,
-    to_wad,
 )
+from tests.utils.wadray import RAY_PERCENT, from_wad, to_fixed_point, to_ray, to_uint, to_wad
 
 BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
 BTC_INIT_PRICE = 19520
