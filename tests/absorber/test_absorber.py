@@ -13,7 +13,6 @@ from tests.utils import (
     ABSORBER_OWNER,
     BAD_GUY,
     DEPLOYMENT_TIMESTAMP,
-    ERROR_MARGIN,
     FALSE,
     MAX_UINT256,
     RAY_SCALE,
@@ -197,7 +196,7 @@ async def assert_provider_received_rewards(
     base_blessing_amts: list[Decimal],
     blessings_multiplier: Union[int, Decimal],
     preview_amts: list[int],
-    error_margin: Optional[Decimal] = ERROR_MARGIN,
+    error_margin: Optional[Decimal] = None,
 ):
     """
     Helper function to assert that:

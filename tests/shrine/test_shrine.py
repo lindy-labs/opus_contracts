@@ -7,17 +7,13 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.shrine.constants import *  # noqa: F403
-from tests.utils import (
+from tests.constants import (
     BAD_GUY,
     DEPLOYMENT_INTERVAL,
     DEPLOYMENT_TIMESTAMP,
     FALSE,
     INFINITE_YIN_ALLOWANCE,
-    RAY_PERCENT,
-    RAY_SCALE,
     SHRINE_OWNER,
-    TIME_INTERVAL,
     TIME_INTERVAL_DIV_YEAR,
     TROVE1_OWNER,
     TROVE2_OWNER,
@@ -26,23 +22,31 @@ from tests.utils import (
     TROVE_2,
     TROVE_3,
     TRUE,
-    WAD_RAY_BOUND,
     WAD_RAY_OOB_VALUES,
-    WAD_SCALE,
     ZERO_ADDRESS,
+)
+from tests.shrine.constants import *  # noqa: F403
+from tests.utils.utils import (
+    TIME_INTERVAL,
     assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
     calculate_trove_threshold_and_value,
     create_feed,
-    from_ray,
-    from_uint,
-    from_wad,
     get_block_timestamp,
     get_interval,
     price_bounds,
     set_block_timestamp,
     str_to_felt,
+)
+from tests.utils.wadray import (
+    RAY_PERCENT,
+    RAY_SCALE,
+    WAD_RAY_BOUND,
+    WAD_SCALE,
+    from_ray,
+    from_uint,
+    from_wad,
     to_ray,
     to_uint,
     to_wad,

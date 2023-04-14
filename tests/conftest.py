@@ -9,6 +9,22 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 
+from tests.constants import (
+    DEPLOYMENT_TIMESTAMP,
+    EMPIRIC_DECIMALS,
+    EMPIRIC_OWNER,
+    GATE_OWNER,
+    GATE_ROLE_FOR_SENTINEL,
+    INITIAL_ASSET_DEPOSIT_AMT,
+    SENTINEL_OWNER,
+    SENTINEL_ROLE_FOR_ABBOT,
+    SHRINE_OWNER,
+    TROVE1_OWNER,
+    TROVE2_OWNER,
+    TROVE3_OWNER,
+    TROVE_1,
+    WBTC_DECIMALS,
+)
 from tests.oracle.constants import EMPIRIC_FRESHNESS_THRESHOLD, EMPIRIC_SOURCES_THRESHOLD, EMPIRIC_UPDATE_INTERVAL
 from tests.roles import ShrineRoles
 from tests.shrine.constants import (
@@ -24,44 +40,22 @@ from tests.shrine.constants import (
     YIN_NAME,
     YIN_SYMBOL,
 )
-from tests.utils import (
-    DEPLOYMENT_TIMESTAMP,
-    EMPIRIC_DECIMALS,
-    EMPIRIC_OWNER,
-    GATE_OWNER,
-    GATE_ROLE_FOR_SENTINEL,
-    INITIAL_ASSET_DEPOSIT_AMT,
-    RAY_PERCENT,
-    SENTINEL_OWNER,
-    SENTINEL_ROLE_FOR_ABBOT,
-    SHRINE_OWNER,
+from tests.utils.starknet import max_approve
+from tests.utils.types import Uint256, YangConfig
+from tests.utils.utils import (
     TIME_INTERVAL,
-    TROVE1_OWNER,
-    TROVE2_OWNER,
-    TROVE3_OWNER,
-    TROVE_1,
-    WAD_DECIMALS,
-    WAD_SCALE,
-    WBTC_DECIMALS,
-    Uint256,
-    YangConfig,
     compile_code,
     compile_contract,
     create_feed,
     estimate_gas,
-    from_wad,
     get_block_timestamp,
     get_contract_code_with_addition,
     get_contract_code_with_replacement,
-    max_approve,
     set_block_timestamp,
     str_to_felt,
     to_empiric,
-    to_fixed_point,
-    to_ray,
-    to_uint,
-    to_wad,
 )
+from tests.utils.wadray import RAY_PERCENT, WAD_DECIMALS, WAD_SCALE, from_wad, to_fixed_point, to_ray, to_uint, to_wad
 
 MRACParameters = namedtuple(
     "MRACParameters",

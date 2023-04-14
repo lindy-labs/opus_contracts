@@ -1,4 +1,4 @@
-from tests.utils import WAD_SCALE
+from tests.utils.wadray import WAD_SCALE
 
 EMPIRIC_FRESHNESS_THRESHOLD = 30 * 60  # 30 minutes
 EMPIRIC_SOURCES_THRESHOLD = 3

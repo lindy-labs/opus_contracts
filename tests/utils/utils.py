@@ -1,7 +1,5 @@
 """Utilities for testing Cairo contracts."""
 import os
-from collections import namedtuple
-from datetime import datetime
 from decimal import ROUND_DOWN, Decimal
 from functools import cache
 from random import seed, uniform
@@ -19,31 +17,13 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.roles import GateRoles, SentinelRoles, ShrineRoles
-
-RANGE_CHECK_BOUND = 2**128
-MAX_UINT256 = (2**128 - 1, 2**128 - 1)
-
-STARKNET_ADDR = r"-?\d+"  # addresses are sometimes printed as negative numbers, hence the -?
-ZERO_ADDRESS = 0
-
-TRUE = 1
-FALSE = 0
-
-WAD_DECIMALS = 18
-RAY_DECIMALS = 27
-WAD_PERCENT = 10 ** (WAD_DECIMALS - 2)
-RAY_PERCENT = 10 ** (RAY_DECIMALS - 2)
-WAD_SCALE = 10**WAD_DECIMALS
-RAY_SCALE = 10**RAY_DECIMALS
-WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
-WAD_RAY_BOUND = 2**125
+from tests.utils.types import Addressable
+from tests.utils.wadray import to_wad
 
 CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
-# Decimal precision
-WBTC_DECIMALS = 8
-EMPIRIC_DECIMALS = 8
+# Time Interval
+TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
 
 # Gas estimation constants
 NAMES = ["ecdsa_builtin", "range_check_builtin", "bitwise_builtin", "pedersen_builtin", "ec_op_builtin"]
@@ -57,69 +37,10 @@ WEIGHTS = {
     "ec_op_builtin": 51.2,
 }
 
-Uint256 = namedtuple("Uint256", "low high")
-YangConfig = namedtuple(
-    "YangConfig", "contract_address decimals ceiling threshold price_wad rate gate_address empiric_id"
-)
 
-Uint256like = Union[Uint256, tuple[int, int]]
-Addressable = Union[int, StarknetContract]
-Calldata = list[int]  # payload arguments sent with a function call
-Call = tuple[Addressable, str, Calldata]  # receiver address, selector (still as string) and payload
-
-
-def custom_error_margin(negative_exp: int) -> Decimal:
-    return Decimal(f"1E-{negative_exp}")
-
-
-# Default error margin for fixed point calculations
-ERROR_MARGIN = custom_error_margin(10)
-WAD_ERROR_MARGIN = custom_error_margin(WAD_DECIMALS)
-WBTC_ERROR_MARGIN = custom_error_margin(WBTC_DECIMALS)
-
-seed(420)
-
-
-def str_to_felt(text: str) -> int:
-    b_text = bytes(text, "ascii")
-    return int.from_bytes(b_text, "big")
-
-
-# Common addresses
-ABBOT_OWNER = str_to_felt("abbot owner")
-SENTINEL_OWNER = str_to_felt("sentinel owner")
-GATE_OWNER = str_to_felt("gate owner")
-SHRINE_OWNER = str_to_felt("shrine owner")
-EMPIRIC_OWNER = str_to_felt("empiric owner")
-ABSORBER_OWNER = str_to_felt("absorber owner")
-
-BAD_GUY = str_to_felt("bad guy")
-
-# Roles
-GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
-SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
-SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
-SHRINE_ROLE_FOR_FLASHMINT = ShrineRoles.INJECT + ShrineRoles.EJECT
-
-# Troves
-TROVE_1 = 1
-TROVE_2 = 2
-TROVE_3 = 3
-
-TROVE1_OWNER = str_to_felt("trove 1 owner")
-TROVE2_OWNER = str_to_felt("trove 2 owner")
-TROVE3_OWNER = str_to_felt("trove 3 owner")
-
-# Time Interval
-TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
-# 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625)
-TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
-
-# Yin constants
-INFINITE_YIN_ALLOWANCE = 2**256 - 1
-
-# Initial deposit amount to Gate to prevent first depositor front-running
-INITIAL_ASSET_DEPOSIT_AMT = 10**3
+#
+# Address conversion
+#
 
 
 def as_address(value: Addressable) -> int:
@@ -128,15 +49,14 @@ def as_address(value: Addressable) -> int:
     return value
 
 
-def signed_int_to_felt(a: int) -> int:
-    """Takes in integer value, returns input if positive, otherwise return CAIRO_PRIME + input"""
-    if a >= 0:
-        return a
-    return CAIRO_PRIME + a
+#
+# String conversion
+#
 
 
-# Out of bound values for WadRay
-WAD_RAY_OOB_VALUES = [signed_int_to_felt(-1), WAD_RAY_BOUND + 1]
+def str_to_felt(text: str) -> int:
+    b_text = bytes(text, "ascii")
+    return int.from_bytes(b_text, "big")
 
 
 def felt_to_str(felt: int) -> str:
@@ -144,14 +64,9 @@ def felt_to_str(felt: int) -> str:
     return b_felt.decode()
 
 
-def to_uint(a: int) -> Uint256:
-    """Takes in value, returns Uint256 tuple."""
-    return Uint256(low=(a & ((1 << 128) - 1)), high=(a >> 128))
-
-
-def from_uint(uint: Uint256like) -> int:
-    """Takes in uint256-ish tuple, returns value."""
-    return uint[0] + (uint[1] << 128)
+#
+# Events
+#
 
 
 def assert_event_emitted(
@@ -173,6 +88,11 @@ def assert_event_emitted(
 def assert_event_not_emitted(tx_exec_info, from_address, name):
     key = get_selector_from_name(name)
     assert not any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
+
+
+#
+# Compilation
+#
 
 
 def here() -> str:
@@ -245,70 +165,28 @@ def compile_code(code: tuple[str, str]) -> StarknetContract:
 
 
 #
-# General helper functions
+# Math functions
 #
 
 
-def to_fixed_point(n: Union[int, float, Decimal], decimals: int) -> int:
-    """
-    Helper function to scale a number to its fixed point equivalent
-    according to the given decimal precision.
-
-    Arguments
-    ---------
-    n: int
-        Amount in real terms.
-    decimals: int
-        Number of decimals to scale by.
-
-    Returns
-    -------
-    Scaled amount.
-    """
-    return int(n * 10**decimals)
+def signed_int_to_felt(a: int) -> int:
+    """Takes in integer value, returns input if positive, otherwise return CAIRO_PRIME + input"""
+    if a >= 0:
+        return a
+    return CAIRO_PRIME + a
 
 
-def from_fixed_point(n: int, decimals: int) -> Decimal:
-    """
-    Helper function to scale a fixed point number to real value
-    according to the given decimal precision.
-
-    Arguments
-    ---------
-    n: int
-        Amount in fixed point.
-    decimals: int
-        Number of decimals to scale by.
-
-    Returns
-    -------
-    Real value in Decimal.
-    """
-    return Decimal(n) / 10**decimals
+def custom_error_margin(negative_exp: int) -> Decimal:
+    return Decimal(f"1E-{negative_exp}")
 
 
-def to_wad(n: Union[int, float, Decimal]) -> int:
-    return to_fixed_point(n, WAD_DECIMALS)
-
-
-def to_ray(n: Union[int, float, Decimal]) -> int:
-    return to_fixed_point(n, RAY_DECIMALS)
-
-
-def from_wad(n: int) -> Decimal:
-    return from_fixed_point(n, WAD_DECIMALS)
-
-
-def wad_to_ray(n: int) -> int:
-    return to_fixed_point(n, RAY_DECIMALS - WAD_DECIMALS)
-
-
-def ray_to_wad(n: int) -> int:
-    return n // 10 ** (RAY_DECIMALS - WAD_DECIMALS)
-
-
-def from_ray(n: int) -> Decimal:
-    return from_fixed_point(n, RAY_DECIMALS)
+def assert_equalish(a: Decimal, b: Decimal, error=custom_error_margin(10)):
+    # Truncate inputs to the accepted error margin
+    # For example, comparing 0.0001 and 0.00020123 should pass with an error margin of 1E-4.
+    # Without rounding, it would not pass because 0.00010123 > 0.0001
+    a = a.quantize(error, rounding=ROUND_DOWN)
+    b = b.quantize(error, rounding=ROUND_DOWN)
+    assert abs(a - b) <= error
 
 
 def to_empiric(value: Union[int, float, Decimal]) -> int:
@@ -320,17 +198,8 @@ def to_empiric(value: Union[int, float, Decimal]) -> int:
     return int(value * (10**8))
 
 
-def assert_equalish(a: Decimal, b: Decimal, error=ERROR_MARGIN):
-    # Truncate inputs to the accepted error margin
-    # For example, comparing 0.0001 and 0.00020123 should pass with an error margin of 1E-4.
-    # Without rounding, it would not pass because 0.00010123 > 0.0001
-    a = a.quantize(error, rounding=ROUND_DOWN)
-    b = b.quantize(error, rounding=ROUND_DOWN)
-    assert abs(a - b) <= error
-
-
 #
-# Starknet helper functions
+# Time helper functions
 #
 
 
@@ -359,16 +228,12 @@ def get_interval(block_timestamp: int) -> int:
     return block_timestamp // TIME_INTERVAL
 
 
-# Note that timestamp (and timestamp) cannot start at 0 because:
-# 1. Initial price and multiplier are assigned to current interval - 1
-# 2. Cooldown period in absorber will be automatically triggered
-DEPLOYMENT_TIMESTAMP = int(datetime.utcnow().timestamp())
-DEPLOYMENT_INTERVAL = get_interval(DEPLOYMENT_TIMESTAMP)
-
-
 #
 # Shrine helper functions
 #
+
+seed(420)
+
 
 # Returns a price feed
 def create_feed(start_price: Decimal, length: int, max_change: float) -> list[int]:
@@ -451,75 +316,6 @@ def calculate_max_forge(prices: list[Decimal], amounts: list[Decimal], threshold
 
 
 #
-# Token helpers
-#
-
-
-async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: int):
-    await token.approve(spender_addr, MAX_UINT256).execute(caller_address=owner_addr)
-
-
-async def get_token_balances(
-    tokens: tuple[StarknetContract],
-    addresses: list[int],
-) -> list[list[Decimal]]:
-    """
-    Helper function to fetch the token balances for a list of addreses.
-
-    Arguments
-    ---------
-    tokens: tuple[StarknetContract]
-        Ordered tuple of token contract instances for the tokens
-    addresses: list[int]
-        List of addresses to fetch the balances of.
-
-    Returns
-    -------
-    An ordered 2D list of token balances in Decimal for each address.
-    """
-    ret = []
-    for address in addresses:
-        address_bals = []
-        for token in tokens:
-            decimals = (await token.decimals().execute()).result.decimals
-            bal = from_fixed_point(
-                from_uint((await token.balanceOf(address).execute()).result.balance),
-                decimals,
-            )
-            address_bals.append(bal)
-
-        ret.append(address_bals)
-
-    return ret
-
-
-async def get_yangs_total(
-    shrine: StarknetContract,
-    tokens_info: tuple[YangConfig],
-) -> list[list[int]]:
-    """
-    Helper function to fetch the yang balances.
-
-    Arguments
-    ---------
-    shrine: StarknetContract
-        Deployed instance of Shrine.
-    tokens_info: tuple[YangConfig]
-        Ordered tuple of YangConfig
-
-    Returns
-    -------
-    An ordered list of total yang in wad for each asset.
-    """
-    ret = []
-    for token_info in tokens_info:
-        total = (await shrine.get_yang_total(token_info.contract_address).execute()).result.total
-        ret.append(total)
-
-    return ret
-
-
-#
 # Gas estimation
 #
 
@@ -555,6 +351,11 @@ def estimate_gas_inner(call_info: FunctionInvocation):
         sum_gas += estimate_gas_inner(call)
 
     return sum_gas
+
+
+#
+# @flaky helper
+#
 
 
 def is_starknet_error(err, *args):
