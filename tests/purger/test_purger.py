@@ -31,25 +31,34 @@ from tests.purger.constants import *  # noqa: F403
 from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils.asyncio import max_approve
+from tests.utils.math import (
+    RAY_SCALE,
+    assert_equalish,
+    custom_error_margin,
+    from_fixed_point,
+    from_ray,
+    from_uint,
+    from_wad,
+    to_empiric,
+    to_ray,
+    to_uint,
+    to_wad,
+)
 from tests.utils.types import YangConfig
 from tests.utils.utils import (
     TIME_INTERVAL,
-    assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
     compile_code,
     compile_contract,
     create_feed,
-    custom_error_margin,
     estimate_gas,
     get_block_timestamp,
     get_contract_code_with_replacement,
     is_starknet_error,
     price_bounds,
     set_block_timestamp,
-    to_empiric,
 )
-from tests.utils.wadray import RAY_SCALE, from_fixed_point, from_ray, from_uint, from_wad, to_ray, to_uint, to_wad
 
 #
 # Constants

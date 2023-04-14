@@ -2,8 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 
 from tests.roles import GateRoles, SentinelRoles, ShrineRoles
-from tests.utils.utils import custom_error_margin, get_interval, signed_int_to_felt, str_to_felt
-from tests.utils.wadray import WAD_RAY_BOUND
+from tests.utils.math import WAD_RAY_BOUND, custom_error_margin, signed_int_to_felt
+from tests.utils.utils import get_interval, str_to_felt
 
 #
 # Cairo constants

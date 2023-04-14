@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 from tests.constants import WBTC_DECIMALS
+from tests.utils.math import to_fixed_point, to_wad
 from tests.utils.utils import str_to_felt
-from tests.utils.wadray import to_fixed_point, to_wad
 
 #
 # Constants

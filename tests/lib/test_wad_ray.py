@@ -9,21 +9,23 @@ from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
 from tests.constants import RANGE_CHECK_BOUND
-from tests.utils.types import Uint256
-from tests.utils.utils import CAIRO_PRIME, compile_contract, signed_int_to_felt
-from tests.utils.wadray import (
+from tests.utils.math import (
+    CAIRO_PRIME,
     RAY_SCALE,
     WAD_DECIMALS,
     WAD_RAY_BOUND,
     WAD_RAY_DIFF,
     WAD_SCALE,
     ray_to_wad,
+    signed_int_to_felt,
     to_fixed_point,
     to_ray,
     to_uint,
     to_wad,
     wad_to_ray,
 )
+from tests.utils.types import Uint256
+from tests.utils.utils import compile_contract
 
 st_int = st.integers(min_value=-(2**250), max_value=2**250)
 st_int125 = st.integers(min_value=-(2**125), max_value=2**125)

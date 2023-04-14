@@ -3,8 +3,8 @@ from decimal import Decimal
 from starkware.starknet.testing.contract import StarknetContract
 
 from tests.constants import MAX_UINT256
+from tests.utils.math import from_fixed_point, from_uint
 from tests.utils.types import YangConfig
-from tests.utils.wadray import from_fixed_point, from_uint
 
 #
 # Token helpers

@@ -5,9 +5,9 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.abbot.constants import *  # noqa: F403
 from tests.constants import DEPLOYMENT_INTERVAL, SENTINEL_OWNER, SHRINE_OWNER, TROVE1_OWNER, TROVE2_OWNER, TROVE_1
 from tests.utils.asyncio import get_yangs_total
+from tests.utils.math import WAD_DECIMALS, from_uint, to_uint, to_wad
 from tests.utils.types import STARKNET_ADDR, YangConfig
 from tests.utils.utils import assert_event_emitted, str_to_felt
-from tests.utils.wadray import WAD_DECIMALS, from_uint, to_uint, to_wad
 
 #
 # fixtures

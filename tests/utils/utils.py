@@ -1,6 +1,6 @@
 """Utilities for testing Cairo contracts."""
 import os
-from decimal import ROUND_DOWN, Decimal
+from decimal import Decimal
 from functools import cache
 from random import seed, uniform
 from typing import Callable, Iterable, Union
@@ -17,15 +17,13 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
+from tests.utils.math import to_wad
 from tests.utils.types import Addressable
-from tests.utils.wadray import to_wad
 
 #
 # Constants
 #
 
-
-CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
 # Time Interval
 TIME_INTERVAL = 30 * 60  # Number of seconds in time interval (30 mins)
@@ -167,40 +165,6 @@ def compile_code(code: tuple[str, str]) -> StarknetContract:
         disable_hint_validation=True,
         cairo_path=[tld, os.path.join(tld, "contracts", "lib")],
     )
-
-
-#
-# Math functions
-#
-
-
-def signed_int_to_felt(a: int) -> int:
-    """Takes in integer value, returns input if positive, otherwise return CAIRO_PRIME + input"""
-    if a >= 0:
-        return a
-    return CAIRO_PRIME + a
-
-
-def custom_error_margin(negative_exp: int) -> Decimal:
-    return Decimal(f"1E-{negative_exp}")
-
-
-def assert_equalish(a: Decimal, b: Decimal, error=custom_error_margin(10)):
-    # Truncate inputs to the accepted error margin
-    # For example, comparing 0.0001 and 0.00020123 should pass with an error margin of 1E-4.
-    # Without rounding, it would not pass because 0.00010123 > 0.0001
-    a = a.quantize(error, rounding=ROUND_DOWN)
-    b = b.quantize(error, rounding=ROUND_DOWN)
-    assert abs(a - b) <= error
-
-
-def to_empiric(value: Union[int, float, Decimal]) -> int:
-    """
-    Empiric reports the pairs used in this test suite with 8 decimals.
-    This function converts a "regular" numeric value to an Empiric native
-    one, i.e. as if it was returned from Empiric.
-    """
-    return int(value * (10**8))
 
 
 #

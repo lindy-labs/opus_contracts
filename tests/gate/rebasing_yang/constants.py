@@ -1,7 +1,7 @@
 from decimal import Decimal
 
+from tests.utils.math import to_ray, to_wad
 from tests.utils.utils import str_to_felt
-from tests.utils.wadray import to_ray, to_wad
 
 TAX = Decimal("0.025")
 TAX_MAX = Decimal("0.05")

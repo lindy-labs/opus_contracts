@@ -23,19 +23,11 @@ from tests.constants import (
 )
 from tests.gate.rebasing_yang.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
-from tests.utils.types import YangConfig
-from tests.utils.utils import (
-    assert_equalish,
-    assert_event_emitted,
-    compile_code,
-    get_contract_code_with_addition,
-    get_contract_code_with_replacement,
-    set_block_timestamp,
-    str_to_felt,
-)
-from tests.utils.wadray import (
+from tests.utils.math import (
     WAD_DECIMALS,
     WAD_SCALE,
+    assert_equalish,
+    custom_error_margin,
     from_fixed_point,
     from_uint,
     from_wad,
@@ -43,6 +35,15 @@ from tests.utils.wadray import (
     to_ray,
     to_uint,
     to_wad,
+)
+from tests.utils.types import YangConfig
+from tests.utils.utils import (
+    assert_event_emitted,
+    compile_code,
+    get_contract_code_with_addition,
+    get_contract_code_with_replacement,
+    set_block_timestamp,
+    str_to_felt,
 )
 
 #

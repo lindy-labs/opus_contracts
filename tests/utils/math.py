@@ -1,7 +1,9 @@
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Union
 
 from tests.utils.types import Uint256, Uint256like
+
+CAIRO_PRIME = 2**251 + 17 * 2**192 + 1
 
 WAD_DECIMALS = 18
 RAY_DECIMALS = 27
@@ -11,6 +13,45 @@ WAD_SCALE = 10**WAD_DECIMALS
 RAY_SCALE = 10**RAY_DECIMALS
 WAD_RAY_DIFF = RAY_SCALE // WAD_SCALE
 WAD_RAY_BOUND = 2**125
+
+
+#
+# General
+#
+
+
+def signed_int_to_felt(a: int) -> int:
+    """Takes in integer value, returns input if positive, otherwise return CAIRO_PRIME + input"""
+    if a >= 0:
+        return a
+    return CAIRO_PRIME + a
+
+
+def custom_error_margin(negative_exp: int) -> Decimal:
+    return Decimal(f"1E-{negative_exp}")
+
+
+def assert_equalish(a: Decimal, b: Decimal, error=custom_error_margin(10)):
+    # Truncate inputs to the accepted error margin
+    # For example, comparing 0.0001 and 0.00020123 should pass with an error margin of 1E-4.
+    # Without rounding, it would not pass because 0.00010123 > 0.0001
+    a = a.quantize(error, rounding=ROUND_DOWN)
+    b = b.quantize(error, rounding=ROUND_DOWN)
+    assert abs(a - b) <= error
+
+
+def to_empiric(value: Union[int, float, Decimal]) -> int:
+    """
+    Empiric reports the pairs used in this test suite with 8 decimals.
+    This function converts a "regular" numeric value to an Empiric native
+    one, i.e. as if it was returned from Empiric.
+    """
+    return int(value * (10**8))
+
+
+#
+# Wadray functions
+#
 
 
 def to_uint(a: int) -> Uint256:

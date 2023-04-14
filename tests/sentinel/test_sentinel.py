@@ -12,9 +12,9 @@ from tests.constants import (
     WAD_RAY_OOB_VALUES,
 )
 from tests.roles import SentinelRoles
+from tests.utils.math import WAD_SCALE, from_uint, to_fixed_point, to_wad
 from tests.utils.types import YangConfig
 from tests.utils.utils import assert_event_emitted
-from tests.utils.wadray import WAD_SCALE, from_uint, to_fixed_point, to_wad
 
 
 @pytest.fixture

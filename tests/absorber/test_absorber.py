@@ -21,24 +21,10 @@ from tests.constants import (
 from tests.roles import AbsorberRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils.asyncio import get_token_balances, max_approve
-from tests.utils.types import YangConfig
-from tests.utils.utils import (
-    TIME_INTERVAL,
-    assert_equalish,
-    assert_event_emitted,
-    assert_event_not_emitted,
-    calculate_max_forge,
-    compile_code,
-    compile_contract,
-    create_feed,
-    custom_error_margin,
-    get_block_timestamp,
-    get_contract_code_with_addition,
-    get_contract_code_with_replacement,
-    set_block_timestamp,
-)
-from tests.utils.wadray import (
+from tests.utils.math import (
     RAY_SCALE,
+    assert_equalish,
+    custom_error_margin,
     from_fixed_point,
     from_ray,
     from_uint,
@@ -47,6 +33,20 @@ from tests.utils.wadray import (
     to_ray,
     to_uint,
     to_wad,
+)
+from tests.utils.types import YangConfig
+from tests.utils.utils import (
+    TIME_INTERVAL,
+    assert_event_emitted,
+    assert_event_not_emitted,
+    calculate_max_forge,
+    compile_code,
+    compile_contract,
+    create_feed,
+    get_block_timestamp,
+    get_contract_code_with_addition,
+    get_contract_code_with_replacement,
+    set_block_timestamp,
 )
 
 #

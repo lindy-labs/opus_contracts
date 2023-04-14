@@ -30,16 +30,17 @@ from tests.oracle.constants import (
 )
 from tests.roles import EmpiricRoles, ShrineRoles
 from tests.utils.asyncio import max_approve
-from tests.utils.utils import (
-    TIME_INTERVAL,
-    assert_event_emitted,
-    compile_contract,
-    set_block_timestamp,
+from tests.utils.math import (
+    RAY_PERCENT,
+    from_wad,
     signed_int_to_felt,
-    str_to_felt,
     to_empiric,
+    to_fixed_point,
+    to_ray,
+    to_uint,
+    to_wad,
 )
-from tests.utils.wadray import RAY_PERCENT, from_wad, to_fixed_point, to_ray, to_uint, to_wad
+from tests.utils.utils import TIME_INTERVAL, assert_event_emitted, compile_contract, set_block_timestamp, str_to_felt
 
 BTC_EMPIRIC_ID = str_to_felt("BTC/USD")
 BTC_INIT_PRICE = 19520

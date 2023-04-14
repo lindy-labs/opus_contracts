@@ -41,6 +41,17 @@ from tests.shrine.constants import (
     YIN_SYMBOL,
 )
 from tests.utils.asyncio import max_approve
+from tests.utils.math import (
+    RAY_PERCENT,
+    WAD_DECIMALS,
+    WAD_SCALE,
+    from_wad,
+    to_empiric,
+    to_fixed_point,
+    to_ray,
+    to_uint,
+    to_wad,
+)
 from tests.utils.types import Uint256, YangConfig
 from tests.utils.utils import (
     TIME_INTERVAL,
@@ -53,9 +64,7 @@ from tests.utils.utils import (
     get_contract_code_with_replacement,
     set_block_timestamp,
     str_to_felt,
-    to_empiric,
 )
-from tests.utils.wadray import RAY_PERCENT, WAD_DECIMALS, WAD_SCALE, from_wad, to_fixed_point, to_ray, to_uint, to_wad
 
 MRACParameters = namedtuple(
     "MRACParameters",

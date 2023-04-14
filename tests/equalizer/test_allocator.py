@@ -5,8 +5,8 @@ from starkware.starkware_utils.error_handling import StarkException
 from tests.constants import BAD_GUY
 from tests.equalizer.constants import *  # noqa: F403
 from tests.roles import AllocatorRoles
+from tests.utils.math import RAY_SCALE
 from tests.utils.utils import assert_event_emitted
-from tests.utils.wadray import RAY_SCALE
 
 
 @pytest.mark.asyncio

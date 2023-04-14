@@ -26,9 +26,21 @@ from tests.constants import (
     ZERO_ADDRESS,
 )
 from tests.shrine.constants import *  # noqa: F403
+from tests.utils.math import (
+    RAY_PERCENT,
+    RAY_SCALE,
+    WAD_RAY_BOUND,
+    WAD_SCALE,
+    assert_equalish,
+    from_ray,
+    from_uint,
+    from_wad,
+    to_ray,
+    to_uint,
+    to_wad,
+)
 from tests.utils.utils import (
     TIME_INTERVAL,
-    assert_equalish,
     assert_event_emitted,
     calculate_max_forge,
     calculate_trove_threshold_and_value,
@@ -38,18 +50,6 @@ from tests.utils.utils import (
     price_bounds,
     set_block_timestamp,
     str_to_felt,
-)
-from tests.utils.wadray import (
-    RAY_PERCENT,
-    RAY_SCALE,
-    WAD_RAY_BOUND,
-    WAD_SCALE,
-    from_ray,
-    from_uint,
-    from_wad,
-    to_ray,
-    to_uint,
-    to_wad,
 )
 
 #

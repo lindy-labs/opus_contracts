@@ -1,8 +1,8 @@
 from decimal import Decimal
 
 from tests.roles import ShrineRoles
+from tests.utils.math import RAY_PERCENT, RAY_SCALE, to_wad
 from tests.utils.utils import str_to_felt
-from tests.utils.wadray import RAY_PERCENT, RAY_SCALE, to_wad
 
 YIN_NAME = str_to_felt("Cash")
 YIN_SYMBOL = str_to_felt("CASH")
