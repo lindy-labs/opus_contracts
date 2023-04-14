@@ -2,16 +2,9 @@ import pytest
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import (
-    MAX_UINT256,
-    SHRINE_OWNER,
-    SHRINE_ROLE_FOR_FLASHMINT,
-    assert_event_emitted,
-    compile_contract,
-    from_uint,
-    str_to_felt,
-    to_uint,
-)
+from tests.constants import MAX_UINT256, SHRINE_OWNER, SHRINE_ROLE_FOR_FLASHMINT
+from tests.utils.utils import assert_event_emitted, compile_contract, str_to_felt
+from tests.utils.wadray import from_uint, to_uint
 
 
 @pytest.fixture
