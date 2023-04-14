@@ -6,9 +6,7 @@ from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.gate.rebasing_yang.constants import *  # noqa: F403
-from tests.roles import GateRoles, ShrineRoles
-from tests.utils import (
+from tests.constants import (
     BAD_GUY,
     DEPLOYMENT_TIMESTAMP,
     FALSE,
@@ -21,20 +19,26 @@ from tests.utils import (
     TROVE_1,
     TROVE_2,
     TRUE,
-    WAD_DECIMALS,
-    WAD_SCALE,
     ZERO_ADDRESS,
-    YangConfig,
+)
+from tests.gate.rebasing_yang.constants import *  # noqa: F403
+from tests.roles import GateRoles, ShrineRoles
+from tests.utils.types import YangConfig
+from tests.utils.utils import (
     assert_equalish,
     assert_event_emitted,
     compile_code,
-    from_fixed_point,
-    from_uint,
-    from_wad,
     get_contract_code_with_addition,
     get_contract_code_with_replacement,
     set_block_timestamp,
     str_to_felt,
+)
+from tests.utils.wadray import (
+    WAD_DECIMALS,
+    WAD_SCALE,
+    from_fixed_point,
+    from_uint,
+    from_wad,
     to_fixed_point,
     to_ray,
     to_uint,
