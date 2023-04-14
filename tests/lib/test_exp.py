@@ -15,7 +15,8 @@ from numpy import exp
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import assert_equalish, compile_contract, from_wad, signed_int_to_felt, to_wad
+from tests.utils.utils import assert_equalish, compile_contract, signed_int_to_felt
+from tests.utils.wadray import from_wad, to_wad
 
 # Lower bound of the upper range
 UPPER_RANGE_LB = 10

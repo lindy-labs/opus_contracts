@@ -8,18 +8,16 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import (
-    CAIRO_PRIME,
-    RANGE_CHECK_BOUND,
+from tests.constants import RANGE_CHECK_BOUND
+from tests.utils.types import Uint256
+from tests.utils.utils import CAIRO_PRIME, compile_contract, signed_int_to_felt
+from tests.utils.wadray import (
     RAY_SCALE,
     WAD_DECIMALS,
     WAD_RAY_BOUND,
     WAD_RAY_DIFF,
     WAD_SCALE,
-    Uint256,
-    compile_contract,
     ray_to_wad,
-    signed_int_to_felt,
     to_fixed_point,
     to_ray,
     to_uint,

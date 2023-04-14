@@ -7,7 +7,8 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import BAD_GUY, FALSE, TRUE, assert_event_emitted, compile_contract, str_to_felt
+from tests.constants import BAD_GUY, FALSE, TRUE
+from tests.utils.utils import assert_event_emitted, compile_contract, str_to_felt
 
 ACC_OWNER = str_to_felt("acc owner")
 NEW_ACC_OWNER = str_to_felt("new acc owner")

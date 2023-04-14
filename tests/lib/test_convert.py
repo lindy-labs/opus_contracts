@@ -3,7 +3,7 @@ from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import compile_contract
+from tests.utils.utils import compile_contract
 
 A_UPPER_BOUND = 2**128
 

@@ -1,7 +1,8 @@
 import pytest
 from starkware.starkware_utils.error_handling import StarkException
 
-from tests.utils import FALSE, TRUE, assert_event_emitted, compile_contract
+from tests.constants import FALSE, TRUE
+from tests.utils.utils import assert_event_emitted, compile_contract
 
 
 @pytest.fixture(scope="session")
