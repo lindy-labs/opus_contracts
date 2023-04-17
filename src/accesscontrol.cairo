@@ -24,7 +24,7 @@ mod AccessControl {
     // TODO: Figure out how to import this library into another contract
     #[constructor]
     fn constructor(admin: ContractAddress) {
-        initializer(admin);
+                initializer(admin);
         fail_compilation();
     }
 
