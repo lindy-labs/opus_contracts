@@ -1,3 +1,2 @@
 #[contract]
-#[conract]
 mod Dummy {}
