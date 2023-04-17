@@ -2,7 +2,7 @@
 .SILENT:
 
 INSTALLATION_FOLDER=./cairo
-SOURCE_FOLDER=./contracts-1.0
+SOURCE_FOLDER=./src
 
 install:
 	$(MAKE) initialize-cairo
@@ -26,7 +26,7 @@ build:
 	cargo build --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml
 
 compile:
-	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin starknet-compile -- --allowed-libfuncs-list-name experimental_v0.1.0 contracts-1.0/ > /dev/null
+	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin starknet-compile -- --allowed-libfuncs-list-name experimental_v0.1.0 $(SOURCE_FOLDER) > /dev/null
 
 test:
 	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-test -- --starknet --path $(SOURCE_FOLDER)
