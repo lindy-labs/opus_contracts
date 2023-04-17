@@ -28,9 +28,6 @@ build:
 compile:
 	find src -type f -name '*.cairo' ! -name 'lib.cairo' -exec  cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin starknet-compile -- {} > /dev/null \;
 
-test:
-	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-test -- --starknet --path $(SOURCE_FOLDER)
-
 format:
 	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --recursive $(SOURCE_FOLDER) --print-parsing-errors
 
