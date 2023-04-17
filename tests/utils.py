@@ -1,6 +1,7 @@
 """Utilities for testing Cairo contracts."""
 import os
 from collections import namedtuple
+from datetime import datetime
 from decimal import ROUND_DOWN, Decimal
 from functools import cache
 from random import seed, uniform
@@ -11,11 +12,12 @@ from starkware.starknet.business_logic.execution.objects import Event
 from starkware.starknet.business_logic.state.state_api_objects import BlockInfo
 from starkware.starknet.compiler.compile import compile_starknet_codes, compile_starknet_files
 from starkware.starknet.public.abi import get_selector_from_name
-from starkware.starknet.services.api.contract_class import ContractClass
+from starkware.starknet.services.api.contract_class.contract_class import ContractClass
 from starkware.starknet.services.api.feeder_gateway.response_objects import FunctionInvocation
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.objects import StarknetCallInfo
 from starkware.starknet.testing.starknet import Starknet
+from starkware.starkware_utils.error_handling import StarkException
 
 from tests.roles import GateRoles, SentinelRoles, ShrineRoles
 
@@ -56,7 +58,9 @@ WEIGHTS = {
 }
 
 Uint256 = namedtuple("Uint256", "low high")
-YangConfig = namedtuple("YangConfig", "contract_address decimals ceiling threshold price_wad gate_address empiric_id")
+YangConfig = namedtuple(
+    "YangConfig", "contract_address decimals ceiling threshold price_wad rate gate_address empiric_id"
+)
 
 Uint256like = Union[Uint256, tuple[int, int]]
 Addressable = Union[int, StarknetContract]
@@ -95,6 +99,7 @@ BAD_GUY = str_to_felt("bad guy")
 GATE_ROLE_FOR_SENTINEL = GateRoles.ENTER + GateRoles.EXIT
 SENTINEL_ROLE_FOR_ABBOT = SentinelRoles.ENTER + SentinelRoles.EXIT
 SHRINE_ROLE_FOR_PURGER = ShrineRoles.MELT + ShrineRoles.SEIZE + ShrineRoles.REDISTRIBUTE
+SHRINE_ROLE_FOR_FLASHMINT = ShrineRoles.INJECT + ShrineRoles.EJECT
 
 # Troves
 TROVE_1 = 1
@@ -112,6 +117,9 @@ TIME_INTERVAL_DIV_YEAR = Decimal("0.00005707762557077625")
 
 # Yin constants
 INFINITE_YIN_ALLOWANCE = 2**256 - 1
+
+# Initial deposit amount to Gate to prevent first depositor front-running
+INITIAL_ASSET_DEPOSIT_AMT = 10**3
 
 
 def as_address(value: Addressable) -> int:
@@ -160,6 +168,11 @@ def assert_event_emitted(
         assert Event(from_address=from_address, keys=[key], data=data) in tx_exec_info.raw_events
     else:  # data=None
         assert any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
+
+
+def assert_event_not_emitted(tx_exec_info, from_address, name):
+    key = get_selector_from_name(name)
+    assert not any([e for e in tx_exec_info.raw_events if e.from_address == from_address and key in e.keys])
 
 
 def here() -> str:
@@ -346,6 +359,13 @@ def get_interval(block_timestamp: int) -> int:
     return block_timestamp // TIME_INTERVAL
 
 
+# Note that timestamp (and timestamp) cannot start at 0 because:
+# 1. Initial price and multiplier are assigned to current interval - 1
+# 2. Cooldown period in absorber will be automatically triggered
+DEPLOYMENT_TIMESTAMP = int(datetime.utcnow().timestamp())
+DEPLOYMENT_INTERVAL = get_interval(DEPLOYMENT_TIMESTAMP)
+
+
 #
 # Shrine helper functions
 #
@@ -440,17 +460,14 @@ async def max_approve(token: StarknetContract, owner_addr: int, spender_addr: in
 
 
 async def get_token_balances(
-    tokens_info: tuple[YangConfig],
     tokens: tuple[StarknetContract],
     addresses: list[int],
-) -> list[list[int]]:
+) -> list[list[Decimal]]:
     """
     Helper function to fetch the token balances for a list of addreses.
 
     Arguments
     ---------
-    tokens_info: tuple[YangConfig]
-        Ordered tuple of YangConfig for the tokens
     tokens: tuple[StarknetContract]
         Ordered tuple of token contract instances for the tokens
     addresses: list[int]
@@ -458,19 +475,46 @@ async def get_token_balances(
 
     Returns
     -------
-    An ordered 2D list of token balances for each address.
+    An ordered 2D list of token balances in Decimal for each address.
     """
     ret = []
     for address in addresses:
         address_bals = []
-        for token, token_info in zip(tokens, tokens_info):
+        for token in tokens:
+            decimals = (await token.decimals().execute()).result.decimals
             bal = from_fixed_point(
                 from_uint((await token.balanceOf(address).execute()).result.balance),
-                token_info.decimals,
+                decimals,
             )
             address_bals.append(bal)
 
         ret.append(address_bals)
+
+    return ret
+
+
+async def get_yangs_total(
+    shrine: StarknetContract,
+    tokens_info: tuple[YangConfig],
+) -> list[list[int]]:
+    """
+    Helper function to fetch the yang balances.
+
+    Arguments
+    ---------
+    shrine: StarknetContract
+        Deployed instance of Shrine.
+    tokens_info: tuple[YangConfig]
+        Ordered tuple of YangConfig
+
+    Returns
+    -------
+    An ordered list of total yang in wad for each asset.
+    """
+    ret = []
+    for token_info in tokens_info:
+        total = (await shrine.get_yang_total(token_info.contract_address).execute()).result.total
+        ret.append(total)
 
     return ret
 
@@ -511,3 +555,11 @@ def estimate_gas_inner(call_info: FunctionInvocation):
         sum_gas += estimate_gas_inner(call)
 
     return sum_gas
+
+
+def is_starknet_error(err, *args):
+    """
+    Filter function to be passed to `flaky` to determine if a failed test should be retried.
+    Returns True if the failure is due to a `StarkException`.
+    """
+    return issubclass(err[0], StarkException)

@@ -1,18 +1,20 @@
 from decimal import ROUND_DOWN, Decimal
 
 import pytest
-from flaky import flaky
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from starkware.starknet.testing.contract import StarknetContract
 from starkware.starknet.testing.starknet import Starknet
 from starkware.starkware_utils.error_handling import StarkException
 
+from tests.absorber.constants import REMOVAL_LIMIT_RAY
 from tests.purger.constants import *  # noqa: F403
-from tests.roles import EmpiricRoles, SentinelRoles
+from tests.roles import AbsorberRoles, EmpiricRoles, SentinelRoles
 from tests.shrine.constants import FEED_LEN, MAX_PRICE_CHANGE, MULTIPLIER_FEED
 from tests.utils import (
     ABSORBER_OWNER,
+    DEPLOYMENT_INTERVAL,
+    DEPLOYMENT_TIMESTAMP,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     FALSE,
@@ -44,6 +46,7 @@ from tests.utils import (
     from_wad,
     get_block_timestamp,
     get_contract_code_with_replacement,
+    is_starknet_error,
     max_approve,
     price_bounds,
     set_block_timestamp,
@@ -58,6 +61,8 @@ from tests.utils import (
 #
 
 TROVES = (TROVE_1, TROVE_2, TROVE_3)
+
+COMPENSATION_PCT = 3
 
 #
 # Helpers
@@ -172,9 +177,8 @@ async def shrine_feeds(starknet, sentinel_with_yangs, shrine, yangs) -> list[lis
     feeds = [create_feed(from_wad(yang.price_wad), FEED_LEN, MAX_PRICE_CHANGE) for yang in yangs]
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
-    # Skipping over the first element in `feeds` since the start price is set in `add_yang`
-    for i in range(1, FEED_LEN):
-        timestamp = i * TIME_INTERVAL
+    for i in range(FEED_LEN):
+        timestamp = DEPLOYMENT_TIMESTAMP + i * TIME_INTERVAL
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(yangs)):
@@ -268,6 +272,7 @@ async def absorber(starknet, shrine, sentinel):
             ABSORBER_OWNER,
             shrine.contract_address,
             sentinel.contract_address,
+            REMOVAL_LIMIT_RAY,
         ],
     )
 
@@ -300,8 +305,11 @@ async def purger(starknet, shrine, sentinel, empiric, absorber) -> StarknetContr
     # Approve purger to call `update_prices` in Empiric
     await empiric.grant_role(EmpiricRoles.UPDATE_PRICES, purger.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
-    # Set purger in absorber
+    # Set purger in absorber and setup roles
     await absorber.set_purger(purger.contract_address).execute(caller_address=ABSORBER_OWNER)
+    await absorber.grant_role(AbsorberRoles.COMPENSATE | AbsorberRoles.UPDATE, purger.contract_address).execute(
+        caller_address=ABSORBER_OWNER
+    )
 
     return purger
 
@@ -328,23 +336,33 @@ async def test_shrine_setup(shrine, shrine_feeds, yangs):
     for i in range(len(yangs)):
         yang_address = yangs[i].contract_address
 
-        start_price, start_cumulative_price = (await shrine.get_yang_price(yang_address, 0).execute()).result
+        start_price, _ = (await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL).execute()).result
         assert start_price == yangs[i].price_wad
-        assert start_cumulative_price == yangs[i].price_wad
 
-        end_price, end_cumulative_price = (await shrine.get_yang_price(yang_address, FEED_LEN - 1).execute()).result
+        end_price, end_cumulative_price = (
+            await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL + FEED_LEN - 1).execute()
+        ).result
         lo, hi = price_bounds(start_price, FEED_LEN, MAX_PRICE_CHANGE)
         assert lo <= end_price <= hi
-        assert end_cumulative_price == sum(shrine_feeds[i])
+
+        _, start_cumulative_price = (
+            await shrine.get_yang_price(yang_address, DEPLOYMENT_INTERVAL - 1).execute()
+        ).result
+        cumulative_price_diff = end_cumulative_price - start_cumulative_price
+        assert cumulative_price_diff == sum(shrine_feeds[i])
 
     # Check multiplier feed
-    start_multiplier, start_cumulative_multiplier = (await shrine.get_multiplier(0).execute()).result
+    start_multiplier, _ = (await shrine.get_multiplier(DEPLOYMENT_INTERVAL).execute()).result
     assert start_multiplier == RAY_SCALE
-    assert start_cumulative_multiplier == RAY_SCALE
 
-    end_multiplier, end_cumulative_multiplier = (await shrine.get_multiplier(FEED_LEN - 1).execute()).result
+    end_multiplier, end_cumulative_multiplier = (
+        await shrine.get_multiplier(DEPLOYMENT_INTERVAL + FEED_LEN - 1).execute()
+    ).result
     assert end_multiplier != 0
-    assert end_cumulative_multiplier == RAY_SCALE * (FEED_LEN)
+
+    _, start_cumulative_multiplier = (await shrine.get_multiplier(DEPLOYMENT_INTERVAL - 1).execute()).result
+    cumulative_multiplier_diff = end_cumulative_multiplier - start_cumulative_multiplier
+    assert cumulative_multiplier_diff == RAY_SCALE * (FEED_LEN)
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs")
@@ -411,7 +429,7 @@ async def test_penalty_fuzzing(purger, threshold, ltv_offset):
     assert_equalish(penalty, expected_penalty)
 
 
-@flaky
+@pytest.mark.flaky(rerun_filter=is_starknet_error)
 @pytest.mark.parametrize("price_change", [Decimal("-0.1"), Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
 @pytest.mark.parametrize(
     "max_close_multiplier", [Decimal("0.001"), Decimal("0.01"), Decimal("0.1"), Decimal("1"), Decimal("1.01")]
@@ -515,7 +533,9 @@ async def test_liquidate_pass(
 
     actual_freed_assets = liquidate.result.freed_assets_amt
     for actual, yang in zip(actual_freed_assets, yangs):
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
 
@@ -538,9 +558,11 @@ async def test_liquidate_pass(
     assert_equalish(after_trove_value, expected_after_trove_value)
     assert_equalish(after_trove_debt, expected_after_trove_debt)
 
+    # Check collateral tokens balance of searcher
     for token, yang in zip(yang_tokens, yangs):
-        # Check collateral tokens balance of searcher
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2 - 1)
         after_searcher_bal = from_fixed_point(
             from_uint((await token.balanceOf(SEARCHER).execute()).result.balance), yang.decimals
         )
@@ -663,6 +685,9 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
     assert absorb.result.yangs == expected_yang_addresses
 
     actual_freed_assets = absorb.result.freed_assets_amt
+    compensation_amts = [(a // 100) * COMPENSATION_PCT for a in actual_freed_assets]
+    gained_amts = [freed - comp for (freed, comp) in zip(actual_freed_assets, compensation_amts)]
+
     for actual, yang in zip(actual_freed_assets, yangs):
         error_margin = custom_error_margin(yang.decimals)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
@@ -681,7 +706,14 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
         absorb,
         absorber.contract_address,
         "Gain",
-        lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+        lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *gained_amts],
+    )
+
+    assert_event_emitted(
+        absorb,
+        absorber.contract_address,
+        "Compensate",
+        [SEARCHER, len(yangs), *expected_yang_addresses, len(yangs), *compensation_amts],
     )
 
     # Check that LTV is 0 after all debt is repaid
@@ -691,7 +723,7 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
 
     assert after_trove_ltv == 0
 
-    for token, yang in zip(yang_tokens, yangs):
+    for token, yang, gain, compensation in zip(yang_tokens, yangs, gained_amts, compensation_amts):
         # Check collateral tokens balance of absorber
         error_margin = custom_error_margin(yang.decimals)
         after_absorber_bal = from_fixed_point(
@@ -699,7 +731,12 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
         )
         before_absorber_bal = yangs_info[yang.contract_address]["before_absorber_bal"]
         expected_freed_asset = yangs_info[yang.contract_address]["expected_freed_asset"]
-        assert_equalish(after_absorber_bal, before_absorber_bal + expected_freed_asset, error_margin)
+        compensation_amount = from_fixed_point(compensation, yang.decimals)
+        assert_equalish(
+            after_absorber_bal, before_absorber_bal + expected_freed_asset - compensation_amount, error_margin
+        )
+        gain_amount = from_fixed_point(gain, yang.decimals)
+        assert_equalish(after_absorber_bal, gain_amount, error_margin)
 
         # Get yang balance of trove
         after_trove_yang = from_wad(
@@ -711,10 +748,11 @@ async def test_full_absorb_pass(starknet, shrine, sentinel, absorber, purger, ya
     assert after_trove_debt == 0
 
 
-@flaky
 # Percentage of trove's debt that can be covered by the stability pool
 @pytest.mark.parametrize("percentage_absorbed", [Decimal("0"), Decimal("0.5"), Decimal("0.9")])
-@pytest.mark.parametrize("price_change", [Decimal("-0.2"), Decimal("-0.5"), Decimal("-0.9")])
+@pytest.mark.parametrize(
+    "price_change", [Decimal("-0.2"), Decimal("-0.4"), Decimal("-0.5"), Decimal("-0.7"), Decimal("-0.9")]
+)
 @pytest.mark.usefixtures("sentinel_with_yangs", "forged_troves", "prefunded_absorber_provider")
 @pytest.mark.asyncio
 async def test_partial_absorb_with_redistribution_pass(
@@ -819,7 +857,7 @@ async def test_partial_absorb_with_redistribution_pass(
 
         expected_freed_asset = freed_percentage * from_fixed_point(before_trove_asset_bal, yang.decimals)
 
-        before_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
+        before_gate_yang = from_wad((await shrine.get_yang_total(yang.contract_address).execute()).result.total)
         before_gate_asset_bal = from_fixed_point(
             from_uint((await token.balanceOf(yang.gate_address).execute()).result.balance), yang.decimals
         )
@@ -847,8 +885,13 @@ async def test_partial_absorb_with_redistribution_pass(
     assert partial_absorb.result.yangs == expected_yang_addresses
 
     actual_freed_assets = partial_absorb.result.freed_assets_amt
+    compensation_amts = [(a // 100) * COMPENSATION_PCT for a in actual_freed_assets]
+    gained_amts = [freed - comp for (freed, comp) in zip(actual_freed_assets, compensation_amts)]
+
     for actual, yang in zip(actual_freed_assets, yangs):
-        error_margin = custom_error_margin(yang.decimals)
+        # Relax error margin by half due to loss of precision from fixed point arithmetic
+        # as a result of the minimum initial deposit in `Sentinel.add_yang`
+        error_margin = custom_error_margin(yang.decimals // 2)
         expected = yangs_info[yang.contract_address]["expected_freed_asset"]
         assert_equalish(from_fixed_point(actual, yang.decimals), expected, error_margin)
 
@@ -884,7 +927,7 @@ async def test_partial_absorb_with_redistribution_pass(
         assert_event_emitted(
             partial_absorb,
             shrine.contract_address,
-            "YangUpdated",
+            "YangTotalUpdated",
             lambda d: d[0] == yang.contract_address,
         )
 
@@ -909,7 +952,14 @@ async def test_partial_absorb_with_redistribution_pass(
             partial_absorb,
             absorber.contract_address,
             "Gain",
-            lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *actual_freed_assets],
+            lambda d: d[:8] == [len(yangs), *expected_yang_addresses, len(yangs), *gained_amts],
+        )
+
+        assert_event_emitted(
+            partial_absorb,
+            absorber.contract_address,
+            "Compensate",
+            [SEARCHER, len(yangs), *expected_yang_addresses, len(yangs), *compensation_amts],
         )
 
     assert (await shrine.get_redistributions_count().execute()).result.count == expected_redistribution_id
@@ -931,7 +981,7 @@ async def test_partial_absorb_with_redistribution_pass(
     # Check that all values of liquidated trove are set to zero
     assert all(i == 0 for i in after_troves_info[liquidated_trove].values()) is True
 
-    for token, yang, gate in zip(yang_tokens, yangs, yang_gates):
+    for token, yang, gate, gain, compensation in zip(yang_tokens, yangs, yang_gates, gained_amts, compensation_amts):
         # Relax the error margin slightly due to python calculations in decimal
         # vs fixed point calculations in Cairo
         error_margin = custom_error_margin(yang.decimals) * 2
@@ -942,7 +992,12 @@ async def test_partial_absorb_with_redistribution_pass(
         )
         before_absorber_bal = yangs_info[yang.contract_address]["before_absorber_bal"]
         expected_freed_asset = yangs_info[yang.contract_address]["expected_freed_asset"]
-        assert_equalish(after_absorber_bal, before_absorber_bal + expected_freed_asset, error_margin)
+        compensation_amount = from_fixed_point(compensation, yang.decimals)
+        assert_equalish(
+            after_absorber_bal, before_absorber_bal + expected_freed_asset - compensation_amount, error_margin
+        )
+        gain_amount = from_fixed_point(gain, yang.decimals)
+        assert_equalish(after_absorber_bal, gain_amount, error_margin)
 
         # Shrine: Yang balance of trove should be zero
         after_trove_yang = from_wad(
@@ -965,7 +1020,7 @@ async def test_partial_absorb_with_redistribution_pass(
         before_trove_yang = from_wad(yangs_info[yang.contract_address]["before_trove_yang_wad"])
         expected_yang = before_gate_yang - before_trove_yang
 
-        after_gate_yang = from_wad((await shrine.get_yang(yang.contract_address).execute()).result.yang.total)
+        after_gate_yang = from_wad((await shrine.get_yang_total(yang.contract_address).execute()).result.total)
         assert_equalish(after_gate_yang, expected_yang)
 
         # Shrine: Yang price should have increased due to rebasing
@@ -1004,10 +1059,8 @@ async def test_partial_absorb_with_redistribution_pass(
         expected_debt = after_troves_info[trove]["expected_trove_debt"]
         assert_equalish(after_trove_debt, expected_debt)
 
-        before_trove_ltv = before_troves_info[trove]["before_trove_ltv"]
-        after_trove_ltv = after_troves_info[trove]["after_trove_ltv"]
-        # LTV of other troves should be same or worse off after redistribution
-        assert after_trove_ltv >= before_trove_ltv
+        # LTV may worsen or improve regardless of the troves' LTV.
+        # Therefore, we do not make any assertions.
 
     assert (await shrine.get_trove_redistribution_id(TROVE_2).execute()).result.redistribution_id == 0
     await shrine.melt(TROVE2_OWNER, TROVE_2, 0).execute(caller_address=SHRINE_OWNER)

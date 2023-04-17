@@ -10,7 +10,6 @@ from contracts.shrine.interface import IShrine
 from contracts.lib.aliases import address, ufelt, wad
 from contracts.lib.interfaces import IERC20
 from contracts.lib.pow import pow10
-from contracts.lib.types import Yang
 from contracts.lib.wad_ray import WadRay
 
 //
@@ -58,8 +57,8 @@ namespace Gate {
     func get_total_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> wad {
         let shrine: address = get_shrine();
         let asset: address = get_asset();
-        let (yang_info: Yang) = IShrine.get_yang(contract_address=shrine, yang=asset);
-        return yang_info.total;
+        let (yang_total: wad) = IShrine.get_yang_total(contract_address=shrine, yang=asset);
+        return yang_total;
     }
 
     func get_asset_amt_per_yang{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(

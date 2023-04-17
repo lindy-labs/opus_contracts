@@ -10,12 +10,12 @@ from tests.gate.rebasing_yang.constants import *  # noqa: F403
 from tests.roles import GateRoles, ShrineRoles
 from tests.utils import (
     BAD_GUY,
+    DEPLOYMENT_TIMESTAMP,
     FALSE,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
     MAX_UINT256,
     SHRINE_OWNER,
-    TIME_INTERVAL,
     TROVE1_OWNER,
     TROVE2_OWNER,
     TROVE_1,
@@ -28,11 +28,13 @@ from tests.utils import (
     YangConfig,
     assert_equalish,
     assert_event_emitted,
-    compile_contract,
+    compile_code,
     custom_error_margin,
     from_fixed_point,
     from_uint,
     from_wad,
+    get_contract_code_with_addition,
+    get_contract_code_with_replacement,
     set_block_timestamp,
     str_to_felt,
     to_fixed_point,
@@ -104,6 +106,56 @@ def get_assets_from_yang(total_yang: int, total_assets: int, yang_amt: int, deci
 
 
 @pytest.fixture
+async def taxable_gate_contract() -> StarknetContract:
+    """
+    Helper fixture to modify the taxable gate contract with a custom `compound`
+    function for testing.
+    """
+    taxable_gate_code = get_contract_code_with_replacement(
+        "contracts/gate/rebasing_yang/gate_taxable.cairo",
+        {
+            """
+func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    return ();
+}
+""": ""
+        },
+    )
+
+    # Function to simulate compounding by minting the underlying token
+    additional_code = """
+@contract_interface
+namespace MockRebasingToken {
+    func mint(recipient: felt, amount: Uint256) {
+    }
+}
+
+const REBASE_RATIO = 10 * WadRay.RAY_PERCENT;  // 10%
+
+func compound{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    // Get asset and gate addresses
+    let asset: address = Gate.get_asset();
+    let gate: address = get_contract_address();
+
+    // Calculate rebase amount based on 10% of current gate's balance
+    let current_assets: ufelt = Gate.get_total_assets();
+    let rebase_amount: ufelt = WadRay.rmul(current_assets, REBASE_RATIO);
+    let (rebase_amount_uint: Uint256) = WadRay.to_uint(rebase_amount);
+
+    // Minting tokens
+    MockRebasingToken.mint(contract_address=asset, recipient=gate, amount=rebase_amount_uint);
+
+    return ();
+}
+    """
+
+    taxable_gate_code = get_contract_code_with_addition(taxable_gate_code, additional_code)
+    taxable_gate_contract = compile_code(taxable_gate_code)
+
+    return taxable_gate_contract
+
+
+@pytest.fixture
 async def funded_users(steth_token, wbtc_token):
     steth_token_decimals = (await steth_token.decimals().execute()).result.decimals
     steth_inital_amt = to_fixed_point(INITIAL_AMT, steth_token_decimals)
@@ -118,17 +170,15 @@ async def funded_users(steth_token, wbtc_token):
 
 @pytest.fixture
 async def steth_gate_taxable_info(
-    starknet, shrine, steth_token, steth_yang: YangConfig
+    starknet: Starknet, shrine, taxable_gate_contract, steth_token, steth_yang: YangConfig
 ) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
 
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
-    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
-
     gate = await starknet.deploy(
-        contract_class=contract,
+        contract_class=taxable_gate_contract,
         constructor_calldata=[
             GATE_OWNER,
             shrine.contract_address,
@@ -157,17 +207,15 @@ async def steth_gate_info(
 
 @pytest.fixture
 async def wbtc_gate_taxable_info(
-    starknet, shrine, wbtc_token, wbtc_yang: YangConfig
+    starknet: Starknet, shrine, taxable_gate_contract, wbtc_token, wbtc_yang: YangConfig
 ) -> tuple[StarknetContract, int, StarknetContract]:
     """
     Deploys an instance of the Gate module with autocompounding and tax.
 
     Returns a tuple of the token contract instance, the token decimals and the gate contract instance.
     """
-    contract = compile_contract("tests/gate/rebasing_yang/test_gate_taxable.cairo")
-
     gate = await starknet.deploy(
-        contract_class=contract,
+        contract_class=taxable_gate_contract,
         constructor_calldata=[
             GATE_OWNER,
             shrine.contract_address,
@@ -204,23 +252,23 @@ async def shrine_authed(starknet: Starknet, shrine, steth_token, wbtc_token) -> 
     role_value = ShrineRoles.DEPOSIT + ShrineRoles.WITHDRAW
     await shrine.grant_role(role_value, MOCK_ABBOT_WITH_SENTINEL).execute(caller_address=SHRINE_OWNER)
 
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
 
     # Add steth_token as Yang
     await shrine.add_yang(
         steth_token.contract_address,
-        to_wad(1000),
         to_ray(Decimal("0.8")),
         to_wad(1000),
+        to_ray(Decimal("0.02")),
+        0,
     ).execute(caller_address=SHRINE_OWNER)
 
     await shrine.add_yang(
         wbtc_token.contract_address,
-        to_wad(1000),
         to_ray(Decimal("0.8")),
         to_wad(10_000),
+        to_ray(Decimal("0.01")),
+        0,
     ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
@@ -908,7 +956,7 @@ async def test_kill(shrine_authed, gate_info):
     assert after_gate_yang == before_gate_yang - withdraw_yang_amt
 
 
-@pytest.mark.usefixtures("shrine_authed")
+@pytest.mark.usefixtures("shrine_authed", "funded_users")
 @pytest.mark.parametrize(
     "gate_info",
     ["steth_gate_info", "steth_gate_taxable_info", "wbtc_gate_info", "wbtc_gate_taxable_info"],
@@ -1018,12 +1066,10 @@ async def test_zero_enter_exit(shrine_authed, gate_info, fn):
 
 
 @pytest.mark.asyncio
-async def test_gate_constructor_invalid_tax(shrine, starknet, steth_token):
-    contract = compile_contract("contracts/gate/rebasing_yang/gate_taxable.cairo")
-
+async def test_gate_constructor_invalid_tax(starknet: Starknet, shrine, taxable_gate_contract, steth_token):
     with pytest.raises(StarkException):
         await starknet.deploy(
-            contract_class=contract,
+            contract_class=taxable_gate_contract,
             constructor_calldata=[
                 MOCK_ABBOT_WITH_SENTINEL,
                 shrine.contract_address,

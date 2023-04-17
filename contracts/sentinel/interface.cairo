@@ -19,6 +19,9 @@ namespace ISentinel {
     func get_yang(idx: ufelt) -> (yang: address) {
     }
 
+    func get_yang_asset_max(yang: address) -> (max: ufelt) {
+    }
+
     func get_asset_amt_per_yang(yang: address) -> (amt: wad) {
     }
 
@@ -35,6 +38,9 @@ namespace ISentinel {
     func add_yang(
         yang: address, yang_max: wad, yang_threshold: ray, yang_price: wad, gate: address
     ) {
+    }
+
+    func set_yang_asset_max(yang: address, new_asset_max: ufelt) {
     }
 
     func enter(yang: address, user: address, trove_id: ufelt, asset_amt: ufelt) -> (yang_amt: wad) {

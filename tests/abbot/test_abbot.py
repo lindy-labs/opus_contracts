@@ -4,6 +4,8 @@ from starkware.starkware_utils.error_handling import StarkException
 
 from tests.abbot.constants import *  # noqa: F403
 from tests.utils import (
+    DEPLOYMENT_INTERVAL,
+    SENTINEL_OWNER,
     SHRINE_OWNER,
     STARKNET_ADDR,
     TROVE1_OWNER,
@@ -13,6 +15,7 @@ from tests.utils import (
     YangConfig,
     assert_event_emitted,
     from_uint,
+    get_yangs_total,
     str_to_felt,
     to_uint,
     to_wad,
@@ -38,7 +41,7 @@ async def shrine(shrine_deploy) -> StarknetContract:
 @pytest.fixture
 def shitcoin_yang(shitcoin) -> YangConfig:
     empiric_id = str_to_felt("SHIT/USD")
-    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0, empiric_id)
+    return YangConfig(shitcoin.contract_address, WAD_DECIMALS, 0, 0, 0, 0, empiric_id, 0.069)
 
 
 @pytest.fixture
@@ -67,7 +70,8 @@ async def forged_trove_2(abbot, shrine, yangs):
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners")
 @pytest.mark.parametrize("forge_amount", [0, INITIAL_FORGED_AMOUNT])
 @pytest.mark.asyncio
-async def test_open_trove(abbot, shrine, yangs, forge_amount):
+async def test_open_trove_pass(abbot, shrine, yangs, forge_amount):
+    before_yangs_total = await get_yangs_total(shrine, yangs)
 
     tx = await abbot.open_trove(
         forge_amount,
@@ -80,7 +84,11 @@ async def test_open_trove(abbot, shrine, yangs, forge_amount):
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
     assert (await abbot.get_troves_count().execute()).result.count == TROVE_1
 
-    for yang, deposit_amt, expected_yang_amt in zip(yangs, INITIAL_DEPOSITS, INITIAL_YANG_AMTS):
+    for yang, deposit_amt, before_yang_total, expected_yang_amt in zip(
+        yangs, INITIAL_DEPOSITS, before_yangs_total, INITIAL_YANG_AMTS
+    ):
+        expected_yang_total = before_yang_total + expected_yang_amt
+
         # asserts on the gates
         assert_event_emitted(
             tx,
@@ -93,8 +101,8 @@ async def test_open_trove(abbot, shrine, yangs, forge_amount):
         assert_event_emitted(
             tx,
             shrine.contract_address,
-            "YangUpdated",
-            lambda d: d[:2] == [yang.contract_address, expected_yang_amt],
+            "YangTotalUpdated",
+            [yang.contract_address, expected_yang_total],
         )
         assert_event_emitted(
             tx, shrine.contract_address, "DepositUpdated", [yang.contract_address, TROVE_1, expected_yang_amt]
@@ -121,8 +129,10 @@ async def test_open_trove_failures(abbot, steth_yang: YangConfig, shitcoin_yang:
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
 @pytest.mark.asyncio
-async def test_close_trove(abbot, shrine, yangs):
+async def test_close_trove_pass(abbot, shrine, yangs):
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
+
+    before_yangs_total = await get_yangs_total(shrine, yangs)
 
     tx = await abbot.close_trove(TROVE_1).execute(caller_address=TROVE1_OWNER)
 
@@ -130,7 +140,11 @@ async def test_close_trove(abbot, shrine, yangs):
     assert (await abbot.get_user_trove_ids(TROVE1_OWNER).execute()).result.trove_ids == [TROVE_1]
     assert (await shrine.get_trove(TROVE_1).execute()).result.trove.debt == 0
 
-    for yang, deposit_amt, expected_yang_amt in zip(yangs, INITIAL_DEPOSITS, INITIAL_YANG_AMTS):
+    for yang, deposit_amt, before_yang_total, expected_yang_amt in zip(
+        yangs, INITIAL_DEPOSITS, before_yangs_total, INITIAL_YANG_AMTS
+    ):
+        expected_yang_total = before_yang_total - expected_yang_amt
+
         # asserts on the gates
         assert_event_emitted(
             tx,
@@ -140,7 +154,9 @@ async def test_close_trove(abbot, shrine, yangs):
         )
 
         # asserts on the shrine
-        assert_event_emitted(tx, shrine.contract_address, "YangUpdated", lambda d: d[:2] == [yang.contract_address, 0])
+        assert_event_emitted(
+            tx, shrine.contract_address, "YangTotalUpdated", [yang.contract_address, expected_yang_total]
+        )
         assert_event_emitted(tx, shrine.contract_address, "DepositUpdated", [yang.contract_address, TROVE_1, 0])
 
         # asserts on the tokens
@@ -148,7 +164,9 @@ async def test_close_trove(abbot, shrine, yangs):
         assert_event_emitted(tx, yang.contract_address, "Transfer", [yang.gate_address, TROVE1_OWNER, deposit_amt, 0])
 
     assert_event_emitted(tx, shrine.contract_address, "DebtTotalUpdated", [0])  # from melt
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, 0])
+
+    expected_last_interval = DEPLOYMENT_INTERVAL
+    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, expected_last_interval, 0, 0])
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
@@ -184,7 +202,7 @@ async def test_deposit(abbot, shrine, yangs, depositor):
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "shrine")
 @pytest.mark.asyncio
-async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: YangConfig):
+async def test_deposit_failures(abbot, sentinel, steth_gate, steth_yang: YangConfig, shitcoin_yang: YangConfig):
     with pytest.raises(StarkException, match="Abbot: Yang address cannot be zero"):
         await abbot.deposit(0, TROVE_1, 0).execute(caller_address=TROVE1_OWNER)
 
@@ -207,6 +225,13 @@ async def test_deposit_failures(abbot, steth_yang: YangConfig, shitcoin_yang: Ya
 
     with pytest.raises(StarkException, match="Abbot: Cannot deposit to a non-existing trove"):
         await abbot.deposit(steth_yang.contract_address, 999, to_wad(1)).execute(caller_address=TROVE1_OWNER)
+
+    steth_gate_bal_wad = (await steth_gate.get_total_assets().execute()).result.total
+    new_max = steth_gate_bal_wad - 1
+    await sentinel.set_yang_asset_max(steth_yang.contract_address, new_max).execute(caller_address=SENTINEL_OWNER)
+    wei = 1
+    with pytest.raises(StarkException, match="Sentinel: Exceeds maximum amount of asset allowed"):
+        await abbot.deposit(steth_yang.contract_address, TROVE_1, wei).execute(caller_address=TROVE1_OWNER)
 
 
 @pytest.mark.usefixtures("sentinel_with_yangs", "funded_trove_owners", "forged_trove_1")
@@ -258,7 +283,10 @@ async def test_forge(abbot, steth_yang: YangConfig, shrine):
     tx = await abbot.forge(TROVE_1, forge_amount).execute(caller_address=TROVE1_OWNER)
 
     # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, forge_amount])
+    expected_last_interval = DEPLOYMENT_INTERVAL
+    assert_event_emitted(
+        tx, shrine.contract_address, "TroveUpdated", [TROVE_1, expected_last_interval, forge_amount, 0]
+    )
     assert_event_emitted(tx, shrine.contract_address, "Transfer", [0, TROVE1_OWNER, *to_uint(forge_amount)])
 
     balance = (await shrine.balanceOf(TROVE1_OWNER).execute()).result.balance
@@ -290,7 +318,10 @@ async def test_melt(abbot, shrine, melter, melt_amt):
     remaining_amount = INITIAL_FORGED_AMOUNT - melt_amt
 
     # asserting only events particular to the user
-    assert_event_emitted(tx, shrine.contract_address, "TroveUpdated", [TROVE_1, 1, remaining_amount])
+    expected_last_interval = DEPLOYMENT_INTERVAL
+    assert_event_emitted(
+        tx, shrine.contract_address, "TroveUpdated", [TROVE_1, expected_last_interval, remaining_amount, 0]
+    )
     assert_event_emitted(tx, shrine.contract_address, "Transfer", [melter, 0, *to_uint(melt_amt)])
 
     balance = (await shrine.balanceOf(melter).execute()).result.balance

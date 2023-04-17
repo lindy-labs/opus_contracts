@@ -1,6 +1,6 @@
 import asyncio
 from collections import namedtuple
-from decimal import getcontext
+from decimal import Decimal, getcontext
 from typing import Awaitable, Callable
 
 import pytest
@@ -25,10 +25,12 @@ from tests.shrine.constants import (
     YIN_SYMBOL,
 )
 from tests.utils import (
+    DEPLOYMENT_TIMESTAMP,
     EMPIRIC_DECIMALS,
     EMPIRIC_OWNER,
     GATE_OWNER,
     GATE_ROLE_FOR_SENTINEL,
+    INITIAL_ASSET_DEPOSIT_AMT,
     RAY_PERCENT,
     SENTINEL_OWNER,
     SENTINEL_ROLE_FOR_ABBOT,
@@ -49,12 +51,14 @@ from tests.utils import (
     estimate_gas,
     from_wad,
     get_block_timestamp,
+    get_contract_code_with_addition,
     get_contract_code_with_replacement,
     max_approve,
     set_block_timestamp,
     str_to_felt,
     to_empiric,
     to_fixed_point,
+    to_ray,
     to_uint,
     to_wad,
 )
@@ -123,6 +127,7 @@ async def starknet_session() -> Starknet:
 @pytest.fixture
 async def starknet() -> Starknet:
     starknet = await Starknet.empty()
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
     return starknet
 
 
@@ -208,6 +213,19 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
         },
     )
 
+    # Function to simulate accrued interest and fees by increasing the system debt while
+    # minted yin stays constant
+    additional_code = """
+@external
+func increase_total_debt{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(amount: wad) {
+    let current_total: wad = shrine_total_debt.read();
+    let new_total: wad = WadRay.unsigned_add(current_total, amount);
+    shrine_total_debt.write(new_total);
+    return ();
+}
+    """
+
+    shrine_code = get_contract_code_with_addition(shrine_code, additional_code)
     shrine_contract = compile_code(shrine_code)
 
     shrine = await starknet.deploy(
@@ -225,16 +243,14 @@ async def shrine_deploy(starknet: Starknet) -> StarknetContract:
 async def shrine_setup(starknet: Starknet, shrine_deploy) -> StarknetContract:
     shrine = shrine_deploy
 
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
 
     # Set debt ceiling
     await shrine.set_ceiling(DEBT_CEILING).execute(caller_address=SHRINE_OWNER)
     # Creating the yangs
     for i in range(len(YANGS)):
         await shrine.add_yang(
-            YANGS[i]["address"], YANGS[i]["ceiling"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"])
+            YANGS[i]["address"], YANGS[i]["threshold"], to_wad(YANGS[i]["start_price"]), to_ray(YANGS[i]["rate"]), 0
         ).execute(caller_address=SHRINE_OWNER)
 
     return shrine
@@ -249,8 +265,8 @@ async def shrine_with_feeds(starknet: Starknet, shrine_setup) -> StarknetContrac
 
     # Putting the price feeds in the `shrine_yang_price_storage` storage variable
     # Skipping over the first element in `feeds` since the start price is set in `add_yang`
-    for i in range(1, FEED_LEN):
-        timestamp = i * TIME_INTERVAL
+    for i in range(FEED_LEN):
+        timestamp = DEPLOYMENT_TIMESTAMP + (i * TIME_INTERVAL)
         set_block_timestamp(starknet, timestamp)
 
         for j in range(len(YANGS)):
@@ -274,7 +290,7 @@ async def shrine_deposit(shrine) -> StarknetCallInfo:
 
 
 @pytest.fixture
-async def shrine_forge(shrine, shrine_deposit) -> StarknetCallInfo:
+async def shrine_forge_trove1(shrine, shrine_deposit) -> StarknetCallInfo:
     forge = await shrine.forge(TROVE1_OWNER, TROVE_1, FORGE_AMT_WAD).execute(caller_address=SHRINE_OWNER)
     return forge
 
@@ -338,6 +354,7 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
     ceiling = to_wad(1_000_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(2000)
+    rate = to_ray(Decimal("0.02"))
     empiric_id = str_to_felt("stETH/USD")
     return YangConfig(
         steth_token.contract_address,
@@ -345,6 +362,7 @@ def steth_yang(steth_token, steth_gate) -> YangConfig:
         ceiling,
         threshold,
         price_wad,
+        rate,
         steth_gate.contract_address,
         empiric_id,
     )
@@ -355,9 +373,17 @@ def doge_yang(doge_token, doge_gate) -> YangConfig:
     ceiling = to_wad(100_000_000)
     threshold = 20 * RAY_PERCENT
     price_wad = to_wad(0.07)
+    rate = to_ray(Decimal("0.05"))
     empiric_id = str_to_felt("DOGE/USD")
     return YangConfig(
-        doge_token.contract_address, WAD_DECIMALS, ceiling, threshold, price_wad, doge_gate.contract_address, empiric_id
+        doge_token.contract_address,
+        WAD_DECIMALS,
+        ceiling,
+        threshold,
+        price_wad,
+        rate,
+        doge_gate.contract_address,
+        empiric_id,
     )
 
 
@@ -366,6 +392,7 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
     ceiling = to_wad(1_000)
     threshold = 80 * RAY_PERCENT
     price_wad = to_wad(10_000)
+    rate = to_ray(Decimal("0.01"))
     empiric_id = str_to_felt("WBTC/USD")
     return YangConfig(
         wbtc_token.contract_address,
@@ -373,6 +400,7 @@ def wbtc_yang(wbtc_token, wbtc_gate) -> YangConfig:
         ceiling,
         threshold,
         price_wad,
+        rate,
         wbtc_gate.contract_address,
         empiric_id,
     )
@@ -424,28 +452,6 @@ async def yang_gates(steth_gate, doge_gate, wbtc_gate) -> tuple[StarknetContract
 
 
 #
-# Yin
-#
-
-
-@pytest.fixture
-async def yin(starknet, shrine) -> StarknetContract:
-
-    # Deploying the yin contract
-    yin_contract = compile_contract("contracts/yin/yin.cairo")
-    deployed_yin = await starknet.deploy(
-        contract_class=yin_contract,
-        constructor_calldata=[str_to_felt("Cash"), str_to_felt("CASH"), 18, shrine.contract_address],
-    )
-
-    # Authorizing the yin contract to call `move_yin` and perform flash minting in Shrine
-    roles = ShrineRoles.MOVE_YIN + ShrineRoles.FLASH_MINT
-    await shrine.grant_role(roles, deployed_yin.contract_address).execute(caller_address=SHRINE_OWNER)
-
-    return deployed_yin
-
-
-#
 # Funded user account and trove (stETH and DOGE)
 #
 
@@ -483,14 +489,21 @@ async def sentinel(starknet, shrine_deploy) -> StarknetContract:
 
 
 @pytest.fixture
-async def sentinel_with_yangs(starknet, sentinel, steth_yang, doge_yang, wbtc_yang) -> StarknetContract:
-    # Setting block timestamp to interval 1, because add_yang assigns the initial
-    # price to current interval - 1 (i.e. 0 in this case)
-    set_block_timestamp(starknet, TIME_INTERVAL)
+async def funded_sentinel_owner(sentinel, yang_tokens):
+    for token in yang_tokens:
+        # Fund sentinel owner with tokens for initial deposit
+        amt_uint = to_uint(INITIAL_ASSET_DEPOSIT_AMT)
+        await token.mint(SENTINEL_OWNER, amt_uint).execute(caller_address=SENTINEL_OWNER)
+        await max_approve(token, SENTINEL_OWNER, sentinel.contract_address)
 
-    for yang in (steth_yang, doge_yang, wbtc_yang):
+
+@pytest.fixture
+async def sentinel_with_yangs(starknet, sentinel, funded_sentinel_owner, yangs) -> StarknetContract:
+    set_block_timestamp(starknet, DEPLOYMENT_TIMESTAMP)
+
+    for yang in yangs:
         await sentinel.add_yang(
-            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.gate_address
+            yang.contract_address, yang.ceiling, yang.threshold, yang.price_wad, yang.rate, yang.gate_address
         ).execute(caller_address=SENTINEL_OWNER)
 
     return sentinel
@@ -538,3 +551,18 @@ async def empiric(starknet, shrine_deploy, sentinel_with_yangs, mock_empiric_imp
         await empiric.add_yang(yang.empiric_id, yang.contract_address).execute(caller_address=EMPIRIC_OWNER)
 
     return empiric
+
+
+#
+# AURA tokens
+#
+
+
+@pytest.fixture
+async def aura_token(tokens) -> StarknetContract:
+    return await tokens("Aura", "AURA", WAD_DECIMALS)
+
+
+@pytest.fixture
+async def vested_aura_token(tokens) -> StarknetContract:
+    return await tokens("Vested Aura", "AURA", WAD_DECIMALS)

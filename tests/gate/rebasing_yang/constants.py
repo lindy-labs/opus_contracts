@@ -21,3 +21,6 @@ COMPOUND_MULTIPLIER = Decimal("1.1")
 
 # Accounts
 TAX_COLLECTOR = str_to_felt("tax collector")
+
+# Minimum initial deposit to prevent first depositor front-running
+MINIMUM_INITIAL_DEPOSIT = 10**3

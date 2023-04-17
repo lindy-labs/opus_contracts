@@ -6,7 +6,7 @@ from starkware.starknet.core.os.transaction_hash.transaction_hash import (
 from starkware.starknet.definitions.constants import TRANSACTION_VERSION
 from starkware.starknet.definitions.general_config import StarknetChainId
 from starkware.starknet.public.abi import EXECUTE_ENTRY_POINT_SELECTOR, get_selector_from_name
-from starkware.starknet.services.api.contract_class import ContractClass
+from starkware.starknet.services.api.contract_class.contract_class import ContractClass
 from starkware.starknet.testing.starknet import Starknet
 
 from tests.utils import Addressable, Call, Calldata, as_address, compile_contract
