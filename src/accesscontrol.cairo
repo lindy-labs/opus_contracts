@@ -1,6 +1,5 @@
 #[contract]
 mod AccessControl {
-    use integer::u128_is_zero;
     use traits::Into;
     use starknet::contract_address::ContractAddress;
     use starknet::contract_address::ContractAddressPartialEq;
@@ -46,7 +45,7 @@ mod AccessControl {
     }
 
     //
-    // External 
+    // External
     //
 
     #[external]

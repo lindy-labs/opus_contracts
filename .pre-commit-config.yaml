@@ -36,7 +36,7 @@ repos:
     language: system
     entry: cairo-format -i
     files: \.cairo$
-    exclude: ^contracts-1.0/
+    exclude: ^src/
 
   - id: cairo-1.x-format
     name: cairo-1.x-format
