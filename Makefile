@@ -26,7 +26,7 @@ build:
 	cargo build --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml
 
 compile:
-	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin starknet-compile -- $(SOURCE_FOLDER) > /dev/null
+	find src -type f -name '*.cairo' ! -name 'lib.cairo' -exec  cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin starknet-compile -- {} > /dev/null \;
 
 test:
 	cargo run --manifest-path=$(INSTALLATION_FOLDER)/Cargo.toml --bin cairo-test -- --starknet --path $(SOURCE_FOLDER)
