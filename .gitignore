@@ -11,3 +11,4 @@ workspace.code-workspace
 
 cairo/
 target/
+scarb/
