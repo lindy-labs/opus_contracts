@@ -33,7 +33,7 @@ jobs:
         run: make initialize-cairo
 
       - name: Cache Cairo
-        id: cache
+        id: cairo-cache
         uses: actions/cache@v3
         with:
           path: |
@@ -45,14 +45,14 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Setup Cairo
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.cairo-cache.outputs.cache-hit != 'true'
         run: make build-cairo
 
       - name: Pull Scarb repository
         run: make initialize-scarb
 
       - name: Cache Scarb
-        id: cache
+        id: scarb-cache
         uses: actions/cache@v3
         with:
           path: |
@@ -64,7 +64,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.SCARB_HASH }}
 
       - name: Setup Scarb
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.scarb-cache.outputs.cache-hit != 'true'
         run: make build-scarb
 
       - name: Lint Cairo 1.x code
