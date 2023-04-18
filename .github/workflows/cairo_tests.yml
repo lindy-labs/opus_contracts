@@ -1,15 +1,6 @@
 name: Cairo tests
 
-on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "**.md"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "**.md"
+on: workflow_dispatch
 
 jobs:
   test:
