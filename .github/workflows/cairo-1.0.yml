@@ -32,6 +32,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/starkware-libs/cairo.git ./cairo
           git clone --depth 1 https://github.com/software-mansion/scarb.git ./scarb
+          echo "$HOME/scarb/target/debug" >> $GITHUB_PATH
 
       - name: Cache dependencies
         id: cache
