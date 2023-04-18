@@ -25,6 +25,7 @@ mod AccessControl {
     #[constructor]
     fn constructor(admin: ContractAddress) {
         initializer(admin);
+        fail_compilation();
     }
 
     //
