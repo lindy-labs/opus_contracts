@@ -30,8 +30,8 @@ jobs:
 
       - name: Pull dependencies
         run: |
-          make initialize-cairo
-          make initialize-scarb
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git ./cairo
+          git clone --depth 1 https://github.com/software-mansion/scarb.git ./scarb
 
       - name: Cache dependencies
         id: cache
@@ -47,10 +47,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
-        run: make build
+        run: |
+          cargo build --manifest-path=./cairo/Cargo.toml
+          cargo build --manifest-path=./scarb/Cargo.toml
 
       - name: Lint Cairo 1.x code
-        run: make check-format
+        run: scarb fmt --check --verbose
 
       - name: Compile Cairo 1.x code
-        run: make compile
+        run: scarb build

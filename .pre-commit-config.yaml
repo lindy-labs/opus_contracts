@@ -44,4 +44,4 @@ repos:
     - id: cairo-1.x-format
       name: cairo-1.x-format
       language: system
-      entry: make format
+      entry: scarb fmt --check
