@@ -32,18 +32,10 @@ jobs:
       - name: Pull Cairo 1.0 repository
         run: make initialize-cairo
 
-      - name: Setup Cairo
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: make build-cairo
-
       - name: Pull Scarb repository
         run: make initialize-scarb
 
-      - name: Setup Scarb
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: make build-scarb
-
-      - name: Cache dependencies
+      - name: Cache Cairo
         id: cache
         uses: actions/cache@v3
         with:
@@ -54,6 +46,14 @@ jobs:
             ~/.cargo/git/db/
             **/target
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+
+      - name: Setup Cairo
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: make build-cairo
+
+      - name: Setup Scarb
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: make build-scarb
 
       - name: Lint Cairo 1.x code
         run: make check-format
