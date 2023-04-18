@@ -46,7 +46,7 @@ compile:
 	cargo run --manifest-path=$(SCARB_INSTALLATION_FOLDER)/Cargo.toml --bin scarb build
 
 format:
-	cargo run --manifest-path=$(CAIRO_INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --recursive $(SOURCE_FOLDER) --print-parsing-errors
+	cargo run --manifest-path=$(SCARB_INSTALLATION_FOLDER)/Cargo.toml --bin scarb fmt
 
 check-format:
-	cargo run --manifest-path=$(CAIRO_INSTALLATION_FOLDER)/Cargo.toml --bin cairo-format -- --check --recursive $(SOURCE_FOLDER) --print-parsing-errors
+	cargo run --manifest-path=$(SCARB_INSTALLATION_FOLDER)/Cargo.toml --bin scarb fmt --check --verbose
