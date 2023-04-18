@@ -45,5 +45,3 @@ repos:
       name: cairo-1.x-format
       language: system
       entry: make format
-      files: \.cairo$
-      exclude: ^contracts/
