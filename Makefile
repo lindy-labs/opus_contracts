@@ -39,7 +39,13 @@ update-scarb:
 	git -C $(SCARB_INSTALLATION_FOLDER) pull
 
 build:
+	build-cairo
+	build-scarb
+
+build-cairo:
 	cargo build --manifest-path=$(CAIRO_INSTALLATION_FOLDER)/Cargo.toml
+
+build-scarb:
 	cargo build --manifest-path=$(SCARB_INSTALLATION_FOLDER)/Cargo.toml
 
 compile:
