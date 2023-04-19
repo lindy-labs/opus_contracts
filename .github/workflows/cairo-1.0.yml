@@ -50,10 +50,9 @@ jobs:
         run: |
           cargo build --manifest-path=./cairo/Cargo.toml
           cargo build --manifest-path=./scarb/Cargo.toml
-          echo "$HOME/scarb/target/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
-        run: scarb fmt --check --verbose
+        run: cargo run --manifest-path=./scarb/Cargo.toml --bin scarb fmt --check --verbose
 
       - name: Compile Cairo 1.x code
-        run: scarb build
+        run: cargo run --manifest-path=./scarb/Cargo.toml --bin scarb build
