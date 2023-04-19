@@ -8,3 +8,5 @@ workspace.code-workspace
 
 # Hypothesis
 .hypothesis
+
+target/
