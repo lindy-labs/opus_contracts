@@ -11,6 +11,9 @@ on:
     paths-ignore:
       - "**.md"
 
+env:
+  SCARB_INSTALLATION_FOLDER: ./scarb
+
 jobs:
   cairo_1:
     runs-on: ubuntu-latest
@@ -18,7 +21,7 @@ jobs:
     steps:
       - name: Get latest commit hash
         run: |
-          echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
+          echo "SCARB_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/software-mansion/scarb/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -30,8 +33,7 @@ jobs:
 
       - name: Pull dependencies
         run: |
-          git clone --depth 1 https://github.com/starkware-libs/cairo.git ./cairo
-          git clone --depth 1 https://github.com/software-mansion/scarb.git ./scarb
+          git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
 
       - name: Cache dependencies
         id: cache
@@ -43,16 +45,15 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+          key: ${{ runner.os }}-cargo-${{ env.SCARB_HASH }}
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          cargo build --manifest-path=./cairo/Cargo.toml
           cargo build --manifest-path=./scarb/Cargo.toml
 
       - name: Lint Cairo 1.x code
-        run: cargo run --manifest-path=./scarb/Cargo.toml --bin scarb fmt --check --verbose
+        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb fmt --check --verbose
 
       - name: Compile Cairo 1.x code
-        run: cargo run --manifest-path=./scarb/Cargo.toml --bin scarb build
+        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb build
