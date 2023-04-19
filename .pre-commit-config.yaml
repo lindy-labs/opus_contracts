@@ -45,3 +45,5 @@ repos:
       name: cairo-1.x-format
       language: system
       entry: scarb fmt --check
+      files: \.cairo$
+      exclude: ^contracts/

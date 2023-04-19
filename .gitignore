@@ -9,6 +9,4 @@ workspace.code-workspace
 # Hypothesis
 .hypothesis
 
-cairo/
 target/
-scarb/
