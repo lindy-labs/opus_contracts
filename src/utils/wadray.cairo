@@ -1,16 +1,15 @@
 use option::OptionTrait;
 use traits::TryInto;
 use traits::Into;
-use debug::PrintTrait;
-
-const WAD_SCALE: felt252 = 1000000000000000000;
-const RAY_SCALE: felt252 = 1000000000000000000000000000;
-const WAD_ONE: felt252 = 1000000000000000000;
-const RAY_ONE: felt252 = 1000000000000000000000000000;
-// The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
-const DIFF: felt252 = 1000000000;
 
 mod wad_ray {
+    const WAD_SCALE: u128 = 1000000000000000000_u128;
+    const RAY_SCALE: u128 = 1000000000000000000000000000_u128;
+    const WAD_ONE: u128 = 1000000000000000000_u128;
+    const RAY_ONE: u128 = 1000000000000000000000000000_u128;
+    // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
+    const DIFF: u128 = 1000000000_u128;
+
     #[derive(Copy, Drop)]
     struct Wad {
         val: u128, 
@@ -23,61 +22,50 @@ mod wad_ray {
 
     // Core functions
 
-    fn wmul(a: Wad, b: Wad) -> Wad {
+    fn wmul(lhs: Wad, rhs: Wad) -> Wad {
         // Work-around since we can't have non-felt constants yet
-        let wad_one: u128 = WAD_ONE.try_into().unwrap();
-        Wad { val: (a.val * b.val) / wad_one }
+        Wad { val: (lhs.val * rhs.val) / WAD_ONE }
     }
 
     // wmul of Wad and Ray -> Ray
-    fn wmul_wr(a: Wad, b: Ray) -> Ray {
-        let wad_one: u128 = WAD_ONE.try_into().unwrap();
-        Ray { val: (a.val * b.val) / wad_one }
+    fn wmul_wr(lhs: Wad, rhs: Ray) -> Ray {
+        Ray { val: (lhs.val * rhs.val) / WAD_ONE }
     }
 
-    fn wmul_rw(a: Ray, b: Wad) -> Ray {
-        let wad_one: u128 = WAD_ONE.try_into().unwrap();
-        Ray { val: (a.val * b.val) / wad_one }
+    fn wmul_rw(lhs: Ray, rhs: Wad) -> Ray {
+        Ray { val: (lhs.val * rhs.val) / WAD_ONE }
     }
 
-    fn rmul(a: Ray, b: Ray) -> Ray {
-        let ray_one: u128 = WAD_ONE.try_into().unwrap();
-        Ray { val: (a.val * b.val) / ray_one }
+    fn rmul(lhs: Ray, rhs: Ray) -> Ray {
+        Ray { val: (lhs.val * rhs.val) / RAY_ONE }
     }
 
     // rmul of Wad and Ray -> Wad
-    fn rmul_rw(a: Ray, b: Wad) -> Wad {
-        let ray_one: u128 = WAD_ONE.try_into().unwrap();
-        Wad { val: (a.val * b.val) / ray_one }
+    fn rmul_rw(lhs: Ray, rhs: Wad) -> Wad {
+        Wad { val: (lhs.val * rhs.val) / RAY_ONE }
     }
 
-    fn rmul_wr(a: Wad, b: Ray) -> Wad {
-        rmul_rw(b, a)
+    fn rmul_wr(lhs: Wad, rhs: Ray) -> Wad {
+        rmul_rw(rhs, lhs)
     }
 
-    fn wdiv(a: Wad, b: Wad) -> Wad {
-        let wad_one: u128 = WAD_ONE.try_into().unwrap();
-        Wad { val: (a.val * wad_one) / b.val }
+    fn wdiv(lhs: Wad, rhs: Wad) -> Wad {
+        Wad { val: (lhs.val * WAD_ONE) / rhs.val }
     }
 
     // wdiv of Ray by Wad -> Ray
-    fn wdiv_rw(a: Ray, b: Wad) -> Wad {
-        let wad_one: u128 = WAD_ONE.try_into().unwrap();
-        Ray { val: (a.val * wad_one) / b.val }
+    fn wdiv_rw(lhs: Ray, rhs: Wad) -> Ray {
+        Ray { val: (lhs.val * WAD_ONE) / rhs.val }
     }
 
-
-    fn rdiv(a: Ray, b: Ray) -> Ray {
-        let ray_one: u128 = RAY_ONE.try_into().unwrap();
-        Ray { val: (a.val * ray_one) / b.val }
+    fn rdiv(lhs: Ray, rhs: Ray) -> Ray {
+        Ray { val: (lhs.val * RAY_ONE) / rhs.val }
     }
 
     // rdiv of Wad by Ray -> Wad
-    fn rdiv_wr(a: Wad, b: Ray) -> Wad {
-        let ray_one: u128 = RAY_ONE.try_into().unwrap();
-        Wad { val: (a.val * ray_one) / b.val }
+    fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
+        Wad { val: (lhs.val * RAY_ONE) / rhs.val }
     }
-
 
     // Traits
     trait FixedPointTrait<T> {
@@ -109,69 +97,67 @@ mod wad_ray {
 
     // Addition
     impl WadAdd of Add::<Wad> {
-        fn add(a: Wad, b: Wad) -> Wad {
-            Wad { val: a.val + b.val }
+        fn add(lhs: Wad, rhs: Wad) -> Wad {
+            Wad { val: lhs.val + rhs.val }
         }
     }
 
     impl RayAdd of Add::<Ray> {
-        fn add(a: Ray, b: Ray) -> Ray {
-            Ray { val: a.val + b.val }
+        fn add(lhs: Ray, rhs: Ray) -> Ray {
+            Ray { val: lhs.val + rhs.val }
         }
     }
 
     // Subtraction
     impl WadSub of Sub::<Wad> {
-        fn sub(a: Wad, b: Wad) -> Wad {
-            Wad { val: a.val - b.val }
+        fn sub(lhs: Wad, rhs: Wad) -> Wad {
+            Wad { val: lhs.val - rhs.val }
         }
     }
 
     impl RaySub of Sub::<Ray> {
-        fn sub(a: Ray, b: Ray) -> Ray {
-            Ray { val: a.val - b.val }
+        fn sub(lhs: Ray, rhs: Ray) -> Ray {
+            Ray { val: lhs.val - rhs.val }
         }
     }
 
     // Multiplication
     impl WadMul of Mul::<Wad> {
-        fn mul(a: Wad, b: Wad) -> Wad {
-            wmul(a, b)
+        fn mul(lhs: Wad, rhs: Wad) -> Wad {
+            wmul(lhs, rhs)
         }
     }
 
     impl RayMul of Mul::<Ray> {
-        fn mul(a: Ray, b: Ray) -> Ray {
-            rmul(a, b)
+        fn mul(lhs: Ray, rhs: Ray) -> Ray {
+            rmul(lhs, rhs)
         }
     }
 
     // Division
     impl WadDiv of Div::<Wad> {
-        fn div(a: Wad, b: Wad) -> Wad {
-            wdiv(a, b)
+        fn div(lhs: Wad, rhs: Wad) -> Wad {
+            wdiv(lhs, rhs)
         }
     }
 
     impl RayDiv of Div::<Ray> {
-        fn div(a: Ray, b: Ray) -> Ray {
-            rdiv(a, b)
+        fn div(lhs: Ray, rhs: Ray) -> Ray {
+            rdiv(lhs, rhs)
         }
     }
 
     // Conversions
     impl WadIntoRay of Into::<Wad, Ray> {
         fn into(self: Wad) -> Ray {
-            let diff: u128 = DIFF.try_into().unwrap();
-            Ray { val: self.val * diff }
+            Ray { val: self.val * DIFF }
         }
     }
 
     impl RayIntoWad of Into::<Ray, Wad> {
         fn into(self: Ray) -> Wad {
-            let diff: u128 = DIFF.try_into().unwrap();
             // The value will get truncated if it has more than 18 decimals.
-            Wad { val: self.val / diff }
+            Wad { val: self.val / DIFF }
         }
     }
 }
