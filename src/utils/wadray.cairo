@@ -2,8 +2,9 @@ use integer::U128IntoFelt252;
 use integer::Felt252TryIntoU128;
 use option::OptionTrait;
 use traits::Into;
-use traits::TryInto;
 use traits::PartialEq;
+use traits::PartialOrd;
+use traits::TryInto;
 
 
 const WAD_SCALE: u128 = 1000000000000000000_u128;
@@ -253,12 +254,59 @@ impl RayPartialEq of PartialEq<Ray> {
     }
 }
 
+impl WadPartialOrd of PartialOrd<Wad> {
+    fn le(lhs: Wad, rhs: Wad) -> bool {
+        lhs.val <= rhs.val
+    }
+    fn ge(lhs: Wad, rhs: Wad) -> bool {
+        lhs.val >= rhs.val
+    }
+
+    fn lt(lhs: Wad, rhs: Wad) -> bool {
+        lhs.val < rhs.val
+    }
+
+    fn gt(lhs: Wad, rhs: Wad) -> bool {
+        lhs.val > rhs.val
+    }
+}
+
+impl RayPartialOrd of PartialOrd<Ray> {
+    fn le(lhs: Ray, rhs: Ray) -> bool {
+        lhs.val <= rhs.val
+    }
+
+    fn ge(lhs: Ray, rhs: Ray) -> bool {
+        lhs.val >= rhs.val
+    }
+
+    fn lt(lhs: Ray, rhs: Ray) -> bool {
+        lhs.val < rhs.val
+    }
+
+    fn gt(lhs: Ray, rhs: Ray) -> bool {
+        lhs.val > rhs.val
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use aura::utils::wadray::Ray;
     use aura::utils::wadray::RAY_ONE;
+    use aura::utils::wadray::rdiv_wr;
+    use aura::utils::wadray::rmul_rw;
+    use aura::utils::wadray::rmul_wr;
     use aura::utils::wadray::Wad;
     use aura::utils::wadray::WAD_ONE;
+    use aura::utils::wadray::wdiv_rw;
+    use aura::utils::wadray::wmul_rw;
+    use aura::utils::wadray::wmul_wr;
+    use aura::utils::wadray::U128IntoU256;
+    use aura::utils::wadray::U256TryIntoU128;
+    use option::OptionTrait;
+    use traits::Into;
+    use traits::TryInto;
 
 
     #[test]
@@ -359,7 +407,26 @@ mod tests {
             },
             'Incorrect multiplication #6'
         );
+
+        assert(
+            wmul_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Ray { val: RAY_ONE },
+            'Incorrect multiplication #7'
+        );
+        assert(
+            wmul_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Ray { val: RAY_ONE },
+            'Incorrect multiplication #8'
+        );
+
+        assert(
+            rmul_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Wad { val: WAD_ONE },
+            'Incorrect multiplication #9'
+        );
+        assert(
+            rmul_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Wad { val: WAD_ONE },
+            'Incorrect multiplication #10'
+        );
     }
+
 
     #[test]
     fn div_test() {
@@ -371,6 +438,15 @@ mod tests {
         assert(
             Ray { val: 2 * RAY_ONE } / Ray { val: RAY_ONE / 2 } == Ray { val: 4 * RAY_ONE },
             'Incorrect division #2'
+        );
+
+        assert(
+            wdiv_rw(Ray { val: RAY_ONE }, Wad { val: WAD_ONE }) == Ray { val: RAY_ONE },
+            'Incorrect division #3'
+        );
+        assert(
+            rdiv_wr(Wad { val: WAD_ONE }, Ray { val: RAY_ONE }) == Wad { val: WAD_ONE },
+            'Incorrect division #4'
         );
     }
 
@@ -384,5 +460,49 @@ mod tests {
     #[should_panic(expected: ('u256 is 0', ))]
     fn div_ray_fail_test() {
         let a: Ray = Ray { val: RAY_ONE } / Ray { val: 0 };
+    }
+
+    #[test]
+    fn conversions_test() {
+        let a: Ray = Wad { val: WAD_ONE }.into();
+        assert(a.val == RAY_ONE, 'Incorrect wad->ray conversion');
+
+        let a: Wad = Ray { val: RAY_ONE }.into();
+        assert(a.val == WAD_ONE, 'Incorrect ray->wad conversion');
+
+        let a: u256 = WAD_ONE.into();
+        assert(a.low == WAD_ONE & a.high == 0, 'Incorrect u128->u256 conversion');
+
+        let a: u128 = u256 { low: 1000_u128, high: 0 }.try_into().unwrap();
+        assert(a == 1000_u128, 'Incorrect u256->u128 conversion');
+    }
+
+    #[test]
+    #[should_panic(expected: ('Option::unwrap failed.', ))]
+    fn conversions_fail_test() {
+        let a: u128 = u256 { low: 1000_u128, high: 1 }.try_into().unwrap();
+    }
+
+    #[test]
+    fn comparisons_test() {
+        assert(Wad { val: WAD_ONE } < Wad { val: WAD_ONE + 1 }, 'Incorrect < comparison #1');
+        assert(Wad { val: WAD_ONE + 1 } > Wad { val: WAD_ONE }, 'Incorrect > comparison #2');
+        assert(Wad { val: WAD_ONE } <= Wad { val: WAD_ONE }, 'Incorrect <= comparison #3');
+        assert(Wad { val: WAD_ONE + 1 } >= Wad { val: WAD_ONE + 1 }, 'Incorrect >= comparison #4');
+
+        assert(Ray { val: RAY_ONE } < Ray { val: RAY_ONE + 1 }, 'Incorrect < comparison #5');
+        assert(Ray { val: RAY_ONE + 1 } > Ray { val: RAY_ONE }, 'Incorrect > comparison #6');
+        assert(Ray { val: RAY_ONE } <= Ray { val: RAY_ONE }, 'Incorrect <= comparison #7');
+        assert(Ray { val: RAY_ONE + 1 } >= Ray { val: RAY_ONE + 1 }, 'Incorrect >= comparison #8');
+
+        assert(!(Ray { val: RAY_ONE } < Ray { val: RAY_ONE }), 'Incorrect < comparison #9');
+        assert(!(Ray { val: RAY_ONE } > Ray { val: RAY_ONE }), 'Incorrect > comparison #10');
+        assert(!(Ray { val: RAY_ONE + 1 } <= Ray { val: RAY_ONE }), 'Incorrect <= comparison #11');
+        assert(!(Ray { val: RAY_ONE } >= Ray { val: RAY_ONE + 1 }), 'Incorrect >= comparison #12');
+
+        assert(!(Wad { val: WAD_ONE } < Wad { val: WAD_ONE }), 'Incorrect < comparison #13');
+        assert(!(Wad { val: WAD_ONE } > Wad { val: WAD_ONE }), 'Incorrect > comparison #14');
+        assert(!(Wad { val: WAD_ONE + 1 } <= Wad { val: WAD_ONE }), 'Incorrect <= comparison #15');
+        assert(!(Wad { val: WAD_ONE } >= Wad { val: WAD_ONE + 1 }), 'Incorrect >= comparison #16');
     }
 }
