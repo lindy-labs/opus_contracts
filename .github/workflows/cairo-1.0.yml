@@ -13,6 +13,7 @@ on:
 
 env:
   SCARB_INSTALLATION_FOLDER: ./scarb
+  CAIRO_INSTALLATION_FOLDER: ./cairo
 
 jobs:
   cairo_1:
@@ -34,6 +35,7 @@ jobs:
       - name: Pull dependencies
         run: |
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
       - name: Cache dependencies
         id: cache
@@ -51,12 +53,16 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
+          cargo build --manifest-path=./cairo/Cargo.toml
 
       - name: Lint Cairo 1.x code
         run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb fmt --check --verbose
 
       - name: Compile Cairo 1.x code
         run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb build
+
+      - name: Add Cairo compiler to path
+        run: echo "$CAIRO_INSTALLATION_FOLDER/bin" >> $GITHUB_PATH
 
       - name: Test Cairo 1.x code in Cairo
         run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb run test
