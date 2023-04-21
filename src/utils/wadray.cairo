@@ -11,16 +11,16 @@ use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
 
 
-const WAD_SCALE: u128 = 1000000000000000000_u128;
-const RAY_SCALE: u128 = 1000000000000000000000000000_u128;
-const WAD_ONE: u128 = 1000000000000000000_u128;
-const RAY_ONE: u128 = 1000000000000000000000000000_u128;
+const WAD_SCALE: u128 = 1000000000000000000;
+const RAY_SCALE: u128 = 1000000000000000000000000000;
+const WAD_ONE: u128 = 1000000000000000000;
+const RAY_ONE: u128 = 1000000000000000000000000000;
 
 // Largest Wad that can be converted into a Ray without overflowing
 const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
 
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
-const DIFF: u128 = 1000000000_u128;
+const DIFF: u128 = 1000000000;
 
 #[derive(Copy, Drop, Serde)]
 struct Wad {
@@ -426,15 +426,11 @@ mod tests {
     #[test]
     fn test_mul() {
         // 0 * 69 = 0
-        assert(
-            Wad { val: 0_u128 } * Wad { val: 69_u128 } == Wad { val: 0_u128 },
-            'Incorrect Multiplication # 1'
-        );
+        assert(Wad { val: 0 } * Wad { val: 69 } == Wad { val: 0 }, 'Incorrect Multiplication # 1');
 
         // 1 * 1 = 0 (truncated)
         assert(
-            Wad { val: 1_u128 } * Wad { val: 1_u128 } == Wad { val: 0_u128 },
-            'Incorrect multiplication #2'
+            Wad { val: 1 } * Wad { val: 1 } == Wad { val: 0 }, 'Incorrect multiplication #2'
         ); // Result should be truncated
 
         // 1 (wad) * 1 (wad) = 1 (wad)
@@ -446,25 +442,21 @@ mod tests {
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670187008926
         assert(
             Wad {
-                val: 121110987654321531059_u128
+                val: 121110987654321531059
                 } * Wad {
-                val: 1234567891011125475893_u128
+                val: 1234567891011125475893
                 } == Wad {
-                val: 149519736606670187008926_u128
+                val: 149519736606670187008926
             },
             'Incorrect multiplication #4'
         );
 
         // 0 * 69 = 0
-        assert(
-            Ray { val: 0_u128 } * Ray { val: 69_u128 } == Ray { val: 0_u128 },
-            'Incorrect Multiplication #5'
-        );
+        assert(Ray { val: 0 } * Ray { val: 69 } == Ray { val: 0 }, 'Incorrect Multiplication #5');
 
         // 1 * 1 = 0 (truncated)
         assert(
-            Ray { val: 1_u128 } * Ray { val: 1_u128 } == Ray { val: 0_u128 },
-            'Incorrect multiplication #6'
+            Ray { val: 1 } * Ray { val: 1 } == Ray { val: 0 }, 'Incorrect multiplication #6'
         ); // Result should be truncated
 
         // 1 (ray) * 1 (ray) = 1 (ray)
@@ -476,11 +468,11 @@ mod tests {
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670 (truncated)
         assert(
             Ray {
-                val: 121110987654321531059_u128
+                val: 121110987654321531059
                 } * Ray {
-                val: 1234567891011125475893_u128
+                val: 1234567891011125475893
                 } == Ray {
-                val: 149519736606670_u128
+                val: 149519736606670
             },
             'Incorrect multiplication #8'
         );
