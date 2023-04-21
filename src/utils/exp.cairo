@@ -3,7 +3,6 @@ use traits::Into;
 use traits::TryInto;
 use array::ArrayTrait;
 
-use debug::PrintTrait;
 use aura::utils::wadray::Wad;
 use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
