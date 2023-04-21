@@ -3,7 +3,7 @@ use traits::Into;
 use traits::TryInto;
 use array::ArrayTrait;
 
-
+use debug::PrintTrait;
 use aura::utils::wadray::Wad;
 use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
@@ -27,8 +27,8 @@ const MAX_NATURAL_EXPONENT: u128 = 42600000000000000000_u128;
 
 // 18 decimal constants
 const x0: u128 = 128000000000000000000_u128; // 2ˆ7
-const a0: u128 =
-    38877084059945950922200000000000000000000000000000000000_u128; // eˆ(x0) (no decimals)
+const a0: felt252 =
+    38877084059945950922200000000000000000000000000000000000; // eˆ(x0) (no decimals)
 const x1: u128 = 64000000000000000000_u128; // 2ˆ6
 const a1: u128 = 6235149080811616882910000000_u128; // eˆ(x1) (no decimals)
 
@@ -61,11 +61,13 @@ const a11: u128 = 106449445891785942956_u128; // eˆ(x11)
 //   it may not be necessary for our purposes.
 
 fn exp(x: Wad) -> Wad {
-    match gas::withdraw_gas() {
+    // Necessary, otherwise runner complains about "failed calculating gas usage" if `exp` is 
+    // called too many times.
+    match gas::withdraw_gas_all(get_builtin_costs()) {
         Option::Some(_) => {},
         Option::None(_) => {
-            let mut data = ArrayTrait::new();
-            data.append('Out of gas');
+            let mut data = ArrayTrait::<felt252>::new();
+            data.append('OOG');
             panic(data);
         },
     }
@@ -74,7 +76,7 @@ fn exp(x: Wad) -> Wad {
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
 
-    let mut firstAN: u128 = 0;
+    let mut firstAN: u256 = u256 { low: 0, high: 0 };
 
     // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
     // where x_n == 2^(7 - n), and e^x_n = a_n has been precomputed. We choose the first x_n, x0, to equal 2^7
@@ -94,12 +96,12 @@ fn exp(x: Wad) -> Wad {
     // it and compute the accumulated product.
     if (x >= x0) {
         x -= x0;
-        firstAN = a0;
+        firstAN = a0.into();
     } else if (x >= x1) {
         x -= x1;
-        firstAN = a1;
+        firstAN = a1.into();
     } else {
-        firstAN = 1; // One with no decimal places
+        firstAN = 1.into(); // One with no decimal places
     }
 
     // We now transform x into a 20 decimal fixed point number, to have enhanced precision when computing the
@@ -198,7 +200,7 @@ fn exp(x: Wad) -> Wad {
     // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
     // and then drop two digits to return an 18 decimal value.
 
-    let result: u256 = (((product * series_sum) / ONE_20_u256) * firstAN.into()) / 100.into();
+    let result: u256 = (((product * series_sum) / ONE_20_u256) * firstAN) / 100.into();
 
     Wad { val: result.try_into().unwrap() }
 }
@@ -209,11 +211,66 @@ mod tests {
 
     use aura::utils::exp::exp;
     use aura::utils::wadray::Wad;
+    use aura::utils::wadray::WAD_ONE;
+
+    const ACCEPTABLE_ERROR_1: u128 = 1000; // Acceptable error for e^x where x <= 15
+    const ACCEPTABLE_ERROR_2: u128 = 1000000000000000; // Acceptable error for 15 < x <= 30
+
+    #[inline(always)]
+    fn assert_equalish1(a: Wad, b: Wad) {
+        if (a > b) {
+            assert((a - b).val <= ACCEPTABLE_ERROR_1, 'exp-test: error exceeds bounds');
+        } else {
+            assert((b - a).val <= ACCEPTABLE_ERROR_1, 'exp-test: error exceeds bounds');
+        }
+    }
 
     #[test]
-    fn test_exp() {
-        //(exp(Wad{val: 0}).val).print();
-        let res = exp(Wad { val: 0 });
-    //res.val.print();
+    #[available_gas(9999999)]
+    fn test_exp_basic() {
+        // Basic tests
+        assert(exp(Wad { val: 0 }) == Wad { val: WAD_ONE }, 'Incorrect e^0 result');
+        assert(
+            exp(Wad { val: WAD_ONE }) == Wad { val: 2718281828459045235 }, 'Incorrect e^1 result'
+        );
+
+        let res = exp(Wad { val: WAD_ONE * 10 });
+
+        let res = exp(Wad { val: WAD_ONE * 42 + 1 });
+
+        // Highest possible value the function will accept
+        exp(Wad { val: 42600000000000000000 });
+    }
+
+    #[test]
+    #[available_gas(9999999)]
+    fn test_exp_add() {
+        // Exponent law: e^x * e^y = e^(x + y)
+        let a: Wad = exp(Wad { val: WAD_ONE });
+        let a: Wad = a * a;
+
+        let b: Wad = exp(Wad { val: 2 * WAD_ONE });
+
+        //e^1 * e^1 = e^2
+        assert_equalish1(a, b);
+    }
+
+    #[test]
+    #[available_gas(9999999)]
+    fn test_exp_sub() {
+        //Exponent law: e^x / e^y = e^(x - y)
+        let a: Wad = exp(Wad { val: 8 * WAD_ONE });
+        let b: Wad = exp(Wad { val: 3 * WAD_ONE });
+        let c: Wad = exp(Wad { val: 5 * WAD_ONE });
+
+        assert_equalish1(a / b, c);
+    }
+
+
+    #[test]
+    #[available_gas(9999999)]
+    #[should_panic(expected: ('exp: x is out of bounds', ))]
+    fn test_exp_fail() {
+        let res = exp(Wad { val: 42600000000000000001 });
     }
 }
