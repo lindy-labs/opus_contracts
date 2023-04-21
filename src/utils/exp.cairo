@@ -1,11 +1,11 @@
+use array::ArrayTrait;
 use option::OptionTrait;
 use traits::Into;
 use traits::TryInto;
-use array::ArrayTrait;
 
-use aura::utils::wadray::Wad;
 use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
+use aura::utils::wadray::Wad;
 
 // PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 
@@ -62,6 +62,7 @@ const a11: u128 = 106449445891785942956_u128; // eˆ(x11)
 fn exp(x: Wad) -> Wad {
     // Necessary, otherwise runner complains about "failed calculating gas usage" if `exp` is 
     // called too many times.
+    // TODO: remove once compiler automatically handles it.
     match gas::withdraw_gas_all(get_builtin_costs()) {
         Option::Some(_) => {},
         Option::None(_) => {
@@ -133,7 +134,6 @@ fn exp(x: Wad) -> Wad {
         x -= x6;
         product = (product * a6.into()) / ONE_20_u256;
     }
-
     if (x >= x7) {
         x -= x7;
         product = (product * a7.into()) / ONE_20_u256;
