@@ -6,6 +6,9 @@ use traits::PartialEq;
 use traits::PartialOrd;
 use traits::TryInto;
 
+use aura::utils::u256_conversions::cast_to_u256;
+use aura::utils::u256_conversions::U128IntoU256;
+use aura::utils::u256_conversions::U256TryIntoU128;
 
 const WAD_SCALE: u128 = 1000000000000000000_u128;
 const RAY_SCALE: u128 = 1000000000000000000000000000_u128;
@@ -86,13 +89,6 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 //
 // Internal helpers 
 //
-
-#[inline(always)]
-fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
-    let a_u256: u256 = a.into();
-    let b_u256: u256 = b.into();
-    (a_u256, b_u256)
-}
 
 #[inline(always)]
 fn wmul_internal(lhs: u128, rhs: u128) -> u128 {
@@ -213,22 +209,6 @@ impl RayIntoWad of Into<Ray, Wad> {
     fn into(self: Ray) -> Wad {
         // The value will get truncated if it has more than 18 decimals.
         Wad { val: self.val / DIFF }
-    }
-}
-
-impl U128IntoU256 of Into<u128, u256> {
-    fn into(self: u128) -> u256 {
-        u256 { low: self, high: 0_u128 }
-    }
-}
-
-impl U256TryIntoU128 of TryInto<u256, u128> {
-    fn try_into(self: u256) -> Option<u128> {
-        if (self.high == 0) {
-            Option::Some(self.low)
-        } else {
-            Option::None(())
-        }
     }
 }
 
