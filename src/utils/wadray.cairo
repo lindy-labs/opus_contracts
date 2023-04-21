@@ -286,8 +286,6 @@ mod tests {
     use aura::utils::wadray::wdiv_rw;
     use aura::utils::wadray::wmul_rw;
     use aura::utils::wadray::wmul_wr;
-    use aura::utils::wadray::U128IntoU256;
-    use aura::utils::wadray::U256TryIntoU128;
 
 
     #[test]
@@ -507,21 +505,6 @@ mod tests {
         // Test conversion from Ray to Wad
         let a: Wad = Ray { val: RAY_ONE }.into();
         assert(a.val == WAD_ONE, 'Incorrect ray->wad conversion');
-
-        // Test conversion from u128 to u256
-        let a: u256 = WAD_ONE.into();
-        assert(a.low == WAD_ONE & a.high == 0, 'Incorrect u128->u256 conversion');
-
-        // Test conversion from u256 to u128
-        let a: u128 = u256 { low: 1000_u128, high: 0 }.try_into().unwrap();
-        assert(a == 1000_u128, 'Incorrect u256->u128 conversion');
-    }
-
-
-    #[test]
-    #[should_panic(expected: ('Option::unwrap failed.', ))]
-    fn test_conversions_fail() {
-        let a: u128 = u256 { low: 1000_u128, high: 1 }.try_into().unwrap();
     }
 
     #[test]

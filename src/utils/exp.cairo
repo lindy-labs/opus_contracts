@@ -1,10 +1,15 @@
 use option::OptionTrait;
 use traits::Into;
 use traits::TryInto;
+use array::ArrayTrait;
+
 
 use aura::utils::wadray::Wad;
 use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
+
+// PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
+
 //
 // Constants
 // 
@@ -56,6 +61,15 @@ const a11: u128 = 106449445891785942956_u128; // eˆ(x11)
 //   it may not be necessary for our purposes.
 
 fn exp(x: Wad) -> Wad {
+    match gas::withdraw_gas() {
+        Option::Some(_) => {},
+        Option::None(_) => {
+            let mut data = ArrayTrait::new();
+            data.append('Out of gas');
+            panic(data);
+        },
+    }
+
     let mut x: u128 = x.val;
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
@@ -118,6 +132,7 @@ fn exp(x: Wad) -> Wad {
         x -= x6;
         product = (product * a6.into()) / ONE_20_u256;
     }
+
     if (x >= x7) {
         x -= x7;
         product = (product * a7.into()) / ONE_20_u256;
@@ -186,4 +201,19 @@ fn exp(x: Wad) -> Wad {
     let result: u256 = (((product * series_sum) / ONE_20_u256) * firstAN.into()) / 100.into();
 
     Wad { val: result.try_into().unwrap() }
+}
+
+#[cfg(test)]
+mod tests {
+    use debug::PrintTrait;
+
+    use aura::utils::exp::exp;
+    use aura::utils::wadray::Wad;
+
+    #[test]
+    fn test_exp() {
+        //(exp(Wad{val: 0}).val).print();
+        let res = exp(Wad { val: 0 });
+    //res.val.print();
+    }
 }
