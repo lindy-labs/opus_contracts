@@ -6,6 +6,7 @@ repos:
     rev: v4.2.0
     hooks:
       - id: trailing-whitespace
+        exclude: src/
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
@@ -44,6 +45,5 @@ repos:
     - id: cairo-1.x-format
       name: cairo-1.x-format
       language: system
-      entry: scarb fmt --check
-      files: \.cairo$
-      exclude: ^contracts/
+      entry: scarb fmt
+      pass_filenames: false
