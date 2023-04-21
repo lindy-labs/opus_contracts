@@ -57,3 +57,6 @@ jobs:
 
       - name: Compile Cairo 1.x code
         run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb build
+
+      - name: Test Cairo 1.x code in Cairo
+        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb run test
