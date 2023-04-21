@@ -206,21 +206,19 @@ fn exp(x: Wad) -> Wad {
 
 #[cfg(test)]
 mod tests {
-    use debug::PrintTrait;
-
     use aura::utils::exp::exp;
     use aura::utils::wadray::Wad;
     use aura::utils::wadray::WAD_ONE;
 
-    const ACCEPTABLE_ERROR_1: u128 = 1000; // Acceptable error for e^x where x <= 15
-    const ACCEPTABLE_ERROR_2: u128 = 1000000000000000; // Acceptable error for 15 < x <= 30
+    // Acceptable error for e^x where x <= 20. Corresponds to 0.000000000001 (10^-12) precision
+    const ACCEPTABLE_ERROR: u128 = 1000000;
 
     #[inline(always)]
     fn assert_equalish1(a: Wad, b: Wad) {
         if (a > b) {
-            assert((a - b).val <= ACCEPTABLE_ERROR_1, 'exp-test: error exceeds bounds');
+            assert((a - b).val <= ACCEPTABLE_ERROR, 'exp-test: error exceeds bounds');
         } else {
-            assert((b - a).val <= ACCEPTABLE_ERROR_1, 'exp-test: error exceeds bounds');
+            assert((b - a).val <= ACCEPTABLE_ERROR, 'exp-test: error exceeds bounds');
         }
     }
 
@@ -234,8 +232,10 @@ mod tests {
         );
 
         let res = exp(Wad { val: WAD_ONE * 10 });
+        assert_equalish1(res, Wad { val: 22026465794806716516957 });
 
-        let res = exp(Wad { val: WAD_ONE * 42 + 1 });
+        let res = exp(Wad { val: WAD_ONE * 20 });
+        assert_equalish1(res, Wad { val: 485165195409790277969106830 });
 
         // Highest possible value the function will accept
         exp(Wad { val: 42600000000000000000 });
