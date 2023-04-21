@@ -10,6 +10,7 @@ use aura::utils::u256_conversions::cast_to_u256;
 use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
 
+
 const WAD_SCALE: u128 = 1000000000000000000_u128;
 const RAY_SCALE: u128 = 1000000000000000000000000000_u128;
 const WAD_ONE: u128 = 1000000000000000000_u128;
@@ -242,6 +243,7 @@ impl RayIntoWad of Into<Ray, Wad> {
         Wad { val: self.val / DIFF }
     }
 }
+
 
 // Comparisons
 
