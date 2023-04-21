@@ -12,6 +12,9 @@ const RAY_SCALE: u128 = 1000000000000000000000000000_u128;
 const WAD_ONE: u128 = 1000000000000000000_u128;
 const RAY_ONE: u128 = 1000000000000000000000000000_u128;
 
+// Largest Wad that can be converted into a Ray without overflowing
+const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
+
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
 const DIFF: u128 = 1000000000_u128;
 
@@ -89,9 +92,7 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 
 #[inline(always)]
 fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
-    let a_u256: u256 = a.into();
-    let b_u256: u256 = b.into();
-    (a_u256, b_u256)
+    (a.into(), b.into())
 }
 
 #[inline(always)]
@@ -118,37 +119,9 @@ fn rdiv_internal(lhs: u128, rhs: u128) -> u128 {
     ((lhs_u256 * RAY_ONE.into()) / rhs_u256).try_into().unwrap()
 }
 
-// Traits
-trait FixedPointTrait<T> {
-    fn new(val: u128) -> T;
-    fn val(self: T) -> u128;
-}
-
 //
-// Implementations
+// Trait Implementations
 //
-
-// Fixed Point Type basic functions
-
-impl WadImpl of FixedPointTrait<Wad> {
-    fn new(val: u128) -> Wad {
-        Wad { val: val }
-    }
-
-    fn val(self: Wad) -> u128 {
-        self.val
-    }
-}
-
-impl RayImpl of FixedPointTrait<Ray> {
-    fn new(val: u128) -> Ray {
-        Ray { val: val }
-    }
-
-    fn val(self: Ray) -> u128 {
-        self.val
-    }
-}
 
 // Addition
 impl WadAdd of Add<Wad> {
@@ -163,6 +136,19 @@ impl RayAdd of Add<Ray> {
     }
 }
 
+impl WadAddEq of AddEq<Wad> {
+    fn add_eq(ref self: Wad, other: Wad) {
+        self = self + other;
+    }
+}
+
+impl RayAddEq of AddEq<Ray> {
+    fn add_eq(ref self: Ray, other: Ray) {
+        self = self + other;
+    }
+}
+
+
 // Subtraction
 impl WadSub of Sub<Wad> {
     fn sub(lhs: Wad, rhs: Wad) -> Wad {
@@ -175,6 +161,19 @@ impl RaySub of Sub<Ray> {
         Ray { val: lhs.val - rhs.val }
     }
 }
+
+impl WadSubEq of SubEq<Wad> {
+    fn sub_eq(ref self: Wad, other: Wad) {
+        self = self - other;
+    }
+}
+
+impl RaySubEq of SubEq<Ray> {
+    fn sub_eq(ref self: Ray, other: Ray) {
+        self = self - other;
+    }
+}
+
 
 // Multiplication
 impl WadMul of Mul<Wad> {
@@ -189,6 +188,19 @@ impl RayMul of Mul<Ray> {
     }
 }
 
+impl WadMulEq of MulEq<Wad> {
+    fn mul_eq(ref self: Wad, other: Wad) {
+        self = self * other;
+    }
+}
+
+impl RayMulEq of MulEq<Ray> {
+    fn mul_eq(ref self: Ray, other: Ray) {
+        self = self * other;
+    }
+}
+
+
 // Division
 impl WadDiv of Div<Wad> {
     fn div(lhs: Wad, rhs: Wad) -> Wad {
@@ -202,10 +214,27 @@ impl RayDiv of Div<Ray> {
     }
 }
 
+impl WadDivEq of DivEq<Wad> {
+    fn div_eq(ref self: Wad, other: Wad) {
+        self = self / other;
+    }
+}
+
+impl RayDivEq of DivEq<Ray> {
+    fn div_eq(ref self: Ray, other: Ray) {
+        self = self / other;
+    }
+}
+
+
 // Conversions
-impl WadIntoRay of Into<Wad, Ray> {
-    fn into(self: Wad) -> Ray {
-        Ray { val: self.val * DIFF }
+impl WadTryIntoRay of TryInto<Wad, Ray> {
+    fn try_into(self: Wad) -> Option::<Ray> {
+        if (self.val <= MAX_CONVERTIBLE_WAD) {
+            Option::Some(Ray { val: self.val * DIFF })
+        } else {
+            Option::None(())
+        }
     }
 }
 
@@ -296,6 +325,8 @@ mod tests {
     use traits::Into;
     use traits::TryInto;
 
+    use aura::utils::wadray::DIFF;
+    use aura::utils::wadray::MAX_CONVERTIBLE_WAD;
     use aura::utils::wadray::Ray;
     use aura::utils::wadray::RAY_ONE;
     use aura::utils::wadray::rdiv_wr;
@@ -349,6 +380,16 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_add_eq() {
+        let mut a1 = Wad { val: 5 };
+        let a2 = Wad { val: 5 };
+        let b = Wad { val: 3 };
+
+        a1 += b;
+        assert(a1 == a2 + b, 'Incorrect AddEq #1');
+    }
+
 
     #[test]
     fn test_sub() {
@@ -387,6 +428,16 @@ mod tests {
             },
             'Incorrect subtraction #6'
         );
+    }
+
+    #[test]
+    fn test_sub_eq() {
+        let mut a1 = Wad { val: 5 };
+        let a2 = Wad { val: 5 };
+        let b = Wad { val: 3 };
+
+        a1 -= b;
+        assert(a1 == a2 - b, 'Incorrect SubEq #1');
     }
 
 
@@ -477,6 +528,16 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_mul_eq() {
+        let mut a1 = Wad { val: 5 };
+        let a2 = Wad { val: 5 };
+        let b = Wad { val: 3 };
+
+        a1 *= b;
+        assert(a1 == a2 * b, 'Incorrect MulEq #1');
+    }
+
 
     #[test]
     fn test_div() {
@@ -505,6 +566,16 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_div_eq() {
+        let mut a1 = Wad { val: 15 };
+        let a2 = Wad { val: 15 };
+        let b = Wad { val: 3 };
+
+        a1 /= b;
+        assert(a1 == a2 / b, 'Incorrect DivEq #1');
+    }
+
 
     #[test]
     #[should_panic(expected: ('u256 is 0', ))]
@@ -521,8 +592,14 @@ mod tests {
     #[test]
     fn test_conversions() {
         // Test conversion from Wad to Ray
-        let a: Ray = Wad { val: WAD_ONE }.into();
+        let a: Ray = Wad { val: WAD_ONE }.try_into().unwrap();
         assert(a.val == RAY_ONE, 'Incorrect wad->ray conversion');
+
+        let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD }.try_into().unwrap();
+        assert(a.val == MAX_CONVERTIBLE_WAD * DIFF, 'Incorrect wad->ray conversion');
+
+        let a: Option::<Ray> = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into();
+        assert(a.is_none(), 'Incorrect wad->ray conversion');
 
         // Test conversion from Ray to Wad
         let a: Wad = Ray { val: RAY_ONE }.into();
@@ -540,8 +617,14 @@ mod tests {
 
     #[test]
     #[should_panic(expected: ('Option::unwrap failed.', ))]
-    fn test_conversions_fail() {
+    fn test_conversions_fail1() {
         let a: u128 = u256 { low: 1000_u128, high: 1 }.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected: ('Option::unwrap failed.', ))]
+    fn test_conversions_fail2() {
+        let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();
     }
 
     #[test]
