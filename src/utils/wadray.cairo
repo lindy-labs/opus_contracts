@@ -18,6 +18,7 @@ const WAD_ONE: u128 = 1000000000000000000;
 const RAY_ONE: u128 = 1000000000000000000000000000;
 const WAD_PERCENT: u128 = 10000000000000000;
 const RAY_PERCENT: u128 = 10000000000000000000000000;
+const U128_MAX: u128 = 340282366920938463463374607431768211455;
 
 // Largest Wad that can be converted into a Ray without overflowing
 const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
@@ -89,6 +90,12 @@ fn rdiv(lhs: Ray, rhs: Ray) -> Ray {
 // rdiv of Wad by Ray -> Wad
 #[inline(always)]
 fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
+    Wad { val: rdiv_internal(lhs.val, rhs.val) }
+}
+
+// rdiv of Wad by Wad -> Ray
+#[inline(always)]
+fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
     Wad { val: rdiv_internal(lhs.val, rhs.val) }
 }
 

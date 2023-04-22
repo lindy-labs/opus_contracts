@@ -9,6 +9,7 @@ use traits::Into;
 use traits::TryInto;
 
 use aura::utils::types::Trove;
+use aura::utils::types::YangRedistribution;
 use aura::utils::wadray::Ray;
 use aura::utils::wadray::Wad;
 
@@ -162,6 +163,36 @@ impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
         )?;
         storage_write_syscall(
             address_domain, storage_address_from_base_and_offset(base, 1_u8), second_val.into()
+        )
+    }
+}
+
+impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<YangRedistribution> {
+        let unit_debt_val = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8)
+        )?.try_into().unwrap();
+        let error_val = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8)
+        )?.try_into().unwrap();
+
+        Result::Ok(
+            YangRedistribution {
+                unit_debt: Wad { val: unit_debt_val }, error: Wad { val: error_val }, 
+            }
+        )
+    }
+
+    fn write(
+        address_domain: u32, base: StorageBaseAddress, value: YangRedistribution
+    ) -> SyscallResult::<()> {
+        storage_write_syscall(
+            address_domain,
+            storage_address_from_base_and_offset(base, 0_u8),
+            value.unit_debt.val.into()
+        )?;
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.error.val.into()
         )
     }
 }

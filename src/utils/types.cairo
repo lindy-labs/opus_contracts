@@ -7,3 +7,9 @@ struct Trove {
     debt: Wad, // Normalized debt
     last_rate_era: usize,
 }
+
+#[derive(Drop, Serde)]
+struct YangRedistribution {
+    unit_debt: Wad, // Amount of debt in wad to be distributed to each wad unit of yang
+    error: Wad, // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
+}

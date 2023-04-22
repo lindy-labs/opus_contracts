@@ -10,7 +10,9 @@ mod Shrine {
     use aura::utils::storage_access_impls::RayTupleStorageAccess;
     use aura::utils::storage_access_impls::U128TupleStorageAccess;
     use aura::utils::storage_access_impls::WadTupleStorageAccess;
+    use aura::utils::storage_access_impls::YangRedistributionStorageAccess;
     use aura::utils::types::Trove;
+    use aura::utils::types::YangRedistribution;
     use aura::utils::wadray;
     use aura::utils::wadray::Ray;
     use aura::utils::wadray::RAY_PERCENT;
@@ -92,7 +94,7 @@ mod Shrine {
         // 1. amount of debt in Wad to be redistributed to each Wad unit of yang
         // 2. amount of debt to be added to the next redistribution to calculate (1)
         // (yang_id, redistribution_id) -> (debt_per_wad, debt_to_add_to_next)
-        yang_redistribution: LegacyMap::<(u64, u64), (Wad, Wad)>,
+        yang_redistribution: LegacyMap::<(u64, u64), YangRedistribution>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
         // Yin storage
@@ -187,13 +189,196 @@ mod Shrine {
         yin_decimals::write(18);
     }
 
+    //
+    // Getters
+    //
+    #[view]
+    fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad) {
+        let interval: u64 = now();
+
+        // Get threshold and trove value
+        let yang_count: u64 = yangs_count::read();
+        //let (threshold: Ray, value: Wad) = get_trove_threshold_and_value_internal(trove_id, interval, yang_count, 0, 0);
+
+        // Calculate debt
+        let trove: Trove = troves::read(trove_id);
+
+        // Catch troves with no value
+        if value == 0 & trove.debt != 0 {
+            (threshold, wadray::U128_MAX, value, trove.debt)
+        } else {
+            (threshold, 0, value, trove.debt)
+        }
+
+        let mut debt: Wad = compound(trove_id, trove, interval, yang_count);
+        debt = pull_redistributed_debt(trove_id, debt, false);
+        let ltv: Ray = wadray::rdiv_ww(debt, value);
+
+        (threshold, ltv, value, debt)
+    }
+
+    #[view]
+    fn get_yin(user: ContractAddress) -> Wad {
+        yin::read(user)
+    }
+
+    #[view]
+    fn get_total_yin() -> Wad {
+        total_yin::read()
+    }
+
+    #[view]
+    fn get_yang_total(yang: ContractAddress) -> Wad {
+        let yang_id: u64 = yang_id::read(yang);
+        yang_total::read(yang_id)
+    }
+
+    #[view]
+    fn get_yangs_count() -> u64 {
+        yangs_count::read()
+    }
+
+    #[view]
+    fn get_deposit(yang: ContractAddress, trove_id: u64) -> Wad {
+        let yang_id: u64 = yang_id::read(yang);
+        deposits::read(yang_id, trove_id)
+    }
+
+    #[view]
+    fn get_total_debt() -> Wad {
+        total_debt::read()
+    }
+
+    #[view]
+    fn get_yang_price(yang: ContractAddress, interval: u64) -> (Wad, Wad) {
+        let yang_id: u64 = yang_id::read(yang);
+        (price, cumulative_price)
+    }
+
+    #[view]
+    fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray {
+        let yang_id: u64 = yang_id::read(yang);
+        yang_rates::read(yang_id, idx)
+    }
+
+    #[view]
+    fn get_ceiling() -> Wad {
+        ceiling::read()
+    }
+
+    #[view]
+    fn get_multiplier(interval: u64) -> (Ray, Ray) {
+        let mul_and_cumulative_mul: packed = multiplier::read(interval);
+        //let (multiplier: Ray, cumulative_multiplier: Ray) = unpack_125(mul_and_cumulative_mul);
+        (multiplier, cumulative_multiplier)
+    }
+
+    #[view]
+    fn get_yang_threshold(yang: ContractAddress) -> Ray {
+        let yang_id: u64 = get_valid_yang_id(yang);
+        thresholds::read(yang_id)
+    }
+
+    #[view]
+    fn get_threshold_and_value() -> (Ray, Wad) {
+        let current_interval: u64 = now();
+        let yang_count: u64 = yangs_count::read();
+        //let (threshold: Ray, value: Wad) = get_threshold_and_value_internal(current_interval, yang_count, 0, 0);
+        (threshold, value)
+    }
+
+    #[view]
+    fn get_redistributions_count() -> u64 {
+        redistributions_count::read()
+    }
+
+    #[view]
+    fn get_trove_redistribution_id(trove_id: u64) -> u64 {
+        trove_redistribution_id::read(trove_id)
+    }
+
+    #[view]
+    fn get_redistributed_unit_debt_for_yang(yang: ContractAddress, redistribution_id: u64) -> Wad {
+        let yang_id: u64 = get_valid_yang_id(yang);
+        let redistribution: YangRedistribution = get_yang_redistribution(
+            yang_id, redistribution_id
+        );
+        redistribution.unit_debt
+    }
+
+    #[view]
+    fn get_live() -> bool {
+        is_live::read()
+    }
+
 
     //
     // Internal
     //
 
+    // Check that system is live
+    fn assert_live() {
+        assert(shrine_live::read(), 'Shrine: System is not live');
+    }
+
+    // Helper function to get the yang ID given a yang address, and throw an error if
+    // yang address has not been added (i.e. yang ID = 0)
+    fn get_valid_yang_id(yang: ContractAddress) -> u64 {
+        let yang_id: u64 = shrine_yang_id::read(yang);
+        assert(yang_id != 0, 'Shrine: Yang does not exist');
+        yang_id
+    }
+
+    fn get_yang_redistribution(yang_id: u64, redistribution_id: u64) -> YangRedistribution {
+        yang_redistribution::read((yang_id, redistribution_id))
+    }
+
+    fn set_yang_redistribution(
+        yang_id: u64, redistribution_id: u64, redistribution: YangRedistribution
+    ) {
+        yang_redistribution::write((yang_id, redistribution_id), redistribution);
+    }
+
     fn now() -> u64 {
-        let time = starknet::get_block_info().unbox().block_timestamp;
+        let time: u64 = starknet::get_block_info().unbox().block_timestamp;
         time / TIME_INTERVAL.try_into().unwrap()
+    }
+
+    fn forge_internal(user: ContractAddress, amount: Wad) {
+        yin::write(user, yin::read(user) + amount)
+        total_yin::write(total_yin::read() + amount);
+
+        Transfer(0, user, amount.val.into());
+    }
+
+    fn melt_internal(user: ContractAddress, amount: Wad) {
+        yin::write(user, yin::read(user) - amount)
+        total_yin::write(total_yin::read() - amount);
+
+        Transfer(user, 0, amount.val.into());
+    }
+
+    // Withdraw a specified amount of a Yang from a Trove
+    fn withdraw_internal(yang: ContractAddress, trove_id: u64, amount: Wad) {
+        let yang_id: u64 = get_valid_yang_id(yang);
+        let mut total_yang: Wad = yang_total::read(yang_id) - amount;
+
+        // Ensure trove has sufficient yang
+        let mut trove_yang_balance: Wad = deposits::read(yang_id, trove_id);
+        trove_yang_balance -= amount;
+
+        //Charge interest
+        charge(trove_id);
+
+        // Update yang balance of system
+        total_yang -= amount;
+        yang_total::write(yang_id, total_yang);
+
+        // Update yang balance of trove
+        deposits::write((yang_id, trove_id), trove_yang_balance);
+
+        // Emit events
+        YangTotalUpdated(yang, total_yang);
+        DepositUpdated(yang, trove_id, new_trove_balance);
     }
 }
