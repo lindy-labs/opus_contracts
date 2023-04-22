@@ -109,6 +109,35 @@ impl WadTupleStorageAccess of StorageAccess<WadTuple> {
     }
 }
 
+type RayTuple = (Ray, Ray);
+
+impl RayTupleStorageAccess of StorageAccess<RayTuple> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<RayTuple> {
+        let first_ray_val = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8)
+        )?.try_into().unwrap();
+        let second_ray_val = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8)
+        )?.try_into().unwrap();
+
+        Result::Ok((Ray { val: first_ray_val }, Ray { val: second_ray_val }, ))
+    }
+
+    fn write(
+        address_domain: u32, base: StorageBaseAddress, value: RayTuple
+    ) -> SyscallResult::<()> {
+        let (first_ray, second_ray) = value;
+
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8), first_ray.val.into()
+        )?;
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8), second_ray.val.into()
+        )
+    }
+}
+
+
 type U128Tuple = (u128, u128);
 
 impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
