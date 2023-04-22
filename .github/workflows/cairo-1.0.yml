@@ -12,9 +12,7 @@ on:
       - "**.md"
 
 env:
-  CAIRO_COMPILER_VERSION: 1.0.0-alpha.7
-  ARCHIVE_LINK: https://github.com/starkware-libs/cairo/releases/download/v1.0.0-alpha.7/release-x86_64-unknown-linux-musl.tar.gz
-  ARCHIVE_NAME: cairo.zip
+  CAIRO_INSTALLATION_FOLDER: ./cairo
   SCARB_INSTALLATION_FOLDER: ./scarb
 
 jobs:
@@ -37,6 +35,7 @@ jobs:
       - name: Pull dependencies
         run: |
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
       - name: Cache dependencies
         id: cache
@@ -54,6 +53,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
+          cargo build --manifest-path=./cairo/Cargo.toml
           echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
@@ -62,14 +62,8 @@ jobs:
       - name: Compile Cairo 1.x code
         run: scarb build
 
-      - name: Download Cairo binaries
-        run: curl -L -o $ARCHIVE_NAME $ARCHIVE_LINK
-
-      - name: Unzip binaries
-        run: tar -xvf $ARCHIVE_NAME
-
-      - name: Add binaries to PATH
-        run: echo "./cairo/bin" >> $GITHUB_PATH
+      - name: Add Cairo to PATH
+        run: echo "$CAIRO_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Test Cairo 1.x code in Cairo
         run: scarb run test
