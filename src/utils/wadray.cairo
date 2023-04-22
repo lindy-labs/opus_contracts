@@ -6,20 +6,23 @@ use traits::PartialEq;
 use traits::PartialOrd;
 use traits::TryInto;
 
+use aura::utils::storage_access_impls::RayStorageAccess;
+use aura::utils::storage_access_impls::WadStorageAccess;
 use aura::utils::u256_conversions::cast_to_u256;
 use aura::utils::u256_conversions::U128IntoU256;
 use aura::utils::u256_conversions::U256TryIntoU128;
-
 
 const WAD_SCALE: u128 = 1000000000000000000;
 const RAY_SCALE: u128 = 1000000000000000000000000000;
 const WAD_ONE: u128 = 1000000000000000000;
 const RAY_ONE: u128 = 1000000000000000000000000000;
+const WAD_PERCENT: u128 = 10000000000000000;
+const RAY_PERCENT: u128 = 10000000000000000000000000;
 
 // Largest Wad that can be converted into a Ray without overflowing
 const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
 
-// The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
+// The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF = 10**9
 const DIFF: u128 = 1000000000;
 
 #[derive(Copy, Drop, Serde)]
