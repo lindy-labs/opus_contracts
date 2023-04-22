@@ -37,7 +37,7 @@ jobs:
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
           git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
-      - name: Cache dependencies
+      - name: Get cache dependencies
         id: cache
         uses: actions/cache@v3
         with:
@@ -54,7 +54,9 @@ jobs:
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
           cargo build --manifest-path=./cairo/Cargo.toml
-          echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
+
+      - name: Add Scarb to PATH
+        run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
