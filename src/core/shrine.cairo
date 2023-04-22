@@ -42,6 +42,8 @@ mod Shrine {
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     const USE_PREV_BASE_RATE: u128 = 100000000000000000000000001;
 
+    // Coressponds to '11111...' in binary
+    const ALL_ONES: u128 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -379,6 +381,46 @@ mod Shrine {
 
         // Emit events
         YangTotalUpdated(yang, total_yang);
-        DepositUpdated(yang, trove_id, new_trove_balance);
+        DepositUpdated(yang, trove_id, trove_yang_balance);
+    }
+
+    // Internal function for looping over all yangs and updating their base rates
+    // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
+    // yang's rate isn't being updated, and so we get the previous value.
+    //fn update_rates_loop(new_idx: u64, num_yangs: u64, yangs: new_rates:)
+
+    //
+    // Internal ERC20 functions
+    //
+    fn _transfer(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
+        assert(recipient != 0, 'Shrine: cannot transfer to the zero address');
+
+        let amount: Wad = Wad { val: amount.try_into().unwrap() };
+
+        // Transferring the Yin
+        yin::write(sender, yin::read(sender) - amount);
+        yin::write(sender, yin::read(sender) + amount);
+
+        Transfer(sender, recipient, amount);
+    }
+
+    fn _approve(owner: ContractAddress, spender: ContractAddress, amount: u256) {
+        assert(spender != 0, 'Shrine: cannot approve the zero address');
+        assert(owner != 0, 'Shrine: cannot approve for the zero address');
+
+        yin_allowances::write((owner, spender), amount);
+
+        Approval(owner, spender, amount);
+    }
+
+    fn _spend_allowance(owner: ContractAddress, spender: ContractAddress, amount: u256) {
+        let mut current_allowance: u256 = yin_allowances::read((owner, spender));
+
+        // if current_allowance is not set to the maximum u256, then 
+        // subtract `amount` from spender's allowance.
+        if current_allowance.low != ALL_ONES | current_allowance.high != ALL_ONES {
+            current_allowance -= amount;
+            _approve(owner, spender, current_allowance);
+        }
     }
 }
