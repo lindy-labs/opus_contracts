@@ -3,6 +3,6 @@ name = "src"
 version = "0.1.0"
 
 [scripts]
-test = "cairo-test ."
+test = "cairo-test --starknet ."
 
 [dependencies]
