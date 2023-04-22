@@ -329,10 +329,12 @@ mod tests {
     use aura::utils::wadray::MAX_CONVERTIBLE_WAD;
     use aura::utils::wadray::Ray;
     use aura::utils::wadray::RAY_ONE;
+    use aura::utils::wadray::RayIntoWad;
     use aura::utils::wadray::rdiv_wr;
     use aura::utils::wadray::rmul_rw;
     use aura::utils::wadray::rmul_wr;
     use aura::utils::wadray::Wad;
+    use aura::utils::wadray::WadTryIntoRay;
     use aura::utils::wadray::WAD_ONE;
     use aura::utils::wadray::wdiv_rw;
     use aura::utils::wadray::wmul_rw;
