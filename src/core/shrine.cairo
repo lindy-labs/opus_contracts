@@ -313,6 +313,97 @@ mod Shrine {
         is_live::read()
     }
 
+    //
+    // Setters
+    // 
+
+    // `initial_yang_amt` is passed as an argument from upstream to address the issue of
+    // first depositor front-running by requiring an initial deposit when adding the yang
+    // to the Shrine
+    #[external]
+    fn add_yang(
+        yang: ContractAddress,
+        threshold: Ray,
+        initial_price: Wad,
+        initial_rate: Ray,
+        initial_yang_amt: Wad
+    ) {
+        //AccessControl.assert_has_role(ShrineRoles.ADD_YANG);
+
+        assert(yang_id::read(yang) == 0, 'Shrine: Yang already exists');
+
+        assert_rate_is_valid(initial_rate);
+
+        // Assign new ID to yang and add yang struct
+        let yang_id: u64 = yangs_count::read() + 1;
+        yang_id::write(yang, yang_id);
+
+        //Update yangs count
+        yangs_count::write(yang, yang_id);
+
+        // Set threshold
+        set_threshold(yang, threshold);
+
+        // Update initial yang supply
+        // Used upstream to prevent first depositor front running
+        yang_total::write(yang_id, initial_yang_amt);
+
+        // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
+
+        let prev_interval: ufelt = now() - 1;
+        // seeding initial price to the previous interval to ensure `get_recent_price_from` terminates
+        // new prices are pushed to Shrine from an oracle via `advance` and are always set on the current
+        // interval (`now()`); if we wouldn't set this initial price to `now() - 1` and oracle could
+        // update a price still in the current interval (as oracle update times are independent of
+        // Shrine's intervals, a price can be updated multiple times in a single interval) which would
+        // result in an endless loop of `get_recent_price_from` since it wouldn't find the initial price
+        yang_price::write((yang_id, prev_interval), (initial_price, initial_price));
+
+        // Setting the base rate for the new yang
+
+        // NOTE: Eras are not incremented when a new yang is added, and the era that is being set
+        // for this base rate will have an interval that, in practice, is < now(). This would be a problem
+        // if there could be a trove containing the newly-added with `trove.last_rate_era < latest_era`.
+        // Luckily, this isn't possible because `charge` is called in `deposit`, so a trove's `last_rate_era`
+        // will always be updated to `latest_era` immediately before the newly-added yang is deposited.
+        let latest_era: u64 = shrine_rates_latest_era::read();
+        yang_rates::write((yang_id, latest_era), initial_rate);
+
+        // Event emissions
+        YangAdded(yang, yang_id, initial_price, initial_rate);
+        YangsCountUpdated(yang_id);
+        YangTotalUpdated(yang, initial_yang_amt);
+    }
+
+    #[external]
+    fn set_ceiling(new_ceiling: Wad) {
+        //AccessControl.assert_has_role(ShrineRoles.SET_CEILING);
+        eiling::write(new_ceiling);
+
+        //Event emission
+        CeilingUpdated(new_ceiling);
+    }
+
+    #[external]
+    fn set_threshold(yang: ContractAddress, new_threshold: Ray) {
+        //AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD);
+
+        assert(new_threshold.val < MAX_THRESHOLD, 'Shrine: Threshold exceeds the maximum');
+        thresholds::write(get_valid_yang_id(yang), new_threshold);
+
+        // Event emission
+        ThresholdUpdated(yang, new_threshold);
+    }
+
+    #[external]
+    fn kill() {
+        //AccessControl.assert_has_role(ShrineRoles.KILL);
+        is_live::write(false);
+
+        // Event emission
+        Killed();
+    }
+
 
     //
     // Internal
@@ -392,6 +483,7 @@ mod Shrine {
     //
     // Internal ERC20 functions
     //
+
     fn _transfer(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
         assert(recipient != 0, 'Shrine: cannot transfer to the zero address');
 
