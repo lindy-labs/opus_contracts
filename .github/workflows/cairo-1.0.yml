@@ -54,12 +54,13 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
+          echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
-        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb fmt --check --verbose
+        run: scarb fmt --check --verbose
 
       - name: Compile Cairo 1.x code
-        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb build
+        run: scarb build
 
       - name: Download Cairo binaries
         run: curl -L -o $ARCHIVE_NAME $ARCHIVE_LINK
