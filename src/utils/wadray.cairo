@@ -96,9 +96,8 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 // rdiv of Wad by Wad -> Ray
 #[inline(always)]
 fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
-    Wad { val: rdiv_internal(lhs.val, rhs.val) }
+    Ray { val: rdiv_internal(lhs.val, rhs.val) }
 }
-
 
 //
 // Internal helpers 
