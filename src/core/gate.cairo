@@ -10,6 +10,7 @@ trait IShrine {
 
 #[contract]
 mod Gate {
+    use integer::u128_try_from_felt252;
     use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::get_contract_address;
@@ -217,12 +218,10 @@ mod Gate {
 
             // Scale by difference to match the decimal precision of the asset
             let scale: u128 = pow10(WAD_DECIMALS - decimals);
-
             yang_amt.val / scale
         } else {
             let total_assets: Wad = Wad { val: get_total_assets_internal() };
             let assets: Wad = (yang_amt * total_assets) / total_supply;
-
             assets.val
         }
     }
@@ -245,7 +244,6 @@ mod Gate {
         } else {
             let total_assets: Wad = Wad { val: get_total_assets_internal() };
             let yang: Wad = (Wad { val: asset_amt } * total_supply) / total_assets;
-
             yang
         }
     }

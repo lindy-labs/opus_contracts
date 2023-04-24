@@ -1,5 +1,6 @@
 use integer::Felt252TryIntoU128;
 use integer::U128IntoFelt252;
+use integer::u128_try_from_felt252;
 use option::OptionTrait;
 use traits::Into;
 use traits::PartialEq;
@@ -103,10 +104,7 @@ fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
 
 fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     assert(decimals <= WAD_DECIMALS, 'wadray: more than 18 decimals');
-
-    let diff: felt252 = (WAD_DECIMALS - decimals).into();
-    let scale: u128 = pow10(diff);
-
+    let scale: u128 = pow10(WAD_DECIMALS - decimals);
     Wad { val: n * scale }
 }
 
