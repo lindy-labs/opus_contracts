@@ -32,12 +32,11 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
-      - name: Pull dependencies
+      - name: Pull Scarb dependency
         run: |
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
-          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
-      - name: Get cache dependencies
+      - name: Get cache
         id: cache
         uses: actions/cache@v3
         with:
@@ -49,11 +48,10 @@ jobs:
             **/target
           key: ${{ runner.os }}-cargo-${{ env.SCARB_HASH }}
 
-      - name: Install dependencies
+      - name: Install Scarb
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
-          cargo build --manifest-path=./cairo/Cargo.toml
 
       - name: Add Scarb to PATH
         run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
@@ -63,6 +61,11 @@ jobs:
 
       - name: Compile Cairo 1.x code
         run: scarb build
+
+      - name: Pull Cairo dependency and install
+        run: |
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
+          cargo build --manifest-path=./cairo/Cargo.toml
 
       - name: Add Cairo to PATH
         run: echo "$CAIRO_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
