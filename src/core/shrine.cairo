@@ -205,7 +205,9 @@ mod Shrine {
 
         // Get threshold and trove value
         let yang_count: u64 = yangs_count::read();
-        //let (threshold: Ray, value: Wad) = get_trove_threshold_and_value_internal(trove_id, interval, yang_count, 0, 0);
+        let (threshold, value) = get_trove_threshold_and_value_internal(
+            trove_id, interval, yang_count, 0, 0
+        );
 
         // Calculate debt
         let trove: Trove = troves::read(trove_id);
@@ -1067,6 +1069,50 @@ mod Shrine {
         }
 
         Ray { val: cumulative_diff.val / (end_interval - start_interval) }
+    }
+
+    //
+    // Trove health internal functions
+    //
+
+    fn assert_healthy(trove_id: u64) {
+        assert(is_healthy(trove_id), 'Trove LTV is too high');
+    }
+
+    // Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value, at a given interval.
+    // This function can use historical prices but the currently deposited yang amounts to calculate value.
+    // The underlying assumption is that the amount of each yang deposited at `interval` is the same as the amount currently deposited.
+    fn get_trove_threshold_and_value_internal(trove_id: u64, interval: u64) -> (Ray, Wad) {
+        let mut current_yang_id: u64 = yangs_count::read();
+        let mut weighted_threshold = Ray { val: 0 };
+        let mut trove_value = Wad { val: 0 };
+
+        loop {
+            if current_yang_id == 0 {
+                break ();
+            }
+
+            let deposited: Wad = deposits::read(current_yang_id, trove_id);
+
+            // Skip over current yang if user hasn't deposited anything
+            if deposited.val != 0 {
+                let yang_threshold: Ray = thresholds::read(current_yang_id);
+
+                let (price, _, _) = get_recent_price_from(current_yang_id, interval);
+
+                let yang_deposited_value = deposited * price;
+                trove_value += yang_deposited_value;
+                weighted_threshold += wadray::wmul_rw(yang_threshold, yang_deposited_value);
+            }
+
+            current_yang_id -= 1;
+        }
+
+        if trove_value.val != 0 {
+            return (wadray::wdiv_rw(weighted_threshold, trove_value), trove_value);
+        }
+
+        (Ray { val: 0 }, Wad { val: 0 })
     }
 
 
