@@ -814,8 +814,9 @@ mod Shrine {
 
                 // Adjust debt to distribute by adding the error from the last redistribution
                 let last_error: Wad = get_recent_redistribution_error_for_yang(
-                    current_yang_id, redistribution_id - 1
+                    current_yang_id, redistribution - 1
                 );
+
                 let adjusted_debt_to_distribute: Wad = debt_to_distribute + last_error;
 
                 let unit_debt: Wad = adjusted_debt_to_distribute / new_yang_total;
@@ -844,6 +845,230 @@ mod Shrine {
 
         redistributed_debt
     }
+
+    // Returns the last error for `yang_id` at a given `redistribution_id` if the packed value is non-zero.
+    // Otherwise, check `redistribution_id` - 1 recursively for the last error.
+    fn get_recent_redistribution_error_for_yang(yang_id: u64, redistribution_id: u64) -> Wad {
+        check_gas();
+
+        if redistribution_id == 0 {
+            return 0;
+        }
+
+        let error: Wad = yang_redistributions::read((yang_id, redistribution_id));
+
+        if error != 0 {
+            return error;
+        }
+
+        get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
+    }
+
+
+    // Helper function to round up the debt to be redistributed for a yang if the remaining debt
+    // falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
+    // of debt redistributed is equal to the trove's debt
+    fn round_distributed_debt(
+        total_debt_to_distribute: Wad,
+        remaining_debt_to_distribute: Wad,
+        cumulative_redistributed_debt: Wad
+    ) -> (Wad, Wad) {
+        let updated_cumulative_redistributed_debt = remaining_debt_to_distribute
+            + cumulative_redistributed_debt;
+
+        if remaining_debt.val <= ROUNDING_THRESHOLD {
+            return (
+                remaining_debt_to_distribute + remaining_debt,
+                updated_cumulative_redistributed_debt + remaining_debt
+            );
+        }
+
+        (remaining_debt_to_distribute, updated_cumulative_redistributed_debt)
+    }
+
+    // Takes in a value for the trove's debt, and returns the updated value after adding
+    // the redistributed debt, if any.
+    // Takes in a boolean flag to determine whether the redistribution ID for the trove should be updated.
+    // Any state update of the trove's debt should be performed in the caller function.
+    fn pull_redistributed_debt(
+        trove_id: u64, mut trove_debt: Wad, updated_redistribution_id: bool
+    ) -> Wad {
+        let current_redistribution_id: u64 = redistributions_count::read();
+        let trove_last_redistribution_id: u64 = trove_redistribution_id::read(trove_id);
+
+        // Early termination if no redistributions since trove was last updated
+        if current_redistribution_id == trove_last_redistribution_id {
+            return trove_debt;
+        }
+
+        // Outer loop iterating over the trove's yangs
+        let mut current_yang_id = yangs_count::read();
+        loop {
+            check_gas();
+            if current_yang_id == 0 {
+                break ();
+            }
+
+            let deposited: Wad = deposits::read((current_yang_id, trove_id));
+            if deposited != 0 {
+                let debt_increment: Wad = pull_redistributed_debt_inner_loop(
+                    last_redistribution_id, current_redistribution_id, current_yang_id, deposited, 0
+                );
+
+                // Inner loop iterating over the redistribution IDs for each of the trove's yangs
+                let mut current_redistribution_id_temp = current_redistribution_id;
+                let mut debt_increment: Wad = Wad { val: 0 };
+                loop {
+                    check_gas();
+                    if last_redistribution_id == current_redistribution_id {
+                        break ();
+                    }
+
+                    // Get the amount of debt per yang for the current redistribution
+                    let unit_debt: Wad = yang_redistribution::read(
+                        (current_yang_id, current_redistribution_id)
+                    ).unit_debt;
+
+                    // Early termination if no debt was distributed for given yang
+                    if unit_debt == 0 {
+                        break ();
+                    }
+
+                    debt_increment += unit_debt * deposited;
+                    current_redistribution_id_temp -= 1;
+                }
+                trove_debt += debt_increment;
+            }
+            current_yang_id -= 1;
+        }
+
+        if update_redistribution_id {
+            trove_redistribution_id::write((trove_id, current_redistribution_id));
+        }
+
+        trove_debt
+    }
+
+    // Returns the price for `yang_id` at `interval` if it is non-zero.
+    // Otherwise, check `interval` - 1 recursively for the last available price.
+    fn get_recent_price_from(yang_id: u64, interval: u64) -> (Wad, Wad, u64) {
+        let (price, cumulative_price) = yang_price::read(yang_id, interval);
+
+        if price != 0 {
+            return (price, cumulative_price, interval);
+        }
+        get_recent_price_from(yang_id, interval - 1);
+    }
+
+    // Returns the average price for a yang between two intervals, including `end_interval` but NOT including `start_interval`
+    // - If `start_interval` is the same as `end_interval`, return the price at that interval.
+    // - If `start_interval` is different from `end_interval`, return the average price.
+    // Return value is a tuple so that function can be modified as an external view for testing
+    fn get_avg_price(yang_id: u64, start_interval: u64, end_interval: u64) -> Wad {
+        let (start_yang_price, start_cumulative_yang_price, available_start_interval) =
+            get_recent_price_from(
+            yang_id, start_interval
+        );
+        let (end_yang_price, end_cumulative_yang_price, available_end_interval) =
+            get_recent_price_from(
+            yang_id, end_interval
+        );
+
+        // If the last available price for both start and end intervals are the same,
+        // return that last available price
+        // This also catches `start_interval == end_interval`
+        if available_start_interval == available_end_interval {
+            return start_yang_price;
+        }
+
+        let mut cumulative_diff: Wad = end_cumulative_yang_price - start_cumulative_yang_price;
+
+        // Early termination if `start_interval` and `end_interval` are updated
+        if start_interval == available_start_interval & end_interval == available_end_interval {
+            return Wad { val: cumulative_diff.val / (end_interval - start_interval) };
+        }
+
+        // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
+        // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
+        if start_interval != available_start_interval {
+            let cumulative_offset = Wad {
+                val: (start_interval - available_start_interval) * start_yang_price.val
+            };
+            cumulative_diff -= cumulative_offset;
+        }
+
+        // If the end interval is not updated, adjust the cumulative difference by adding
+        // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
+        if (end_interval != available_end_interval) {
+            let cumulative_offset = Wad {
+                val: (end_interval - available_end_interval) * end_yang_price.val
+            };
+            cumulative_diff += cumulative_offset;
+        }
+
+        Wad { val: cumulative_diff.val / (end_interval - start_interval) }
+    }
+
+    // Returns the multiplier at `interval` if it is non-zero.
+    // Otherwise, check `interval` - 1 recursively for the last available value.
+    fn get_recent_multiplier_from(interval: u64) {
+        let (multiplier, cumulative_multiplier) = multiplier::read(interval);
+        if multiplier != 0 {
+            return (multiplier, cumulative_multiplier, interval);
+        }
+
+        get_recent_multiplier(interval - 1)
+    }
+
+    // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
+    // - If `start_interval` is the same as `end_interval`, return the multiplier value at that interval.
+    // - If `start_interval` is different from `end_interval`, return the average.
+    // Return value is a tuple so that function can be modified as an external view for testing
+    fn get_avg_multiplier(start_interval: u64, end_interval: u64) -> Ray {
+        let (start_multiplier, start_cumulative_multiplier, available_start_interval) =
+            get_recent_multiplier(
+            start_interval
+        );
+        let (end_multiplier, end_cumulative_multiplier, available_end_interval) =
+            get_recent_multiplier_from(
+            end_interval
+        );
+
+        // If the last available multiplier for both start and end intervals are the same,
+        // return that last available multiplier
+        // This also catches `start_interval == end_interval`
+        if available_start_interval == available_end_interval {
+            return start_multiplier;
+        }
+
+        let mut cumulative_diff: Ray = end_cumulative_multiplier - start_cumulative_multiplier;
+
+        // Early termination if `start_interval` and `end_interval` are updated
+        if start_interval == available_start_interval & end_interval == available_end_interval {
+            return Ray { val: cumulative_diff.val / (end_interval - start_interval) };
+        }
+
+        // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
+        // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
+        if start_interval != available_start_interval {
+            let cumulative_offset = Ray {
+                val: (start_interval - available_start_interval) * start_yang_price.val
+            };
+            cumulative_diff -= cumulative_offset;
+        }
+
+        // If the end interval is not updated, adjust the cumulative difference by adding
+        // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
+        if (end_interval != available_end_interval) {
+            let cumulative_offset = Ray {
+                val: (end_interval - available_end_interval) * end_yang_price.val
+            };
+            cumulative_diff += cumulative_offset;
+        }
+
+        Ray { val: cumulative_diff.val / (end_interval - start_interval) }
+    }
+
 
     //
     // Internal ERC20 functions
