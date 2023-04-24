@@ -4,9 +4,7 @@ use traits::TryInto;
 
 #[inline(always)]
 fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
-    let a_u256: u256 = a.into();
-    let b_u256: u256 = b.into();
-    (a_u256, b_u256)
+    (a.into(), b.into())
 }
 
 impl U128IntoU256 of Into<u128, u256> {

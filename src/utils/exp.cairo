@@ -63,14 +63,7 @@ fn exp(x: Wad) -> Wad {
     // Necessary, otherwise runner complains about "failed calculating gas usage" if `exp` is 
     // called too many times.
     // TODO: remove once compiler automatically handles it.
-    match gas::withdraw_gas_all(get_builtin_costs()) {
-        Option::Some(_) => {},
-        Option::None(_) => {
-            let mut data = ArrayTrait::<felt252>::new();
-            data.append('OOG');
-            panic(data);
-        },
-    }
+    gas::withdraw_gas_all(get_builtin_costs()).expect('Out of gas');
 
     let mut x: u128 = x.val;
 
@@ -110,41 +103,41 @@ fn exp(x: Wad) -> Wad {
 
     // `product` is the accumulated product of all a_n (except a0 and a1), which starts at 20 decimal fixed point
     // one. Recall that fixed point multiplication requires dividing by ONE_20.
-    let ONE_20_u256: u256 = ONE_20.into();
+    let ONE_20: u256 = ONE_20.into();
 
-    let mut product: u256 = ONE_20_u256;
+    let mut product: u256 = ONE_20;
 
     if (x >= x2) {
         x -= x2;
-        product = (product * a2.into()) / ONE_20_u256;
+        product = (product * a2.into()) / ONE_20;
     }
     if (x >= x3) {
         x -= x3;
-        product = (product * a3.into()) / ONE_20_u256;
+        product = (product * a3.into()) / ONE_20;
     }
     if (x >= x4) {
         x -= x4;
-        product = (product * a4.into()) / ONE_20_u256;
+        product = (product * a4.into()) / ONE_20;
     }
     if (x >= x5) {
         x -= x5;
-        product = (product * a5.into()) / ONE_20_u256;
+        product = (product * a5.into()) / ONE_20;
     }
     if (x >= x6) {
         x -= x6;
-        product = (product * a6.into()) / ONE_20_u256;
+        product = (product * a6.into()) / ONE_20;
     }
     if (x >= x7) {
         x -= x7;
-        product = (product * a7.into()) / ONE_20_u256;
+        product = (product * a7.into()) / ONE_20;
     }
     if (x >= x8) {
         x -= x8;
-        product = (product * a8.into()) / ONE_20_u256;
+        product = (product * a8.into()) / ONE_20;
     }
     if (x >= x9) {
         x -= x9;
-        product = (product * a9.into()) / ONE_20_u256;
+        product = (product * a9.into()) / ONE_20;
     }
 
     // x10 and x11 are unnecessary here since we have high enough precision already.
@@ -152,44 +145,47 @@ fn exp(x: Wad) -> Wad {
     // Now we need to compute e^x, where x is small (in particular, it is smaller than x9). We use the Taylor series
     // expansion for e^x: 1 + x + (x^2 / 2!) + (x^3 / 3!) + ... + (x^n / n!).
 
-    let mut series_sum: u256 = ONE_20_u256; // The initial one in the sum, with 20 decimal places.
-    let x_u256: u256 = x.into();
-    let mut term: u256 = x_u256; // Each term in the sum, where the nth term is (x^n / n!).
+    let mut series_sum: u256 = ONE_20; // The initial one in the sum, with 20 decimal places.
+    let x: u256 = x.into();
+    let mut term: u256 = x; // Each term in the sum, where the nth term is (x^n / n!).
 
     // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
     // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
 
-    term = ((term * x_u256) / ONE_20_u256) / 2.into();
+    term = term * x / u256 { low: 100000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 3.into();
+    term = term * x / u256 { low: 200000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 4.into();
+    term = term * x / u256 { low: 300000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 5.into();
+    term = term * x / u256 { low: 400000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 6.into();
+    term = term * x / u256 { low: 500000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 7.into();
+    term = term * x / u256 { low: 600000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 8.into();
+    term = term * x / u256 { low: 700000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 9.into();
+    term = term * x / u256 { low: 800000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 10.into();
+    term = term * x / u256 { low: 900000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 11.into();
+    term = term * x / u256 { low: 1000000000000000000000, high: 0 };
     series_sum += term;
 
-    term = ((term * x_u256) / ONE_20_u256) / 12.into();
+    term = term * x / u256 { low: 1100000000000000000000, high: 0 };
+    series_sum += term;
+
+    term = term * x / u256 { low: 1200000000000000000000, high: 0 };
     series_sum += term;
 
     // 12 Taylor terms are sufficient for 18 decimal precision.
@@ -199,7 +195,7 @@ fn exp(x: Wad) -> Wad {
     // all three (one 20 decimal fixed point multiplication, dividing by ONE_20, and one integer multiplication),
     // and then drop two digits to return an 18 decimal value.
 
-    let result: u256 = (((product * series_sum) / ONE_20_u256) * firstAN) / 100.into();
+    let result: u256 = (((product * series_sum) / ONE_20) * firstAN) / 100.into();
 
     Wad { val: result.try_into().unwrap() }
 }
