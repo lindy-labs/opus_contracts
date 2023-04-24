@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Get latest commit hash
         run: |
-          echo "SCARB_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/software-mansion/scarb/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
+          echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -32,9 +32,10 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
-      - name: Pull Scarb dependency
+      - name: Pull dependencies
         run: |
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
       - name: Get cache
         id: cache
@@ -46,12 +47,13 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.SCARB_HASH }}
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
-      - name: Install Scarb
+      - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
+          cargo build --manifest-path=./cairo/Cargo.toml
 
       - name: Add Scarb to PATH
         run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
@@ -61,11 +63,6 @@ jobs:
 
       - name: Compile Cairo 1.x code
         run: scarb build
-
-      - name: Pull Cairo dependency and install
-        run: |
-          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
-          cargo build --manifest-path=./cairo/Cargo.toml
 
       - name: Add Cairo to PATH
         run: echo "$CAIRO_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
