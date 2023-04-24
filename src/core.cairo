@@ -1,1 +1,2 @@
+mod gate;
 mod shrine;
