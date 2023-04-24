@@ -778,7 +778,72 @@ mod Shrine {
         trove_value: Wad,
         trove_debt: Wad,
         current_interval: u64
-    ) -> Wad {}
+    ) -> Wad {
+        let mut current_yang_id: u64 = yangs_count::read();
+        let mut redistributed_debt: Wad = Wad { val: 0 };
+
+        loop {
+            if current_yang_id == 0 {
+                break ();
+            }
+
+            // Skip over this yang if it hasn't been deposited in the trove
+            let deposited: Wad = deposits::read((current_yang_id, trove_id));
+            if deposited.val != 0 {
+                // Set the yang amount to 0, causing the exchange rate from yang to the underlying asset
+                // in Gate to automatically rebase
+                deposits::write((current_yang_id, trove_id), Wad { val: 0 });
+
+                // Update yang balance of system
+                let old_yang_total: Wad = yang_total::read(current_yang_id);
+
+                // Decrementing the system's yang balance by the amount deposited in the trove has the effect of
+                // rebasing (i.e. appreciating) the ratio of asset to yang for the remaining troves.
+                // By removing the distributed yangs from the system, it distributes the assets between
+                // the remaining yangs.
+                yang_total::write(current_yang_id, old_yang_total - deposited);
+
+                // Calculate (value of yang / trove value) * debt and assign redistributed debt to yang
+                let (yang_price, _, _) = get_recent_price_from(current_yang_id, current_interval);
+                let raw_debt_to_distribute = ((deposited * yang_price) / trove_value) * trove_debt;
+
+                let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
+                    trove_debt, raw_debt_to_distribute, redistributed_debt
+                );
+                redistributed_debt = updated_redistributed_debt;
+
+                // Adjust debt to distribute by adding the error from the last redistribution
+                let last_error: Wad = get_recent_redistribution_error_for_yang(
+                    current_yang_id, redistribution_id - 1
+                );
+                let adjusted_debt_to_distribute: Wad = debt_to_distribute + last_error;
+
+                let unit_debt: Wad = adjusted_debt_to_distribute / new_yang_total;
+
+                // Due to loss of precision from fixed point division, the actual debt distributed will be less than
+                // or equal to the amount of debt to distribute.
+                let actual_debt_distributed: Wad = unit_debt * new_yang_total;
+                let new_error: Wad = adjusted_debt_to_distribute - actual_debt_distributed;
+                let current_yang_redistribution = YangRedistribution {
+                    unit_debt: unit_debt, error: new_error
+                };
+
+                yang_redistribution::write(
+                    (current_yang_id, redistribution_id), current_yang_redistribution
+                );
+
+                // Continue iteration if there is no dust
+                // Otherwise, if debt is rounded up and fully redistributed, skip the remaining yangs
+                if debt_to_distribute != raw_debt_to_distribute {
+                    break ();
+                }
+            }
+
+            current_yang_id -= 1;
+        }
+
+        redistributed_debt
+    }
 
     //
     // Internal ERC20 functions
