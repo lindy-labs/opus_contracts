@@ -35,6 +35,10 @@ mod Gate {
         live: bool,
     }
 
+    //
+    // Events
+    //
+
     #[event]
     fn Enter(user: ContractAddress, trove_id: u64, asset_amt: u128, yang_amt: Wad) {}
 
@@ -43,6 +47,23 @@ mod Gate {
 
     #[event]
     fn Killed() {}
+
+    //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(admin: ContractAddress, shrine: ContractAddress, asset: ContractAddress) {
+        // TODO: initialize admin in access control
+        // TODO: grant gate default role to admin
+
+        initializer(shrine, asset);
+        live::write(true);
+    }
+
+    //
+    // Getters
+    //
 
     #[view]
     fn get_shrine() -> ContractAddress {
@@ -84,14 +105,9 @@ mod Gate {
         live::read()
     }
 
-    #[constructor]
-    fn constructor(admin: ContractAddress, shrine: ContractAddress, asset: ContractAddress) {
-        // TODO: initialize admin in access control
-        // TODO: grant gate default role to admin
-
-        initializer(shrine, asset);
-        live::write(true);
-    }
+    //
+    // External
+    //
 
     #[external]
     fn kill() {
@@ -146,6 +162,10 @@ mod Gate {
 
         asset_amt
     }
+
+    //
+    // Internal
+    //
 
     fn initializer(shrine: ContractAddress, asset: ContractAddress) {
         shrine::write(shrine);
