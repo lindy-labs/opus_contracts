@@ -6,17 +6,21 @@ use traits::PartialEq;
 use traits::PartialOrd;
 use traits::TryInto;
 
+use aura::utils::u256_conversions::cast_to_u256;
+use aura::utils::u256_conversions::U128IntoU256;
+use aura::utils::u256_conversions::U256TryIntoU128;
 
-const WAD_SCALE: u128 = 1000000000000000000_u128;
-const RAY_SCALE: u128 = 1000000000000000000000000000_u128;
-const WAD_ONE: u128 = 1000000000000000000_u128;
-const RAY_ONE: u128 = 1000000000000000000000000000_u128;
+
+const WAD_SCALE: u128 = 1000000000000000000;
+const RAY_SCALE: u128 = 1000000000000000000000000000;
+const WAD_ONE: u128 = 1000000000000000000;
+const RAY_ONE: u128 = 1000000000000000000000000000;
 
 // Largest Wad that can be converted into a Ray without overflowing
 const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
 
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
-const DIFF: u128 = 1000000000_u128;
+const DIFF: u128 = 1000000000;
 
 #[derive(Copy, Drop, Serde)]
 struct Wad {
@@ -89,11 +93,6 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 //
 // Internal helpers 
 //
-
-#[inline(always)]
-fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
-    (a.into(), b.into())
-}
 
 #[inline(always)]
 fn wmul_internal(lhs: u128, rhs: u128) -> u128 {
@@ -245,21 +244,6 @@ impl RayIntoWad of Into<Ray, Wad> {
     }
 }
 
-impl U128IntoU256 of Into<u128, u256> {
-    fn into(self: u128) -> u256 {
-        u256 { low: self, high: 0_u128 }
-    }
-}
-
-impl U256TryIntoU128 of TryInto<u256, u128> {
-    fn try_into(self: u256) -> Option<u128> {
-        if (self.high == 0) {
-            Option::Some(self.low)
-        } else {
-            Option::None(())
-        }
-    }
-}
 
 // Comparisons
 
@@ -339,8 +323,6 @@ mod tests {
     use aura::utils::wadray::wdiv_rw;
     use aura::utils::wadray::wmul_rw;
     use aura::utils::wadray::wmul_wr;
-    use aura::utils::wadray::U128IntoU256;
-    use aura::utils::wadray::U256TryIntoU128;
 
 
     #[test]
@@ -446,15 +428,11 @@ mod tests {
     #[test]
     fn test_mul() {
         // 0 * 69 = 0
-        assert(
-            Wad { val: 0_u128 } * Wad { val: 69_u128 } == Wad { val: 0_u128 },
-            'Incorrect Multiplication # 1'
-        );
+        assert(Wad { val: 0 } * Wad { val: 69 } == Wad { val: 0 }, 'Incorrect Multiplication # 1');
 
         // 1 * 1 = 0 (truncated)
         assert(
-            Wad { val: 1_u128 } * Wad { val: 1_u128 } == Wad { val: 0_u128 },
-            'Incorrect multiplication #2'
+            Wad { val: 1 } * Wad { val: 1 } == Wad { val: 0 }, 'Incorrect multiplication #2'
         ); // Result should be truncated
 
         // 1 (wad) * 1 (wad) = 1 (wad)
@@ -466,25 +444,21 @@ mod tests {
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670187008926
         assert(
             Wad {
-                val: 121110987654321531059_u128
+                val: 121110987654321531059
                 } * Wad {
-                val: 1234567891011125475893_u128
+                val: 1234567891011125475893
                 } == Wad {
-                val: 149519736606670187008926_u128
+                val: 149519736606670187008926
             },
             'Incorrect multiplication #4'
         );
 
         // 0 * 69 = 0
-        assert(
-            Ray { val: 0_u128 } * Ray { val: 69_u128 } == Ray { val: 0_u128 },
-            'Incorrect Multiplication #5'
-        );
+        assert(Ray { val: 0 } * Ray { val: 69 } == Ray { val: 0 }, 'Incorrect Multiplication #5');
 
         // 1 * 1 = 0 (truncated)
         assert(
-            Ray { val: 1_u128 } * Ray { val: 1_u128 } == Ray { val: 0_u128 },
-            'Incorrect multiplication #6'
+            Ray { val: 1 } * Ray { val: 1 } == Ray { val: 0 }, 'Incorrect multiplication #6'
         ); // Result should be truncated
 
         // 1 (ray) * 1 (ray) = 1 (ray)
@@ -496,11 +470,11 @@ mod tests {
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670 (truncated)
         assert(
             Ray {
-                val: 121110987654321531059_u128
+                val: 121110987654321531059
                 } * Ray {
-                val: 1234567891011125475893_u128
+                val: 1234567891011125475893
                 } == Ray {
-                val: 149519736606670_u128
+                val: 149519736606670
             },
             'Incorrect multiplication #8'
         );
@@ -606,21 +580,6 @@ mod tests {
         // Test conversion from Ray to Wad
         let a: Wad = Ray { val: RAY_ONE }.into();
         assert(a.val == WAD_ONE, 'Incorrect ray->wad conversion');
-
-        // Test conversion from u128 to u256
-        let a: u256 = WAD_ONE.into();
-        assert(a.low == WAD_ONE & a.high == 0, 'Incorrect u128->u256 conversion');
-
-        // Test conversion from u256 to u128
-        let a: u128 = u256 { low: 1000_u128, high: 0 }.try_into().unwrap();
-        assert(a == 1000_u128, 'Incorrect u256->u128 conversion');
-    }
-
-
-    #[test]
-    #[should_panic(expected: ('Option::unwrap failed.', ))]
-    fn test_conversions_fail1() {
-        let a: u128 = u256 { low: 1000_u128, high: 1 }.try_into().unwrap();
     }
 
     #[test]
