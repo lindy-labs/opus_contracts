@@ -61,9 +61,6 @@ jobs:
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
 
-      - name: Compile Cairo 1.x code
-        run: scarb build
-
       - name: Add Cairo to PATH
         run: echo "$CAIRO_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
