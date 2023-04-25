@@ -2,4 +2,7 @@
 name = "aura"
 version = "0.1.0"
 
+[scripts]
+test = "cairo-test --starknet ."
+
 [dependencies]
