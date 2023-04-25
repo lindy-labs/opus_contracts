@@ -60,11 +60,6 @@ const a11: u128 = 106449445891785942956; // eˆ(x11)
 //   it may not be necessary for our purposes.
 
 fn exp(x: Wad) -> Wad {
-    // Necessary, otherwise runner complains about "failed calculating gas usage" if `exp` is 
-    // called too many times.
-    // TODO: remove once compiler automatically handles it.
-    gas::withdraw_gas_all(get_builtin_costs()).expect('Out of gas');
-
     let mut x: u128 = x.val;
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
