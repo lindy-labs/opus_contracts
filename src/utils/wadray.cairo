@@ -7,7 +7,6 @@ use traits::PartialEq;
 use traits::PartialOrd;
 use traits::TryInto;
 
-use aura::utils::pow::pow10;
 use aura::utils::storage_access_impls::RayStorageAccess;
 use aura::utils::storage_access_impls::WadStorageAccess;
 use aura::utils::u256_conversions::cast_to_u256;
@@ -101,12 +100,6 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 #[inline(always)]
 fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
     Ray { val: rdiv_internal(lhs.val, rhs.val) }
-}
-
-fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
-    assert(decimals <= WAD_DECIMALS, 'wadray: more than 18 decimals');
-    let scale: u128 = pow10(WAD_DECIMALS - decimals);
-    Wad { val: n * scale }
 }
 
 //
