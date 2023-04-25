@@ -1,5 +1,6 @@
 use starknet::ContractAddress;
 
+use aura::utils::types::Trove;
 use aura::utils::wadray::Ray;
 use aura::utils::wadray::Wad;
 

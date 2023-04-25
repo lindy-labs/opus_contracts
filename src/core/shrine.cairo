@@ -502,7 +502,7 @@ mod Shrine {
     // yangs[i]'s base rate will be set to new_rates[i]
     // yangs's length must equal the number of yangs available.
     #[external]
-    fn update_rates(mut yangs: Array<ContractAddress>, mut new_rates: Array<Ray>) {
+    fn update_rates(yangs: Array<ContractAddress>, new_rates: Array<Ray>) {
         //AccessControl.assert_has_role(ShrineRoles.UPDATE_RATES);
         let yangs_len = yangs.len();
         let num_yangs: u32 = yangs_count::read().try_into().unwrap();
@@ -562,8 +562,8 @@ mod Shrine {
 
             idx += 1;
         };
-
-        YangRatesUpdated(new_era, current_interval, yangs, new_rates);
+    // TODO: uncomment this once variable moved error is gone, or once Span has a Serde implementation
+    //YangRatesUpdated(new_era, current_interval, yangs, new_rates);
     }
 
     // Move Yang between two Troves
