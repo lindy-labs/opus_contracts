@@ -648,20 +648,9 @@ mod Shrine {
         assert(new_system_debt < debt_ceiling, 'Debt ceiling reached');
         total_debt::write(new_system_debt);
 
-        // Initialise `Trove.charge_from` to current interval if old debt was 0.
-        // Otherwise, set `Trove.charge_from` to current interval + 1 because interest has been
-        // charged up to current interval.
-        let mut new_charge_from: u64 = 0;
-
-        if old_trove_info.debt.val == 0 {
-            new_charge_from = current_interval;
-        } else {
-            new_charge_from = old_trove_info.charge_from;
-        }
-
         let new_debt = old_trove_info.debt + amount;
         let new_trove_info = Trove {
-            charge_from: new_charge_from,
+            charge_from: old_trove_info.charge_from,
             debt: new_debt,
             last_rate_era: old_trove_info.last_rate_era
         };
@@ -869,11 +858,6 @@ mod Shrine {
     fn charge(trove_id: u64) {
         let trove: Trove = troves::read(trove_id);
 
-        // Early termination if no debt
-        if (trove.debt.val == 0) {
-            return ();
-        }
-
         // Get current interval and yang count
         let current_interval: u64 = now();
         let yang_count: u64 = yangs_count::read();
@@ -906,9 +890,11 @@ mod Shrine {
 
         total_debt::write(new_system_debt);
 
-        // Events
-        DebtTotalUpdated(new_system_debt);
-        TroveUpdated(trove_id, updated_trove);
+        // Don't emit events if there hasn't been a change in debt
+        if compounded_debt != trove.debt {
+            DebtTotalUpdated(new_system_debt);
+            TroveUpdated(trove_id, updated_trove);
+        }
     }
 
 
