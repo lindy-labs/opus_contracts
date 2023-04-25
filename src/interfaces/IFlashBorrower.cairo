@@ -8,7 +8,6 @@ trait IFlashBorrower {
         token: ContractAddress,
         amount: u256,
         fee: u256,
-        calldata_len: usize,
-        calldata: Array<felt252>
+        calldata_arr: Array<felt252>
     ) -> u256;
 }
