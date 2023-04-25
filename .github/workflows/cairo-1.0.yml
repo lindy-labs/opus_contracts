@@ -12,16 +12,17 @@ on:
       - "**.md"
 
 env:
+  CAIRO_INSTALLATION_FOLDER: ./cairo
   SCARB_INSTALLATION_FOLDER: ./scarb
 
 jobs:
-  cairo_1:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Get latest commit hash
         run: |
-          echo "SCARB_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/software-mansion/scarb/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
+          echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -34,8 +35,9 @@ jobs:
       - name: Pull dependencies
         run: |
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
-      - name: Cache dependencies
+      - name: Get cache
         id: cache
         uses: actions/cache@v3
         with:
@@ -45,15 +47,22 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.SCARB_HASH }}
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml
+          cargo build --manifest-path=./cairo/Cargo.toml
+
+      - name: Add Scarb to PATH
+        run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
-        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb fmt --check --verbose
+        run: scarb fmt --check --verbose
 
-      - name: Compile Cairo 1.x code
-        run: cargo run --manifest-path=$SCARB_INSTALLATION_FOLDER/Cargo.toml --bin scarb build
+      - name: Add Cairo to PATH
+        run: echo "$CAIRO_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
+
+      - name: Test Cairo 1.x code in Cairo
+        run: scarb run test
