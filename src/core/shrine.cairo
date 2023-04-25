@@ -139,8 +139,8 @@ mod Shrine {
     fn YangRatesUpdated(
         new_rate_idx: u64,
         current_interval: u64,
-        yangs: Span<ContractAddress>,
-        new_rates: Span<Ray>,
+        yangs: Array<ContractAddress>,
+        new_rates: Array<Ray>,
     ) {}
 
     #[event]
@@ -502,7 +502,7 @@ mod Shrine {
     // yangs[i]'s base rate will be set to new_rates[i]
     // yangs's length must equal the number of yangs available.
     #[external]
-    fn update_rates(yangs: Span<ContractAddress>, new_rates: Span<Ray>) {
+    fn update_rates(mut yangs: Array<ContractAddress>, mut new_rates: Array<Ray>) {
         //AccessControl.assert_has_role(ShrineRoles.UPDATE_RATES);
         let yangs_len = yangs.len();
         let num_yangs: u32 = yangs_count::read().try_into().unwrap();
