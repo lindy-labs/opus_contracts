@@ -24,7 +24,7 @@ trait IShrine {
     fn get_live() -> bool;
     // external
     fn add_yang(
-        yang: ContractAddress, threshold: Ray, price: Wad, initial_yang_amt: Wad, initial_rate: Ray
+        yang: ContractAddress, threshold: Ray, price: Wad, initial_rate: Ray, initial_yang_amt: Wad
     );
     fn set_yang_max(yang: ContractAddress, new_max: Wad);
     fn set_ceiling(new_ceiling: Wad);
