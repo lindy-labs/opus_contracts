@@ -11,9 +11,6 @@ fn pow10(exp: u8) -> u128 {
 }
 
 fn pow10_internal(exp: felt252) -> felt252 {
-    // TODO: Remove once automatically handled by compiler
-    check_gas();
-
     if exp == 0 {
         1
     } else {
