@@ -10,11 +10,9 @@ mod Shrine {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::BlockInfo;
     use traits::Into;
-
     use traits::TryInto;
     use zeroable::Zeroable;
 
-    use aura::utils::check_gas;
     use aura::utils::storage_access_impls::RayTupleStorageAccess;
     use aura::utils::storage_access_impls::U128TupleStorageAccess;
     use aura::utils::storage_access_impls::WadTupleStorageAccess;
@@ -534,8 +532,6 @@ mod Shrine {
         // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
         // yang's rate isn't being updated, and so we get the previous value.
         loop {
-            check_gas();
-
             if idx == num_yangs {
                 break ();
             }
@@ -558,8 +554,6 @@ mod Shrine {
         // Verify that all rates were updated correctly
         let mut idx: u64 = 0;
         loop {
-            check_gas();
-
             if idx.into() == num_yangs.into() {
                 break ();
             }
@@ -937,8 +931,6 @@ mod Shrine {
         let mut trove_last_rate_era: u64 = trove.last_rate_era;
 
         loop {
-            check_gas();
-
             // `trove_last_rate_era` should always be less than or equal to `latest_rate_era`
             if trove_last_rate_era == latest_rate_era {
                 let avg_base_rate: Ray = get_avg_rate_over_era(
@@ -995,8 +987,6 @@ mod Shrine {
         let mut avg_rate = Ray { val: 0 };
 
         loop {
-            check_gas();
-
             // If all yangs have been iterated over, return the average rate
             if current_yang_id == 0 {
                 // This would be a problem if the total trove value was ever zero.
@@ -1103,8 +1093,6 @@ mod Shrine {
     // Returns the last error for `yang_id` at a given `redistribution_id` if the packed value is non-zero.
     // Otherwise, check `redistribution_id` - 1 recursively for the last error.
     fn get_recent_redistribution_error_for_yang(yang_id: u64, redistribution_id: u64) -> Wad {
-        check_gas();
-
         if redistribution_id == 0 {
             return Wad { val: 0 };
         }
@@ -1159,7 +1147,6 @@ mod Shrine {
         // Outer loop iterating over the trove's yangs
         let mut current_yang_id = yangs_count::read();
         loop {
-            check_gas();
             if current_yang_id == 0 {
                 break ();
             }
@@ -1170,7 +1157,6 @@ mod Shrine {
                 let mut current_redistribution_id_temp = current_redistribution_id;
                 let mut debt_increment: Wad = Wad { val: 0 };
                 loop {
-                    check_gas();
                     if trove_last_redistribution_id == current_redistribution_id {
                         break ();
                     }
