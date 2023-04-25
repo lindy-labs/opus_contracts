@@ -1,7 +1,7 @@
 use aura::utils::wadray::Wad;
 use aura::utils::storage_access_impls::TroveStorageAccess;
 
-#[derive(Drop, Serde)]
+#[derive(Copy, Drop, Serde)]
 struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     debt: Wad, // Normalized debt
