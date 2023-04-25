@@ -504,11 +504,16 @@ mod Shrine {
     #[external]
     fn update_rates(yangs: Array<ContractAddress>, new_rates: Array<Ray>) {
         //AccessControl.assert_has_role(ShrineRoles.UPDATE_RATES);
-        let yangs_len = yangs.len();
+
+        let yangs_span: Span<ContractAddress> = yangs.span();
+        let new_rates_span: Span<Ray> = new_rates.span();
+
+        let yangs_len = yangs_span.len();
         let num_yangs: u32 = yangs_count::read().try_into().unwrap();
 
         assert(
-            yangs_len == new_rates.len() & yangs_len == num_yangs, 'yangs.len() != new_rates.len()'
+            yangs_len == new_rates_span.len() & yangs_len == num_yangs,
+            'yangs.len() != new_rates.len()'
         );
 
         let latest_era: u64 = rates_latest_era::read();
@@ -536,16 +541,16 @@ mod Shrine {
                 break ();
             }
 
-            let current_yang_id = get_valid_yang_id(*yangs[idx]);
+            let current_yang_id = get_valid_yang_id(*yangs_span[idx]);
 
-            if *new_rates[idx].val == USE_PREV_BASE_RATE {
+            if *new_rates_span[idx].val == USE_PREV_BASE_RATE {
                 // Setting new era rate to the previous era's rate
                 yang_rates::write(
                     (current_yang_id, new_era), yang_rates::read((current_yang_id, new_era - 1))
                 );
             } else {
-                assert_rate_is_valid(*new_rates[idx]);
-                yang_rates::write((current_yang_id, new_era), *new_rates[idx]);
+                assert_rate_is_valid(*new_rates_span[idx]);
+                yang_rates::write((current_yang_id, new_era), *new_rates_span[idx]);
             }
 
             idx += 1;
@@ -562,8 +567,8 @@ mod Shrine {
 
             idx += 1;
         };
-    // TODO: uncomment this once variable moved error is gone, or once Span has a Serde implementation
-    //YangRatesUpdated(new_era, current_interval, yangs, new_rates);
+        // TODO: uncomment this once variable moved error is gone, or once Span has a Serde implementation
+        YangRatesUpdated(new_era, current_interval, yangs, new_rates);
     }
 
     // Move Yang between two Troves
