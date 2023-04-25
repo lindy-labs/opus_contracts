@@ -1,4 +1,4 @@
 #[contract]
-mod Abbot {
+mod Sentinel {
     struct Storage {}
 }

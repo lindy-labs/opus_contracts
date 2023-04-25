@@ -1,1 +1,2 @@
+mod sentinel;
 mod shrine;
