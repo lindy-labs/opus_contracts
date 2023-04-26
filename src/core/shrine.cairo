@@ -664,7 +664,6 @@ mod Shrine {
         charge(trove_id);
 
         let old_trove_info: Trove = troves::read(trove_id);
-        let current_interval: u64 = now();
 
         let current_system_debt: Wad = total_debt::read();
         let debt_ceiling: Wad = debt_ceiling::read();
