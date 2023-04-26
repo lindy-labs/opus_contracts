@@ -1,6 +1,5 @@
 use integer::Felt252TryIntoU128;
 use integer::U128IntoFelt252;
-use integer::u128_try_from_felt252;
 use option::OptionTrait;
 use traits::Into;
 use traits::PartialEq;
