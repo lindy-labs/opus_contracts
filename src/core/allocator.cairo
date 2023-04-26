@@ -13,8 +13,16 @@ mod Allocator {
         percentages: LegacyMap::<ContractAddress, Ray>,
     }
 
+    //
+    // Events
+    //
+
     #[event]
     fn AllocationUpdated(recipients: Span<ContractAddress>, percentages: Span<Ray>) {}
+
+    //
+    // Getters
+    //
 
     #[view]
     fn get_allocation() -> (Array<ContractAddress>, Array<Ray>) {
@@ -36,6 +44,10 @@ mod Allocator {
         (recipients, percentages)
     }
 
+    //
+    // Constructor
+    //
+
     #[constructor]
     fn constructor(admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>) {
         // AccessControl.initializer(admin);
@@ -44,11 +56,19 @@ mod Allocator {
         set_allocation_internal(recipients.span(), percentages.span());
     }
 
+    //
+    // External
+    //
+
     #[external]
     fn set_allocation(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
         // AccessControl.assert_has_role(AllocatorRoles.SET_ALLOCATION);
         set_allocation_internal(recipients.span(), percentages.span());
     }
+
+    //
+    // Internal
+    //
 
     fn set_allocation_internal(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
