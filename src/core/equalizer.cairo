@@ -96,7 +96,9 @@ mod Equalizer {
         let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
         let allocator: ContractAddress = allocator::read();
-        let (recipients, percentages) = IAllocatorDispatcher { contract_address: allocator }.get_allocation();
+        let (recipients, percentages) = IAllocatorDispatcher {
+            contract_address: allocator
+        }.get_allocation();
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine };
 
@@ -130,7 +132,7 @@ mod Equalizer {
 
         minted_surplus
     }
-    
+
     //
     // Internal
     //
