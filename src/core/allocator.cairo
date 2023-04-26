@@ -8,8 +8,13 @@ mod Allocator {
     use aura::utils::wadray::Ray;
 
     struct Storage {
+        // Number of recipients in the current allocation
         recipients_count: u32,
+        // Keeps track of the address for each recipient by index
+        // (idx) -> (Recipient Address)
         recipients: LegacyMap::<u32, ContractAddress>,
+        // Keeps track of the percentage for each recipient by address
+        // (Recipient Address) -> (percentage)
         percentages: LegacyMap::<ContractAddress, Ray>,
     }
 

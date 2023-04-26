@@ -1,36 +1,16 @@
-use array::ArrayTrait;
-use starknet::ContractAddress;
-
-use aura::utils::wadray::Ray;
-use aura::utils::wadray::Wad;
-
-#[abi]
-trait IAllocator {
-    fn get_allocation() -> (Array<ContractAddress>, Array<Ray>);
-}
-
-#[abi]
-trait IShrine {
-    fn inject(receiver: ContractAddress, amount: Wad);
-    fn get_debt_and_surplus() -> (Wad, Wad);
-    fn get_total_debt() -> Wad;
-    fn get_total_yin() -> Wad;
-}
-
 #[contract]
 mod Equalizer {
     use array::ArrayTrait;
     use array::SpanTrait;
     use starknet::ContractAddress;
 
+    use aura::interfaces::IAllocator::IAllocatorDispatcher;
+    use aura::interfaces::IAllocator::IAllocatorDispatcherTrait;
+    use aura::interfaces::IShrine::IShrineDispatcher;
+    use aura::interfaces::IShrine::IShrineDispatcherTrait;
     use aura::utils::wadray::Ray;
     use aura::utils::wadray::rmul_wr;
     use aura::utils::wadray::Wad;
-
-    use super::IAllocatorDispatcher;
-    use super::IAllocatorDispatcherTrait;
-    use super::IShrineDispatcher;
-    use super::IShrineDispatcherTrait;
 
     struct Storage {
         allocator: ContractAddress,
@@ -59,7 +39,7 @@ mod Equalizer {
     #[view]
     fn get_surplus() -> Wad {
         let shrine: ContractAddress = shrine::read();
-        let (_, surplus) = IShrineDispatcher { contract_address: shrine }.get_debt_and_surplus();
+        let (_, surplus) = get_debt_and_surplus(shrine);
         surplus
     }
 
