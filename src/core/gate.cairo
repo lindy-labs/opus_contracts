@@ -1,13 +1,3 @@
-use starknet::ContractAddress;
-
-use aura::utils::wadray::Wad;
-
-// TODO: remove once Shrine's interface is defined
-#[abi]
-trait IShrine {
-    fn get_yang_total(yang: ContractAddress) -> Wad;
-}
-
 #[contract]
 mod Gate {
     use integer::u128_try_from_felt252;
@@ -19,6 +9,8 @@ mod Gate {
 
     use aura::interfaces::IERC20::IERC20Dispatcher;
     use aura::interfaces::IERC20::IERC20DispatcherTrait;
+    use aura::interfaces::IShrine::IShrineDispatcher;
+    use aura::interfaces::IShrine::IShrineDispatcherTrait;
     use aura::utils::pow::pow10;
     use aura::utils::wadray::fixed_point_to_wad;
     use aura::utils::wadray::Wad;
@@ -26,9 +18,6 @@ mod Gate {
     use aura::utils::wadray::WAD_ONE;
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::u256_conversions::U256TryIntoU128;
-
-    use super::IShrineDispatcher;
-    use super::IShrineDispatcherTrait;
 
     struct Storage {
         shrine: ContractAddress,
