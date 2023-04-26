@@ -44,6 +44,8 @@ mod Allocator {
             let recipient: ContractAddress = recipients::read(idx);
             recipients.append(recipient);
             percentages.append(percentages::read(recipient));
+
+            idx += 1;
         };
 
         (recipients, percentages)
@@ -100,6 +102,8 @@ mod Allocator {
             percentages::write(recipient, percentage);
 
             total_percentage += percentage;
+
+            idx += 1;
         };
 
         AllocationUpdated(recipients, percentages);
