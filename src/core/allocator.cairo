@@ -18,7 +18,7 @@ mod Allocator {
     //
 
     #[event]
-    fn AllocationUpdated(recipients: Span<ContractAddress>, percentages: Span<Ray>) {}
+    fn AllocationUpdated(recipients: Array<ContractAddress>, percentages: Array<Ray>) {}
 
     //
     // Getters
@@ -55,7 +55,7 @@ mod Allocator {
         // AccessControl.initializer(admin);
         // AccessControl._grant_role(AllocatorRoles.SET_ALLOCATION, admin);
 
-        set_allocation_internal(recipients.span(), percentages.span());
+        set_allocation_internal(recipients, percentages);
     }
 
     //
@@ -65,17 +65,21 @@ mod Allocator {
     #[external]
     fn set_allocation(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
         // AccessControl.assert_has_role(AllocatorRoles.SET_ALLOCATION);
-        set_allocation_internal(recipients.span(), percentages.span());
+        set_allocation_internal(recipients, percentages);
     }
 
     //
     // Internal
     //
 
-    fn set_allocation_internal(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
-        let recipients_len: u32 = recipients.len();
+    fn set_allocation_internal(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
+        // TODO: kludge until `Serde` is implemented for Span or variable moved error is gone for Array
+        let recipients_span: Span<ContractAddress> = recipients.span();
+        let percentages_span: Span<Ray> = percentages.span();
+
+        let recipients_len: u32 = recipients_span.len();
         assert(recipients_len != 0, 'No recipients');
-        assert(recipients_len == percentages.len(), 'Array length mismatch');
+        assert(recipients_len == percentages_span.len(), 'Array length mismatch');
 
         let mut total_percentage: Ray = Ray { val: 0 };
         let mut idx: u32 = 0;
@@ -84,10 +88,10 @@ mod Allocator {
                 break ();
             }
 
-            let recipient: ContractAddress = *recipients[idx];
+            let recipient: ContractAddress = *recipients_span[idx];
             recipients::write(idx, recipient);
 
-            let percentage: Ray = *percentages[idx];
+            let percentage: Ray = *percentages_span[idx];
             percentages::write(recipient, percentage);
 
             total_percentage += percentage;
