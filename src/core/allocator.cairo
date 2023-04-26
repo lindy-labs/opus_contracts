@@ -6,7 +6,7 @@ mod Allocator {
 
     use aura::utils::storage_access_impls::RayTupleStorageAccess;
     use aura::utils::wadray::Ray;
-    
+
     struct Storage {
         recipients_count: u32,
         recipients: LegacyMap::<u32, ContractAddress>,
@@ -49,7 +49,9 @@ mod Allocator {
     //
 
     #[constructor]
-    fn constructor(admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>) {
+    fn constructor(
+        admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>
+    ) {
         // AccessControl.initializer(admin);
         // AccessControl._grant_role(AllocatorRoles.SET_ALLOCATION, admin);
 
@@ -93,5 +95,4 @@ mod Allocator {
 
         AllocationUpdated(recipients, percentages);
     }
-
 }

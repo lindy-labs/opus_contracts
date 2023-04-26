@@ -7,7 +7,6 @@ use traits::PartialEq;
 use traits::PartialOrd;
 use traits::TryInto;
 
-use aura::utils::pow::pow10;
 use aura::utils::storage_access_impls::RayStorageAccess;
 use aura::utils::storage_access_impls::WadStorageAccess;
 use aura::utils::u256_conversions::cast_to_u256;
@@ -22,7 +21,6 @@ const WAD_ONE: u128 = 1000000000000000000;
 const RAY_ONE: u128 = 1000000000000000000000000000;
 const WAD_PERCENT: u128 = 10000000000000000;
 const RAY_PERCENT: u128 = 10000000000000000000000000;
-const U128_MAX: u128 = 340282366920938463463374607431768211455;
 
 // Largest Wad that can be converted into a Ray without overflowing
 const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
@@ -101,12 +99,6 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
 #[inline(always)]
 fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
     Ray { val: rdiv_internal(lhs.val, rhs.val) }
-}
-
-fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
-    assert(decimals <= WAD_DECIMALS, 'wadray: more than 18 decimals');
-    let scale: u128 = pow10(WAD_DECIMALS - decimals);
-    Wad { val: n * scale }
 }
 
 //
@@ -332,10 +324,12 @@ mod tests {
     use aura::utils::wadray::MAX_CONVERTIBLE_WAD;
     use aura::utils::wadray::Ray;
     use aura::utils::wadray::RAY_ONE;
+    use aura::utils::wadray::RayIntoWad;
     use aura::utils::wadray::rdiv_wr;
     use aura::utils::wadray::rmul_rw;
     use aura::utils::wadray::rmul_wr;
     use aura::utils::wadray::Wad;
+    use aura::utils::wadray::WadTryIntoRay;
     use aura::utils::wadray::WAD_ONE;
     use aura::utils::wadray::wdiv_rw;
     use aura::utils::wadray::wmul_rw;
