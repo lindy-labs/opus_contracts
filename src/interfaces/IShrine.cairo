@@ -40,7 +40,7 @@ trait IShrine {
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn redistribute(trove_id: u64);
     fn inject(receiver: ContractAddress, amount: Wad);
-    fn eject(receiver: ContractAddress, amount: Wad);
+    fn eject(burner: ContractAddress, amount: Wad);
     // view
     fn get_shrine_threshold_and_value() -> (Ray, Wad);
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);

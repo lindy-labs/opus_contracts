@@ -691,6 +691,38 @@ mod Shrine {
         TroveUpdated(trove_id, new_trove_info);
     }
 
+    // Repay a specified amount of synthetic and deattribute the debt from a Trove
+    #[external]
+    fn melt(user: ContractAddress, trove_id: u64, amount: Wad) {
+        //AccessControl.assert_has_role(ShrineRoles.MELT);
+
+        // Charge interest
+        charge(trove_id);
+
+        let old_trove_info: Trove = troves::read(trove_id);
+
+        // Reverts if `amount` > `old_trove_info.debt`. We don't want users burning more debt than they have. 
+        let melt_amt: Wad = old_trove_info.debt - amount;
+
+        let new_system_debt: Wad = total_debt::read() - melt_amt;
+        total_debt::write(new_system_debt);
+
+        let new_trove_debt: Wad = old_trove_info.debt - melt_amt;
+        // `charge_from` and `last_rate_era` are already updated in `charge`
+        let new_trove_info: Trove = Trove {
+            charge_from: old_trove_info.charge_from,
+            debt: new_trove_debt,
+            last_rate_era: old_trove_info.last_rate_era
+        };
+        troves::write(trove_id, new_trove_info);
+
+        // Update user balance
+        melt_internal(user, melt_amt);
+
+        // Events
+        DebtTotalUpdated(new_system_debt);
+        TroveUpdated(trove_id, new_trove_info);
+    }
 
     // Withdraw a specified amount of a Yang from a Trove without trove safety check.
     // This is intended for liquidations where collateral needs to be withdrawn and transferred to the liquidator
@@ -740,9 +772,9 @@ mod Shrine {
 
     // Repay a specified amount of synthetic without deattributing the debt from a Trove
     #[external]
-    fn eject(receiver: ContractAddress, amount: Wad) {
+    fn eject(burner: ContractAddress, amount: Wad) {
         //AccessControl.assert_has_role(ShrineRoles.EJECT);
-        melt_internal(receiver, amount);
+        melt_internal(burner, amount);
     }
 
 
