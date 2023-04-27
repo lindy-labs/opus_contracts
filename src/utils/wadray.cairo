@@ -290,55 +290,68 @@ impl U128IntoRay of Into<u128, Ray> {
 // Comparisons
 
 impl WadPartialEq of PartialEq<Wad> {
+    #[inline(always)]
     fn eq(lhs: Wad, rhs: Wad) -> bool {
         lhs.val == rhs.val
     }
 
+    #[inline(always)]
     fn ne(lhs: Wad, rhs: Wad) -> bool {
         lhs.val != rhs.val
     }
 }
 
 impl RayPartialEq of PartialEq<Ray> {
+    #[inline(always)]
     fn eq(lhs: Ray, rhs: Ray) -> bool {
         lhs.val == rhs.val
     }
 
+    #[inline(always)]
     fn ne(lhs: Ray, rhs: Ray) -> bool {
         lhs.val != rhs.val
     }
 }
 
 impl WadPartialOrd of PartialOrd<Wad> {
+    #[inline(always)]
     fn le(lhs: Wad, rhs: Wad) -> bool {
         lhs.val <= rhs.val
     }
+
+    #[inline(always)]
     fn ge(lhs: Wad, rhs: Wad) -> bool {
         lhs.val >= rhs.val
     }
 
+    #[inline(always)]
     fn lt(lhs: Wad, rhs: Wad) -> bool {
         lhs.val < rhs.val
     }
 
+    #[inline(always)]
     fn gt(lhs: Wad, rhs: Wad) -> bool {
         lhs.val > rhs.val
     }
 }
 
 impl RayPartialOrd of PartialOrd<Ray> {
+    #[inline(always)]
     fn le(lhs: Ray, rhs: Ray) -> bool {
         lhs.val <= rhs.val
     }
 
+    #[inline(always)]
     fn ge(lhs: Ray, rhs: Ray) -> bool {
         lhs.val >= rhs.val
     }
 
+    #[inline(always)]
     fn lt(lhs: Ray, rhs: Ray) -> bool {
         lhs.val < rhs.val
     }
 
+    #[inline(always)]
     fn gt(lhs: Ray, rhs: Ray) -> bool {
         lhs.val > rhs.val
     }
@@ -346,28 +359,34 @@ impl RayPartialOrd of PartialOrd<Ray> {
 
 // Zeroable
 impl WadZeroable of Zeroable<Wad> {
+    #[inline(always)]
     fn zero() -> Wad {
         Wad { val: 0 }
     }
 
+    #[inline(always)]
     fn is_zero(self: Wad) -> bool {
         self.val == 0
     }
 
+    #[inline(always)]
     fn is_non_zero(self: Wad) -> bool {
         self.val != 0
     }
 }
 
 impl RayZeroable of Zeroable<Ray> {
+    #[inline(always)]
     fn zero() -> Ray {
         Ray { val: 0 }
     }
 
+    #[inline(always)]
     fn is_zero(self: Ray) -> bool {
         self.val == 0
     }
 
+    #[inline(always)]
     fn is_non_zero(self: Ray) -> bool {
         self.val != 0
     }
