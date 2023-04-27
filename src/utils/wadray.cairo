@@ -309,68 +309,56 @@ impl U128IntoRay of Into<u128, Ray> {
 // Comparisons
 
 impl WadPartialEq of PartialEq<Wad> {
-    #[inline(always)]
     fn eq(lhs: Wad, rhs: Wad) -> bool {
         lhs.val == rhs.val
     }
 
-    #[inline(always)]
     fn ne(lhs: Wad, rhs: Wad) -> bool {
         lhs.val != rhs.val
     }
 }
 
 impl RayPartialEq of PartialEq<Ray> {
-    #[inline(always)]
     fn eq(lhs: Ray, rhs: Ray) -> bool {
         lhs.val == rhs.val
     }
 
-    #[inline(always)]
     fn ne(lhs: Ray, rhs: Ray) -> bool {
         lhs.val != rhs.val
     }
 }
 
 impl WadPartialOrd of PartialOrd<Wad> {
-    #[inline(always)]
     fn le(lhs: Wad, rhs: Wad) -> bool {
         lhs.val <= rhs.val
     }
 
-    #[inline(always)]
     fn ge(lhs: Wad, rhs: Wad) -> bool {
         lhs.val >= rhs.val
     }
 
-    #[inline(always)]
     fn lt(lhs: Wad, rhs: Wad) -> bool {
         lhs.val < rhs.val
     }
 
-    #[inline(always)]
     fn gt(lhs: Wad, rhs: Wad) -> bool {
         lhs.val > rhs.val
     }
 }
 
 impl RayPartialOrd of PartialOrd<Ray> {
-    #[inline(always)]
     fn le(lhs: Ray, rhs: Ray) -> bool {
         lhs.val <= rhs.val
     }
 
-    #[inline(always)]
     fn ge(lhs: Ray, rhs: Ray) -> bool {
         lhs.val >= rhs.val
     }
 
-    #[inline(always)]
     fn lt(lhs: Ray, rhs: Ray) -> bool {
         lhs.val < rhs.val
     }
 
-    #[inline(always)]
     fn gt(lhs: Ray, rhs: Ray) -> bool {
         lhs.val > rhs.val
     }
@@ -761,6 +749,18 @@ mod tests {
         // Test is_non_zero
         assert(!wad_zero.is_non_zero(), 'Value should be 0 #4');
         assert(wad_one.is_non_zero(), 'Value should not be 0 #5');
+
+        let ray_zero = Ray { val: 0 };
+        assert(ray_zero.val == 0, 'Value should be 0 #6');
+
+        // Test is_zero
+        let ray_one = Ray { val: 1 };
+        assert(ray_zero.is_zero(), 'Value should be 0 #7');
+        assert(!ray_one.is_zero(), 'Value should not be 0 #8');
+
+        // Test is_non_zero
+        assert(!ray_zero.is_non_zero(), 'Value should be 0 #9');
+        assert(ray_one.is_non_zero(), 'Value should not be 0 #10');
     }
 
     #[test]
@@ -770,19 +770,19 @@ mod tests {
         let wad_b = Wad { val: 84 };
 
         let wad_min = wadray::min(wad_a, wad_b);
-        assert(wad_min == wad_a, 'Wad min: The minimum value should be equal to wad_a');
+        assert(wad_min == wad_a, 'Min val should equal wad_a');
 
         let wad_max = wadray::max(wad_a, wad_b);
-        assert(wad_max == wad_b, 'Wad max: The maximum value should be equal to wad_b');
+        assert(wad_max == wad_b, 'Max val should equal wad_b');
 
         // Test min and max with Ray
         let ray_a = Ray { val: 21 };
         let ray_b = Ray { val: 42 };
 
         let ray_min = wadray::min(ray_a, ray_b);
-        assert(ray_min == ray_a, 'Ray min: The minimum value should be equal to ray_a');
+        assert(ray_min == ray_a, 'Min val should equal ray_a');
 
         let ray_max = wadray::max(ray_a, ray_b);
-        assert(ray_max == ray_b, 'Ray max: The maximum value should be equal to ray_b');
+        assert(ray_max == ray_b, 'Max val should equal ray_b');
     }
 }
