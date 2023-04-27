@@ -698,7 +698,7 @@ mod Shrine {
         let old_trove_info: Trove = troves::read(trove_id);
 
         // Reverts if `amount` > `old_trove_info.debt`. We don't want users burning more debt than they have. 
-        let melt_amt: Wad = old_trove_info.debt - amount;
+        let melt_amt: Wad = wadray::min(old_trove_info.debt, amount);
 
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
@@ -781,23 +781,23 @@ mod Shrine {
     #[external]
     fn transfer(recipient: ContractAddress, amount: u256) -> bool {
         let sender: ContractAddress = starknet::get_caller_address();
-        _transfer(sender, recipient, amount);
-        return true;
+        transfer_internal(sender, recipient, amount);
+        true
     }
 
     #[external]
     fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
         let caller: ContractAddress = starknet::get_caller_address();
-        _spend_allowance(sender, caller, amount);
-        _transfer(sender, recipient, amount);
-        return true;
+        spend_allowance_internal(sender, caller, amount);
+        transfer_internal(sender, recipient, amount);
+        true
     }
 
     #[external]
     fn approve(spender: ContractAddress, amount: u256) -> bool {
         let caller: ContractAddress = starknet::get_caller_address();
-        _approve(caller, spender, amount);
-        return true;
+        approve_internal(caller, spender, amount);
+        true
     }
 
 
@@ -1413,8 +1413,8 @@ mod Shrine {
     // Internal ERC20 functions
     //
 
-    fn _transfer(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
-        assert(recipient.is_non_zero(), 'can\'t transfer to 0 address');
+    fn transfer_internal(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
+        assert(recipient.is_non_zero(), 'cannot transfer to 0 address');
 
         let amount_wad: Wad = amount.try_into().unwrap().into();
 
@@ -1425,23 +1425,23 @@ mod Shrine {
         Transfer(sender, recipient, amount);
     }
 
-    fn _approve(owner: ContractAddress, spender: ContractAddress, amount: u256) {
-        assert(spender.is_non_zero(), 'can\'t approve 0 address');
-        assert(owner.is_non_zero(), 'can\'t approve for 0 address');
+    fn approve_internal(owner: ContractAddress, spender: ContractAddress, amount: u256) {
+        assert(spender.is_non_zero(), 'cannot approve 0 address');
+        assert(owner.is_non_zero(), 'cannot approve for 0 address');
 
         yin_allowances::write((owner, spender), amount);
 
         Approval(owner, spender, amount);
     }
 
-    fn _spend_allowance(owner: ContractAddress, spender: ContractAddress, amount: u256) {
+    fn spend_allowance_internal(owner: ContractAddress, spender: ContractAddress, amount: u256) {
         let mut current_allowance: u256 = yin_allowances::read((owner, spender));
 
         // if current_allowance is not set to the maximum u256, then 
         // subtract `amount` from spender's allowance.
         if current_allowance != BoundedU256::max() {
             current_allowance -= amount;
-            _approve(owner, spender, current_allowance);
+            approve_internal(owner, spender, current_allowance);
         }
     }
 }
