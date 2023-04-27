@@ -280,7 +280,7 @@ mod Shrine {
 
     #[view]
     fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray {
-        let yang_id: u32 = yang_ids::read(yang);
+        let yang_id: u32 = get_valid_yang_id(yang);
         yang_rates::read((yang_id, idx))
     }
 
@@ -347,12 +347,12 @@ mod Shrine {
     }
 
     #[view]
-    fn totalSupply() -> u256 {
+    fn total_supply() -> u256 {
         total_yin::read().val.into()
     }
 
     #[view]
-    fn balanceOf(account: ContractAddress) -> u256 {
+    fn balance_of(account: ContractAddress) -> u256 {
         yin::read(account).val.into()
     }
 
@@ -436,7 +436,7 @@ mod Shrine {
     fn set_threshold(yang: ContractAddress, new_threshold: Ray) {
         //AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD);
 
-        assert(new_threshold.val < MAX_THRESHOLD, 'Threshold > max');
+        assert(new_threshold.val <= MAX_THRESHOLD, 'Threshold > max');
         thresholds::write(get_valid_yang_id(yang), new_threshold);
 
         // Event emission
@@ -475,8 +475,9 @@ mod Shrine {
             yang_id, interval - 1
         );
 
-        let intermediate_sum: u128 = last_price.val * upcast(interval - last_interval - 1);
-        let new_cumulative: Wad = last_cumulative_price + intermediate_sum.into() + price;
+        let new_cumulative: Wad = last_cumulative_price
+            + (last_price.val * upcast(interval - last_interval - 1)).into()
+            + price;
 
         yang_prices::write((yang_id, interval), (price, new_cumulative));
 
@@ -490,7 +491,7 @@ mod Shrine {
 
         // TODO: Should this be here? Maybe multiplier should be able to go to zero
         assert(new_multiplier.is_non_zero(), 'Cannot set multiplier to zero');
-        assert(new_multiplier.val < MAX_MULTIPLIER, 'multiplier exceeds maximum');
+        assert(new_multiplier.val <= MAX_MULTIPLIER, 'multiplier exceeds maximum');
 
         let interval: u64 = now();
         let (last_multiplier, last_cumulative_multiplier, last_interval) =
@@ -498,9 +499,9 @@ mod Shrine {
             interval - 1
         );
 
-        let new_cumulative_multiplier = last_cumulative_multiplier + Ray {
-            val: upcast(interval - last_interval - 1) * last_multiplier.val
-        } + new_multiplier;
+        let new_cumulative_multiplier = last_cumulative_multiplier
+            + (upcast(interval - last_interval - 1) * last_multiplier.val).into()
+            + new_multiplier;
         multiplier::write(interval, (new_multiplier, new_cumulative_multiplier));
 
         MultiplierUpdated(new_multiplier, new_cumulative_multiplier, interval);
@@ -586,37 +587,6 @@ mod Shrine {
         };
         // TODO: uncomment this once variable moved error is gone, or once Span has a Serde implementation
         YangRatesUpdated(new_era, current_interval, yangs, new_rates);
-    }
-
-    // Move Yang between two Troves
-    // Checks should be performed beforehand by the module calling this function
-    #[external]
-    fn move_yang(yang: ContractAddress, src_trove_id: u64, dst_trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.MOVE_YANG);
-
-        let yang_id: u32 = get_valid_yang_id(yang);
-
-        // Charge interest for source trove to ensure it remains safe
-        charge(src_trove_id);
-
-        // Charge interest for destination trove since its collateral balance will be changed,
-        // affecting its personalized interest rate due to the underlying assumption in `compound`
-        charge(dst_trove_id);
-
-        // Will revert if amount > src_yang_balance
-        let new_src_balance: Wad = deposits::read((yang_id, src_trove_id)) - amount;
-        deposits::write((yang_id, src_trove_id), new_src_balance);
-
-        // There is no need to check that the destination trove is healthy since an increase in collateral
-        // can only improve LTV.
-        assert_healthy(src_trove_id);
-
-        let new_dst_balance: Wad = deposits::read((yang_id, dst_trove_id)) + amount;
-        deposits::write((yang_id, dst_trove_id), new_dst_balance);
-
-        //Events
-        DepositUpdated(yang, src_trove_id, new_src_balance);
-        DepositUpdated(yang, dst_trove_id, new_dst_balance);
     }
 
     // Deposit a specified amount of a Yang into a Trove

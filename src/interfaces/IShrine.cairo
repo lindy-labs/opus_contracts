@@ -32,7 +32,6 @@ trait IShrine {
     fn kill();
     fn advance(yang: ContractAddress, price: Wad);
     fn set_multiplier(new_multiplier: Ray);
-    fn move_yang(yang: ContractAddress, src_trove_id: u64, dst_trove_id: u64, amount: Wad);
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad);
