@@ -736,7 +736,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wad_zeroable() {
+    fn test_zeroable() {
         // Test zero
         let wad_zero = Wad { val: 0 };
         assert(wad_zero.val == 0, 'Value should be 0 #1');
@@ -764,7 +764,7 @@ mod tests {
     }
 
     #[test]
-    fn test_min_max_with_wad_and_ray() {
+    fn test_min_max_with_wadray() {
         // Test min and max with Wad
         let wad_a = Wad { val: 42 };
         let wad_b = Wad { val: 84 };
