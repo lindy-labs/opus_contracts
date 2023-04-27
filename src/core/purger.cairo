@@ -89,6 +89,8 @@ mod Purger {
     // View
     //
 
+    // Returns the liquidation penalty based on the LTV (ray)
+    // Returns 0 if trove is healthy
     #[view]
     fn get_penalty(trove_id: u64) -> Ray {
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
@@ -101,6 +103,8 @@ mod Purger {
         get_penalty_internal(threshold, ltv, value, debt)
     }
 
+    // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
+    // Returns 0 if trove is healthy
     #[view]
     fn get_max_close_amount(trove_id: u64) -> Wad {
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
@@ -231,14 +235,15 @@ mod Purger {
                 absorber.contract_address
             );
 
-            // split freed amounts to compensate caller for keeping protocol stable
+            // Split freed amounts to compensate caller for keeping protocol stable
             let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
 
             shrine.redistribute(trove_id);
 
             absorber.compensate(caller, yangs, compensations);
 
-            // Update yang prices due to an appreciation in ratio of asset to yang from redistribution
+            // Update yang prices due to an appreciation in ratio of asset to yang from 
+            // redistribution
             let oracle: ContractAddress = oracle::read();
             IEmpiricDispatcher { contract_address: oracle }.update_prices();
 
@@ -255,6 +260,7 @@ mod Purger {
     // Internal
     //
 
+    // Asserts that a trove is liquidatable given its LTV and threshold
     fn assert_liquidatable(threshold: Ray, ltv: Ray) {
         assert(ltv > threshold, 'PU: Not liquidatable');
     }
@@ -272,6 +278,8 @@ mod Purger {
         recipient: ContractAddress,
     ) -> (Array<ContractAddress>, Array<u128>) {
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
+
+        // Melt from the funder address directly
         shrine.melt(funder, trove_id, purge_amt);
 
         let sentinel: ISentinelDispatcher = ISentinelDispatcher {
@@ -283,6 +291,8 @@ mod Purger {
         let mut idx: u32 = 0;
         let yangs_span: Span<ContractAddress> = yangs.span();
         let yangs_count: u32 = yangs_span.len();
+
+        // Loop through yang addresses and transfer to recipient
         loop {
             if idx == yangs_count {
                 break ();
@@ -304,6 +314,8 @@ mod Purger {
 
         Purged(trove_id, purge_amt, funder, recipient, percentage_freed, yangs, freed_assets_amts);
 
+        // The denomination for each value in `freed_assets_amts` will be based on the decimals
+        // for the respective asset.
         (yangs, freed_assets_amts)
     }
 
@@ -399,6 +411,7 @@ mod Purger {
             }
 
             let amount: u128 = *freed_assets_amts[idx];
+            // Rounding is intended to benefit the protocol
             let one_percent: u128 = amount / 100;
             let compensation: u128 = one_percent * COMPENSATION_PCT;
             compensations.append(compensation);
