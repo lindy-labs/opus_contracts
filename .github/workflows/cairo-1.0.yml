@@ -34,8 +34,16 @@ jobs:
 
       - name: Pull dependencies
         run: |
-          git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
-          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
+          if [ ! -d "$SCARB_INSTALLATION_FOLDER" ] ; then
+            git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
+          else
+            git -C $SCARB_INSTALLATION_FOLDER pull
+          fi
+          if [ ! -d "$CAIRO_INSTALLATION_FOLDER" ] ; then
+            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
+          else
+            git -C $CAIRO_INSTALLATION_FOLDER pull
+          fi
 
       - name: Get cache
         id: cache
@@ -47,6 +55,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
+            ~/.cairo
+            ~/.scarb
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Install dependencies
