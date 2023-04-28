@@ -65,6 +65,19 @@ jobs:
           cargo build --manifest-path=./scarb/Cargo.toml
           cargo build --manifest-path=./cairo/Cargo.toml
 
+      - uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            **/target
+            ~/.cairo
+            ~/.scarb
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+
       - name: Add Scarb to PATH
         run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
 
