@@ -42,8 +42,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-            ~/scarb
-            ~/cairo
+            $SCARB_INSTALLATION_FOLDER
+            $CAIRO_INSTALLATION_FOLDER
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
           restore-keys: Linux-cargo-
 
@@ -52,6 +52,7 @@ jobs:
           if [ -d $SCARB_INSTALLATION_FOLDER ]
           then
             cd $SCARB_INSTALLATION_FOLDER
+            pwd
             ls
             cd ..
           else
@@ -63,6 +64,7 @@ jobs:
           if [ -d $CAIRO_INSTALLATION_FOLDER ]
           then
             cd $CAIRO_INSTALLATION_FOLDER
+            pwd
             ls
             cd ..
           else
