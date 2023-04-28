@@ -51,10 +51,7 @@ jobs:
         run: |
           if [ -d $SCARB_INSTALLATION_FOLDER ]
           then
-            cd $SCARB_INSTALLATION_FOLDER
-            pwd
-            ls
-            cd ..
+            git -C $SCARB_INSTALLATION_FOLDER pull
           else
             git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
           fi
@@ -63,13 +60,17 @@ jobs:
         run: |
           if [ -d $CAIRO_INSTALLATION_FOLDER ]
           then
-            cd $CAIRO_INSTALLATION_FOLDER
-            pwd
-            ls
-            cd ..
+            git -C $CAIRO_INSTALLATION_FOLDER pull
           else
             git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
           fi
+
+      - name: Debug
+        run: |
+          cd $SCARB_INSTALLATION_FOLDER
+          ls
+          cd $CAIRO_INSTALLATION_FOLDER
+          ls
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
