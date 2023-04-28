@@ -42,28 +42,13 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-            $SCARB_INSTALLATION_FOLDER
-            $CAIRO_INSTALLATION_FOLDER
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
           restore-keys: Linux-cargo-
 
-      - name: Pull Scarb
+      - name: Pull dependencies
         run: |
-          if [ -d $SCARB_INSTALLATION_FOLDER ]
-          then
-            git -C $SCARB_INSTALLATION_FOLDER pull
-          else
-            git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
-          fi
-
-      - name: Pull Cairo
-        run: |
-          if [ -d $CAIRO_INSTALLATION_FOLDER ]
-          then
-            git -C $CAIRO_INSTALLATION_FOLDER pull
-          else
-            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
-          fi
+          git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
+          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
@@ -81,8 +66,6 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-            $SCARB_INSTALLATION_FOLDER
-            $CAIRO_INSTALLATION_FOLDER
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Add Scarb to PATH
