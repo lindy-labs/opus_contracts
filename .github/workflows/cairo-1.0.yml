@@ -45,14 +45,11 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
           restore-keys: Linux-cargo-
 
-      - name: Pull dependencies
+      - name: Pull and install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
           git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
-
-      - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
           cargo build --manifest-path=./scarb/Cargo.toml
           cargo build --manifest-path=./cairo/Cargo.toml
 
