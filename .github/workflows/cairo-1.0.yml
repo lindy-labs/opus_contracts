@@ -87,7 +87,8 @@ jobs:
           cargo build --manifest-path=./scarb/Cargo.toml
           cargo build --manifest-path=./cairo/Cargo.toml
 
-      - uses: actions/cache/save@v3
+      - name: Save cache
+        uses: actions/cache/save@v3
         if: always()
         with:
           path: |
@@ -96,8 +97,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-            ~/.cairo
-            ~/.scarb
+            $SCARB_INSTALLATION_FOLDER
+            $CAIRO_INSTALLATION_FOLDER
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Add Scarb to PATH
