@@ -47,21 +47,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
           restore-keys: Linux-cargo-
 
-      - name: Pre pull debug
-        run: |
-          if [ -d $SCARB_INSTALLATION_FOLDER ]
-          then
-            cd $SCARB_INSTALLATION_FOLDER
-            ls
-            cd ..
-          fi
-          if [ -d $CAIRO_INSTALLATION_FOLDER ]
-          then
-            cd $CAIRO_INSTALLATION_FOLDER
-            ls
-            cd ..
-          fi
-
       - name: Pull Scarb
         run: |
           if [ -d $SCARB_INSTALLATION_FOLDER ]
@@ -79,14 +64,6 @@ jobs:
           else
             git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
           fi
-
-      - name: Debug
-        run: |
-          cd $SCARB_INSTALLATION_FOLDER
-          ls
-          cd ..
-          cd $CAIRO_INSTALLATION_FOLDER
-          ls
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
