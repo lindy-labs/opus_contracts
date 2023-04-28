@@ -1,1 +1,2 @@
+mod absorber;
 mod shrine;

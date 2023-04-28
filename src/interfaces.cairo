@@ -1,1 +1,2 @@
+mod ISentinel;
 mod IShrine;

@@ -784,5 +784,6 @@ mod tests {
 
         let ray_max = wadray::max(ray_a, ray_b);
         assert(ray_max == ray_b, 'Max val should equal ray_b');
+    //assert(wadray::max(5_u128, 6_u128) == 6, 'Should equal 6');
     }
 }
