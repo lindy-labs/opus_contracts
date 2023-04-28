@@ -69,6 +69,7 @@ jobs:
         run: |
           cd $SCARB_INSTALLATION_FOLDER
           ls
+          cd ..
           cd $CAIRO_INSTALLATION_FOLDER
           ls
 
