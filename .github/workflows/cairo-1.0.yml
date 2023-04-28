@@ -14,7 +14,7 @@ on:
 env:
   CAIRO_FOLDER: ./cairo
   SCARB_FOLDER: ./scarb
-  BUILD_FOLDER: ./target
+  BUILD_FOLDER: ~/.cargo/bin/
 
 jobs:
   build:
