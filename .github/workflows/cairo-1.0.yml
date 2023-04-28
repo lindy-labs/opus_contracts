@@ -47,6 +47,20 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
           restore-keys: Linux-cargo-
 
+      - name: Pre pull debug
+        run: |
+          if [ -d $SCARB_INSTALLATION_FOLDER ]
+          then
+            cd $SCARB_INSTALLATION_FOLDER
+            ls
+            cd ..
+          fi
+          if [ -d $CAIRO_INSTALLATION_FOLDER ]
+          then
+            cd $CAIRO_INSTALLATION_FOLDER
+            ls
+            cd ..
+
       - name: Pull Scarb
         run: |
           if [ -d $SCARB_INSTALLATION_FOLDER ]
