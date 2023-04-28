@@ -49,15 +49,15 @@ jobs:
 
       - name: Pull dependencies
         run: |
-          if [ ! -d "$SCARB_INSTALLATION_FOLDER" ]; then \
-            git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER; \
-          else \
+          if [ -d $SCARB_INSTALLATION_FOLDER ]; then \
             git -C $SCARB_INSTALLATION_FOLDER pull; \
-          fi
-          if [ ! -d "$CAIRO_INSTALLATION_FOLDER" ]; then
-            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER; \
           else \
+            git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER; \
+          fi
+          if [ -d $CAIRO_INSTALLATION_FOLDER ]; then
             git -C $CAIRO_INSTALLATION_FOLDER pull; \
+          else \
+            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER; \
           fi
 
       - name: Install dependencies
