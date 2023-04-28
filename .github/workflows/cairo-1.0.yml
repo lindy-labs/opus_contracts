@@ -49,11 +49,18 @@ jobs:
 
       - name: Pre pull debug
         run: |
-          cd $SCARB_INSTALLATION_FOLDER
-          ls
-          cd ..
-          cd $CAIRO_INSTALLATION_FOLDER
-          ls
+          if [ -d $SCARB_INSTALLATION_FOLDER ]
+          then
+            cd $SCARB_INSTALLATION_FOLDER
+            ls
+            cd ..
+          fi
+          if [ -d $CAIRO_INSTALLATION_FOLDER ]
+          then
+            cd $CAIRO_INSTALLATION_FOLDER
+            ls
+            cd ..
+          fi
 
       - name: Pull Scarb
         run: |
