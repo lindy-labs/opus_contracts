@@ -97,7 +97,7 @@ jobs:
         run: scarb fmt --check --verbose
 
       - name: Copy `corelib`
-        run: cp -r $CAIRO_FOLDER/corelib corelib
+        run: cp -r $CAIRO_FOLDER/corelib ./corelib
 
       - name: Add Cairo to PATH
         run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
