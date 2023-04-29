@@ -10,6 +10,7 @@ mod Shrine {
     use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::BlockInfo;
+    use starknet::get_caller_address;
     use traits::Into;
     use traits::TryInto;
     use zeroable::Zeroable;
@@ -517,8 +518,8 @@ mod Shrine {
     fn update_rates(yangs: Array<ContractAddress>, new_rates: Array<Ray>) {
         //AccessControl.assert_has_role(ShrineRoles.UPDATE_RATES);
 
-        let yangs_span: Span<ContractAddress> = yangs.span();
-        let new_rates_span: Span<Ray> = new_rates.span();
+        let mut yangs_span: Span<ContractAddress> = yangs.span();
+        let mut new_rates_span: Span<Ray> = new_rates.span();
 
         let yangs_len = yangs_span.len();
         let num_yangs: u32 = yangs_count::read();
@@ -549,22 +550,24 @@ mod Shrine {
         // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
         // yang's rate isn't being updated, and so we get the previous value.
         loop {
-            if idx == num_yangs {
-                break ();
+            match (new_rates_span.pop_front()) {
+                Option::Some(rate) => {
+                    let current_yang_id: u32 = get_valid_yang_id(*yangs_span.pop_front().unwrap());
+                    if *rate.val == USE_PREV_BASE_RATE {
+                        // Setting new era rate to the previous era's rate
+                        yang_rates::write(
+                            (current_yang_id, new_era),
+                            yang_rates::read((current_yang_id, new_era - 1))
+                        );
+                    } else {
+                        assert_rate_is_valid(*rate);
+                        yang_rates::write((current_yang_id, new_era), *rate);
+                    }
+                },
+                Option::None(_) => {
+                    break ();
+                }
             }
-
-            let current_yang_id: u32 = get_valid_yang_id(*yangs_span[idx]);
-
-            if *new_rates_span[idx].val == USE_PREV_BASE_RATE {
-                // Setting new era rate to the previous era's rate
-                yang_rates::write(
-                    (current_yang_id, new_era), yang_rates::read((current_yang_id, new_era - 1))
-                );
-            } else {
-                assert_rate_is_valid(*new_rates_span[idx]);
-                yang_rates::write((current_yang_id, new_era), *new_rates_span[idx]);
-            }
-
             idx += 1;
         };
 
@@ -577,7 +580,7 @@ mod Shrine {
         // rates were correctly updated.
         let mut idx: u32 = 0;
         loop {
-            if idx.into() == num_yangs.into() {
+            if idx == num_yangs {
                 break ();
             }
 
@@ -585,7 +588,7 @@ mod Shrine {
 
             idx += 1;
         };
-        // TODO: uncomment this once variable moved error is gone, or once Span has a Serde implementation
+
         YangRatesUpdated(new_era, current_interval, yangs, new_rates);
     }
 
@@ -606,7 +609,7 @@ mod Shrine {
 
         // Update trove balance
         let new_trove_balance: Wad = deposits::read((yang_id, trove_id)) + amount;
-        deposits::write((yang_id, trove_id), amount);
+        deposits::write((yang_id, trove_id), new_trove_balance);
 
         // Events
         YangTotalUpdated(yang, new_total);
@@ -630,20 +633,15 @@ mod Shrine {
 
         charge(trove_id);
 
-        let old_trove_info: Trove = troves::read(trove_id);
-
-        let current_system_debt: Wad = total_debt::read();
-        let debt_ceiling: Wad = debt_ceiling::read();
-        let new_system_debt = current_system_debt + amount;
-
-        assert(new_system_debt <= debt_ceiling, 'Debt ceiling reached');
+        let new_system_debt = total_debt::read() + amount;
+        assert(new_system_debt <= debt_ceiling::read(), 'Debt ceiling reached');
         total_debt::write(new_system_debt);
 
-        let new_debt = old_trove_info.debt + amount;
         // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`. 
+        let old_trove_info: Trove = troves::read(trove_id);
         let new_trove_info = Trove {
             charge_from: old_trove_info.charge_from,
-            debt: new_debt,
+            debt: old_trove_info.debt + amount,
             last_rate_era: old_trove_info.last_rate_era
         };
         troves::write(trove_id, new_trove_info);
@@ -667,17 +665,17 @@ mod Shrine {
 
         let old_trove_info: Trove = troves::read(trove_id);
 
-        // Reverts if `amount` > `old_trove_info.debt`. We don't want users burning more debt than they have. 
+        // If `amount` exceeds `old_trove_info.debt`, then melt all the debt. 
+        // This is nice for UX so that maximum debt can be melted without knowing the exact 
+        // of debt in the trove down to the 10**-18. 
         let melt_amt: Wad = wadray::min(old_trove_info.debt, amount);
-
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
 
-        let new_trove_debt: Wad = old_trove_info.debt - melt_amt;
         // `charge_from` and `last_rate_era` are already updated in `charge`
         let new_trove_info: Trove = Trove {
             charge_from: old_trove_info.charge_from,
-            debt: new_trove_debt,
+            debt: old_trove_info.debt - melt_amt,
             last_rate_era: old_trove_info.last_rate_era
         };
         troves::write(trove_id, new_trove_info);
@@ -750,23 +748,20 @@ mod Shrine {
 
     #[external]
     fn transfer(recipient: ContractAddress, amount: u256) -> bool {
-        let sender: ContractAddress = starknet::get_caller_address();
-        transfer_internal(sender, recipient, amount);
+        transfer_internal(get_caller_address(), recipient, amount);
         true
     }
 
     #[external]
     fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
-        let caller: ContractAddress = starknet::get_caller_address();
-        spend_allowance_internal(sender, caller, amount);
+        spend_allowance_internal(sender, get_caller_address(), amount);
         transfer_internal(sender, recipient, amount);
         true
     }
 
     #[external]
     fn approve(spender: ContractAddress, amount: u256) -> bool {
-        let caller: ContractAddress = starknet::get_caller_address();
-        approve_internal(caller, spender, amount);
+        approve_internal(get_caller_address(), spender, amount);
         true
     }
 
@@ -877,29 +872,27 @@ mod Shrine {
         let yang_count: u32 = yangs_count::read();
 
         // Get new debt amount
-        let compounded_debt: Wad = compound(trove_id, trove, current_interval, yang_count);
+        let compounded_trove_debt: Wad = compound(trove_id, trove, current_interval, yang_count);
 
         // Pull undistributed debt and update state
-        let new_debt: Wad = pull_redistributed_debt(trove_id, compounded_debt, true);
+        let new_trove_debt: Wad = pull_redistributed_debt(trove_id, compounded_trove_debt, true);
 
         // Update trove
-        let latest_era: u64 = rates_latest_era::read();
         let updated_trove: Trove = Trove {
-            charge_from: current_interval, debt: new_debt, last_rate_era: latest_era
+            charge_from: current_interval,
+            debt: new_trove_debt,
+            last_rate_era: rates_latest_era::read()
         };
         troves::write(trove_id, updated_trove);
 
-        // Get old system debt amount
-        let old_system_debt: Wad = total_debt::read();
-
         // Get new system debt
-        // This adds the interest charged on the trove's debt to the total debt
-        let new_system_debt: Wad = old_system_debt + (compounded_debt - trove.debt);
-
+        // This adds the interest charged on the trove's debt to the total debt.
+        // This should not include redistributed debt, as that is already included in the total.
+        let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
         // Don't emit events if there hasn't been a change in debt
-        if compounded_debt != trove.debt {
+        if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
             TroveUpdated(trove_id, updated_trove);
         }
