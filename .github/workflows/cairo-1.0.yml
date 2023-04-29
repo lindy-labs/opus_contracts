@@ -70,6 +70,7 @@ jobs:
           fi
 
       - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
         run: |
           cargo build --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
           cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
@@ -94,6 +95,9 @@ jobs:
 
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
+
+      - name: Copy `corelib`
+        run: cp -r $CAIRO_FOLDER/corelib corelib
 
       - name: Add Cairo to PATH
         run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
