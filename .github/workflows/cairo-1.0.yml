@@ -56,8 +56,8 @@ jobs:
         with:
           shared-key: "-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}"
           workspaces: |
-            "./cairo -> ./target",
-            "./scarb -> ./target"
+            cairo -> target
+            scarb -> target
           cache-on-failure: "true"
 
       - name: Install dependencies
