@@ -14,7 +14,6 @@ on:
 env:
   CAIRO_FOLDER: ./cairo
   SCARB_FOLDER: ./scarb
-  BUILD_FOLDER: ./target
 
 jobs:
   build:
@@ -34,22 +33,6 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
-      - name: Get cache
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            **/target
-            **/cairo
-            **/scarb
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
-          restore-keys: Linux-cargo-
-
-        # Always pull dependencies to access `corelib`
       - name: Pull dependencies
         shell: bash
         run: |
@@ -68,38 +51,23 @@ jobs:
             git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
           fi
 
-      - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          cargo build --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
-          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
-
-      - name: Save cache
-        uses: actions/cache/save@v3
-        if: always()
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            **/target
-            **/cairo
-            **/scarb
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
+          shared-key: "-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}"
+          workspaces: |
+            "./cairo -> ./target",
+            "./scarb -> ./target"
+          cache-on-failure: "true"
 
       - name: Add Scarb to PATH
-        run: echo "$BUILD_FOLDER/scarb/debug" >> $GITHUB_PATH
+        run: echo "$SCARB_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
 
-        # Copy `corelib` to build folder so it can be detected
-      - name: Copy `corelib`
-        run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
-
       - name: Add Cairo to PATH
-        run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
+        run: echo "$CAIRO_FOLDER/target/debug" >> $GITHUB_PATH
 
       - name: Test Cairo 1.x code in Cairo
         run: scarb run test
