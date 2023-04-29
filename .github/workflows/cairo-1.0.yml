@@ -23,6 +23,7 @@ jobs:
       - name: Get latest commit hash
         run: |
           echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
+          echo "SCARB_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/software-mansion/scarb/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -42,7 +43,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
           restore-keys: Linux-cargo-
 
       - name: Pull and install dependencies
@@ -63,7 +64,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
 
       - name: Add Scarb to PATH
         run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
