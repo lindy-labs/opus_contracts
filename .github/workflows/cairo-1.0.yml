@@ -43,13 +43,13 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            ~/target
             **/target
             **/cairo
             **/scarb
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
           restore-keys: Linux-cargo-
 
+        # Always pull dependencies to access `corelib`
       - name: Pull dependencies
         shell: bash
         run: |
@@ -83,7 +83,6 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            ~/target
             **/target
             **/cairo
             **/scarb
@@ -95,9 +94,9 @@ jobs:
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
 
+        # Copy `corelib` to build folder so it can be detected
       - name: Copy `corelib`
-        run: |
-          cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
+        run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
 
       - name: Add Cairo to PATH
         run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
