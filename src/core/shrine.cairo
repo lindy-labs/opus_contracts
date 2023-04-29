@@ -545,9 +545,6 @@ mod Shrine {
             rates_intervals::write(new_era, current_interval);
         }
 
-        // Loop over yangs and update rates
-        let mut idx: u32 = 0;
-
         // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
         // yang's rate isn't being updated, and so we get the previous value.
         loop {
@@ -568,8 +565,7 @@ mod Shrine {
                 Option::None(_) => {
                     break ();
                 }
-            }
-            idx += 1;
+            };
         };
 
         // Verify that all rates were updated correctly
@@ -584,9 +580,7 @@ mod Shrine {
             if idx == num_yangs {
                 break ();
             }
-
             assert(yang_rates::read((idx, new_era)).is_non_zero(), 'Incorrect rate update');
-
             idx += 1;
         };
 
@@ -938,7 +932,7 @@ mod Shrine {
                     val: upcast(end_interval - start_interval) * TIME_INTERVAL_DIV_YEAR
                 };
                 compounded_debt *= exp(wadray::rmul_rw(avg_rate, t));
-                break ();
+                break compounded_debt;
             }
 
             let next_rate_update_era = trove_last_rate_era + 1;
@@ -958,9 +952,7 @@ mod Shrine {
 
             start_interval = next_rate_update_era_interval;
             trove_last_rate_era = next_rate_update_era;
-        };
-
-        compounded_debt
+        }
     }
 
     // Returns the average interest rate charged to a trove from `start_interval` to `end_interval`,
@@ -982,11 +974,10 @@ mod Shrine {
         loop {
             // If all yangs have been iterated over, return the average rate
             if current_yang_id == 0 {
-                // This would be a problem if the total trove value was ever zero.
+                // This operation would be a problem if the total trove value was ever zero.
                 // However, `cum_yang_value` cannot be zero because a trove with no yangs deposited
                 // cannot have any debt, meaning this code would never run (see `compound`)
-                avg_rate = wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
-                break ();
+                break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
             }
 
             // Skip over this yang if it hasn't been deposited in the trove
@@ -1001,9 +992,7 @@ mod Shrine {
                 cumulative_yang_value += yang_value;
             }
             current_yang_id -= 1;
-        };
-
-        avg_rate
+        }
     }
 
     // Loop through yangs for the trove:
@@ -1023,7 +1012,7 @@ mod Shrine {
 
         loop {
             if current_yang_id == 0 {
-                break ();
+                break redistributed_debt;
             }
 
             // Skip over this yang if it hasn't been deposited in the trove
@@ -1071,14 +1060,12 @@ mod Shrine {
                 // Continue iteration if there is no dust
                 // Otherwise, if debt is rounded up and fully redistributed, skip the remaining yangs
                 if debt_to_distribute != raw_debt_to_distribute {
-                    break ();
+                    break redistributed_debt;
                 }
             }
 
             current_yang_id -= 1;
-        };
-
-        redistributed_debt
+        }
     }
 
     // Returns the last error for `yang_id` at a given `redistribution_id` if the packed value is non-zero.
