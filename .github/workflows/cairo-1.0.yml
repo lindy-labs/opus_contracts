@@ -60,6 +60,11 @@ jobs:
             "./scarb -> ./target"
           cache-on-failure: "true"
 
+      - name: Install dependencies
+        run: |
+          cargo build --manifest-path=./scarb/Cargo.toml
+          cargo build --manifest-path=./cairo/Cargo.toml
+
       - name: Add Scarb to PATH
         run: echo "$SCARB_FOLDER/target/debug" >> $GITHUB_PATH
 
