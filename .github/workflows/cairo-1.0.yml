@@ -70,7 +70,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run:
+        run: |
           cargo build --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
           cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
 
