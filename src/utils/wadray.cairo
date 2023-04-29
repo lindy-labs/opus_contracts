@@ -101,24 +101,6 @@ fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
     Ray { val: rdiv_internal(lhs.val, rhs.val) }
 }
 
-fn min<T, impl TPartialOrd: PartialOrd<T>, impl DropT: Drop<T>, impl CopyT: Copy<T>>(
-    a: T, b: T
-) -> T {
-    if a > b {
-        return b;
-    }
-    a
-}
-
-fn max<T, impl TPartialOrd: PartialOrd<T>, impl DropT: Drop<T>, impl CopyT: Copy<T>>(
-    a: T, b: T
-) -> T {
-    if a > b {
-        return a;
-    }
-    b
-}
-
 //
 // Internal helpers 
 //
@@ -761,28 +743,5 @@ mod tests {
         // Test is_non_zero
         assert(!ray_zero.is_non_zero(), 'Value should be 0 #9');
         assert(ray_one.is_non_zero(), 'Value should not be 0 #10');
-    }
-
-    #[test]
-    fn test_min_max_with_wadray() {
-        // Test min and max with Wad
-        let wad_a = Wad { val: 42 };
-        let wad_b = Wad { val: 84 };
-
-        let wad_min = wadray::min(wad_a, wad_b);
-        assert(wad_min == wad_a, 'Min val should equal wad_a');
-
-        let wad_max = wadray::max(wad_a, wad_b);
-        assert(wad_max == wad_b, 'Max val should equal wad_b');
-
-        // Test min and max with Ray
-        let ray_a = Ray { val: 21 };
-        let ray_b = Ray { val: 42 };
-
-        let ray_min = wadray::min(ray_a, ray_b);
-        assert(ray_min == ray_a, 'Min val should equal ray_a');
-
-        let ray_max = wadray::max(ray_a, ray_b);
-        assert(ray_max == ray_b, 'Max val should equal ray_b');
     }
 }

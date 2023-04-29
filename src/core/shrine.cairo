@@ -3,6 +3,7 @@ mod Shrine {
     use array::ArrayTrait;
     use array::SpanTrait;
     use box::BoxTrait;
+    use cmp::min;
     use integer::BoundedU128;
     use integer::BoundedU256;
     use integer::upcast;
@@ -668,7 +669,7 @@ mod Shrine {
         // If `amount` exceeds `old_trove_info.debt`, then melt all the debt. 
         // This is nice for UX so that maximum debt can be melted without knowing the exact 
         // of debt in the trove down to the 10**-18. 
-        let melt_amt: Wad = wadray::min(old_trove_info.debt, amount);
+        let melt_amt: Wad = min(old_trove_info.debt, amount);
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
 
@@ -928,6 +929,7 @@ mod Shrine {
                 let avg_base_rate: Ray = get_avg_rate_over_era(
                     trove_id, start_interval, end_interval, latest_rate_era
                 );
+
                 let avg_rate: Ray = avg_base_rate
                     * get_avg_multiplier(start_interval, end_interval);
 
