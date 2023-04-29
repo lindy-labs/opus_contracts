@@ -97,8 +97,7 @@ jobs:
 
       - name: Copy `corelib`
         run: |
-          cp -r $CAIRO_FOLDER/corelib ~/corelib
-          cp -r $CAIRO_FOLDER/corelib ../corelib
+          cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
 
       - name: Add Cairo to PATH
         run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
