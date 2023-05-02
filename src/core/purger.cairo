@@ -28,6 +28,7 @@ mod Purger {
     use array::SpanTrait;
     use starknet::ContractAddress;
     use starknet::get_caller_address;
+    use zeroable::Zeroable;
 
     use aura::interfaces::IShrine::IShrineDispatcher;
     use aura::interfaces::IShrine::IShrineDispatcherTrait;
@@ -178,7 +179,7 @@ mod Purger {
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
-        (yangs, freed_assets_amts);
+        (yangs, freed_assets_amts)
     }
 
     // Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
@@ -220,7 +221,7 @@ mod Purger {
             absorber.compensate(caller, yangs, compensations);
             absorber.update(yangs, absorbed_assets);
 
-            (yangs, freed_assets_amts);
+            (yangs, freed_assets_amts)
         } else {
             let percentage_freed: Ray = get_percentage_freed(
                 trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_bal
@@ -301,7 +302,12 @@ mod Purger {
             let yang: ContractAddress = *yangs[idx];
             let deposited_yang_amt: Wad = shrine.get_deposit(yang, trove_id);
 
-            // TODO: `continue` if no yang deposited
+            // Continue iteration if no yang deposited
+            if deposited_yang_amt.is_zero() {
+                freed_assets_amts.append(0);
+                continue;
+            }
+
             let freed_yang: Wad = rmul_wr(deposited_yang_amt, percentage_freed);
 
             // TODO: Add reentrancy guard
