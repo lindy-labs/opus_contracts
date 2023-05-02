@@ -16,6 +16,7 @@ mod Shrine {
     use traits::TryInto;
     use zeroable::Zeroable;
 
+    use aura::utils::exp::exp;
     use aura::utils::storage_access_impls;
     use aura::utils::types::Trove;
     use aura::utils::types::YangRedistribution;
@@ -26,7 +27,6 @@ mod Shrine {
     use aura::utils::wadray::RAY_ONE;
     use aura::utils::wadray::Wad;
     use aura::utils::wadray::WAD_ONE;
-    use aura::utils::exp::exp;
 
     //
     // Constants
