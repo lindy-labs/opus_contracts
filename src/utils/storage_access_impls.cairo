@@ -1,4 +1,6 @@
 use option::OptionTrait;
+use starknet::ContractAddress;
+use starknet::contract_address;
 use starknet::StorageAccess;
 use starknet::StorageBaseAddress;
 use starknet::SyscallResult;
@@ -8,6 +10,10 @@ use starknet::storage_access::storage_address_from_base_and_offset;
 use traits::Into;
 use traits::TryInto;
 
+use aura::utils::types::AssetApportion;
+use aura::utils::types::Reward;
+use aura::utils::types::Provision;
+use aura::utils::types::Request;
 use aura::utils::types::Trove;
 use aura::utils::types::YangRedistribution;
 use aura::utils::wadray::Ray;
@@ -193,6 +199,68 @@ impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
         )?;
         storage_write_syscall(
             address_domain, storage_address_from_base_and_offset(base, 1_u8), value.error.val.into()
+        )
+    }
+}
+
+impl AssetApportionStorageAccess of StorageAccess<AssetApportion> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<AssetApportion> {
+        let asset_amt_per_share = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8)
+        )?.try_into().unwrap();
+        let error = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8)
+        )?.try_into().unwrap();
+
+        Result::Ok(AssetApportion { asset_amt_per_share, error,  })
+    }
+
+    fn write(
+        address_domain: u32, base: StorageBaseAddress, value: AssetApportion
+    ) -> SyscallResult::<()> {
+        storage_write_syscall(
+            address_domain,
+            storage_address_from_base_and_offset(base, 0_u8),
+            value.asset_amt_per_share.into()
+        )?;
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.error.into()
+        )
+    }
+}
+
+
+// TODO: Double check that this implementation actually works
+impl RewardStorageAccess of StorageAccess<Reward> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<Reward> {
+        let asset: ContractAddress = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8)
+        )?.try_into().unwrap();
+        let blesser: ContractAddress = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8)
+        )?.try_into().unwrap();
+        let is_active_raw: felt252 = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 2_u8)
+        )?;
+
+        Result::Ok(Reward { asset: asset, blesser: blesser, is_active: is_active_raw != 0 })
+    }
+
+    fn write(address_domain: u32, base: StorageBaseAddress, value: Reward) -> SyscallResult::<()> {
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8), value.asset.into()
+        )?;
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.blesser.into()
+        )?;
+
+        let mut is_active_raw: felt252 = 0;
+        if value.is_active {
+            is_active_raw = 1;
+        }
+
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 2_u8), is_active_raw
         )
     }
 }

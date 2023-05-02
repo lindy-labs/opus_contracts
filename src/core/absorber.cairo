@@ -48,60 +48,61 @@ mod Absorber {
 
     struct Storage {
         // mapping between a provider address and the purger contract address
-        absorber_purger: ContractAddress,
+        purger: ContractAddress,
         // mapping between a provider address and the sentinel contract address
-        absorber_sentinel: ContractAddress,
+        sentinel: ContractAddress,
         // mapping between a provider address and the shrine contract address
-        absorber_shrine: ContractAddress,
+        shrine: ContractAddress,
         // boolean flag indicating whether the absorber is live or not
-        absorber_live: bool,
+        live: bool,
         // epoch starts from 0
         // both shares and absorptions are tied to an epoch
         // the epoch is incremented when the amount of yin per share drops below the threshold.
         // this includes when the absorber's yin balance is completely depleted.
-        absorber_current_epoch: ufelt,
+        current_epoch: ufelt,
         // absorptions start from 1.
-        absorber_absorptions_count: ufelt,
+        absorptions_count: ufelt,
         // mapping from a provider to the last absorption ID accounted for
-        absorber_provider_last_absorption: LegacyMap::<ContractAddress, ufelt>,
+        provider_last_absorption: LegacyMap::<ContractAddress, ufelt>,
         // mapping of address to a packed struct of
         // 1. epoch in which the provider's shares are issued
         // 2. number of shares for the provider in the above epoch
-        absorber_provision: LegacyMap::<ContractAddress, packed>,
+        provision: LegacyMap::<ContractAddress, packed>,
         // mapping from an absorption to its epoch
-        absorber_absorption_epoch: LegacyMap::<ufelt, ufelt>,
+        absorption_epoch: LegacyMap::<ufelt, ufelt>,
         // total number of shares for current epoch
-        absorber_total_shares: Wad,
+        total_shares: Wad,
         // mapping of a tuple of absorption ID and asset to a packed struct of
         // 1. the amount of that asset in its decimal precision absorbed per share Wad for an absorption
         // 2. the rounding error from calculating (1) that is to be added to the next absorption
-        absorber_asset_absorption: LegacyMap::<(ufelt, ContractAddress), packed>,
+        asset_absorption: LegacyMap::<(ufelt, ContractAddress), packed>,
         // conversion rate of an epoch's shares to the next
         // if an update causes the yin per share to drop below the threshold,
         // the epoch is incremented and yin per share is reset to one Ray.
         // a provider with shares in that epoch will receive new shares in the next epoch
         // based on this conversion rate.
         // if the absorber's yin balance is wiped out, the conversion rate will be 0.
-        absorber_epoch_share_conversion_rate: LegacyMap::<ufelt, Ray>,
+        epoch_share_conversion_rate: LegacyMap::<ufelt, Ray>,
         // total number of reward tokens, starting from 1
         // a reward token cannot be removed once added.
-        absorber_rewards_count: ufelt,
+        rewards_count: ufelt,
         // mapping from a reward token address to its id for iteration
-        absorber_reward_id: LegacyMap::<ContractAddress, ufelt>,
+        reward_id: LegacyMap::<ContractAddress, ufelt>,
         // mapping from a reward token ID to its Reward struct:
         // 1. the ERC-20 token address
         // 2. the address of the vesting contract (blesser) implementing `IBlesser` for the ERC-20 token
         // 3. a boolean indicating if the blesser should be called
-        absorber_rewards: LegacyMap::<ufelt, Reward>,
+        rewards: LegacyMap::<ufelt, Reward>,
         // mapping from a reward token address and epoch to a packed struct of
         // 1. the cumulative amount of that reward asset in its decimal precision per share Wad in that epoch
         // 2. the rounding error from calculating (1) that is to be added to the next reward distribution
-        absorber_reward_by_epoch: LegacyMap::<(ContractAddress, ufelt), packed>,
+        reward_by_epoch: LegacyMap::<(ContractAddress, ufelt), packed>,
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
-        absorber_provider_last_reward_cumulative: LegacyMap::<(ContractAddress, ContractAddress),
-        ufelt>,
-    // removals are temporarily suspended if
-
+        provider_last_reward_cumulative: LegacyMap::<(ContractAddress, ContractAddress), ufelt>,
+        // Removals are temporarily suspended if the shrine's LTV to threshold exceeds this limit
+        removal_limit: Ray,
+        // Mapping from a provider to its latest request for removal
+        provider_request: LegacyMap::<(ContractAddress, Request)>
     }
 }
