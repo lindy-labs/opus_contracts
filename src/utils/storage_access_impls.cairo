@@ -139,7 +139,7 @@ impl RayTupleStorageAccess of StorageAccess<RayTuple> {
 impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
     fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<YangRedistribution> {
         let (unit_debt, error) = WadTupleStorageAccess::read(address_domain, base)?;
-        Result::Ok(YangRedistribution { unit_debt: unit_debt, error: error })
+        Result::Ok(YangRedistribution { unit_debt, error })
     }
 
     fn write(
