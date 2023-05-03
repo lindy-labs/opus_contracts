@@ -1,17 +1,10 @@
-use integer::Felt252TryIntoU128;
-use integer::U128IntoFelt252;
+use integer::{Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
-use traits::Into;
-use traits::PartialEq;
-use traits::PartialOrd;
-use traits::TryInto;
+use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
-use aura::utils::storage_access_impls::RayStorageAccess;
-use aura::utils::storage_access_impls::WadStorageAccess;
-use aura::utils::u256_conversions::cast_to_u256;
-use aura::utils::u256_conversions::U128IntoU256;
-use aura::utils::u256_conversions::U256TryIntoU128;
+use aura::utils::storage_access_impls;
+use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
 const WAD_DECIMALS: u8 = 18;
 
@@ -390,20 +383,10 @@ mod tests {
     use zeroable::Zeroable;
 
     use aura::utils::wadray;
-    use aura::utils::wadray::DIFF;
-    use aura::utils::wadray::MAX_CONVERTIBLE_WAD;
-    use aura::utils::wadray::Ray;
-    use aura::utils::wadray::RAY_ONE;
-    use aura::utils::wadray::RayIntoWad;
-    use aura::utils::wadray::rdiv_wr;
-    use aura::utils::wadray::rmul_rw;
-    use aura::utils::wadray::rmul_wr;
-    use aura::utils::wadray::Wad;
-    use aura::utils::wadray::WadTryIntoRay;
-    use aura::utils::wadray::WAD_ONE;
-    use aura::utils::wadray::wdiv_rw;
-    use aura::utils::wadray::wmul_rw;
-    use aura::utils::wadray::wmul_wr;
+    use aura::utils::wadray::{
+        DIFF, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad, WAD_ONE, wdiv_rw,
+        wmul_rw, wmul_wr
+    };
 
 
     #[test]
