@@ -71,8 +71,8 @@ jobs:
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          cargo build --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
-          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
+          cargo build --release --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
+          cargo build --release --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
 
       - name: Save cache
         uses: actions/cache/save@v3
