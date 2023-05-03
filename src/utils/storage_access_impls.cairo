@@ -153,26 +153,15 @@ impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
 
 impl AssetApportionStorageAccess of StorageAccess<AssetApportion> {
     fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<AssetApportion> {
-        let asset_amt_per_share = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 0_u8)
-        )?.try_into().unwrap();
-        let error = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8)
-        )?.try_into().unwrap();
-
-        Result::Ok(AssetApportion { asset_amt_per_share, error,  })
+        let (asset_amt_per_share, error) = U128TupleStorageAccess::read(address_domain, base)?;
+        Result::Ok(AssetApportion { asset_amt_per_share, error })
     }
 
     fn write(
         address_domain: u32, base: StorageBaseAddress, value: AssetApportion
     ) -> SyscallResult::<()> {
-        storage_write_syscall(
-            address_domain,
-            storage_address_from_base_and_offset(base, 0_u8),
-            value.asset_amt_per_share.into()
-        )?;
-        storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.error.into()
+        U128TupleStorageAccess::write(
+            address_domain, base, (value.asset_amt_per_share, value.error)
         )
     }
 }
