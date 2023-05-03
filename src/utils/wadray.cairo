@@ -1,17 +1,10 @@
-use integer::Felt252TryIntoU128;
-use integer::U128IntoFelt252;
+use integer::{Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
-use traits::Into;
-use traits::PartialEq;
-use traits::PartialOrd;
-use traits::TryInto;
+use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
-use aura::utils::storage_access_impls::RayStorageAccess;
-use aura::utils::storage_access_impls::WadStorageAccess;
-use aura::utils::u256_conversions::cast_to_u256;
-use aura::utils::u256_conversions::U128IntoU256;
-use aura::utils::u256_conversions::U256TryIntoU128;
+use aura::utils::storage_access_impls;
+use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
 const WAD_DECIMALS: u8 = 18;
 
