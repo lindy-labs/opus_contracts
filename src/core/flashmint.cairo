@@ -2,16 +2,11 @@
 mod FlashMint {
     use option::OptionTrait;
     use starknet::ContractAddress;
-    use traits::Into;
-    use traits::TryInto;
+    use traits::{Into, TryInto};
 
-
-    use aura::interfaces::IERC20::IERC20Dispatcher;
-    use aura::interfaces::IERC20::IERC20DispatcherTrait;
-    use aura::interfaces::IFlashBorrower::IFlashBorrowerDispatcher;
-    use aura::interfaces::IFlashBorrower::IFlashBorrowerDispatcherTrait;
-    use aura::interfaces::IShrine::IShrineDispatcher;
-    use aura::interfaces::IShrine::IShrineDispatcherTrait;
+    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::u256_conversions::U256TryIntoU128;
     use aura::utils::wadray::Wad;
 
@@ -26,28 +21,31 @@ mod FlashMint {
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
 
     struct Storage {
-        shrine_addr: ContractAddress, 
+        shrine_address: ContractAddress, 
     }
 
-    #[external]
+    #[event]
     fn FlashMint(
-        initiator: ContractAddress, receiver: ContractAddress, token: ContractAddress, amount: u256
+        initiator: ContractAddress,
+        receiver: ContractAddress,
+        token_addr: ContractAddress,
+        amount: u256
     ) {}
 
     #[constructor]
-    fn constructor(shrine: ContractAddress) {
-        shrine_addr::write(shrine);
+    fn constructor(shrine_addr: ContractAddress) {
+        shrine_address::write(shrine_addr);
     }
 
     #[view]
-    fn maxFlashLoan(token: ContractAddress) -> u256 {
-        let shrine: ContractAddress = shrine_addr::read();
+    fn maxFlashLoan(token_addr: ContractAddress) -> u256 {
+        let shrine_addr: ContractAddress = shrine_address::read();
 
         // Can only flash mint our own synthetic
-        if token == shrine {
+        if token_addr == shrine_addr {
             let supply = Wad {
                 val: IERC20Dispatcher {
-                    contract_address: shrine
+                    contract_address: shrine_addr
                 }.total_supply().try_into().unwrap()
             };
             return u256 { low: (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val, high: 0 };
@@ -56,10 +54,10 @@ mod FlashMint {
     }
 
     #[view]
-    fn flashFee(token: ContractAddress, amount: u256) -> u256 {
+    fn flashFee(token_addr: ContractAddress, amount: u256) -> u256 {
         // as per EIP3156, if a token is not supported, this function must revert
         // and we only support flash minting of own synthetic
-        assert(shrine_addr::read() == token, 'Unsupported token');
+        assert(shrine_address::read() == token_addr, 'Unsupported token');
 
         // Feeless minting
         u256 { low: 0, high: 0 }
@@ -68,7 +66,7 @@ mod FlashMint {
     #[external]
     fn flashLoan(
         receiver: ContractAddress,
-        token: ContractAddress,
+        token_addr: ContractAddress,
         amount: u256,
         calldata_arr: Array<felt252>
     ) -> bool {
@@ -78,11 +76,9 @@ mod FlashMint {
         // TODO: Implement reentrancy guard when contract composition solution is released
         //ReentrancyGuard._start();
 
-        let fee: u256 = flashFee(token, amount);
+        assert(amount <= maxFlashLoan(token_addr), 'amount exceeds maximum');
 
-        assert(amount <= maxFlashLoan(token), 'amount exceeds maximum');
-
-        let shrine = IShrineDispatcher { contract_address: shrine_addr::read() };
+        let shrine = IShrineDispatcher { contract_address: shrine_address::read() };
 
         let amount_wad = Wad { val: amount.try_into().unwrap() };
 
@@ -92,7 +88,7 @@ mod FlashMint {
 
         let borrower_resp: u256 = IFlashBorrowerDispatcher {
             contract_address: receiver
-        }.onFlashLoan(initiator, token, amount, fee, calldata_arr);
+        }.onFlashLoan(initiator, token_addr, amount, flashFee(token_addr, amount), calldata_arr);
 
         assert(
             borrower_resp.low == ON_FLASH_MINT_SUCCESS_LOW & borrower_resp.high == ON_FLASH_MINT_SUCCESS_HIGH,
@@ -102,7 +98,7 @@ mod FlashMint {
         // This function in Shrine takes care of balance validation
         shrine.eject(receiver, amount_wad);
 
-        FlashMint(initiator, receiver, token, amount);
+        FlashMint(initiator, receiver, token_addr, amount);
 
         //ReentrancyGuard._end();
         true
