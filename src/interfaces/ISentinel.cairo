@@ -1,7 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::utils::wadray::Ray;
-use aura::utils::wadray::Wad;
+use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
 trait ISentinel {
