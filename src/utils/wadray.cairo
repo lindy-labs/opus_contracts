@@ -383,20 +383,10 @@ mod tests {
     use zeroable::Zeroable;
 
     use aura::utils::wadray;
-    use aura::utils::wadray::DIFF;
-    use aura::utils::wadray::MAX_CONVERTIBLE_WAD;
-    use aura::utils::wadray::Ray;
-    use aura::utils::wadray::RAY_ONE;
-    use aura::utils::wadray::RayIntoWad;
-    use aura::utils::wadray::rdiv_wr;
-    use aura::utils::wadray::rmul_rw;
-    use aura::utils::wadray::rmul_wr;
-    use aura::utils::wadray::Wad;
-    use aura::utils::wadray::WadTryIntoRay;
-    use aura::utils::wadray::WAD_ONE;
-    use aura::utils::wadray::wdiv_rw;
-    use aura::utils::wadray::wmul_rw;
-    use aura::utils::wadray::wmul_wr;
+    use aura::utils::wadray::{
+        DIFF, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad, WAD_ONE, wdiv_rw,
+        wmul_rw, wmul_wr
+    };
 
 
     #[test]

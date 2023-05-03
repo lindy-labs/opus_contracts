@@ -1,17 +1,11 @@
 use option::OptionTrait;
-use starknet::StorageAccess;
-use starknet::StorageBaseAddress;
-use starknet::SyscallResult;
-use starknet::syscalls::storage_read_syscall;
-use starknet::syscalls::storage_write_syscall;
+use starknet::{StorageAccess, StorageBaseAddress, SyscallResult};
+use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
 use starknet::storage_access::storage_address_from_base_and_offset;
-use traits::Into;
-use traits::TryInto;
+use traits::{Into, TryInto};
 
-use aura::utils::types::Trove;
-use aura::utils::types::YangRedistribution;
-use aura::utils::wadray::Ray;
-use aura::utils::wadray::Wad;
+use aura::utils::types::{Trove, YangRedistribution};
+use aura::utils::wadray::{Ray, Wad};
 
 // Storage Access
 impl WadStorageAccess of StorageAccess<Wad> {
