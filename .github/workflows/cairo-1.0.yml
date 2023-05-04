@@ -71,8 +71,8 @@ jobs:
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          cargo build --release --config incremental=true --config opt-level=\"z\" --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
-          cargo build --release --config incremental=true --config opt-level=\"z\" --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
+          cargo build --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
+          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
 
       - name: Save cache
         uses: actions/cache/save@v3
@@ -89,7 +89,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
 
       - name: Add Scarb to PATH
-        run: echo "$BUILD_FOLDER/scarb/release" >> $GITHUB_PATH
+        run: echo "$BUILD_FOLDER/scarb/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
@@ -99,7 +99,7 @@ jobs:
         run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
 
       - name: Add Cairo to PATH
-        run: echo "$BUILD_FOLDER/cairo/release" >> $GITHUB_PATH
+        run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
 
       - name: Test Cairo 1.x code in Cairo
         run: scarb run test
