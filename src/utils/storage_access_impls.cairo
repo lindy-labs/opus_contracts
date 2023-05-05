@@ -1,7 +1,7 @@
 use option::OptionTrait;
 use starknet::{StorageAccess, StorageBaseAddress, SyscallResult};
-use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
 use starknet::storage_access::storage_address_from_base_and_offset;
+use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
 use traits::{Into, TryInto};
 
 use aura::utils::types::{Trove, YangRedistribution};
