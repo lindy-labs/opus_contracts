@@ -201,3 +201,63 @@ impl RewardStorageAccess of StorageAccess<Reward> {
         )
     }
 }
+
+impl ProvisionStorageAccess of StorageAccess<Provision> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<Provision> {
+        let epoch = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8)
+        )?.try_into().unwrap();
+        let shares_val = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8)
+        )?.try_into().unwrap();
+
+        Result::Ok(Provision { epoch, shares: Wad { val: shares_val } })
+    }
+
+    fn write(
+        address_domain: u32, base: StorageBaseAddress, value: Provision
+    ) -> SyscallResult::<()> {
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8), value.epoch.into()
+        )?;
+        storage_write_syscall(
+            address_domain,
+            storage_address_from_base_and_offset(base, 1_u8),
+            value.shares.val.into()
+        )
+    }
+}
+
+impl RequestStorageAccess of StorageAccess<Request> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<Request> {
+        let timestamp = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8)
+        )?.try_into().unwrap();
+        let timelock = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8)
+        )?.try_into().unwrap();
+        let has_removed_raw = storage_read_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 2_u8)
+        )?;
+
+        Result::Ok(Request { timestamp, timelock, has_removed: has_removed_raw != 0 })
+    }
+
+    fn write(address_domain: u32, base: StorageBaseAddress, value: Request) -> SyscallResult::<()> {
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 0_u8), value.timestamp.into()
+        )?;
+        storage_write_syscall(
+            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.timelock.into()
+        )?;
+        storage_write_syscall(
+            address_domain,
+            storage_address_from_base_and_offset(base, 2_u8),
+            if value.has_removed {
+                1
+            } else {
+                0
+            }
+        )
+    }
+}
