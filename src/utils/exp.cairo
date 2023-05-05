@@ -1,10 +1,8 @@
 use array::ArrayTrait;
 use option::OptionTrait;
-use traits::Into;
-use traits::TryInto;
+use traits::{Into, TryInto};
 
-use aura::utils::u256_conversions::U128IntoU256;
-use aura::utils::u256_conversions::U256TryIntoU128;
+use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
 use aura::utils::wadray::Wad;
 
 // PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
