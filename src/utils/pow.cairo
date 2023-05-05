@@ -1,21 +1,16 @@
-use integer::u128_try_from_felt252;
-use option::OptionTrait;
-use traits::Into;
-use traits::TryInto;
+use traits::{Into, TryInto};
 
-// TODO: workaround until `dw` is available
 fn pow10(exp: u8) -> u128 {
-    u128_try_from_felt252(pow10_internal(exp.into())).unwrap()
+    pow10_internal(exp.into())
 }
 
-fn pow10_internal(exp: felt252) -> felt252 {
+fn pow10_internal(exp: u128) -> u128 {
     if exp == 0 {
         1
     } else {
         10 * pow10_internal(exp - 1)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
