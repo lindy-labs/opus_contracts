@@ -215,6 +215,7 @@ mod Shrine {
         let trove: Trove = troves::read(trove_id);
 
         // Catch troves with no value
+        // Handles corner case: forging non-zero debt for a trove with zero value
         if value.is_zero() {
             // Handles corner case: forging non-zero debt for a trove with zero value
             if trove.debt.is_non_zero() {
