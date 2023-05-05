@@ -2,26 +2,20 @@
 mod Gate {
     use integer::u128_try_from_felt252;
     use option::OptionTrait;
-    use starknet::ContractAddress;
-    use starknet::get_contract_address;
-    use traits::Into;
-    use traits::TryInto;
+    use starknet::{ContractAddress, get_contract_address};
+    use traits::{Into, TryInto};
+    use zeroable::Zeroable;
 
-    use aura::interfaces::IERC20::IERC20Dispatcher;
-    use aura::interfaces::IERC20::IERC20DispatcherTrait;
-    use aura::interfaces::IShrine::IShrineDispatcher;
-    use aura::interfaces::IShrine::IShrineDispatcherTrait;
+    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::pow::pow10;
-    use aura::utils::wadray::fixed_point_to_wad;
-    use aura::utils::wadray::Wad;
-    use aura::utils::wadray::WAD_DECIMALS;
-    use aura::utils::wadray::WAD_ONE;
-    use aura::utils::u256_conversions::U128IntoU256;
-    use aura::utils::u256_conversions::U256TryIntoU128;
+    use aura::utils::wadray;
+    use aura::utils::wadray::{fixed_point_to_wad, Wad, WAD_DECIMALS, WAD_ONE};
+    use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
 
     struct Storage {
-        shrine: ContractAddress,
-        asset: ContractAddress,
+        shrine: IShrineDispatcher,
+        asset: IERC20Dispatcher,
         live: bool,
     }
 
@@ -44,8 +38,11 @@ mod Gate {
 
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress, asset: ContractAddress) {
-        // TODO: initialize admin in access control
-        // TODO: grant gate default role to admin
+        // AccessControl.initializer(admin);
+
+        // Grant permission
+        // AccessControl._grant_role(GateRoles.DEFAULT_GATE_ADMIN_ROLE, admin);
+
 
         initializer(shrine, asset);
         live::write(true);
@@ -57,12 +54,12 @@ mod Gate {
 
     #[view]
     fn get_shrine() -> ContractAddress {
-        shrine::read()
+        shrine::read().contract_address
     }
 
     #[view]
     fn get_asset() -> ContractAddress {
-        asset::read()
+        asset::read().contract_address
     }
 
     #[view]
@@ -113,40 +110,36 @@ mod Gate {
 
         assert_live();
 
-        // TODO: add access control for enter role
+        // AccessControl.assert_has_role(GateRoles.ENTER);
 
         let yang_amt: Wad = convert_to_yang(asset_amt);
-        if yang_amt.val == 0 {
-            return Wad { val: 0 };
+        if yang_amt.is_zero() {
+            return 0_u128.into();
         }
 
-        let asset: ContractAddress = asset::read();
+        let asset: IERC20Dispatcher = asset::read();
         let gate: ContractAddress = get_contract_address();
 
-        let success: bool = IERC20Dispatcher {
-            contract_address: asset
-        }.transfer_from(user, gate, asset_amt.into());
-        assert(success == true, 'GA: Asset transfer failed');
+        let success: bool = asset.transfer_from(user, gate, asset_amt.into());
+        assert(success == true, 'Asset transfer failed');
 
         Enter(user, trove_id, asset_amt, yang_amt);
 
-        Wad { val: 0 }
+        0_u128.into()
     }
 
     #[external]
     fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
-        // TODO: add access control for exit role
+        // AccessControl.assert_has_role(GateRoles.EXIT);
 
         let asset_amt: u128 = convert_to_assets(yang_amt);
         if asset_amt == 0 {
             return 0;
         }
 
-        let asset: ContractAddress = asset::read();
-        let success: bool = IERC20Dispatcher {
-            contract_address: asset
-        }.transfer(user, asset_amt.into());
-        assert(success == true, 'GA: Asset transfer failed');
+        let asset: IERC20Dispatcher = asset::read();
+        let success: bool = asset.transfer(user, asset_amt.into());
+        assert(success == true, 'Asset transfer failed');
 
         Exit(user, trove_id, asset_amt, yang_amt);
 
@@ -158,8 +151,8 @@ mod Gate {
     //
 
     fn initializer(shrine: ContractAddress, asset: ContractAddress) {
-        shrine::write(shrine);
-        asset::write(asset);
+        shrine::write(IShrineDispatcher { contract_address: shrine});
+        asset::write(IERC20Dispatcher { contract_address: asset});
     }
 
     fn assert_live() {
@@ -168,26 +161,26 @@ mod Gate {
     }
 
     fn get_total_assets_internal() -> u128 {
-        let asset: ContractAddress = asset::read();
+        let asset: IERC20Dispatcher = asset::read();
         let gate: ContractAddress = get_contract_address();
-        let total_bal: u256 = IERC20Dispatcher { contract_address: asset }.balance_of(gate);
+        let total_bal: u256 = asset.balance_of(gate);
         total_bal.try_into().unwrap()
     }
 
     fn get_total_yang_internal() -> Wad {
-        let shrine: ContractAddress = shrine::read();
-        let asset: ContractAddress = asset::read();
-        let yang_total: Wad = IShrineDispatcher { contract_address: shrine }.get_yang_total(asset);
+        let shrine: IShrineDispatcher = shrine::read();
+        let asset: IERC20Dispatcher = asset::read();
+        let yang_total: Wad = shrine.get_yang_total(asset.contract_address);
         yang_total
     }
 
     fn get_asset_amt_per_yang_internal() -> Wad {
-        let amt: u128 = convert_to_assets(Wad { val: WAD_ONE });
-        let asset: ContractAddress = asset::read();
-        let decimals: u8 = IERC20Dispatcher { contract_address: asset }.decimals();
+        let amt: u128 = convert_to_assets(WAD_ONE.into());
+        let asset: IERC20Dispatcher = asset::read();
+        let decimals: u8 = asset.decimals();
 
         if decimals == WAD_DECIMALS {
-            return Wad { val: amt };
+            return amt.into();
         }
 
         fixed_point_to_wad(amt, decimals)
@@ -198,8 +191,8 @@ mod Gate {
         let total_supply: Wad = get_total_yang_internal();
 
         if total_supply.val == 0 {
-            let asset: ContractAddress = asset::read();
-            let decimals: u8 = IERC20Dispatcher { contract_address: asset }.decimals();
+            let asset: IERC20Dispatcher = asset::read();
+            let decimals: u8 = asset.decimals();
 
             if decimals == WAD_DECIMALS {
                 return yang_amt.val;
@@ -209,7 +202,7 @@ mod Gate {
             let scale: u128 = pow10(WAD_DECIMALS - decimals);
             yang_amt.val / scale
         } else {
-            let total_assets: Wad = Wad { val: get_total_assets_internal() };
+            let total_assets: Wad = get_total_assets_internal().into();
             let assets: Wad = (yang_amt * total_assets) / total_supply;
             assets.val
         }
@@ -220,19 +213,19 @@ mod Gate {
         let total_supply: Wad = get_total_yang_internal();
 
         if total_supply.val == 0 {
-            let asset: ContractAddress = asset::read();
-            let decimals: u8 = IERC20Dispatcher { contract_address: asset }.decimals();
+            let asset: IERC20Dispatcher = asset::read();
+            let decimals: u8 = asset.decimals();
 
             // `assets` is already of `Wad` precision
             if decimals == WAD_DECIMALS {
-                return Wad { val: asset_amt };
+                return asset_amt.into();
             }
 
             // Scale by difference to match `Wad` precision`
             fixed_point_to_wad(asset_amt, decimals)
         } else {
-            let total_assets: Wad = Wad { val: get_total_assets_internal() };
-            let yang: Wad = (Wad { val: asset_amt } * total_supply) / total_assets;
+            let total_assets: Wad = get_total_assets_internal().into();
+            let yang: Wad = (asset_amt.into() * total_supply) / total_assets;
             yang
         }
     }

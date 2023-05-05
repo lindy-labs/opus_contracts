@@ -3,6 +3,7 @@ use option::OptionTrait;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
+use aura::utils::pow::pow10;
 use aura::utils::storage_access_impls;
 use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
@@ -377,7 +378,7 @@ impl RayZeroable of Zeroable<Ray> {
 fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     assert(decimals <= WAD_DECIMALS, 'wadray: more than 18 decimals');
     let scale: u128 = pow10(WAD_DECIMALS - decimals);
-    Wad { val: n * scale }
+    (n * scale).into()
 }
 
 #[cfg(test)]
