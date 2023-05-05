@@ -43,7 +43,6 @@ mod Gate {
         // Grant permission
         // AccessControl._grant_role(GateRoles.DEFAULT_GATE_ADMIN_ROLE, admin);
 
-
         initializer(shrine, asset);
         live::write(true);
     }
@@ -151,8 +150,8 @@ mod Gate {
     //
 
     fn initializer(shrine: ContractAddress, asset: ContractAddress) {
-        shrine::write(IShrineDispatcher { contract_address: shrine});
-        asset::write(IERC20Dispatcher { contract_address: asset});
+        shrine::write(IShrineDispatcher { contract_address: shrine });
+        asset::write(IERC20Dispatcher { contract_address: asset });
     }
 
     fn assert_live() {
