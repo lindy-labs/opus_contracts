@@ -217,6 +217,7 @@ mod Shrine {
         // Catch troves with no value
         // Handles corner case: forging non-zero debt for a trove with zero value
         if value.is_zero() {
+            // Handles corner case: forging non-zero debt for a trove with zero value
             if trove.debt.is_non_zero() {
                 return (threshold, BoundedU128::max().into(), value, trove.debt);
             } else {
@@ -1064,7 +1065,9 @@ mod Shrine {
             return 0_u128.into();
         }
 
-        let redistribution: Wad = yang_redistributions::read((yang_id, redistribution_id)).error;
+        let redistribution: YangRedistribution = yang_redistributions::read(
+            (yang_id, redistribution_id)
+        );
 
         // If redistribution debt is non-zero, return the error.
         // Otherwise, check the previous redistribution for the last error.
