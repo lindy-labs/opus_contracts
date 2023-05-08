@@ -1360,7 +1360,7 @@ mod Shrine {
     fn transfer_internal(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
         assert(recipient.is_non_zero(), 'cannot transfer to 0 address');
 
-        let amount_wad: Wad = amount.try_into().unwrap().into();
+        let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
 
         // Transferring the Yin
         yin::write(sender, yin::read(sender) - amount_wad);
