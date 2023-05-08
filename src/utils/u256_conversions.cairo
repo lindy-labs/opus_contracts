@@ -1,6 +1,5 @@
 use option::OptionTrait;
-use traits::Into;
-use traits::TryInto;
+use traits::{Into, TryInto};
 
 #[inline(always)]
 fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
@@ -28,11 +27,9 @@ impl U256TryIntoU128 of TryInto<u256, u128> {
 #[cfg(test)]
 mod tests {
     use option::OptionTrait;
-    use traits::Into;
-    use traits::TryInto;
+    use traits::{Into, TryInto};
 
-    use aura::utils::u256_conversions::U128IntoU256;
-    use aura::utils::u256_conversions::U256TryIntoU128;
+    use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
 
     const SOME_U128: u128 = 1000;
     #[test]
