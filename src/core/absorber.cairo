@@ -2,6 +2,8 @@
 mod Absorber {
     use array::ArrayTrait;
     use cmp::min;
+    use integer::u128_safe_divmod;
+    use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use zeroable::Zeroable;
 
@@ -575,6 +577,8 @@ mod Absorber {
     #[external]
     fn update(assets: Array<ContractAddress>, asset_amts: Array<u128>) {
         //AccessControl.assert_has_role(AbsorberRoles.UPDATE);
+        let assets_span: Span<ContractAddress> = assets.span();
+        let asset_amts_span: Span<u128> = asset_amts.span();
 
         let current_epoch: u32 = current_epoch::read();
 
@@ -590,9 +594,24 @@ mod Absorber {
         // Update epoch for absorption ID
         absorption_epoch::write(current_absorption_id, current_epoch);
 
-        // Loop through assets and calculate amount entitled per share
         let total_shares: Wad = total_shares::read();
-        update_absorbed_assets_loop(current_absorption_id, total_shares, assets, asset_amts);
+
+        // Loop through assets and calculate amount entitled per share
+        let mut assets_span: Span<ContractAddress> = assets.span();
+        let mut asset_amts_span: Span<u128> = asset_amts.span();
+        loop {
+            match assets_span.pop_front() {
+                Option::Some(asset_addr) => {
+                    let asset_amt: u128 = *asset_amts_span.pop_front().unwrap();
+                    update_absorbed_asset(
+                        current_absorption_id, total_shares, *asset_adr, asset_amt
+                    );
+                },
+                Option::None => {
+                    break ();
+                }
+            };
+        };
 
         // Emit `Gain` event
         Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
@@ -653,5 +672,202 @@ mod Absorber {
         //AccessControl.assert_has_role(AbsorberRoles.COMPENSATE);
         transfer_assets(recipient, assets, asset_amts);
         Compensate(recipient, assets, asset_amts);
+    }
+
+    //
+    // Internal 
+    // 
+    fn assert_provider(provision: Provision) {
+        assert(provision.epoch != 0, 'AB: Not a provider');
+    }
+
+    fn assert_live() {
+        assert(is_live::read(), 'AB: Not live');
+    }
+
+    fn set_removal_limit_internal(limit: Ray) {
+        assert(MIN_LIMIT <= limit.val, 'AB: Limit is too low');
+        let prev_limit = removal_limit::read();
+        removal_limit::write(limit);
+        RemovalLimitSet(prev_limit, limit);
+    }
+
+
+    //
+    // Internal - helpers for accounting of shares
+    //
+
+    // Convert to shares with a flag for whether the value should be rounded up or rounded down.
+    // When converting to shares, we always favour the Absorber to the expense of the provider.
+    // - Round down for `provide` (default for integer division)
+    // - Round up for `remove`
+    // Returns a tuple of the shares to be issued to the provider, and the total number of shares
+    // issued for the system.
+    // - There will be a difference between the two values only if it is the first `provide` of an epoch and
+    //   the total shares is less than the minimum initial shares.
+    fn convert_to_shares(yin_amt: Wad, round_up: bool) -> (Wad, Wad) {
+        let total_shares: Wad = total_shares::read();
+
+        if INITIAL_SHARES <= total_shares.val {
+            return (Wad { val: yin_amt.val - INITIAL_SHARES }, INITIAL_SHARES);
+        }
+
+        let shrine_addr: ContractAddress = shrine_address::read();
+        let absorber_addr: ContractAddress = get_contract_address();
+        let yin_balance: Wad = Wad {
+            val: IERC20Dispatcher {
+                contract_address: shrine_addr
+            }.balance_of(absorber_addr).try_into().unwrap()
+        };
+
+        // TODO: This could easily overflow, should be done with u256
+        let (computed_shares, r) = u128_safe_divmod(
+            yin_amt.val * total_shares.val, yin_balance.val
+        );
+        if round_up & r != 0 {
+            return (computed_shares + 1, computed_shares + 1);
+        }
+        (computed_shares, computed_shares)
+    }
+
+    // This implementation is slightly different from Gate because the concept of shares is
+    // used for internal accounting only, and both shares and yin are wads.
+    fn convert_to_yin(shares_amt: Wad) -> Wad {
+        let total_shares: Wad = total_shares::read();
+
+        // If no shares are issued yet, then it is a new epoch and absorber is emptied.
+        if total_shares.is_zero() {
+            return Wad { val: 0 };
+        }
+
+        let shrine_addr: ContractAddress = shrine_address::read();
+        let absorber_addr: ContractAddress = get_contract_address();
+        let yin_balance: Wad = Wad {
+            val: IERC20Dispatcher {
+                contract_address: shrine_addr
+            }.balance_of(absorber_addr).try_into().unwrap()
+        };
+
+        let yin: Wad = (shares_amt * yin_balance) / total_shares;
+        yin
+    }
+
+    // Convert an epoch's shares to a subsequent epoch's shares
+    // Return argument is named for testing
+    fn convert_epoch_shares(start_epoch: u32, end_epoch: u32, start_shares: Wad) -> Wad {
+        if start_epoch == end_epoch {
+            return (start_shares, );
+        }
+
+        let epoch_conversion_rate: Ray = epoch_share_conversion_rate::read(start_epoch);
+
+        // `rmul` of a wad and a ray returns a wad
+        let new_shares: Wad = wadray::rmul_wr(start_shares, epoch_conversion_rate);
+
+        return convert_epoch_shares(start_epoch + 1, end_epoch, new_shares);
+    }
+
+    //
+    // Internal - helpers for `update`
+    //
+
+    // Helper function to update each provider's entitlement of an absorbed asset
+    fn update_absorbed_asset(
+        absorption_id: u32, total_shares: Wad, asset: ContractAddress, amount: u128
+    ) {
+        if amount == 0 {
+            return ();
+        }
+
+        let last_error: u128 = get_recent_asset_absorption_error(asset, absorption_id);
+        let total_amount_to_distribute: Wad = amount + last_error;
+
+        let asset_amt_per_share: Wad = total_amount_to_distribute / total_shares;
+        let actual_amount_distributed: u128 = asset_amt_per_share * total_shares;
+        let error: u128 = (total_amount_to_distribute - actual_amount_distributed).val;
+
+        asset_absorption::write(
+            (asset, absorption_id), AssetApportion { asset_amt_per_share, error }
+        );
+    }
+
+
+    // Returns the last error for an asset at a given `absorption_id` if the packed value is non-zero.
+    // Otherwise, check `absorption_id - 1` recursively for the last error.
+    fn get_recent_asset_absorption_error(asset: ContractAddress, absorption_id: u32) -> u128 {
+        if absorption_id == 0 {
+            return 0;
+        }
+
+        let absorption: AssetApportion = asset_absorption::read((asset, absorption_id));
+        // asset_amt_per_share is checked because it is possible for the error to be zero. 
+        // On the other hand, asset_amt_per_share should never be zero, save for extreme edge cases. 
+        if absorption.asset_amt_per_share != 0 {
+            return absorption.error;
+        }
+
+        get_recent_asset_absorption_error(asset, absorption_id - 1)
+    }
+
+
+    //
+    // Internal - helpers for `reap`
+    //
+
+    // Internal function to be called whenever a provider takes an action to ensure absorbed assets
+    // are properly transferred to the provider before updating the provider's information
+    fn reap_internal(provider: ContractAddress, provision: Provision, current_epoch: u32) {
+        // Trigger issuance of rewards
+        let rewards_count: u8 = rewards_count::read();
+        bestow(current_epoch, rewards_count);
+
+        let provider_last_absorption_id: u32 = provider_last_absorption::read(provider);
+        let current_absorption_id: u32 = absorptions_count::read();
+
+        // This should be updated before early return so that first provision by a new
+        // address is properly updated.
+        provider_last_absorption::write(provider, current_absorption_id);
+
+        if provider_last_absorption_id == current_absorption_id {
+            return ();
+        }
+
+        let total_shares: Wad = total_shares::read();
+
+        // Loop over absorbed assets and transfer
+        let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
+            provider, provision, provider_last_absorption_id, current_absorption_id
+        );
+        transfer_assets(provider, absorbed_assets, absorbed_asset_amts);
+
+        // Loop over accumulated rewards, transfer and update provider's rewards cumulative
+        let (reward_assets, reward_asset_amts) = get_provider_accumulated_rewards(
+            provider, provision, current_epoch, REWARDS_LOOP_START
+        );
+        transfer_assets(provider, reward_assets, reward_asset_amts);
+
+        update_provider_cumulative_rewards_loop(
+            provider, current_epoch, REWARDS_LOOP_START, reward_assets
+        );
+
+        Reap(provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_asset_amts, );
+    }
+
+    // Internal function to calculate the absorbed assets that a provider is entitled to
+    fn get_absorbed_assets_for_provider_internal(
+        provider: ContractAddress,
+        provision: Provision,
+        provided_absorption_id: u32,
+        current_absorption_id: u32
+    ) -> (Array<ContractAddress>, Array<u128>) {
+        // Early termination by returning empty arrays
+        if provision.shares.is_zero() | current_absorption_id =
+            provided_absorption_id {
+                return (Array::new(), Array::new());
+            }
+
+        let assets: Array<ContractAddress> = ISentinelDispatcher {
+            contract_address: sentinel_address::read()
+        }.get_yang_addresses();
     }
 }
