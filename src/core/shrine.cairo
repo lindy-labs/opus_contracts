@@ -215,7 +215,6 @@ mod Shrine {
         let trove: Trove = troves::read(trove_id);
 
         // Catch troves with no value
-        // Handles corner case: forging non-zero debt for a trove with zero value
         if value.is_zero() {
             // Handles corner case: forging non-zero debt for a trove with zero value
             if trove.debt.is_non_zero() {
@@ -1069,12 +1068,10 @@ mod Shrine {
             (yang_id, redistribution_id)
         );
 
-        // If redistribution debt is non-zero, return the error.
-        // Otherwise, check the previous redistribution for the last error.
-        // The reason the unit debt is checked and not the error is because
-        // it's possible for a redistribution to have occurred with no error,
-        // in which case we don't want to check the previous redistribution.
-        if redistribution.unit_debt.is_non_zero() {
+        // If redistribution unit-debt is non-zero or the error is non-zero, return the error
+        // This catches both the case where the unit debt is non-zero and the error is zero, and the case
+        // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
+        if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
             return redistribution.error;
         }
 
