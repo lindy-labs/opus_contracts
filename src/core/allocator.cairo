@@ -1,10 +1,10 @@
 #[contract]
 mod Allocator {
-    use array::ArrayTrait;
-    use array::SpanTrait;
+    use array::{ArrayTrait, SpanTrait};
+    use option::OptionTrait;
     use starknet::ContractAddress;
 
-    use aura::utils::storage_access_impls::RayTupleStorageAccess;
+    use aura::utils::storage_access_impls;
     use aura::utils::wadray::Ray;
 
     struct Storage {
@@ -81,8 +81,8 @@ mod Allocator {
 
     fn set_allocation_internal(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
         // TODO: kludge until `Serde` is implemented for Span or variable moved error is gone for Array
-        let recipients_span: Span<ContractAddress> = recipients.span();
-        let percentages_span: Span<Ray> = percentages.span();
+        let mut recipients_span: Span<ContractAddress> = recipients.span();
+        let mut percentages_span: Span<Ray> = percentages.span();
 
         let recipients_len: u32 = recipients_span.len();
         assert(recipients_len != 0, 'No recipients');
@@ -91,19 +91,21 @@ mod Allocator {
         let mut total_percentage: Ray = Ray { val: 0 };
         let mut idx: u32 = 0;
         loop {
-            if idx == recipients_len {
-                break ();
-            }
+            match (recipients_span.pop_front()) {
+                Option::Some(recipient) => {
+                    recipients::write(idx, *recipient);
 
-            let recipient: ContractAddress = *recipients_span[idx];
-            recipients::write(idx, recipient);
+                    let percentage: Ray = *(percentages_span.pop_front().unwrap());
+                    percentages::write(*recipient, percentage);
 
-            let percentage: Ray = *percentages_span[idx];
-            percentages::write(recipient, percentage);
+                    total_percentage += percentage;
 
-            total_percentage += percentage;
-
-            idx += 1;
+                    idx += 1;
+                },
+                Option::None(_) => {
+                    break ();
+                }
+            };
         };
 
         AllocationUpdated(recipients, percentages);

@@ -1,20 +1,17 @@
 #[contract]
 mod Equalizer {
-    use array::ArrayTrait;
-    use array::SpanTrait;
+    use array::{ArrayTrait, SpanTrait};
+    use option::OptionTrait;
     use starknet::ContractAddress;
 
-    use aura::interfaces::IAllocator::IAllocatorDispatcher;
-    use aura::interfaces::IAllocator::IAllocatorDispatcherTrait;
-    use aura::interfaces::IShrine::IShrineDispatcher;
-    use aura::interfaces::IShrine::IShrineDispatcherTrait;
-    use aura::utils::wadray::Ray;
-    use aura::utils::wadray::rmul_wr;
-    use aura::utils::wadray::Wad;
+    use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::storage_access_impls;
+    use aura::utils::wadray::{Ray, rmul_wr, Wad};
 
     struct Storage {
-        allocator: ContractAddress,
-        shrine: ContractAddress,
+        allocator: IAllocatorDispatcher,
+        shrine: IShrineDispatcher,
     }
 
     //
@@ -33,12 +30,12 @@ mod Equalizer {
 
     #[view]
     fn get_allocator() -> ContractAddress {
-        allocator::read()
+        allocator::read().contract_address
     }
 
     #[view]
     fn get_surplus() -> Wad {
-        let shrine: ContractAddress = shrine::read();
+        let shrine: IShrineDispatcher = shrine::read();
         let (_, surplus) = get_debt_and_surplus(shrine);
         surplus
     }
@@ -52,8 +49,8 @@ mod Equalizer {
         // TODO: initialize access control 
         // TODO: grant SET_ALLOCATOR role to admin
 
-        shrine::write(shrine);
-        allocator::write(allocator);
+        shrine::write(IShrineDispatcher { contract_address: shrine });
+        allocator::write(IAllocatorDispatcher { contract_address: allocator });
     }
 
     //
@@ -64,43 +61,40 @@ mod Equalizer {
     fn set_allocator(allocator: ContractAddress) {
         // TODO: AccessControl.assert_has_role(EqualizerRoles.SET_ALLOCATOR);
 
-        let old_address: ContractAddress = allocator::read();
-        allocator::write(allocator);
+        let old_address: ContractAddress = allocator::read().contract_address;
+        allocator::write(IAllocatorDispatcher { contract_address: allocator });
 
         AllocatorUpdated(old_address, allocator);
     }
 
     #[external]
     fn equalize() -> Wad {
-        let shrine: ContractAddress = shrine::read();
+        let shrine: IShrineDispatcher = shrine::read();
         let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
-        let allocator: ContractAddress = allocator::read();
-        let (recipients, percentages) = IAllocatorDispatcher {
-            contract_address: allocator
-        }.get_allocation();
-
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine };
+        let allocator: IAllocatorDispatcher = allocator::read();
+        let (recipients, percentages) = allocator.get_allocation();
 
         // TODO: kludge until Array<T>.len() works or Serde is implemented for Span
-        let recipients_span: Span<ContractAddress> = recipients.span();
-        let percentages_span: Span<Ray> = percentages.span();
+        let mut recipients_span: Span<ContractAddress> = recipients.span();
+        let mut percentages_span: Span<Ray> = percentages.span();
 
         let mut minted_surplus: Wad = Wad { val: 0 };
 
         let mut idx: u32 = 0;
         let end_idx: u32 = recipients_span.len();
         loop {
-            if idx == end_idx {
-                break ();
-            }
+            match (recipients_span.pop_front()) {
+                Option::Some(recipient) => {
+                    let amount: Wad = rmul_wr(surplus, *(percentages_span.pop_front().unwrap()));
 
-            let amount: Wad = rmul_wr(surplus, *percentages_span[idx]);
-
-            shrine.inject(*recipients_span[idx], amount);
-            minted_surplus += amount;
-
-            idx += 1;
+                    shrine.inject(*recipient, amount);
+                    minted_surplus += amount;
+                },
+                Option::None(_) => {
+                    break ();
+                }
+            };
         };
 
         // Assert yin is less than or equal to total debt after minting surplus
@@ -118,8 +112,7 @@ mod Equalizer {
     //
 
     // Returns a tuple of total debt and surplus
-    fn get_debt_and_surplus(shrine: ContractAddress) -> (Wad, Wad) {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine };
+    fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
         let total_debt: Wad = shrine.get_total_debt();
         let total_yin: Wad = shrine.get_total_yin();
         let surplus: Wad = total_debt - total_yin;
