@@ -24,26 +24,18 @@ trait ISentinel {
 
 #[contract]
 mod Purger {
-    use array::ArrayTrait;
-    use array::SpanTrait;
-    use starknet::ContractAddress;
-    use starknet::get_caller_address;
+    use array::{ArrayTrait, SpanTrait};
+    use clone::Clone;
+    use starknet::{ContractAddress, get_caller_address};
     use zeroable::Zeroable;
 
-    use aura::interfaces::IShrine::IShrineDispatcher;
-    use aura::interfaces::IShrine::IShrineDispatcherTrait;
-    use aura::utils::wadray::Ray;
-    use aura::utils::wadray::RAY_ONE;
-    use aura::utils::wadray::rdiv_ww;
-    use aura::utils::wadray::rmul_wr;
-    use aura::utils::wadray::Wad;
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::wadray::{Ray, RAY_ONE, rdiv_ww, rmul_wr, Wad};
 
-    use super::IAbsorberDispatcher;
-    use super::IAbsorberDispatcherTrait;
-    use super::IEmpiricDispatcher;
-    use super::IEmpiricDispatcherTrait;
-    use super::ISentinelDispatcher;
-    use super::ISentinelDispatcherTrait;
+    use super::{
+        IAbsorberDispatcher, IAbsorberDispatcherTrait, IEmpiricDispatcher, IEmpiricDispatcherTrait,
+        ISentinelDispatcher, ISentinelDispatcherTrait
+    };
 
     // Close factor function parameters
     // (ray): 2.7 * RAY_ONE
@@ -65,10 +57,10 @@ mod Purger {
     const COMPENSATION_PCT: u128 = 3;
 
     struct Storage {
-        shrine: ContractAddress,
-        sentinel: ContractAddress,
-        absorber: ContractAddress,
-        oracle: ContractAddress,
+        shrine: IShrineDispatcher,
+        sentinel: ISentinelDispatcher,
+        absorber: IAbsorberDispatcher,
+        oracle: IEmpiricDispatcher,
     }
 
     //
@@ -94,7 +86,7 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_penalty(trove_id: u64) -> Ray {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
+        let shrine: IShrineDispatcher = shrine::read();
         let (threshold, ltv, value, debt) = shrine.get_trove_info(trove_id);
 
         if ltv <= threshold {
@@ -108,7 +100,7 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_max_close_amount(trove_id: u64) -> Wad {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
+        let shrine: IShrineDispatcher = shrine::read();
         let (threshold, ltv, _, debt) = shrine.get_trove_info(trove_id);
 
         if ltv <= threshold {
@@ -129,10 +121,10 @@ mod Purger {
         absorber: ContractAddress,
         oracle: ContractAddress,
     ) {
-        shrine::write(shrine);
-        sentinel::write(sentinel);
-        absorber::write(absorber);
-        oracle::write(oracle);
+        shrine::write(IShrineDispatcher { contract_address: shrine });
+        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
+        absorber::write(IAbsorberDispatcher { contract_address: absorber });
+        oracle::write(IEmpiricDispatcher { contract_address: oracle });
     }
 
     //
@@ -150,7 +142,7 @@ mod Purger {
     fn liquidate(
         trove_id: u64, purge_amt: Wad, recipient: ContractAddress
     ) -> (Array<ContractAddress>, Array<u128>) {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
+        let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert_liquidatable(trove_threshold, trove_ltv);
@@ -191,17 +183,14 @@ mod Purger {
     // Returns a tuple of an ordered array of yang addresses and an ordered array of amount of asset freed
     #[external]
     fn absorb(trove_id: u64) -> (Array<ContractAddress>, Array<u128>) {
-        let shrine: ContractAddress = shrine::read();
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine };
+        let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert_liquidatable(trove_threshold, trove_ltv);
         assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
-        let absorber: IAbsorberDispatcher = IAbsorberDispatcher {
-            contract_address: absorber::read()
-        };
+        let absorber: IAbsorberDispatcher = absorber::read();
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
 
@@ -216,10 +205,10 @@ mod Purger {
                 absorber.contract_address
             );
 
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
+            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts.clone());
 
-            absorber.compensate(caller, yangs, compensations);
-            absorber.update(yangs, absorbed_assets);
+            absorber.compensate(caller, yangs.clone(), compensations);
+            absorber.update(yangs.clone(), absorbed_assets);
 
             (yangs, freed_assets_amts)
         } else {
@@ -237,20 +226,20 @@ mod Purger {
             );
 
             // Split freed amounts to compensate caller for keeping protocol stable
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
+            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts.clone());
 
             shrine.redistribute(trove_id);
 
-            absorber.compensate(caller, yangs, compensations);
+            absorber.compensate(caller, yangs.clone(), compensations);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
-            let oracle: ContractAddress = oracle::read();
-            IEmpiricDispatcher { contract_address: oracle }.update_prices();
+            let oracle: IEmpiricDispatcher = oracle::read();
+            oracle.update_prices();
 
             // Only update absorber if its yin was used
             if absorber_yin_bal.val != 0 {
-                absorber.update(yangs, freed_assets_amts);
+                absorber.update(yangs.clone(), freed_assets_amts.clone());
             }
 
             (yangs, freed_assets_amts)
@@ -278,47 +267,53 @@ mod Purger {
         funder: ContractAddress,
         recipient: ContractAddress,
     ) -> (Array<ContractAddress>, Array<u128>) {
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine::read() };
+        let shrine: IShrineDispatcher = shrine::read();
 
         // Melt from the funder address directly
         shrine.melt(funder, trove_id, purge_amt);
 
-        let sentinel: ISentinelDispatcher = ISentinelDispatcher {
-            contract_address: sentinel::read()
-        };
+        let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
         let mut freed_assets_amts: Array<u128> = ArrayTrait::new();
 
-        let mut idx: u32 = 0;
-        let yangs_span: Span<ContractAddress> = yangs.span();
-        let yangs_count: u32 = yangs_span.len();
+        let mut yangs_span: Span<ContractAddress> = yangs.span();
 
         // Loop through yang addresses and transfer to recipient
         loop {
-            if idx == yangs_count {
-                break ();
-            }
+            match (yangs_span.pop_front()) {
+                Option::Some(yang) => {
+                    let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
 
-            let yang: ContractAddress = *yangs[idx];
-            let deposited_yang_amt: Wad = shrine.get_deposit(yang, trove_id);
+                    // Continue iteration if no yang deposited
+                    if deposited_yang_amt.is_zero() {
+                        freed_assets_amts.append(0);
+                        continue;
+                    }
 
-            // Continue iteration if no yang deposited
-            if deposited_yang_amt.is_zero() {
-                freed_assets_amts.append(0);
-                continue;
-            }
+                    let freed_yang: Wad = rmul_wr(deposited_yang_amt, percentage_freed);
 
-            let freed_yang: Wad = rmul_wr(deposited_yang_amt, percentage_freed);
-
-            // TODO: Add reentrancy guard
-            let freed_asset_amt: u128 = sentinel.exit(yang, recipient, trove_id, freed_yang);
-            freed_assets_amts.append(freed_asset_amt);
-            shrine.seize(yang, trove_id, freed_yang);
-
-            idx += 1;
+                    // TODO: Add reentrancy guard
+                    let freed_asset_amt: u128 = sentinel.exit(
+                        *yang, recipient, trove_id, freed_yang
+                    );
+                    freed_assets_amts.append(freed_asset_amt);
+                    shrine.seize(*yang, trove_id, freed_yang);
+                },
+                Option::None(_) => {
+                    break ();
+                }
+            };
         };
 
-        Purged(trove_id, purge_amt, funder, recipient, percentage_freed, yangs, freed_assets_amts);
+        Purged(
+            trove_id,
+            purge_amt,
+            funder,
+            recipient,
+            percentage_freed,
+            yangs.clone(),
+            freed_assets_amts.clone()
+        );
 
         // The denomination for each value in `freed_assets_amts` will be based on the decimals
         // for the respective asset.
@@ -407,23 +402,22 @@ mod Purger {
         let mut absorbed_assets: Array<u128> = ArrayTrait::new();
         let mut compensations: Array<u128> = ArrayTrait::new();
 
-        let mut idx: u32 = 0;
-        let freed_assets_amts_span: Span<u128> = freed_assets_amts.span();
+        let mut freed_assets_amts_span: Span<u128> = freed_assets_amts.span();
         let assets_count: u32 = freed_assets_amts_span.len();
 
         loop {
-            if idx == assets_count {
-                break ();
-            }
-
-            let amount: u128 = *freed_assets_amts[idx];
-            // Rounding is intended to benefit the protocol
-            let one_percent: u128 = amount / 100;
-            let compensation: u128 = one_percent * COMPENSATION_PCT;
-            compensations.append(compensation);
-            absorbed_assets.append(amount - compensation);
-
-            idx += 1;
+            match (freed_assets_amts_span.pop_front()) {
+                Option::Some(amount) => {
+                    // Rounding is intended to benefit the protocol
+                    let one_percent: u128 = *amount / 100;
+                    let compensation: u128 = one_percent * COMPENSATION_PCT;
+                    compensations.append(compensation);
+                    absorbed_assets.append(*amount - compensation);
+                },
+                Option::None(_) => {
+                    break ();
+                }
+            };
         };
 
         (absorbed_assets, compensations)
