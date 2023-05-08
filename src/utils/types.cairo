@@ -1,5 +1,4 @@
 use aura::utils::wadray::Wad;
-use aura::utils::storage_access_impls::TroveStorageAccess;
 
 #[derive(Copy, Drop, Serde)]
 struct Trove {

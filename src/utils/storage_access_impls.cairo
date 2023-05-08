@@ -1,17 +1,11 @@
 use option::OptionTrait;
-use starknet::StorageAccess;
-use starknet::StorageBaseAddress;
-use starknet::SyscallResult;
-use starknet::syscalls::storage_read_syscall;
-use starknet::syscalls::storage_write_syscall;
+use starknet::{StorageAccess, StorageBaseAddress, SyscallResult};
 use starknet::storage_access::storage_address_from_base_and_offset;
-use traits::Into;
-use traits::TryInto;
+use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
+use traits::{Into, TryInto};
 
-use aura::utils::types::Trove;
-use aura::utils::types::YangRedistribution;
-use aura::utils::wadray::Ray;
-use aura::utils::wadray::Wad;
+use aura::utils::types::{Trove, YangRedistribution};
+use aura::utils::wadray::{Ray, Wad};
 
 // Storage Access
 impl WadStorageAccess of StorageAccess<Wad> {
@@ -82,63 +76,6 @@ impl TroveStorageAccess of StorageAccess<Trove> {
     }
 }
 
-type WadTuple = (Wad, Wad);
-
-impl WadTupleStorageAccess of StorageAccess<WadTuple> {
-    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<WadTuple> {
-        let first_wad_val = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 0_u8)
-        )?.try_into().unwrap();
-        let second_wad_val = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8)
-        )?.try_into().unwrap();
-
-        Result::Ok((Wad { val: first_wad_val }, Wad { val: second_wad_val }, ))
-    }
-
-    fn write(
-        address_domain: u32, base: StorageBaseAddress, value: WadTuple
-    ) -> SyscallResult::<()> {
-        let (first_wad, second_wad) = value;
-
-        storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 0_u8), first_wad.val.into()
-        )?;
-        storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8), second_wad.val.into()
-        )
-    }
-}
-
-type RayTuple = (Ray, Ray);
-
-impl RayTupleStorageAccess of StorageAccess<RayTuple> {
-    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<RayTuple> {
-        let first_ray_val = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 0_u8)
-        )?.try_into().unwrap();
-        let second_ray_val = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8)
-        )?.try_into().unwrap();
-
-        Result::Ok((Ray { val: first_ray_val }, Ray { val: second_ray_val }, ))
-    }
-
-    fn write(
-        address_domain: u32, base: StorageBaseAddress, value: RayTuple
-    ) -> SyscallResult::<()> {
-        let (first_ray, second_ray) = value;
-
-        storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 0_u8), first_ray.val.into()
-        )?;
-        storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8), second_ray.val.into()
-        )
-    }
-}
-
-
 type U128Tuple = (u128, u128);
 
 impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
@@ -167,32 +104,47 @@ impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
     }
 }
 
+type WadTuple = (Wad, Wad);
+
+impl WadTupleStorageAccess of StorageAccess<WadTuple> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<WadTuple> {
+        let (first_val, second_val) = U128TupleStorageAccess::read(address_domain, base)?;
+        Result::Ok((Wad { val: first_val }, Wad { val: second_val }))
+    }
+
+    fn write(
+        address_domain: u32, base: StorageBaseAddress, value: WadTuple
+    ) -> SyscallResult::<()> {
+        let (first_wad, second_wad) = value;
+        U128TupleStorageAccess::write(address_domain, base, (first_wad.val, second_wad.val))
+    }
+}
+
+type RayTuple = (Ray, Ray);
+
+impl RayTupleStorageAccess of StorageAccess<RayTuple> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<RayTuple> {
+        let (first_val, second_val) = U128TupleStorageAccess::read(address_domain, base)?;
+        Result::Ok((Ray { val: first_val }, Ray { val: second_val }))
+    }
+
+    fn write(
+        address_domain: u32, base: StorageBaseAddress, value: RayTuple
+    ) -> SyscallResult::<()> {
+        let (first_ray, second_ray) = value;
+        U128TupleStorageAccess::write(address_domain, base, (first_ray.val, second_ray.val))
+    }
+}
+
 impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
     fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<YangRedistribution> {
-        let unit_debt_val = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 0_u8)
-        )?.try_into().unwrap();
-        let error_val = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8)
-        )?.try_into().unwrap();
-
-        Result::Ok(
-            YangRedistribution {
-                unit_debt: Wad { val: unit_debt_val }, error: Wad { val: error_val }, 
-            }
-        )
+        let (unit_debt, error) = WadTupleStorageAccess::read(address_domain, base)?;
+        Result::Ok(YangRedistribution { unit_debt, error })
     }
 
     fn write(
         address_domain: u32, base: StorageBaseAddress, value: YangRedistribution
     ) -> SyscallResult::<()> {
-        storage_write_syscall(
-            address_domain,
-            storage_address_from_base_and_offset(base, 0_u8),
-            value.unit_debt.val.into()
-        )?;
-        storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.error.val.into()
-        )
+        WadTupleStorageAccess::write(address_domain, base, (value.unit_debt, value.error))
     }
 }
