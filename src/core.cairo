@@ -1,1 +1,2 @@
+mod caretaker;
 mod shrine;
