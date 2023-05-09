@@ -6,7 +6,6 @@ mod AccessControl {
         ContractAddress, get_caller_address, Felt252TryIntoContractAddress, SyscallResultTrait
     };
     use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     fn initializer(admin: ContractAddress) {
         set_admin_internal(admin);
