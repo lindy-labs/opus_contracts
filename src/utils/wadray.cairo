@@ -1,20 +1,19 @@
-use integer::Felt252TryIntoU128;
-use integer::U128IntoFelt252;
+use integer::{Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
-use traits::Into;
-use traits::PartialEq;
-use traits::PartialOrd;
-use traits::TryInto;
+use traits::{Into, PartialEq, PartialOrd, TryInto};
+use zeroable::Zeroable;
 
-use aura::utils::u256_conversions::cast_to_u256;
-use aura::utils::u256_conversions::U128IntoU256;
-use aura::utils::u256_conversions::U256TryIntoU128;
+use aura::utils::storage_access_impls;
+use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
+const WAD_DECIMALS: u8 = 18;
 
 const WAD_SCALE: u128 = 1000000000000000000;
 const RAY_SCALE: u128 = 1000000000000000000000000000;
 const WAD_ONE: u128 = 1000000000000000000;
 const RAY_ONE: u128 = 1000000000000000000000000000;
+const WAD_PERCENT: u128 = 10000000000000000;
+const RAY_PERCENT: u128 = 10000000000000000000000000;
 
 // Largest Wad that can be converted into a Ray without overflowing
 const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
@@ -89,6 +88,11 @@ fn rdiv_wr(lhs: Wad, rhs: Ray) -> Wad {
     Wad { val: rdiv_internal(lhs.val, rhs.val) }
 }
 
+// rdiv of Wad by Wad -> Ray
+#[inline(always)]
+fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
+    Ray { val: rdiv_internal(lhs.val, rhs.val) }
+}
 
 //
 // Internal helpers 
@@ -118,30 +122,35 @@ fn rdiv_internal(lhs: u128, rhs: u128) -> u128 {
     ((lhs_u256 * RAY_ONE.into()) / rhs_u256).try_into().unwrap()
 }
 
+
 //
 // Trait Implementations
 //
 
 // Addition
 impl WadAdd of Add<Wad> {
+    #[inline(always)]
     fn add(lhs: Wad, rhs: Wad) -> Wad {
         Wad { val: lhs.val + rhs.val }
     }
 }
 
 impl RayAdd of Add<Ray> {
+    #[inline(always)]
     fn add(lhs: Ray, rhs: Ray) -> Ray {
         Ray { val: lhs.val + rhs.val }
     }
 }
 
 impl WadAddEq of AddEq<Wad> {
+    #[inline(always)]
     fn add_eq(ref self: Wad, other: Wad) {
         self = self + other;
     }
 }
 
 impl RayAddEq of AddEq<Ray> {
+    #[inline(always)]
     fn add_eq(ref self: Ray, other: Ray) {
         self = self + other;
     }
@@ -150,24 +159,28 @@ impl RayAddEq of AddEq<Ray> {
 
 // Subtraction
 impl WadSub of Sub<Wad> {
+    #[inline(always)]
     fn sub(lhs: Wad, rhs: Wad) -> Wad {
         Wad { val: lhs.val - rhs.val }
     }
 }
 
 impl RaySub of Sub<Ray> {
+    #[inline(always)]
     fn sub(lhs: Ray, rhs: Ray) -> Ray {
         Ray { val: lhs.val - rhs.val }
     }
 }
 
 impl WadSubEq of SubEq<Wad> {
+    #[inline(always)]
     fn sub_eq(ref self: Wad, other: Wad) {
         self = self - other;
     }
 }
 
 impl RaySubEq of SubEq<Ray> {
+    #[inline(always)]
     fn sub_eq(ref self: Ray, other: Ray) {
         self = self - other;
     }
@@ -176,24 +189,28 @@ impl RaySubEq of SubEq<Ray> {
 
 // Multiplication
 impl WadMul of Mul<Wad> {
+    #[inline(always)]
     fn mul(lhs: Wad, rhs: Wad) -> Wad {
         wmul(lhs, rhs)
     }
 }
 
 impl RayMul of Mul<Ray> {
+    #[inline(always)]
     fn mul(lhs: Ray, rhs: Ray) -> Ray {
         rmul(lhs, rhs)
     }
 }
 
 impl WadMulEq of MulEq<Wad> {
+    #[inline(always)]
     fn mul_eq(ref self: Wad, other: Wad) {
         self = self * other;
     }
 }
 
 impl RayMulEq of MulEq<Ray> {
+    #[inline(always)]
     fn mul_eq(ref self: Ray, other: Ray) {
         self = self * other;
     }
@@ -202,24 +219,28 @@ impl RayMulEq of MulEq<Ray> {
 
 // Division
 impl WadDiv of Div<Wad> {
+    #[inline(always)]
     fn div(lhs: Wad, rhs: Wad) -> Wad {
         wdiv(lhs, rhs)
     }
 }
 
 impl RayDiv of Div<Ray> {
+    #[inline(always)]
     fn div(lhs: Ray, rhs: Ray) -> Ray {
         rdiv(lhs, rhs)
     }
 }
 
 impl WadDivEq of DivEq<Wad> {
+    #[inline(always)]
     fn div_eq(ref self: Wad, other: Wad) {
         self = self / other;
     }
 }
 
 impl RayDivEq of DivEq<Ray> {
+    #[inline(always)]
     fn div_eq(ref self: Ray, other: Ray) {
         self = self / other;
     }
@@ -238,9 +259,24 @@ impl WadTryIntoRay of TryInto<Wad, Ray> {
 }
 
 impl RayIntoWad of Into<Ray, Wad> {
+    #[inline(always)]
     fn into(self: Ray) -> Wad {
         // The value will get truncated if it has more than 18 decimals.
         Wad { val: self.val / DIFF }
+    }
+}
+
+impl U128IntoWad of Into<u128, Wad> {
+    #[inline(always)]
+    fn into(self: u128) -> Wad {
+        Wad { val: self }
+    }
+}
+
+impl U128IntoRay of Into<u128, Ray> {
+    #[inline(always)]
+    fn into(self: u128) -> Ray {
+        Ray { val: self }
     }
 }
 
@@ -271,6 +307,7 @@ impl WadPartialOrd of PartialOrd<Wad> {
     fn le(lhs: Wad, rhs: Wad) -> bool {
         lhs.val <= rhs.val
     }
+
     fn ge(lhs: Wad, rhs: Wad) -> bool {
         lhs.val >= rhs.val
     }
@@ -302,27 +339,54 @@ impl RayPartialOrd of PartialOrd<Ray> {
     }
 }
 
+// Zeroable
+impl WadZeroable of Zeroable<Wad> {
+    #[inline(always)]
+    fn zero() -> Wad {
+        Wad { val: 0 }
+    }
+
+    #[inline(always)]
+    fn is_zero(self: Wad) -> bool {
+        self.val == 0
+    }
+
+    #[inline(always)]
+    fn is_non_zero(self: Wad) -> bool {
+        self.val != 0
+    }
+}
+
+impl RayZeroable of Zeroable<Ray> {
+    #[inline(always)]
+    fn zero() -> Ray {
+        Ray { val: 0 }
+    }
+
+    #[inline(always)]
+    fn is_zero(self: Ray) -> bool {
+        self.val == 0
+    }
+
+    #[inline(always)]
+    fn is_non_zero(self: Ray) -> bool {
+        self.val != 0
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
     use option::OptionTrait;
     use traits::Into;
     use traits::TryInto;
+    use zeroable::Zeroable;
 
-    use aura::utils::wadray::DIFF;
-    use aura::utils::wadray::MAX_CONVERTIBLE_WAD;
-    use aura::utils::wadray::Ray;
-    use aura::utils::wadray::RAY_ONE;
-    use aura::utils::wadray::RayIntoWad;
-    use aura::utils::wadray::rdiv_wr;
-    use aura::utils::wadray::rmul_rw;
-    use aura::utils::wadray::rmul_wr;
-    use aura::utils::wadray::Wad;
-    use aura::utils::wadray::WadTryIntoRay;
-    use aura::utils::wadray::WAD_ONE;
-    use aura::utils::wadray::wdiv_rw;
-    use aura::utils::wadray::wmul_rw;
-    use aura::utils::wadray::wmul_wr;
+    use aura::utils::wadray;
+    use aura::utils::wadray::{
+        DIFF, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad, WAD_ONE, wdiv_rw,
+        wmul_rw, wmul_wr
+    };
 
 
     #[test]
@@ -583,6 +647,19 @@ mod tests {
     }
 
     #[test]
+    fn test_u128_into_wadray() {
+        // Test U128IntoWad
+        let wad_value: u128 = 42;
+        let wad_result: Wad = wad_value.into();
+        assert(wad_result.val == wad_value, 'Incorrect u128->Wad conversion');
+
+        // Test U128IntoRay
+        let ray_value: u128 = 84;
+        let ray_result: Ray = ray_value.into();
+        assert(ray_result.val == ray_value, 'Incorrect u128->Ray conversion');
+    }
+
+    #[test]
     #[should_panic(expected: ('Option::unwrap failed.', ))]
     fn test_conversions_fail2() {
         let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();
@@ -621,5 +698,33 @@ mod tests {
         // Test Ray type != operator
         assert(Ray { val: RAY_ONE } != Ray { val: RAY_ONE + 1 }, 'Incorrect != comparison #19');
         assert(!(Ray { val: RAY_ONE } != Ray { val: RAY_ONE }), 'Incorrect != comparison #20');
+    }
+
+    #[test]
+    fn test_zeroable() {
+        // Test zero
+        let wad_zero = Wad { val: 0 };
+        assert(wad_zero.val == 0, 'Value should be 0 #1');
+
+        // Test is_zero
+        let wad_one = Wad { val: 1 };
+        assert(wad_zero.is_zero(), 'Value should be 0 #2');
+        assert(!wad_one.is_zero(), 'Value should not be 0 #3');
+
+        // Test is_non_zero
+        assert(!wad_zero.is_non_zero(), 'Value should be 0 #4');
+        assert(wad_one.is_non_zero(), 'Value should not be 0 #5');
+
+        let ray_zero = Ray { val: 0 };
+        assert(ray_zero.val == 0, 'Value should be 0 #6');
+
+        // Test is_zero
+        let ray_one = Ray { val: 1 };
+        assert(ray_zero.is_zero(), 'Value should be 0 #7');
+        assert(!ray_one.is_zero(), 'Value should not be 0 #8');
+
+        // Test is_non_zero
+        assert(!ray_zero.is_non_zero(), 'Value should be 0 #9');
+        assert(ray_one.is_non_zero(), 'Value should not be 0 #10');
     }
 }
