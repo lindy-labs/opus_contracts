@@ -49,11 +49,12 @@ mod Caretaker {
     // Constants
     //
 
-    // A dummy trove ID for  because CASH holders may not be trove owners.
+    // A dummy trove ID because CASH holders may not be trove owners.
     const REDEMPTION_TROVE_ID: u64 = 0;
 
-    // Time delay from time of shut before users can burn CASH to reclaim collateral
-    // so that trove owners have priority to withdraw excess collateral
+    // Time delay from time of `shut` before users can burn CASH to reclaim collateral.
+    // Trove owners can withdraw excess collateral via `release` for this time period 
+    // starting from the time of `shut`, and only during this time.
     // 28 days * 24 hours * 60 minutes * 60 seconds 
     const DELAY: u64 = 2419200;
 
@@ -143,6 +144,7 @@ mod Caretaker {
     fn shut() {
         // AccessControl.assert_has_role(TerminatorRoles.SHUT);
 
+        // Prevent repeated `shut`
         assert(is_live::read() == true, 'Caretaker is not live');
 
         let shrine: IShrineDispatcher = shrine::read();
@@ -200,6 +202,7 @@ mod Caretaker {
         let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
         let mut yangs_span = yangs.span();
         let pct_to_release: Ray = calculate_release_pct(trove_id, yangs_span, shrine);
+        assert(pct_to_release > RayZeroable::zero(), 'Nothing to release');
 
         // Loop over yangs and transfer to trove owner
         let mut asset_amts = ArrayTrait::new();
@@ -235,9 +238,23 @@ mod Caretaker {
 
     // Allow yin holders to burn their yin and receive their proportionate share
     // of collateral based on the amount of yin as a proportion of total supply
-    // Note that `reclaim` will not change the amount of the yang in Shrine. This does
-    // not affect the calculation because the drop in the asset amount per yang is 
-    // compensated by the increase in the user's proportion of total remaining yin supply.
+    // Note that the amount of yang in total and per trove in Shrine will be fixed after the 
+    // DELAY period and `release` can no longer be called. `reclaim` will not change the amount 
+    // of each yang in total or per trove in Shrine. This does not affect the calculation because 
+    // the drop in the asset amount per yang is compensated by the increase in the user's proportion 
+    // of total remaining yin supply.
+    // Example: assuming total system yin of 1_000, total system yang A of 2_000, and total yang A assets of 4_000,
+    //          the asset amount per yang Wad is 2. User A and User B each wants to reclaim 100 yin, and expects to 
+    //          receive the same amount of yang assets regardless of who does so first.
+    //          1. User A reclaims 100 yin, amounting to 100 / 1_000 = 10%, which is equivalent to
+    //             10% * 2_000 = 200 yang A, which entitles him to receive 200 * 2 = 400 yang A assets.
+    //          
+    //             After User A reclaims, total system yin decreaes to 900, total system yang A remains
+    //             unchanged at 2_000, total yang A assets decreases to 3_600, and the asset amount per yang Wad is 1.8
+    //
+    //           2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which is equivalent to
+    //              11.11% * 2_000 = 222.22 yang A, which entitles him to receive 222.22 * 1.8 = 400 yang A assets.
+    //              
     // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts
     #[external]
     fn reclaim(yin: Wad) -> (Array<ContractAddress>, Array<u128>) {
@@ -252,8 +269,8 @@ mod Caretaker {
         let user_bal: Wad = shrine.get_yin(caller);
         let burn_amt: Wad = min(yin, user_bal);
 
-        let total_debt: Wad = shrine.get_total_debt();
-        let pct_to_reclaim: Ray = rdiv_ww(burn_amt, total_debt);
+        let total_yin: Wad = shrine.get_total_yin();
+        let pct_to_reclaim: Ray = rdiv_ww(burn_amt, total_yin);
 
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
