@@ -176,3 +176,158 @@ mod AccessControl {
         emit(ROLE_REVOKED_EVENT_KEY, event_data.span());
     }
 }
+
+#[cft(test)]
+mod tests {
+    use starknet::{contract_address_const, ContractAddress};
+    use starknet::testing::set_caller_address;
+
+    use super::AccessControl;
+
+    // mock roles
+    const R1: u128 = 1_u128;
+    const R2: u128 = 2_u128;
+    const R3: u128 = 128_u128;
+    const R4: u128 = 256_u128;
+
+    fn admin() -> ContractAddress {
+        contract_address_const::<0x1337>()
+    }
+
+    fn user() -> ContractAddress {
+        contract_address_const::<0xc1>()
+    }
+
+    fn badguy() -> ContractAddress {
+        contract_address_const::<0x123>()
+    }
+
+    fn setup(caller: ContractAddress) {
+        AccessControl::initializer(admin());
+        set_caller_address(caller);
+    }
+
+    fn default_grant() {
+        let u = user();
+        AccessControl::grant_role(R1, u);
+        AccessControl::grant_role(R2, u);
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_initializer() {
+        AccessControl::initializer(admin());
+        assert(AccessControl::get_admin() == admin(), 'initialize wrong admin');
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_grant_role() {
+        setup(admin());
+        default_grant();
+
+        let u = user();
+        assert(AccessControl::has_role(R1, u), 'role R1 not granted');
+        assert(AccessControl::has_role(R2, u), 'role R2 not granted');
+        assert(AccessControl::get_roles(u) == R1 + R2, 'not all roles granted');
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    #[should_panic(expected: ('Caller not admin', ))]
+    fn test_grant_role_not_admin() {
+        setup(badguy());
+        AccessControl::grant_role(R2, badguy());
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_grant_role_multiple_users() {
+        setup(admin());
+        default_grant();
+
+        let u = user();
+        let u2 = contract_address_const::<0xbaba>();
+        AccessControl::grant_role(R2 + R3 + R4, u2);
+        assert(AccessControl::get_roles(u) == R1 + R2, 'wrong roles for u');
+        assert(AccessControl::get_roles(u2) == R2 + R3 + R4, 'wrong roles for u2');
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_revoke_role() {
+        setup(admin());
+        default_grant();
+
+        let u = user();
+        AccessControl::revoke_role(R1, u);
+        assert(AccessControl::has_role(R1, u) == false, 'role R1 not revoked');
+        assert(AccessControl::has_role(R2, u), 'role R2 not kept');
+        assert(AccessControl::get_roles(u) == R2, 'incorrect roles');
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    #[should_panic(expected: ('Caller not admin', ))]
+    fn test_revoke_role_not_admin() {
+        setup(admin());
+        set_caller_address(badguy());
+        AccessControl::revoke_role(R1, user());
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_renounce_role() {
+        setup(admin());
+        default_grant();
+
+        let u = user();
+        set_caller_address(u);
+        AccessControl::renounce_role(R1);
+        assert(AccessControl::has_role(R1, u) == false, 'R1 role kept');
+        // renouncing non-granted role should pass
+        AccessControl::renounce_role(64);
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_change_admin() {
+        setup(admin());
+
+        let new_admin = user();
+        AccessControl::change_admin(new_admin);
+        assert(AccessControl::get_admin() == new_admin, 'admin not changed');
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    #[should_panic(expected: ('Caller not admin', ))]
+    fn test_change_admin_not_admin() {
+        setup(admin());
+        set_caller_address(badguy());
+        AccessControl::change_admin(badguy());
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    fn test_assert_has_role() {
+        setup(admin());
+        default_grant();
+
+        set_caller_address(user());
+        // should not throw
+        AccessControl::assert_has_role(R1);
+        AccessControl::assert_has_role(R1 + R2);
+    }
+
+    #[test]
+    #[available_gas(10000000)]
+    #[should_panic(expected: ('Caller missing role', ))]
+    fn test_assert_has_role_panics() {
+        setup(admin());
+        default_grant();
+
+        set_caller_address(user());
+        AccessControl::assert_has_role(R3);
+    }
+}
