@@ -282,7 +282,6 @@ impl U128IntoRay of Into<u128, Ray> {
 
 
 // Comparisons
-
 impl WadPartialEq of PartialEq<Wad> {
     fn eq(lhs: Wad, rhs: Wad) -> bool {
         lhs.val == rhs.val
@@ -338,6 +337,7 @@ impl RayPartialOrd of PartialOrd<Ray> {
         lhs.val > rhs.val
     }
 }
+
 
 // Zeroable
 impl WadZeroable of Zeroable<Wad> {
