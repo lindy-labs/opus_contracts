@@ -132,11 +132,14 @@ mod Caretaker {
         let equalizer: IEqualizerDispatcher = equalizer::read();
         equalizer.equalize();
 
+        let shut_time: u64 = get_block_timestamp();
+        shut_time::write(shut_time);
+
         // Kill modules
         is_live::write(false);
         shrine.kill();
 
-        Shut(get_block_timestamp());
+        Shut(shut_time);
     }
 
     // Releases excess collateral beyond the debt's value to the trove owner directly.
@@ -145,7 +148,7 @@ mod Caretaker {
     #[external]
     fn release(trove_id: u64) -> (Array<ContractAddress>, Array<u128>) {
         let shut_time = shut_time::read();
-        assert(shut_time > 0 & is_live::read() == false, 'Caretaker is not killed');
+        assert(is_live::read() == false, 'System is live');
         assert(get_block_timestamp() < shut_time + DELAY, 'Too late');
 
         // Assert caller is trove owner
@@ -224,7 +227,7 @@ mod Caretaker {
     #[external]
     fn reclaim(yin: Wad) -> (Array<ContractAddress>, Array<u128>) {
         let shut_time = shut_time::read();
-        assert(shut_time > 0 & is_live::read() == false, 'Caretaker is not killed');
+        assert(is_live::read() == false, 'System is live');
         assert(get_block_timestamp() >= shut_time + DELAY, 'Reclaim period has not started');
 
         let caller: ContractAddress = get_caller_address();
