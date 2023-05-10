@@ -30,7 +30,7 @@ mod Shrine {
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
     const TIME_INTERVAL_DIV_YEAR: u128 =
-        57077625570776; // 1 / (48 30-minute segments per day) / (365 days per year) = 0.000057077625 (wad)
+        57077625570776; // 1 / (48 30-minute intervals per day) / (365 days per year) = 0.000057077625 (wad)
 
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
     const ROUNDING_THRESHOLD: u128 = 1000000000;
@@ -216,6 +216,7 @@ mod Shrine {
 
         // Catch troves with no value
         if value.is_zero() {
+            // Handles corner case: forging non-zero debt for a trove with zero value
             if trove.debt.is_non_zero() {
                 return (threshold, BoundedU128::max().into(), value, trove.debt);
             } else {
@@ -655,7 +656,7 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
 
-        // `charge_from` and `last_rate_era` are already updated in `charge`
+        // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
         let new_trove_info: Trove = Trove {
             charge_from: old_trove_info.charge_from,
             debt: old_trove_info.debt - melt_amt,
@@ -696,7 +697,7 @@ mod Shrine {
         let redistribution_id: u32 = redistributions_count::read() + 1;
         redistributions_count::write(redistribution_id);
 
-        //Perform redistribution
+        // Perform redistribution
         let redistributed_debt = redistribute_internal(
             redistribution_id, trove_id, trove_value, trove.debt, current_interval
         );
@@ -873,7 +874,7 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Don't emit events if there hasn't been a change in debt
+        // Emit events only if there is a change in the trove's debt
         if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
             TroveUpdated(trove_id, updated_trove);
@@ -888,7 +889,7 @@ mod Shrine {
 
     // Compound interest formula: P(t) = P_0 * e^(rt)
     // P_0 = principal
-    // r = nominal interest rate (what the interest rate would be if there was no compounding
+    // r = nominal interest rate (what the interest rate would be if there was no compounding)
     // t = time elapsed, in years
     fn compound(trove_id: u64, trove: Trove, end_interval: u64) -> Wad {
         // Saves gas and prevents bugs for troves with no yangs deposited
@@ -925,7 +926,7 @@ mod Shrine {
             let next_rate_update_era_interval = rates_intervals::read(next_rate_update_era);
 
             let avg_base_rate: Ray = get_avg_rate_over_era(
-                trove_id, start_interval, next_rate_update_era_interval, latest_rate_era
+                trove_id, start_interval, next_rate_update_era_interval, trove_last_rate_era
             );
             let avg_rate: Ray = avg_base_rate
                 * get_avg_multiplier(start_interval, next_rate_update_era_interval);
@@ -966,8 +967,8 @@ mod Shrine {
                 break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
             }
 
-            // Skip over this yang if it hasn't been deposited in the trove
             let yang_deposited: Wad = deposits::read((current_yang_id, trove_id));
+            // Update cumulative values only if this yang has been deposited in the trove
             if yang_deposited.is_non_zero() {
                 let yang_rate: Ray = yang_rates::read((current_yang_id, rate_era));
                 let avg_price: Wad = get_avg_price(current_yang_id, start_interval, end_interval);
@@ -1063,10 +1064,15 @@ mod Shrine {
             return 0_u128.into();
         }
 
-        let error: Wad = yang_redistributions::read((yang_id, redistribution_id)).error;
+        let redistribution: YangRedistribution = yang_redistributions::read(
+            (yang_id, redistribution_id)
+        );
 
-        if error.is_non_zero() {
-            return error;
+        // If redistribution unit-debt is non-zero or the error is non-zero, return the error
+        // This catches both the case where the unit debt is non-zero and the error is zero, and the case
+        // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
+        if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
+            return redistribution.error;
         }
 
         get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
@@ -1288,7 +1294,7 @@ mod Shrine {
 
             let deposited: Wad = deposits::read((current_yang_id, trove_id));
 
-            // Skip over current yang if user hasn't deposited anything
+            // Update cumulative values only if user has deposited the current yang
             if deposited.is_non_zero() {
                 let yang_threshold: Ray = thresholds::read(current_yang_id);
 
@@ -1325,7 +1331,7 @@ mod Shrine {
 
             let deposited: Wad = yang_total::read(current_yang_id);
 
-            // Skip over current yang if none has  been deposited
+            // Update cumulative values only if current yang has been deposited
             if deposited.is_non_zero() {
                 let yang_threshold: Ray = thresholds::read(current_yang_id);
 
@@ -1354,7 +1360,7 @@ mod Shrine {
     fn transfer_internal(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
         assert(recipient.is_non_zero(), 'cannot transfer to 0 address');
 
-        let amount_wad: Wad = amount.try_into().unwrap().into();
+        let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
 
         // Transferring the Yin
         yin::write(sender, yin::read(sender) - amount_wad);
