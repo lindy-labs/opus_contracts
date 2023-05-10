@@ -12,8 +12,9 @@ on:
       - "**.md"
 
 env:
-  CAIRO_INSTALLATION_FOLDER: ./cairo
-  SCARB_INSTALLATION_FOLDER: ./scarb
+  CAIRO_FOLDER: ./cairo
+  SCARB_FOLDER: ./scarb
+  BUILD_FOLDER: ./target
 
 jobs:
   build:
@@ -23,6 +24,7 @@ jobs:
       - name: Get latest commit hash
         run: |
           echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
+          echo "SCARB_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/software-mansion/scarb/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
         uses: actions/checkout@v2
@@ -31,11 +33,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly-2022-11-03
-
-      - name: Pull dependencies
-        run: |
-          git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_INSTALLATION_FOLDER
-          git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_INSTALLATION_FOLDER
 
       - name: Get cache
         id: cache
@@ -47,22 +44,62 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             **/target
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+            **/cairo
+            **/scarb
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
+          restore-keys: Linux-cargo-
+
+        # Always pull dependencies to access `corelib`
+      - name: Pull dependencies
+        shell: bash
+        run: |
+          if [ -d $SCARB_FOLDER ]; then
+            echo "Scarb directory exists"
+            git -C $SCARB_FOLDER pull
+          else
+            echo "Scarb directory does not exist"
+            git clone --depth 1 https://github.com/software-mansion/scarb.git $SCARB_FOLDER
+          fi
+          if [ -d $CAIRO_FOLDER ]; then
+            echo "Cairo directory exists"
+            git -C $CAIRO_FOLDER pull
+          else
+            echo "Cairo directory does not exist"
+            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
+          fi
 
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          cargo build --manifest-path=./scarb/Cargo.toml
-          cargo build --manifest-path=./cairo/Cargo.toml
+          cargo build --manifest-path=./scarb/Cargo.toml --target-dir $BUILD_FOLDER/scarb
+          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
+
+      - name: Save cache
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            **/target
+            **/cairo
+            **/scarb
+          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}-${{ env.SCARB_HASH }}
 
       - name: Add Scarb to PATH
-        run: echo "$SCARB_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
+        run: echo "$BUILD_FOLDER/scarb/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
         run: scarb fmt --check --verbose
 
+        # Copy `corelib` to build folder so it can be detected
+      - name: Copy `corelib`
+        run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
+
       - name: Add Cairo to PATH
-        run: echo "$CAIRO_INSTALLATION_FOLDER/target/debug" >> $GITHUB_PATH
+        run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
 
       - name: Test Cairo 1.x code in Cairo
         run: scarb run test

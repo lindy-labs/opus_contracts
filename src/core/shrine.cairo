@@ -30,7 +30,7 @@ mod Shrine {
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
     const TIME_INTERVAL_DIV_YEAR: u128 =
-        57077625570776; // 1 / (48 30-minute segments per day) / (365 days per year) = 0.000057077625 (wad)
+        57077625570776; // 1 / (48 30-minute intervals per day) / (365 days per year) = 0.000057077625 (wad)
 
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
     const ROUNDING_THRESHOLD: u128 = 1000000000;
