@@ -665,8 +665,9 @@ mod tests {
         let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();
     }
 
+    // comparison tests are split into 2 fns to overcome a test runner bug
     #[test]
-    fn test_comparisons() {
+    fn test_comparisons1() {
         // Test Wad type comparison operators: <, >, <=, >=
         assert(Wad { val: WAD_ONE } < Wad { val: WAD_ONE + 1 }, 'Incorrect < comparison #1');
         assert(Wad { val: WAD_ONE + 1 } > Wad { val: WAD_ONE }, 'Incorrect > comparison #2');
@@ -690,7 +691,10 @@ mod tests {
         assert(!(Wad { val: WAD_ONE } > Wad { val: WAD_ONE }), 'Incorrect > comparison #14');
         assert(!(Wad { val: WAD_ONE + 1 } <= Wad { val: WAD_ONE }), 'Incorrect <= comparison #15');
         assert(!(Wad { val: WAD_ONE } >= Wad { val: WAD_ONE + 1 }), 'Incorrect >= comparison #16');
+    }
 
+    #[test]
+    fn test_comparisons2() {
         // Test Wad type != operator
         assert(Wad { val: WAD_ONE } != Wad { val: WAD_ONE + 1 }, 'Incorrect != comparison #17');
         assert(!(Wad { val: WAD_ONE } != Wad { val: WAD_ONE }), 'Incorrect != comparison #18');

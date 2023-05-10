@@ -174,7 +174,7 @@ mod AccessControl {
     }
 }
 
-#[cft(test)]
+#[cfg(test)]
 mod tests {
     use starknet::{contract_address_const, ContractAddress};
     use starknet::testing::set_caller_address;
