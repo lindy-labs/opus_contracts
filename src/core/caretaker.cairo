@@ -38,12 +38,16 @@ mod Caretaker {
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::storage_access_impls;
-    use aura::utils::wadray::{Ray, rdiv_ww, rmul_rw, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, rdiv_ww, rmul_rw, Wad, WadZeroable};
 
     use super::{
         IAbbotDispatcher, IAbbotDispatcherTrait, IEqualizerDispatcher, IEqualizerDispatcherTrait,
         ISentinelDispatcher, ISentinelDispatcherTrait
     };
+
+    //
+    // Constants
+    //
 
     // A dummy trove ID for  because CASH holders may not be trove owners.
     const REDEMPTION_TROVE_ID: u64 = 0;
@@ -67,6 +71,10 @@ mod Caretaker {
         is_live: bool,
     }
 
+    //
+    // Events
+    //
+
     #[event]
     fn Shut(shut_time: u64) {}
 
@@ -82,6 +90,10 @@ mod Caretaker {
     fn Reclaim(
         user: ContractAddress, yin_amt: Wad, assets: Array<ContractAddress>, asset_amts: Array<u128>
     ) {}
+
+    //
+    // Constructor
+    //
 
     #[constructor]
     fn constructor(
@@ -99,6 +111,30 @@ mod Caretaker {
 
         is_live::write(true);
     }
+
+    //
+    // View
+    //
+
+    // Returns the percentage of the trove's deposited yang that can be released 
+    // to the trove owner based on the final yang prices of the Caretaker
+    #[view]
+    fn preview_release(trove_id: u64) -> Ray {
+        assert(is_live::read() == false, 'System is live');
+
+        let shut_time = shut_time::read();
+        assert(get_block_timestamp() < shut_time + DELAY, 'Too late');
+
+        let shrine: IShrineDispatcher = shrine::read();
+        let sentinel: ISentinelDispatcher = sentinel::read();
+        let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
+        let mut yangs_span = yangs.span();
+        calculate_release_pct(trove_id, yangs_span, shrine)
+    }
+
+    //
+    // External
+    //
 
     // Admin will initially have access to `terminate`. At a later date, this access will be
     // transferred to a new module that allows users to irreversibly deposit AURA tokens to
@@ -147,8 +183,9 @@ mod Caretaker {
     // Trove owners need to call `release` before the end of the DELAY period from the shut time.
     #[external]
     fn release(trove_id: u64) -> (Array<ContractAddress>, Array<u128>) {
-        let shut_time = shut_time::read();
         assert(is_live::read() == false, 'System is live');
+
+        let shut_time = shut_time::read();
         assert(get_block_timestamp() < shut_time + DELAY, 'Too late');
 
         // Assert caller is trove owner
@@ -162,29 +199,7 @@ mod Caretaker {
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
         let mut yangs_span = yangs.span();
-        let mut trove_value: Wad = WadZeroable::zero();
-
-        loop {
-            match (yangs_span.pop_front()) {
-                Option::Some(yang) => {
-                    let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
-
-                    if deposited_yang.is_zero() {
-                        continue;
-                    }
-
-                    trove_value += deposited_yang * yang_prices::read(*yang);
-                },
-                Option::None(_) => {
-                    break ();
-                },
-            };
-        };
-
-        // Calculate percentage excess that can be released
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(trove_value > debt, 'Nothing to release');
-        let pct_to_release: Ray = rdiv_ww(trove_value - debt, trove_value);
+        let pct_to_release: Ray = calculate_release_pct(trove_id, yangs_span, shrine);
 
         // Loop over yangs and transfer to trove owner
         let mut asset_amts = ArrayTrait::new();
@@ -226,8 +241,9 @@ mod Caretaker {
     // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts
     #[external]
     fn reclaim(yin: Wad) -> (Array<ContractAddress>, Array<u128>) {
-        let shut_time = shut_time::read();
         assert(is_live::read() == false, 'System is live');
+
+        let shut_time = shut_time::read();
         assert(get_block_timestamp() >= shut_time + DELAY, 'Reclaim period has not started');
 
         let caller: ContractAddress = get_caller_address();
@@ -239,13 +255,13 @@ mod Caretaker {
         let total_debt: Wad = shrine.get_total_debt();
         let pct_to_reclaim: Ray = rdiv_ww(burn_amt, total_debt);
 
-        // Loop through yangs and transfer a proportionate share to caller
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
         let mut yangs_span = yangs.span();
 
         let mut asset_amts = ArrayTrait::new();
 
+        // Loop through yangs and transfer a proportionate share to caller
         loop {
             match (yangs_span.pop_front()) {
                 Option::Some(yang) => {
@@ -268,5 +284,35 @@ mod Caretaker {
         Reclaim(caller, burn_amt, yangs.clone(), asset_amts.clone());
 
         (yangs, asset_amts)
+    }
+
+    fn calculate_release_pct(
+        trove_id: u64, mut yangs: Span<ContractAddress>, shrine: IShrineDispatcher, 
+    ) -> Ray {
+        let mut trove_value: Wad = WadZeroable::zero();
+
+        loop {
+            match (yangs.pop_front()) {
+                Option::Some(yang) => {
+                    let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
+
+                    if deposited_yang.is_zero() {
+                        continue;
+                    }
+
+                    trove_value += deposited_yang * yang_prices::read(*yang);
+                },
+                Option::None(_) => {
+                    break ();
+                },
+            };
+        };
+
+        // Calculate percentage excess that can be released
+        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        if trove_value < debt {
+            return RayZeroable::zero();
+        }
+        rdiv_ww(trove_value - debt, trove_value)
     }
 }
