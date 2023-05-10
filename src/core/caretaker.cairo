@@ -2,9 +2,14 @@ use starknet::ContractAddress;
 
 use aura::utils::wadray::{Wad};
 
-// TODO: skip `Shrine.charge` if shrine is not live
-// TODO: add Shrine.assert_live to Abbot functions - trove owners should not be able to melt or withdraw
-// TODO: add Shrine.assert_live to Purger functions - Caretaker needs to access Seize, 
+// TODO: In `Shrine.charge`, perform an early return if shrine is not live. 
+// TODO: Add `Shrine.assert_live()` to `Shrine.withdraw` and `Shrine.melt`:
+//       - Trove owners should not be able to melt or withdraw via Abbot.
+// TODO: Add `Shrine.assert_live()` to `Shrine.inject().
+//       - Flashmint and minting debt surplus should not be possible upon shut.
+// TODO: add Shrine is live in Purger functions to prevent liquidations after shut.
+//       We cannot add `Shrine.assert_live()` to `Shrine.seize()` because Caretaker 
+//       needs to access Shrine.seize.
 
 #[abi]
 trait IAbbot {
@@ -20,8 +25,6 @@ trait IEqualizer {
 trait ISentinel {
     fn exit(yang: ContractAddress, user: ContractAddress, troveid: u64, yang_amt: Wad) -> u128;
     fn get_yang_addresses() -> Array<ContractAddress>;
-    // TODO: delete?
-    fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128;
 }
 
 #[contract]
@@ -35,19 +38,17 @@ mod Caretaker {
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::storage_access_impls;
-    use aura::utils::wadray::{Ray, rdiv_ww, rmul_rw, Wad};
+    use aura::utils::wadray::{Ray, rdiv_ww, rmul_rw, Wad, WadZeroable};
 
     use super::{
         IAbbotDispatcher, IAbbotDispatcherTrait, IEqualizerDispatcher, IEqualizerDispatcherTrait,
         ISentinelDispatcher, ISentinelDispatcherTrait
     };
 
-    // TODO: A dummy trove ID is used because CASH holders may not be trove owners.
-    //       Alternatively we can remove `trove_id` from Sentinel and Gate for `enter` and `exit`
-    //       it is only used for emitting events.
+    // A dummy trove ID for  because CASH holders may not be trove owners.
     const REDEMPTION_TROVE_ID: u64 = 0;
 
-    // Time delay from time of shut before users can burn CASH to redeem collateral
+    // Time delay from time of shut before users can burn CASH to reclaim collateral
     // so that trove owners have priority to withdraw excess collateral
     // 28 days * 24 hours * 60 minutes * 60 seconds 
     const DELAY: u64 = 2419200;
@@ -78,7 +79,7 @@ mod Caretaker {
     ) {}
 
     #[event]
-    fn Redeem(
+    fn Reclaim(
         user: ContractAddress, yin_amt: Wad, assets: Array<ContractAddress>, asset_amts: Array<u128>
     ) {}
 
@@ -138,8 +139,9 @@ mod Caretaker {
         Shut(get_block_timestamp());
     }
 
-    // Releases excess collateral beyond the debt's value to the trove owner directly
-    // Returns a tuple of arrays of the released asset addresses and released asset amounts
+    // Releases excess collateral beyond the debt's value to the trove owner directly.
+    // Returns a tuple of arrays of the released asset addresses and released asset amounts.
+    // Trove owners need to call `release` before the end of the DELAY period from the shut time.
     #[external]
     fn release(trove_id: u64) -> (Array<ContractAddress>, Array<u128>) {
         let shut_time = shut_time::read();
@@ -152,17 +154,36 @@ mod Caretaker {
         let caller: ContractAddress = get_caller_address();
         assert(caller == trove_owner, 'Not trove owner');
 
-        // Calculate percentage excess
+        // Calculate trove value using last price
         let shrine: IShrineDispatcher = shrine::read();
-        let (_, _, value, debt) = shrine.get_trove_info(trove_id);
-
-        let pct_to_release: Ray = rdiv_ww(value - debt, value);
-
-        // Loop over yangs and transfer to trove owner
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
         let mut yangs_span = yangs.span();
+        let mut trove_value: Wad = WadZeroable::zero();
 
+        loop {
+            match (yangs_span.pop_front()) {
+                Option::Some(yang) => {
+                    let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
+
+                    if deposited_yang.is_zero() {
+                        continue;
+                    }
+
+                    trove_value += deposited_yang * yang_prices::read(*yang);
+                },
+                Option::None(_) => {
+                    break ();
+                },
+            };
+        };
+
+        // Calculate percentage excess that can be released
+        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
+        assert(trove_value > debt, 'Nothing to release');
+        let pct_to_release: Ray = rdiv_ww(trove_value - debt, trove_value);
+
+        // Loop over yangs and transfer to trove owner
         let mut asset_amts = ArrayTrait::new();
 
         loop {
@@ -196,15 +217,15 @@ mod Caretaker {
 
     // Allow yin holders to burn their yin and receive their proportionate share
     // of collateral based on the amount of yin as a proportion of total supply
-    // Note that `redeem` will not change the amount of the yang in Shrine. This does
+    // Note that `reclaim` will not change the amount of the yang in Shrine. This does
     // not affect the calculation because the drop in the asset amount per yang is 
     // compensated by the increase in the user's proportion of total remaining yin supply.
-    // Returns a tuple of arrays of the redeemed asset addresses and redeemed asset amounts
+    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts
     #[external]
-    fn redeem(yin: Wad) -> (Array<ContractAddress>, Array<u128>) {
+    fn reclaim(yin: Wad) -> (Array<ContractAddress>, Array<u128>) {
         let shut_time = shut_time::read();
         assert(shut_time > 0 & is_live::read() == false, 'Caretaker is not killed');
-        assert(get_block_timestamp() >= shut_time + DELAY, 'Redemption has not started');
+        assert(get_block_timestamp() >= shut_time + DELAY, 'Reclaim period has not started');
 
         let caller: ContractAddress = get_caller_address();
         let shrine: IShrineDispatcher = shrine::read();
@@ -213,7 +234,7 @@ mod Caretaker {
         let burn_amt: Wad = min(yin, user_bal);
 
         let total_debt: Wad = shrine.get_total_debt();
-        let pct_to_redeem: Ray = rdiv_ww(burn_amt, total_debt);
+        let pct_to_reclaim: Ray = rdiv_ww(burn_amt, total_debt);
 
         // Loop through yangs and transfer a proportionate share to caller
         let sentinel: ISentinelDispatcher = sentinel::read();
@@ -226,9 +247,9 @@ mod Caretaker {
             match (yangs_span.pop_front()) {
                 Option::Some(yang) => {
                     let yang_total: Wad = shrine.get_yang_total(*yang);
-                    let yang_to_redeem: Wad = rmul_rw(pct_to_redeem, yang_total);
+                    let yang_to_reclaim: Wad = rmul_rw(pct_to_reclaim, yang_total);
                     let asset_amt: u128 = sentinel.exit(
-                        *yang, caller, REDEMPTION_TROVE_ID, yang_to_redeem
+                        *yang, caller, REDEMPTION_TROVE_ID, yang_to_reclaim
                     );
                     asset_amts.append(asset_amt);
                 },
@@ -241,7 +262,7 @@ mod Caretaker {
         // Burn balance
         shrine.eject(caller, burn_amt);
 
-        Redeem(caller, burn_amt, yangs.clone(), asset_amts.clone());
+        Reclaim(caller, burn_amt, yangs.clone(), asset_amts.clone());
 
         (yangs, asset_amts)
     }
