@@ -149,31 +149,28 @@ mod AccessControl {
     const ROLE_REVOKED_EVENT_KEY: felt252 =
         0x2842fd3b01bb0858fef6a2da51cdd9f995c7d36d7625fb68dd5d69fcc0a6d76;
 
-    fn emit(event_key: felt252, data: Span<felt252>) {
+    // all of the events emitted from this module take exactly 2 data values
+    // so we pass them separately into `emit`
+    fn emit(event_key: felt252, event_data_1: felt252, event_data_2: felt252) {
+        let mut data = ArrayTrait::new();
+        data.append(event_data_1);
+        data.append(event_data_2);
+
         let mut keys = ArrayTrait::new();
         keys.append(event_key);
-        starknet::emit_event_syscall(keys.span(), data).unwrap_syscall();
+        starknet::emit_event_syscall(keys.span(), data.span()).unwrap_syscall();
     }
 
     fn emit_admin_changed(prev_admin: ContractAddress, new_admin: ContractAddress) {
-        let mut event_data = ArrayTrait::new();
-        event_data.append(prev_admin.into());
-        event_data.append(new_admin.into());
-        emit(ADMIN_CHANGED_EVENT_KEY, event_data.span());
+        emit(ADMIN_CHANGED_EVENT_KEY, prev_admin.into(), new_admin.into());
     }
 
     fn emit_role_granted(role: u128, account: ContractAddress) {
-        let mut event_data = ArrayTrait::new();
-        event_data.append(role.into());
-        event_data.append(account.into());
-        emit(ROLE_GRANTED_EVENT_KEY, event_data.span());
+        emit(ROLE_GRANTED_EVENT_KEY, role.into(), account.into());
     }
 
     fn emit_role_revoked(role: u128, account: ContractAddress) {
-        let mut event_data = ArrayTrait::new();
-        event_data.append(role.into());
-        event_data.append(account.into());
-        emit(ROLE_REVOKED_EVENT_KEY, event_data.span());
+        emit(ROLE_REVOKED_EVENT_KEY, role.into(), account.into());
     }
 }
 
