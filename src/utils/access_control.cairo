@@ -1,3 +1,16 @@
+use starknet::ContractAddress;
+
+#[abi]
+trait IAccessControl {
+    fn get_roles(account: ContractAddress) -> u128;
+    fn has_role(role: u128, account: ContractAddress) -> bool;
+    fn get_admin() -> ContractAddress;
+    fn grant_role(role: u128, account: ContractAddress);
+    fn revoke_role(role: u128, account: ContractAddress);
+    fn renounce_role(role: u128);
+    fn change_admin(new_admin: ContractAddress);
+}
+
 mod AccessControl {
     use array::{ArrayTrait, SpanTrait};
     use integer::U128BitNot;
