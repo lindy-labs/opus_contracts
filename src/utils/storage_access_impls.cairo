@@ -1,7 +1,7 @@
 use option::OptionTrait;
 use starknet::{StorageAccess, StorageBaseAddress, SyscallResult};
-use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
 use starknet::storage_access::storage_address_from_base_and_offset;
+use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
 use traits::{Into, TryInto};
 
 use aura::utils::types::{Trove, YangRedistribution};
@@ -139,7 +139,7 @@ impl RayTupleStorageAccess of StorageAccess<RayTuple> {
 impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
     fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<YangRedistribution> {
         let (unit_debt, error) = WadTupleStorageAccess::read(address_domain, base)?;
-        Result::Ok(YangRedistribution { unit_debt: unit_debt, error: error })
+        Result::Ok(YangRedistribution { unit_debt, error })
     }
 
     fn write(
