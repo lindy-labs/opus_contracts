@@ -46,7 +46,8 @@ mod Gate {
         // Grant permission
         AccessControl::grant_role_internal(GateRoles::default_admin_role(), admin);
 
-        initializer(shrine, asset);
+        shrine::write(IShrineDispatcher { contract_address: shrine });
+        asset::write(IERC20Dispatcher { contract_address: asset });
         live::write(true);
     }
 
@@ -66,7 +67,7 @@ mod Gate {
 
     #[view]
     fn get_total_assets() -> u128 {
-        get_total_assets_internal()
+        get_total_assets_internal(asset::read())
     }
 
     #[view]
@@ -76,7 +77,14 @@ mod Gate {
 
     #[view]
     fn get_asset_amt_per_yang() -> Wad {
-        get_asset_amt_per_yang_internal()
+        let amt: u128 = convert_to_assets(WAD_ONE.into());
+        let decimals: u8 = asset::read().decimals();
+
+        if decimals == WAD_DECIMALS {
+            return amt.into();
+        }
+
+        fixed_point_to_wad(amt, decimals)
     }
 
     #[view]
@@ -121,8 +129,7 @@ mod Gate {
         }
 
         let asset: IERC20Dispatcher = asset::read();
-        let gate: ContractAddress = get_contract_address();
-        let success: bool = asset.transfer_from(user, gate, asset_amt.into());
+        let success: bool = asset.transfer_from(user, get_contract_address(), asset_amt.into());
         assert(success == true, 'Asset transfer failed');
 
         Enter(user, trove_id, asset_amt, yang_amt);
@@ -152,37 +159,16 @@ mod Gate {
     // Internal
     //
 
-    fn initializer(shrine: ContractAddress, asset: ContractAddress) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        asset::write(IERC20Dispatcher { contract_address: asset });
-    }
-
     fn assert_live() {
-        let is_live: bool = live::read();
-        assert(is_live == true, 'Gate is not live');
+        assert(live::read() == true, 'Gate is not live');
     }
 
-    fn get_total_assets_internal() -> u128 {
-        let asset: IERC20Dispatcher = asset::read();
-        let gate: ContractAddress = get_contract_address();
-        asset.balance_of(gate).try_into().unwrap()
+    fn get_total_assets_internal(asset: IERC20Dispatcher) -> u128 {
+        asset.balance_of(get_contract_address()).try_into().unwrap()
     }
 
     fn get_total_yang_internal(asset: ContractAddress) -> Wad {
-        let shrine: IShrineDispatcher = shrine::read();
-        shrine.get_yang_total(asset)
-    }
-
-    fn get_asset_amt_per_yang_internal() -> Wad {
-        let amt: u128 = convert_to_assets(WAD_ONE.into());
-        let asset: IERC20Dispatcher = asset::read();
-        let decimals: u8 = asset.decimals();
-
-        if decimals == WAD_DECIMALS {
-            return amt.into();
-        }
-
-        fixed_point_to_wad(amt, decimals)
+        shrine::read().get_yang_total(asset)
     }
 
     // Return value is `u128` and not `Wad` because it is denominated in the decimals of the asset
@@ -201,7 +187,7 @@ mod Gate {
             let scale: u128 = pow10(WAD_DECIMALS - decimals);
             yang_amt.val / scale
         } else {
-            let total_assets: Wad = get_total_assets_internal().into();
+            let total_assets: Wad = get_total_assets_internal(asset).into();
             let assets: Wad = (yang_amt * total_assets) / total_supply;
             assets.val
         }
@@ -223,7 +209,7 @@ mod Gate {
             // Scale by difference to match `Wad` precision`
             fixed_point_to_wad(asset_amt, decimals)
         } else {
-            let total_assets: Wad = get_total_assets_internal().into();
+            let total_assets: Wad = get_total_assets_internal(asset).into();
             (asset_amt.into() * total_supply) / total_assets
         }
     }
