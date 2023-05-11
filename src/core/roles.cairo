@@ -1,3 +1,13 @@
+mod GateRoles {
+    const ENTER: u128 = 1;
+    const EXIT: u128 = 2;
+    const KILL: u128 = 4;
+
+    fn default_admin_role() -> u128 {
+        KILL
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;

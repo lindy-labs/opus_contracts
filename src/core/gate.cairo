@@ -6,8 +6,11 @@ mod Gate {
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
+    use aura::core::roles::GateRoles;
+
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::pow::pow10;
     use aura::utils::wadray;
     use aura::utils::wadray::{fixed_point_to_wad, Wad, WAD_DECIMALS, WAD_ONE};
@@ -38,10 +41,10 @@ mod Gate {
 
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress, asset: ContractAddress) {
-        // AccessControl.initializer(admin);
+        AccessControl::initializer(admin);
 
         // Grant permission
-        // AccessControl._grant_role(GateRoles.DEFAULT_GATE_ADMIN_ROLE, admin);
+        AccessControl::grant_role_internal(GateRoles::default_admin_role(), admin);
 
         initializer(shrine, asset);
         live::write(true);
@@ -97,7 +100,7 @@ mod Gate {
 
     #[external]
     fn kill() {
-        // TODO: add access control for kill role
+        AccessControl::assert_has_role(GateRoles::KILL);
         live::write(false);
         Killed();
     }
@@ -109,7 +112,7 @@ mod Gate {
 
         assert_live();
 
-        // AccessControl.assert_has_role(GateRoles.ENTER);
+        AccessControl::assert_has_role(GateRoles::ENTER);
 
         let yang_amt: Wad = convert_to_yang(asset_amt);
         if yang_amt.is_zero() {
@@ -129,7 +132,7 @@ mod Gate {
 
     #[external]
     fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
-        // AccessControl.assert_has_role(GateRoles.EXIT);
+        AccessControl::assert_has_role(GateRoles::EXIT);
 
         let asset_amt: u128 = convert_to_assets(yang_amt);
         if asset_amt == 0 {
