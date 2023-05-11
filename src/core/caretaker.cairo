@@ -167,6 +167,11 @@ mod Caretaker {
         };
 
         // Mint surplus debt
+        // Note that the total debt may stil be higher than total yin after this final
+        // minting of surplus debt due to loss of precision. This would be slightly 
+        // beneficial to CASH holders, because trove owners can only withdraw excess 
+        // collateral based on their trove's debt, whereas CASH holders reclaim a proportionate
+        // percentage of yang assets based on their share of the total yin.
         let equalizer: IEqualizerDispatcher = equalizer::read();
         equalizer.equalize();
 
@@ -176,6 +181,14 @@ mod Caretaker {
         // Kill modules
         is_live::write(false);
         shrine.kill();
+
+        // Note that Absorber is not killed. When the final debt surplus is minted, the
+        // absorber may be an allocated recipient. If the Absorber has been completely
+        // drained (i.e. no shares in current epoch), receives a portion of the minted
+        // debt surplus and is killed, then the final yin surplus will be inaccessible
+        // if users can no longer call `Absorber.provide()`. Therefore, we do not kill
+        // the Absorber, and allow the first provider in such a situation to gain a windfall
+        // of the final debt surplus minted to the Absorber.
 
         Shut(shut_time);
     }
