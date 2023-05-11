@@ -1395,40 +1395,38 @@ mod Shrine {
     // Public AccessControl functions
     //
 
-    impl ShrineAccessControl of IAccessControl {
-        #[view]
-        fn get_roles(account: ContractAddress) -> u128 {
-            AccessControl::get_roles(account)
-        }
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
 
-        #[view]
-        fn has_role(role: u128, account: ContractAddress) -> bool {
-            AccessControl::has_role(role, account)
-        }
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
 
-        #[view]
-        fn get_admin() -> ContractAddress {
-            AccessControl::get_admin()
-        }
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
 
-        #[external]
-        fn grant_role(role: u128, account: ContractAddress) {
-            AccessControl::grant_role(role, account);
-        }
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
 
-        #[external]
-        fn revoke_role(role: u128, account: ContractAddress) {
-            AccessControl::revoke_role(role, account);
-        }
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
 
-        #[external]
-        fn renounce_role(role: u128) {
-            AccessControl::renounce_role(role);
-        }
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
 
-        #[external]
-        fn change_admin(new_admin: ContractAddress) {
-            AccessControl::change_admin(new_admin);
-        }
+    #[external]
+    fn change_admin(new_admin: ContractAddress) {
+        AccessControl::change_admin(new_admin);
     }
 }
