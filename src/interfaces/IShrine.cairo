@@ -1,13 +1,12 @@
+use array::ArrayTrait;
 use starknet::ContractAddress;
 
 use aura::utils::types::Trove;
-use aura::utils::wadray::Ray;
-use aura::utils::wadray::Wad;
+use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
 trait IShrine {
     // getters
-    fn get_trove(trove_id: u64) -> Trove;
     fn get_yin(user: ContractAddress) -> Wad;
     fn get_yang_total(yang: ContractAddress) -> Wad;
     fn get_yangs_count() -> u32;
@@ -15,6 +14,7 @@ trait IShrine {
     fn get_total_debt() -> Wad;
     fn get_total_yin() -> Wad;
     fn get_yang_price(yang: ContractAddress, interval: u64) -> (Wad, Wad);
+    fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray;
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
@@ -26,12 +26,12 @@ trait IShrine {
     fn add_yang(
         yang: ContractAddress, threshold: Ray, price: Wad, initial_rate: Ray, initial_yang_amt: Wad
     );
-    fn set_yang_max(yang: ContractAddress, new_max: Wad);
     fn set_ceiling(new_ceiling: Wad);
     fn set_threshold(yang: ContractAddress, new_threshold: Wad);
     fn kill();
     fn advance(yang: ContractAddress, price: Wad);
     fn set_multiplier(new_multiplier: Ray);
+    fn update_rates(yang: Array<ContractAddress>, new_rate: Array<Ray>);
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad);

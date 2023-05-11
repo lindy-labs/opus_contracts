@@ -10,6 +10,9 @@ mod Shrine {
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
+    use aura::core::roles::ShrineRoles;
+
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::exp::exp;
     use aura::utils::storage_access_impls;
     use aura::utils::types::{Trove, YangRedistribution};
@@ -30,7 +33,7 @@ mod Shrine {
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
     const TIME_INTERVAL_DIV_YEAR: u128 =
-        57077625570776; // 1 / (48 30-minute segments per day) / (365 days per year) = 0.000057077625 (wad)
+        57077625570776; // 1 / (48 30-minute intervals per day) / (365 days per year) = 0.000057077625 (wad)
 
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
     const ROUNDING_THRESHOLD: u128 = 1000000000;
@@ -175,10 +178,10 @@ mod Shrine {
 
     #[constructor]
     fn constructor(admin: ContractAddress, name: felt252, symbol: felt252) {
-        //AccessControl::initializer(admin);
+        AccessControl::initializer(admin);
 
         // Grant admin permission
-        //AccessControl::_grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, admin);
+        AccessControl::grant_role_internal(ShrineRoles::default_admin_role(), admin);
 
         is_live::write(true);
 
@@ -216,6 +219,7 @@ mod Shrine {
 
         // Catch troves with no value
         if value.is_zero() {
+            // Handles corner case: forging non-zero debt for a trove with zero value
             if trove.debt.is_non_zero() {
                 return (threshold, BoundedU128::max().into(), value, trove.debt);
             } else {
@@ -366,7 +370,7 @@ mod Shrine {
         initial_rate: Ray,
         initial_yang_amt: Wad
     ) {
-        //AccessControl.assert_has_role(ShrineRoles.ADD_YANG);
+        AccessControl::assert_has_role(ShrineRoles::ADD_YANG);
 
         assert(yang_ids::read(yang) == 0, 'Yang already exists');
 
@@ -415,7 +419,7 @@ mod Shrine {
 
     #[external]
     fn set_ceiling(new_ceiling: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.SET_CEILING);
+        AccessControl::assert_has_role(ShrineRoles::SET_CEILING);
         debt_ceiling::write(new_ceiling);
 
         //Event emission
@@ -424,7 +428,7 @@ mod Shrine {
 
     #[external]
     fn set_threshold(yang: ContractAddress, new_threshold: Ray) {
-        //AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD);
+        AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
         assert(new_threshold.val <= MAX_THRESHOLD, 'Threshold > max');
         thresholds::write(get_valid_yang_id(yang), new_threshold);
@@ -435,7 +439,7 @@ mod Shrine {
 
     #[external]
     fn kill() {
-        //AccessControl.assert_has_role(ShrineRoles.KILL);
+        AccessControl::assert_has_role(ShrineRoles::KILL);
         is_live::write(false);
 
         // Event emission
@@ -449,7 +453,7 @@ mod Shrine {
     // Set the price of the specified Yang for the current interval interval
     #[external]
     fn advance(yang: ContractAddress, price: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.ADVANCE);
+        AccessControl::assert_has_role(ShrineRoles::ADVANCE);
 
         assert(price.is_non_zero(), 'Cannot set a price to 0');
 
@@ -477,7 +481,7 @@ mod Shrine {
     // Sets the multiplier for the current interval
     #[external]
     fn set_multiplier(new_multiplier: Ray) {
-        //AccessControl.assert_has_role(ShrineRoles.SET_MULTIPLIER);
+        AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
 
         // TODO: Should this be here? Maybe multiplier should be able to go to zero
         assert(new_multiplier.is_non_zero(), 'Cannot set multiplier to zero');
@@ -505,7 +509,7 @@ mod Shrine {
     // yangs's length must equal the number of yangs available.
     #[external]
     fn update_rates(yangs: Array<ContractAddress>, new_rates: Array<Ray>) {
-        //AccessControl.assert_has_role(ShrineRoles.UPDATE_RATES);
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_RATES);
 
         let mut yangs_span: Span<ContractAddress> = yangs.span();
         let mut new_rates_span: Span<Ray> = new_rates.span();
@@ -578,7 +582,7 @@ mod Shrine {
     // Deposit a specified amount of a Yang into a Trove
     #[external]
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.DEPOSIT);
+        AccessControl::assert_has_role(ShrineRoles::DEPOSIT);
 
         assert_live();
 
@@ -603,7 +607,7 @@ mod Shrine {
     // Withdraw a specified amount of a Yang from a Trove with trove safety check
     #[external]
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.WITHDRAW);
+        AccessControl::assert_has_role(ShrineRoles::WITHDRAW);
         withdraw_internal(yang, trove_id, amount);
         assert_healthy(trove_id);
     }
@@ -611,7 +615,7 @@ mod Shrine {
     // Mint a specified amount of synthetic and attribute the debt to a Trove
     #[external]
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.FORGE);
+        AccessControl::assert_has_role(ShrineRoles::FORGE);
         assert_live();
 
         charge(trove_id);
@@ -641,7 +645,7 @@ mod Shrine {
     // Repay a specified amount of synthetic and deattribute the debt from a Trove
     #[external]
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.MELT);
+        AccessControl::assert_has_role(ShrineRoles::MELT);
 
         // Charge interest
         charge(trove_id);
@@ -655,7 +659,7 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
 
-        // `charge_from` and `last_rate_era` are already updated in `charge`
+        // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
         let new_trove_info: Trove = Trove {
             charge_from: old_trove_info.charge_from,
             debt: old_trove_info.debt - melt_amt,
@@ -676,13 +680,13 @@ mod Shrine {
     // even if the trove is still unsafe.
     #[external]
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.SEIZE);
+        AccessControl::assert_has_role(ShrineRoles::SEIZE);
         withdraw_internal(yang, trove_id, amount);
     }
 
     #[external]
     fn redistribute(trove_id: u64) {
-        //AccessControl.assert_has_role(ShrineRoles.REDISTRIBUTE);
+        AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
         let current_interval: u64 = now();
         let (_, trove_value) = get_trove_threshold_and_value_internal(trove_id, current_interval);
@@ -696,7 +700,7 @@ mod Shrine {
         let redistribution_id: u32 = redistributions_count::read() + 1;
         redistributions_count::write(redistribution_id);
 
-        //Perform redistribution
+        // Perform redistribution
         let redistributed_debt = redistribute_internal(
             redistribution_id, trove_id, trove_value, trove.debt, current_interval
         );
@@ -713,14 +717,14 @@ mod Shrine {
     // Mint a specified amount of synthetic without attributing the debt to a Trove
     #[external]
     fn inject(receiver: ContractAddress, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.INJECT);
+        AccessControl::assert_has_role(ShrineRoles::INJECT);
         forge_internal(receiver, amount);
     }
 
     // Repay a specified amount of synthetic without deattributing the debt from a Trove
     #[external]
     fn eject(burner: ContractAddress, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.EJECT);
+        AccessControl::assert_has_role(ShrineRoles::EJECT);
         melt_internal(burner, amount);
     }
 
@@ -873,7 +877,7 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Don't emit events if there hasn't been a change in debt
+        // Emit events only if there is a change in the trove's debt
         if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
             TroveUpdated(trove_id, updated_trove);
@@ -888,7 +892,7 @@ mod Shrine {
 
     // Compound interest formula: P(t) = P_0 * e^(rt)
     // P_0 = principal
-    // r = nominal interest rate (what the interest rate would be if there was no compounding
+    // r = nominal interest rate (what the interest rate would be if there was no compounding)
     // t = time elapsed, in years
     fn compound(trove_id: u64, trove: Trove, end_interval: u64) -> Wad {
         // Saves gas and prevents bugs for troves with no yangs deposited
@@ -925,7 +929,7 @@ mod Shrine {
             let next_rate_update_era_interval = rates_intervals::read(next_rate_update_era);
 
             let avg_base_rate: Ray = get_avg_rate_over_era(
-                trove_id, start_interval, next_rate_update_era_interval, latest_rate_era
+                trove_id, start_interval, next_rate_update_era_interval, trove_last_rate_era
             );
             let avg_rate: Ray = avg_base_rate
                 * get_avg_multiplier(start_interval, next_rate_update_era_interval);
@@ -966,8 +970,8 @@ mod Shrine {
                 break wadray::wdiv_rw(cumulative_weighted_sum, cumulative_yang_value);
             }
 
-            // Skip over this yang if it hasn't been deposited in the trove
             let yang_deposited: Wad = deposits::read((current_yang_id, trove_id));
+            // Update cumulative values only if this yang has been deposited in the trove
             if yang_deposited.is_non_zero() {
                 let yang_rate: Ray = yang_rates::read((current_yang_id, rate_era));
                 let avg_price: Wad = get_avg_price(current_yang_id, start_interval, end_interval);
@@ -1063,10 +1067,15 @@ mod Shrine {
             return 0_u128.into();
         }
 
-        let error: Wad = yang_redistributions::read((yang_id, redistribution_id)).error;
+        let redistribution: YangRedistribution = yang_redistributions::read(
+            (yang_id, redistribution_id)
+        );
 
-        if error.is_non_zero() {
-            return error;
+        // If redistribution unit-debt is non-zero or the error is non-zero, return the error
+        // This catches both the case where the unit debt is non-zero and the error is zero, and the case
+        // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
+        if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
+            return redistribution.error;
         }
 
         get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
@@ -1288,7 +1297,7 @@ mod Shrine {
 
             let deposited: Wad = deposits::read((current_yang_id, trove_id));
 
-            // Skip over current yang if user hasn't deposited anything
+            // Update cumulative values only if user has deposited the current yang
             if deposited.is_non_zero() {
                 let yang_threshold: Ray = thresholds::read(current_yang_id);
 
@@ -1325,7 +1334,7 @@ mod Shrine {
 
             let deposited: Wad = yang_total::read(current_yang_id);
 
-            // Skip over current yang if none has  been deposited
+            // Update cumulative values only if current yang has been deposited
             if deposited.is_non_zero() {
                 let yang_threshold: Ray = thresholds::read(current_yang_id);
 
@@ -1354,7 +1363,7 @@ mod Shrine {
     fn transfer_internal(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
         assert(recipient.is_non_zero(), 'cannot transfer to 0 address');
 
-        let amount_wad: Wad = amount.try_into().unwrap().into();
+        let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
 
         // Transferring the Yin
         yin::write(sender, yin::read(sender) - amount_wad);
@@ -1380,5 +1389,44 @@ mod Shrine {
         if current_allowance != BoundedU256::max() {
             approve_internal(owner, spender, current_allowance - amount);
         }
+    }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn change_admin(new_admin: ContractAddress) {
+        AccessControl::change_admin(new_admin);
     }
 }

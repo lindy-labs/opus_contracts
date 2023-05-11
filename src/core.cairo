@@ -1,2 +1,2 @@
-mod sentinel;
+mod roles;
 mod shrine;
