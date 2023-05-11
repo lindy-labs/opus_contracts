@@ -1,1 +1,2 @@
+mod roles;
 mod shrine;
