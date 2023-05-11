@@ -3,9 +3,9 @@ use starknet::ContractAddress;
 
 #[abi]
 trait IFlashMint {
-    fn maxFlashLoan(token: ContractAddress) -> u256;
-    fn flashFee(token: ContractAddress, amount: u256) -> u256;
-    fn flashLoan(
+    fn max_flash_loan(token: ContractAddress) -> u256;
+    fn flash_fee(token: ContractAddress, amount: u256) -> u256;
+    fn flash_loan(
         receiver: ContractAddress,
         token: ContractAddress,
         amount: u256,

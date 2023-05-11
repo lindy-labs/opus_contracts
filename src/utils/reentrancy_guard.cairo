@@ -2,6 +2,8 @@ mod ReentrancyGuard {
     use starknet::{
         ContractAddress, get_caller_address, Felt252TryIntoContractAddress, SyscallResultTrait
     };
+    use starknet::storage_access::StorageAccessBool;
+
     use traits::{Into, TryInto};
 
     // SHA-256 (truncated to 251 bits) of '__reentrancyguard_guard'
@@ -10,28 +12,13 @@ mod ReentrancyGuard {
 
     #[inline(always)]
     fn set_guard(on: bool) {
-        // write bool
-        let base = starknet::storage_base_address_from_felt252(
-            hash::LegacyHash::hash(GUARD_STORAGE_BASE_ADDR, 0)
-        );
-
-        starknet::storage_write_syscall(
-            0, starknet::storage_address_from_base(base), if on {
-                1
-            } else {
-                0
-            }
-        ).unwrap_syscall();
+        let base = starknet::storage_base_address_from_felt252(GUARD_STORAGE_BASE_ADDR);
+        StorageAccessBool::write(0, base, on).unwrap_syscall();
     }
 
     fn start() {
-        let base = starknet::storage_base_address_from_felt252(
-            hash::LegacyHash::hash(GUARD_STORAGE_BASE_ADDR, 0)
-        );
-
-        let is_on: bool = starknet::storage_read_syscall(
-            0, starknet::storage_address_from_base(base)
-        ).unwrap_syscall() != 0;
+        let base = starknet::storage_base_address_from_felt252(GUARD_STORAGE_BASE_ADDR);
+        let is_on: bool = StorageAccessBool::read(0, base).unwrap_syscall();
 
         assert(!is_on, 'RG: reentrant call');
         set_guard(true);
@@ -45,7 +32,6 @@ mod ReentrancyGuard {
 #[cfg(test)]
 mod tests {
     use super::ReentrancyGuard;
-
 
     fn guarded_func(recurse_once: bool) {
         ReentrancyGuard::start();

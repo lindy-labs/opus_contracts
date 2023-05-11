@@ -3,7 +3,7 @@ use array::ArrayTrait;
 
 #[abi]
 trait IFlashBorrower {
-    fn onFlashLoan(
+    fn on_flash_loan(
         initiator: ContractAddress,
         token: ContractAddress,
         amount: u256,
