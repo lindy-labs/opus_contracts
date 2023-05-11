@@ -24,6 +24,7 @@ mod ShrineRoles {
     }
 }
 
+
 mod SentinelRoles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
