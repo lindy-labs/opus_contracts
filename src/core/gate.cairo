@@ -71,7 +71,7 @@ mod Gate {
 
     #[view]
     fn get_total_yang() -> Wad {
-        get_total_yang_internal()
+        get_total_yang_internal(asset::read().contract_address)
     }
 
     #[view]
@@ -101,6 +101,7 @@ mod Gate {
     #[external]
     fn kill() {
         AccessControl::assert_has_role(GateRoles::KILL);
+        assert(live::read() == true, 'Already killed');
         live::write(false);
         Killed();
     }
@@ -121,13 +122,12 @@ mod Gate {
 
         let asset: IERC20Dispatcher = asset::read();
         let gate: ContractAddress = get_contract_address();
-
         let success: bool = asset.transfer_from(user, gate, asset_amt.into());
         assert(success == true, 'Asset transfer failed');
 
         Enter(user, trove_id, asset_amt, yang_amt);
 
-        0_u128.into()
+        yang_amt
     }
 
     #[external]
@@ -159,21 +159,18 @@ mod Gate {
 
     fn assert_live() {
         let is_live: bool = live::read();
-        assert(is_live == true, 'GA: not live');
+        assert(is_live == true, 'Gate is not live');
     }
 
     fn get_total_assets_internal() -> u128 {
         let asset: IERC20Dispatcher = asset::read();
         let gate: ContractAddress = get_contract_address();
-        let total_bal: u256 = asset.balance_of(gate);
-        total_bal.try_into().unwrap()
+        asset.balance_of(gate).try_into().unwrap()
     }
 
-    fn get_total_yang_internal() -> Wad {
+    fn get_total_yang_internal(asset: ContractAddress) -> Wad {
         let shrine: IShrineDispatcher = shrine::read();
-        let asset: IERC20Dispatcher = asset::read();
-        let yang_total: Wad = shrine.get_yang_total(asset.contract_address);
-        yang_total
+        shrine.get_yang_total(asset)
     }
 
     fn get_asset_amt_per_yang_internal() -> Wad {
@@ -190,10 +187,10 @@ mod Gate {
 
     // Return value is `u128` and not `Wad` because it is denominated in the decimals of the asset
     fn convert_to_assets(yang_amt: Wad) -> u128 {
-        let total_supply: Wad = get_total_yang_internal();
+        let asset: IERC20Dispatcher = asset::read();
+        let total_supply: Wad = get_total_yang_internal(asset.contract_address);
 
         if total_supply.val == 0 {
-            let asset: IERC20Dispatcher = asset::read();
             let decimals: u8 = asset.decimals();
 
             if decimals == WAD_DECIMALS {
@@ -212,10 +209,10 @@ mod Gate {
 
     // `asset_amt` may not be 18 decimals
     fn convert_to_yang(asset_amt: u128) -> Wad {
-        let total_supply: Wad = get_total_yang_internal();
+        let asset: IERC20Dispatcher = asset::read();
+        let total_supply: Wad = get_total_yang_internal(asset.contract_address);
 
         if total_supply.val == 0 {
-            let asset: IERC20Dispatcher = asset::read();
             let decimals: u8 = asset.decimals();
 
             // `assets` is already of `Wad` precision
@@ -227,8 +224,7 @@ mod Gate {
             fixed_point_to_wad(asset_amt, decimals)
         } else {
             let total_assets: Wad = get_total_assets_internal().into();
-            let yang: Wad = (asset_amt.into() * total_supply) / total_assets;
-            yang
+            (asset_amt.into() * total_supply) / total_assets
         }
     }
 }
