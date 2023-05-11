@@ -2,6 +2,9 @@
 name = "aura"
 version = "0.1.0"
 
+# Build each contract as a standalone JSON file
+[[target.starknet-contract]]
+
 [scripts]
 test = "cairo-test --starknet ."
 
