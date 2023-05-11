@@ -7,6 +7,7 @@ mod FlashMint {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::u256_conversions::U256TryIntoU128;
     use aura::utils::wadray::Wad;
 
@@ -73,8 +74,7 @@ mod FlashMint {
         // prevents looping which would lead to excessive minting
         // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
         // yin to be minted, as per spec
-        // TODO: Implement reentrancy guard when contract composition solution is released
-        //ReentrancyGuard._start();
+        ReentrancyGuard::start();
 
         assert(amount <= maxFlashLoan(token_addr), 'amount exceeds maximum');
 
@@ -100,7 +100,7 @@ mod FlashMint {
 
         FlashMint(initiator, receiver, token_addr, amount);
 
-        //ReentrancyGuard._end();
+        ReentrancyGuard::end();
         true
     }
 }
