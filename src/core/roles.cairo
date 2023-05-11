@@ -23,3 +23,10 @@ mod ShrineRoles {
         INJECT + EJECT
     }
 }
+
+mod SentinelRoles {
+    const ADD_YANG: u128 = 1;
+    const ENTER: u128 = 2;
+    const EXIT: u128 = 4;
+    const SET_YANG_ASSET_MAX: u128 = 8;
+}

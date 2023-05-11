@@ -6,7 +6,9 @@ mod Sentinel {
     use traits::Into;
     use zeroable::Zeroable;
 
+    use aura::core::roles::SentinelRoles;
 
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -41,8 +43,10 @@ mod Sentinel {
 
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress) {
-        //AccessControl.initializer(admin);
-        //AccessControl._grant_role(SentinelRoles.ADD_YANG + SentinelRoles.SET_YANG_ASSET_MAX, admin);
+        AccessControl::initializer(admin);
+        AccessControl::grant_role(
+            SentinelRoles::ADD_YANG + SentinelRoles::SET_YANG_ASSET_MAX, admin
+        );
         shrine_address::write(shrine);
     }
 
@@ -131,7 +135,7 @@ mod Sentinel {
         yang_rate: Ray,
         gate_addr: ContractAddress
     ) {
-        //AccessControl.assert_has_role(SentinelRoles.ADD_YANG);
+        AccessControl::assert_has_role(SentinelRoles::ADD_YANG);
         assert(yang_addr.is_non_zero(), 'Yang can\'t be zero address');
         assert(gate_addr.is_non_zero(), 'Gate can\'t be zero address');
         assert(yang_to_gate::read(yang_addr).is_zero(), 'Yang already added');
@@ -164,7 +168,7 @@ mod Sentinel {
 
     #[external]
     fn set_yang_asset_max(yang_addr: ContractAddress, new_asset_max: u128) {
-        //AccessControl.assert_has_role(SentinelRoles.SET_YANG_ASSET_MAX);
+        AccessControl::assert_has_role(SentinelRoles::SET_YANG_ASSET_MAX);
 
         let gate_addr: ContractAddress = yang_to_gate::read(yang_addr);
         assert(gate_addr.is_non_zero(), 'Yang is not approved');
@@ -179,7 +183,7 @@ mod Sentinel {
     fn enter(
         yang_addr: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128
     ) -> Wad {
-        // AccessControl.assert_has_role(SentinelRoles.ENTER);
+        AccessControl::assert_has_role(SentinelRoles::ENTER);
 
         let gate: IGateDispatcher = IGateDispatcher {
             contract_address: yang_to_gate::read(yang_addr)
@@ -198,7 +202,7 @@ mod Sentinel {
     fn exit(
         yang_addr: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad
     ) -> u128 {
-        // AccessControl.assert_has_role(SentinelRoles.EXIT);
+        AccessControl::assert_has_role(SentinelRoles::EXIT);
 
         let gate: IGateDispatcher = IGateDispatcher {
             contract_address: yang_to_gate::read(yang_addr)

@@ -374,42 +374,6 @@ impl RayZeroable of Zeroable<Ray> {
 }
 
 
-// Zeroable
-impl WadZeroable of Zeroable<Wad> {
-    #[inline(always)]
-    fn zero() -> Wad {
-        Wad { val: 0 }
-    }
-
-    #[inline(always)]
-    fn is_zero(self: Wad) -> bool {
-        self.val == 0
-    }
-
-    #[inline(always)]
-    fn is_non_zero(self: Wad) -> bool {
-        self.val != 0
-    }
-}
-
-impl RayZeroable of Zeroable<Ray> {
-    #[inline(always)]
-    fn zero() -> Ray {
-        Ray { val: 0 }
-    }
-
-    #[inline(always)]
-    fn is_zero(self: Ray) -> bool {
-        self.val == 0
-    }
-
-    #[inline(always)]
-    fn is_non_zero(self: Ray) -> bool {
-        self.val != 0
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
     use option::OptionTrait;
