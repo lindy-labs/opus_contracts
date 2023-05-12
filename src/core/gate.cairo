@@ -75,6 +75,12 @@ mod Gate {
         get_total_yang_internal(asset::read().contract_address)
     }
 
+    // Returns the amount of assets in Wad that corresponds to per Wad unit of yang.
+    // If the asset's decimals is less than `WAD_DECIMALS`, the amount is scaled up accordingly.
+    // Note that if there is no yang yet, this function will still return a positive value 
+    // based on the asset amount being at parity with yang (with scaling where necessary). This is
+    // so that the yang price can be properly calculated by the oracle even if no assets have been 
+    // deposited yet.
     #[view]
     fn get_asset_amt_per_yang() -> Wad {
         let amt: u128 = convert_to_assets(WAD_ONE.into());
@@ -87,11 +93,15 @@ mod Gate {
         fixed_point_to_wad(amt, decimals)
     }
 
+    // Simulates the effects of `enter` at the current on-chain conditions.
+    // `asset_amt` is denoted in the asset's decimals.
     #[view]
     fn preview_enter(asset_amt: u128) -> Wad {
         convert_to_yang(asset_amt)
     }
 
+    // Simulates the effects of `exit` at the current on-chain conditions.
+    // The return value is denoted in the asset's decimals.
     #[view]
     fn preview_exit(yang_amt: Wad) -> u128 {
         convert_to_assets(yang_amt)
@@ -114,7 +124,9 @@ mod Gate {
         Killed();
     }
 
-    // `assets` is denominated in the decimals of the asset
+    // Transfers the stipulated amount of assets, in the asset's decimals, from the given 
+    // user to the Gate and returns the corresponding yang amount in Wad.
+    // `asset_amt` is denominated in the decimals of the asset.
     #[external]
     fn enter(user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
         assert_live();
@@ -136,6 +148,9 @@ mod Gate {
         yang_amt
     }
 
+    // Transfers such amount of assets, in the asset's decimals, corresponding to the 
+    // stipulated yang amount to the given user.
+    // The return value is denominated in the decimals of the asset.
     #[external]
     fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
         AccessControl::assert_has_role(GateRoles::EXIT);
@@ -172,7 +187,9 @@ mod Gate {
         shrine::read().get_yang_total(asset)
     }
 
-    // Return value is `u128` and not `Wad` because it is denominated in the decimals of the asset
+    // Helper function to calculate the amount of assets corresponding to the given
+    // amount of yang.
+    // Return value is denominated in the decimals of the asset
     fn convert_to_assets(yang_amt: Wad) -> u128 {
         let asset: IERC20Dispatcher = asset::read();
         let total_supply: Wad = get_total_yang_internal(asset.contract_address);
@@ -180,11 +197,12 @@ mod Gate {
         if total_supply.is_zero() {
             let decimals: u8 = asset.decimals();
 
+            // `yang_amt` and asset are both of `Wad` precision
             if decimals == WAD_DECIMALS {
                 return yang_amt.val;
             }
 
-            // Scale by difference to match the decimal precision of the asset
+            // Otherwise, scale by difference to match the decimal precision of the asset
             let scale: u128 = pow10(WAD_DECIMALS - decimals);
             yang_amt.val / scale
         } else {
@@ -194,6 +212,8 @@ mod Gate {
         }
     }
 
+    // Helper function to calculate the amount of yang corresponding to the given
+    // amount of assets.
     // `asset_amt` may not be 18 decimals
     fn convert_to_yang(asset_amt: u128) -> Wad {
         let asset: IERC20Dispatcher = asset::read();
@@ -202,12 +222,12 @@ mod Gate {
         if total_supply.is_zero() {
             let decimals: u8 = asset.decimals();
 
-            // `asset_amt` is already of `Wad` precision
+            // `asset_amt` and yang are both of `Wad` precision
             if decimals == WAD_DECIMALS {
                 return asset_amt.into();
             }
 
-            // Scale by difference to match `Wad` precision
+            // Otherwise, scale by difference to match `Wad` precision
             fixed_point_to_wad(asset_amt, decimals)
         } else {
             let total_assets: Wad = get_total_assets_internal(asset).into();
