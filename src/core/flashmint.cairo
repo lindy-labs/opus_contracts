@@ -99,7 +99,7 @@ mod FlashMint {
 
         let borrower_resp: u256 = IFlashBorrowerDispatcher {
             contract_address: receiver
-        }.on_flash_loan(initiator, token, amount, flash_fee(token, amount), calldata);
+        }.on_flash_loan(initiator, token, amount, 0_u256, calldata);
 
         assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'on_flash_loan callback failed');
 
