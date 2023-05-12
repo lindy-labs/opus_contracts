@@ -201,12 +201,12 @@ mod Gate {
         if total_supply.val == 0 {
             let decimals: u8 = asset.decimals();
 
-            // `assets` is already of `Wad` precision
+            // `asset_amt` is already of `Wad` precision
             if decimals == WAD_DECIMALS {
                 return asset_amt.into();
             }
 
-            // Scale by difference to match `Wad` precision`
+            // Scale by difference to match `Wad` precision
             fixed_point_to_wad(asset_amt, decimals)
         } else {
             let total_assets: Wad = get_total_assets_internal(asset).into();
