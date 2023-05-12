@@ -13,7 +13,7 @@ mod Gate {
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::pow::pow10;
     use aura::utils::wadray;
-    use aura::utils::wadray::{fixed_point_to_wad, Wad, WAD_DECIMALS, WAD_ONE};
+    use aura::utils::wadray::{fixed_point_to_wad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
     use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
 
     struct Storage {
@@ -109,7 +109,7 @@ mod Gate {
     #[external]
     fn kill() {
         AccessControl::assert_has_role(GateRoles::KILL);
-        assert(live::read() == true, 'Already killed');
+        assert(live::read(), 'Already killed');
         live::write(false);
         Killed();
     }
@@ -117,8 +117,6 @@ mod Gate {
     // `assets` is denominated in the decimals of the asset
     #[external]
     fn enter(user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
-        // TODO: Revisit whether reentrancy guard should be added here
-
         assert_live();
 
         AccessControl::assert_has_role(GateRoles::ENTER);
@@ -128,9 +126,10 @@ mod Gate {
             return 0_u128.into();
         }
 
-        let asset: IERC20Dispatcher = asset::read();
-        let success: bool = asset.transfer_from(user, get_contract_address(), asset_amt.into());
-        assert(success == true, 'Asset transfer failed');
+        let success: bool = asset::read().transfer_from(
+            user, get_contract_address(), asset_amt.into()
+        );
+        assert(success, 'Asset transfer failed');
 
         Enter(user, trove_id, asset_amt, yang_amt);
 
@@ -146,9 +145,8 @@ mod Gate {
             return 0;
         }
 
-        let asset: IERC20Dispatcher = asset::read();
-        let success: bool = asset.transfer(user, asset_amt.into());
-        assert(success == true, 'Asset transfer failed');
+        let success: bool = asset::read().transfer(user, asset_amt.into());
+        assert(success, 'Asset transfer failed');
 
         Exit(user, trove_id, asset_amt, yang_amt);
 
@@ -159,14 +157,17 @@ mod Gate {
     // Internal
     //
 
+    #[inline(always)]
     fn assert_live() {
-        assert(live::read() == true, 'Gate is not live');
+        assert(live::read(), 'Gate is not live');
     }
 
+    #[inline(always)]
     fn get_total_assets_internal(asset: IERC20Dispatcher) -> u128 {
         asset.balance_of(get_contract_address()).try_into().unwrap()
     }
 
+    #[inline(always)]
     fn get_total_yang_internal(asset: ContractAddress) -> Wad {
         shrine::read().get_yang_total(asset)
     }
@@ -176,7 +177,7 @@ mod Gate {
         let asset: IERC20Dispatcher = asset::read();
         let total_supply: Wad = get_total_yang_internal(asset.contract_address);
 
-        if total_supply.val == 0 {
+        if total_supply.is_zero() {
             let decimals: u8 = asset.decimals();
 
             if decimals == WAD_DECIMALS {
@@ -198,7 +199,7 @@ mod Gate {
         let asset: IERC20Dispatcher = asset::read();
         let total_supply: Wad = get_total_yang_internal(asset.contract_address);
 
-        if total_supply.val == 0 {
+        if total_supply.is_zero() {
             let decimals: u8 = asset.decimals();
 
             // `asset_amt` is already of `Wad` precision
