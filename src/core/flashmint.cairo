@@ -33,6 +33,7 @@ mod FlashMint {
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
+    const FLASH_FEE: u256 = 0x0_u256;
 
     struct Storage {
         shrine: IShrineDispatcher, 
@@ -62,7 +63,7 @@ mod FlashMint {
             return (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val.into();
         }
 
-        0_u256
+        FLASH_FEE
     }
 
     #[view]
@@ -71,7 +72,7 @@ mod FlashMint {
         // and we only support flash minting of our own synthetic
         assert(shrine::read().contract_address == token, 'Unsupported token');
 
-        0_u256
+        FLASH_FEE
     }
 
     //
@@ -99,7 +100,7 @@ mod FlashMint {
 
         let borrower_resp: u256 = IFlashBorrowerDispatcher {
             contract_address: receiver
-        }.on_flash_loan(initiator, token, amount, 0_u256, calldata);
+        }.on_flash_loan(initiator, token, amount, FLASH_FEE, calldata);
 
         assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'on_flash_loan callback failed');
 
