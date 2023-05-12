@@ -18,7 +18,7 @@ mod Shrine {
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS};
+    use aura::utils::wadray::{Ray, RAY_PERCENT, RAY_ONE, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
