@@ -1,14 +1,10 @@
 use traits::Into;
 
 fn pow10(exp: u8) -> u128 {
-    pow10_internal(exp.into())
-}
-
-fn pow10_internal(exp: u128) -> u128 {
     if exp == 0 {
-        1
+        1_u128
     } else {
-        10 * pow10_internal(exp - 1)
+        10 * pow10(exp - 1)
     }
 }
 
