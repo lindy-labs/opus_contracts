@@ -1,24 +1,23 @@
 #[contract]
 mod Shrine {
     use array::{ArrayTrait, SpanTrait};
-    use box::BoxTrait;
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
-    use starknet::{BlockInfo, get_caller_address};
+    use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
     use aura::core::roles::ShrineRoles;
 
-    use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::access_control::AccessControl;
     use aura::utils::exp::exp;
     use aura::utils::storage_access_impls;
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_PERCENT, RAY_ONE, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, Wad};
 
     //
     // Constants
