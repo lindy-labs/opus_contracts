@@ -3,11 +3,13 @@ mod Allocator {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::ContractAddress;
+    use traits::Into;
 
     use aura::core::roles::AllocatorRoles;
 
     use aura::utils::access_control::AccessControl;
     use aura::utils::storage_access_impls;
+    use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     struct Storage {
@@ -68,7 +70,7 @@ mod Allocator {
         admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>
     ) {
         AccessControl::initializer(admin);
-        AccessControl._grant_role(AllocatorRoles::default_admin_role(), admin);
+        AccessControl::grant_role_internal(AllocatorRoles::default_admin_role(), admin);
 
         set_allocation_internal(recipients, percentages);
     }
@@ -81,7 +83,7 @@ mod Allocator {
     // by overwriting the existing values in `recipients` and `percentages`.
     #[external]
     fn set_allocation(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
-        AccessControl::assert_has_role(AllocatorRoles.SET_ALLOCATION);
+        AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
 
         set_allocation_internal(recipients, percentages);
     }
@@ -100,10 +102,10 @@ mod Allocator {
         let mut percentages_span: Span<Ray> = percentages.span();
 
         let recipients_len: u32 = recipients_span.len();
-        assert(recipients_len.is_non_zero(), 'No recipients');
+        assert(recipients_len != 0, 'No recipients');
         assert(recipients_len == percentages_span.len(), 'Array length mismatch');
 
-        let mut total_percentage: Ray = Ray::zero();
+        let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
         loop {
             match (recipients_span.pop_front()) {
@@ -123,7 +125,7 @@ mod Allocator {
             };
         };
 
-        assert(total_percentage == RAY_ONE, 'sum(percentages) != RAY_ONE');
+        assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
 
         AllocationUpdated(recipients, percentages);
     }

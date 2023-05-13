@@ -9,7 +9,6 @@ mod Equalizer {
     use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
-    use aura::utils::storage_access_impls;
     use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
 
     struct Storage {
@@ -39,7 +38,7 @@ mod Equalizer {
     // Returns the amount of surplus debt that can be minted
     #[view]
     fn get_surplus() -> Wad {
-        let (_, surplus) = get_debt_and_surplus(shrine::read().contract_address);
+        let (_, surplus) = get_debt_and_surplus(shrine::read());
         surplus
     }
 
@@ -50,7 +49,7 @@ mod Equalizer {
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress) {
         AccessControl::initializer(admin);
-        AccessControl._grant_role(EqualizerRoles::default_admin_role(), admin);
+        AccessControl::grant_role_internal(EqualizerRoles::default_admin_role(), admin);
 
         shrine::write(IShrineDispatcher { contract_address: shrine });
         allocator::write(IAllocatorDispatcher { contract_address: allocator });
@@ -63,7 +62,7 @@ mod Equalizer {
     // Update the Allocator's address
     #[external]
     fn set_allocator(allocator: ContractAddress) {
-        AccessControl::assert_has_role(EqualizerRoles.SET_ALLOCATOR);
+        AccessControl::assert_has_role(EqualizerRoles::SET_ALLOCATOR);
 
         let old_address: ContractAddress = allocator::read().contract_address;
         allocator::write(IAllocatorDispatcher { contract_address: allocator });
@@ -83,11 +82,12 @@ mod Equalizer {
         let shrine: IShrineDispatcher = shrine::read();
         let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
-        let (recipients, percentages) = allocator::read().get_allocation();
+        let allocator: IAllocatorDispatcher = allocator::read();
+        let (recipients, percentages) = allocator.get_allocation();
 
         let mut recipients_span: Span<ContractAddress> = recipients.span();
         let mut percentages_span: Span<Ray> = percentages.span();
-        let mut minted_surplus: Wad = Wad::zero();
+        let mut minted_surplus: Wad = WadZeroable::zero();
 
         loop {
             match (recipients_span.pop_front()) {
