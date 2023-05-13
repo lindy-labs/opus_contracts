@@ -30,7 +30,7 @@ mod Purger {
     use zeroable::Zeroable;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray::{Ray, RAY_ONE, rdiv_ww, rmul_wr, Wad};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, rdiv_ww, rmul_wr, Wad, WadZeroable};
 
     use super::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IEmpiricDispatcher, IEmpiricDispatcherTrait,
@@ -90,7 +90,7 @@ mod Purger {
         let (threshold, ltv, value, debt) = shrine.get_trove_info(trove_id);
 
         if ltv <= threshold {
-            return Ray { val: 0 };
+            return RayZeroable::zero();
         }
 
         get_penalty_internal(threshold, ltv, value, debt)
@@ -104,7 +104,7 @@ mod Purger {
         let (threshold, ltv, _, debt) = shrine.get_trove_info(trove_id);
 
         if ltv <= threshold {
-            return Wad { val: 0 };
+            return WadZeroable::zero();
         }
 
         get_max_close_amount_internal(ltv, debt)
@@ -359,7 +359,7 @@ mod Purger {
         trove_threshold: Ray, trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, 
     ) -> Ray {
         if trove_ltv.val >= RAY_ONE {
-            return Ray { val: 0 };
+            return RayZeroable::zero();
         }
 
         if trove_ltv.val <= MAX_PENALTY_LTV {
