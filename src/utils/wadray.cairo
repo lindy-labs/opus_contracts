@@ -338,7 +338,6 @@ impl RayPartialOrd of PartialOrd<Ray> {
     }
 }
 
-
 // Zeroable
 impl WadZeroable of Zeroable<Wad> {
     #[inline(always)]
