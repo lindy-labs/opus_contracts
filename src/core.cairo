@@ -1,2 +1,3 @@
-mod purger;
+mod flashmint;
+mod roles;
 mod shrine;
