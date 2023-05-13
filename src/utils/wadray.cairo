@@ -338,7 +338,6 @@ impl RayPartialOrd of PartialOrd<Ray> {
     }
 }
 
-
 // Zeroable
 impl WadZeroable of Zeroable<Wad> {
     #[inline(always)]
@@ -373,7 +372,6 @@ impl RayZeroable of Zeroable<Ray> {
         self.val != 0
     }
 }
-
 
 #[cfg(test)]
 mod tests {
