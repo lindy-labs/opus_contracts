@@ -4,10 +4,13 @@ mod Equalizer {
     use option::OptionTrait;
     use starknet::ContractAddress;
 
+    use aura::core::roles::EqualizerRoles;
+
     use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::access_control::AccessControl;
     use aura::utils::storage_access_impls;
-    use aura::utils::wadray::{Ray, rmul_wr, Wad};
+    use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
 
     struct Storage {
         allocator: IAllocatorDispatcher,
@@ -33,10 +36,10 @@ mod Equalizer {
         allocator::read().contract_address
     }
 
+    // Returns the amount of surplus debt that can be minted
     #[view]
     fn get_surplus() -> Wad {
-        let shrine: IShrineDispatcher = shrine::read();
-        let (_, surplus) = get_debt_and_surplus(shrine);
+        let (_, surplus) = get_debt_and_surplus(shrine::read().contract_address);
         surplus
     }
 
@@ -46,8 +49,8 @@ mod Equalizer {
 
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress) {
-        // TODO: initialize access control 
-        // TODO: grant SET_ALLOCATOR role to admin
+        AccessControl::initializer(admin);
+        AccessControl._grant_role(EqualizerRoles::default_admin_role(), admin);
 
         shrine::write(IShrineDispatcher { contract_address: shrine });
         allocator::write(IAllocatorDispatcher { contract_address: allocator });
@@ -57,9 +60,10 @@ mod Equalizer {
     // External
     //
 
+    // Update the Allocator's address
     #[external]
     fn set_allocator(allocator: ContractAddress) {
-        // TODO: AccessControl.assert_has_role(EqualizerRoles.SET_ALLOCATOR);
+        AccessControl::assert_has_role(EqualizerRoles.SET_ALLOCATOR);
 
         let old_address: ContractAddress = allocator::read().contract_address;
         allocator::write(IAllocatorDispatcher { contract_address: allocator });
@@ -67,22 +71,24 @@ mod Equalizer {
         AllocatorUpdated(old_address, allocator);
     }
 
+    // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
+    // according to their respective percentage share.
+    // Assumes the allocation from the Allocator have already been checked:
+    // - both arrays of recipient addresses and percentages are of equal length;
+    // - there is at least one recipient;
+    // - the percentages add up to one Ray.
+    // Returns the total amount of surplus debt minted.
     #[external]
     fn equalize() -> Wad {
         let shrine: IShrineDispatcher = shrine::read();
         let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
-        let allocator: IAllocatorDispatcher = allocator::read();
-        let (recipients, percentages) = allocator.get_allocation();
+        let (recipients, percentages) = allocator::read().get_allocation();
 
-        // TODO: kludge until Array<T>.len() works or Serde is implemented for Span
         let mut recipients_span: Span<ContractAddress> = recipients.span();
         let mut percentages_span: Span<Ray> = percentages.span();
+        let mut minted_surplus: Wad = Wad::zero();
 
-        let mut minted_surplus: Wad = Wad { val: 0 };
-
-        let mut idx: u32 = 0;
-        let end_idx: u32 = recipients_span.len();
         loop {
             match (recipients_span.pop_front()) {
                 Option::Some(recipient) => {
@@ -97,7 +103,7 @@ mod Equalizer {
             };
         };
 
-        // Assert yin is less than or equal to total debt after minting surplus
+        // Safety check to assert yin is less than or equal to total debt after minting surplus
         // It may not be equal due to rounding errors
         let updated_total_yin: Wad = shrine.get_total_yin();
         assert(updated_total_yin <= total_debt, 'Yin exceeds debt');
@@ -111,11 +117,11 @@ mod Equalizer {
     // Internal
     //
 
-    // Returns a tuple of total debt and surplus
+    // Helper function to return a tuple of the Shrine's total debt and the surplus
+    // calculated based on the Shrine's total debt and the total minted yin.
     fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
         let total_debt: Wad = shrine.get_total_debt();
-        let total_yin: Wad = shrine.get_total_yin();
-        let surplus: Wad = total_debt - total_yin;
+        let surplus: Wad = total_debt - shrine.get_total_yin();
         (total_debt, surplus)
     }
 }

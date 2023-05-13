@@ -1,3 +1,19 @@
+mod AllocatorRoles {
+    const SET_ALLOCATION: u128 = 1;
+
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATION
+    }
+}
+
+mod EqualizerRoles {
+    const SET_ALLOCATOR: u128 = 1;
+
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATOR
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;
