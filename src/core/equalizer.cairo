@@ -73,7 +73,7 @@ mod Equalizer {
 
     // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
     // according to their respective percentage share.
-    // Assumes the allocation from the Allocator have already been checked:
+    // Assumes the allocation from the Allocator has already been checked:
     // - both arrays of recipient addresses and percentages are of equal length;
     // - there is at least one recipient;
     // - the percentages add up to one Ray.

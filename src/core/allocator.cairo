@@ -8,7 +8,7 @@ mod Allocator {
 
     use aura::utils::access_control::AccessControl;
     use aura::utils::storage_access_impls;
-    use aura::utils::wadray::{Ray, RayZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     struct Storage {
         // Number of recipients in the current allocation
@@ -91,8 +91,10 @@ mod Allocator {
     //
 
     // Helper function to update the allocation.
-    // Checks that there is at least one recipient, and that the number of recipient addresses
-    // matches the number of percentage shares.
+    // Ensures the following:
+    // - both arrays of recipient addresses and percentages are of equal length;
+    // - there is at least one recipient;
+    // - the percentages add up to one Ray.
     fn set_allocation_internal(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
         let mut recipients_span: Span<ContractAddress> = recipients.span();
         let mut percentages_span: Span<Ray> = percentages.span();
@@ -120,6 +122,8 @@ mod Allocator {
                 }
             };
         };
+
+        assert(total_percentage == RAY_ONE, 'sum(percentages) != RAY_ONE');
 
         AllocationUpdated(recipients, percentages);
     }
