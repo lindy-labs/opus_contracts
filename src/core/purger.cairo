@@ -27,10 +27,13 @@ mod Purger {
     use array::{ArrayTrait, SpanTrait};
     use clone::Clone;
     use starknet::{ContractAddress, get_caller_address};
+    use traits::Into;
     use zeroable::Zeroable;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, rdiv_ww, rmul_wr, Wad, WadZeroable};
+    use aura::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, rdiv_ww, rmul_wr, U128IntoRay, Wad, WadZeroable
+    };
 
     use super::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IEmpiricDispatcher, IEmpiricDispatcherTrait,
@@ -169,7 +172,7 @@ mod Purger {
         );
 
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
-        assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
+        assert(updated_trove_ltv <= trove_ltv, 'LTV increased');
 
         (yangs, freed_assets_amts)
     }
@@ -187,7 +190,7 @@ mod Purger {
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert_liquidatable(trove_threshold, trove_ltv);
-        assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
+        assert(trove_ltv.val > MAX_PENALTY_LTV, 'Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
@@ -200,7 +203,7 @@ mod Purger {
                 trove_id,
                 trove_ltv,
                 trove_debt,
-                Ray { val: RAY_ONE },
+                RAY_ONE.into(),
                 absorber.contract_address,
                 absorber.contract_address
             );
@@ -252,7 +255,7 @@ mod Purger {
 
     // Asserts that a trove is liquidatable given its LTV and threshold
     fn assert_liquidatable(threshold: Ray, ltv: Ray) {
-        assert(ltv > threshold, 'PU: Not liquidatable');
+        assert(ltv > threshold, 'Not liquidatable');
     }
 
     // Internal function to handle the paying down of a trove's debt in return for the
@@ -325,8 +328,8 @@ mod Purger {
     //               [CF1]                       [CF2]
     //               [  factor_one  ] - [ factor_two ]
     fn get_close_factor(ltv: Ray) -> Ray {
-        let factor_one: Ray = Ray { val: CF1 } * (ltv * ltv);
-        let factor_two: Ray = Ray { val: 2 * ltv.val + CF2 };
+        let factor_one: Ray = CF1.into() * (ltv * ltv);
+        let factor_two: Ray = (2 * ltv.val + CF2).into();
         factor_one - factor_two
     }
 
@@ -363,10 +366,9 @@ mod Purger {
         }
 
         if trove_ltv.val <= MAX_PENALTY_LTV {
-            let m: Ray = Ray {
-                val: MAX_PENALTY - MIN_PENALTY
-            } / (Ray { val: MAX_PENALTY_LTV } - trove_threshold);
-            let b: Ray = Ray { val: MIN_PENALTY } - (trove_threshold * m);
+            let m: Ray = (MAX_PENALTY - MIN_PENALTY).into()
+                / (MAX_PENALTY_LTV.into() - trove_threshold);
+            let b: Ray = MIN_PENALTY.into() - (trove_threshold * m);
             return (m * trove_ltv) + b;
         }
 
