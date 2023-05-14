@@ -373,7 +373,6 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use option::OptionTrait;
