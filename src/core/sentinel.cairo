@@ -1,8 +1,8 @@
 #[contract]
 mod Sentinel {
     use array::ArrayTrait;
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::get_caller_address;
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::Into;
     use zeroable::Zeroable;
 
