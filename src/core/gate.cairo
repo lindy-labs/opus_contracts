@@ -19,7 +19,7 @@ mod Gate {
     struct Storage {
         shrine: IShrineDispatcher,
         asset: IERC20Dispatcher,
-        live: bool,
+        is_live: bool,
     }
 
     //
@@ -48,7 +48,7 @@ mod Gate {
 
         shrine::write(IShrineDispatcher { contract_address: shrine });
         asset::write(IERC20Dispatcher { contract_address: asset });
-        live::write(true);
+        is_live::write(true);
     }
 
     //
@@ -109,7 +109,7 @@ mod Gate {
 
     #[view]
     fn get_live() -> bool {
-        live::read()
+        is_live::read()
     }
 
     //
@@ -119,8 +119,7 @@ mod Gate {
     #[external]
     fn kill() {
         AccessControl::assert_has_role(GateRoles::KILL);
-        assert(live::read(), 'Already killed');
-        live::write(false);
+        is_live::write(false);
         Killed();
     }
 
@@ -174,7 +173,7 @@ mod Gate {
 
     #[inline(always)]
     fn assert_live() {
-        assert(live::read(), 'Gate is not live');
+        assert(is_live::read(), 'Gate is not live');
     }
 
     #[inline(always)]
@@ -203,12 +202,9 @@ mod Gate {
             }
 
             // Otherwise, scale by difference to match the decimal precision of the asset
-            let scale: u128 = pow10(WAD_DECIMALS - decimals);
-            yang_amt.val / scale
+            yang_amt.val / pow10(WAD_DECIMALS - decimals)
         } else {
-            let total_assets: Wad = get_total_assets_internal(asset).into();
-            let assets: Wad = (yang_amt * total_assets) / total_supply;
-            assets.val
+            ((yang_amt * get_total_assets_internal(asset).into()) / total_supply).val
         }
     }
 
@@ -230,8 +226,7 @@ mod Gate {
             // Otherwise, scale by difference to match `Wad` precision
             fixed_point_to_wad(asset_amt, decimals)
         } else {
-            let total_assets: Wad = get_total_assets_internal(asset).into();
-            (asset_amt.into() * total_supply) / total_assets
+            (asset_amt.into() * total_supply) / get_total_assets_internal(asset).into()
         }
     }
 }

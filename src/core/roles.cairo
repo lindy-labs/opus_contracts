@@ -3,6 +3,7 @@ mod GateRoles {
     const EXIT: u128 = 2;
     const KILL: u128 = 4;
 
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         KILL
     }
