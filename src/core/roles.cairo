@@ -1,6 +1,7 @@
 mod AllocatorRoles {
     const SET_ALLOCATION: u128 = 1;
 
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_ALLOCATION
     }
@@ -9,6 +10,7 @@ mod AllocatorRoles {
 mod EqualizerRoles {
     const SET_ALLOCATOR: u128 = 1;
 
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_ALLOCATOR
     }

@@ -119,6 +119,7 @@ mod Equalizer {
 
     // Helper function to return a tuple of the Shrine's total debt and the surplus
     // calculated based on the Shrine's total debt and the total minted yin.
+    #[inline(always)]
     fn get_debt_and_surplus(shrine: IShrineDispatcher) -> (Wad, Wad) {
         let total_debt: Wad = shrine.get_total_debt();
         let surplus: Wad = total_debt - shrine.get_total_yin();
