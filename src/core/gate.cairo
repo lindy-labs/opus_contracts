@@ -16,6 +16,12 @@ mod Gate {
     use aura::utils::wadray::{fixed_point_to_wad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
     use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
 
+    // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
+    // the first depositor can artificially inflate a share price by depositing the smallest
+    // unit of an asset and then sending assets to the contract directly. This is addressed
+    // in the Sentinel, which enforces a minimum deposit before a yang and its Gate can be 
+    // added to the Shrine.
+
     struct Storage {
         // the Shrine associated with this Gate
         shrine: IShrineDispatcher,
