@@ -24,7 +24,7 @@ mod Sentinel {
         yang_addresses_count: u64,
         // 0-based array of yang addresses added to the Shrine via this Sentinel
         yang_addresses: LegacyMap::<u64, ContractAddress>,
-        // the address of the Shrine associated with this Sentinel
+        // The Shrine associated with this Sentinel
         shrine: IShrineDispatcher,
         // mapping between a yang address and the cap on the yang's asset in the
         // asset's decimals

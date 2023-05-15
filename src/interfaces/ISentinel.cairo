@@ -1,3 +1,4 @@
+use array::ArrayTrait;
 use starknet::ContractAddress;
 
 use aura::utils::wadray::{Ray, Wad};
