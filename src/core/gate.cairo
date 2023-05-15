@@ -17,8 +17,11 @@ mod Gate {
     use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
 
     struct Storage {
+        // the Shrine associated with this Gate
         shrine: IShrineDispatcher,
+        // the ERC-20 asset that is the underlying asset of this Gate's yang
         asset: IERC20Dispatcher,
+        // Keeps track of whether this Gate is live or killed
         is_live: bool,
     }
 
