@@ -188,7 +188,7 @@ mod Gate {
 
     // Helper function to calculate the amount of assets corresponding to the given
     // amount of yang.
-    // Return value is denominated in the decimals of the asset
+    // Return value is denominated in the decimals of the asset.
     fn convert_to_assets(yang_amt: Wad) -> u128 {
         let asset: IERC20Dispatcher = asset::read();
         let total_yang: Wad = get_total_yang_internal(asset.contract_address);
@@ -196,12 +196,13 @@ mod Gate {
         if total_yang.is_zero() {
             let decimals: u8 = asset.decimals();
 
-            // `yang_amt` and asset are both of `Wad` precision
+            // If asset is of `Wad` precision, then `yang_amt` is equivalent to asset amount
             if decimals == WAD_DECIMALS {
                 return yang_amt.val;
             }
 
-            // Otherwise, scale by difference to match the decimal precision of the asset
+            // Otherwise, scale `yang_amt` down by the difference to match the decimal 
+            // precision of the asset
             yang_amt.val / pow10(WAD_DECIMALS - decimals)
         } else {
             ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
@@ -210,7 +211,7 @@ mod Gate {
 
     // Helper function to calculate the amount of yang corresponding to the given
     // amount of assets.
-    // `asset_amt` may not be 18 decimals
+    // `asset_amt` is denominated in the decimals of the asset.
     fn convert_to_yang(asset_amt: u128) -> Wad {
         let asset: IERC20Dispatcher = asset::read();
         let total_yang: Wad = get_total_yang_internal(asset.contract_address);
@@ -218,12 +219,13 @@ mod Gate {
         if total_yang.is_zero() {
             let decimals: u8 = asset.decimals();
 
-            // `asset_amt` and yang are both of `Wad` precision
+            // If asset is of `Wad` precision, then `asset_amt` is equivalent to yang amount
             if decimals == WAD_DECIMALS {
                 return asset_amt.into();
             }
 
-            // Otherwise, scale by difference to match `Wad` precision
+            // Otherwise, scale `asset_amt` up by the difference to match `Wad` precision
+            // of yang
             fixed_point_to_wad(asset_amt, decimals)
         } else {
             (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
