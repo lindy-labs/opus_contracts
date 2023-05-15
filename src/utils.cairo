@@ -1,6 +1,7 @@
 mod access_control;
 mod dummy_utils;
 mod exp;
+mod reentrancy_guard;
 mod storage_access_impls;
 mod types;
 mod u256_conversions;
