@@ -33,7 +33,7 @@ mod FlashMint {
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
-    const FLASH_FEE: u256 = 0x0_u256;
+    const FLASH_FEE: u256 = 0_u256;
 
     struct Storage {
         shrine: IShrineDispatcher, 
@@ -63,7 +63,7 @@ mod FlashMint {
             return (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val.into();
         }
 
-        FLASH_FEE
+        0_u256
     }
 
     #[view]

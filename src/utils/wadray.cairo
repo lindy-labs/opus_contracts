@@ -3,11 +3,11 @@ use option::OptionTrait;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
+use aura::utils::pow::pow10;
 use aura::utils::storage_access_impls;
 use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
 const WAD_DECIMALS: u8 = 18;
-
 const WAD_SCALE: u128 = 1000000000000000000;
 const RAY_SCALE: u128 = 1000000000000000000000000000;
 const WAD_ONE: u128 = 1000000000000000000;
@@ -373,6 +373,12 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
+fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
+    assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
+    let scale: u128 = pow10(WAD_DECIMALS - decimals);
+    (n * scale).into()
+}
+
 #[cfg(test)]
 mod tests {
     use option::OptionTrait;
@@ -382,8 +388,8 @@ mod tests {
 
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        DIFF, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad, WAD_ONE, wdiv_rw,
-        wmul_rw, wmul_wr
+        DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,
+        WAD_ONE, WAD_DECIMALS, WAD_SCALE, wdiv_rw, wmul_rw, wmul_wr
     };
 
 
@@ -728,5 +734,27 @@ mod tests {
         // Test is_non_zero
         assert(!ray_zero.is_non_zero(), 'Value should be 0 #9');
         assert(ray_one.is_non_zero(), 'Value should not be 0 #10');
+    }
+
+    #[test]
+    #[available_gas(2000000)]
+    fn test_fixed_point_to_wad() {
+        // Test zero amount with varying decimals
+        assert(fixed_point_to_wad(0, 0) == 0_u128.into(), 'Incorrect fp>wad conversion #1');
+        assert(fixed_point_to_wad(0, 6) == 0_u128.into(), 'Incorrect fp>wad conversion #2');
+        assert(fixed_point_to_wad(0, 18) == 0_u128.into(), 'Incorrect fp>wad conversion #3');
+
+        // Test non-zero amount with varying decimals
+        assert(fixed_point_to_wad(1, 0) == WAD_SCALE.into(), 'Incorrect fp>wad conversion #4');
+        assert(
+            fixed_point_to_wad(1, 6) == 1000000000000_u128.into(), 'Incorrect fp>wad conversion #5'
+        );
+        assert(fixed_point_to_wad(1, 18) == 1_u128.into(), 'Incorrect fp>wad conversion #6');
+    }
+
+    #[test]
+    #[should_panic(expected: ('More than 18 decimals', ))]
+    fn test_fixed_point_to_wad_fail() {
+        let x: Wad = fixed_point_to_wad(1, WAD_DECIMALS + 1);
     }
 }
