@@ -5,11 +5,9 @@ use aura::utils::wadray::{Wad};
 // TODO: In `Shrine.charge`, perform an early return if shrine is not live. 
 // TODO: Add `Shrine.assert_live()` to `Shrine.withdraw` and `Shrine.melt`:
 //       - Trove owners should not be able to melt or withdraw via Abbot.
+//       - By disabling `Shrine.melt`, liquidations via the Purger will also be disabled.
 // TODO: Add `Shrine.assert_live()` to `Shrine.inject().
 //       - Flashmint and minting debt surplus should not be possible upon shut.
-// TODO: add Shrine is live in Purger functions to prevent liquidations after shut.
-//       We cannot add `Shrine.assert_live()` to `Shrine.seize()` because Caretaker 
-//       needs to access Shrine.seize.
 
 #[abi]
 trait IAbbot {
