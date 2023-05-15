@@ -1409,6 +1409,11 @@ mod Shrine {
         AccessControl::get_admin()
     }
 
+    #[view]
+    fn get_pending_admin() -> ContractAddress {
+        AccessControl::get_pending_admin()
+    }
+
     #[external]
     fn grant_role(role: u128, account: ContractAddress) {
         AccessControl::grant_role(role, account);
