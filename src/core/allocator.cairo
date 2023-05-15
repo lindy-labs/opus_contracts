@@ -34,6 +34,20 @@ mod Allocator {
     fn AllocationUpdated(recipients: Array<ContractAddress>, percentages: Array<Ray>) {}
 
     //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(
+        admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>
+    ) {
+        AccessControl::initializer(admin);
+        AccessControl::grant_role_internal(AllocatorRoles::default_admin_role(), admin);
+
+        set_allocation_internal(recipients, percentages);
+    }
+
+    //
     // Getters
     //
 
@@ -62,20 +76,6 @@ mod Allocator {
     }
 
     //
-    // Constructor
-    //
-
-    #[constructor]
-    fn constructor(
-        admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>
-    ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(AllocatorRoles::default_admin_role(), admin);
-
-        set_allocation_internal(recipients, percentages);
-    }
-
-    //
     // External
     //
 
@@ -98,17 +98,17 @@ mod Allocator {
     // - there is at least one recipient;
     // - the percentages add up to one Ray.
     fn set_allocation_internal(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
+        let recipients_len: u32 = recipients.len();
+        assert(recipients_len != 0, 'No recipients');
+        assert(recipients_len == percentages.len(), 'Array length mismatch');
+
         let mut recipients_span: Span<ContractAddress> = recipients.span();
         let mut percentages_span: Span<Ray> = percentages.span();
-
-        let recipients_len: u32 = recipients_span.len();
-        assert(recipients_len != 0, 'No recipients');
-        assert(recipients_len == percentages_span.len(), 'Array length mismatch');
 
         let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
         loop {
-            match (recipients_span.pop_front()) {
+            match recipients_span.pop_front() {
                 Option::Some(recipient) => {
                     recipients::write(idx, *recipient);
 
@@ -126,6 +126,8 @@ mod Allocator {
         };
 
         assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
+
+        recipients_count::write(recipients_len);
 
         AllocationUpdated(recipients, percentages);
     }

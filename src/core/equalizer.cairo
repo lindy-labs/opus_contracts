@@ -3,13 +3,15 @@ mod Equalizer {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::ContractAddress;
+    use traits::Into;
+    use zeroable::Zeroable;
 
     use aura::core::roles::EqualizerRoles;
 
     use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
-    use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, rmul_wr, U128IntoWad, Wad, WadZeroable};
 
     struct Storage {
         allocator: IAllocatorDispatcher,
@@ -27,6 +29,19 @@ mod Equalizer {
     fn Equalize(recipients: Array<ContractAddress>, percentages: Array<Ray>, amount: Wad) {}
 
     //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress) {
+        AccessControl::initializer(admin);
+        AccessControl::grant_role_internal(EqualizerRoles::default_admin_role(), admin);
+
+        shrine::write(IShrineDispatcher { contract_address: shrine });
+        allocator::write(IAllocatorDispatcher { contract_address: allocator });
+    }
+
+    //
     // Getters
     //
 
@@ -40,19 +55,6 @@ mod Equalizer {
     fn get_surplus() -> Wad {
         let (_, surplus) = get_debt_and_surplus(shrine::read());
         surplus
-    }
-
-    //
-    // Constructor
-    //
-
-    #[constructor]
-    fn constructor(admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(EqualizerRoles::default_admin_role(), admin);
-
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        allocator::write(IAllocatorDispatcher { contract_address: allocator });
     }
 
     //
@@ -82,6 +84,10 @@ mod Equalizer {
         let shrine: IShrineDispatcher = shrine::read();
         let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
+        if surplus.is_zero() {
+            return 0_u128.into();
+        }
+
         let allocator: IAllocatorDispatcher = allocator::read();
         let (recipients, percentages) = allocator.get_allocation();
 
@@ -90,7 +96,7 @@ mod Equalizer {
         let mut minted_surplus: Wad = WadZeroable::zero();
 
         loop {
-            match (recipients_span.pop_front()) {
+            match recipients_span.pop_front() {
                 Option::Some(recipient) => {
                     let amount: Wad = rmul_wr(surplus, *(percentages_span.pop_front().unwrap()));
 
