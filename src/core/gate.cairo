@@ -191,9 +191,9 @@ mod Gate {
     // Return value is denominated in the decimals of the asset
     fn convert_to_assets(yang_amt: Wad) -> u128 {
         let asset: IERC20Dispatcher = asset::read();
-        let total_supply: Wad = get_total_yang_internal(asset.contract_address);
+        let total_yang: Wad = get_total_yang_internal(asset.contract_address);
 
-        if total_supply.is_zero() {
+        if total_yang.is_zero() {
             let decimals: u8 = asset.decimals();
 
             // `yang_amt` and asset are both of `Wad` precision
@@ -204,7 +204,7 @@ mod Gate {
             // Otherwise, scale by difference to match the decimal precision of the asset
             yang_amt.val / pow10(WAD_DECIMALS - decimals)
         } else {
-            ((yang_amt * get_total_assets_internal(asset).into()) / total_supply).val
+            ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
         }
     }
 
@@ -213,9 +213,9 @@ mod Gate {
     // `asset_amt` may not be 18 decimals
     fn convert_to_yang(asset_amt: u128) -> Wad {
         let asset: IERC20Dispatcher = asset::read();
-        let total_supply: Wad = get_total_yang_internal(asset.contract_address);
+        let total_yang: Wad = get_total_yang_internal(asset.contract_address);
 
-        if total_supply.is_zero() {
+        if total_yang.is_zero() {
             let decimals: u8 = asset.decimals();
 
             // `asset_amt` and yang are both of `Wad` precision
@@ -226,7 +226,7 @@ mod Gate {
             // Otherwise, scale by difference to match `Wad` precision
             fixed_point_to_wad(asset_amt, decimals)
         } else {
-            (asset_amt.into() * total_supply) / get_total_assets_internal(asset).into()
+            (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
         }
     }
 }
