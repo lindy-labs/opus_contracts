@@ -1,3 +1,17 @@
+mod AbsorberRoles {
+    const COMPENSATE: u128 = 1;
+    const KILL: u128 = 2;
+    const SET_PURGER: u128 = 4;
+    const SET_REMOVAL_LIMIT: u128 = 8;
+    const SET_REWARD: u128 = 16;
+    const UPDATE: u128 = 32;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_PURGER + SET_REMOVAL_LIMIT + SET_REWARD + SET_REWARD
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;

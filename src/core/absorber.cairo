@@ -9,6 +9,7 @@ mod Absorber {
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::utils::access_control::AccessControl;
     use aura::utils::storage_access_impls;
     use aura::utils::types::{AssetApportion, Provision, Request, Reward};
     use aura::utils::u256_conversions;
@@ -182,8 +183,8 @@ mod Absorber {
         sentinel_addr: ContractAddress,
         limit: Ray
     ) {
-        //AccessControl.initializer(admin);
-        //AccessControl._grant_role(AbsorberRoles.DEFAULT_ABSORBER_ADMIN_ROLE, admin);
+        AccessControl::initializer(admin);
+        AccessControl::grant_role_internal(AbsorberRoles::DEFAULT_ABSORBER_ADMIN_ROLE, admin);
 
         shrine_address::write(shrine_addr);
         sentinel_address::write(sentinel_addr);
@@ -337,7 +338,7 @@ mod Absorber {
 
     #[external]
     fn set_purger(purger_addr: ContractAddress) {
-        //AccessControl.assert_has_role(AbsorberRoles.SET_PURGER);
+        AccessControl::assert_has_role(AbsorberRoles::SET_PURGER);
 
         assert(purger_addr.is_non_zero(), 'AB: Address cannot be 0');
 
@@ -359,7 +360,7 @@ mod Absorber {
 
     #[external]
     fn set_reward(asset_addr: ContractAddress, blesser_addr: ContractAddress, is_active: bool) {
-        //AccessControl.assert_has_role(AbsorberRoles.SET_REWARD);
+        AccessControl::assert_has_role(AbsorberRoles::SET_REWARD);
 
         assert(asset_addr.is_non_zero() & blesser_addr.is_non_zero(), 'AB: Address cannot be 0');
 
@@ -386,7 +387,7 @@ mod Absorber {
 
     #[external]
     fn set_removal_limit(limit: Ray) {
-        //AccessControl.assert_has_role(AbsorberRoles.SET_REMOVAL_LIMIT);
+        AccessControl::assert_has_role(AbsorberRoles::SET_REMOVAL_LIMIT);
         set_removal_limit_internal(limit);
     }
 
@@ -576,7 +577,7 @@ mod Absorber {
     // Update assets received after an absorption
     #[external]
     fn update(assets: Array<ContractAddress>, asset_amts: Array<u128>) {
-        //AccessControl.assert_has_role(AbsorberRoles.UPDATE);
+        AccessControl::assert_has_role(AbsorberRoles::UPDATE);
         let assets_span: Span<ContractAddress> = assets.span();
         let asset_amts_span: Span<u128> = asset_amts.span();
 
@@ -660,7 +661,7 @@ mod Absorber {
 
     #[external]
     fn kill() {
-        //AccessControl.assert_has_role(AbsorberRoles.KILL);
+        AccessControl::assert_has_role(AbsorberRoles::KILL);
         is_live::write(false);
         Killed();
     }
@@ -669,7 +670,7 @@ mod Absorber {
     fn compensate(
         recipient: ContractAddress, assets: Array<ContractAddress>, asset_amts: Array<u128>
     ) {
-        //AccessControl.assert_has_role(AbsorberRoles.COMPENSATE);
+        AccessControl::assert_has_role(AbsorberRoles::COMPENSATE);
         transfer_assets(recipient, assets, asset_amts);
         Compensate(recipient, assets, asset_amts);
     }
@@ -869,5 +870,44 @@ mod Absorber {
         let assets: Array<ContractAddress> = ISentinelDispatcher {
             contract_address: sentinel_address::read()
         }.get_yang_addresses();
+    }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn change_admin(new_admin: ContractAddress) {
+        AccessControl::change_admin(new_admin);
     }
 }
