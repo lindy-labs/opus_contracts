@@ -13,6 +13,7 @@ mod Sentinel {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::u256_conversions::U128IntoU256;
+    use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
     const INITIAL_DEPOSIT_AMT: u128 = 1000;
@@ -44,8 +45,8 @@ mod Sentinel {
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role(SentinelRoles::default_admin_role(), admin);
-        shrine::write(shrine);
+        AccessControl::grant_role_internal(SentinelRoles::default_admin_role(), admin);
+        shrine::write(IShrineDispatcher { contract_address: shrine });
     }
 
     //
@@ -128,12 +129,12 @@ mod Sentinel {
         gate: ContractAddress
     ) {
         AccessControl::assert_has_role(SentinelRoles::ADD_YANG);
-        assert(yang.is_non_zero(), 'Yang can\'t be zero address');
-        assert(gate.is_non_zero(), 'Gate can\'t be zero address');
+        assert(yang.is_non_zero(), 'Yang cannott be zero address');
+        assert(gate.is_non_zero(), 'Gate cannot be zero address');
         assert(yang_to_gate::read(yang).contract_address.is_zero(), 'Yang already added');
 
         let gate = IGateDispatcher { contract_address: gate };
-        assert(gate.get_asset() == yang, 'Yang doesn\'t match gate asset');
+        assert(gate.get_asset() == yang, 'Yang does not match gate asset');
 
         let yang_count: u64 = yang_addresses_count::read();
         yang_addresses_count::write(yang_count + 1);
@@ -176,7 +177,7 @@ mod Sentinel {
     fn enter(yang: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
         AccessControl::assert_has_role(SentinelRoles::ENTER);
 
-        let gate: IGateDispatcher = IGateDispatcher { contract_address: yang_to_gate::read(yang) };
+        let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
 
         let yang_max: u128 = yang_asset_max::read(yang);
@@ -191,7 +192,7 @@ mod Sentinel {
     fn exit(yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
         AccessControl::assert_has_role(SentinelRoles::EXIT);
 
-        let gate: IGateDispatcher = IGateDispatcher { contract_address: yang_to_gate::read(yang) };
+        let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
 
         gate.exit(user, trove_id, yang_amt)
