@@ -129,7 +129,7 @@ mod Sentinel {
         gate: ContractAddress
     ) {
         AccessControl::assert_has_role(SentinelRoles::ADD_YANG);
-        assert(yang.is_non_zero(), 'Yang cannott be zero address');
+        assert(yang.is_non_zero(), 'Yang cannot be zero address');
         assert(gate.is_non_zero(), 'Gate cannot be zero address');
         assert(yang_to_gate::read(yang).contract_address.is_zero(), 'Yang already added');
 
