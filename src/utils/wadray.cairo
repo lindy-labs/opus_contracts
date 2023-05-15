@@ -741,15 +741,15 @@ mod tests {
     fn test_fixed_point_to_wad() {
         // Test zero amount with varying decimals
         assert(fixed_point_to_wad(0, 0) == 0_u128.into(), 'Incorrect fp>wad conversion #1');
-        assert(fixed_point_to_wad(0, 6) == 0_u128.into(), 'Incorrect fp>wad conversion #1');
-        assert(fixed_point_to_wad(0, 18) == 0_u128.into(), 'Incorrect fp>wad conversion #1');
+        assert(fixed_point_to_wad(0, 6) == 0_u128.into(), 'Incorrect fp>wad conversion #2');
+        assert(fixed_point_to_wad(0, 18) == 0_u128.into(), 'Incorrect fp>wad conversion #3');
 
         // Test non-zero amount with varying decimals
-        assert(fixed_point_to_wad(1, 0) == WAD_SCALE.into(), 'Incorrect fp>wad conversion #1');
+        assert(fixed_point_to_wad(1, 0) == WAD_SCALE.into(), 'Incorrect fp>wad conversion #4');
         assert(
-            fixed_point_to_wad(1, 6) == 1000000000000_u128.into(), 'Incorrect fp>wad conversion #1'
+            fixed_point_to_wad(1, 6) == 1000000000000_u128.into(), 'Incorrect fp>wad conversion #5'
         );
-        assert(fixed_point_to_wad(1, 18) == 1_u128.into(), 'Incorrect fp>wad conversion #1');
+        assert(fixed_point_to_wad(1, 18) == 1_u128.into(), 'Incorrect fp>wad conversion #6');
     }
 
     #[test]
