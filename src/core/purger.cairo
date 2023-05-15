@@ -60,9 +60,13 @@ mod Purger {
     const COMPENSATION_PCT: u128 = 3;
 
     struct Storage {
+        // the Shrine associated with this Purger
         shrine: IShrineDispatcher,
+        // the Sentinel associated with the Shrine and this Purger
         sentinel: ISentinelDispatcher,
+        // the Absorber associated with this Purger
         absorber: IAbsorberDispatcher,
+        // the Oracle associated with the Shrine and this Purger
         oracle: IEmpiricDispatcher,
     }
 
@@ -177,10 +181,11 @@ mod Purger {
         (yangs, freed_assets_amts)
     }
 
-    // Performs stability pool liquidations to pay down a trove's debt in full and transfer the freed collateral
-    // to the stability pool. If the stability pool does not have sufficient yin, the trove's debt and collateral
-    // will be proportionally redistributed among all troves containing the trove's collateral.
-    // - The amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
+    // Performs stability pool liquidations to pay down a trove's debt in full and transfer the 
+    // freed collateral to the stability pool. If the stability pool does not have sufficient yin, 
+    // the trove's debt and collateral will be proportionally redistributed among all troves 
+    // containing the trove's collateral.
+    // - Amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
     // Reverts if the trove's LTV is not above the max penalty LTV
     // - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
     // Returns a tuple of an ordered array of yang addresses and an ordered array of amount of asset freed
@@ -260,7 +265,8 @@ mod Purger {
 
     // Internal function to handle the paying down of a trove's debt in return for the
     // corresponding freed collateral to be sent to the recipient address
-    // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral asset amounts
+    // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral 
+    // asset amounts
     fn purge(
         shrine: ContractAddress,
         trove_id: u64,
