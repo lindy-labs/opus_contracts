@@ -8,6 +8,7 @@ mod Allocator {
     use aura::core::roles::AllocatorRoles;
 
     use aura::utils::access_control::AccessControl;
+    use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access_impls;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
@@ -31,7 +32,7 @@ mod Allocator {
     //
 
     #[event]
-    fn AllocationUpdated(recipients: Array<ContractAddress>, percentages: Array<Ray>) {}
+    fn AllocationUpdated(recipients: Span<ContractAddress>, percentages: Span<Ray>) {}
 
     //
     // Constructor
@@ -39,7 +40,7 @@ mod Allocator {
 
     #[constructor]
     fn constructor(
-        admin: ContractAddress, recipients: Array<ContractAddress>, percentages: Array<Ray>
+        admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
     ) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(AllocatorRoles::default_admin_role(), admin);
@@ -54,7 +55,7 @@ mod Allocator {
     // Returns a tuple of ordered arrays of recipients' addresses and their respective
     // percentage share of newly minted surplus debt.
     #[view]
-    fn get_allocation() -> (Array<ContractAddress>, Array<Ray>) {
+    fn get_allocation() -> (Span<ContractAddress>, Span<Ray>) {
         let mut recipients: Array<ContractAddress> = ArrayTrait::new();
         let mut percentages: Array<Ray> = ArrayTrait::new();
 
@@ -72,7 +73,7 @@ mod Allocator {
             idx += 1;
         };
 
-        (recipients, percentages)
+        (recipients.span(), percentages.span())
     }
 
     //
@@ -82,7 +83,7 @@ mod Allocator {
     // Update the recipients and their respective percentage share of newly minted surplus debt
     // by overwriting the existing values in `recipients` and `percentages`.
     #[external]
-    fn set_allocation(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
+    fn set_allocation(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
         AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
 
         set_allocation_internal(recipients, percentages);
@@ -97,22 +98,19 @@ mod Allocator {
     // - both arrays of recipient addresses and percentages are of equal length;
     // - there is at least one recipient;
     // - the percentages add up to one Ray.
-    fn set_allocation_internal(recipients: Array<ContractAddress>, percentages: Array<Ray>) {
+    fn set_allocation_internal(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
         assert(recipients_len != 0, 'No recipients');
         assert(recipients_len == percentages.len(), 'Array length mismatch');
 
-        let mut recipients_span: Span<ContractAddress> = recipients.span();
-        let mut percentages_span: Span<Ray> = percentages.span();
-
         let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
         loop {
-            match recipients_span.pop_front() {
+            match recipients.pop_front() {
                 Option::Some(recipient) => {
                     recipients::write(idx, *recipient);
 
-                    let percentage: Ray = *(percentages_span.pop_front().unwrap());
+                    let percentage: Ray = *(percentages.pop_front().unwrap());
                     percentages::write(*recipient, percentage);
 
                     total_percentage += percentage;

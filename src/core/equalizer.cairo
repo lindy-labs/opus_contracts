@@ -1,6 +1,6 @@
 #[contract]
 mod Equalizer {
-    use array::{ArrayTrait, SpanTrait};
+    use array::{SpanTrait};
     use option::OptionTrait;
     use starknet::ContractAddress;
     use traits::Into;
@@ -11,6 +11,7 @@ mod Equalizer {
     use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
+    use aura::utils::serde::SpanSerde;
     use aura::utils::wadray::{Ray, rmul_wr, U128IntoWad, Wad, WadZeroable};
 
     struct Storage {
@@ -26,7 +27,7 @@ mod Equalizer {
     fn AllocatorUpdated(old_address: ContractAddress, new_address: ContractAddress) {}
 
     #[event]
-    fn Equalize(recipients: Array<ContractAddress>, percentages: Array<Ray>, amount: Wad) {}
+    fn Equalize(recipients: Span<ContractAddress>, percentages: Span<Ray>, amount: Wad) {}
 
     //
     // Constructor
@@ -89,16 +90,14 @@ mod Equalizer {
         }
 
         let allocator: IAllocatorDispatcher = allocator::read();
-        let (recipients, percentages) = allocator.get_allocation();
+        let (mut recipients, mut percentages) = allocator.get_allocation();
 
-        let mut recipients_span: Span<ContractAddress> = recipients.span();
-        let mut percentages_span: Span<Ray> = percentages.span();
         let mut minted_surplus: Wad = WadZeroable::zero();
 
         loop {
-            match recipients_span.pop_front() {
+            match recipients.pop_front() {
                 Option::Some(recipient) => {
-                    let amount: Wad = rmul_wr(surplus, *(percentages_span.pop_front().unwrap()));
+                    let amount: Wad = rmul_wr(surplus, *(percentages.pop_front().unwrap()));
 
                     shrine.inject(*recipient, amount);
                     minted_surplus += amount;
