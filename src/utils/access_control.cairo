@@ -21,6 +21,10 @@ mod AccessControl {
         ContractAddress, get_caller_address, Felt252TryIntoContractAddress, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
+    use starknet::storage_access::{
+        StorageAccessContractAddress, StorageAccessU128, StorageBaseAddress,
+        storage_base_address_from_felt252, storage_base_address_const
+    };
     use traits::{Into, TryInto};
 
     fn initializer(admin: ContractAddress) {
@@ -133,58 +137,48 @@ mod AccessControl {
 
     // the read/write via syscalls can go away once we have contract composability in C1
 
-    // get_storage_var_address('__accesscontrol_admin')
-    const ADMIN_STORAGE_BASE_ADDR: felt252 =
-        0x35dbc6d52d4cf954e68fe9f892062e268d9521a19861f1259bafa16de069420;
-
-    // get_storage_var_address('__accesscontrol_pending_admin')
-    const PENDING_ADMIN_STORAGE_BASE_ADDR: felt252 =
-        0x24ad2cfdcaf266992a1f4ef0c3913021bd49409632edab775649f6ee7f650a9;
-
     // get_storage_var_address('__accesscontrol_roles')
     const ROLES_STORAGE_BASE_ADDR: felt252 =
         0x2eab78cbab284277f4538b0eec4126e90517b4be096f191d28577583f4b6046;
 
+    // get_storage_var_address('__accesscontrol_admin')
+    fn admin_storage_base_addr() -> StorageBaseAddress {
+        storage_base_address_const::<0x35dbc6d52d4cf954e68fe9f892062e268d9521a19861f1259bafa16de069420>()
+    }
+
+    // get_storage_var_address('__accesscontrol_pending_admin')
+    fn pending_admin_storage_base_addr() -> StorageBaseAddress {
+        storage_base_address_const::<0x24ad2cfdcaf266992a1f4ef0c3913021bd49409632edab775649f6ee7f650a9>()
+    }
+
     fn read_admin() -> ContractAddress {
-        let addr = starknet::storage_address_try_from_felt252(ADMIN_STORAGE_BASE_ADDR).unwrap();
-        starknet::storage_read_syscall(0, addr).unwrap_syscall().try_into().unwrap()
+        StorageAccessContractAddress::read(0, admin_storage_base_addr()).unwrap_syscall()
     }
 
     fn write_admin(admin: ContractAddress) {
-        let addr = starknet::storage_address_try_from_felt252(ADMIN_STORAGE_BASE_ADDR).unwrap();
-        starknet::storage_write_syscall(0, addr, admin.into()).unwrap_syscall();
+        StorageAccessContractAddress::write(0, admin_storage_base_addr(), admin);
     }
 
     fn read_pending_admin() -> ContractAddress {
-        let addr = starknet::storage_address_try_from_felt252(
-            PENDING_ADMIN_STORAGE_BASE_ADDR
-        ).unwrap();
-        starknet::storage_read_syscall(0, addr).unwrap_syscall().try_into().unwrap()
+        StorageAccessContractAddress::read(0, pending_admin_storage_base_addr()).unwrap_syscall()
     }
 
     fn write_pending_admin(admin: ContractAddress) {
-        let addr = starknet::storage_address_try_from_felt252(
-            PENDING_ADMIN_STORAGE_BASE_ADDR
-        ).unwrap();
-        starknet::storage_write_syscall(0, addr, admin.into()).unwrap_syscall();
+        StorageAccessContractAddress::write(0, pending_admin_storage_base_addr(), admin);
     }
 
     fn read_roles(account: ContractAddress) -> u128 {
         let base = starknet::storage_base_address_from_felt252(
             hash::LegacyHash::hash(ROLES_STORAGE_BASE_ADDR, account)
         );
-        starknet::storage_read_syscall(
-            0, starknet::storage_address_from_base(base)
-        ).unwrap_syscall().try_into().unwrap()
+        StorageAccessU128::read(0, base).unwrap_syscall()
     }
 
     fn write_roles(account: ContractAddress, roles: u128) {
         let base = starknet::storage_base_address_from_felt252(
             hash::LegacyHash::hash(ROLES_STORAGE_BASE_ADDR, account)
         );
-        starknet::storage_write_syscall(
-            0, starknet::storage_address_from_base(base), roles.into()
-        ).unwrap_syscall();
+        StorageAccessU128::write(0, base, roles);
     }
 
     //
