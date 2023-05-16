@@ -61,6 +61,10 @@ mod Allocator {
 
         let mut idx: u32 = 0;
         let recipients_count: u32 = recipients_count::read();
+
+        // TODO: this can be further refactored by moving the return values into the 
+        //       break statement once https://github.com/starkware-libs/cairo/issues/2816
+        //       is resolved.
         loop {
             if idx == recipients_count {
                 break ();
