@@ -213,7 +213,7 @@ mod AccessControl {
         let mut data = ArrayTrait::new();
         data.append(event_data_1);
 
-        match (event_data_2) {
+        match event_data_2 {
             Option::Some(i) => {
                 data.append(i);
             },
