@@ -1,3 +1,12 @@
+mod CaretakerRoles {
+    const SHUT: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SHUT
+    }
+}
+
 mod GateRoles {
     const ENTER: u128 = 1;
     const EXIT: u128 = 2;
