@@ -42,9 +42,7 @@ mod Caretaker {
     use aura::utils::access_control::AccessControl;
     use aura::utils::storage_access_impls;
     use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
-    use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, U128IntoRay, U128IntoWad, rdiv_ww, rmul_rw, Wad, WadZeroable
-    };
+    use aura::utils::wadray::{Ray, RAY_ONE, U128IntoRay, U128IntoWad, rdiv_ww, rmul_rw, Wad};
 
     use super::{
         IAbbotDispatcher, IAbbotDispatcherTrait, IEqualizerDispatcher, IEqualizerDispatcherTrait,
@@ -284,6 +282,12 @@ mod Caretaker {
                     let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
                     let caretaker_balance: Wad = caretaker_balance.into();
                     let asset_amt: Wad = rmul_rw(pct_to_reclaim, caretaker_balance);
+
+                    if asset_amt.is_zero() {
+                        asset_amts.append(0_u128);
+                        continue;
+                    }
+
                     let asset_amt_u256: u256 = asset_amt.val.into();
 
                     let success: bool = asset.transfer(caller, asset_amt_u256);
