@@ -17,7 +17,7 @@ mod Shrine {
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS};
 
     //
     // Constants
@@ -197,8 +197,7 @@ mod Shrine {
         // ERC20
         yin_name::write(name);
         yin_symbol::write(symbol);
-        // TODO: replace with `WAD_DECIMALS` constant from wadray library
-        yin_decimals::write(18);
+        yin_decimals::write(WAD_DECIMALS);
     }
 
     //
