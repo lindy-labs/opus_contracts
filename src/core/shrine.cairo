@@ -1,21 +1,23 @@
 #[contract]
 mod Shrine {
     use array::{ArrayTrait, SpanTrait};
-    use box::BoxTrait;
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
-    use starknet::{BlockInfo, get_caller_address};
+    use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
+    use aura::core::roles::ShrineRoles;
+
+    use aura::utils::access_control::AccessControl;
     use aura::utils::exp::exp;
     use aura::utils::storage_access_impls;
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_PERCENT, RAY_ONE, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS};
 
     //
     // Constants
@@ -175,10 +177,10 @@ mod Shrine {
 
     #[constructor]
     fn constructor(admin: ContractAddress, name: felt252, symbol: felt252) {
-        //AccessControl::initializer(admin);
+        AccessControl::initializer(admin);
 
         // Grant admin permission
-        //AccessControl::_grant_role(ShrineRoles.DEFAULT_SHRINE_ADMIN_ROLE, admin);
+        AccessControl::grant_role_internal(ShrineRoles::default_admin_role(), admin);
 
         is_live::write(true);
 
@@ -195,8 +197,7 @@ mod Shrine {
         // ERC20
         yin_name::write(name);
         yin_symbol::write(symbol);
-        // TODO: replace with `WAD_DECIMALS` constant from wadray library
-        yin_decimals::write(18);
+        yin_decimals::write(WAD_DECIMALS);
     }
 
     //
@@ -367,7 +368,7 @@ mod Shrine {
         initial_rate: Ray,
         initial_yang_amt: Wad
     ) {
-        //AccessControl.assert_has_role(ShrineRoles.ADD_YANG);
+        AccessControl::assert_has_role(ShrineRoles::ADD_YANG);
 
         assert(yang_ids::read(yang) == 0, 'Yang already exists');
 
@@ -416,7 +417,7 @@ mod Shrine {
 
     #[external]
     fn set_ceiling(new_ceiling: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.SET_CEILING);
+        AccessControl::assert_has_role(ShrineRoles::SET_CEILING);
         debt_ceiling::write(new_ceiling);
 
         //Event emission
@@ -425,7 +426,7 @@ mod Shrine {
 
     #[external]
     fn set_threshold(yang: ContractAddress, new_threshold: Ray) {
-        //AccessControl.assert_has_role(ShrineRoles.SET_THRESHOLD);
+        AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
         assert(new_threshold.val <= MAX_THRESHOLD, 'Threshold > max');
         thresholds::write(get_valid_yang_id(yang), new_threshold);
@@ -436,7 +437,7 @@ mod Shrine {
 
     #[external]
     fn kill() {
-        //AccessControl.assert_has_role(ShrineRoles.KILL);
+        AccessControl::assert_has_role(ShrineRoles::KILL);
         is_live::write(false);
 
         // Event emission
@@ -450,7 +451,7 @@ mod Shrine {
     // Set the price of the specified Yang for the current interval interval
     #[external]
     fn advance(yang: ContractAddress, price: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.ADVANCE);
+        AccessControl::assert_has_role(ShrineRoles::ADVANCE);
 
         assert(price.is_non_zero(), 'Cannot set a price to 0');
 
@@ -478,7 +479,7 @@ mod Shrine {
     // Sets the multiplier for the current interval
     #[external]
     fn set_multiplier(new_multiplier: Ray) {
-        //AccessControl.assert_has_role(ShrineRoles.SET_MULTIPLIER);
+        AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
 
         // TODO: Should this be here? Maybe multiplier should be able to go to zero
         assert(new_multiplier.is_non_zero(), 'Cannot set multiplier to zero');
@@ -506,7 +507,7 @@ mod Shrine {
     // yangs's length must equal the number of yangs available.
     #[external]
     fn update_rates(yangs: Array<ContractAddress>, new_rates: Array<Ray>) {
-        //AccessControl.assert_has_role(ShrineRoles.UPDATE_RATES);
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_RATES);
 
         let mut yangs_span: Span<ContractAddress> = yangs.span();
         let mut new_rates_span: Span<Ray> = new_rates.span();
@@ -579,7 +580,7 @@ mod Shrine {
     // Deposit a specified amount of a Yang into a Trove
     #[external]
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.DEPOSIT);
+        AccessControl::assert_has_role(ShrineRoles::DEPOSIT);
 
         assert_live();
 
@@ -604,7 +605,7 @@ mod Shrine {
     // Withdraw a specified amount of a Yang from a Trove with trove safety check
     #[external]
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.WITHDRAW);
+        AccessControl::assert_has_role(ShrineRoles::WITHDRAW);
         withdraw_internal(yang, trove_id, amount);
         assert_healthy(trove_id);
     }
@@ -612,7 +613,7 @@ mod Shrine {
     // Mint a specified amount of synthetic and attribute the debt to a Trove
     #[external]
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.FORGE);
+        AccessControl::assert_has_role(ShrineRoles::FORGE);
         assert_live();
 
         charge(trove_id);
@@ -642,7 +643,7 @@ mod Shrine {
     // Repay a specified amount of synthetic and deattribute the debt from a Trove
     #[external]
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.MELT);
+        AccessControl::assert_has_role(ShrineRoles::MELT);
 
         // Charge interest
         charge(trove_id);
@@ -677,13 +678,13 @@ mod Shrine {
     // even if the trove is still unsafe.
     #[external]
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.SEIZE);
+        AccessControl::assert_has_role(ShrineRoles::SEIZE);
         withdraw_internal(yang, trove_id, amount);
     }
 
     #[external]
     fn redistribute(trove_id: u64) {
-        //AccessControl.assert_has_role(ShrineRoles.REDISTRIBUTE);
+        AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
         let current_interval: u64 = now();
         let (_, trove_value) = get_trove_threshold_and_value_internal(trove_id, current_interval);
@@ -714,14 +715,14 @@ mod Shrine {
     // Mint a specified amount of synthetic without attributing the debt to a Trove
     #[external]
     fn inject(receiver: ContractAddress, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.INJECT);
+        AccessControl::assert_has_role(ShrineRoles::INJECT);
         forge_internal(receiver, amount);
     }
 
     // Repay a specified amount of synthetic without deattributing the debt from a Trove
     #[external]
     fn eject(burner: ContractAddress, amount: Wad) {
-        //AccessControl.assert_has_role(ShrineRoles.EJECT);
+        AccessControl::assert_has_role(ShrineRoles::EJECT);
         melt_internal(burner, amount);
     }
 
@@ -1386,5 +1387,44 @@ mod Shrine {
         if current_allowance != BoundedU256::max() {
             approve_internal(owner, spender, current_allowance - amount);
         }
+    }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn change_admin(new_admin: ContractAddress) {
+        AccessControl::change_admin(new_admin);
     }
 }
