@@ -15,7 +15,10 @@ mod Equalizer {
     use aura::utils::wadray::{Ray, rmul_wr, U128IntoWad, Wad, WadZeroable};
 
     struct Storage {
+        // the Allocator to read the current allocation of recipients of any minted
+        // surplus debt, and their respective percentages
         allocator: IAllocatorDispatcher,
+        // the Shrine that this Equalizer mints surplus debt for
         shrine: IShrineDispatcher,
     }
 
