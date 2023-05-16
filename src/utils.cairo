@@ -1,5 +1,4 @@
 mod access_control;
-mod dummy_utils;
 mod exp;
 mod pow;
 mod reentrancy_guard;
