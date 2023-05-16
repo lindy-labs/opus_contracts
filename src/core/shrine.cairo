@@ -17,7 +17,7 @@ mod Shrine {
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS};
 
     //
     // Constants
@@ -197,8 +197,7 @@ mod Shrine {
         // ERC20
         yin_name::write(name);
         yin_symbol::write(symbol);
-        // TODO: replace with `WAD_DECIMALS` constant from wadray library
-        yin_decimals::write(18);
+        yin_decimals::write(WAD_DECIMALS);
     }
 
     //
@@ -1409,6 +1408,11 @@ mod Shrine {
         AccessControl::get_admin()
     }
 
+    #[view]
+    fn get_pending_admin() -> ContractAddress {
+        AccessControl::get_pending_admin()
+    }
+
     #[external]
     fn grant_role(role: u128, account: ContractAddress) {
         AccessControl::grant_role(role, account);
@@ -1425,7 +1429,12 @@ mod Shrine {
     }
 
     #[external]
-    fn change_admin(new_admin: ContractAddress) {
-        AccessControl::change_admin(new_admin);
+    fn set_pending_admin(new_admin: ContractAddress) {
+        AccessControl::set_pending_admin(new_admin);
+    }
+
+    #[external]
+    fn accept_admin() {
+        AccessControl::accept_admin();
     }
 }
