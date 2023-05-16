@@ -1,4 +1,4 @@
-use array::ArrayTrait;
+use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde::SpanSerde;
