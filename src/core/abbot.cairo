@@ -1,6 +1,3 @@
-// TODO: check match w/ C0 impl
-//       check if arg types match
-
 #[contract]
 mod Abbot {
     use array::{ArrayTrait, SpanTrait};
@@ -12,13 +9,27 @@ mod Abbot {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::utils::wadray::{Wad};
 
-    // TODO: inline docs
     struct Storage {
+        // Shrine associated with this Abbot
         shrine: IShrineDispatcher,
+        // Sentinel associated with this Abbot
         sentinel: ISentinelDispatcher,
+        // total number of troves in a Shrine; monotonically increasing
+        // also used to calculate the next ID (count+1) when opening a new trove
+        // in essence, it serves as an index / primary key in a SQL table
         troves_count: u64,
+        // the total number of troves of a particular address;
+        // used to build the tuple key of `user_troves` variable
+        // (user) -> (number of troves opened)
         user_troves_count: LegacyMap<ContractAddress, u64>,
+        // a mapping of an address and index to a trove ID
+        // belonging to this address; the index is a number from 0
+        // up to `user_trove_count` for that address
+        // (user, idx) -> (trove ID)
         user_troves: LegacyMap<(ContractAddress, u64), u64>,
+        // a mapping of a trove ID to the contract address which
+        // was used to open the trove
+        // (trove ID) -> (owner)
         trove_owner: LegacyMap<u64, ContractAddress>,
     }
 
@@ -28,6 +39,13 @@ mod Abbot {
 
     #[event]
     fn TroveOpened(user: ContractAddress, trove_id: u64) {}
+
+    #[event]
+    fn TroveClosed(trove_id: u64) {}
+
+    //
+    // Constructor
+    //
 
     #[constructor]
     fn constructor(shrine: ContractAddress, sentinel: ContractAddress) {
@@ -47,7 +65,7 @@ mod Abbot {
     #[view]
     fn get_user_trove_ids(user: ContractAddress) -> Span<u64> {
         let mut trove_ids: Array<u64> = ArrayTrait::new();
-        let user_troves_count = troves_count::read();
+        let user_troves_count = user_troves_count::read(user);
         let mut idx = 0;
 
         loop {
@@ -68,6 +86,8 @@ mod Abbot {
     // External functions
     //
 
+    // create a new trove in the system with Yang deposits, 
+    // optionally forging Yin in the same operation (if forge_amount is 0, no Yin is created)
     #[external]
     fn open_trove(forge_amount: Wad, mut yangs: Span<ContractAddress>, mut amounts: Span<u128>) {
         assert(yangs.len() != 0_usize, 'no yangs');
@@ -86,6 +106,8 @@ mod Abbot {
 
         let sentinel = sentinel::read();
         let shrine = shrine::read();
+
+        // deposit all requested Yangs into the system
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -99,23 +121,27 @@ mod Abbot {
             };
         };
 
-        shrine::read().forge(user, new_trove_id, forge_amount);
+        // forge Yin
+        shrine.forge(user, new_trove_id, forge_amount);
 
         TroveOpened(user, new_trove_id);
     }
 
+    // close a trove, repaying its debt in full and withdrawing all the Yangs
     #[external]
     fn close_trove(trove_id: u64) {
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
         let shrine = shrine::read();
+        // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
         shrine.melt(user, trove_id, Wad { val: integer::BoundedInt::max() });
 
         let sentinel = sentinel::read();
         let yang_addresses_count = sentinel.get_yang_addresses_count();
 
         let mut idx = 0;
+        // withdraw each and every Yang belonging to the trove from the system
         loop {
             if idx == yang_addresses_count {
                 break ();
@@ -131,9 +157,11 @@ mod Abbot {
                 continue;
             }
 
-            sentinel.exit(yang, user, trove_id, yang_amount);
             shrine.withdraw(yang, trove_id, yang_amount);
+            sentinel.exit(yang, user, trove_id, yang_amount);
         };
+
+        TroveClosed(trove_id);
     }
 
     #[external]
@@ -141,8 +169,10 @@ mod Abbot {
         assert(yang.is_non_zero(), 'yang address cannot be zero');
         assert(trove_id != 0, 'trove ID cannot be zero');
         assert(trove_id <= troves_count::read(), 'non-existing trove');
+        // note that caller does not need to be the trove's owner to deposit
 
-        do_deposit(get_caller_address(), trove_id, yang, amount);
+        let yang_amount = sentinel::read().enter(yang, get_caller_address(), trove_id, amount);
+        shrine::read().deposit(yang, trove_id, yang_amount);
     }
 
     #[external]
@@ -151,8 +181,8 @@ mod Abbot {
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
-        sentinel::read().exit(yang, user, trove_id, amount);
         shrine::read().withdraw(yang, trove_id, amount);
+        sentinel::read().exit(yang, user, trove_id, amount);
     }
 
     #[external]
@@ -164,6 +194,7 @@ mod Abbot {
 
     #[external]
     fn melt(trove_id: u64, amount: Wad) {
+        // note that caller does not need to be the trove's owner to melt
         shrine::read().melt(get_caller_address(), trove_id, amount);
     }
 
@@ -174,11 +205,5 @@ mod Abbot {
     #[inline(always)]
     fn assert_trove_owner(user: ContractAddress, trove_id: u64) {
         assert(user == trove_owner::read(trove_id), 'not trove owner')
-    }
-
-    #[inline(always)]
-    fn do_deposit(user: ContractAddress, trove_id: u64, yang: ContractAddress, amount: u128) {
-        let yang_amount = sentinel::read().enter(yang, user, trove_id, amount);
-        shrine::read().deposit(yang, trove_id, yang_amount);
     }
 }
