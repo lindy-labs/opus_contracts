@@ -7,6 +7,7 @@ mod Abbot {
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray::{Wad};
 
@@ -105,16 +106,12 @@ mod Abbot {
         user_troves::write((user, user_troves_count), new_trove_id);
         trove_owner::write(new_trove_id, user);
 
-        let sentinel = sentinel::read();
-        let shrine = shrine::read();
-
         // deposit all requested Yangs into the system
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     let amount = amounts.pop_front().unwrap();
-                    let yang_amount = sentinel.enter(*yang, user, new_trove_id, *amount);
-                    shrine.deposit(*yang, new_trove_id, yang_amount);
+                    deposit_internal(*yang, user, new_trove_id, *amount);
                 },
                 Option::None(_) => {
                     break ();
@@ -123,7 +120,7 @@ mod Abbot {
         };
 
         // forge Yin
-        shrine.forge(user, new_trove_id, forge_amount);
+        shrine::read().forge(user, new_trove_id, forge_amount);
 
         TroveOpened(user, new_trove_id);
     }
@@ -158,8 +155,7 @@ mod Abbot {
                 continue;
             }
 
-            shrine.withdraw(yang, trove_id, yang_amount);
-            sentinel.exit(yang, user, trove_id, yang_amount);
+            withdraw_internal(yang, user, trove_id, yang_amount);
         };
 
         TroveClosed(trove_id);
@@ -172,8 +168,7 @@ mod Abbot {
         assert(trove_id <= troves_count::read(), 'non-existing trove');
         // note that caller does not need to be the trove's owner to deposit
 
-        let yang_amount = sentinel::read().enter(yang, get_caller_address(), trove_id, amount);
-        shrine::read().deposit(yang, trove_id, yang_amount);
+        deposit_internal(yang, get_caller_address(), trove_id, amount);
     }
 
     #[external]
@@ -182,8 +177,7 @@ mod Abbot {
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
-        shrine::read().withdraw(yang, trove_id, amount);
-        sentinel::read().exit(yang, user, trove_id, amount);
+        withdraw_internal(yang, user, trove_id, amount);
     }
 
     #[external]
@@ -206,5 +200,25 @@ mod Abbot {
     #[inline(always)]
     fn assert_trove_owner(user: ContractAddress, trove_id: u64) {
         assert(user == trove_owner::read(trove_id), 'not trove owner')
+    }
+
+    #[inline(always)]
+    fn deposit_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: u128) {
+        ReentrancyGuard::start();
+
+        let yang_amount = sentinel::read().enter(yang, user, trove_id, amount);
+        shrine::read().deposit(yang, trove_id, yang_amount);
+
+        ReentrancyGuard::end();
+    }
+
+    #[inline(always)]
+    fn withdraw_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: Wad) {
+        ReentrancyGuard::start();
+
+        shrine::read().withdraw(yang, trove_id, amount);
+        sentinel::read().exit(yang, user, trove_id, amount);
+
+        ReentrancyGuard::end();
     }
 }
