@@ -12,6 +12,24 @@ mod AbsorberRoles {
     }
 }
 
+mod AllocatorRoles {
+    const SET_ALLOCATION: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATION
+    }
+}
+
+mod EqualizerRoles {
+    const SET_ALLOCATOR: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATOR
+    }
+}
+
 mod GateRoles {
     const ENTER: u128 = 1;
     const EXIT: u128 = 2;
