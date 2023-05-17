@@ -6,6 +6,7 @@ use starknet::syscalls::{storage_read_syscall, storage_write_syscall};
 use starknet::storage_access::storage_address_from_base_and_offset;
 use traits::{Into, TryInto};
 
+use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::types::{AssetApportion, Reward, Provision, Request, Trove, YangRedistribution};
 use aura::utils::wadray::{Ray, Wad};
 
@@ -173,9 +174,11 @@ impl RewardStorageAccess of StorageAccess<Reward> {
         let asset: ContractAddress = storage_read_syscall(
             address_domain, storage_address_from_base_and_offset(base, 0_u8)
         )?.try_into().unwrap();
-        let blesser: ContractAddress = storage_read_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8)
-        )?.try_into().unwrap();
+        let blesser: IBlesserDispatcher = IBlesserDispatcher {
+            contract_address: storage_read_syscall(
+                address_domain, storage_address_from_base_and_offset(base, 1_u8)
+            )?.try_into().unwrap()
+        };
         let is_active_raw: felt252 = storage_read_syscall(
             address_domain, storage_address_from_base_and_offset(base, 2_u8)
         )?;
@@ -188,7 +191,9 @@ impl RewardStorageAccess of StorageAccess<Reward> {
             address_domain, storage_address_from_base_and_offset(base, 0_u8), value.asset.into()
         )?;
         storage_write_syscall(
-            address_domain, storage_address_from_base_and_offset(base, 1_u8), value.blesser.into()
+            address_domain,
+            storage_address_from_base_and_offset(base, 1_u8),
+            value.blesser.contract_address.into()
         )?;
 
         let mut is_active_raw: felt252 = 0;

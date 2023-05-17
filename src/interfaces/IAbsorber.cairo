@@ -1,5 +1,8 @@
-use starknet::ContractAddress;
+use serde::Serde;
+use starknet::contract_address::{ContractAddress, ContractAddressSerde};
+use option::OptionTrait;
 
+use aura::utils::serde;
 use aura::utils::types::{AssetApportion, Provision, Request, Reward};
 #[abi]
 trait IAbsorber {
@@ -46,4 +49,18 @@ trait IBlesser {
     // should return 0 instead of reverting.
     fn bless() -> u128;
     fn preview_bless() -> u128;
+}
+
+impl IBlesserDispatcherSerde of Serde<IBlesserDispatcher> {
+    fn serialize(self: @IBlesserDispatcher, ref output: Array<felt252>) {
+        ContractAddressSerde::serialize(self.contract_address, ref output);
+    }
+
+    fn deserialize(ref serialized: Span<felt252>) -> Option<IBlesserDispatcher> {
+        Option::Some(
+            IBlesserDispatcher {
+                contract_address: ContractAddressSerde::deserialize(ref serialized).unwrap()
+            }
+        )
+    }
 }

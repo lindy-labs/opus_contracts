@@ -1,13 +1,14 @@
-use array::ArrayTrait;
+use array::SpanTrait;
 use starknet::ContractAddress;
 
+use aura::utils::serde;
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
 trait ISentinel {
     // View
     fn get_gate_address(yang: ContractAddress) -> ContractAddress;
-    fn get_yang_addresses() -> Array<ContractAddress>;
+    fn get_yang_addresses() -> Span<ContractAddress>;
     fn get_yang_addresses_count() -> u64;
     fn get_yang(idx: u64) -> ContractAddress;
     fn get_yang_asset_max(yang: ContractAddress) -> u128;
