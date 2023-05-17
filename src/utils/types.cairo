@@ -1,6 +1,7 @@
 use starknet::ContractAddress;
 
 use aura::interfaces::IAbsorber::{IBlesserDispatcher, IBlesserDispatcherTrait};
+use aura::utils::serde::IBlesserDispatcherSerde;
 use aura::utils::wadray::{Ray, Wad};
 
 #[derive(Copy, Drop, Serde)]

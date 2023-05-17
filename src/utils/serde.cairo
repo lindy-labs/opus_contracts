@@ -1,6 +1,9 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
 use serde::{deserialize_array_helper, Serde, serialize_array_helper};
+use starknet::contract_address::{ContractAddress, ContractAddressSerde};
+
+use aura::interfaces::IAbsorber::IBlesserDispatcher;
 
 impl SpanSerde<T, impl TSerde: Serde<T>, impl TDrop: Drop<T>> of Serde<Span<T>> {
     fn serialize(self: @Span<T>, ref output: Array<felt252>) {
@@ -19,5 +22,20 @@ impl SpanSerde<T, impl TSerde: Serde<T>, impl TDrop: Drop<T>> of Serde<Span<T>> 
                 Option::None(())
             }
         }
+    }
+}
+
+// This is needed because 
+impl IBlesserDispatcherSerde of Serde<IBlesserDispatcher> {
+    fn serialize(self: @IBlesserDispatcher, ref output: Array<felt252>) {
+        ContractAddressSerde::serialize(self.contract_address, ref output);
+    }
+
+    fn deserialize(ref serialized: Span<felt252>) -> Option<IBlesserDispatcher> {
+        Option::Some(
+            IBlesserDispatcher {
+                contract_address: ContractAddressSerde::deserialize(ref serialized).unwrap()
+            }
+        )
     }
 }
