@@ -573,7 +573,6 @@ mod Shrine {
             assert(yang_rates::read((idx, new_era)).is_non_zero(), 'Incorrect rate update');
             idx += 1;
         };
-    // Note that `YangRatesUpdated` event has been emitted earlier
     }
 
     // Deposit a specified amount of a Yang into a Trove
