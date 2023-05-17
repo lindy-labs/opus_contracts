@@ -16,12 +16,6 @@ trait IEmpiric {
     fn update_prices();
 }
 
-#[abi]
-trait ISentinel {
-    fn get_yang_addresses() -> Array<ContractAddress>;
-    fn exit(yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128;
-}
-
 #[contract]
 mod Purger {
     use array::{ArrayTrait, SpanTrait};
@@ -30,6 +24,7 @@ mod Purger {
     use traits::Into;
     use zeroable::Zeroable;
 
+    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::wadray::{
         Ray, RayZeroable, RAY_ONE, rdiv_ww, rmul_wr, U128IntoRay, Wad, WadZeroable
@@ -37,7 +32,6 @@ mod Purger {
 
     use super::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IEmpiricDispatcher, IEmpiricDispatcherTrait,
-        ISentinelDispatcher, ISentinelDispatcherTrait
     };
 
     // Close factor function parameters
