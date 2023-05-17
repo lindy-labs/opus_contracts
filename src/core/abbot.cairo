@@ -7,6 +7,7 @@ mod Abbot {
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::utils::serde;
     use aura::utils::wadray::{Wad};
 
     struct Storage {
