@@ -1,6 +1,7 @@
 #[contract]
 mod Shrine {
-    use array::{ArrayTrait, SpanTrait};
+    use array::{SpanTrait};
+    use clone::Clone;
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
@@ -13,6 +14,7 @@ mod Shrine {
 
     use aura::utils::access_control::AccessControl;
     use aura::utils::exp::exp;
+    use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access_impls;
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
@@ -138,8 +140,8 @@ mod Shrine {
     fn YangRatesUpdated(
         new_rate_idx: u64,
         current_interval: u64,
-        yangs: Array<ContractAddress>,
-        new_rates: Array<Ray>,
+        yangs: Span<ContractAddress>,
+        new_rates: Span<Ray>,
     ) {}
 
     #[event]
@@ -506,18 +508,14 @@ mod Shrine {
     // yangs[i]'s base rate will be set to new_rates[i]
     // yangs's length must equal the number of yangs available.
     #[external]
-    fn update_rates(yangs: Array<ContractAddress>, new_rates: Array<Ray>) {
+    fn update_rates(yangs: Span<ContractAddress>, new_rates: Span<Ray>) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_RATES);
 
-        let mut yangs_span: Span<ContractAddress> = yangs.span();
-        let mut new_rates_span: Span<Ray> = new_rates.span();
-
-        let yangs_len = yangs_span.len();
+        let yangs_len = yangs.len();
         let num_yangs: u32 = yangs_count::read();
 
         assert(
-            yangs_len == new_rates_span.len() & yangs_len == num_yangs,
-            'yangs.len() != new_rates.len()'
+            yangs_len == new_rates.len() & yangs_len == num_yangs, 'yangs.len() != new_rates.len()'
         );
 
         let latest_era: u64 = rates_latest_era::read();
@@ -535,12 +533,15 @@ mod Shrine {
             rates_intervals::write(new_era, current_interval);
         }
 
+        let mut yangs_copy: Span<ContractAddress> = yangs.clone();
+        let mut new_rates_copy: Span<Ray> = new_rates.clone();
+
         // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
         // yang's rate isn't being updated, and so we get the previous value.
         loop {
-            match (new_rates_span.pop_front()) {
+            match new_rates_copy.pop_front() {
                 Option::Some(rate) => {
-                    let current_yang_id: u32 = get_valid_yang_id(*yangs_span.pop_front().unwrap());
+                    let current_yang_id: u32 = get_valid_yang_id(*yangs_copy.pop_front().unwrap());
                     if *rate.val == USE_PREV_BASE_RATE {
                         // Setting new era rate to the previous era's rate
                         yang_rates::write(
