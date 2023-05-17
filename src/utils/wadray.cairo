@@ -280,6 +280,12 @@ impl U128IntoRay of Into<u128, Ray> {
     }
 }
 
+impl WadIntoU256 of Into<Wad, u256> {
+    #[inline(always)]
+    fn into(self: Wad) -> u256 {
+        self.val.into()
+    }
+}
 
 // Comparisons
 impl WadPartialEq of PartialEq<Wad> {
@@ -661,6 +667,11 @@ mod tests {
         let ray_value: u128 = 84;
         let ray_result: Ray = ray_value.into();
         assert(ray_result.val == ray_value, 'Incorrect u128->Ray conversion');
+    }
+
+    fn test_wadray_into_u256() {
+        // Test WadIntoU256
+        assert(Wad { val: 5 }.into() == 5_u256, 'Incorrect Wad->u256 conversion')
     }
 
     #[test]

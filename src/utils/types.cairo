@@ -1,5 +1,6 @@
 use starknet::ContractAddress;
 
+use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::wadray::{Ray, Wad};
 
 #[derive(Copy, Drop, Serde)]
@@ -31,7 +32,7 @@ struct AssetApportion {
 #[derive(Drop, Serde)]
 struct Reward {
     asset: ContractAddress, // ERC20 address of token
-    blesser: ContractAddress, // Address of contract implementing `IBlesser` for distributing the token to the absorber
+    blesser: IBlesserDispatcher, // Address of contract implementing `IBlesser` for distributing the token to the absorber
     is_active: bool, // Whether the blesser (vesting contract) should be called
 }
 

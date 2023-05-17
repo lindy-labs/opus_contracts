@@ -1,3 +1,6 @@
+use starknet::ContractAddress;
+
+use aura::utils::types::{AssetApportion, Provision, Request, Reward};
 #[abi]
 trait IAbsorber {
     // view
