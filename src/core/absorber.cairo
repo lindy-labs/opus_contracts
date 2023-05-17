@@ -1,7 +1,6 @@
 #[contract]
 mod Absorber {
     use array::{ArrayTrait, SpanTrait};
-    use clone::Clone;
     use cmp::min;
     use integer::{BoundedInt, BoundedU256, u128_safe_divmod, U128TryIntoNonZero};
     use option::OptionTrait;
@@ -23,6 +22,7 @@ mod Absorber {
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
+
     //
     // Constants
     // 
@@ -194,7 +194,7 @@ mod Absorber {
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         is_live::write(true);
-    //set_removal_limit_internal(limit);
+        set_removal_limit_internal(limit);
     }
 
     //
@@ -601,8 +601,8 @@ mod Absorber {
 
         // Loop through assets and calculate amount entitled per share
         // Copy the Spans so as to not consume the originals with `pop_front()`
-        let mut assets_copy: Span<ContractAddress> = assets.clone();
-        let mut asset_amts_copy: Span<u128> = asset_amts.clone();
+        let mut assets_copy: Span<ContractAddress> = assets;
+        let mut asset_amts_copy: Span<u128> = asset_amts;
 
         loop {
             match assets_copy.pop_front() {
@@ -915,11 +915,9 @@ mod Absorber {
 
 
     // Helper function to iterate over an array of assets to transfer to an address
-    fn transfer_assets(to: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>) {
-        // Copy `assets` and `asset_amts` to avoid consuming the originals with `pop_front()`
-        let mut assets: Span<ContractAddress> = assets.clone();
-        let mut asset_amts: Span<u128> = asset_amts.clone();
-
+    fn transfer_assets(
+        to: ContractAddress, mut assets: Span<ContractAddress>, mut asset_amts: Span<u128>
+    ) {
         loop {
             match assets.pop_front() {
                 Option::Some(asset) => {
@@ -1092,11 +1090,8 @@ mod Absorber {
     // receive a distribution, and set to inactive again. If a provider's cumulative is not updated
     // for this reward, the provider can repeatedly claim the difference and drain the absorber.
     fn update_provider_cumulative_rewards(
-        provider: ContractAddress, epoch: u32, rewards_count: u8, assets: Span<ContractAddress>, 
+        provider: ContractAddress, epoch: u32, rewards_count: u8, mut assets: Span<ContractAddress>, 
     ) {
-        // Cloning `assets` Span so that it isn't consumed by `pop_front()`
-        let mut assets: Span<ContractAddress> = assets.clone();
-
         loop {
             match assets.pop_front() {
                 Option::Some(asset) => {
@@ -1142,13 +1137,11 @@ mod Absorber {
         current_provider_shares: Wad,
         total_shares: Wad,
         current_epoch: u32,
-        accumulated_asset_amts: Span<u128>
+        mut accumulated_asset_amts: Span<u128>
     ) -> Span<u128> {
         let mut updated_asset_amts: Array<u128> = ArrayTrait::new();
-        // Cloning `accumulated_asset_amts` Span so that it isn't consumed by `pop_front()`
-        let mut accumulated_asset_amts: Span<u128> = accumulated_asset_amts.clone();
-
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
+
         loop {
             match accumulated_asset_amts.pop_front() {
                 Option::Some(accumulated_amt) => {

@@ -25,7 +25,7 @@ impl SpanSerde<T, impl TSerde: Serde<T>, impl TDrop: Drop<T>> of Serde<Span<T>> 
     }
 }
 
-// This is needed because 
+// This is needed because the `RewardSet` event in the `Absorber` contract emits a `IBlesserDispatcher`. 
 impl IBlesserDispatcherSerde of Serde<IBlesserDispatcher> {
     fn serialize(self: @IBlesserDispatcher, ref output: Array<felt252>) {
         ContractAddressSerde::serialize(self.contract_address, ref output);

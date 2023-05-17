@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::interfaces::IAbsorber::{IBlesserDispatcher, IBlesserDispatcherTrait};
+use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::serde::IBlesserDispatcherSerde;
 use aura::utils::wadray::{Ray, Wad};
 
