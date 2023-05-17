@@ -1,6 +1,7 @@
 #[contract]
 mod Allocator {
     use array::{ArrayTrait, SpanTrait};
+    use clone::Clone;
     use option::OptionTrait;
     use starknet::ContractAddress;
     use traits::Into;
@@ -102,19 +103,22 @@ mod Allocator {
     // - both arrays of recipient addresses and percentages are of equal length;
     // - there is at least one recipient;
     // - the percentages add up to one Ray.
-    fn set_allocation_internal(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) {
+    fn set_allocation_internal(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
         assert(recipients_len != 0, 'No recipients');
         assert(recipients_len == percentages.len(), 'Array length mismatch');
 
         let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
+
+        let mut recipients_copy: Span<ContractAddress> = recipients.clone();
+        let mut percentages_copy: Span<Ray> = percentages.clone();
         loop {
-            match recipients.pop_front() {
+            match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
                     recipients::write(idx, *recipient);
 
-                    let percentage: Ray = *(percentages.pop_front().unwrap());
+                    let percentage: Ray = *(percentages_copy.pop_front().unwrap());
                     percentages::write(*recipient, percentage);
 
                     total_percentage += percentage;
