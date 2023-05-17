@@ -134,7 +134,6 @@ mod Allocator {
         assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
 
         recipients_count::write(recipients_len);
-    // Note that `AllocationUpdated` event has been emitted earlier
     }
 
     //
