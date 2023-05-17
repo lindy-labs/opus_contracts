@@ -394,10 +394,12 @@ mod tests {
 
 
     #[test]
-    fn test_add() {
+    fn test_add1() {
         // 0 + 0 = 0
         assert(Wad { val: 0 } + Wad { val: 0 } == Wad { val: 0 }, 'Incorrect addition #1');
+    }
 
+    fn test_add2() {
         // 1 + 1 = 2
         assert(Wad { val: 1 } + Wad { val: 1 } == Wad { val: 2 }, 'Incorrect addition #2');
 
@@ -412,7 +414,10 @@ mod tests {
             },
             'Incorrect addition #3'
         );
+    }
 
+    #[test]
+    fn test_add3() {
         // 0 + 0 = 0
         assert(Ray { val: 0 } + Ray { val: 0 } == Ray { val: 0 }, 'Incorrect addition #4');
 
