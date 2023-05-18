@@ -21,11 +21,15 @@ mod TestShrine {
     const YIN_NAME: felt252 = 'Cash';
     const YIN_SYMBOL: felt252 = 'CASH';
 
+    //
+    // Test setup
+    //
+
     fn admin() -> ContractAddress {
         contract_address_const::<0x1337>()
     }
 
-    fn setup() -> ContractAddress {
+    fn deploy() -> ContractAddress {
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
         let admin = contract_address_to_felt252(admin());
@@ -43,10 +47,16 @@ mod TestShrine {
         shrine_address
     }
 
+    fn 
+
+    //
+    // Tests
+    //
+
     #[test]
     #[available_gas(2000000000)]
-    fn test_shrine_setup() {
-        let shrine_addr: ContractAddress = setup();
+    fn test_shrine_deploy() {
+        let shrine_addr: ContractAddress = deploy();
 
         // Check ERC-20 getters
         let yin: IERC20Dispatcher = IERC20Dispatcher { contract_address: shrine_addr };
