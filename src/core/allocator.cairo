@@ -109,6 +109,10 @@ mod Allocator {
 
         let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
+
+        // Event is emitted here because the spans will be modified in the loop below
+        AllocationUpdated(recipients, percentages);
+
         loop {
             match recipients.pop_front() {
                 Option::Some(recipient) => {
@@ -130,8 +134,6 @@ mod Allocator {
         assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
 
         recipients_count::write(recipients_len);
-
-        AllocationUpdated(recipients, percentages);
     }
 
     //
