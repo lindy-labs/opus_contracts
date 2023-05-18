@@ -5,7 +5,7 @@ mod TestShrine {
     use traits::{Into, TryInto};
     use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_caller_address, set_block_timestamp};
+    use starknet::testing::{set_caller_address, set_contract_address, set_block_timestamp};
 
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
@@ -63,10 +63,8 @@ mod TestShrine {
     fn deploy_shrine() -> ContractAddress {
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
-        let admin: ContractAddress = admin();
-
         let mut calldata = ArrayTrait::new();
-        calldata.append(contract_address_to_felt252(admin));
+        calldata.append(contract_address_to_felt252(admin()));
         calldata.append(YIN_NAME);
         calldata.append(YIN_SYMBOL);
 
@@ -79,15 +77,15 @@ mod TestShrine {
     }
 
     fn setup_shrine(shrine_addr: ContractAddress) {
+        // Grant admin role
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
-
         let admin: ContractAddress = admin();
-        set_caller_address(admin);
-        shrine_accesscontrol.grant_role(ShrineRoles::default_admin_role(), admin);
+        let admin_role: u128 = ShrineRoles::default_admin_role();
+        set_contract_address(admin);
+        shrine_accesscontrol.grant_role(admin_role, admin);
         
+        // Set debt ceiling
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
-        
-        set_caller_address(admin());
         shrine.set_ceiling(DEBT_CEILING.into());
 
         // Add yangs
@@ -126,9 +124,6 @@ mod TestShrine {
     fn test_shrine_setup() {
         let shrine_addr: ContractAddress = deploy_shrine();
         setup_shrine(shrine_addr);
-
-        let admin: ContractAddress = admin();
-        set_caller_address(admin);
 
         // Check debt ceiling
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
