@@ -291,7 +291,7 @@ mod Purger {
 
         // Loop through yang addresses and transfer to recipient
         loop {
-            match (yangs_copy.pop_front()) {
+            match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
 
@@ -415,7 +415,7 @@ mod Purger {
         let assets_count: u32 = freed_assets_amts.len();
 
         loop {
-            match (freed_assets_amts.pop_front()) {
+            match freed_assets_amts.pop_front() {
                 Option::Some(amount) => {
                     // Rounding is intended to benefit the protocol
                     let one_percent: u128 = *amount / 100;
