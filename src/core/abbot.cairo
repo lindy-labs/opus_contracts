@@ -136,9 +136,7 @@ mod Abbot {
         // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
         shrine.melt(user, trove_id, integer::BoundedU128::max().into());
 
-        let sentinel = sentinel::read();
-        let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-
+        let mut yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
         // withdraw each and every Yang belonging to the trove from the system
         loop {
             match yangs.pop_front() {
