@@ -1,14 +1,15 @@
-use array::ArrayTrait;
+use array::SpanTrait;
 use starknet::ContractAddress;
 
+use aura::utils::serde::SpanSerde;
 use aura::utils::wadray::Wad;
 
 #[abi]
 trait IAbsorber {
     fn compensate(
-        recipient: ContractAddress, assets: Array<ContractAddress>, asset_amts: Array<u128>
+        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>
     );
-    fn update(assets: Array<ContractAddress>, asset_amts: Array<u128>);
+    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>);
 }
 
 #[abi]
@@ -19,12 +20,11 @@ trait IEmpiric {
 #[contract]
 mod Purger {
     use array::{ArrayTrait, SpanTrait};
-    use clone::Clone;
     use starknet::{ContractAddress, get_caller_address};
     use traits::Into;
     use zeroable::Zeroable;
 
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::intefaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::wadray::{
         Ray, RayZeroable, RAY_ONE, rdiv_ww, rmul_wr, U128IntoRay, Wad, WadZeroable
@@ -75,8 +75,8 @@ mod Purger {
         funder: ContractAddress,
         recipient: ContractAddress,
         percentage_freed: Ray,
-        yangs: Array<ContractAddress>,
-        freed_assets_amts: Array<u128>,
+        yangs: Span<ContractAddress>,
+        freed_assets_amts: Span<u128>,
     ) {}
 
     //
@@ -142,7 +142,7 @@ mod Purger {
     #[external]
     fn liquidate(
         trove_id: u64, purge_amt: Wad, recipient: ContractAddress
-    ) -> (Array<ContractAddress>, Array<u128>) {
+    ) -> (Span<ContractAddress>, Span<u128>) {
         let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
@@ -184,7 +184,7 @@ mod Purger {
     // - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
     // Returns a tuple of an ordered array of yang addresses and an ordered array of amount of asset freed
     #[external]
-    fn absorb(trove_id: u64) -> (Array<ContractAddress>, Array<u128>) {
+    fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
         let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
@@ -207,10 +207,14 @@ mod Purger {
                 absorber.contract_address
             );
 
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts.clone());
+            let freed_assets_amts_copy = freed_assets_amts;
+            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts_copy);
 
-            absorber.compensate(caller, yangs.clone(), compensations);
-            absorber.update(yangs.clone(), absorbed_assets);
+            let yangs_copy = yangs;
+            absorber.compensate(caller, yangs_copy, compensations);
+
+            let yangs_copy = yangs;
+            absorber.update(yangs_copy, absorbed_assets);
 
             (yangs, freed_assets_amts)
         } else {
@@ -228,11 +232,13 @@ mod Purger {
             );
 
             // Split freed amounts to compensate caller for keeping protocol stable
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts.clone());
+            let freed_assets_amts_copy = freed_assets_amts;
+            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts_copy);
 
             shrine.redistribute(trove_id);
 
-            absorber.compensate(caller, yangs.clone(), compensations);
+            let yangs_copy = yangs;
+            absorber.compensate(caller, yangs_copy, compensations);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
@@ -241,7 +247,9 @@ mod Purger {
 
             // Only update absorber if its yin was used
             if absorber_yin_bal.val != 0 {
-                absorber.update(yangs.clone(), freed_assets_amts.clone());
+                let yangs_copy = yangs;
+                let freed_assets_amts_copy = freed_assets_amts;
+                absorber.update(yangs_copy, freed_assets_amts_copy);
             }
 
             (yangs, freed_assets_amts)
@@ -269,21 +277,21 @@ mod Purger {
         percentage_freed: Ray,
         funder: ContractAddress,
         recipient: ContractAddress,
-    ) -> (Array<ContractAddress>, Array<u128>) {
+    ) -> (Span<ContractAddress>, Span<u128>) {
         let shrine: IShrineDispatcher = shrine::read();
 
         // Melt from the funder address directly
         shrine.melt(funder, trove_id, purge_amt);
 
         let sentinel: ISentinelDispatcher = sentinel::read();
-        let yangs: Array<ContractAddress> = sentinel.get_yang_addresses();
+        let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let mut freed_assets_amts: Array<u128> = ArrayTrait::new();
 
-        let mut yangs_span: Span<ContractAddress> = yangs.span();
+        let yangs_copy: Span<ContractAddress> = yangs;
 
         // Loop through yang addresses and transfer to recipient
         loop {
-            match (yangs_span.pop_front()) {
+            match (yangs_copy.pop_front()) {
                 Option::Some(yang) => {
                     let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
 
@@ -314,13 +322,13 @@ mod Purger {
             funder,
             recipient,
             percentage_freed,
-            yangs.clone(),
-            freed_assets_amts.clone()
+            yangs,
+            freed_assets_amts.span()
         );
 
         // The denomination for each value in `freed_assets_amts` will be based on the decimals
         // for the respective asset.
-        (yangs, freed_assets_amts)
+        (yangs, freed_assets_amts.span())
     }
 
     // Returns the close factor based on the LTV (ray)
@@ -400,15 +408,14 @@ mod Purger {
     // are in decimals of each token (hence using `u128`).
     // Returns a tuple of an ordered array of freed collateral asset amounts due to absorber 
     // and an ordered array of freed collateral asset amounts due to caller as compensation
-    fn split_purged_assets(freed_assets_amts: Array<u128>) -> (Array<u128>, Array<u128>) {
+    fn split_purged_assets(freed_assets_amts: Span<u128>) -> (Span<u128>, Span<u128>) {
         let mut absorbed_assets: Array<u128> = ArrayTrait::new();
         let mut compensations: Array<u128> = ArrayTrait::new();
 
-        let mut freed_assets_amts_span: Span<u128> = freed_assets_amts.span();
-        let assets_count: u32 = freed_assets_amts_span.len();
+        let assets_count: u32 = freed_assets_amts.len();
 
         loop {
-            match (freed_assets_amts_span.pop_front()) {
+            match (freed_assets_amts.pop_front()) {
                 Option::Some(amount) => {
                     // Rounding is intended to benefit the protocol
                     let one_percent: u128 = *amount / 100;
