@@ -283,6 +283,7 @@ mod Absorber {
     //
     // View
     //
+
     // Returns the maximum amount of yin removable by a provider.
     #[view]
     fn preview_remove(provider: ContractAddress) -> Wad {
@@ -295,6 +296,9 @@ mod Absorber {
         convert_to_yin(current_provider_shares)
     }
 
+
+    // Function for calculating the absorbed assets and rewards owed to a provider 
+    // without modifying state.
     #[view]
     fn preview_reap(
         provider: ContractAddress
@@ -346,13 +350,12 @@ mod Absorber {
             asset, blesser: IBlesserDispatcher { contract_address: blesser }, is_active
         };
 
-        // If this reward token hasn't been added yet, add it to the list first
-        let reward_id: u8 = reward_id::read(asset);
-
         // Emit event 
         RewardSet(asset, blesser, is_active);
 
-        // If the reward doesn't yet exist, add it to the list
+        // If this reward token hasn't been added yet, add it to the list
+        let reward_id: u8 = reward_id::read(asset);
+
         if reward_id == 0 {
             let current_count: u8 = rewards_count::read();
             let new_count = current_count + 1;
@@ -645,19 +648,28 @@ mod Absorber {
     //
     // Internal 
     // 
+
+    #[inline(always)]
     fn assert_provider(provision: Provision) {
         assert(provision.epoch != 0, 'AB: Not a provider');
     }
 
+    #[inline(always)]
     fn assert_live() {
         assert(is_live::read(), 'AB: Not live');
     }
 
+    // Helper function to return a Yin ERC20 contract
+    #[inline(always)]
+    fn yin_erc20() -> IERC20Dispatcher {
+        IERC20Dispatcher { contract_address: shrine::read().contract_address }
+    }
+
+    #[inline(always)]
     fn set_removal_limit_internal(limit: Ray) {
         assert(MIN_LIMIT <= limit.val, 'AB: Limit is too low');
-        let prev_limit = removal_limit::read();
+        RemovalLimitUpdated(removal_limit::read(), limit);
         removal_limit::write(limit);
-        RemovalLimitUpdated(prev_limit, limit);
     }
 
 
@@ -1135,13 +1147,6 @@ mod Absorber {
         };
 
         updated_asset_amts.span()
-    }
-
-
-    // Helper function to return a Yin ERC20 contract
-    #[inline(always)]
-    fn yin_erc20() -> IERC20Dispatcher {
-        IERC20Dispatcher { contract_address: shrine::read().contract_address }
     }
 
     //
