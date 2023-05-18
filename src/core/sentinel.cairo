@@ -1,6 +1,6 @@
 #[contract]
 mod Sentinel {
-    use array::ArrayTrait;
+    use array::{ArrayTrait, SpanTrait};
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::Into;
@@ -12,6 +12,7 @@ mod Sentinel {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::serde::SpanSerde;
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
@@ -59,7 +60,7 @@ mod Sentinel {
     }
 
     #[view]
-    fn get_yang_addresses() -> Array<ContractAddress> {
+    fn get_yang_addresses() -> Span<ContractAddress> {
         let count: u64 = yang_addresses_count::read();
         let mut idx: u64 = 0;
         let mut addresses: Array<ContractAddress> = ArrayTrait::new();
@@ -70,7 +71,7 @@ mod Sentinel {
             addresses.append(yang_addresses::read(idx));
             idx += 1;
         };
-        addresses
+        addresses.span()
     }
 
     #[view]
