@@ -12,7 +12,6 @@ mod Absorber {
 
     use aura::interfaces::IAbsorber::{IBlesserDispatcher, IBlesserDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
@@ -64,8 +63,6 @@ mod Absorber {
     const REWARDS_LOOP_START: u8 = 1;
 
     struct Storage {
-        // mapping between a provider address and the purger contract address
-        purger: IPurgerDispatcher,
         // mapping between a provider address and the sentinel contract address
         sentinel: ISentinelDispatcher,
         // mapping between a provider address and the shrine contract address
@@ -127,9 +124,6 @@ mod Absorber {
     //
     // Events
     //
-
-    #[event]
-    fn PurgerUpdated(old_address: ContractAddress, new_address: ContractAddress) {}
 
     #[event]
     fn RewardSet(asset: ContractAddress, blesser: ContractAddress, is_active: bool) {}
@@ -200,11 +194,6 @@ mod Absorber {
     //
     // Getters
     //
-
-    #[view]
-    fn get_purger() -> ContractAddress {
-        purger::read().contract_address
-    }
 
     #[view]
     fn get_rewards_count() -> u8 {
@@ -348,27 +337,6 @@ mod Absorber {
     //
 
     #[external]
-    fn set_purger(purger: ContractAddress) {
-        AccessControl::assert_has_role(AbsorberRoles::SET_PURGER);
-
-        assert(purger.is_non_zero(), 'AB: Address cannot be 0');
-
-        let yin = yin_erc20();
-
-        // Approve new address for unlimited balance of yin
-        yin.approve(purger, BoundedInt::max());
-
-        let old_purger: ContractAddress = purger::read().contract_address;
-        purger::write(IPurgerDispatcher { contract_address: purger });
-        PurgerUpdated(old_purger, purger);
-
-        // Remove allowance for previous address
-        if old_purger.is_non_zero() {
-            yin.approve(old_purger, 0_u256);
-        }
-    }
-
-    #[external]
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool) {
         AccessControl::assert_has_role(AbsorberRoles::SET_REWARD);
 
@@ -380,6 +348,11 @@ mod Absorber {
 
         // If this reward token hasn't been added yet, add it to the list first
         let reward_id: u8 = reward_id::read(asset);
+
+        // Emit event 
+        RewardSet(asset, blesser, is_active);
+
+        // If the reward doesn't yet exist, add it to the list
         if reward_id == 0 {
             let current_count: u8 = rewards_count::read();
             let new_count = current_count + 1;
@@ -387,14 +360,10 @@ mod Absorber {
             rewards_count::write(new_count);
             reward_id::write(asset, new_count);
             rewards::write(new_count, reward);
-
-            RewardSet(asset, blesser, is_active);
+        } else {
+            // Otherwise, update the existing reward
+            rewards::write(reward_id, reward);
         }
-
-        rewards::write(reward_id, reward);
-
-        // Event emission
-        RewardSet(asset, blesser, is_active);
     }
 
     #[external]
@@ -1040,9 +1009,10 @@ mod Absorber {
         let mut current_rewards_id: u8 = 0;
 
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
-                break ();
-            }
+            if current_rewards_id == rewards_count
+                + REWARDS_LOOP_START {
+                    break (rewards.span(), reward_amts.span());
+                }
 
             let reward: Reward = rewards::read(current_rewards_id);
             let mut reward_amt: u128 = 0;
@@ -1080,9 +1050,7 @@ mod Absorber {
             reward_amts.append(reward_amt);
 
             current_rewards_id += 1;
-        };
-
-        (rewards.span(), reward_amts.span())
+        }
     }
 
     // Update a provider's cumulative rewards to the given epoch
