@@ -1,9 +1,27 @@
+mod AllocatorRoles {
+    const SET_ALLOCATION: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATION
+    }
+}
+
 mod CaretakerRoles {
     const SHUT: u128 = 1;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
         SHUT
+    }
+}
+
+mod EqualizerRoles {
+    const SET_ALLOCATOR: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATOR
     }
 }
 
@@ -35,11 +53,26 @@ mod ShrineRoles {
     const UPDATE_RATES: u128 = 8192;
     const WITHDRAW: u128 = 16384;
 
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
     }
 
+    #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
+    }
+}
+
+
+mod SentinelRoles {
+    const ADD_YANG: u128 = 1;
+    const ENTER: u128 = 2;
+    const EXIT: u128 = 4;
+    const SET_YANG_ASSET_MAX: u128 = 8;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + SET_YANG_ASSET_MAX
     }
 }
