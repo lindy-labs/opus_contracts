@@ -287,7 +287,7 @@ mod Purger {
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let mut freed_assets_amts: Array<u128> = ArrayTrait::new();
 
-        let yangs_copy: Span<ContractAddress> = yangs;
+        let mut yangs_copy: Span<ContractAddress> = yangs;
 
         // Loop through yang addresses and transfer to recipient
         loop {
@@ -408,7 +408,7 @@ mod Purger {
     // are in decimals of each token (hence using `u128`).
     // Returns a tuple of an ordered array of freed collateral asset amounts due to absorber 
     // and an ordered array of freed collateral asset amounts due to caller as compensation
-    fn split_purged_assets(freed_assets_amts: Span<u128>) -> (Span<u128>, Span<u128>) {
+    fn split_purged_assets(mut freed_assets_amts: Span<u128>) -> (Span<u128>, Span<u128>) {
         let mut absorbed_assets: Array<u128> = ArrayTrait::new();
         let mut compensations: Array<u128> = ArrayTrait::new();
 
