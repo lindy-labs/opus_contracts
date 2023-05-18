@@ -1,7 +1,7 @@
 use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::serde;
+use aura::utils::serde::SpanSerde;
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
