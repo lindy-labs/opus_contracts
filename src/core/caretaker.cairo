@@ -1,7 +1,5 @@
 use starknet::ContractAddress;
 
-use aura::utils::wadray::{Wad};
-
 // TODO: In `Shrine.charge`, perform an early return if shrine is not live. 
 // TODO: Add `Shrine.assert_live()` to `Shrine.withdraw` and `Shrine.melt`:
 //       - Trove owners should not be able to melt or withdraw via Abbot.
@@ -12,11 +10,6 @@ use aura::utils::wadray::{Wad};
 #[abi]
 trait IAbbot {
     fn get_trove_owner(trove_id: u64) -> ContractAddress;
-}
-
-#[abi]
-trait IEqualizer {
-    fn equalize();
 }
 
 #[contract]
@@ -31,6 +24,7 @@ mod Caretaker {
 
     use aura::core::roles::CaretakerRoles;
 
+    use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -40,9 +34,7 @@ mod Caretaker {
     use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
     use aura::utils::wadray::{Ray, RAY_ONE, U128IntoRay, U128IntoWad, rdiv_ww, rmul_rw, Wad};
 
-    use super::{
-        IAbbotDispatcher, IAbbotDispatcherTrait, IEqualizerDispatcher, IEqualizerDispatcherTrait,
-    };
+    use super::{IAbbotDispatcher, IAbbotDispatcherTrait, };
 
     //
     // Constants
