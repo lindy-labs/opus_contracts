@@ -51,7 +51,7 @@ mod TestShrine {
     const INITIAL_YANG_AMT: u128 = 0;
 
     //
-    // Constant functions
+    // Address constants
     //
 
     fn admin() -> ContractAddress {
@@ -62,12 +62,12 @@ mod TestShrine {
         contract_address_const::<0x42069>()
     }
 
-    fn mock_multiplier() -> ContractAddress {
-        contract_address_const::<0x1111>()
+    fn trove1_owner_addr() -> ContractAddress {
+        contract_address_const::<0x0001>()
     }
-
-    fn mock_oracle() -> ContractAddress {
-        contract_address_const::<0x2222>()
+    
+    fn trove2_owner_addr() -> ContractAddress {
+        contract_address_const::<0x0002>()
     }
 
     fn yang1_addr() -> ContractAddress {
@@ -152,9 +152,8 @@ mod TestShrine {
         // Grant admin role
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
         let admin: ContractAddress = admin();
-        let admin_role: u128 = ShrineRoles::default_admin_role();
         set_contract_address(admin);
-        shrine_accesscontrol.grant_role(admin_role, admin);
+        shrine_accesscontrol.grant_role(ShrineRoles::all_roles(), admin);
         
         // Set debt ceiling
         let shrine = shrine(shrine_addr);
@@ -166,18 +165,7 @@ mod TestShrine {
     }
 
     fn shrine_with_feeds(shrine_addr: ContractAddress) -> (Span<ContractAddress>, Span<Span<Wad>>){
-        let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine_addr };
-
-        let admin: ContractAddress = admin();
-        let mock_oracle: ContractAddress = mock_oracle();
-        set_contract_address(admin);
-        shrine_accesscontrol.grant_role(ShrineRoles::ADVANCE, mock_oracle);
-
-        let mock_multiplier: ContractAddress = mock_multiplier();
-        shrine_accesscontrol.grant_role(ShrineRoles::SET_MULTIPLIER, mock_multiplier);
-
-
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+        let shrine = shrine(shrine_addr);
         
         let yang1_addr: ContractAddress = yang1_addr();
         let yang1_feed: Span<Wad> = yang1_feed();
@@ -194,6 +182,7 @@ mod TestShrine {
         yang_feeds.append(yang2_feed);
         
         let mut idx: u32 = 0;
+        set_contract_address(admin());
         loop {
             if idx == downcast(FEED_LEN).unwrap() {
                 break ();
@@ -202,17 +191,23 @@ mod TestShrine {
             let timestamp: u64 = DEPLOYMENT_TIMESTAMP + (idx.into() * TIME_INTERVAL);
             set_block_timestamp(timestamp);
 
-            set_contract_address(mock_oracle);
             shrine.advance(yang1_addr, *yang1_feed[idx]);
             shrine.advance(yang2_addr, *yang2_feed[idx]);
-
-            set_contract_address(mock_multiplier);
             shrine.set_multiplier(RAY_ONE.into());
 
             idx += 1;
         };
 
         (yang_addrs.span(), yang_feeds.span())
+    }
+
+    fn trove1_deposit(shrine_addr: ContractAddress) {
+        let shrine = shrine(shrine_addr);
+
+        let trove1_owner = trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+
     }
 
     //
@@ -527,7 +522,7 @@ mod TestShrine {
 
         let shrine = shrine(shrine_addr);
 
-        set_contract_address(mock_oracle());
+        set_contract_address(admin());
         shrine.advance(invalid_yang_addr(), YANG1_START_PRICE.into());
     }
 
@@ -544,4 +539,10 @@ mod TestShrine {
         set_contract_address(badguy());
         shrine.set_multiplier(RAY_SCALE.into());
     }
+
+    //
+    // Tests - trove deposit
+    //
+
+    
 }

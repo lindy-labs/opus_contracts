@@ -53,6 +53,25 @@ mod ShrineRoles {
     fn flash_mint() -> u128 {
         INJECT + EJECT
     }
+
+    #[inline(always)]
+    fn all_roles() -> u128 {
+        ADD_YANG
+            + ADVANCE
+            + DEPOSIT
+            + EJECT
+            + FORGE
+            + INJECT
+            + KILL
+            + MELT
+            + REDISTRIBUTE
+            + SEIZE
+            + SET_CEILING
+            + SET_MULTIPLIER
+            + SET_THRESHOLD
+            + UPDATE_RATES
+            + WITHDRAW
+    }
 }
 
 
