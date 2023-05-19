@@ -254,6 +254,15 @@ mod TestShrine {
         shrine.deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
     }
 
+    fn trove1_withdraw(shrine_addr: ContractAddress, amt: Wad) {
+        let shrine = shrine(shrine_addr);
+
+        let trove1_owner = trove1_owner_addr();
+        set_contract_address(admin());
+
+        shrine.withdraw(yang1_addr(), TROVE_1, amt);
+    }
+
     //
     // Tests - Deployment and initial setup of Shrine
     //
@@ -647,4 +656,48 @@ mod TestShrine {
 
         shrine.deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
     }
+
+    //
+    // Tests - Trove withdraw
+    //
+
+    #[test]
+    #[available_gas(1000000000000)]
+    fn test_shrine_withdraw_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_caller_address(admin());
+        let withdraw_amt: Wad = (TROVE1_YANG1_DEPOSIT / 3).into();
+        trove1_withdraw(shrine_addr, withdraw_amt);
+
+        let yang1_addr = yang1_addr();
+        let remaining_amt: Wad = TROVE1_YANG1_DEPOSIT.into() - withdraw_amt;
+        assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
+        assert(shrine.get_deposit(yang1_addr, TROVE_1) == remaining_amt, 'incorrect yang deposit');
+        
+        let (_, ltv, _, _) = shrine.get_trove_info(TROVE_1);
+        assert(ltv == RayZeroable::zero(), 'LTV should be zero');
+
+        assert(shrine.is_healthy(TROVE_1), 'trove should be healthy');
+
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
+        let max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
+
+        let mut yang_prices: Array<Wad> = ArrayTrait::new();
+        yang_prices.append(yang1_price);
+
+        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        yang_amts.append(remaining_amt);
+
+        let mut yang_thresholds: Array<Ray> = ArrayTrait::new();
+        yang_thresholds.append(YANG1_THRESHOLD.into());
+
+        let expected_max_forge: Wad = calculate_max_forge(yang_prices.span(), yang_amts.span(), yang_thresholds.span());
+        assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
+
+    }  
 }
