@@ -78,6 +78,10 @@ mod TestShrine {
         contract_address_const::<0x2345>()
     }
 
+    fn invalid_yang_addr() -> ContractAddress {
+        contract_address_const::<0xabcd>()
+    }
+
     //
     // Helpers
     // 
@@ -453,9 +457,91 @@ mod TestShrine {
         shrine_with_feeds(shrine_addr);
 
         let shrine = shrine(shrine_addr);
-        let invalid_yang: ContractAddress = contract_address_const::<0xabcd>();
+        set_contract_address(admin());
+        shrine.set_threshold(invalid_yang_addr(), YANG1_THRESHOLD.into());
+    }
+
+    //
+    // Tests - Shrine kill
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_kill() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        assert(shrine.get_live(), 'should be live');
 
         set_contract_address(admin());
-        shrine.set_threshold(invalid_yang, YANG1_THRESHOLD.into());
+        shrine.kill();
+
+        // TODO: test deposit, forge, withdraw and melt
+
+        assert(!shrine.get_live(), 'should not be live');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_kill_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        assert(shrine.get_live(), 'should be live');
+
+        set_contract_address(badguy());
+        shrine.kill();
+    }
+
+    //
+    // Tests - Price and multiplier updates
+    // Note that core functionality is already tested in `test_shrine_setup_with_feed`
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_advance_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+
+        set_contract_address(badguy());
+        shrine.advance(yang1_addr(), YANG1_START_PRICE.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_advance_invalid_yang() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+
+        set_contract_address(mock_oracle());
+        shrine.advance(invalid_yang_addr(), YANG1_START_PRICE.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_multiplier_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+
+        set_contract_address(badguy());
+        shrine.set_multiplier(RAY_SCALE.into());
     }
 }
