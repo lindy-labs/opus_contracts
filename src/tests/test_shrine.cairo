@@ -16,6 +16,7 @@ mod TestShrine {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
+    use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, U128IntoRay, U128IntoWad, Wad, WadZeroable, WAD_DECIMALS};
 
@@ -103,6 +104,11 @@ mod TestShrine {
     #[inline(always)]
     fn shrine(shrine_addr: ContractAddress) -> IShrineDispatcher {
         IShrineDispatcher { contract_address: shrine_addr }
+    }
+
+    #[inline(always)]
+    fn yin(shrine_addr: ContractAddress) -> IERC20Dispatcher {
+        IERC20Dispatcher { contract_address: shrine_addr }
     }
 
     // Returns the interval ID for the given timestamp
@@ -792,6 +798,11 @@ mod TestShrine {
 
         let after_max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
         assert(after_max_forge_amt == before_max_forge_amt - forge_amt, 'incorrect max forge amt');
+
+        let yin = yin(shrine_addr);
+        // TODO: replace with WadIntoU256 from Absorber PR
+        assert(yin.balance_of(trove1_owner_addr()) == forge_amt.val.into(), 'incorrect ERC-20 balance');
+        assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
     }
 
     #[test]
