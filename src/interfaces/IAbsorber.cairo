@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::{AssetApportion, Provision, Request, Reward};
+use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
 use aura::utils::wadray::Wad;
 
 #[abi]
@@ -16,8 +16,8 @@ trait IAbsorber {
     fn get_provision(provider: ContractAddress) -> Provision;
     fn get_provider_last_absorption(provider: ContractAddress) -> u32;
     fn get_provider_request(provider: ContractAddress) -> Request;
-    fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> AssetApportion;
-    fn get_asset_reward(asset: ContractAddress, epoch: u32) -> AssetApportion;
+    fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> DistributionInfo;
+    fn get_asset_reward(asset: ContractAddress, epoch: u32) -> DistributionInfo;
     fn get_provider_last_reward_cumulative(
         provider: ContractAddress, asset: ContractAddress
     ) -> u128;

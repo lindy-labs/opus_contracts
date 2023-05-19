@@ -25,7 +25,7 @@ struct YangRedistribution {
 // For absorptions, the `asset_amt_per_share` is tied to an absorption ID and is not changed once set.
 // For blessings, the `asset_amt_per_share` is a cumulative value that is updated until the given epoch ends
 #[derive(Copy, Drop, Serde)]
-struct AssetApportion {
+struct DistributionInfo {
     asset_amt_per_share: u128, // Amount of asset in its decimal precision per share wad
     error: u128, // Error to be added to next absorption
 }

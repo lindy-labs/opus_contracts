@@ -8,7 +8,7 @@ use traits::{Into, TryInto};
 
 use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::misc::BoolIntoFelt252;
-use aura::utils::types::{AssetApportion, Reward, Provision, Request, Trove, YangRedistribution};
+use aura::utils::types::{DistributionInfo, Reward, Provision, Request, Trove, YangRedistribution};
 use aura::utils::wadray::{Ray, Wad};
 
 // Storage Access
@@ -153,14 +153,14 @@ impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
     }
 }
 
-impl AssetApportionStorageAccess of StorageAccess<AssetApportion> {
-    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<AssetApportion> {
+impl DistributionInfoStorageAccess of StorageAccess<DistributionInfo> {
+    fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<DistributionInfo> {
         let (asset_amt_per_share, error) = U128TupleStorageAccess::read(address_domain, base)?;
-        Result::Ok(AssetApportion { asset_amt_per_share, error })
+        Result::Ok(DistributionInfo { asset_amt_per_share, error })
     }
 
     fn write(
-        address_domain: u32, base: StorageBaseAddress, value: AssetApportion
+        address_domain: u32, base: StorageBaseAddress, value: DistributionInfo
     ) -> SyscallResult::<()> {
         U128TupleStorageAccess::write(
             address_domain, base, (value.asset_amt_per_share, value.error)

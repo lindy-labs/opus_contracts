@@ -17,7 +17,7 @@ mod Absorber {
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde;
     use aura::utils::storage_access_impls;
-    use aura::utils::types::{AssetApportion, Provision, Request, Reward};
+    use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
@@ -87,7 +87,7 @@ mod Absorber {
         // mapping of a tuple of asset and absorption ID to a struct of
         // 1. the amount of that asset in its decimal precision absorbed per share Wad for an absorption
         // 2. the rounding error from calculating (1) that is to be added to the next absorption
-        asset_absorption: LegacyMap::<(ContractAddress, u32), AssetApportion>,
+        asset_absorption: LegacyMap::<(ContractAddress, u32), DistributionInfo>,
         // conversion rate of an epoch's shares to the next
         // if an update causes the yin per share to drop below the threshold,
         // the epoch is incremented and yin per share is reset to one Ray.
@@ -108,7 +108,7 @@ mod Absorber {
         // mapping from a reward token address and epoch to a struct of
         // 1. the cumulative amount of that reward asset in its decimal precision per share Wad in that epoch
         // 2. the rounding error from calculating (1) that is to be added to the next reward distribution
-        cumulative_reward_amt_by_epoch: LegacyMap::<(ContractAddress, u32), AssetApportion>,
+        cumulative_reward_amt_by_epoch: LegacyMap::<(ContractAddress, u32), DistributionInfo>,
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
         provider_last_reward_cumulative: LegacyMap::<(ContractAddress, ContractAddress), u128>,
@@ -251,12 +251,12 @@ mod Absorber {
     }
 
     #[view]
-    fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> AssetApportion {
+    fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> DistributionInfo {
         asset_absorption::read((asset, absorption_id))
     }
 
     #[view]
-    fn get_asset_reward(asset: ContractAddress, epoch: u32) -> AssetApportion {
+    fn get_asset_reward(asset: ContractAddress, epoch: u32) -> DistributionInfo {
         cumulative_reward_amt_by_epoch::read((asset, epoch))
     }
 
@@ -583,7 +583,7 @@ mod Absorber {
         };
 
         //
-        // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
+        // Increment epoch ID only if yin per share drops below threshold or stability pool is emptied
         //
 
         let absorber: ContractAddress = get_contract_address();
@@ -592,34 +592,32 @@ mod Absorber {
 
         // This also checks for absorber's yin balance being emptied because yin per share will be
         // below threshold if yin balance is 0.
-        if YIN_PER_SHARE_THRESHOLD <= yin_per_share.val {
-            return ();
+        if YIN_PER_SHARE_THRESHOLD > yin_per_share.val {
+            let new_epoch: u32 = current_epoch + 1;
+            current_epoch::write(new_epoch);
+
+            // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
+            // minimum shares worth of yin from the yin balance so that there is at least such amount
+            // of yin that cannot be removed in the next epoch.
+            let mut yin_balance_for_shares: Wad = yin_balance;
+            if INITIAL_SHARES <= yin_balance.val {
+                yin_balance_for_shares -= INITIAL_SHARES.into();
+            }
+
+            let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
+                yin_balance_for_shares, total_shares
+            );
+
+            // If absorber is emptied, this will be set to 0.
+            epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
+
+            // If absorber is emptied, this will be set to 0.
+            total_shares::write(yin_balance);
+            EpochChanged(current_epoch, new_epoch);
+
+            // Transfer reward errors of current epoch to the next epoch
+            propagate_reward_errors(rewards_count, current_epoch);
         }
-
-        let new_epoch: u32 = current_epoch + 1;
-        current_epoch::write(new_epoch);
-
-        // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
-        // minimum shares worth of yin from the yin balance so that there is at least such amount
-        // of yin that cannot be removed in the next epoch.
-        let mut yin_balance_for_shares: Wad = yin_balance;
-        if INITIAL_SHARES <= yin_balance.val {
-            yin_balance_for_shares -= INITIAL_SHARES.into();
-        }
-
-        let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
-            yin_balance_for_shares, total_shares
-        );
-
-        // If absorber is emptied, this will be set to 0.
-        epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
-
-        // If absorber is emptied, this will be set to 0.
-        total_shares::write(yin_balance);
-        EpochChanged(current_epoch, new_epoch);
-
-        // Transfer reward errors of current epoch to the next epoch
-        propagate_reward_errors(rewards_count, current_epoch);
     }
 
     #[external]
@@ -754,7 +752,7 @@ mod Absorber {
         let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
         asset_absorption::write(
-            (asset, absorption_id), AssetApportion { asset_amt_per_share, error }
+            (asset, absorption_id), DistributionInfo { asset_amt_per_share, error }
         );
     }
 
@@ -766,7 +764,7 @@ mod Absorber {
             return 0;
         }
 
-        let absorption: AssetApportion = asset_absorption::read((asset, absorption_id));
+        let absorption: DistributionInfo = asset_absorption::read((asset, absorption_id));
         // asset_amt_per_share is checked because it is possible for the error to be zero. 
         // On the other hand, asset_amt_per_share may be zero in extreme edge cases with 
         // a non-zero error that is spilled over to the next absorption. 
@@ -872,7 +870,7 @@ mod Absorber {
                             break ();
                         }
 
-                        let absorption: AssetApportion = asset_absorption::read(
+                        let absorption: DistributionInfo = asset_absorption::read(
                             (*asset, start_absorption_id)
                         );
 
@@ -979,7 +977,7 @@ mod Absorber {
             blessed_amts.append(blessed_amt);
 
             if blessed_amt != 0 {
-                let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+                let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                     (reward.asset, epoch)
                 );
                 let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
@@ -997,7 +995,7 @@ mod Absorber {
 
                 cumulative_reward_amt_by_epoch::write(
                     (reward.asset, epoch),
-                    AssetApportion {
+                    DistributionInfo {
                         asset_amt_per_share: updated_asset_amt_per_share, error: error
                     }
                 );
@@ -1044,7 +1042,7 @@ mod Absorber {
                     break ();
                 }
 
-                let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+                let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                     (reward.asset, epoch)
                 );
 
@@ -1080,7 +1078,7 @@ mod Absorber {
         loop {
             match assets.pop_front() {
                 Option::Some(asset) => {
-                    let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+                    let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                         (*asset, epoch)
                     );
                     provider_last_reward_cumulative::write(
@@ -1105,10 +1103,10 @@ mod Absorber {
             }
 
             let reward: Reward = rewards::read(current_rewards_id);
-            let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+            let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                 (reward.asset, epoch)
             );
-            let next_epoch_reward_info: AssetApportion = AssetApportion {
+            let next_epoch_reward_info: DistributionInfo = DistributionInfo {
                 asset_amt_per_share: 0, error: epoch_reward_info.error, 
             };
             cumulative_reward_amt_by_epoch::write(
@@ -1138,7 +1136,7 @@ mod Absorber {
                 Option::Some(accumulated_amt) => {
                     let reward: Reward = rewards::read(current_rewards_id);
                     let pending_amt: u128 = reward.blesser.preview_bless();
-                    let reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+                    let reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                         (reward.asset, current_epoch)
                     );
 
