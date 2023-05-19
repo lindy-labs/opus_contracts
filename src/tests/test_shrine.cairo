@@ -54,8 +54,10 @@ mod TestShrine {
     // Trove constants
     const TROVE_1: u64 = 1;
     const TROVE_2: u64 = 2;
+    const TROVE_3: u64 = 3;
 
     const TROVE1_YANG1_DEPOSIT: u128 = 5000000000000000000;  // 5 (Wad)
+    const TROVE1_FORGE_AMT: u128 = 3000000000000000000000;  // 3_000 (Wad)
 
     //
     // Address constants
@@ -75,6 +77,10 @@ mod TestShrine {
     
     fn trove2_owner_addr() -> ContractAddress {
         contract_address_const::<0x0002>()
+    }
+
+    fn trove3_owner_addr() -> ContractAddress {
+        contract_address_const::<0x0003>()
     }
 
     fn yang1_addr() -> ContractAddress {
@@ -246,21 +252,18 @@ mod TestShrine {
     }
 
     fn trove1_deposit(shrine_addr: ContractAddress) {
-        let shrine = shrine(shrine_addr);
-
-        let trove1_owner = trove1_owner_addr();
         set_contract_address(admin());
-
-        shrine.deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
+        shrine(shrine_addr).deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
     }
 
     fn trove1_withdraw(shrine_addr: ContractAddress, amt: Wad) {
-        let shrine = shrine(shrine_addr);
-
-        let trove1_owner = trove1_owner_addr();
         set_contract_address(admin());
+        shrine(shrine_addr).withdraw(yang1_addr(), TROVE_1, amt);
+    }
 
-        shrine.withdraw(yang1_addr(), TROVE_1, amt);
+    fn trove1_forge(shrine_addr: ContractAddress, amt: Wad) {
+        set_contract_address(admin());
+        shrine(shrine_addr).forge(trove1_owner_addr(), TROVE_1, amt);
     }
 
     //
@@ -754,5 +757,108 @@ mod TestShrine {
         set_contract_address(admin());
 
         shrine.withdraw(yang2_addr(), TROVE_1, (TROVE1_YANG1_DEPOSIT + 1).into());
+    }
+
+    //
+    // Tests - Trove forge
+    //
+
+    #[test]
+    #[available_gas(1000000000000)]
+    fn test_shrine_forge_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+
+        let before_max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
+        trove1_forge(shrine_addr, forge_amt);
+        
+        let shrine = shrine(shrine_addr);
+        assert(shrine.get_total_debt() == forge_amt, 'incorrect system debt');
+
+        let (_, ltv, trove_value, debt) = shrine.get_trove_info(TROVE_1);
+        assert(debt == forge_amt, 'incorrect trove debt');
+        
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr());
+        let expected_value: Wad = yang1_price * TROVE1_YANG1_DEPOSIT.into();
+        let expected_ltv: Ray = wadray::rdiv_ww(forge_amt, expected_value);
+        assert(ltv == expected_ltv, 'incorrect ltv');
+
+        assert(shrine.is_healthy(TROVE_1), 'trove should be healthy');
+
+        let after_max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
+        assert(after_max_forge_amt == before_max_forge_amt - forge_amt, 'incorrect max forge amt');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_forge_zero_deposit_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+        set_caller_address(admin());
+
+        shrine.forge(trove3_owner_addr(), TROVE_3, 1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_forge_unsafe_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+        set_caller_address(admin());
+
+        let unsafe_amt: Wad = (TROVE1_FORGE_AMT * 3).into();
+        shrine.forge(trove1_owner_addr(), TROVE_1, unsafe_amt);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_forge_ceiling_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+        set_caller_address(admin());
+
+        // deposit more collateral
+        let additional_yang1_amt: Wad = (TROVE1_YANG1_DEPOSIT * 10).into();
+        shrine.deposit(yang1_addr(), TROVE_1, additional_yang1_amt);
+
+        let unsafe_amt: Wad = (TROVE1_FORGE_AMT * 10).into();
+        shrine.forge(trove1_owner_addr(), TROVE_1, unsafe_amt);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_forge_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(badguy());
+
+        shrine.forge(trove1_owner_addr(), TROVE_1, TROVE1_FORGE_AMT.into());
     }
 }
