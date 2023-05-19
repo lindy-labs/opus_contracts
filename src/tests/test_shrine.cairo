@@ -7,7 +7,7 @@ mod TestShrine {
     use traits::{Into, TryInto};
     use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_caller_address, set_contract_address, set_block_timestamp};
+    use starknet::testing::{set_contract_address, set_block_timestamp};
 
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
@@ -257,9 +257,9 @@ mod TestShrine {
         (yang_addrs.span(), yang_feeds.span())
     }
 
-    fn trove1_deposit(shrine_addr: ContractAddress) {
+    fn trove1_deposit(shrine_addr: ContractAddress, amt: Wad) {
         set_contract_address(admin());
-        shrine(shrine_addr).deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
+        shrine(shrine_addr).deposit(yang1_addr(), TROVE_1, amt);
     }
 
     fn trove1_withdraw(shrine_addr: ContractAddress, amt: Wad) {
@@ -612,7 +612,7 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         
@@ -674,10 +674,10 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
-        set_caller_address(admin());
+        set_contract_address(admin());
         let withdraw_amt: Wad = (TROVE1_YANG1_DEPOSIT / 3).into();
         trove1_withdraw(shrine_addr, withdraw_amt);
 
@@ -713,11 +713,11 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
         let shrine = shrine(shrine_addr);
-        set_caller_address(admin());
+        set_contract_address(admin());
         let withdraw_amt: Wad = (TROVE1_YANG1_DEPOSIT / 3).into();
         trove1_withdraw(shrine_addr, withdraw_amt);
 
@@ -753,7 +753,7 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(badguy());
@@ -768,7 +768,7 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -797,7 +797,7 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
         let shrine = shrine(shrine_addr);
@@ -823,7 +823,7 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
@@ -863,7 +863,7 @@ mod TestShrine {
 
         let shrine = shrine(shrine_addr);
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
-        set_caller_address(admin());
+        set_contract_address(admin());
 
         shrine.forge(trove3_owner_addr(), TROVE_3, 1_u128.into());
     }
@@ -875,11 +875,11 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
-        set_caller_address(admin());
+        set_contract_address(admin());
 
         let unsafe_amt: Wad = (TROVE1_FORGE_AMT * 3).into();
         shrine.forge(trove1_owner_addr(), TROVE_1, unsafe_amt);
@@ -892,11 +892,11 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
-        set_caller_address(admin());
+        set_contract_address(admin());
 
         // deposit more collateral
         let additional_yang1_amt: Wad = (TROVE1_YANG1_DEPOSIT * 10).into();
@@ -913,7 +913,7 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(badguy());
@@ -926,13 +926,16 @@ mod TestShrine {
     //
 
     #[test]
-    #[available_gas(1000000000000)]
+    #[available_gas(20000000000)]
     fn test_shrine_melt_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
-        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+        let deposit_amt: Wad = TROVE1_YANG1_DEPOSIT.into();
+        trove1_deposit(shrine_addr, deposit_amt);
+
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+        trove1_forge(shrine_addr, forge_amt);
 
         let shrine = shrine(shrine_addr);
         let yin = yin(shrine_addr);
@@ -941,20 +944,30 @@ mod TestShrine {
         let before_total_debt: Wad = shrine.get_total_debt();
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(TROVE_1);
         let before_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
+        let before_max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
+        let melt_amt: Wad = (TROVE1_YANG1_DEPOSIT / 3_u128).into();
 
-        let melt_amt_wad: Wad = (TROVE1_FORGE_AMT / 3).into();
-        set_caller_address(admin());
-        shrine.melt(trove1_owner_addr, TROVE_1, melt_amt_wad);
+        let outstanding_amt: Wad = forge_amt - melt_amt;
+        set_contract_address(admin());
+        shrine.melt(trove1_owner_addr, TROVE_1, melt_amt);
 
-        assert(shrine.get_total_debt() == before_total_debt - melt_amt_wad, 'incorrect total debt');
-        
-        let (_, _, _, after_trove_debt) = shrine.get_trove_info(TROVE_1);
-        assert(after_trove_debt == before_trove_debt - melt_amt_wad, 'incorrect trove debt');
+        assert(shrine.get_total_debt() == before_total_debt - melt_amt, 'incorrect total debt');
+
+        let (_, after_ltv, _, after_trove_debt) = shrine.get_trove_info(TROVE_1);
+        assert(after_trove_debt == before_trove_debt - melt_amt, 'incorrect trove debt');
 
         let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
         // TODO: replace with WadIntoU256 from Absorber PR
-        assert(after_yin_bal == before_yin_bal - melt_amt_wad.val.into(), 'incorrect yin balance');
+        assert(after_yin_bal == before_yin_bal - melt_amt.val.into(), 'incorrect yin balance');
 
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr());
+        let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
+        assert(after_ltv == expected_ltv, 'incorrect LTV');
+
+        assert(shrine.is_healthy(TROVE_1), 'trove should be healthy');
+
+        let after_max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
+        assert(after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount');
     }
 
     //
