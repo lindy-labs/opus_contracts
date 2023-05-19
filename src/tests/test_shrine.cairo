@@ -16,7 +16,11 @@ mod TestShrine {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, U128IntoRay, U128IntoWad, Wad, WAD_DECIMALS};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, U128IntoRay, U128IntoWad, Wad, WadZeroable, WAD_DECIMALS};
+
+    //
+    // Constants
+    //
 
     // Arbitrary timestamp set to approximately 18 May 2023, 7:55:28am UTC
     const DEPLOYMENT_TIMESTAMP: u64 = 1684390000_u64;
@@ -47,6 +51,34 @@ mod TestShrine {
     const INITIAL_YANG_AMT: u128 = 0;
 
     //
+    // Constant functions
+    //
+
+    fn admin() -> ContractAddress {
+        contract_address_const::<0x1337>()
+    }
+
+    fn badguy() -> ContractAddress {
+        contract_address_const::<0x42069>()
+    }
+
+    fn mock_multiplier() -> ContractAddress {
+        contract_address_const::<0x1111>()
+    }
+
+    fn mock_oracle() -> ContractAddress {
+        contract_address_const::<0x2222>()
+    }
+
+    fn yang1_addr() -> ContractAddress {
+        contract_address_const::<0x1234>()
+    }
+
+    fn yang2_addr() -> ContractAddress {
+        contract_address_const::<0x2345>()
+    }
+
+    //
     // Helpers
     // 
 
@@ -72,29 +104,14 @@ mod TestShrine {
         }
     }
 
+    #[inline(always)]
+    fn shrine(shrine_addr: ContractAddress) -> IShrineDispatcher {
+        IShrineDispatcher { contract_address: shrine_addr }
+    }
+
     //
-    // Test setup
+    // Test setup helpers
     //
-
-    fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
-    }
-
-    fn mock_multiplier() -> ContractAddress {
-        contract_address_const::<0x1111>()
-    }
-
-    fn mock_oracle() -> ContractAddress {
-        contract_address_const::<0x2222>()
-    }
-
-    fn yang1_addr() -> ContractAddress {
-        contract_address_const::<0x1234>()
-    }
-
-    fn yang2_addr() -> ContractAddress {
-        contract_address_const::<0x2345>()
-    }
 
     fn yang1_feed() -> Span<Wad> {
         generate_yang_feed(YANG1_START_PRICE.into())
@@ -136,7 +153,7 @@ mod TestShrine {
         shrine_accesscontrol.grant_role(admin_role, admin);
         
         // Set debt ceiling
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+        let shrine = shrine(shrine_addr);
         shrine.set_ceiling(DEBT_CEILING.into());
 
         // Add yangs
@@ -195,7 +212,7 @@ mod TestShrine {
     }
 
     //
-    // Tests
+    // Tests - Deployment and initial setup of Shrine
     //
 
     // Check constructor function
@@ -211,7 +228,7 @@ mod TestShrine {
         assert(yin.decimals() == WAD_DECIMALS, 'wrong decimals');
 
         // Check Shrine getters
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+        let shrine = shrine(shrine_addr);
         assert(shrine.get_live(), 'not live');
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
@@ -232,7 +249,7 @@ mod TestShrine {
         shrine_setup(shrine_addr);
 
         // Check debt ceiling
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+        let shrine = shrine(shrine_addr);
         assert(shrine.get_debt_ceiling() == DEBT_CEILING.into(), 'wrong debt ceiling');
 
         // Check yangs
@@ -254,8 +271,8 @@ mod TestShrine {
 
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        assert(threshold == 0_u128.into(), 'wrong shrine threshold');
-        assert(value == 0_u128.into(), 'wrong shrine value');
+        assert(threshold == RayZeroable::zero(), 'wrong shrine threshold');
+        assert(value == WadZeroable::zero(), 'wrong shrine value');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -268,7 +285,7 @@ mod TestShrine {
         let mut yang_addrs = yang_addrs;
         let mut yang_feeds = yang_feeds;
 
-        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+        let shrine = shrine(shrine_addr);
 
         let mut exp_start_cumulative_prices: Array<Wad> = ArrayTrait::new();
         exp_start_cumulative_prices.append(YANG1_START_PRICE.into());
@@ -318,5 +335,127 @@ mod TestShrine {
                 }
             };
         };
+    }
+
+    //
+    // Tests - Yang onboarding and parameters
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_add_yang() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let yangs_count: u32 = shrine.get_yangs_count();
+        assert(yangs_count == 2, 'incorrect yangs count');
+
+        let new_yang_address: ContractAddress = contract_address_const::<0x9870>();
+        let new_yang_threshold: Ray = 600000000000000000000000000_u128.into(); // 60% (Ray)
+        let new_yang_start_price: Wad = 5000000000000000000_u128.into();  // 5 (Wad)
+        let new_yang_rate: Ray = 60000000000000000000000000_u128.into();  // 6% (Ray)
+
+        let admin = admin();
+        set_contract_address(admin);
+        shrine.add_yang(new_yang_address, new_yang_threshold, new_yang_start_price, new_yang_rate, WadZeroable::zero());
+
+        assert(shrine.get_yangs_count() == yangs_count + 1, 'incorrect yangs count');
+        assert(shrine.get_yang_total(new_yang_address) == WadZeroable::zero(), 'incorrect yang total');
+
+        let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
+        assert(current_yang_price == new_yang_start_price, 'incorrect yang price');
+        assert(shrine.get_yang_threshold(new_yang_address) == new_yang_threshold, 'incorrect yang threshold');
+        
+        let expected_rate_era: u64 = 0_u64;
+        assert(shrine.get_yang_rate(new_yang_address, expected_rate_era) == new_yang_rate, 'incorrect yang rate'); 
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Yang already exists', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_duplicate_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
+        shrine.add_yang(yang1_addr(), YANG1_THRESHOLD.into(), YANG1_START_PRICE.into(), YANG1_BASE_RATE.into(), WadZeroable::zero());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(badguy());
+        shrine.add_yang(yang1_addr(), YANG1_THRESHOLD.into(), YANG1_START_PRICE.into(), YANG1_BASE_RATE.into(), WadZeroable::zero());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_threshold() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let yang1_addr = yang1_addr();
+        let new_threshold: Ray = 900000000000000000000000000_u128.into();
+
+        set_contract_address(admin());
+        shrine.set_threshold(yang1_addr, new_threshold);
+        assert(shrine.get_yang_threshold(yang1_addr) == new_threshold, 'threshold not updated');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Threshold > max', 'ENTRYPOINT_FAILED'))]
+    fn test_set_threshold_exceeds_max() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let invalid_threshold: Ray = (RAY_SCALE + 1).into();
+
+        set_contract_address(admin());
+        shrine.set_threshold(yang1_addr(), invalid_threshold);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_threshold_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let new_threshold: Ray = 900000000000000000000000000_u128.into();
+
+        set_contract_address(badguy());
+        shrine.set_threshold(yang1_addr(), new_threshold);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_set_threshold_invalid_yang() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let invalid_yang: ContractAddress = contract_address_const::<0xabcd>();
+
+        set_contract_address(admin());
+        shrine.set_threshold(invalid_yang, YANG1_THRESHOLD.into());
     }
 }
