@@ -7,14 +7,13 @@ use aura::utils::wadray::Wad;
 #[abi]
 trait IAbsorber {
     // view
-    fn get_purger() -> ContractAddress;
     fn get_rewards_count() -> u8;
     fn get_rewards() -> Span<Reward>;
     fn get_current_epoch() -> u32;
     fn get_absorptions_count() -> u32;
     fn get_absorption_epoch(absorption_id: u32) -> u32;
     fn get_total_shares_for_current_epoch() -> Wad;
-    fn get_provider_info(provider: ContractAddress) -> Provision;
+    fn get_provision(provider: ContractAddress) -> Provision;
     fn get_provider_last_absorption(provider: ContractAddress) -> u32;
     fn get_provider_request(provider: ContractAddress) -> Request;
     fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> AssetApportion;
@@ -29,7 +28,6 @@ trait IAbsorber {
         provider: ContractAddress
     ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>);
     // external
-    fn set_purger(purger: ContractAddress);
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool);
     fn set_removal_limit(limit: u128);
     fn provide(amount: Wad);

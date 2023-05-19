@@ -1,5 +1,6 @@
 mod access_control;
 mod exp;
+mod misc;
 mod pow;
 mod reentrancy_guard;
 mod serde;

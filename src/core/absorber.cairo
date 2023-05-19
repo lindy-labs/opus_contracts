@@ -6,7 +6,7 @@ mod Absorber {
     use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use traits::{Into, TryInto};
-    use zeroable::{Zeroable};
+    use zeroable::Zeroable;
 
     use aura::core::roles::AbsorberRoles;
 
@@ -63,9 +63,7 @@ mod Absorber {
     const REWARDS_LOOP_START: u8 = 1;
 
     struct Storage {
-        // mapping between a provider address and the sentinel contract address
         sentinel: ISentinelDispatcher,
-        // mapping between a provider address and the shrine contract address
         shrine: IShrineDispatcher,
         // boolean flag indicating whether the absorber is live or not
         is_live: bool,
@@ -78,7 +76,7 @@ mod Absorber {
         absorptions_count: u32,
         // mapping from a provider to the last absorption ID accounted for
         provider_last_absorption: LegacyMap::<ContractAddress, u32>,
-        // mapping of address to a packed struct of
+        // mapping of address to a struct of
         // 1. epoch in which the provider's shares are issued
         // 2. number of shares for the provider in the above epoch
         provisions: LegacyMap::<ContractAddress, Provision>,
@@ -86,7 +84,7 @@ mod Absorber {
         absorption_epoch: LegacyMap::<u32, u32>,
         // total number of shares for current epoch
         total_shares: Wad,
-        // mapping of a tuple of absorption ID and asset to a packed struct of
+        // mapping of a tuple of asset and absorption ID to a struct of
         // 1. the amount of that asset in its decimal precision absorbed per share Wad for an absorption
         // 2. the rounding error from calculating (1) that is to be added to the next absorption
         asset_absorption: LegacyMap::<(ContractAddress, u32), AssetApportion>,
@@ -107,10 +105,10 @@ mod Absorber {
         // 2. the address of the vesting contract (blesser) implementing `IBlesser` for the ERC-20 token
         // 3. a boolean indicating if the blesser should be called
         rewards: LegacyMap::<u8, Reward>,
-        // mapping from a reward token address and epoch to a packed struct of
+        // mapping from a reward token address and epoch to a struct of
         // 1. the cumulative amount of that reward asset in its decimal precision per share Wad in that epoch
         // 2. the rounding error from calculating (1) that is to be added to the next reward distribution
-        reward_by_epoch: LegacyMap::<(ContractAddress, u32), AssetApportion>,
+        cumulative_reward_amt_by_epoch: LegacyMap::<(ContractAddress, u32), AssetApportion>,
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
         provider_last_reward_cumulative: LegacyMap::<(ContractAddress, ContractAddress), u128>,
@@ -238,7 +236,7 @@ mod Absorber {
     }
 
     #[view]
-    fn get_provider(provider: ContractAddress) -> Provision {
+    fn get_provision(provider: ContractAddress) -> Provision {
         provisions::read(provider)
     }
 
@@ -259,7 +257,7 @@ mod Absorber {
 
     #[view]
     fn get_asset_reward(asset: ContractAddress, epoch: u32) -> AssetApportion {
-        reward_by_epoch::read((asset, epoch))
+        cumulative_reward_amt_by_epoch::read((asset, epoch))
     }
 
     #[view]
@@ -324,6 +322,7 @@ mod Absorber {
             provision.epoch, current_epoch, provision.shares
         );
 
+        // Early return if we do not expect rewards to be distributed when the user calls `reap`
         if total_shares.is_zero() | current_provider_shares.is_zero() {
             return (absorbed_assets, absorbed_asset_amts, reward_assets, reward_amts);
         }
@@ -344,14 +343,11 @@ mod Absorber {
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool) {
         AccessControl::assert_has_role(AbsorberRoles::SET_REWARD);
 
-        assert(asset.is_non_zero() & blesser.is_non_zero(), 'AB: Address cannot be 0');
+        assert(asset.is_non_zero() & blesser.is_non_zero(), 'ABS: Address cannot be 0');
 
         let reward: Reward = Reward {
             asset, blesser: IBlesserDispatcher { contract_address: blesser }, is_active
         };
-
-        // Emit event 
-        RewardSet(asset, blesser, is_active);
 
         // If this reward token hasn't been added yet, add it to the list
         let reward_id: u8 = reward_id::read(asset);
@@ -367,6 +363,9 @@ mod Absorber {
             // Otherwise, update the existing reward
             rewards::write(reward_id, reward);
         }
+
+        // Emit event 
+        RewardSet(asset, blesser, is_active);
     }
 
     #[external]
@@ -414,7 +413,7 @@ mod Absorber {
         let absorber: ContractAddress = get_contract_address();
 
         let success: bool = yin_erc20().transfer_from(provider, absorber, amount.into());
-        assert(success, 'AB: Transfer failed');
+        assert(success, 'ABS: Transfer failed');
 
         // Event emission
         Provide(provider, current_epoch, amount);
@@ -430,12 +429,10 @@ mod Absorber {
     //         submitted a request, a draining absorption occurs, and the provider provides again
     //         in the next epoch. This is expected to be rare, and the maximum risk-free profit is
     //         in any event greatly limited.
-
     #[external]
     fn request() {
         let provider: ContractAddress = get_caller_address();
-        let provision: Provision = provisions::read(provider);
-        assert_provider(provision);
+        assert_provider(provisions::read(provider));
 
         let request: Request = provider_request::read(provider);
         let current_timestamp: u64 = get_block_timestamp();
@@ -446,7 +443,7 @@ mod Absorber {
                 timelock = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
             }
 
-        let capped_timelock: u64 = timelock - REQUEST_MAX_TIMELOCK;
+        let capped_timelock: u64 = min(timelock, REQUEST_MAX_TIMELOCK);
         provider_request::write(
             provider,
             Request { timestamp: current_timestamp, timelock: capped_timelock, has_removed: false }
@@ -459,8 +456,9 @@ mod Absorber {
     fn remove(amount: Wad) {
         let provider: ContractAddress = get_caller_address();
         let provision: Provision = provisions::read(provider);
-        let request: Request = provider_request::read(provider);
         assert_provider(provision);
+
+        let request: Request = provider_request::read(provider);
         assert_can_remove(request);
 
         let current_epoch: u32 = current_epoch::read();
@@ -495,8 +493,8 @@ mod Absorber {
             let max_removable_yin: Wad = convert_to_yin(current_provider_shares);
             let yin_amt: Wad = min(amount, max_removable_yin);
 
-            // Due to precision loss, we need to re-check if the amount to remove is the max
-            // removable, and then set the shares to remove as the provider's balance to avoid
+            // Due to precision loss, if the amount to remove is the max removable,
+            // set the shares to be removed as the provider's balance to avoid
             // any remaining dust shares.
             let mut shares_to_remove = current_provider_shares;
             if yin_amt != max_removable_yin {
@@ -519,9 +517,8 @@ mod Absorber {
                 }
             );
 
-            let yin_amt_uint: u256 = yin_amt.into();
-            let success: bool = yin_erc20().transfer(provider, yin_amt_uint);
-            assert(success, 'AB: Transfer failed');
+            let success: bool = yin_erc20().transfer(provider, yin_amt.into());
+            assert(success, 'ABS: Transfer failed');
 
             // Event emission
             Remove(provider, current_epoch, yin_amt);
@@ -552,7 +549,7 @@ mod Absorber {
 
     // Update assets received after an absorption
     #[external]
-    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>) {
+    fn update(mut assets: Span<ContractAddress>, mut asset_amts: Span<u128>) {
         AccessControl::assert_has_role(AbsorberRoles::UPDATE);
 
         let current_epoch: u32 = current_epoch::read();
@@ -562,8 +559,7 @@ mod Absorber {
         bestow(current_epoch, rewards_count);
 
         // Increment absorption ID
-        let prev_absorption_id: u32 = absorptions_count::read();
-        let current_absorption_id: u32 = prev_absorption_id + 1;
+        let current_absorption_id: u32 = absorptions_count::read() + 1;
         absorptions_count::write(current_absorption_id);
 
         // Update epoch for absorption ID
@@ -571,15 +567,13 @@ mod Absorber {
 
         let total_shares: Wad = total_shares::read();
 
-        // Loop through assets and calculate amount entitled per share
-        // Copy the Spans so as to not consume the originals with `pop_front()`
-        let mut assets_copy: Span<ContractAddress> = assets;
-        let mut asset_amts_copy: Span<u128> = asset_amts;
+        // Emit `Gain` event before the loop as `assets` and `asset_amts` are consumed by the loop
+        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
 
         loop {
-            match assets_copy.pop_front() {
+            match assets.pop_front() {
                 Option::Some(asset) => {
-                    let asset_amt: u128 = *asset_amts_copy.pop_front().unwrap();
+                    let asset_amt: u128 = *asset_amts.pop_front().unwrap();
                     update_absorbed_asset(current_absorption_id, total_shares, *asset, asset_amt);
                 },
                 Option::None(_) => {
@@ -587,9 +581,6 @@ mod Absorber {
                 }
             };
         };
-
-        // Emit `Gain` event
-        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
 
         // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
         let absorber: ContractAddress = get_contract_address();
@@ -651,12 +642,12 @@ mod Absorber {
 
     #[inline(always)]
     fn assert_provider(provision: Provision) {
-        assert(provision.epoch != 0, 'AB: Not a provider');
+        assert(provision.shares.is_non_zero(), 'ABS: Not a provider');
     }
 
     #[inline(always)]
     fn assert_live() {
-        assert(is_live::read(), 'AB: Not live');
+        assert(is_live::read(), 'ABS: Not live');
     }
 
     // Helper function to return a Yin ERC20 contract
@@ -667,7 +658,7 @@ mod Absorber {
 
     #[inline(always)]
     fn set_removal_limit_internal(limit: Ray) {
-        assert(MIN_LIMIT <= limit.val, 'AB: Limit is too low');
+        assert(MIN_LIMIT <= limit.val, 'ABS: Limit is too low');
         RemovalLimitUpdated(removal_limit::read(), limit);
         removal_limit::write(limit);
     }
@@ -688,7 +679,10 @@ mod Absorber {
     fn convert_to_shares(yin_amt: Wad, round_up: bool) -> (Wad, Wad) {
         let total_shares: Wad = total_shares::read();
 
-        if INITIAL_SHARES <= total_shares.val {
+        if INITIAL_SHARES > total_shares.val {
+            // By subtracting the initial shares from the first provider's shares, we ensure that
+            // there is a non-removable amount of shares. This subtraction also prevents a user 
+            // from providing an amount less than the minimum shares.
             return ((yin_amt.val - INITIAL_SHARES).into(), INITIAL_SHARES.into());
         }
 
@@ -712,18 +706,16 @@ mod Absorber {
 
         // If no shares are issued yet, then it is a new epoch and absorber is emptied.
         if total_shares.is_zero() {
-            return Wad { val: 0 };
+            return 0_u128.into();
         }
 
         let absorber: ContractAddress = get_contract_address();
         let yin_balance: Wad = Wad { val: yin_erc20().balance_of(absorber).try_into().unwrap() };
 
-        let yin: Wad = (shares_amt * yin_balance) / total_shares;
-        yin
+        (shares_amt * yin_balance) / total_shares
     }
 
     // Convert an epoch's shares to a subsequent epoch's shares
-    // Return argument is named for testing
     fn convert_epoch_shares(start_epoch: u32, end_epoch: u32, start_shares: Wad) -> Wad {
         if start_epoch == end_epoch {
             return start_shares;
@@ -731,7 +723,6 @@ mod Absorber {
 
         let epoch_conversion_rate: Ray = epoch_share_conversion_rate::read(start_epoch);
 
-        // `rmul` of a wad and a ray returns a wad
         let new_shares: Wad = wadray::rmul_wr(start_shares, epoch_conversion_rate);
 
         convert_epoch_shares(start_epoch + 1, end_epoch, new_shares)
@@ -766,7 +757,7 @@ mod Absorber {
     }
 
 
-    // Returns the last error for an asset at a given `absorption_id` if the packed value is non-zero.
+    // Returns the last error for an asset at a given `absorption_id` if the `asset_amt_per_share` is non-zero.
     // Otherwise, check `absorption_id - 1` recursively for the last error.
     fn get_recent_asset_absorption_error(asset: ContractAddress, absorption_id: u32) -> u128 {
         if absorption_id == 0 {
@@ -775,8 +766,9 @@ mod Absorber {
 
         let absorption: AssetApportion = asset_absorption::read((asset, absorption_id));
         // asset_amt_per_share is checked because it is possible for the error to be zero. 
-        // On the other hand, asset_amt_per_share should never be zero, save for extreme edge cases. 
-        if absorption.asset_amt_per_share != 0 {
+        // On the other hand, asset_amt_per_share may be zero in extreme edge cases with 
+        // a non-zero error that is spilled over to the next absorption. 
+        if absorption.asset_amt_per_share != 0 | absorption.error != 0 {
             return absorption.error;
         }
 
@@ -846,49 +838,51 @@ mod Absorber {
 
         let assets: Span<ContractAddress> = sentinel::read().get_yang_addresses();
 
-        let assets_len = assets.len();
-        let mut idx = 0;
-
         // Loop over all assets and calculate the amount of 
         // each asset that the provider is entitled to
+        let mut assets_copy = assets;
         loop {
-            if idx == assets_len {
-                // TODO: return (assets, asset_amts) here once possible
-                break ();
-            }
+            match assets_copy.pop_front() {
+                Option::Some(asset) => {
+                    // Loop over all absorptions from `provided_absorption_id` for the current asset and add
+                    // the amount of the asset that the provider is entitled to for each absorption to `absorbed_amt`. 
+                    let mut absorbed_amt: u128 = 0;
+                    let mut start_absorption_id = provided_absorption_id;
 
-            // Loop over all absorptions from `provided_absorption_id` for the current asset and add
-            // the amount of the asset that the provider is entitled to for each absorption to `absorbed_amt`. 
-            let mut absorbed_amt: u128 = 0;
-            let mut start_absorption_id = provided_absorption_id;
+                    loop {
+                        if start_absorption_id == current_absorption_id {
+                            break ();
+                        }
 
-            loop {
-                if start_absorption_id == current_absorption_id {
+                        start_absorption_id += 1;
+                        let absorption_epoch: u32 = absorption_epoch::read(start_absorption_id);
+
+                        // If `provision.epoch == absorption_epoch`, then `adjusted_shares == provision.shares`.
+                        let adjusted_shares: Wad = convert_epoch_shares(
+                            provision.epoch, absorption_epoch, provision.shares
+                        );
+
+                        // Terminate if provider does not have any shares for current epoch
+                        if adjusted_shares.is_zero() {
+                            break ();
+                        }
+
+                        let absorption: AssetApportion = asset_absorption::read(
+                            (*asset, start_absorption_id)
+                        );
+
+                        absorbed_amt +=
+                            wadray::wmul_internal(
+                                adjusted_shares.val, absorption.asset_amt_per_share
+                            );
+                    };
+
+                    asset_amts.append(absorbed_amt);
+                },
+                Option::None(_) => {
                     break ();
                 }
-
-                start_absorption_id += 1;
-                let absorption_epoch: u32 = absorption_epoch::read(start_absorption_id);
-
-                // If `provision.epoch == absorption_epoch`, then `adjusted_shares == provision.shares`.
-                let adjusted_shares: Wad = convert_epoch_shares(
-                    provision.epoch, absorption_epoch, provision.shares
-                );
-
-                // Terminate if provider does not have any shares for current epoch
-                if adjusted_shares.is_zero() {
-                    break ();
-                }
-
-                let absorption: AssetApportion = asset_absorption::read(
-                    (*assets[idx], start_absorption_id)
-                );
-
-                absorbed_amt +=
-                    wadray::wmul_internal(adjusted_shares.val, absorption.asset_amt_per_share);
             };
-
-            asset_amts.append(absorbed_amt);
         };
 
         (assets, asset_amts.span())
@@ -933,17 +927,17 @@ mod Absorber {
         let ltv_to_threshold: Ray = get_shrine_ltv_to_threshold();
         let limit: Ray = removal_limit::read();
 
-        assert(ltv_to_threshold <= limit, 'AB: relative LTV above limit');
+        assert(ltv_to_threshold <= limit, 'ABS: relative LTV above limit');
 
-        assert(request.timestamp != 0, 'AB: No request found');
-        assert(!request.has_removed, 'AB: Only 1 removal per request');
+        assert(request.timestamp != 0, 'ABS: No request found');
+        assert(!request.has_removed, 'ABS: Only 1 removal per request');
 
         let current_timestamp: u64 = starknet::get_block_timestamp();
         let removal_start_timestamp: u64 = request.timestamp + request.timelock;
-        assert(removal_start_timestamp <= current_timestamp, 'AB: Request is not valid yet');
+        assert(removal_start_timestamp <= current_timestamp, 'ABS: Request is not valid yet');
         assert(
             current_timestamp <= removal_start_timestamp + REQUEST_VALIDITY_PERIOD,
-            'AB: Request has expired'
+            'ABS: Request has expired'
         );
     }
 
@@ -980,7 +974,7 @@ mod Absorber {
             blessed_amts.append(blessed_amt);
 
             if blessed_amt != 0 {
-                let epoch_reward_info: AssetApportion = reward_by_epoch::read(
+                let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
                     (reward.asset, epoch)
                 );
                 let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
@@ -996,7 +990,7 @@ mod Absorber {
                 let updated_asset_amt_per_share: u128 = epoch_reward_info.asset_amt_per_share
                     + asset_amt_per_share;
 
-                reward_by_epoch::write(
+                cumulative_reward_amt_by_epoch::write(
                     (reward.asset, epoch),
                     AssetApportion {
                         asset_amt_per_share: updated_asset_amt_per_share, error: error
@@ -1007,12 +1001,13 @@ mod Absorber {
             current_rewards_id += 1;
         };
 
-        Bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
+        if rewards.len() > 0 {
+            Bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
+        }
     }
 
-    // Helper function to perform an outer loop over all rewards and calculate the accumulated amounts
-    // for a provider. It also writes the asset address and accumulated amounts for rewards to two respective arrays.
-    // To get all rewards, `current_rewards_id` should start at `1`.
+    // Helper function to loop over all rewards and calculate the accumulated amounts for a provider.
+    // It also returns a tuple of ordered arrays of the asset address and accumulated amounts for rewards.
     fn get_provider_accumulated_rewards(
         provider: ContractAddress, provision: Provision, current_epoch: u32, rewards_count: u8
     ) -> (Span<ContractAddress>, Span<u128>) {
@@ -1039,7 +1034,7 @@ mod Absorber {
                     break ();
                 }
 
-                let epoch_reward_info: AssetApportion = reward_by_epoch::read(
+                let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
                     (reward.asset, epoch)
                 );
 
@@ -1048,7 +1043,7 @@ mod Absorber {
                 // This is because the provider's cumulative value may not have been fully updated for that epoch. 
                 let mut rate: u128 = epoch_reward_info.asset_amt_per_share;
                 if epoch == provision.epoch {
-                    let provider_cumulative_diff: u128 = epoch_reward_info.asset_amt_per_share
+                    let rate = epoch_reward_info.asset_amt_per_share
                         - provider_last_reward_cumulative::read((provider, reward.asset));
                 }
                 reward_amt += wadray::wmul_internal(rate, epoch_shares.val);
@@ -1075,7 +1070,9 @@ mod Absorber {
         loop {
             match assets.pop_front() {
                 Option::Some(asset) => {
-                    let epoch_reward_info: AssetApportion = reward_by_epoch::read((*asset, epoch));
+                    let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+                        (*asset, epoch)
+                    );
                     provider_last_reward_cumulative::write(
                         (provider, *asset), epoch_reward_info.asset_amt_per_share
                     )
@@ -1098,11 +1095,15 @@ mod Absorber {
             }
 
             let reward: Reward = rewards::read(current_rewards_id);
-            let epoch_reward_info: AssetApportion = reward_by_epoch::read((reward.asset, epoch));
+            let epoch_reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
+                (reward.asset, epoch)
+            );
             let next_epoch_reward_info: AssetApportion = AssetApportion {
                 asset_amt_per_share: 0, error: epoch_reward_info.error, 
             };
-            reward_by_epoch::write((reward.asset, epoch + 1), next_epoch_reward_info);
+            cumulative_reward_amt_by_epoch::write(
+                (reward.asset, epoch + 1), next_epoch_reward_info
+            );
             current_rewards_id += 1;
         };
     }
@@ -1127,7 +1128,7 @@ mod Absorber {
                 Option::Some(accumulated_amt) => {
                     let reward: Reward = rewards::read(current_rewards_id);
                     let pending_amt: u128 = reward.blesser.preview_bless();
-                    let reward_info: AssetApportion = reward_by_epoch::read(
+                    let reward_info: AssetApportion = cumulative_reward_amt_by_epoch::read(
                         (reward.asset, current_epoch)
                     );
 
