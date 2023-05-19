@@ -789,18 +789,15 @@ mod Absorber {
         let rewards_count: u8 = rewards_count::read();
         bestow(current_epoch, rewards_count);
 
+        // Get and update provider's absorption ID
         let provider_last_absorption_id: u32 = provider_last_absorption::read(provider);
         let current_absorption_id: u32 = absorptions_count::read();
-
-        // This should be updated before early return so that first provision by a new
-        // address is properly updated.
         provider_last_absorption::write(provider, current_absorption_id);
 
-        if provider_last_absorption_id == current_absorption_id {
-            return ();
-        }
-
         let total_shares: Wad = total_shares::read();
+
+        // NOTE: both `get_absorbed_assets_for_provider_internal` and `get_provider_accumulated_rewards` 
+        // contain early returns if `provision.shares` is zero.
 
         // Loop over absorbed assets and transfer
         let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
@@ -814,6 +811,12 @@ mod Absorber {
         );
         transfer_assets(provider, reward_assets, reward_asset_amts);
 
+        // NOTE: it is very important that this function is called, even for a new provider. 
+        // If a new provider's cumulative rewards are not updated to the current epoch,
+        // then they will be zero, and the next time reap_internal is called, the provider
+        // will receive all of the cumulative rewards for the current epoch, when they
+        // should only receive the rewards for the current epoch since the last time 
+        // `reap_internal` was called.
         update_provider_cumulative_rewards(
             provider, current_epoch, REWARDS_LOOP_START, reward_assets
         );
@@ -1016,6 +1019,11 @@ mod Absorber {
         let mut rewards: Array<ContractAddress> = ArrayTrait::new();
         let mut reward_amts: Array<u128> = ArrayTrait::new();
         let mut current_rewards_id: u8 = 0;
+
+        // Return empty arrays if the provider has no shares
+        if provision.shares.is_zero() {
+            return (rewards.span(), reward_amts.span());
+        }
 
         loop {
             if current_rewards_id == rewards_count
