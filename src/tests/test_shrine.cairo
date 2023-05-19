@@ -708,6 +708,31 @@ mod TestShrine {
     }
 
     #[test]
+    #[available_gas(1000000000000)]
+    fn test_shrine_forged_partial_withdraw_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+
+        let shrine = shrine(shrine_addr);
+        set_caller_address(admin());
+        let withdraw_amt: Wad = (TROVE1_YANG1_DEPOSIT / 3).into();
+        trove1_withdraw(shrine_addr, withdraw_amt);
+
+        let yang1_addr = yang1_addr();
+        let remaining_amt: Wad = TROVE1_YANG1_DEPOSIT.into() - withdraw_amt;
+        assert(shrine.get_yang_total(yang1_addr) == remaining_amt, 'incorrect yang total');
+        assert(shrine.get_deposit(yang1_addr, TROVE_1) == remaining_amt, 'incorrect yang deposit');
+        
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
+        let expected_ltv: Ray = wadray::rdiv_ww(TROVE1_FORGE_AMT.into(), (yang1_price * remaining_amt));
+        let (_, ltv, _, _) = shrine.get_trove_info(TROVE_1);
+        assert(ltv == expected_ltv, 'incorrect LTV');
+    }
+
+    #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_invalid_yang_fail() {
@@ -763,6 +788,29 @@ mod TestShrine {
         set_contract_address(admin());
 
         shrine.withdraw(yang2_addr(), TROVE_1, (TROVE1_YANG1_DEPOSIT + 1).into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_withdraw_unsafe_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+
+        let shrine = shrine(shrine_addr);
+
+        let (threshold, ltv, trove_value, debt) = shrine.get_trove_info(TROVE_1);
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr());
+
+        // Value of trove needed for existing forged amount to be safe
+        let unsafe_trove_value: Wad = wadray::rmul_wr(TROVE1_FORGE_AMT.into(), threshold);
+        // Amount of yang to be withdrawn to decrease the trove's value to unsafe
+        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price;
+        set_contract_address(admin());
+        shrine.withdraw(yang1_addr(), TROVE_1, unsafe_withdraw_yang_amt);
     }
 
     //
@@ -872,4 +920,44 @@ mod TestShrine {
 
         shrine.forge(trove1_owner_addr(), TROVE_1, TROVE1_FORGE_AMT.into());
     }
+
+    //
+    // Tests - Trove melt
+    //
+
+    #[test]
+    #[available_gas(1000000000000)]
+    fn test_shrine_melt_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+
+        let shrine = shrine(shrine_addr);
+        let yin = yin(shrine_addr);
+        let trove1_owner_addr = trove1_owner_addr();
+
+        let before_total_debt: Wad = shrine.get_total_debt();
+        let (_, _, _, before_trove_debt) = shrine.get_trove_info(TROVE_1);
+        let before_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
+
+        let melt_amt_wad: Wad = (TROVE1_FORGE_AMT / 3).into();
+        set_caller_address(admin());
+        shrine.melt(trove1_owner_addr, TROVE_1, melt_amt_wad);
+
+        assert(shrine.get_total_debt() == before_total_debt - melt_amt_wad, 'incorrect total debt');
+        
+        let (_, _, _, after_trove_debt) = shrine.get_trove_info(TROVE_1);
+        assert(after_trove_debt == before_trove_debt - melt_amt_wad, 'incorrect trove debt');
+
+        let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
+        // TODO: replace with WadIntoU256 from Absorber PR
+        assert(after_yin_bal == before_yin_bal - melt_amt_wad.val.into(), 'incorrect yin balance');
+
+    }
+
+    //
+    // Tests - Inject/eject
+    //
 }
