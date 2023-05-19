@@ -1003,4 +1003,38 @@ mod TestShrine {
     //
     // Tests - Inject/eject
     //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_shrine_inject_and_eject() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        let yin = yin(shrine_addr);
+        let trove1_owner = trove1_owner_addr();
+
+        let before_total_supply: u256 = yin.total_supply();
+        let before_user_bal: u256 = yin.balance_of(trove1_owner);
+        let before_total_yin: Wad = shrine.get_total_yin();
+        let before_user_yin: Wad = shrine.get_yin(trove1_owner);
+
+        set_contract_address(admin());
+
+        let inject_amt = TROVE1_FORGE_AMT.into();
+        shrine.inject(trove1_owner, inject_amt);
+
+        // TODO: replace with WadIntoU256 from Absorber PR
+        assert(yin.total_supply() == before_total_supply + inject_amt.val.into(), 'incorrect total supply');
+        assert(yin.balance_of(trove1_owner) == before_user_bal + inject_amt.val.into(), 'incorrect user balance');
+        assert(shrine.get_total_yin() == before_total_yin + inject_amt, 'incorrect total yin');
+        assert(shrine.get_yin(trove1_owner) == before_user_yin + inject_amt, 'incorrect user yin');
+
+        shrine.eject(trove1_owner, inject_amt);
+        assert(yin.total_supply() == before_total_supply, 'incorrect total supply');
+        assert(yin.balance_of(trove1_owner) == before_user_bal, 'incorrect user balance');
+        assert(shrine.get_total_yin() == before_total_yin, 'incorrect total yin');
+        assert(shrine.get_yin(trove1_owner) == before_user_yin, 'incorrect user yin');        
+    }
 }
