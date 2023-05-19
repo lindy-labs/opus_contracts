@@ -970,6 +970,36 @@ mod TestShrine {
         assert(after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount');
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_melt_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        trove1_forge(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(badguy());
+        shrine.melt(trove1_owner_addr(), TROVE_1, 1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_melt_insufficient_yin() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        trove1_forge(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
+        shrine.melt(trove2_owner_addr(), TROVE_1, 1_u128.into());
+    }
+
     //
     // Tests - Inject/eject
     //
