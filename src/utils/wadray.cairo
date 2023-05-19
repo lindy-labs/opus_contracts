@@ -287,6 +287,16 @@ impl WadIntoU256 of Into<Wad, u256> {
     }
 }
 
+impl U256TryIntoWad of TryInto<u256, Wad> {
+    #[inline(always)]
+    fn try_into(self: u256) -> Option<Wad> {
+        match self.try_into() {
+            Option::Some(val) => Option::Some(Wad { val }),
+            Option::None(_) => Option::None(()),
+        }
+    }
+}
+
 // Comparisons
 impl WadPartialEq of PartialEq<Wad> {
     fn eq(lhs: Wad, rhs: Wad) -> bool {
@@ -669,9 +679,16 @@ mod tests {
         assert(ray_result.val == ray_value, 'Incorrect u128->Ray conversion');
     }
 
+    #[test]
     fn test_wadray_into_u256() {
         // Test WadIntoU256
         assert(Wad { val: 5 }.into() == 5_u256, 'Incorrect Wad->u256 conversion')
+    }
+
+    #[test]
+    fn test_u256_try_into_wadray() {
+        // Test U256TryIntoWad
+        assert(Wad { val: 5 } == 5_u256.try_into().unwrap(), 'Incorrect u256->Wad conversion');
     }
 
     #[test]

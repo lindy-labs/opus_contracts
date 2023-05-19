@@ -582,10 +582,12 @@ mod Absorber {
             };
         };
 
+        //
         // Increment epoch ID if yin per share drops below threshold or stability pool is emptied
+        //
+
         let absorber: ContractAddress = get_contract_address();
-        let yin_balance_uint: u256 = yin_erc20().balance_of(absorber);
-        let yin_balance: Wad = Wad { val: yin_balance_uint.try_into().unwrap() };
+        let yin_balance: Wad = yin_erc20().balance_of(absorber).try_into().unwrap();
         let yin_per_share: Wad = yin_balance / total_shares;
 
         // This also checks for absorber's yin balance being emptied because yin per share will be
@@ -687,7 +689,7 @@ mod Absorber {
         }
 
         let absorber: ContractAddress = get_contract_address();
-        let yin_balance: Wad = Wad { val: yin_erc20().balance_of(absorber).try_into().unwrap() };
+        let yin_balance: Wad = yin_erc20().balance_of(absorber).try_into().unwrap();
 
         // TODO: This could easily overflow, should be done with u256
         let (computed_shares, r) = u128_safe_divmod(
@@ -710,7 +712,7 @@ mod Absorber {
         }
 
         let absorber: ContractAddress = get_contract_address();
-        let yin_balance: Wad = Wad { val: yin_erc20().balance_of(absorber).try_into().unwrap() };
+        let yin_balance: Wad = yin_erc20().balance_of(absorber).try_into().unwrap();
 
         (shares_amt * yin_balance) / total_shares
     }
