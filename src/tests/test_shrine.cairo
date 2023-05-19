@@ -146,8 +146,6 @@ mod TestShrine {
                     let amt: Wad = *yang_amts.pop_front().unwrap();
                     let threshold: Ray = *yang_thresholds.pop_front().unwrap();
 
-                    amt.val.print();
-                    (*yang_price).val.print();
                     let value = amt * *yang_price;
                     cumulative_value += value;
                     cumulative_threshold += wadray::wmul_wr(value, threshold);
@@ -592,7 +590,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_deposit_pass() {
+    fn test_shrine_deposit_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
@@ -620,4 +618,33 @@ mod TestShrine {
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
     }
     
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_deposit_invalid_yang_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
+
+        shrine.deposit(invalid_yang_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_deposit_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(badguy());
+
+        shrine.deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
+    }
 }
