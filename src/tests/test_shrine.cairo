@@ -634,7 +634,6 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -649,7 +648,6 @@ mod TestShrine {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         shrine_with_feeds(shrine_addr);
-        trove1_deposit(shrine_addr);
 
         let shrine = shrine(shrine_addr);
         set_contract_address(badguy());
@@ -698,6 +696,63 @@ mod TestShrine {
 
         let expected_max_forge: Wad = calculate_max_forge(yang_prices.span(), yang_amts.span(), yang_thresholds.span());
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
+    }
 
-    }  
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_withdraw_invalid_yang_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
+
+        shrine.withdraw(invalid_yang_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_withdraw_unauthorized() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(badguy());
+
+        shrine.withdraw(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_withdraw_insufficient_yang_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
+
+        shrine.withdraw(yang1_addr(), TROVE_1, (TROVE1_YANG1_DEPOSIT + 1).into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_withdraw_zero_yang_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
+
+        shrine.withdraw(yang2_addr(), TROVE_1, (TROVE1_YANG1_DEPOSIT + 1).into());
+    }
 }
