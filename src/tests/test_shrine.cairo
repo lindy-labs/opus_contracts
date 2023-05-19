@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
+    use debug::PrintTrait;
     use integer::downcast;
     use option::OptionTrait;
     use traits::{Into, TryInto};
@@ -50,6 +51,12 @@ mod TestShrine {
 
     const INITIAL_YANG_AMT: u128 = 0;
 
+    // Trove constants
+    const TROVE_1: u64 = 1;
+    const TROVE_2: u64 = 2;
+
+    const TROVE1_YANG1_DEPOSIT: u128 = 5000000000000000000;  // 5 (Wad)
+
     //
     // Address constants
     //
@@ -86,12 +93,20 @@ mod TestShrine {
     // Helpers
     // 
 
+    // Wrapper function for Shrine
+    #[inline(always)]
+    fn shrine(shrine_addr: ContractAddress) -> IShrineDispatcher {
+        IShrineDispatcher { contract_address: shrine_addr }
+    }
+
     // Returns the interval ID for the given timestamp
     #[inline(always)]
     fn get_interval(timestamp: u64) -> u64 {
         timestamp / TIME_INTERVAL
     }
 
+    // Helper function to generate a price feed for a yang given a starting price
+    // Currently increases the price at a fixed percentage per step
     fn generate_yang_feed(price: Wad) -> Span<Wad> {
         let mut prices: Array<Wad> = ArrayTrait::new();
         let mut price: Wad = price.into();
@@ -101,16 +116,47 @@ mod TestShrine {
                 break prices.span();
             }
 
-            let price = wadray::rmul_wr(price, PRICE_CHANGE.into());
+            let price = price + wadray::rmul_wr(price, PRICE_CHANGE.into());
             prices.append(price);
 
             idx += 1;
         }
     }
 
-    #[inline(always)]
-    fn shrine(shrine_addr: ContractAddress) -> IShrineDispatcher {
-        IShrineDispatcher { contract_address: shrine_addr }
+    // Helper function to calculate the maximum forge amount given a tuple of three ordered arrays of
+    // 1. yang prices
+    // 2. yang amounts
+    // 3. yang thresholds
+    fn calculate_max_forge(mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>) -> Wad {
+        let (threshold, value) = calculate_trove_threshold_and_value(yang_prices, yang_amts, yang_thresholds);
+        wadray::rmul_wr(value, threshold)
+    }
+    
+    // Helper function to calculate the trove value and threshold given a tuple of three ordered arrays of
+    // 1. yang prices
+    // 2. yang amounts
+    // 3. yang thresholds
+    fn calculate_trove_threshold_and_value(mut yang_prices: Span<Wad>, mut yang_amts: Span<Wad>, mut yang_thresholds: Span<Ray>) -> (Ray, Wad) {
+        let mut cumulative_value = WadZeroable::zero();
+        let mut cumulative_threshold = RayZeroable::zero();
+        
+        loop {
+            match yang_prices.pop_front() {
+                Option::Some(yang_price) => {
+                    let amt: Wad = *yang_amts.pop_front().unwrap();
+                    let threshold: Ray = *yang_thresholds.pop_front().unwrap();
+
+                    amt.val.print();
+                    (*yang_price).val.print();
+                    let value = amt * *yang_price;
+                    cumulative_value += value;
+                    cumulative_threshold += wadray::wmul_wr(value, threshold);
+                },
+                Option::None(_) => {
+                    break (wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value);
+                },
+            };
+        }
     }
 
     //
@@ -205,9 +251,9 @@ mod TestShrine {
         let shrine = shrine(shrine_addr);
 
         let trove1_owner = trove1_owner_addr();
-        set_contract_address(trove1_owner);
+        set_contract_address(admin());
 
-
+        shrine.deposit(yang1_addr(), TROVE_1, TROVE1_YANG1_DEPOSIT.into());
     }
 
     //
@@ -544,5 +590,34 @@ mod TestShrine {
     // Tests - trove deposit
     //
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_deposit_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        shrine_with_feeds(shrine_addr);
+        trove1_deposit(shrine_addr);
+
+        let shrine = shrine(shrine_addr);
+        
+        let yang1_addr = yang1_addr();
+        assert(shrine.get_yang_total(yang1_addr) == TROVE1_YANG1_DEPOSIT.into(), 'incorrect yang total');
+        assert(shrine.get_deposit(yang1_addr, TROVE_1) == TROVE1_YANG1_DEPOSIT.into(), 'incorrect yang deposit');
+
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
+        let max_forge_amt: Wad = shrine.get_max_forge(TROVE_1);
+
+        let mut yang_prices: Array<Wad> = ArrayTrait::new();
+        yang_prices.append(yang1_price);
+
+        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        yang_amts.append(TROVE1_YANG1_DEPOSIT.into());
+
+        let mut yang_thresholds: Array<Ray> = ArrayTrait::new();
+        yang_thresholds.append(YANG1_THRESHOLD.into());
+
+        let expected_max_forge: Wad = calculate_max_forge(yang_prices.span(), yang_amts.span(), yang_thresholds.span());
+        assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
+    }
     
 }
