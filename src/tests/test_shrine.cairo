@@ -1143,10 +1143,7 @@ mod TestShrine {
                 intervals_in_era = end_interval - era_start_interval;
             } else {
                 intervals_in_era = *yang_rate_update_intervals[i + 1] - era_start_interval;
-            }   
-
-            // Add an offset of 1 to get the actual number of intervals between start and end
-            intervals_in_era += 1;
+            }
 
             let t: u128 = intervals_in_era.into() * Shrine::TIME_INTERVAL_DIV_YEAR;
             debt *= exp(wadray::rmul_rw(rate, t.into()));
@@ -1200,7 +1197,7 @@ mod TestShrine {
 
     // Helper function to calculate average price of a yang over a period of intervals
     fn get_avg_yang_price(shrine: IShrineDispatcher, yang_addr: ContractAddress, start_interval: u64, end_interval: u64) -> Wad {
-        let feed_len: u128 = (end_interval - start_interval + 1).into();
+        let feed_len: u128 = (end_interval - start_interval).into();
 
         let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval);
         let (_, end_cumulative_price) = shrine.get_yang_price(yang_addr, end_interval);
@@ -1210,7 +1207,7 @@ mod TestShrine {
 
     // Helper function to calculate the average multiplier over a period of intervals
     fn get_avg_multiplier(shrine: IShrineDispatcher, start_interval: u64, end_interval: u64) -> Ray {
-        let feed_len: u128 = (end_interval - start_interval + 1).into();
+        let feed_len: u128 = (end_interval - start_interval).into();
 
         // Note that the start cumulative value is the value at `start_interval - 1` in order to 
         // take into account the value `start_interval`. If we use the cumulative value at `start_interval`,
@@ -1251,7 +1248,7 @@ mod TestShrine {
 
         advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, yang1_price, yang2_price);
 
-        // Price updates start from `start_interval`, so we need to offset by one
+        // Offset by 1 because `advance_prices_and_set_multiplier` updates `start_interval`.
         let end_interval: u64 = start_interval + FEED_LEN - 1;
         // commented out because of gas usage error
         //assert(current_interval() == end_interval, 'wrong end interval');  // sanity check
@@ -1270,8 +1267,9 @@ mod TestShrine {
             debt,
         );
         let (_, _, _, estimated_debt) = shrine.get_trove_info(TROVE_1);
-        assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
+        assert(estimated_debt == expected_debt, 'wrong compounded debt');
+        
         // Trigger charge and check interest is accrued
         shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
@@ -1332,8 +1330,8 @@ mod TestShrine {
         assert(skipped_interval_price == WadZeroable::zero(), 'skipped price is not zero');
         assert(skipped_interval_multiplier == RayZeroable::zero(), 'skipped multiplier is not zero');
 
-        // Price updates start from `start_interval`, so we need to offset by one
-        // by discounting the skipped interval
+        // Offset by 1 by excluding the skipped interval because `advance_prices_and_set_multiplier` 
+        // updates `start_interval`.
         let end_interval: u64 = start_interval + (num_intervals_before_skip + num_intervals_after_skip);
         // commented out because of gas usage error
         //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
@@ -1410,8 +1408,9 @@ mod TestShrine {
         let time_to_skip: u64 = intervals_after_last_charge * Shrine::TIME_INTERVAL;
         let end_timestamp: u64 = start_timestamp + time_to_skip;
 
-        // Price updates start from `start_interval`, so we need to offset by one
-        let end_interval: u64 = start_interval + intervals_after_last_charge - 1;
+        // No need for offset here because we are incrementing the intervals directly
+        // instead of via `advance_prices_and_set_multiplier`
+        let end_interval: u64 = start_interval + intervals_after_last_charge;
         set_block_timestamp(end_timestamp);
 
         shrine.withdraw(yang1_addr, TROVE_1, WadZeroable::zero());
@@ -1436,7 +1435,6 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_charge_scenario_2() {
         let (shrine, expected_debt) = setup_charge_scenario_2();
-        assert(expected_debt > WadZeroable::zero(), 'ha!');
 
         shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
         let total_debt: Wad = shrine.get_total_debt();
@@ -1446,7 +1444,87 @@ mod TestShrine {
 
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');    
     }
+ 
+    // Wrapper to get around gas issue
+    // Test for `charge` with "missed" price and multiplier updates after the start interval,
+    // Start interval has a price and multiplier update.
+    // End interval does not have a price or multiplier update.
+    // 
+    // T+START/LAST_UPDATED-------------T+END
+    fn setup_charge_scenario_3() -> (IShrineDispatcher, Wad) {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
+        // Advance one interval to avoid overwriting the last price
+        advance_interval();
+
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+        trove1_forge(shrine_addr, forge_amt);
+
+        let shrine = shrine(shrine_addr);
+        let yang1_addr = yang1_addr();
+
+        // Advance timestamp by 2 intervals and set price for interval - `T+LAST_UPDATED`
+        let time_to_skip: u64 = 2 * Shrine::TIME_INTERVAL;
+        let start_timestamp: u64 = get_block_timestamp() + time_to_skip;
+        let start_interval: u64 = get_interval(start_timestamp);
+        set_block_timestamp(start_timestamp);
+        let start_price: Wad = 2222000000000000000000_u128.into();  // 2_222 (Wad)
+        let start_multiplier: Ray = RAY_SCALE.into();
+        set_contract_address(admin());
+        shrine.advance(yang1_addr, start_price);
+        shrine.set_multiplier(start_multiplier);
+
+        shrine.deposit(yang1_addr, TROVE_1, WadZeroable::zero());
+
+        // sanity check that some interest has accrued
+        let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
+        assert(debt > forge_amt, '!(starting debt > forged)');
+
+        // Advance timestamp to `T+END`, to mock lack of price updates since `T+START/LAST_UPDATED`.
+        // Trigger charge to update the trove's debt to `T+END`.
+        let intervals_after_last_update: u64 = 17;
+        let time_to_skip: u64 = intervals_after_last_update * Shrine::TIME_INTERVAL;
+        let end_timestamp: u64 = start_timestamp + time_to_skip;
+
+        // No need for offset here because we are incrementing the intervals directly
+        // instead of via `advance_prices_and_set_multiplier`
+        let end_interval: u64 = start_interval + intervals_after_last_update;
+        set_block_timestamp(end_timestamp);
+
+        shrine.withdraw(yang1_addr, TROVE_1, WadZeroable::zero());
+
+        // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the 
+        // average values to be that at `T+LAST_UPDATED`.
+        let expected_debt: Wad = compound_wrapper_for_yang(
+            YANG1_BASE_RATE.into(),
+            deployment_interval(),
+            TROVE1_YANG1_DEPOSIT.into(),
+            start_price,
+            start_multiplier,
+            start_interval,
+            end_interval,
+            debt,
+        );
+
+        (shrine, expected_debt)
+    }
+ 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_charge_scenario_3() {
+        let (shrine, expected_debt) = setup_charge_scenario_3();
+
+        shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
+        let total_debt: Wad = shrine.get_total_debt();
+
+        let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
+        assert(expected_debt == debt, 'wrong compounded debt');
+
+        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');    
+    }
     
 
     //
