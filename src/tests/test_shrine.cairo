@@ -1250,6 +1250,7 @@ mod TestShrine {
 
         advance_prices_and_set_multiplier(shrine_addr, get_block_timestamp(), FEED_LEN, yang1_price, yang2_price);
 
+        // Price updates start from the start interval, so we
         let end_interval: u64 = start_interval + FEED_LEN - 1;
         // commented out because of gas usage error
         //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
@@ -1350,9 +1351,7 @@ mod TestShrine {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_charge_scenario_2() {
+    fn setup_charge_scenario_2() -> (IShrineDispatcher, Wad) {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
@@ -1367,7 +1366,7 @@ mod TestShrine {
         let time_to_skip: u64 = 2 * Shrine::TIME_INTERVAL;
         let last_updated_timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(last_updated_timestamp);
-        let start_price: Wad = 22220000000000000000000000000000_u128.into();  // 2_222 (Wad)
+        let start_price: Wad = 2222000000000000000000_u128.into();  // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
         set_contract_address(admin());
         shrine.advance(yang1_addr, start_price);
@@ -1375,15 +1374,67 @@ mod TestShrine {
 
         // Advance timestamp to `T+START`, assuming that price has not been updated since `T+LAST_UPDATED`.
         // Trigger charge to update the trove's debt to `T+START`.
-        let intervals_after_last_update: u64 = 3_u64;
+        let intervals_after_last_update: u64 = 3;
         let time_to_skip: u64 = intervals_after_last_update * Shrine::TIME_INTERVAL;
         let start_timestamp: u64 = last_updated_timestamp + time_to_skip;
         let start_interval: u64 = get_interval(start_timestamp);
         set_block_timestamp(start_timestamp);
         
-        'scenario 2 to deposit'.print();
         shrine.deposit(yang1_addr, TROVE_1, WadZeroable::zero());
-        'scenario 2 deposited'.print();
+
+        // sanity check that some interest has accrued
+        let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
+        assert(debt > forge_amt, '!(starting debt > forged)');
+
+        // Advance timestamp to `T+END`, assuming price is still not updated since `T+LAST_UPDATED`.
+        // Trigger charge to update the trove's debt to `T+END`.
+        let intervals_after_last_charge: u64 = 17;
+        let time_to_skip: u64 = intervals_after_last_charge * Shrine::TIME_INTERVAL;
+        let end_timestamp: u64 = start_timestamp + time_to_skip;
+        let end_interval: u64 = start_interval + intervals_after_last_charge - 1;
+        set_block_timestamp(end_timestamp);
+
+        shrine.withdraw(yang1_addr, TROVE_1, WadZeroable::zero());
+
+        // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the 
+        // average values to be that at `T+LAST_UPDATED`.
+        let expected_debt: Wad = compound_wrapper_for_yang(
+            YANG1_BASE_RATE.into(),
+            deployment_interval(),
+            TROVE1_YANG1_DEPOSIT.into(),
+            start_price,
+            start_multiplier,
+            start_interval,
+            end_interval,
+            debt,
+        );
+
+        //let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
+        //assert(expected_debt == debt, 'wrong compounded debt');
+
+        // Trigger charge and check interest is accrued
+        //shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
+        //assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
+        (shrine, expected_debt)
+    }
+
+    #[test]
+    #[available_gas(200000000000000000)]
+    fn test_charge_scenario_2() {
+        let (shrine, expected_debt) = setup_charge_scenario_2();
+        assert(expected_debt > WadZeroable::zero(), 'ha!');
+
+        shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
+        let total_debt: Wad = shrine.get_total_debt();
+        total_debt.val.print();
+        expected_debt.val.print();
+
+        let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
+        assert(expected_debt == debt, 'wrong compounded debt');
+
+        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');    
+
+        
     }
 
     //
