@@ -1060,7 +1060,7 @@ mod TestShrine {
     // 
 
 
-    /// Returns the compounded debt over a given set of intervals.
+    /// Helper function to calculate the compounded debt over a given set of intervals.
     ///
     /// # Arguments
     ///
@@ -1152,9 +1152,12 @@ mod TestShrine {
         }
     }
 
+    // Test for `charge` with all intervals between start and end inclusive updated.
+    //
+    // T+START--------------T+END
     #[test]
     #[available_gas(20000000000)]
-    fn test_compound() {
+    fn test_compound_and_charge_scenario_1() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
         advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
@@ -1178,9 +1181,6 @@ mod TestShrine {
 
         let end_interval: u64 = start_interval + FEED_LEN - 1;
         assert(now() == end_interval + 1, 'wrong end interval');  // sanity check
-
-        let (_, now_price) = shrine.get_yang_price(yang1_addr, now());
-        assert(now_price == WadZeroable::zero(), 'haha!');
 
         let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
@@ -1223,6 +1223,10 @@ mod TestShrine {
         );
         let (_, _, _, estimated_debt) = shrine.get_trove_info(TROVE_1);
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
+
+        // Trigger charge and check interest is accrued
+        shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
+        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
     //
