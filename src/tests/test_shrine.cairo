@@ -1360,6 +1360,11 @@ mod TestShrine {
     }
 
     // Wrapper to get around gas issue
+    // Test for `charge` with "missed" price and multiplier updates since before the start interval,
+    // Start_interval does not have a price or multiplier update.
+    // End interval does not have a price or multiplier update.
+    //
+    // T+LAST_UPDATED       T+START-------------T+END
     fn setup_charge_scenario_2() -> (IShrineDispatcher, Wad) {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
@@ -1428,7 +1433,7 @@ mod TestShrine {
     }
 
     #[test]
-    #[available_gas(200000000000000000)]
+    #[available_gas(20000000000)]
     fn test_charge_scenario_2() {
         let (shrine, expected_debt) = setup_charge_scenario_2();
         assert(expected_debt > WadZeroable::zero(), 'ha!');
@@ -1441,6 +1446,8 @@ mod TestShrine {
 
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');    
     }
+
+    
 
     //
     // Tests - Yin transfers
