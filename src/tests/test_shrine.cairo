@@ -1372,19 +1372,17 @@ mod TestShrine {
         let feed_len: u128 = (end_interval - start_interval).into();
         let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval);
         let (_, end_cumulative_price) = shrine.get_yang_price(yang_addr, end_interval);
-        end_cumulative_price.val.print();
+
         ((end_cumulative_price - start_cumulative_price).val / feed_len).into()
     }
 
     // Helper function to calculate the average multiplier over a period of intervals
+    // TODO: Do we need this? Maybe for when the controller is up
     fn get_avg_multiplier(
         shrine: IShrineDispatcher, start_interval: u64, end_interval: u64
     ) -> Ray {
         let feed_len: u128 = (end_interval - start_interval).into();
 
-        // Note that the start cumulative value is the value at `start_interval - 1` in order to 
-        // take into account the value `start_interval`. If we use the cumulative value at `start_interval`,
-        // it would have included the value at `start_interval`, causing an off-by-1 issue.
         let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
@@ -1431,7 +1429,7 @@ mod TestShrine {
         let expected_avg_price: Wad = get_avg_yang_price(
             shrine, yang1_addr, start_interval, end_interval
         );
-        let expected_avg_multiplier: Ray = get_avg_multiplier(shrine, start_interval, end_interval);
+        let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
         let expected_debt: Wad = compound_wrapper_for_yang(
             YANG1_BASE_RATE.into(),
@@ -1525,7 +1523,7 @@ mod TestShrine {
         let expected_avg_price: Wad = get_avg_yang_price(
             shrine, yang1_addr, start_interval, end_interval
         );
-        let expected_avg_multiplier: Ray = get_avg_multiplier(shrine, start_interval, end_interval);
+        let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
         let expected_debt: Wad = compound_wrapper_for_yang(
             YANG1_BASE_RATE.into(),
@@ -1688,8 +1686,8 @@ mod TestShrine {
 
         shrine.withdraw(yang1_addr, TROVE_1, WadZeroable::zero());
 
-        // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the 
-        // average values to be that at `T+LAST_UPDATED`.
+        // As the price and multiplier have not been updated since `T+START/LAST_UPDATED`, we expect the 
+        // average values to be that at `T+START/LAST_UPDATED`.
         let expected_debt: Wad = compound_wrapper_for_yang(
             YANG1_BASE_RATE.into(),
             deployment_interval(),
@@ -1704,6 +1702,13 @@ mod TestShrine {
         (shrine, expected_debt)
     }
 
+    // Wrapper to get around gas issue
+    // Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update` intervals
+    // after start interval.
+    // Start interval has a price and multiplier update.
+    // End interval does not have a price or multiplier update.
+    // 
+    // T+START-------T+LAST_UPDATED------T+END
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_3() {
@@ -1755,7 +1760,6 @@ mod TestShrine {
         set_block_timestamp(end_timestamp);
 
         shrine.withdraw(yang1_addr, TROVE_1, WadZeroable::zero());
-        'bef avg price'.print();
 
         // Manually calculate the average since end interval does not have a cumulative value
         let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
@@ -1767,12 +1771,8 @@ mod TestShrine {
         let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
             .into();
 
-        //let expected_avg_price: Wad = get_avg_yang_price(shrine, yang1_addr, start_interval, end_interval);
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
-        'avg price'.print();
-        // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the 
-        // average values to be that at `T+LAST_UPDATED`.
         let expected_debt: Wad = compound_wrapper_for_yang(
             YANG1_BASE_RATE.into(),
             deployment_interval(),
