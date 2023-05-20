@@ -5,9 +5,9 @@ mod TestShrine {
     use integer::downcast;
     use option::OptionTrait;
     use traits::{Into, TryInto};
-    use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, SyscallResultTrait};
+    use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_contract_address, set_block_timestamp};
+    use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
@@ -19,7 +19,7 @@ mod TestShrine {
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, U128IntoRay, U128IntoWad, Wad, WadZeroable, WAD_DECIMALS};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS};
 
     //
     // Constants
@@ -29,10 +29,6 @@ mod TestShrine {
     const DEPLOYMENT_TIMESTAMP: u64 = 1684390000_u64;
 
     // Number of seconds in an interval
-    // 30 minutes * 60 seconds
-    const TIME_INTERVAL: u64 = 1800;
-    // 1 / Number of intervals in a year (1 / (2 * 24 * 365) = 0.00005707762557077625) (Ray)
-    const TIME_INTERVAL_DIV_YEAR: u128 = 57077625570776250000000;
 
     const FEED_LEN: u64 = 10;
     const PRICE_CHANGE: u128 = 25000000000000000000000000; // 2.5%
@@ -117,12 +113,17 @@ mod TestShrine {
     // Returns the interval ID for the given timestamp
     #[inline(always)]
     fn get_interval(timestamp: u64) -> u64 {
-        timestamp / TIME_INTERVAL
+        timestamp / Shrine::TIME_INTERVAL
     }
 
     #[inline(always)]
     fn deployment_interval() -> u64 {
         get_interval(DEPLOYMENT_TIMESTAMP)
+    }
+
+    #[inline(always)]
+    fn now() -> u64 {
+        get_interval(get_block_timestamp())
     }
 
     //
@@ -193,12 +194,14 @@ mod TestShrine {
         
         let mut idx: u32 = 0;
         set_contract_address(admin());
+        let feed_len: u32 = FEED_LEN.try_into().unwrap();
+        let mut timestamp: u64 = start_timestamp;
         loop {
-            if idx == downcast(FEED_LEN).unwrap() {
+            if idx == feed_len {
                 break ();
             }
 
-            let timestamp: u64 = start_timestamp + (idx.into() * TIME_INTERVAL);
+            timestamp = start_timestamp + (idx.into() * Shrine::TIME_INTERVAL);
             set_block_timestamp(timestamp);
 
             shrine.advance(yang1_addr, *yang1_feed[idx]);
@@ -207,6 +210,10 @@ mod TestShrine {
 
             idx += 1;
         };
+
+        // Advance timestamp by one interval so that the value of the last interval
+        // is not overwritten when we call this function again.
+        set_block_timestamp(timestamp + Shrine::TIME_INTERVAL);
 
         (yang_addrs.span(), yang_feeds.span())
     }
@@ -1085,14 +1092,12 @@ mod TestShrine {
         end_interval: u64,
         mut debt: Wad
     ) -> Wad {
-        // yang_rate_update_intervals[0] = start_interval;
-        //yang_rate_update_intervals = yang_rate_update_intervals.span();
+        // TODO: it will be helpful to validatethe input arrays
 
         let eras_count: usize = (*yang_base_rates_history.at(0)).len();
         let yangs_count: usize = yang_amts.len();
 
         let mut i: usize = 0;
-        let mut j: usize = 0;
         loop {
             if i == eras_count {
                 break debt;
@@ -1101,6 +1106,7 @@ mod TestShrine {
             let mut weighted_rate_sum: Ray = RayZeroable::zero();
             let mut total_yang_value: Wad = WadZeroable::zero();
 
+            let mut j: usize = 0;
             loop {
                 if j == yangs_count {
                     break ();
@@ -1112,30 +1118,42 @@ mod TestShrine {
                 let weighted_rate: Ray = wadray::wmul_rw(*yang_base_rates_history[j][i], yang_value);
                 weighted_rate_sum += weighted_rate;
 
-                
                 j += 1;
             };
 
             let base_rate: Ray = wadray::wdiv_rw(weighted_rate_sum, total_yang_value);
             let rate: Ray = base_rate * *avg_multipliers[i];
 
-            // If not at the latest era, compound for the entire era.
-            // Otherwise, compound until the end interval.
-            let mut num_intervals_to_compound: u64 = end_interval - *yang_rate_update_intervals[i];
-            if i < eras_count - 1 {
-                let mut era_start_interval: u64 = *yang_rate_update_intervals[i];
-                if i == 0 {
-                    era_start_interval = start_interval;
-                }
-                num_intervals_to_compound = *yang_rate_update_intervals[i + 1] - era_start_interval;
+            // By default, the start interval for the current era is read from the provided array.
+            // However, if it is the first era, we set the start interval to the start interval
+            // for the entire compound operation.
+            let mut era_start_interval: u64 = *yang_rate_update_intervals[i];
+            if i == 0 {
+                era_start_interval = start_interval;
             }
 
-            let num_years: u128 = num_intervals_to_compound.into() * TIME_INTERVAL_DIV_YEAR;
-            debt *= exp(wadray::rmul_rw(rate, num_years.into()));
+            // For any era other than the latest era, the length for a given era to compound for is the 
+            // difference between the start interval of the next era and the start interval of the current era.
+            // For the latest era, then it is the difference between the end interval and the start interval 
+            // of the current era.
+            let mut intervals_in_era: u64 = 0;
+            if i == eras_count - 1 {
+                intervals_in_era = end_interval - era_start_interval;
+            } else {
+                intervals_in_era = *yang_rate_update_intervals[i + 1] - era_start_interval;
+            }   
+
+            // Add an offset of 1 to get the actual number of intervals between start and end
+            intervals_in_era += 1;
+
+            let t: u128 = intervals_in_era.into() * Shrine::TIME_INTERVAL_DIV_YEAR;
+            debt *= exp(wadray::rmul_rw(rate, t.into()));
             i += 1;
         }
     }
 
+    #[test]
+    #[available_gas(20000000000)]
     fn test_compound() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
@@ -1143,11 +1161,68 @@ mod TestShrine {
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
-        let start_interval: u64 = deployment_interval() + FEED_LEN - 1;
-        let end_interval: u64 = start_interval + FEED_LEN;
+        let shrine = shrine(shrine_addr);
 
-                
+        let start_interval: u64 = deployment_interval() + FEED_LEN;
+        assert(now() == start_interval, 'wrong start interval');  // sanity check
 
+        let yang1_addr = yang1_addr();
+        // Note that this is the price at `start_interval - 1` since `advance_prices_and_set_multiplier`
+        // advances by one interval at the end.
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
+        // technically not needed since we only use yang1 here but we do so to simplify the helper
+        let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr());
+        let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
+
+        advance_prices_and_set_multiplier(shrine_addr, get_block_timestamp(), yang1_price, yang2_price);
+
+        let end_interval: u64 = start_interval + FEED_LEN - 1;
+        assert(now() == end_interval + 1, 'wrong end interval');  // sanity check
+
+        let (_, now_price) = shrine.get_yang_price(yang1_addr, now());
+        assert(now_price == WadZeroable::zero(), 'haha!');
+
+        let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
+        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
+        let (_, end_cumulative_price) = shrine.get_yang_price(yang1_addr, end_interval);
+        let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
+        let feed_len: u128 = FEED_LEN.into();
+
+        let expected_avg_price: Wad = ((end_cumulative_price - start_cumulative_price).val / feed_len).into();
+        let expected_avg_multiplier: Ray = ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into();
+
+        // set up arrays for `compound` helper function
+        let mut yang_base_rates_history: Array<Span<Ray>> = ArrayTrait::new();
+        let mut yang1_base_rate_history: Array<Ray> = ArrayTrait::new();
+        yang1_base_rate_history.append(YANG1_BASE_RATE.into());
+        yang_base_rates_history.append(yang1_base_rate_history.span());
+
+        let mut yang_rate_update_intervals: Array<u64> = ArrayTrait::new();
+        yang_rate_update_intervals.append(deployment_interval());
+
+        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        yang_amts.append(TROVE1_YANG1_DEPOSIT.into());
+
+        let mut yang_avg_prices: Array<Span<Wad>> = ArrayTrait::new();
+        let mut yang1_avg_prices: Array<Wad> = ArrayTrait::new();
+        yang1_avg_prices.append(expected_avg_price);
+        yang_avg_prices.append(yang1_avg_prices.span());
+
+        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
+        avg_multipliers.append(RAY_SCALE.into());
+
+        let expected_debt: Wad = compound(
+            yang_base_rates_history.span(),
+            yang_rate_update_intervals.span(),
+            yang_amts.span(),
+            yang_avg_prices.span(),
+            avg_multipliers.span(),
+            start_interval,
+            end_interval,
+            debt,
+        );
+        let (_, _, _, estimated_debt) = shrine.get_trove_info(TROVE_1);
+        assert(estimated_debt == expected_debt, 'wrong compounded debt');
     }
 
     //
