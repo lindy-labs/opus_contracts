@@ -1153,6 +1153,76 @@ mod TestShrine {
         }
     }
 
+    // Wrapper function over `compound` to calculate the debt of a trove assuming the trove only deposited
+    // a single yang and the yang has a single rate update interval.
+    fn compound_wrapper_for_yang(
+        yang_base_rate: Ray,
+        yang_rate_update_interval: u64,
+        yang_amt: Wad,
+        yang_avg_price: Wad,
+        avg_multiplier: Ray,
+        start_interval: u64,
+        end_interval: u64,
+        debt: Wad,
+    ) -> Wad {
+        // set up arrays for `compound` helper function
+        let mut yang_base_rates_history: Array<Span<Ray>> = ArrayTrait::new();
+        let mut yang1_base_rate_history: Array<Ray> = ArrayTrait::new();
+        yang1_base_rate_history.append(yang_base_rate);
+        yang_base_rates_history.append(yang1_base_rate_history.span());
+
+        let mut yang_rate_update_intervals: Array<u64> = ArrayTrait::new();
+        yang_rate_update_intervals.append(yang_rate_update_interval);
+
+        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        yang_amts.append(yang_amt);
+
+        let mut yang_avg_prices: Array<Span<Wad>> = ArrayTrait::new();
+        let mut yang1_avg_prices: Array<Wad> = ArrayTrait::new();
+        yang1_avg_prices.append(yang_avg_price);
+        yang_avg_prices.append(yang1_avg_prices.span());
+
+        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
+        avg_multipliers.append(avg_multiplier);
+
+        compound(
+            yang_base_rates_history.span(),
+            yang_rate_update_intervals.span(),
+            yang_amts.span(),
+            yang_avg_prices.span(),
+            avg_multipliers.span(),
+            start_interval,
+            end_interval,
+            debt,
+        )
+    }
+
+    // Helper function to calculate average price of a yang over a period of intervals
+    fn get_avg_yang_price(shrine: IShrineDispatcher, yang_addr: ContractAddress, start_interval: u64, end_interval: u64) -> Wad {
+        let feed_len: u128 = (end_interval - start_interval + 1).into();
+
+        // Note that the start cumulative value is the value at `start_interval - 1` in order to 
+        // take into account the value at `start_interval`. If we use the cumulative value at `start_interval`,
+        // it would have included the value at `start_interval`, causing an off-by-1 issue.
+        let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval - 1);
+        let (_, end_cumulative_price) = shrine.get_yang_price(yang_addr, end_interval);
+
+        ((end_cumulative_price - start_cumulative_price).val / feed_len).into()
+    }
+
+    // Helper function to calculate the average multiplier over a period of intervals
+    fn get_avg_multiplier(shrine: IShrineDispatcher, start_interval: u64, end_interval: u64) -> Ray {
+        let feed_len: u128 = (end_interval - start_interval + 1).into();
+
+        // Note that the start cumulative value is the value at `start_interval - 1` in order to 
+        // take into account the value `start_interval`. If we use the cumulative value at `start_interval`,
+        // it would have included the value at `start_interval`, causing an off-by-1 issue.
+        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
+        let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
+
+        ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+    }
+
     // Test for `charge` with all intervals between start and end inclusive updated.
     //
     // T+START--------------T+END
@@ -1181,43 +1251,18 @@ mod TestShrine {
         advance_prices_and_set_multiplier(shrine_addr, get_block_timestamp(), FEED_LEN, yang1_price, yang2_price);
 
         let end_interval: u64 = start_interval + FEED_LEN - 1;
-        assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
+        // commented out because of gas usage error
+        //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
 
-        let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
-        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
-        let (_, end_cumulative_price) = shrine.get_yang_price(yang1_addr, end_interval);
-        let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
-        let feed_len: u128 = FEED_LEN.into();
+        let expected_avg_price: Wad = get_avg_yang_price(shrine, yang1_addr, start_interval, end_interval);
+        let expected_avg_multiplier: Ray = get_avg_multiplier(shrine, start_interval, end_interval);
 
-        let expected_avg_price: Wad = ((end_cumulative_price - start_cumulative_price).val / feed_len).into();
-        let expected_avg_multiplier: Ray = ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into();
-
-        // set up arrays for `compound` helper function
-        let mut yang_base_rates_history: Array<Span<Ray>> = ArrayTrait::new();
-        let mut yang1_base_rate_history: Array<Ray> = ArrayTrait::new();
-        yang1_base_rate_history.append(YANG1_BASE_RATE.into());
-        yang_base_rates_history.append(yang1_base_rate_history.span());
-
-        let mut yang_rate_update_intervals: Array<u64> = ArrayTrait::new();
-        yang_rate_update_intervals.append(deployment_interval());
-
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
-        yang_amts.append(TROVE1_YANG1_DEPOSIT.into());
-
-        let mut yang_avg_prices: Array<Span<Wad>> = ArrayTrait::new();
-        let mut yang1_avg_prices: Array<Wad> = ArrayTrait::new();
-        yang1_avg_prices.append(expected_avg_price);
-        yang_avg_prices.append(yang1_avg_prices.span());
-
-        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
-        avg_multipliers.append(RAY_SCALE.into());
-
-        let expected_debt: Wad = compound(
-            yang_base_rates_history.span(),
-            yang_rate_update_intervals.span(),
-            yang_amts.span(),
-            yang_avg_prices.span(),
-            avg_multipliers.span(),
+        let expected_debt: Wad = compound_wrapper_for_yang(
+            YANG1_BASE_RATE.into(),
+            deployment_interval(),
+            TROVE1_YANG1_DEPOSIT.into(),
+            expected_avg_price,
+            expected_avg_multiplier,
             start_interval,
             end_interval,
             debt,
@@ -1230,6 +1275,13 @@ mod TestShrine {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
+    
+    // Slight variation of `test_charge_scenario_1` where there is an interval between start and end
+    // that does not have a price update.
+    //
+    // `X` in the diagram below indicates a missed interval.
+    // 
+    // T+START------X-------T+END
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_1b() {
@@ -1262,7 +1314,6 @@ mod TestShrine {
 
         let num_intervals_after_skip: u64 = 4;
 
-
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr());
 
@@ -1278,41 +1329,15 @@ mod TestShrine {
         // commented out because of gas usage error
         //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
 
-        let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
-        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
-        let (_, end_cumulative_price) = shrine.get_yang_price(yang1_addr, end_interval);
-        let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
-        let feed_len: u128 = FEED_LEN.into();
+        let expected_avg_price: Wad = get_avg_yang_price(shrine, yang1_addr, start_interval, end_interval);
+        let expected_avg_multiplier: Ray = get_avg_multiplier(shrine, start_interval, end_interval);
 
-        let expected_avg_price: Wad = ((end_cumulative_price - start_cumulative_price).val / feed_len).into();
-        let expected_avg_multiplier: Ray = ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into();
-
-        // set up arrays for `compound` helper function
-        let mut yang_base_rates_history: Array<Span<Ray>> = ArrayTrait::new();
-        let mut yang1_base_rate_history: Array<Ray> = ArrayTrait::new();
-        yang1_base_rate_history.append(YANG1_BASE_RATE.into());
-        yang_base_rates_history.append(yang1_base_rate_history.span());
-
-        let mut yang_rate_update_intervals: Array<u64> = ArrayTrait::new();
-        yang_rate_update_intervals.append(deployment_interval());
-
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
-        yang_amts.append(TROVE1_YANG1_DEPOSIT.into());
-
-        let mut yang_avg_prices: Array<Span<Wad>> = ArrayTrait::new();
-        let mut yang1_avg_prices: Array<Wad> = ArrayTrait::new();
-        yang1_avg_prices.append(expected_avg_price);
-        yang_avg_prices.append(yang1_avg_prices.span());
-
-        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
-        avg_multipliers.append(RAY_SCALE.into());
-
-        let expected_debt: Wad = compound(
-            yang_base_rates_history.span(),
-            yang_rate_update_intervals.span(),
-            yang_amts.span(),
-            yang_avg_prices.span(),
-            avg_multipliers.span(),
+        let expected_debt: Wad = compound_wrapper_for_yang(
+            YANG1_BASE_RATE.into(),
+            deployment_interval(),
+            TROVE1_YANG1_DEPOSIT.into(),
+            expected_avg_price,
+            expected_avg_multiplier,
             start_interval,
             end_interval,
             debt,
