@@ -1350,6 +1350,42 @@ mod TestShrine {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_charge_scenario_2() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = TROVE1_FORGE_AMT.into();
+        trove1_forge(shrine_addr, forge_amt);
+
+        let shrine = shrine(shrine_addr);
+        let yang1_addr = yang1_addr();
+
+        // Advance timestamp by 2 intervals and set price for interval - `T+LAST_UPDATED`
+        let time_to_skip: u64 = 2 * Shrine::TIME_INTERVAL;
+        let last_updated_timestamp: u64 = get_block_timestamp() + time_to_skip;
+        set_block_timestamp(last_updated_timestamp);
+        let start_price: Wad = 22220000000000000000000000000000_u128.into();  // 2_222 (Wad)
+        let start_multiplier: Ray = RAY_SCALE.into();
+        set_contract_address(admin());
+        shrine.advance(yang1_addr, start_price);
+        shrine.set_multiplier(start_multiplier);
+
+        // Advance timestamp to `T+START`, assuming that price has not been updated since `T+LAST_UPDATED`.
+        // Trigger charge to update the trove's debt to `T+START`.
+        let intervals_after_last_update: u64 = 3_u64;
+        let time_to_skip: u64 = intervals_after_last_update * Shrine::TIME_INTERVAL;
+        let start_timestamp: u64 = last_updated_timestamp + time_to_skip;
+        let start_interval: u64 = get_interval(start_timestamp);
+        set_block_timestamp(start_timestamp);
+        
+        'scenario 2 to deposit'.print();
+        shrine.deposit(yang1_addr, TROVE_1, WadZeroable::zero());
+        'scenario 2 deposited'.print();
+    }
+
     //
     // Tests - Yin transfers
     //
