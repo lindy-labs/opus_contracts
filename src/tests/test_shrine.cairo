@@ -130,6 +130,12 @@ mod TestShrine {
     // Test setup helpers
     //
 
+    // Helper function to advance timestamp by one interval
+    #[inline(always)]
+    fn advance_interval() {
+        set_block_timestamp(get_block_timestamp() + Shrine::TIME_INTERVAL);
+    }
+
     fn yang_addrs() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = ArrayTrait::new();
         yang_addrs.append(yang1_addr());
@@ -169,10 +175,9 @@ mod TestShrine {
         shrine.add_yang(yang2_addr(), YANG2_THRESHOLD.into(), YANG2_START_PRICE.into(), YANG2_BASE_RATE.into(), INITIAL_YANG_AMT.into());
     }
 
-    // Advance the prices for two yangs
+    // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals` - 1
     fn advance_prices_and_set_multiplier(
         shrine_addr: ContractAddress, 
-        start_timestamp: u64,
         num_intervals: u64,
         yang1_start_price: Wad,
         yang2_start_price: Wad,
@@ -196,25 +201,21 @@ mod TestShrine {
         let mut idx: u32 = 0;
         set_contract_address(admin());
         let feed_len: u32 = num_intervals.try_into().unwrap();
-        let mut timestamp: u64 = start_timestamp;
+        let mut timestamp: u64 = get_block_timestamp();
         loop {
             if idx == feed_len {
                 break ();
             }
-
-            timestamp = start_timestamp + (idx.into() * Shrine::TIME_INTERVAL);
             set_block_timestamp(timestamp);
 
             shrine.advance(yang1_addr, *yang1_feed[idx]);
             shrine.advance(yang2_addr, *yang2_feed[idx]);
             shrine.set_multiplier(RAY_ONE.into());
 
+            timestamp += Shrine::TIME_INTERVAL;
+
             idx += 1;
         };
-
-        // Advance timestamp by one interval so that the value of the last interval
-        // is not overwritten when we call this function again.
-        set_block_timestamp(timestamp + Shrine::TIME_INTERVAL);
 
         (yang_addrs.span(), yang_feeds.span())
     }
@@ -360,7 +361,7 @@ mod TestShrine {
     fn test_shrine_setup_with_feed() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        let (yang_addrs, yang_feeds) = advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        let (yang_addrs, yang_feeds) = advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         let mut yang_addrs = yang_addrs;
         let mut yang_feeds = yang_feeds;
 
@@ -425,7 +426,7 @@ mod TestShrine {
     fn test_add_yang() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         let yangs_count: u32 = shrine.get_yangs_count();
@@ -457,7 +458,7 @@ mod TestShrine {
     fn test_add_yang_duplicate_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -470,7 +471,7 @@ mod TestShrine {
     fn test_add_yang_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(badguy());
@@ -482,7 +483,7 @@ mod TestShrine {
     fn test_set_threshold() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         let yang1_addr = yang1_addr();
@@ -499,7 +500,7 @@ mod TestShrine {
     fn test_set_threshold_exceeds_max() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         let invalid_threshold: Ray = (RAY_SCALE + 1).into();
@@ -514,7 +515,7 @@ mod TestShrine {
     fn test_set_threshold_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
@@ -529,7 +530,7 @@ mod TestShrine {
     fn test_set_threshold_invalid_yang() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -545,7 +546,7 @@ mod TestShrine {
     fn test_kill() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         assert(shrine.get_live(), 'should be live');
@@ -564,7 +565,7 @@ mod TestShrine {
     fn test_kill_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         assert(shrine.get_live(), 'should be live');
@@ -584,7 +585,7 @@ mod TestShrine {
     fn test_advance_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
 
@@ -598,7 +599,7 @@ mod TestShrine {
     fn test_advance_invalid_yang() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
 
@@ -612,7 +613,7 @@ mod TestShrine {
     fn test_set_multiplier_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
 
@@ -629,7 +630,7 @@ mod TestShrine {
     fn test_shrine_deposit_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -660,7 +661,7 @@ mod TestShrine {
     fn test_shrine_deposit_invalid_yang_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -674,7 +675,7 @@ mod TestShrine {
     fn test_shrine_deposit_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(badguy());
@@ -691,7 +692,7 @@ mod TestShrine {
     fn test_shrine_withdraw_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -730,7 +731,7 @@ mod TestShrine {
     fn test_shrine_forged_partial_withdraw_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
@@ -756,7 +757,7 @@ mod TestShrine {
     fn test_shrine_withdraw_invalid_yang_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -770,7 +771,7 @@ mod TestShrine {
     fn test_shrine_withdraw_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -785,7 +786,7 @@ mod TestShrine {
     fn test_shrine_withdraw_insufficient_yang_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -800,7 +801,7 @@ mod TestShrine {
     fn test_shrine_withdraw_zero_yang_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         set_contract_address(admin());
@@ -814,7 +815,7 @@ mod TestShrine {
     fn test_shrine_withdraw_unsafe_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
@@ -840,7 +841,7 @@ mod TestShrine {
     fn test_shrine_forge_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -877,7 +878,7 @@ mod TestShrine {
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
@@ -892,7 +893,7 @@ mod TestShrine {
     fn test_shrine_forge_unsafe_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -909,7 +910,7 @@ mod TestShrine {
     fn test_shrine_forge_ceiling_fail() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -930,7 +931,7 @@ mod TestShrine {
     fn test_shrine_forge_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
         let shrine = shrine(shrine_addr);
@@ -948,7 +949,7 @@ mod TestShrine {
     fn test_shrine_melt_pass() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         let deposit_amt: Wad = TROVE1_YANG1_DEPOSIT.into();
         trove1_deposit(shrine_addr, deposit_amt);
 
@@ -994,7 +995,7 @@ mod TestShrine {
     fn test_shrine_melt_unauthorized() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
 
@@ -1009,7 +1010,7 @@ mod TestShrine {
     fn test_shrine_melt_insufficient_yin() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
@@ -1027,7 +1028,7 @@ mod TestShrine {
     fn test_shrine_inject_and_eject() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
 
         let shrine = shrine(shrine_addr);
         let yin = yin(shrine_addr);
@@ -1201,10 +1202,7 @@ mod TestShrine {
     fn get_avg_yang_price(shrine: IShrineDispatcher, yang_addr: ContractAddress, start_interval: u64, end_interval: u64) -> Wad {
         let feed_len: u128 = (end_interval - start_interval + 1).into();
 
-        // Note that the start cumulative value is the value at `start_interval - 1` in order to 
-        // take into account the value at `start_interval`. If we use the cumulative value at `start_interval`,
-        // it would have included the value at `start_interval`, causing an off-by-1 issue.
-        let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval - 1);
+        let (_, start_cumulative_price) = shrine.get_yang_price(yang_addr, start_interval);
         let (_, end_cumulative_price) = shrine.get_yang_price(yang_addr, end_interval);
 
         ((end_cumulative_price - start_cumulative_price).val / feed_len).into()
@@ -1217,7 +1215,7 @@ mod TestShrine {
         // Note that the start cumulative value is the value at `start_interval - 1` in order to 
         // take into account the value `start_interval`. If we use the cumulative value at `start_interval`,
         // it would have included the value at `start_interval`, causing an off-by-1 issue.
-        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
+        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval);
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
@@ -1231,29 +1229,32 @@ mod TestShrine {
     fn test_compound_and_charge_scenario_1() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+
+        // Advance one interval to avoid overwriting the last price
+        advance_interval();
+
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
         let shrine = shrine(shrine_addr);
 
-        let start_interval: u64 = deployment_interval() + FEED_LEN;
-        assert(current_interval() == start_interval, 'wrong start interval');  // sanity check
+        let start_interval: u64 = current_interval();
 
         let yang1_addr = yang1_addr();
-        // Note that this is the price at `start_interval - 1` since `advance_prices_and_set_multiplier`
-        // advances by one interval at the end.
+        // Note that this is the price at `start_interval - 1` because we advanced one interval
+        // after the last price update
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         // technically not needed since we only use yang1 here but we do so to simplify the helper
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr());
         let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
 
-        advance_prices_and_set_multiplier(shrine_addr, get_block_timestamp(), FEED_LEN, yang1_price, yang2_price);
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, yang1_price, yang2_price);
 
-        // Price updates start from the start interval, so we
+        // Price updates start from `start_interval`, so we need to offset by one
         let end_interval: u64 = start_interval + FEED_LEN - 1;
         // commented out because of gas usage error
-        //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
+        //assert(current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         let expected_avg_price: Wad = get_avg_yang_price(shrine, yang1_addr, start_interval, end_interval);
         let expected_avg_multiplier: Ray = get_avg_multiplier(shrine, start_interval, end_interval);
@@ -1288,37 +1289,42 @@ mod TestShrine {
     fn test_charge_scenario_1b() {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        
+        // Advance one interval to avoid overwriting the last price
+        advance_interval();
+
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
         let shrine = shrine(shrine_addr);
 
-        let start_interval: u64 = deployment_interval() + FEED_LEN;
-        assert(current_interval() == start_interval, 'wrong start interval');  // sanity check
+        let start_interval: u64 = current_interval();
 
         let yang1_addr = yang1_addr();
-        // Note that this is the price at `start_interval - 1` since `advance_prices_and_set_multiplier`
-        // advances by one interval at the end.
+        // Note that this is the price at `start_interval - 1` because we advanced one interval
+        // after the last price update
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         // technically not needed since we only use yang1 here but we do so to simplify the helper
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr());
         let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
 
-
         let num_intervals_before_skip: u64 = 5;
-        advance_prices_and_set_multiplier(shrine_addr, get_block_timestamp(), num_intervals_before_skip, yang1_price, yang2_price);
+        advance_prices_and_set_multiplier(shrine_addr, num_intervals_before_skip, yang1_price, yang2_price);
 
         let skipped_interval: u64 = start_interval + num_intervals_before_skip;
-        let timestamp: u64 = get_block_timestamp() + Shrine::TIME_INTERVAL; 
-        set_block_timestamp(timestamp);
+
+        // Skip to the next interval after the last price update, and then skip this interval
+        // to mock no price update
+        advance_interval();
+        advance_interval();
 
         let num_intervals_after_skip: u64 = 4;
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr());
 
-        advance_prices_and_set_multiplier(shrine_addr, timestamp, num_intervals_after_skip, yang1_price, yang2_price);
+        advance_prices_and_set_multiplier(shrine_addr, num_intervals_after_skip, yang1_price, yang2_price);
 
         // sanity check that skipped interval has no price values
         let (skipped_interval_price, _) = shrine.get_yang_price(yang1_addr, skipped_interval);
@@ -1326,7 +1332,9 @@ mod TestShrine {
         assert(skipped_interval_price == WadZeroable::zero(), 'skipped price is not zero');
         assert(skipped_interval_multiplier == RayZeroable::zero(), 'skipped multiplier is not zero');
 
-        let end_interval: u64 = start_interval + FEED_LEN - 1;
+        // Price updates start from `start_interval`, so we need to offset by one
+        // by discounting the skipped interval
+        let end_interval: u64 = start_interval + (num_intervals_before_skip + num_intervals_after_skip);
         // commented out because of gas usage error
         //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
 
@@ -1351,10 +1359,15 @@ mod TestShrine {
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
+    // Wrapper to get around gas issue
     fn setup_charge_scenario_2() -> (IShrineDispatcher, Wad) {
         let shrine_addr: ContractAddress = shrine_deploy();
         shrine_setup(shrine_addr);
-        advance_prices_and_set_multiplier(shrine_addr, DEPLOYMENT_TIMESTAMP, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+        advance_prices_and_set_multiplier(shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into());
+
+        // Advance one interval to avoid overwriting the last price
+        advance_interval();
+
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
         trove1_forge(shrine_addr, forge_amt);
@@ -1391,6 +1404,8 @@ mod TestShrine {
         let intervals_after_last_charge: u64 = 17;
         let time_to_skip: u64 = intervals_after_last_charge * Shrine::TIME_INTERVAL;
         let end_timestamp: u64 = start_timestamp + time_to_skip;
+
+        // Price updates start from `start_interval`, so we need to offset by one
         let end_interval: u64 = start_interval + intervals_after_last_charge - 1;
         set_block_timestamp(end_timestamp);
 
@@ -1409,12 +1424,6 @@ mod TestShrine {
             debt,
         );
 
-        //let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
-        //assert(expected_debt == debt, 'wrong compounded debt');
-
-        // Trigger charge and check interest is accrued
-        //shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
-        //assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
         (shrine, expected_debt)
     }
 
@@ -1426,15 +1435,11 @@ mod TestShrine {
 
         shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
         let total_debt: Wad = shrine.get_total_debt();
-        total_debt.val.print();
-        expected_debt.val.print();
 
         let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');    
-
-        
     }
 
     //
