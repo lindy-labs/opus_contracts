@@ -1859,7 +1859,7 @@ mod TestShrine {
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
-         // Advance timestamp to `T+END`.
+        // Advance timestamp to `T+END`.
         let intervals_from_last_update_to_end: u64 = 10;
         let time_to_skip: u64 = intervals_from_last_update_to_end * Shrine::TIME_INTERVAL;
         let end_timestamp: u64 = get_block_timestamp() + time_to_skip;
@@ -1870,7 +1870,7 @@ mod TestShrine {
 
         // Manually calculate the average since end interval does not have a cumulative value
         let (_, start_cumulative_price) = shrine.get_yang_price(yang1_addr, start_interval);
-        
+
         // First, we get the cumulative price values available to us 
         // `T+LAST_UPDATED_AFTER_START` - `T+LAST_UPDATED_BEFORE_START`
         let (last_updated_price_before_start, last_updated_cumulative_price_before_start) = shrine
@@ -1878,14 +1878,21 @@ mod TestShrine {
         let (last_updated_price_after_start, last_updated_cumulative_price_after_start) = shrine
             .get_yang_price(yang1_addr, last_updated_interval_after_start);
 
-        let mut cumulative_diff: Wad = last_updated_cumulative_price_after_start - last_updated_cumulative_price_before_start;
+        let mut cumulative_diff: Wad = last_updated_cumulative_price_after_start
+            - last_updated_cumulative_price_before_start;
 
         // Next, we deduct the cumulative price from `T+LAST_UPDATED_BEFORE_START` to `T+START`
 
-        cumulative_diff -= ((start_interval - last_updated_interval_before_start).into() * last_updated_price_before_start.val).into();
+        cumulative_diff -=
+            ((start_interval - last_updated_interval_before_start).into()
+                * last_updated_price_before_start.val)
+            .into();
 
         // Finally, we add the cumulative price from `T+LAST_UPDATED_AFTER_START` to `T+END`.
-        cumulative_diff += ((end_interval - last_updated_interval_after_start).into() * last_updated_price_after_start.val).into();
+        cumulative_diff +=
+            ((end_interval - last_updated_interval_after_start).into()
+                * last_updated_price_after_start.val)
+            .into();
 
         let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
             .into();
@@ -1959,14 +1966,14 @@ mod TestShrine {
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(timestamp);
         let start_interval: u64 = current_interval();
-    
+
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         let forge_amt: Wad = TROVE1_FORGE_AMT.into();
         trove1_forge(shrine_addr, forge_amt);
 
         let (_, _, _, debt) = shrine.get_trove_info(TROVE_1);
 
-         // Advance timestamp by given intervals to `T+END`, to mock missed updates.
+        // Advance timestamp by given intervals to `T+END`, to mock missed updates.
         let intervals_from_start_to_end: u64 = 13;
         let time_to_skip: u64 = intervals_from_start_to_end * Shrine::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
@@ -1982,12 +1989,15 @@ mod TestShrine {
 
         // Manually calculate the average since start interval does not have a cumulative value
         let (_, end_cumulative_price) = shrine.get_yang_price(yang1_addr, end_interval);
-        let (last_updated_price, last_updated_cumulative_price) = shrine.get_yang_price(yang1_addr, last_updated_interval);
+        let (last_updated_price, last_updated_cumulative_price) = shrine
+            .get_yang_price(yang1_addr, last_updated_interval);
 
         let mut cumulative_diff: Wad = end_cumulative_price - last_updated_cumulative_price;
 
         // Deduct the cumulative price from `T+LAST_UPDATED_BEFORE_START` to `T+START`
-        cumulative_diff -= ((start_interval - last_updated_interval).into() * last_updated_price.val).into();
+        cumulative_diff -=
+            ((start_interval - last_updated_interval).into() * last_updated_price.val)
+            .into();
 
         let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
             .into();
@@ -2043,10 +2053,9 @@ mod TestShrine {
 
         let shrine = shrine(shrine_addr);
 
+        set_contract_address(admin());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
-
-        let forge_amt: Wad =  TROVE1_FORGE_AMT.into();
-        trove1_forge(shrine_addr, forge_amt);
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
         let yin = yin(shrine_addr);
         let yin_user: ContractAddress = yin_user_addr();
@@ -2054,7 +2063,7 @@ mod TestShrine {
         set_contract_address(trove1_owner);
 
         let success: bool = yin.transfer(yin_user, TROVE1_FORGE_AMT.into());
-        
+
         // TODO: Moving this call up here prevents the assert from triggering failed calculating gas
         yin.transfer(yin_user, 0_u256);
         assert(success, 'yin transfer fail');
@@ -2083,6 +2092,7 @@ mod TestShrine {
 
         let shrine = shrine(shrine_addr);
 
+        set_contract_address(admin());
         trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
         trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
 
@@ -2114,6 +2124,59 @@ mod TestShrine {
         yin.transfer(yin_user, 1_u256);
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yin_transfer_from_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(
+            shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into()
+        );
+
+        let shrine = shrine(shrine_addr);
+
+        set_contract_address(admin());
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+
+        let yin = yin(shrine_addr);
+        let yin_user: ContractAddress = yin_user_addr();
+        let trove1_owner: ContractAddress = trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        yin.approve(yin_user, TROVE1_FORGE_AMT.into());
+
+        set_contract_address(yin_user);
+        let success: bool = yin.transfer_from(trove1_owner, yin_user, TROVE1_FORGE_AMT.into());
+
+        // TODO: Moving this call up here prevents the assert from triggering failed calculating gas
+        assert(success, 'yin transfer fail');
+
+        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(yin_user) == TROVE1_FORGE_AMT.into(), 'wrong transferee balance');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_from_unapproved_fail() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(
+            shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into()
+        );
+
+        let shrine = shrine(shrine_addr);
+
+        set_contract_address(admin());
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+
+        let yin = yin(shrine_addr);
+        let yin_user: ContractAddress = yin_user_addr();
+        set_contract_address(yin_user);
+        yin.transfer_from(trove1_owner_addr(), yin_user, 1_u256);
+    }
 //
 // Tests - Price and multiplier
 //
