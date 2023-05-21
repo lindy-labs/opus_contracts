@@ -86,6 +86,10 @@ mod TestShrine {
         contract_address_const::<0x0003>()
     }
 
+    fn yin_user_addr() -> ContractAddress {
+        contract_address_const::<0x0004>()
+    }
+
     fn yang1_addr() -> ContractAddress {
         contract_address_const::<0x1234>()
     }
@@ -2021,9 +2025,48 @@ mod TestShrine {
         shrine.melt(trove1_owner_addr(), TROVE_1, WadZeroable::zero());
     }
 
-//
-// Tests - Yin transfers
-//
+    //
+    // Tests - Yin transfers
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yin_transfer_pass() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(
+            shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into()
+        );
+
+        let shrine = shrine(shrine_addr);
+
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+
+        let forge_amt: Wad =  TROVE1_FORGE_AMT.into();
+        trove1_forge(shrine_addr, forge_amt);
+
+        let yin = yin(shrine_addr);
+        let yin_user: ContractAddress = yin_user_addr();
+        let trove1_owner: ContractAddress = trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        let success: bool = yin.transfer(yin_user, TROVE1_FORGE_AMT.into());
+        
+        // TODO: Moving this call up here prevents the assert from triggering failed calculating gas
+        yin.transfer(yin_user, 0_u256);
+        assert(success, 'yin transfer fail');
+
+        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+
+        yin.transfer(yin_user, 0_u256);
+
+        assert(yin.balance_of(yin_user) == TROVE1_FORGE_AMT.into(), 'wrong transferee balance');
+
+        // TODO: Adding all these calls prevents failed calculating gas error
+        yin.transfer(yin_user, 0_u256);
+        yin.transfer(yin_user, 0_u256);
+    }
+    
 
 //
 // Tests - Price and multiplier
