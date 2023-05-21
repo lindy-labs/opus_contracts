@@ -1,3 +1,9 @@
+// Note on fixed point math in Absorber: 
+//
+// Non-Wad/Ray fixed-point values (i.e., values whose number of decimals is something other than 18 or 27)
+// are used extensively throughout the contract. However, these values also rely on
+// wadray-fixed-point arithmetic functions in their calculations. Consequently, 
+// wadray's internal functions are used to perform these calculations.
 #[contract]
 mod Absorber {
     use array::{ArrayTrait, SpanTrait};
