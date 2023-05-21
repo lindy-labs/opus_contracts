@@ -2071,6 +2071,49 @@ mod TestShrine {
         yin.transfer(yin_user, 0_u256);
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_fail_insufficient() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(
+            shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into()
+        );
+
+        let shrine = shrine(shrine_addr);
+
+        trove1_deposit(shrine_addr, TROVE1_YANG1_DEPOSIT.into());
+        trove1_forge(shrine_addr, TROVE1_FORGE_AMT.into());
+
+        let yin = yin(shrine_addr);
+        let yin_user: ContractAddress = yin_user_addr();
+        let trove1_owner: ContractAddress = trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        yin.transfer(yin_user, (TROVE1_FORGE_AMT + 1).into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_fail_zero_bal() {
+        let shrine_addr: ContractAddress = shrine_deploy();
+        shrine_setup(shrine_addr);
+        advance_prices_and_set_multiplier(
+            shrine_addr, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into()
+        );
+
+        let shrine = shrine(shrine_addr);
+
+        let yin = yin(shrine_addr);
+        let yin_user: ContractAddress = yin_user_addr();
+        let trove1_owner: ContractAddress = trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        yin.transfer(yin_user, 1_u256);
+    }
+
 //
 // Tests - Price and multiplier
 //
