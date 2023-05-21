@@ -243,16 +243,19 @@ mod TestShrine {
         (yang_addrs.span(), yang_feeds.span())
     }
 
+    #[inline(always)]
     fn trove1_deposit(shrine_addr: ContractAddress, amt: Wad) {
         set_contract_address(admin());
         shrine(shrine_addr).deposit(yang1_addr(), TROVE_1, amt);
     }
 
+    #[inline(always)]
     fn trove1_withdraw(shrine_addr: ContractAddress, amt: Wad) {
         set_contract_address(admin());
         shrine(shrine_addr).withdraw(yang1_addr(), TROVE_1, amt);
     }
 
+    #[inline(always)]
     fn trove1_forge(shrine_addr: ContractAddress, amt: Wad) {
         set_contract_address(admin());
         shrine(shrine_addr).forge(trove1_owner_addr(), TROVE_1, amt);
@@ -2058,6 +2061,7 @@ mod TestShrine {
 
         assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
 
+        // TODO: Adding this call prevents failed calculating gas error
         yin.transfer(yin_user, 0_u256);
 
         assert(yin.balance_of(yin_user) == TROVE1_FORGE_AMT.into(), 'wrong transferee balance');
@@ -2066,7 +2070,6 @@ mod TestShrine {
         yin.transfer(yin_user, 0_u256);
         yin.transfer(yin_user, 0_u256);
     }
-    
 
 //
 // Tests - Price and multiplier
