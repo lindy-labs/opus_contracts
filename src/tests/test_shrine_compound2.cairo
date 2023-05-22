@@ -93,13 +93,6 @@ mod TestShrineCompound2 {
         (shrine, expected_debt)
     }
 
-    // Wrapper to get around gas issue
-    // Test for `charge` with "missed" price and multiplier updates from `intervals_after_last_update` intervals
-    // after start interval.
-    // Start interval has a price and multiplier update.
-    // End interval does not have a price or multiplier update.
-    // 
-    // T+START-------T+LAST_UPDATED------T+END
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_3() {
