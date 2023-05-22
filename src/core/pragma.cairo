@@ -30,15 +30,30 @@ mod Pragma {
     const LOWER_UPDATE_INTERVAL_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
     const UPPER_UPDATE_INTERVAL_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
 
-    // TODO: docs
     struct Storage {
+        // interface to the Pragma oracle contract
         oracle: IPragmaOracleDispatcher,
+        // Shrine associated with this module
+        // this is where a valid price update is posted to
         shrine: IShrineDispatcher,
+        // Sentinel associated with this module
+        // a Sentinel module is necessary to verify a price update
         sentinel: ISentinelDispatcher,
+        // the minimal time difference in seconds of how often we
+        // want to fetch from the oracle
         update_interval: u64,
+        // block timestamp of when the prices were udpated last time
         last_price_update: u64,
+        // values used to determine if we consider a price update fresh or stale:
+        // `freshness` is the maximum number of seconds between block timestamp and
+        // the last update timestamp (as reported by Pragma) for which we consider a
+        // price update valid
+        // `sources` is the minimum number of data publishers used to aggregate the
+        // price value
         price_validity_thresholds: PriceValidityThresholds,
+        // number of yangs in `yang_settings` "array"
         yangs_count: u64,
+        // a 0-based "array" of values used to get the Yang prices from Pragma
         yang_settings: LegacyMap::<u64, YangSettings>
     }
 
@@ -280,9 +295,6 @@ mod Pragma {
             // can happen when e.g. the yang is invalid
             return false;
         }
-
-        // TODO: C0 impl had a is_nn(value) check here, but if Pragma's API is using 
-        // using unsigned types, `value` can't be negative - check
 
         let required: PriceValidityThresholds = price_validity_thresholds::read();
 

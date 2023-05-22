@@ -72,13 +72,20 @@ mod Pragma {
 
     #[derive(Copy, Drop, Serde)]
     struct PriceValidityThresholds {
+        // the maximum number of seconds between block timestamp and
+        // the last update timestamp (as reported by Pragma) for which
+        // we consider a price update valid
         freshness: u64,
+        // the minimum number of data publishers used to aggregate the
+        // price value
         sources: u64
     }
 
     #[derive(Copy, Drop, Serde)]
     struct YangSettings {
+        // a Pragma value identifying a certain feed, e.g. `ETH/USD`
         pair_id: u256,
+        // address of the Yang (token) corresponding to the pair ID
         yang: starknet::ContractAddress
     }
 }
