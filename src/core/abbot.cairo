@@ -3,13 +3,14 @@ mod Abbot {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address};
+    use traits::Into;
     use zeroable::Zeroable;
 
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
-    use aura::utils::wadray::Wad;
+    use aura::utils::wadray::{Wad, U128IntoWad};
 
     struct Storage {
         // Shrine associated with this Abbot
@@ -111,8 +112,8 @@ mod Abbot {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    let amount: u128 = amounts.pop_front().unwrap();
-                    deposit_internal(*yang, user, new_trove_id, *amount);
+                    let amount: u128 = *amounts.pop_front().unwrap();
+                    deposit_internal(*yang, user, new_trove_id, amount);
                 },
                 Option::None(_) => {
                     break ();
