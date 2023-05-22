@@ -49,4 +49,36 @@ struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
     has_removed: bool, // Whether provider has called `remove`
+
+//
+// Pragma
+//
+
+mod Pragma {
+    #[derive(Copy, Drop, Serde)]
+    enum DataType {
+        Spot: u256,
+        Future: u256,
+        Generic: u256,
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    struct PricesResponse {
+        price: u256,
+        decimals: u256,
+        last_updated_timestamp: u256,
+        num_sources_aggregated: u256,
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    struct PriceValidityThresholds {
+        freshness: u64,
+        sources: u64
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    struct YangSettings {
+        pair_id: u256,
+        yang: starknet::ContractAddress
+    }
 }

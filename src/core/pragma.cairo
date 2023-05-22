@@ -1,6 +1,3 @@
-// TODO: inline docs
-//       should it be in core? alt. in "oracles" or sth like that
-
 #[contract]
 mod Pragma {
     use array::ArrayTrait;
@@ -16,6 +13,11 @@ mod Pragma {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::storage_access_impls;
+    use aura::utils::types::Pragma::{
+        DataType, PricesResponse, PriceValidityThresholds, YangSettings
+    };
+    use aura::utils::u256_conversions::{U256TryIntoU8, U256TryIntoU64, U256TryIntoU128};
     use aura::utils::wadray::{fixed_point_to_wad, Wad};
 
     // there are sanity bounds for settable values, i.e. they can never
@@ -28,19 +30,6 @@ mod Pragma {
     const LOWER_UPDATE_INTERVAL_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
     const UPPER_UPDATE_INTERVAL_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
 
-    // TODO: impl StorageAccess for these two
-    #[derive(Copy, Drop, Serde)]
-    struct PriceValidityThresholds {
-        freshness: u64,
-        sources: u64
-    }
-
-    #[derive(Copy, Drop, Serde)]
-    struct YangSettings {
-        pair_id: felt252, // TODO: check type coming from API
-        yang: ContractAddress
-    }
-
     // TODO: docs
     struct Storage {
         oracle: IPragmaOracleDispatcher,
@@ -50,7 +39,7 @@ mod Pragma {
         last_price_update: u64,
         price_validity_thresholds: PriceValidityThresholds,
         yangs_count: u64,
-        yang_settings: LegacyMap::<u64, YangSettings> // TODO: this should be an array
+        yang_settings: LegacyMap::<u64, YangSettings>
     }
 
     //
@@ -61,8 +50,8 @@ mod Pragma {
     fn InvalidPriceUpdate(
         yang: ContractAddress,
         price: Wad,
-        pragma_last_updated_ts: u64,
-        pragma_num_sources: u64,
+        pragma_last_updated_ts: u256,
+        pragma_num_sources: u256,
         asset_amt_per_yang: Wad
     ) {}
 
@@ -163,7 +152,7 @@ mod Pragma {
     }
 
     #[external]
-    fn add_yang(pair_id: felt252, yang: ContractAddress) {
+    fn add_yang(pair_id: u256, yang: ContractAddress) {
         AccessControl::assert_has_role(PragmaRoles::ADD_YANG);
         assert(pair_id != 0, 'Invalid pair_id');
         assert(yang.is_non_zero(), 'Invalid yang address');
@@ -171,10 +160,10 @@ mod Pragma {
 
         // doing a sanity check if Pragma actually offers a price feed
         // of the requested asset and if it's suitable for our needs
-        let (_, decimals, _, _) = oracle::read().get_spot_median(pair_id);
+        let response: PricesResponse = oracle::read().get_data_median(DataType::Spot(pair_id));
         // Pragma returns 0 decimals for an unknown ID
-        assert(decimals != 0, 'Unknown ID');
-        assert(decimals.try_into().unwrap() <= 18_u128, 'Feed with too many decimals');
+        assert(response.decimals != 0, 'Unknown ID');
+        assert(response.decimals <= 18_u256, 'Feed with too many decimals');
 
         let index: u64 = yangs_count::read();
         let settings = YangSettings { pair_id, yang };
@@ -252,25 +241,29 @@ mod Pragma {
             }
 
             let settings: YangSettings = yang_settings::read(idx);
-            let (value, decimals, last_updated_ts, num_sources) = oracle::read().get_spot_median(
-                settings.pair_id
+            let response: PricesResponse = oracle::read().get_data_median(
+                DataType::Spot(settings.pair_id)
             );
 
             // convert price value to Wad
             let price: Wad = fixed_point_to_wad(
-                value.try_into().unwrap(), decimals.try_into().unwrap()
+                response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
             );
             let asset_amt_per_yang: Wad = sentinel::read().get_asset_amt_per_yang(settings.yang);
 
             // if we receive what we consider a valid price from the oracle, record it in the Shrine,
             // otherwise emit an event about the update being invalid
             if is_valid_price_update(
-                value, block_timestamp, last_updated_ts, num_sources, asset_amt_per_yang
+                response, asset_amt_per_yang
             ) {
                 shrine::read().advance(settings.yang, price * asset_amt_per_yang);
             } else {
                 InvalidPriceUpdate(
-                    settings.yang, price, last_updated_ts, num_sources, asset_amt_per_yang
+                    settings.yang,
+                    price,
+                    response.last_updated_timestamp,
+                    response.num_sources_aggregated,
+                    asset_amt_per_yang
                 );
             }
 
@@ -282,13 +275,7 @@ mod Pragma {
         PricesUpdated(block_timestamp, get_caller_address());
     }
 
-    fn is_valid_price_update(
-        value: felt252,
-        block_timestamp: u64,
-        last_updated_ts: u64,
-        num_sources: u64,
-        asset_amt_per_yang: Wad
-    ) -> bool {
+    fn is_valid_price_update(update: PricesResponse, asset_amt_per_yang: Wad) -> bool {
         if asset_amt_per_yang.is_zero() {
             // can happen when e.g. the yang is invalid
             return false;
@@ -300,7 +287,8 @@ mod Pragma {
         let required: PriceValidityThresholds = price_validity_thresholds::read();
 
         // check if the update is from enough sources
-        let has_enough_sources = required.sources <= num_sources;
+        let has_enough_sources =
+            required.sources <= update.num_sources_aggregated.try_into().unwrap();
 
         // it is possible that the last_updated_ts is greater than the block_timestamp (in other words,
         // it is from the future from the chain's perspective), because the update timestamp is coming
@@ -313,14 +301,17 @@ mod Pragma {
         // we considered having our own "too far in the future" check but that could lead to us
         // discarding updates in cases where just a single publisher would push updates with future
         // timestamp; that could be disastrous as we would have stale prices
-        let is_from_future = block_timestamp <= last_updated_ts;
+        let block_timestamp = get_block_timestamp();
+        let last_updated_timestamp: u64 = update.last_updated_timestamp.try_into().unwrap();
+
+        let is_from_future = block_timestamp <= last_updated_timestamp;
         if is_from_future {
             return has_enough_sources;
         }
 
         // use of less than or equal here is intentional because the result of the first argument
         // block_timestamp - last_updated_ts can never be negative if the code reaches here
-        let is_fresh = (block_timestamp - last_updated_ts) <= required.freshness;
+        let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
         has_enough_sources & is_fresh
     }
