@@ -9,6 +9,6 @@ version = "0.1.0"
 
 test_utils = "cairo-test --starknet . --filter utils"
 test_shrine1 = "cairo-test --starknet . --filter shrine"
-test_shrine2 = "sed 's,mod test,//mod test,g' -i src/tests.cairo; echo 'mod test_shrine_compound;' >> src/tests.cairo; cairo-test --starknet . --filter compound"
+test_shrine2 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo; echo 'mod test_shrine_compound;' >> src/tests/shrine.cairo; cairo-test --starknet . --filter compound"
 
 [dependencies]

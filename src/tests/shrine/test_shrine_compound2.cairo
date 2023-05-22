@@ -23,7 +23,7 @@ mod TestShrineCompound2 {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS};
 
-    use aura::tests::shrine_utils::ShrineUtils;
+    use aura::tests::shrine::shrine_utils::ShrineUtils;
 
     //
     // Tests - Trove estimate and charge
