@@ -5,11 +5,11 @@ mod Abbot {
     use starknet::{ContractAddress, get_caller_address};
     use zeroable::Zeroable;
 
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
-    use aura::utils::wadray::{Wad};
+    use aura::utils::wadray::Wad;
 
     struct Storage {
         // Shrine associated with this Abbot
@@ -89,7 +89,7 @@ mod Abbot {
     //
 
     // create a new trove in the system with Yang deposits, 
-    // optionally forging Yin in the same operation (if forge_amount is 0, no Yin is created)
+    // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
     // `amounts` are denominated in asset's decimals
     #[external]
     fn open_trove(forge_amount: Wad, mut yangs: Span<ContractAddress>, mut amounts: Span<u128>) {
@@ -203,6 +203,7 @@ mod Abbot {
 
     #[inline(always)]
     fn deposit_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: u128) {
+        // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
         let yang_amount: Wad = sentinel::read().enter(yang, user, trove_id, amount);
@@ -213,6 +214,7 @@ mod Abbot {
 
     #[inline(always)]
     fn withdraw_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: Wad) {
+        // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
         sentinel::read().exit(yang, user, trove_id, amount);
