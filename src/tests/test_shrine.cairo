@@ -1309,7 +1309,6 @@ mod TestShrine {
         set_contract_address(yin_user);
         let success: bool = yin.transfer_from(trove1_owner, yin_user, TROVE1_FORGE_AMT.into());
 
-        // TODO: Moving this call up here prevents the assert from triggering failed calculating gas
         assert(success, 'yin transfer fail');
 
         assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
