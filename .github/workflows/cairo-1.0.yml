@@ -104,5 +104,7 @@ jobs:
       - name: Test Cairo 1.x code in Cairo
         run: |
           scarb run test_utils
+          scarb run test_wadray
           scarb run test_shrine1
           scarb run test_shrine2
+          scarb run test_shrine3
