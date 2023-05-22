@@ -2,6 +2,7 @@
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
     use debug::PrintTrait;
+    use integer::BoundedU256;
     use option::OptionTrait;
     use traits::{Into, TryInto};
     use starknet::{
@@ -227,7 +228,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_duplicate_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -271,7 +272,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Threshold > max', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Threshold > max', 'ENTRYPOINT_FAILED'))]
     fn test_set_threshold_exceeds_max() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         let invalid_threshold: Ray = (RAY_SCALE + 1).into();
@@ -293,7 +294,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
     fn test_set_threshold_invalid_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -346,7 +347,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
     fn test_advance_invalid_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -403,7 +404,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_deposit_invalid_yang_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -489,7 +490,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_invalid_yang_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
@@ -533,7 +534,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_withdraw_unsafe_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -590,7 +591,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_forge_zero_deposit_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
@@ -601,7 +602,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_forge_unsafe_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -615,7 +616,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Debt ceiling reached', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_forge_ceiling_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -863,7 +864,7 @@ mod TestShrine {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
-    fn test_yin_transfer_from_insufficient_fail() {
+    fn test_yin_transfer_from_insufficient_allowance_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
@@ -881,9 +882,113 @@ mod TestShrine {
         set_contract_address(yin_user);
         yin.transfer_from(trove1_owner, yin_user, approve_amt + 1_u256);
     }
-//
-// Tests - Price and multiplier
-//
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_from_insufficient_balance_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+        yin.approve(yin_user, BoundedU256::max());
+
+        set_contract_address(yin_user);
+        yin.transfer_from(trove1_owner, yin_user, (ShrineUtils::TROVE1_FORGE_AMT + 1).into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: No transfer to 0 address', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_zero_address_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+        yin.approve(yin_user, BoundedU256::max());
+
+        set_contract_address(yin_user);
+        yin.transfer_from(trove1_owner, ContractAddressZeroable::zero(), 1_u256);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yin_melt_after_transfer() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
+        ShrineUtils::trove1_forge(shrine, forge_amt);
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        let transfer_amt: Wad = (forge_amt.val / 2).into();
+        yin.transfer(yin_user, transfer_amt.val.into());
+
+        let melt_amt: Wad = forge_amt - transfer_amt;
+
+        ShrineUtils::trove1_melt(shrine, melt_amt);
+
+        let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
+        let expected_debt: Wad = forge_amt - melt_amt;
+        assert(debt == expected_debt, 'wrong debt after melt');
+
+        assert(shrine.get_yin(trove1_owner) == forge_amt - melt_amt - transfer_amt, 'wrong balance');
+    }
+
+    //
+    // Tests - Price and multiplier
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Price cannot be 0', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_advance_zero_value_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.advance(ShrineUtils::yang1_addr(), WadZeroable::zero());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Multiplier cannot be 0', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_set_multiplier_zero_value_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.set_multiplier(RayZeroable::zero());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Multiplier exceeds maximum', 'ENTRYPOINT_FAILED'))]
+    fn test_shrine_set_multiplier_exceeds_max_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.set_multiplier((RAY_SCALE * 3 + 1).into());
+    }
+
 
 //
 // Tests - Getters for trove information

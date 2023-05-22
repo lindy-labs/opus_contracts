@@ -269,6 +269,12 @@ mod ShrineUtils {
         shrine.forge(trove1_owner_addr(), TROVE_1, amt);
     }
 
+    #[inline(always)]
+    fn trove1_melt(shrine: IShrineDispatcher, amt: Wad) {
+        set_contract_address(admin());
+        shrine.melt(trove1_owner_addr(), TROVE_1, amt);
+    }
+
     //
     // Test helpers
     //
