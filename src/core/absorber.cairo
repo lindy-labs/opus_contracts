@@ -262,7 +262,7 @@ mod Absorber {
     }
 
     #[view]
-    fn get_asset_reward(asset: ContractAddress, epoch: u32) -> DistributionInfo {
+    fn get_cumulative_reward_amt_by_epoch(asset: ContractAddress, epoch: u32) -> DistributionInfo {
         cumulative_reward_amt_by_epoch::read((asset, epoch))
     }
 
@@ -817,7 +817,7 @@ mod Absorber {
 
         // NOTE: it is very important that this function is called, even for a new provider. 
         // If a new provider's cumulative rewards are not updated to the current epoch,
-        // then they will be zero, and the next time reap_internal is called, the provider
+        // then they will be zero, and the next time `reap_internal` is called, the provider
         // will receive all of the cumulative rewards for the current epoch, when they
         // should only receive the rewards for the current epoch since the last time 
         // `reap_internal` was called.

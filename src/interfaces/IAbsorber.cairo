@@ -17,7 +17,7 @@ trait IAbsorber {
     fn get_provider_last_absorption(provider: ContractAddress) -> u32;
     fn get_provider_request(provider: ContractAddress) -> Request;
     fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> DistributionInfo;
-    fn get_asset_reward(asset: ContractAddress, epoch: u32) -> DistributionInfo;
+    fn get_cumulative_reward_amt_by_epoch(asset: ContractAddress, epoch: u32) -> DistributionInfo;
     fn get_provider_last_reward_cumulative(
         provider: ContractAddress, asset: ContractAddress
     ) -> u128;
