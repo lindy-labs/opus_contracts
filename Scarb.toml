@@ -13,7 +13,8 @@ test_utils = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/
 test_wadray = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_wadray;' >> src/tests/utils.cairo; cairo-test --starknet ."
 
 test_shrine1 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-test_shrine2 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-test_shrine3 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound2;' >> src/tests/shrine.cairo; cairo-test --starknet ."
+test_shrine2 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_yin;' >> src/tests/shrine.cairo; cairo-test --starknet ."
+test_shrine3 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound;' >> src/tests/shrine.cairo; cairo-test --starknet ."
+test_shrine4 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound2;' >> src/tests/shrine.cairo; cairo-test --starknet ."
 
 [dependencies]
