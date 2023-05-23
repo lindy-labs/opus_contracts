@@ -46,7 +46,10 @@ mod TestShrine {
         // TODO: Adding this call prevents failed calculating gas error
         yin.transfer(yin_user, 0_u256);
 
-        assert(yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(), 'wrong transferee balance');
+        assert(
+            yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
+            'wrong transferee balance'
+        );
 
         // TODO: Adding all these calls prevents failed calculating gas error
         yin.transfer(yin_user, 0_u256);
@@ -102,12 +105,16 @@ mod TestShrine {
         yin.approve(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         set_contract_address(yin_user);
-        let success: bool = yin.transfer_from(trove1_owner, yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
+        let success: bool = yin
+            .transfer_from(trove1_owner, yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         assert(success, 'yin transfer fail');
 
         assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
-        assert(yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(), 'wrong transferee balance');
+        assert(
+            yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
+            'wrong transferee balance'
+        );
     }
 
     #[test]
@@ -217,6 +224,8 @@ mod TestShrine {
         let expected_debt: Wad = forge_amt - melt_amt;
         assert(debt == expected_debt, 'wrong debt after melt');
 
-        assert(shrine.get_yin(trove1_owner) == forge_amt - melt_amt - transfer_amt, 'wrong balance');
+        assert(
+            shrine.get_yin(trove1_owner) == forge_amt - melt_amt - transfer_amt, 'wrong balance'
+        );
     }
 }

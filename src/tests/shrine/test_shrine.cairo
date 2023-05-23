@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU256;
     use option::OptionTrait;
-    use traits::{Into, TryInto};
-    use starknet::{contract_address_const, ContractAddress, get_block_timestamp};
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use traits::Into;
+    use starknet::{contract_address_const, ContractAddress};
+    use starknet::testing::set_contract_address;
 
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
@@ -17,7 +15,9 @@ mod TestShrine {
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_SCALE};
+    use aura::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_SCALE
+    };
 
     use aura::tests::shrine::shrine_utils::ShrineUtils;
 

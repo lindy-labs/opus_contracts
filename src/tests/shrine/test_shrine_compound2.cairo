@@ -9,7 +9,6 @@ mod TestShrineCompound2 {
 
     use aura::core::shrine::Shrine;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::exp::exp;
     use aura::utils::serde;
@@ -213,7 +212,7 @@ mod TestShrineCompound2 {
 
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
-        
+
         shrine.deposit(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }

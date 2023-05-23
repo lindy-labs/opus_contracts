@@ -8,7 +8,6 @@ mod TestShrineCompound {
 
     use aura::core::shrine::Shrine;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::exp::exp;
     use aura::utils::u256_conversions;
@@ -45,7 +44,9 @@ mod TestShrineCompound {
         let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang2_addr());
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
 
-        ShrineUtils::advance_prices_and_set_multiplier(shrine, ShrineUtils::FEED_LEN, yang1_price, yang2_price);
+        ShrineUtils::advance_prices_and_set_multiplier(
+            shrine, ShrineUtils::FEED_LEN, yang1_price, yang2_price
+        );
 
         // Offset by 1 because `advance_prices_and_set_multiplier` updates `start_interval`.
         let end_interval: u64 = start_interval + ShrineUtils::FEED_LEN - 1;
@@ -237,7 +238,6 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-
         shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -339,7 +339,10 @@ mod TestShrineCompound {
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED`
         let intervals_to_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, intervals_to_skip, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into()
+            shrine,
+            intervals_to_skip,
+            ShrineUtils::YANG1_START_PRICE.into(),
+            ShrineUtils::YANG2_START_PRICE.into()
         );
         // Offset by 1 because of a single call to `advance_prices_and_set_multiplier`
         let last_updated_interval: u64 = start_interval + intervals_to_skip - 1;
