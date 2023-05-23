@@ -29,16 +29,14 @@ impl WadStorageAccess of StorageAccess<Wad> {
         address_domain: u32, base: StorageBaseAddress, offset: u8
     ) -> SyscallResult<Wad> {
         Result::Ok(
-            Wad {
-                val: StorageAccess::<u128>::read_at_offset_internal(address_domain, base, offset)?
-            }
+            Wad { val: StorageAccess::read_at_offset_internal(address_domain, base, offset)? }
         )
     }
 
     fn write_at_offset_internal(
         address_domain: u32, base: StorageBaseAddress, offset: u8, value: Wad
     ) -> SyscallResult<()> {
-        StorageAccess::<u128>::write_at_offset_internal(address_domain, base, offset, value.val)
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, value.val)
     }
 
     fn size_internal(value: Wad) -> u8 {
@@ -68,9 +66,7 @@ impl RayStorageAccess of StorageAccess<Ray> {
         address_domain: u32, base: StorageBaseAddress, offset: u8
     ) -> SyscallResult<Ray> {
         Result::Ok(
-            Ray {
-                val: StorageAccess::<u128>::read_at_offset_internal(address_domain, base, offset)?
-            }
+            Ray { val: StorageAccess::read_at_offset_internal(address_domain, base, offset)? }
         )
     }
 
@@ -78,7 +74,7 @@ impl RayStorageAccess of StorageAccess<Ray> {
     fn write_at_offset_internal(
         address_domain: u32, base: StorageBaseAddress, offset: u8, value: Ray
     ) -> SyscallResult<()> {
-        StorageAccess::<u128>::write_at_offset_internal(address_domain, base, offset, value.val)
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, value.val)
     }
 
     #[inline(always)]
@@ -132,10 +128,10 @@ impl TroveStorageAccess of StorageAccess<Trove> {
             address_domain, base, offset
         )?;
 
-        let offset = offset + StorageAccess::<u64>::size_internal(charge_from);
+        let offset = offset + StorageAccess::size_internal(charge_from);
         let debt: Wad = StorageAccess::read_at_offset_internal(address_domain, base, offset)?;
 
-        let offset = offset + StorageAccess::<Wad>::size_internal(debt);
+        let offset = offset + StorageAccess::size_internal(debt);
         let last_rate_era: u64 = StorageAccess::read_at_offset_internal(
             address_domain, base, offset
         )?;
@@ -147,24 +143,20 @@ impl TroveStorageAccess of StorageAccess<Trove> {
     fn write_at_offset_internal(
         address_domain: u32, base: StorageBaseAddress, offset: u8, value: Trove
     ) -> SyscallResult<()> {
-        StorageAccess::<u64>::write_at_offset_internal(
-            address_domain, base, offset, value.charge_from
-        )?;
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, value.charge_from)?;
 
-        let offset = offset + StorageAccess::<u64>::size_internal(value.charge_from);
-        StorageAccess::<Wad>::write_at_offset_internal(address_domain, base, offset, value.debt)?;
+        let offset = offset + StorageAccess::size_internal(value.charge_from);
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, value.debt)?;
 
-        let offset = offset + StorageAccess::<Wad>::size_internal(value.debt);
-        StorageAccess::<u64>::write_at_offset_internal(
-            address_domain, base, offset, value.last_rate_era
-        )
+        let offset = offset + StorageAccess::size_internal(value.debt);
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, value.last_rate_era)
     }
 
     #[inline(always)]
     fn size_internal(value: Trove) -> u8 {
-        StorageAccess::<u64>::size_internal(value.charge_from)
-            + StorageAccess::<Wad>::size_internal(value.debt)
-            + StorageAccess::<u64>::size_internal(value.last_rate_era)
+        StorageAccess::size_internal(value.charge_from)
+            + StorageAccess::size_internal(value.debt)
+            + StorageAccess::size_internal(value.last_rate_era)
     }
 }
 
@@ -203,8 +195,8 @@ impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
     ) -> SyscallResult<U128Tuple> {
         Result::Ok(
             (
-                StorageAccess::<u128>::read_at_offset_internal(address_domain, base, offset)?,
-                StorageAccess::<u128>::read_at_offset_internal(address_domain, base, offset + 1)?
+                StorageAccess::read_at_offset_internal(address_domain, base, offset)?,
+                StorageAccess::read_at_offset_internal(address_domain, base, offset + 1)?
             )
         )
     }
@@ -214,8 +206,8 @@ impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
         address_domain: u32, base: StorageBaseAddress, offset: u8, value: U128Tuple
     ) -> SyscallResult<()> {
         let (v0, v1) = value;
-        StorageAccess::<u128>::write_at_offset_internal(address_domain, base, offset, v0)?;
-        StorageAccess::<u128>::write_at_offset_internal(
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, v0)?;
+        StorageAccess::write_at_offset_internal(
             address_domain, base, offset + StorageAccess::<u128>::size_internal(v0), v1
         )
     }
@@ -223,7 +215,7 @@ impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
     #[inline(always)]
     fn size_internal(value: U128Tuple) -> u8 {
         let (v0, v1) = value;
-        StorageAccess::<u128>::size_internal(v0) + StorageAccess::<u128>::size_internal(v1)
+        StorageAccess::size_internal(v0) + StorageAccess::size_internal(v1)
     }
 }
 
@@ -303,15 +295,13 @@ impl RayTupleStorageAccess of StorageAccess<RayTuple> {
         address_domain: u32, base: StorageBaseAddress, offset: u8, value: RayTuple
     ) -> SyscallResult<()> {
         let (r0, r1) = value;
-        StorageAccess::<U128Tuple>::write_at_offset_internal(
-            address_domain, base, offset, (r0.val, r1.val)
-        )
+        StorageAccess::write_at_offset_internal(address_domain, base, offset, (r0.val, r1.val))
     }
 
     #[inline(always)]
     fn size_internal(value: RayTuple) -> u8 {
         let (r0, r1) = value;
-        StorageAccess::<U128Tuple>::size_internal((r0.val, r1.val))
+        StorageAccess::size_internal((r0.val, r1.val))
     }
 }
 
@@ -345,13 +335,13 @@ impl YangRedistributionStorageAccess of StorageAccess<YangRedistribution> {
     fn write_at_offset_internal(
         address_domain: u32, base: StorageBaseAddress, offset: u8, value: YangRedistribution
     ) -> SyscallResult<()> {
-        StorageAccess::<U128Tuple>::write_at_offset_internal(
+        StorageAccess::write_at_offset_internal(
             address_domain, base, offset, (value.unit_debt.val, value.error.val)
         )
     }
 
     #[inline(always)]
     fn size_internal(value: YangRedistribution) -> u8 {
-        StorageAccess::<U128Tuple>::size_internal((value.unit_debt.val, value.error.val))
+        StorageAccess::size_internal((value.unit_debt.val, value.error.val))
     }
 }
