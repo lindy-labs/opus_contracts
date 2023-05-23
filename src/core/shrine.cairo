@@ -14,7 +14,7 @@ mod Shrine {
     use aura::utils::access_control::AccessControl;
     use aura::utils::exp::exp;
     use aura::utils::serde::SpanSerde;
-    use aura::utils::storage_access_impls;
+    use aura::utils::storage_access;
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;

@@ -9,7 +9,7 @@ mod Allocator {
 
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde::SpanSerde;
-    use aura::utils::storage_access_impls;
+    use aura::utils::storage_access;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
