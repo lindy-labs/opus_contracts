@@ -1,6 +1,5 @@
 mod ShrineUtils {
     use array::{ArrayTrait, SpanTrait};
-    use debug::PrintTrait;
     use option::OptionTrait;
     use traits::{Into, TryInto};
     use starknet::{
@@ -20,7 +19,7 @@ mod ShrineUtils {
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     //
     // Constants
