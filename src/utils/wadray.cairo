@@ -1,5 +1,6 @@
 use integer::{Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
+use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
@@ -21,12 +22,12 @@ const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
 const DIFF: u128 = 1000000000;
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Wad {
     val: u128, 
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Ray {
     val: u128
 }
