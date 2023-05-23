@@ -6,6 +6,7 @@ mod IERC20;
 mod IFlashBorrower;
 mod IFlashMint;
 mod IGate;
+mod IOracle;
 mod IPragma;
 mod ISentinel;
 mod IShrine;

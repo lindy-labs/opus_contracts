@@ -4,7 +4,6 @@ mod allocator;
 mod equalizer;
 mod flashmint;
 mod gate;
-mod pragma;
 mod roles;
 mod sentinel;
 mod shrine;
