@@ -345,13 +345,14 @@ mod ShrineUtils {
     ///
     /// * `yang_base_rates_history` - Ordered list of the lists of base rates of each yang at each rate update interval
     ///    over the time period `end_interval - start_interval`.
-    ///    e.g. [[rate at update interval 1 for yang 1, ..., rate at update interval n for yang 1],
-    ///          [rate at update interval 1 for yang 2, ..., rate at update interval n for yang 2]]`
+    ///    e.g. [[rate at update interval 1 for yang 1, ..., rate at update interval 1 for yang 2],
+    ///          [rate at update interval n for yang 1, ..., rate at update interval n for yang 2]]`
     /// * `yang_rate_update_intervals` - Ordered list of the intervals at which each of the updates to the base rates were made.
     ///    The first interval in this list should be <= `start_interval`.
     /// * `yang_amts` - Ordered list of the amounts of each Yang over the given time period
     /// * `yang_avg_prices` - Ordered list of the average prices of each yang over each
     ///    base rate "era" (time period over which the base rate doesn't change).
+    ///    [[yang1_price_era1, yang2_price_era1], [yang1_price_era2, yang2_price_era2]]
     ///    The first average price of each yang should be from `start_interval` to `yang_rate_update_intervals[1]`,
     ///    and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
     /// * `avg_multipliers` - List of average multipliers over each base rate "era"
@@ -371,9 +372,9 @@ mod ShrineUtils {
         end_interval: u64,
         mut debt: Wad
     ) -> Wad {
-        // TODO: it will be helpful to validate the input arrays
+        // TODO: it will be helpful to validate the input arrays once gas calculation issue is fixed
 
-        let eras_count: usize = (*yang_base_rates_history.at(0)).len();
+        let eras_count: usize = yang_base_rates_history.len();
         let yangs_count: usize = yang_amts.len();
 
         let mut i: usize = 0;
@@ -390,18 +391,16 @@ mod ShrineUtils {
                 if j == yangs_count {
                     break ();
                 }
-
-                let yang_value: Wad = *yang_amts[j] * *yang_avg_prices[j][i];
+                let yang_value: Wad = *yang_amts[j] * *yang_avg_prices[i][j];
                 total_yang_value += yang_value;
 
                 let weighted_rate: Ray = wadray::wmul_rw(
-                    *yang_base_rates_history[j][i], yang_value
+                    *yang_base_rates_history[i][j], yang_value
                 );
                 weighted_rate_sum += weighted_rate;
 
                 j += 1;
             };
-
             let base_rate: Ray = wadray::wdiv_rw(weighted_rate_sum, total_yang_value);
             let rate: Ray = base_rate * *avg_multipliers[i];
 
@@ -425,6 +424,7 @@ mod ShrineUtils {
             }
 
             let t: u128 = intervals_in_era.into() * Shrine::TIME_INTERVAL_DIV_YEAR;
+
             debt *= exp(wadray::rmul_rw(rate, t.into()));
             i += 1;
         }
