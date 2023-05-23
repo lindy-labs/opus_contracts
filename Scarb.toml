@@ -17,4 +17,6 @@ test_shrine2 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/test
 test_shrine3 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound;' >> src/tests/shrine.cairo; cairo-test --starknet ."
 test_shrine4 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound2;' >> src/tests/shrine.cairo; cairo-test --starknet ."
 
+reset_tests = "git checkout HEAD -- src/tests/shrine.cairo src/tests/utils.cairo"
+
 [dependencies]
