@@ -98,7 +98,6 @@ mod TestShrineCompound2 {
             - last_updated_cumulative_price_before_start;
 
         // Next, we deduct the cumulative price from `T+LAST_UPDATED_BEFORE_START` to `T+START`
-
         cumulative_diff -=
             ((start_interval - last_updated_interval_before_start).into()
                 * last_updated_price_before_start.val)
@@ -112,7 +111,6 @@ mod TestShrineCompound2 {
 
         let expected_avg_price: Wad = (cumulative_diff.val / (end_interval - start_interval).into())
             .into();
-
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
         let expected_debt: Wad = ShrineUtils::compound_wrapper_for_yang(
@@ -126,13 +124,11 @@ mod TestShrineCompound2 {
             debt,
         );
 
-        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
-
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
-
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-
         assert(expected_debt == debt, 'wrong compounded debt');
+
+        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
+        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
     // Wrapper to get around gas issue
@@ -215,11 +211,11 @@ mod TestShrineCompound2 {
             debt,
         );
 
-        shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
-        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
-
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
+        
+        shrine.deposit(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
+        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
     // Tests for `charge` with three base rate updates and 
@@ -444,5 +440,8 @@ mod TestShrineCompound2 {
         );
 
         assert(debt == expected_debt, 'wrong compounded debt');
+
+        shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
+        assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 }
