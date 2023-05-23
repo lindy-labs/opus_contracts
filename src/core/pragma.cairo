@@ -197,7 +197,7 @@ mod Pragma {
         }
 
         // Since redistributions are expected to rarely occur, and price updates are frequent and regular,
-        // the common case is handled first with an early return to avoid revoked references.
+        // the common case is handled first with an early return.
         // If the common case fails, then we check if the caller is authorized and can therefore ignore the
         // minimum time interval for updates. If the caller is not authorized, assume that the call was for
         // a price update, and raise an error that the minimum time interval has not elapsed.
@@ -321,8 +321,7 @@ mod Pragma {
             return has_enough_sources;
         }
 
-        // use of less than or equal here is intentional because the result of the first argument
-        // block_timestamp - last_updated_ts can never be negative if the code reaches here
+        // the result of the first argument `block_timestamp - last_updated_ts` can never be negative if the code reaches here
         let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
         has_enough_sources & is_fresh
