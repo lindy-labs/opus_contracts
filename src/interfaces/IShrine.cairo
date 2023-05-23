@@ -1,6 +1,7 @@
-use array::ArrayTrait;
+use array::SpanTrait;
 use starknet::ContractAddress;
 
+use aura::utils::serde;
 use aura::utils::types::Trove;
 use aura::utils::wadray::{Ray, Wad};
 
@@ -31,7 +32,7 @@ trait IShrine {
     fn kill();
     fn advance(yang: ContractAddress, price: Wad);
     fn set_multiplier(new_multiplier: Ray);
-    fn update_rates(yang: Array<ContractAddress>, new_rate: Array<Ray>);
+    fn update_rates(yang: Span<ContractAddress>, new_rate: Span<Ray>);
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad);

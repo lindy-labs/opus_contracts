@@ -43,7 +43,7 @@ mod Shrine {
 
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
-    const USE_PREV_BASE_RATE: u128 = 100000000000000000000000001;
+    const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -565,13 +565,13 @@ mod Shrine {
         // Even though this is an admin/governance function, such a mistake could break 
         // interest rate calculations, which is why it's important that we verify that all yangs' 
         // rates were correctly updated.
-        let mut idx: u32 = 0;
+        let mut idx: u32 = num_yangs;
         loop {
-            if idx == num_yangs {
+            if idx == 0 {
                 break ();
             }
             assert(yang_rates::read((idx, new_era)).is_non_zero(), 'SH: Incorrect rate update');
-            idx += 1;
+            idx -= 1;
         };
     }
 
