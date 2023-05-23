@@ -184,21 +184,6 @@ impl PriceValidityThresholdsStorageAccess of StorageAccess<PriceValidityThreshol
 
 impl YangSettingsStorageAccess of StorageAccess<YangSettings> {
     fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult<YangSettings> {
-        // let pair_id = u256 {
-        //     low: storage_read_syscall(
-        //         address_domain, storage_address_from_base_and_offset(base, 0)
-        //     )?.try_into().unwrap(),
-        //     high: storage_read_syscall(
-        //         address_domain, storage_address_from_base_and_offset(base, 1)
-        //     )?.try_into().unwrap()
-        // };
-
-        // let yang: ContractAddress = storage_read_syscall(
-        //     address_domain, storage_address_from_base_and_offset(base, 2)
-        // )?.try_into().unwrap();
-
-        // Result::Ok(YangSettings { pair_id, yang })
-
         let pair_id: u256 = StorageAccess::<u256>::read(address_domain, base)?;
         let next: felt252 = storage_address_from_base_and_offset(base, 2).into();
         let yang: ContractAddress = StorageAccess::<ContractAddress>::read(
@@ -210,22 +195,6 @@ impl YangSettingsStorageAccess of StorageAccess<YangSettings> {
     fn write(
         address_domain: u32, base: StorageBaseAddress, value: YangSettings
     ) -> SyscallResult<()> {
-        // storage_write_syscall(
-        //     address_domain,
-        //     storage_address_from_base_and_offset(base, 0),
-        //     value.pair_id.low.into()
-        // )?;
-        // storage_write_syscall(
-        //     address_domain,
-        //     storage_address_from_base_and_offset(base, 1),
-        //     value.pair_id.high.into()
-        // )?;
-        // storage_write_syscall(
-        //     address_domain,
-        //     storage_address_from_base_and_offset(base, 2),
-        //     value.yang.into()
-        // )
-
         StorageAccess::<u256>::write(address_domain, base, value.pair_id);
         let next: felt252 = storage_address_from_base_and_offset(base, 2).into();
         StorageAccess::<ContractAddress>::write(
