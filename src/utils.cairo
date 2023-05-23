@@ -3,7 +3,7 @@ mod exp;
 mod pow;
 mod reentrancy_guard;
 mod serde;
-mod storage_access_impls;
+mod storage_access;
 mod types;
 mod u256_conversions;
 mod wadray;
