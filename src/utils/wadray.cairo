@@ -4,7 +4,7 @@ use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
 use aura::utils::pow::pow10;
-use aura::utils::storage_access_impls;
+use aura::utils::storage_access;
 use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
 const WAD_DECIMALS: u8 = 18;
