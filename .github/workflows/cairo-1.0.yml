@@ -109,3 +109,4 @@ jobs:
           scarb run test_shrine2
           scarb run test_shrine3
           scarb run test_shrine4
+          scarb run test_shrine5
