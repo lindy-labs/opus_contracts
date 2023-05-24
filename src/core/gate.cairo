@@ -146,9 +146,8 @@ mod Gate {
             return 0_u128.into();
         }
 
-        let success: bool = asset::read().transfer_from(
-            user, get_contract_address(), asset_amt.into()
-        );
+        let success: bool = asset::read()
+            .transfer_from(user, get_contract_address(), asset_amt.into());
         assert(success, 'Asset transfer failed');
 
         Enter(user, trove_id, asset_amt, yang_amt);

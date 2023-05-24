@@ -604,6 +604,9 @@ mod Shrine {
     #[external]
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
         AccessControl::assert_has_role(ShrineRoles::WITHDRAW);
+        // In the event the Shrine is killed, trove users can no longer withdraw yang 
+        // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
+        assert_live();
         withdraw_internal(yang, trove_id, amount);
         assert_healthy(trove_id);
     }
@@ -642,6 +645,9 @@ mod Shrine {
     #[external]
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad) {
         AccessControl::assert_has_role(ShrineRoles::MELT);
+        // In the event the Shrine is killed, trove users can no longer repay their debt.
+        // This also blocks liquidations by Purger.
+        assert_live();
 
         // Charge interest
         charge(trove_id);
@@ -714,6 +720,7 @@ mod Shrine {
     #[external]
     fn inject(receiver: ContractAddress, amount: Wad) {
         AccessControl::assert_has_role(ShrineRoles::INJECT);
+        assert_live();
         forge_internal(receiver, amount);
     }
 
@@ -848,6 +855,12 @@ mod Shrine {
 
     // Adds the accumulated interest as debt to the trove
     fn charge(trove_id: u64) {
+        // Do not charge accrued interest once Shrine is killed because total system debt
+        // and individual trove's debt are fixed at the time of shutdown.
+        if !is_live::read() {
+            return;
+        }
+
         let trove: Trove = troves::read(trove_id);
 
         // Get current interval and yang count
@@ -1133,7 +1146,8 @@ mod Shrine {
                     // Get the amount of debt per yang for the current redistribution
                     let unit_debt: Wad = yang_redistributions::read(
                         (current_yang_id, current_redistribution_id)
-                    ).unit_debt;
+                    )
+                        .unit_debt;
 
                     if unit_debt.is_non_zero() {
                         debt_increment += unit_debt * deposited;
