@@ -7,10 +7,6 @@ use starknet::ContractAddress;
 // TODO: Add `Shrine.assert_live()` to `Shrine.inject().
 //       - Flashmint and minting debt surplus should not be possible upon shut.
 
-#[abi]
-trait IAbbot {
-    fn get_trove_owner(trove_id: u64) -> ContractAddress;
-}
 
 #[contract]
 mod Caretaker {
@@ -24,17 +20,17 @@ mod Caretaker {
 
     use aura::core::roles::CaretakerRoles;
 
+    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde::SpanSerde;
-    use aura::utils::storage_access_impls;
-    use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
-    use aura::utils::wadray::{Ray, RAY_ONE, U128IntoRay, U128IntoWad, rdiv_ww, rmul_rw, Wad};
-
-    use super::{IAbbotDispatcher, IAbbotDispatcherTrait, };
+    use aura::utils::storage_access;
+    use aura::utils::u256_conversions;
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, RAY_ONE, Wad};
 
     //
     // Constants
@@ -121,7 +117,7 @@ mod Caretaker {
         // Calculate the percentage of collateral needed to back yin 1 : 1
         // based on the last value
         let (_, total_value) = shrine.get_shrine_threshold_and_value();
-        let backing_pct: Ray = rdiv_ww(shrine.get_total_yin(), total_value);
+        let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), total_value);
 
         // Cap the percentage to 100%
         let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
@@ -139,13 +135,13 @@ mod Caretaker {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    let backed_yang: Wad = rmul_rw(
+                    let backed_yang: Wad = wadray::rmul_rw(
                         capped_backing_pct, shrine.get_yang_total(*yang)
                     );
                     sentinel.exit(*yang, caretaker, DUMMY_TROVE_ID, backed_yang);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 },
             };
         };
@@ -206,7 +202,7 @@ mod Caretaker {
                     asset_amts.append(asset_amt);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 },
             };
         };
@@ -241,7 +237,7 @@ mod Caretaker {
         let burn_amt: Wad = min(yin, shrine.get_yin(caller));
 
         // Calculate percentage of amount to be reclaimed out of total yin
-        let pct_to_reclaim: Ray = rdiv_ww(burn_amt, shrine.get_total_yin());
+        let pct_to_reclaim: Ray = wadray::rdiv_ww(burn_amt, shrine.get_total_yin());
 
         let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
 
@@ -256,7 +252,7 @@ mod Caretaker {
                 Option::Some(yang) => {
                     let asset: IERC20Dispatcher = IERC20Dispatcher { contract_address: *yang };
                     let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
-                    let asset_amt: Wad = rmul_rw(pct_to_reclaim, caretaker_balance.into());
+                    let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
 
                     if asset_amt.is_zero() {
                         asset_amts.append(0_u128);
@@ -268,7 +264,7 @@ mod Caretaker {
                     asset_amts.append(asset_amt.val);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 },
             };
         };
