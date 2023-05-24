@@ -1,10 +1,11 @@
 use integer::{Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
+use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
 use aura::utils::pow::pow10;
-use aura::utils::storage_access_impls;
+use aura::utils::storage_access;
 use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
 const WAD_DECIMALS: u8 = 18;
@@ -21,12 +22,12 @@ const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
 const DIFF: u128 = 1000000000;
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Wad {
     val: u128, 
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Ray {
     val: u128
 }
@@ -394,10 +395,12 @@ mod tests {
 
 
     #[test]
-    fn test_add() {
+    fn test_add1() {
         // 0 + 0 = 0
         assert(Wad { val: 0 } + Wad { val: 0 } == Wad { val: 0 }, 'Incorrect addition #1');
+    }
 
+    fn test_add2() {
         // 1 + 1 = 2
         assert(Wad { val: 1 } + Wad { val: 1 } == Wad { val: 2 }, 'Incorrect addition #2');
 
@@ -412,7 +415,10 @@ mod tests {
             },
             'Incorrect addition #3'
         );
+    }
 
+    #[test]
+    fn test_add3() {
         // 0 + 0 = 0
         assert(Ray { val: 0 } + Ray { val: 0 } == Ray { val: 0 }, 'Incorrect addition #4');
 
