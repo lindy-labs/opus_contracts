@@ -24,11 +24,11 @@ mod Purger {
     use traits::Into;
     use zeroable::Zeroable;
 
-    use aura::intefaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, rdiv_ww, rmul_wr, U128IntoRay, Wad, WadZeroable
-    };
+    use aura::utils::serde;
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     use super::{
         IAbsorberDispatcher, IAbsorberDispatcherTrait, IEmpiricDispatcher, IEmpiricDispatcherTrait,
@@ -301,17 +301,16 @@ mod Purger {
                         continue;
                     }
 
-                    let freed_yang: Wad = rmul_wr(deposited_yang_amt, percentage_freed);
+                    let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
 
                     // TODO: Add reentrancy guard
-                    let freed_asset_amt: u128 = sentinel.exit(
-                        *yang, recipient, trove_id, freed_yang
-                    );
+                    let freed_asset_amt: u128 = sentinel
+                        .exit(*yang, recipient, trove_id, freed_yang);
                     freed_assets_amts.append(freed_asset_amt);
                     shrine.seize(*yang, trove_id, freed_yang);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 }
             };
         };
@@ -343,7 +342,7 @@ mod Purger {
 
     fn get_max_close_amount_internal(trove_ltv: Ray, debt: Wad) -> Wad {
         let close_factor: Ray = get_close_factor(trove_ltv);
-        let close_amt: Wad = rmul_wr(debt, close_factor);
+        let close_amt: Wad = wadray::rmul_wr(debt, close_factor);
         if debt <= close_amt {
             debt
         } else {
@@ -380,7 +379,7 @@ mod Purger {
             return (m * trove_ltv) + b;
         }
 
-        return rdiv_ww(trove_value - trove_debt, trove_debt);
+        return wadray::rdiv_ww(trove_value - trove_debt, trove_debt);
     }
 
     // Helper function to calculate percentage of collateral freed.
@@ -394,12 +393,12 @@ mod Purger {
             let penalty: Ray = get_penalty_internal(
                 trove_threshold, trove_ltv, trove_value, trove_debt
             );
-            let penalty_amt: Wad = rmul_wr(purge_amt, penalty);
+            let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
             let freed_amt: Wad = penalty_amt + purge_amt;
 
-            rdiv_ww(freed_amt, trove_value)
+            wadray::rdiv_ww(freed_amt, trove_value)
         } else {
-            rdiv_ww(purge_amt, trove_debt)
+            wadray::rdiv_ww(purge_amt, trove_debt)
         }
     }
 
@@ -424,11 +423,9 @@ mod Purger {
                     absorbed_assets.append(*amount - compensation);
                 },
                 Option::None(_) => {
-                    break ();
+                    break (absorbed_assets.span(), compensations.span());
                 }
             };
-        };
-
-        (absorbed_assets, compensations)
+        }
     }
 }
