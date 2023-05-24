@@ -443,10 +443,9 @@ mod Absorber {
         let current_timestamp: u64 = get_block_timestamp();
 
         let mut timelock: u64 = REQUEST_BASE_TIMELOCK;
-        if request.timestamp
-            + REQUEST_COOLDOWN > current_timestamp {
-                timelock = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
-            }
+        if request.timestamp + REQUEST_COOLDOWN > current_timestamp {
+            timelock = request.timelock * REQUEST_TIMELOCK_MULTIPLIER;
+        }
 
         let capped_timelock: u64 = min(timelock, REQUEST_MAX_TIMELOCK);
         provider_request::write(
@@ -1034,10 +1033,9 @@ mod Absorber {
         }
 
         loop {
-            if current_rewards_id == rewards_count
-                + REWARDS_LOOP_START {
-                    break (rewards.span(), reward_amts.span());
-                }
+            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+                break (rewards.span(), reward_amts.span());
+            }
 
             let reward: Reward = rewards::read(current_rewards_id);
             let mut reward_amt: u128 = 0;

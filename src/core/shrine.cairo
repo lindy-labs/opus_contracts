@@ -1133,7 +1133,8 @@ mod Shrine {
                     // Get the amount of debt per yang for the current redistribution
                     let unit_debt: Wad = yang_redistributions::read(
                         (current_yang_id, current_redistribution_id)
-                    ).unit_debt;
+                    )
+                        .unit_debt;
 
                     if unit_debt.is_non_zero() {
                         debt_increment += unit_debt * deposited;

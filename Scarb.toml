@@ -6,6 +6,8 @@ version = "0.1.0"
 [[target.starknet-contract]]
 
 [scripts]
+fmt = "cairo-format --recursive src/"
+check_fmt = "cairo-format --recursive --check --print-parsing-errors src/"
 
 test = "cairo-test --starknet ."
 
