@@ -614,9 +614,12 @@ mod Absorber {
                 total_shares::write(yin_balance);
             } else {
                 // Otherwise, set the epoch share conversion rate to 0 and total shares to 0.
-                // This is to prevent a where an attacker can become a majority shareholder 
-                // when the number of shares is very small, which would allow them to execute 
-                // an attack similar to a first-deposit front-running attack. 
+                // This is to prevent an attacker from becoming a majority shareholder
+                // in a new epoch when the number of shares is very small, which would 
+                // allow them to execute an attack similar to a first-deposit front-running attack.
+                // This would cause a negligible loss to the previous epoch's providers, but
+                // partially compensates the first provider in the new epoch for the deducted
+                // minimum initial amount.
                 epoch_share_conversion_rate::write(current_epoch, 0_u128.into());
                 total_shares::write(0_u128.into());
             }
