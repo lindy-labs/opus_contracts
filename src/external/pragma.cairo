@@ -34,8 +34,8 @@ mod Pragma {
     const UPPER_FRESHNESS_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
     const LOWER_SOURCES_BOUND: u64 = 3;
     const UPPER_SOURCES_BOUND: u64 = 13;
-    const LOWER_UPDATE_INTERVAL_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
-    const UPPER_UPDATE_INTERVAL_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
+    const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
+    const UPPER_UPDATE_FREQUENCY_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
 
     struct Storage {
         // interface to the Pragma oracle contract
@@ -48,7 +48,7 @@ mod Pragma {
         sentinel: ISentinelDispatcher,
         // the minimal time difference in seconds of how often we
         // want to fetch from the oracle
-        update_interval: u64,
+        update_frequency: u64,
         // block timestamp of when the prices were udpated last time
         last_price_update_timestamp: u64,
         // values used to determine if we consider a price update fresh or stale:
@@ -89,7 +89,7 @@ mod Pragma {
     ) {}
 
     #[event]
-    fn UpdateIntervalUpdated(old_interval: u64, new_interval: u64) {}
+    fn UpdateFrequencyUpdated(old_frequency: u64, new_frequency: u64) {}
 
     #[event]
     fn YangAdded(index: u32, settings: YangSettings) {}
@@ -104,7 +104,7 @@ mod Pragma {
         oracle: ContractAddress,
         shrine: ContractAddress,
         sentinel: ContractAddress,
-        update_interval: u64,
+        update_frequency: u64,
         freshness_threshold: u64,
         sources_threshold: u64
     ) {
@@ -115,7 +115,7 @@ mod Pragma {
         oracle::write(IPragmaOracleDispatcher { contract_address: oracle });
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
-        update_interval::write(update_interval);
+        update_frequency::write(update_frequency);
         let pvt = PriceValidityThresholds {
             freshness: freshness_threshold, sources: sources_threshold
         };
@@ -123,7 +123,7 @@ mod Pragma {
 
         // emit events
         OracleAddressUpdated(Zeroable::zero(), oracle);
-        UpdateIntervalUpdated(0, update_interval);
+        UpdateFrequencyUpdated(0, update_frequency);
         PriceValidityThresholdsUpdated(PriceValidityThresholds { freshness: 0, sources: 0 }, pvt);
     }
 
@@ -162,17 +162,17 @@ mod Pragma {
     }
 
     #[external]
-    fn set_update_interval(new_interval: u64) {
-        AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_INTERVAL);
+    fn set_update_frequency(new_frequency: u64) {
+        AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
         assert(
-            LOWER_UPDATE_INTERVAL_BOUND <= new_interval
-                & new_interval <= UPPER_UPDATE_INTERVAL_BOUND,
-            'PGM: Interval out of bounds'
+            LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
+                & new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
+            'PGM: Frequency out of bounds'
         );
 
-        let old_interval: u64 = update_interval::read();
-        update_interval::write(new_interval);
-        UpdateIntervalUpdated(old_interval, new_interval);
+        let old_frequency: u64 = update_frequency::read();
+        update_frequency::write(new_frequency);
+        UpdateFrequencyUpdated(old_frequency, new_frequency);
     }
 
     #[external]
@@ -258,7 +258,7 @@ mod Pragma {
     fn probe_task() -> bool {
         let seconds_since_last_update: u64 = get_block_timestamp()
             - last_price_update_timestamp::read();
-        update_interval::read() <= seconds_since_last_update
+        update_frequency::read() <= seconds_since_last_update
     }
 
     #[external]
