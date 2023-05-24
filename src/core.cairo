@@ -1,3 +1,4 @@
+mod abbot;
 mod allocator;
 mod caretaker;
 mod equalizer;
