@@ -3,13 +3,15 @@ mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use traits::Into;
-    use starknet::ContractAddress;
+    use starknet::{ContractAddress, contract_address_const};
     use starknet::testing::set_contract_address;
 
     use aura::core::shrine::Shrine;
+    use aura::core::roles::ShrineRoles;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
@@ -18,6 +20,64 @@ mod TestShrine {
     };
 
     use aura::tests::shrine::shrine_utils::ShrineUtils;
+
+    //
+    // Tests - Access control
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_auth() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
+            contract_address: shrine_addr
+        };
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        let new_admin: ContractAddress = contract_address_const::<0xdada>();
+
+        assert(shrine_accesscontrol.get_admin() == admin, 'wrong admin');
+
+        // Authorizing an address and testing that it can use authorized functions
+        set_contract_address(admin);
+        shrine_accesscontrol.grant_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
+        assert(shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin), 'role not granted');
+        assert(shrine_accesscontrol.get_roles(new_admin) == ShrineRoles::SET_DEBT_CEILING, 'role not granted');
+
+        set_contract_address(new_admin);
+        let new_ceiling: Wad = (WAD_SCALE + 1).into();
+        shrine.set_debt_ceiling(new_ceiling);
+        assert(shrine.get_debt_ceiling() == new_ceiling, 'wrong debt ceiling');
+
+        // Revoking an address
+        set_contract_address(admin);
+        shrine_accesscontrol.revoke_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
+        assert(!shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin), 'role not revoked');
+        assert(shrine_accesscontrol.get_roles(new_admin) == 0, 'role not revoked');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_revoke_role() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
+            contract_address: shrine_addr
+        };
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        let new_admin: ContractAddress = contract_address_const::<0xdada>();
+
+        set_contract_address(admin);
+        shrine_accesscontrol.grant_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
+        shrine_accesscontrol.revoke_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
+        
+        set_contract_address(new_admin);
+        let new_ceiling: Wad = (WAD_SCALE + 1).into();
+        shrine.set_debt_ceiling(new_ceiling);
+    }
 
     //
     // Tests - Inject/eject

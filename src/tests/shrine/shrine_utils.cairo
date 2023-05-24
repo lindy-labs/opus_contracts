@@ -175,7 +175,7 @@ mod ShrineUtils {
 
         // Set debt ceiling
         let shrine = shrine(shrine_addr);
-        shrine.set_ceiling(DEBT_CEILING.into());
+        shrine.set_debt_ceiling(DEBT_CEILING.into());
 
         // Add yangs
         shrine
