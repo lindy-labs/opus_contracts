@@ -92,7 +92,7 @@ jobs:
         run: echo "$BUILD_FOLDER/scarb/debug" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
-        run: scarb fmt --check --verbose
+        run: scarb run check_fmt
 
         # Copy `corelib` to build folder so it can be detected
       - name: Copy `corelib`
