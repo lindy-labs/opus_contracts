@@ -417,8 +417,8 @@ mod Shrine {
     }
 
     #[external]
-    fn set_ceiling(new_ceiling: Wad) {
-        AccessControl::assert_has_role(ShrineRoles::SET_CEILING);
+    fn set_debt_ceiling(new_ceiling: Wad) {
+        AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
         debt_ceiling::write(new_ceiling);
 
         //Event emission

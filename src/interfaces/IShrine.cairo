@@ -27,7 +27,7 @@ trait IShrine {
     fn add_yang(
         yang: ContractAddress, threshold: Ray, price: Wad, initial_rate: Ray, initial_yang_amt: Wad
     );
-    fn set_ceiling(new_ceiling: Wad);
+    fn set_debt_ceiling(new_ceiling: Wad);
     fn set_threshold(yang: ContractAddress, new_threshold: Ray);
     fn kill();
     fn advance(yang: ContractAddress, price: Wad);

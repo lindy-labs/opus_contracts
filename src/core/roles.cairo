@@ -51,7 +51,7 @@ mod ShrineRoles {
     const MELT: u128 = 128;
     const REDISTRIBUTE: u128 = 256;
     const SEIZE: u128 = 512;
-    const SET_CEILING: u128 = 1024;
+    const SET_DEBT_CEILING: u128 = 1024;
     const SET_MULTIPLIER: u128 = 2048;
     const SET_THRESHOLD: u128 = 4096;
     const UPDATE_RATES: u128 = 8192;
@@ -59,7 +59,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
+        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
     }
 
     #[inline(always)]
@@ -79,7 +79,7 @@ mod ShrineRoles {
             + MELT
             + REDISTRIBUTE
             + SEIZE
-            + SET_CEILING
+            + SET_DEBT_CEILING
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES
