@@ -1,3 +1,16 @@
+mod AbsorberRoles {
+    const COMPENSATE: u128 = 1;
+    const KILL: u128 = 2;
+    const SET_REMOVAL_LIMIT: u128 = 4;
+    const SET_REWARD: u128 = 8;
+    const UPDATE: u128 = 16;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REMOVAL_LIMIT + SET_REWARD
+    }
+}
+
 mod AllocatorRoles {
     const SET_ALLOCATION: u128 = 1;
 

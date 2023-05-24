@@ -1,4 +1,5 @@
 mod IAbbot;
+mod IAbsorber;
 mod IAllocator;
 mod IEqualizer;
 mod IERC20;

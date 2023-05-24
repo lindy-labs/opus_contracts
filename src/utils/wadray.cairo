@@ -281,6 +281,22 @@ impl U128IntoRay of Into<u128, Ray> {
     }
 }
 
+impl WadIntoU256 of Into<Wad, u256> {
+    #[inline(always)]
+    fn into(self: Wad) -> u256 {
+        self.val.into()
+    }
+}
+
+impl U256TryIntoWad of TryInto<u256, Wad> {
+    #[inline(always)]
+    fn try_into(self: u256) -> Option<Wad> {
+        match self.try_into() {
+            Option::Some(val) => Option::Some(Wad { val }),
+            Option::None(_) => Option::None(()),
+        }
+    }
+}
 
 // Comparisons
 impl WadPartialEq of PartialEq<Wad> {

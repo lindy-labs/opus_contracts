@@ -283,6 +283,18 @@ mod tests {
     }
 
     #[test]
+    fn test_wadray_into_u256() {
+        // Test WadIntoU256
+        assert(Wad { val: 5 }.into() == 5_u256, 'Incorrect Wad->u256 conversion')
+    }
+
+    #[test]
+    fn test_u256_try_into_wadray() {
+        // Test U256TryIntoWad
+        assert(Wad { val: 5 } == 5_u256.try_into().unwrap(), 'Incorrect u256->Wad conversion');
+    }
+
+    #[test]
     #[should_panic(expected: ('Option::unwrap failed.', ))]
     fn test_conversions_fail2() {
         let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();

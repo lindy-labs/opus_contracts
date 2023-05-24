@@ -62,7 +62,7 @@ fn exp(x: Wad) -> Wad {
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
 
-    let mut firstAN: u256 = u256 { low: 0, high: 0 };
+    let mut firstAN: u256 = 0_u256;
 
     // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
     // where x_n == 2^(7 - n), and e^x_n = a_n has been precomputed. We choose the first x_n, x0, to equal 2^7
@@ -145,40 +145,40 @@ fn exp(x: Wad) -> Wad {
     // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
     // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
 
-    term = term * x / u256 { low: 100000000000000000000, high: 0 };
+    term = term * x / 100000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 200000000000000000000, high: 0 };
+    term = term * x / 200000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 300000000000000000000, high: 0 };
+    term = term * x / 300000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 400000000000000000000, high: 0 };
+    term = term * x / 400000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 500000000000000000000, high: 0 };
+    term = term * x / 500000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 600000000000000000000, high: 0 };
+    term = term * x / 600000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 700000000000000000000, high: 0 };
+    term = term * x / 700000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 800000000000000000000, high: 0 };
+    term = term * x / 800000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 900000000000000000000, high: 0 };
+    term = term * x / 900000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 1000000000000000000000, high: 0 };
+    term = term * x / 1000000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 1100000000000000000000, high: 0 };
+    term = term * x / 1100000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 1200000000000000000000, high: 0 };
+    term = term * x / 1200000000000000000000_u256;
     series_sum += term;
 
     // 12 Taylor terms are sufficient for 18 decimal precision.
