@@ -199,13 +199,15 @@ mod Pragma {
 
     #[external]
     fn update_prices() {
-        let can_proceed_with_update: bool = probe_task();
-        let can_force_price_update: bool = AccessControl::has_role(
-            PragmaRoles::UPDATE_PRICES, get_caller_address()
-        );
-        // an authorized caller can ignore the minimal time delay for updates and force one
-        // if the caller is not authorized, we assume that the call is for a regular price update
-        assert(can_proceed_with_update | can_force_price_update, 'PGM: Too soon to update prices');
+        // check first if an update can happen - under normal circumstances, it means
+        // if the minimal time delay between the last update and now has passed
+        // but the caller can have a specialized role in which case they can
+        // force an update to happen immediatelly
+        let mut can_update: bool = probe_task();
+        if !can_update {
+            can_update = AccessControl::has_role(PragmaRoles::UPDATE_PRICES, get_caller_address());
+        }
+        assert(can_update, 'PGM: Too soon to update prices');
 
         let block_timestamp: u64 = get_block_timestamp();
         let mut idx: u32 = 0;
