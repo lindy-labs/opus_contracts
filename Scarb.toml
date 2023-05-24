@@ -21,4 +21,6 @@ test_shrine6 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/test
 
 reset_tests = "git checkout HEAD -- src/tests/shrine.cairo src/tests/utils.cairo"
 
+all_tests = "scarb run test_utils; scarb run test_wadray; scarb run test_shrine1; scarb run test_shrine2; scarb run test_shrine3; scarb run test_shrine4; scarb run test_shrine5; scarb run test_shrine6; scarb run reset_tests"
+
 [dependencies]
