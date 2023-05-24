@@ -49,12 +49,15 @@ struct Request {
     timestamp: u64, // Timestamp of request
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
     has_removed: bool, // Whether provider has called `remove`
+}
 
 //
 // Pragma
 //
 
 mod Pragma {
+    use starknet::StorageBaseAddress;
+
     #[derive(Copy, Drop, Serde)]
     enum DataType {
         Spot: u256,
@@ -70,7 +73,7 @@ mod Pragma {
         num_sources_aggregated: u256,
     }
 
-    #[derive(Copy, Drop, Serde)]
+    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
     struct PriceValidityThresholds {
         // the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which
@@ -81,7 +84,7 @@ mod Pragma {
         sources: u64
     }
 
-    #[derive(Copy, Drop, Serde)]
+    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
     struct YangSettings {
         // a Pragma value identifying a certain feed, e.g. `ETH/USD`
         pair_id: u256,

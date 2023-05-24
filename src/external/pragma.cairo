@@ -13,7 +13,7 @@ mod Pragma {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::storage_access_impls;
+    use aura::utils::storage_access;
     use aura::utils::types::Pragma::{
         DataType, PricesResponse, PriceValidityThresholds, YangSettings
     };
@@ -157,7 +157,8 @@ mod Pragma {
     fn set_update_interval(new_interval: u64) {
         AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_INTERVAL);
         assert(
-            LOWER_UPDATE_INTERVAL_BOUND <= new_interval & new_interval <= UPPER_UPDATE_INTERVAL_BOUND,
+            LOWER_UPDATE_INTERVAL_BOUND <= new_interval
+                & new_interval <= UPPER_UPDATE_INTERVAL_BOUND,
             'Update interval out of bounds'
         );
 
@@ -256,9 +257,8 @@ mod Pragma {
             }
 
             let settings: YangSettings = yang_settings::read(idx);
-            let response: PricesResponse = oracle::read().get_data_median(
-                DataType::Spot(settings.pair_id)
-            );
+            let response: PricesResponse = oracle::read()
+                .get_data_median(DataType::Spot(settings.pair_id));
 
             // convert price value to Wad
             let price: Wad = fixed_point_to_wad(
@@ -268,9 +268,7 @@ mod Pragma {
 
             // if we receive what we consider a valid price from the oracle, record it in the Shrine,
             // otherwise emit an event about the update being invalid
-            if is_valid_price_update(
-                response, asset_amt_per_yang
-            ) {
+            if is_valid_price_update(response, asset_amt_per_yang) {
                 shrine::read().advance(settings.yang, price * asset_amt_per_yang);
             } else {
                 InvalidPriceUpdate(
@@ -299,8 +297,11 @@ mod Pragma {
         let required: PriceValidityThresholds = price_validity_thresholds::read();
 
         // check if the update is from enough sources
-        let has_enough_sources =
-            required.sources <= update.num_sources_aggregated.try_into().unwrap();
+        let has_enough_sources = required
+            .sources <= update
+            .num_sources_aggregated
+            .try_into()
+            .unwrap();
 
         // it is possible that the last_updated_ts is greater than the block_timestamp (in other words,
         // it is from the future from the chain's perspective), because the update timestamp is coming
