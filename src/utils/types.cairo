@@ -50,3 +50,45 @@ struct Request {
     timelock: u64, // Amount of time that needs to elapse after the timestamp before removal
     has_removed: bool, // Whether provider has called `remove`
 }
+
+//
+// Pragma
+//
+
+mod Pragma {
+    use starknet::StorageBaseAddress;
+
+    #[derive(Copy, Drop, Serde)]
+    enum DataType {
+        Spot: u256,
+        Future: u256,
+        Generic: u256,
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    struct PricesResponse {
+        price: u256,
+        decimals: u256,
+        last_updated_timestamp: u256,
+        num_sources_aggregated: u256,
+    }
+
+    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+    struct PriceValidityThresholds {
+        // the maximum number of seconds between block timestamp and
+        // the last update timestamp (as reported by Pragma) for which
+        // we consider a price update valid
+        freshness: u64,
+        // the minimum number of data publishers used to aggregate the
+        // price value
+        sources: u64
+    }
+
+    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+    struct YangSettings {
+        // a Pragma value identifying a certain feed, e.g. `ETH/USD`
+        pair_id: u256,
+        // address of the Yang (token) corresponding to the pair ID
+        yang: starknet::ContractAddress
+    }
+}
