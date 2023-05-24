@@ -605,20 +605,22 @@ mod Absorber {
             // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
             // minimum shares worth of yin from the yin balance so that there is at least such amount
             // of yin that cannot be removed in the next epoch.
-            let mut yin_balance_for_shares: Wad = yin_balance;
             if INITIAL_SHARES <= yin_balance.val {
-                yin_balance_for_shares -= INITIAL_SHARES.into();
+                let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
+                    yin_balance - INITIAL_SHARES.into(), total_shares
+                );
+
+                epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
+                total_shares::write(yin_balance);
+            } else {
+                // Otherwise, set the epoch share conversion rate to 0 and total shares to 0.
+                // This is to prevent a where an attacker can become a majority shareholder 
+                // when the number of shares is very small, which would allow them to execute 
+                // an attack similar to a first-deposit front-running attack. 
+                epoch_share_conversion_rate::write(current_epoch, 0_u128.into());
+                total_shares::write(0_u128.into());
             }
 
-            let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
-                yin_balance_for_shares, total_shares
-            );
-
-            // If absorber is emptied, this will be set to 0.
-            epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
-
-            // If absorber is emptied, this will be set to 0.
-            total_shares::write(yin_balance);
             EpochChanged(current_epoch, new_epoch);
 
             // Transfer reward errors of current epoch to the next epoch
