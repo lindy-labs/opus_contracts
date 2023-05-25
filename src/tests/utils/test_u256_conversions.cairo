@@ -3,7 +3,7 @@ mod tests {
     use option::OptionTrait;
     use traits::{Into, TryInto};
 
-    use super::{U128IntoU256, U256TryIntoU8, U256TryIntoU64, U256TryIntoU128};
+    use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU8, U256TryIntoU64, U256TryIntoU128};
 
     const SOME_U128: u128 = 1000;
 
