@@ -364,10 +364,10 @@ mod ShrineUtils {
     ///    The first average multiplier should be from `start_interval` to `yang_rate_update_intervals[1]`,
     ///    and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
     ///
-    /// * `start_interval` - Start interval for the compounding period. This should be greater than the first interval 
+    /// * `start_interval` - Start interval for the compounding period. This should be greater than or equal to the first interval 
     ///    in `yang_rate_update_intervals`.
     ///    
-    /// * `end_interval` - End interval for the compounding period. This should not be greater than the last interval
+    /// * `end_interval` - End interval for the compounding period. This should be greater than or equal to the last interval
     ///    in  `yang_rate_update_intervals`.
     ///
     /// * `debt` - Amount of debt at `start_interval`
