@@ -656,11 +656,11 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        set_contract_address(ShrineUtils::admin());
+        let max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
+        let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
 
-        let unsafe_amt: Wad = (ShrineUtils::TROVE1_FORGE_AMT * 3).into();
-        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, unsafe_amt);
+        set_contract_address(ShrineUtils::admin());
+        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, unsafe_forge_amt);
     }
 
     #[test]
