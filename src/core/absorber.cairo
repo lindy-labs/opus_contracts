@@ -11,7 +11,7 @@ mod Absorber {
     use integer::{u128_safe_divmod, U128TryIntoNonZero};
     use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use traits::{Into, TryInto};
+    use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
     use aura::core::roles::AbsorberRoles;
@@ -208,7 +208,7 @@ mod Absorber {
         let rewards_count: u8 = rewards_count::read();
 
         let mut reward_id: u8 = REWARDS_LOOP_START;
-        let mut rewards: Array<Reward> = ArrayTrait::new();
+        let mut rewards: Array<Reward> = Default::default();
 
         loop {
             if reward_id == REWARDS_LOOP_START + rewards_count {
@@ -839,12 +839,12 @@ mod Absorber {
         provided_absorption_id: u32,
         current_absorption_id: u32
     ) -> (Span<ContractAddress>, Span<u128>) {
-        let mut asset_amts: Array<u128> = ArrayTrait::new();
+        let mut asset_amts: Array<u128> = Default::default();
 
         // Early termination by returning empty arrays
 
         if provision.shares.is_zero() | current_absorption_id == provided_absorption_id {
-            let empty_assets: Array<ContractAddress> = ArrayTrait::new();
+            let empty_assets: Array<ContractAddress> = Default::default();
             return (empty_assets.span(), asset_amts.span());
         }
 
@@ -965,8 +965,8 @@ mod Absorber {
         }
 
         // Trigger issuance of active rewards
-        let mut rewards: Array<ContractAddress> = ArrayTrait::new();
-        let mut blessed_amts: Array<u128> = ArrayTrait::new();
+        let mut rewards: Array<ContractAddress> = Default::default();
+        let mut blessed_amts: Array<u128> = Default::default();
         let mut current_rewards_id: u8 = 0;
 
         loop {
@@ -1023,8 +1023,8 @@ mod Absorber {
     fn get_provider_accumulated_rewards(
         provider: ContractAddress, provision: Provision, current_epoch: u32, rewards_count: u8
     ) -> (Span<ContractAddress>, Span<u128>) {
-        let mut rewards: Array<ContractAddress> = ArrayTrait::new();
-        let mut reward_amts: Array<u128> = ArrayTrait::new();
+        let mut rewards: Array<ContractAddress> = Default::default();
+        let mut reward_amts: Array<u128> = Default::default();
         let mut current_rewards_id: u8 = 0;
 
         // Return empty arrays if the provider has no shares
@@ -1136,7 +1136,7 @@ mod Absorber {
         current_epoch: u32,
         mut accumulated_asset_amts: Span<u128>
     ) -> Span<u128> {
-        let mut updated_asset_amts: Array<u128> = ArrayTrait::new();
+        let mut updated_asset_amts: Array<u128> = Default::default();
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
         loop {
