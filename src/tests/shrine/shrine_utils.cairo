@@ -1,5 +1,6 @@
 mod ShrineUtils {
     use array::{ArrayTrait, SpanTrait};
+    use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use option::OptionTrait;
     use traits::{Into, TryInto};
     use starknet::{
@@ -279,18 +280,41 @@ mod ShrineUtils {
     // Test helpers
     //
 
+    fn consume_first_bit(ref hash: u128) -> bool {
+        let (reduced_hash, remainder) = u128_safe_divmod(hash, u128_try_as_non_zero(2_u128).unwrap());
+        hash = reduced_hash;
+        remainder != 0_u128
+    }
+
     // Helper function to generate a price feed for a yang given a starting price
     // Currently increases the price at a fixed percentage per step
     fn generate_yang_feed(price: Wad) -> Span<Wad> {
         let mut prices: Array<Wad> = ArrayTrait::new();
         let mut price: Wad = price.into();
         let mut idx: u64 = 0;
+
+        let price_hash: felt252 = hash::pedersen(price.val.into(), price.val.into());
+        let mut price_hash = match u128s_from_felt252(price_hash) {
+            U128sFromFelt252Result::Narrow(i) => {
+               i
+            },
+            U128sFromFelt252Result::Wide((i, j)) => {
+               i
+            },
+        };
+
         loop {
             if idx == FEED_LEN {
                 break prices.span();
             }
 
-            let price = price + wadray::rmul_wr(price, PRICE_CHANGE.into());
+            let price_change: Wad = wadray::rmul_wr(price, PRICE_CHANGE.into());
+            let increase_price: bool = consume_first_bit(ref price_hash);
+            if increase_price {
+                price += price_change;
+            } else {
+                price -= price_change;
+            }
             prices.append(price);
 
             idx += 1;

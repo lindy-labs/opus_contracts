@@ -80,6 +80,41 @@ mod TestShrine {
     }
 
     //
+    // Tests - Price and multiplier updates
+    // Note that core functionality is already tested in `test_shrine_setup_with_feed`
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_advance_unauthorized() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::badguy());
+        shrine.advance(ShrineUtils::yang1_addr(), ShrineUtils::YANG1_START_PRICE.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_advance_invalid_yang() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.advance(ShrineUtils::invalid_yang_addr(), ShrineUtils::YANG1_START_PRICE.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_multiplier_unauthorized() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::badguy());
+        shrine.set_multiplier(RAY_SCALE.into());
+    }
+
+    //
     // Tests - Inject/eject
     //
 

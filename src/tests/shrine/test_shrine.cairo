@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
+    use integer::BoundedU256;
     use option::OptionTrait;
     use traits::Into;
     use starknet::{contract_address_const, ContractAddress};
+    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
     use aura::core::shrine::Shrine;
@@ -368,41 +370,6 @@ mod TestShrine {
 
         set_contract_address(ShrineUtils::badguy());
         shrine.kill();
-    }
-
-    //
-    // Tests - Price and multiplier updates
-    // Note that core functionality is already tested in `test_shrine_setup_with_feed`
-    //
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_advance_unauthorized() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-
-        set_contract_address(ShrineUtils::badguy());
-        shrine.advance(ShrineUtils::yang1_addr(), ShrineUtils::YANG1_START_PRICE.into());
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
-    fn test_advance_invalid_yang() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-
-        set_contract_address(ShrineUtils::admin());
-        shrine.advance(ShrineUtils::invalid_yang_addr(), ShrineUtils::YANG1_START_PRICE.into());
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_multiplier_unauthorized() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-
-        set_contract_address(ShrineUtils::badguy());
-        shrine.set_multiplier(RAY_SCALE.into());
     }
 
     //
@@ -801,5 +768,207 @@ mod TestShrine {
 
         set_contract_address(ShrineUtils::admin());
         shrine.melt(ShrineUtils::trove2_owner_addr(), ShrineUtils::TROVE_1, 1_u128.into());
+    }
+
+    //
+    // Tests - Yin transfers
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yin_transfer_pass() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        let success: bool = yin.transfer(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        yin.transfer(yin_user, 0_u256);
+        assert(success, 'yin transfer fail');
+        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(
+            yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
+            'wrong transferee balance'
+        );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_fail_insufficient() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        yin.transfer(yin_user, (ShrineUtils::TROVE1_FORGE_AMT + 1).into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_fail_zero_bal() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        yin.transfer(yin_user, 1_u256);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yin_transfer_from_pass() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        yin.approve(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        set_contract_address(yin_user);
+        let success: bool = yin
+            .transfer_from(trove1_owner, yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        assert(success, 'yin transfer fail');
+
+        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(
+            yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
+            'wrong transferee balance'
+        );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_from_unapproved_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+        set_contract_address(yin_user);
+        yin.transfer_from(ShrineUtils::trove1_owner_addr(), yin_user, 1_u256);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_from_insufficient_allowance_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+        let approve_amt: u256 = (ShrineUtils::TROVE1_FORGE_AMT / 2).into();
+        yin.approve(yin_user, approve_amt);
+
+        set_contract_address(yin_user);
+        yin.transfer_from(trove1_owner, yin_user, approve_amt + 1_u256);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_from_insufficient_balance_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+        yin.approve(yin_user, BoundedU256::max());
+
+        set_contract_address(yin_user);
+        yin.transfer_from(trove1_owner, yin_user, (ShrineUtils::TROVE1_FORGE_AMT + 1).into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: No transfer to 0 address', 'ENTRYPOINT_FAILED'))]
+    fn test_yin_transfer_zero_address_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+        yin.approve(yin_user, BoundedU256::max());
+
+        set_contract_address(yin_user);
+        yin.transfer_from(trove1_owner, ContractAddressZeroable::zero(), 1_u256);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yin_melt_after_transfer() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
+        ShrineUtils::trove1_forge(shrine, forge_amt);
+
+        let yin = ShrineUtils::yin(shrine.contract_address);
+        let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
+        let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(trove1_owner);
+
+        let transfer_amt: Wad = (forge_amt.val / 2).into();
+        yin.transfer(yin_user, transfer_amt.val.into());
+
+        let melt_amt: Wad = forge_amt - transfer_amt;
+
+        ShrineUtils::trove1_melt(shrine, melt_amt);
+
+        let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
+        let expected_debt: Wad = forge_amt - melt_amt;
+        assert(debt == expected_debt, 'wrong debt after melt');
+
+        assert(
+            shrine.get_yin(trove1_owner) == forge_amt - melt_amt - transfer_amt, 'wrong balance'
+        );
     }
 }
