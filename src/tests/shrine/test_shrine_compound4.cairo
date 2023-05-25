@@ -129,7 +129,7 @@ mod TestShrineCompound {
         let charging_period: u64 = end_interval - start_interval;
 
         // Generating the list of intervals at which the base rates will be updated (needed for `compound`)
-        // Adding zero as the first interval since that's when the base rates were first added in `add_yang`
+        // Adding zero as the first interval since that's when the initial base rates were first added in `add_yang`
         let mut rate_update_intervals: Array<u64> = Default::default();
         rate_update_intervals.append(0);
         let mut i = 0;
