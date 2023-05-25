@@ -21,7 +21,7 @@ trait IEmpiric {
 mod Purger {
     use array::{ArrayTrait, SpanTrait};
     use starknet::{ContractAddress, get_caller_address};
-    use traits::Into;
+    use traits::{Default, Into};
     use zeroable::Zeroable;
 
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -285,7 +285,7 @@ mod Purger {
 
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-        let mut freed_assets_amts: Array<u128> = ArrayTrait::new();
+        let mut freed_assets_amts: Array<u128> = Default::default();
 
         let mut yangs_copy: Span<ContractAddress> = yangs;
 
@@ -408,8 +408,8 @@ mod Purger {
     // Returns a tuple of an ordered array of freed collateral asset amounts due to absorber 
     // and an ordered array of freed collateral asset amounts due to caller as compensation
     fn split_purged_assets(mut freed_assets_amts: Span<u128>) -> (Span<u128>, Span<u128>) {
-        let mut absorbed_assets: Array<u128> = ArrayTrait::new();
-        let mut compensations: Array<u128> = ArrayTrait::new();
+        let mut absorbed_assets: Array<u128> = Default::default();
+        let mut compensations: Array<u128> = Default::default();
 
         let assets_count: u32 = freed_assets_amts.len();
 
