@@ -3,7 +3,7 @@ mod Abbot {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address};
-    use traits::Into;
+    use traits::{Default, Into};
     use zeroable::Zeroable;
 
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -67,7 +67,7 @@ mod Abbot {
 
     #[view]
     fn get_user_trove_ids(user: ContractAddress) -> Span<u64> {
-        let mut trove_ids: Array<u64> = ArrayTrait::new();
+        let mut trove_ids: Array<u64> = Default::default();
         let user_troves_count: u64 = user_troves_count::read(user);
         let mut idx: u64 = 0;
 
