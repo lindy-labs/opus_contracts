@@ -10,6 +10,7 @@ mod Purger {
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
@@ -126,10 +127,8 @@ mod Purger {
 
         assert_liquidatable(trove_threshold, trove_ltv);
 
-        // Cap `amt` to the `max_close_amt`
+        // Cap the liquidation amount to the trove's maximum close amount
         let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
-
-        // TODO: min of `max_close_amt` and `amt`
         let checked_amt: Wad = min(amt, max_close_amt);
 
         let percentage_freed: Ray = get_percentage_freed(
@@ -180,14 +179,10 @@ mod Purger {
                 absorber.contract_address
             );
 
-            let freed_assets_amts_copy = freed_assets_amts;
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts_copy);
+            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
 
-            let yangs_copy = yangs;
-            absorber.compensate(caller, yangs_copy, compensations);
-
-            let yangs_copy = yangs;
-            absorber.update(yangs_copy, absorbed_assets);
+            absorber.compensate(caller, yangs, compensations);
+            absorber.update(yangs, absorbed_assets);
 
             (yangs, freed_assets_amts)
         } else {
@@ -205,13 +200,11 @@ mod Purger {
             );
 
             // Split freed amounts to compensate caller for keeping protocol stable
-            let freed_assets_amts_copy = freed_assets_amts;
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts_copy);
+            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
 
             shrine.redistribute(trove_id);
 
-            let yangs_copy = yangs;
-            absorber.compensate(caller, yangs_copy, compensations);
+            absorber.compensate(caller, yangs, compensations);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
@@ -219,9 +212,7 @@ mod Purger {
 
             // Only update absorber if its yin was used
             if absorber_yin_bal.val != 0 {
-                let yangs_copy = yangs;
-                let freed_assets_amts_copy = freed_assets_amts;
-                absorber.update(yangs_copy, freed_assets_amts_copy);
+                absorber.update(yangs, freed_assets_amts);
             }
 
             (yangs, freed_assets_amts)
@@ -233,6 +224,7 @@ mod Purger {
     //
 
     // Asserts that a trove is liquidatable given its LTV and threshold
+    #[inline(always)]
     fn assert_liquidatable(threshold: Ray, ltv: Ray) {
         assert(ltv > threshold, 'Not liquidatable');
     }
@@ -273,11 +265,13 @@ mod Purger {
 
                     let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
 
-                    // TODO: Add reentrancy guard
+                    // reentrancy guard is used as a precaution
+                    ReentrancyGuard::start();
                     let freed_asset_amt: u128 = sentinel
                         .exit(*yang, recipient, trove_id, freed_yang);
                     freed_assets_amts.append(freed_asset_amt);
                     shrine.seize(*yang, trove_id, freed_yang);
+                    ReentrancyGuard::end();
                 },
                 Option::None(_) => {
                     break;
@@ -304,19 +298,17 @@ mod Purger {
     // closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22
     //               [CF1]                       [CF2]
     //               [  factor_one  ] - [ factor_two ]
+    #[inline(always)]
     fn get_close_factor(ltv: Ray) -> Ray {
         let factor_one: Ray = CF1.into() * (ltv * ltv);
         let factor_two: Ray = (2 * ltv.val + CF2).into();
         factor_one - factor_two
     }
 
+    #[inline(always)]
     fn get_max_close_amount_internal(trove_ltv: Ray, debt: Wad) -> Wad {
         let close_amt: Wad = wadray::rmul_wr(debt, get_close_factor(trove_ltv));
-        if debt <= close_amt {
-            debt
-        } else {
-            close_amt
-        }
+        min(debt, close_amt)
     }
 
     // Assumption: Trove's LTV has exceeded its threshold
@@ -379,8 +371,6 @@ mod Purger {
     fn split_purged_assets(mut freed_assets_amts: Span<u128>) -> (Span<u128>, Span<u128>) {
         let mut absorbed_assets: Array<u128> = Default::default();
         let mut compensations: Array<u128> = Default::default();
-
-        let assets_count: u32 = freed_assets_amts.len();
 
         loop {
             match freed_assets_amts.pop_front() {
