@@ -1,22 +1,3 @@
-use array::SpanTrait;
-use starknet::ContractAddress;
-
-use aura::utils::serde::SpanSerde;
-use aura::utils::wadray::Wad;
-
-#[abi]
-trait IAbsorber {
-    fn compensate(
-        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>
-    );
-    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>);
-}
-
-#[abi]
-trait IEmpiric {
-    fn update_prices();
-}
-
 #[contract]
 mod Purger {
     use array::{ArrayTrait, SpanTrait};
@@ -24,15 +5,13 @@ mod Purger {
     use traits::{Default, Into};
     use zeroable::Zeroable;
 
+    use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::serde;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
-
-    use super::{
-        IAbsorberDispatcher, IAbsorberDispatcherTrait, IEmpiricDispatcher, IEmpiricDispatcherTrait,
-    };
 
     // Close factor function parameters
     // (ray): 2.7 * RAY_ONE
@@ -61,7 +40,7 @@ mod Purger {
         // the Absorber associated with this Purger
         absorber: IAbsorberDispatcher,
         // the Oracle associated with the Shrine and this Purger
-        oracle: IEmpiricDispatcher,
+        oracle: IOracleDispatcher,
     }
 
     //
@@ -125,7 +104,7 @@ mod Purger {
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         absorber::write(IAbsorberDispatcher { contract_address: absorber });
-        oracle::write(IEmpiricDispatcher { contract_address: oracle });
+        oracle::write(IOracleDispatcher { contract_address: oracle });
     }
 
     //
@@ -242,8 +221,7 @@ mod Purger {
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
-            let oracle: IEmpiricDispatcher = oracle::read();
-            oracle.update_prices();
+            oracle::read().update_prices();
 
             // Only update absorber if its yin was used
             if absorber_yin_bal.val != 0 {
