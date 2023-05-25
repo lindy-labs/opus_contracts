@@ -116,7 +116,7 @@ mod TestShrineCompound {
         // The number of base rate updates
         let num_base_rate_updates: u64 = 3;
 
-        // The number of intervals actually between two base rate updates will be this number minus one
+        // The number of intervals actually between two base rate updates (not including the intervals on which the updates occur) will be this number minus one
         let BASE_RATE_UPDATE_SPACING: u64 = 5;
 
         // The number of time periods where the base rates remain constant.
