@@ -1,6 +1,7 @@
 #[contract]
 mod Purger {
     use array::{ArrayTrait, SpanTrait};
+    use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
     use traits::{Default, Into};
     use zeroable::Zeroable;
@@ -66,8 +67,7 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_penalty(trove_id: u64) -> Ray {
-        let shrine: IShrineDispatcher = shrine::read();
-        let (threshold, ltv, value, debt) = shrine.get_trove_info(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
 
         if ltv <= threshold {
             return RayZeroable::zero();
@@ -80,8 +80,7 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_max_close_amount(trove_id: u64) -> Wad {
-        let shrine: IShrineDispatcher = shrine::read();
-        let (threshold, ltv, _, debt) = shrine.get_trove_info(trove_id);
+        let (threshold, ltv, _, debt) = shrine::read().get_trove_info(trove_id);
 
         if ltv <= threshold {
             return WadZeroable::zero();
@@ -120,34 +119,29 @@ mod Purger {
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
     #[external]
     fn liquidate(
-        trove_id: u64, purge_amt: Wad, recipient: ContractAddress
+        trove_id: u64, amt: Wad, recipient: ContractAddress
     ) -> (Span<ContractAddress>, Span<u128>) {
         let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert_liquidatable(trove_threshold, trove_ltv);
 
-        // Cap `purge_amt` to the `max_close_amt`
+        // Cap `amt` to the `max_close_amt`
         let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
 
-        // TODO: min of max_close_amt and purge_amt
-        let safe_purge_amt: Wad = max_close_amt;
+        // TODO: min of `max_close_amt` and `amt`
+        let checked_amt: Wad = min(amt, max_close_amt);
 
         let percentage_freed: Ray = get_percentage_freed(
-            trove_threshold, trove_ltv, trove_value, trove_debt, safe_purge_amt
+            trove_threshold, trove_ltv, trove_value, trove_debt, checked_amt
         );
 
         let funder: ContractAddress = get_caller_address();
         let (yangs, freed_assets_amts) = purge(
-            shrine.contract_address,
-            trove_id,
-            trove_ltv,
-            safe_purge_amt,
-            percentage_freed,
-            funder,
-            recipient
+            shrine, trove_id, trove_ltv, checked_amt, percentage_freed, funder, recipient
         );
 
+        // Safety check to ensure the new LTV is lower than old LTV 
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'LTV increased');
 
@@ -177,7 +171,7 @@ mod Purger {
 
         if trove_debt <= absorber_yin_bal {
             let (yangs, freed_assets_amts) = purge(
-                shrine.contract_address,
+                shrine,
                 trove_id,
                 trove_ltv,
                 trove_debt,
@@ -201,7 +195,7 @@ mod Purger {
                 trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_bal
             );
             let (yangs, freed_assets_amts) = purge(
-                shrine.contract_address,
+                shrine,
                 trove_id,
                 trove_ltv,
                 absorber_yin_bal,
@@ -248,7 +242,7 @@ mod Purger {
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral 
     // asset amounts
     fn purge(
-        shrine: ContractAddress,
+        shrine: IShrineDispatcher,
         trove_id: u64,
         trove_ltv: Ray,
         purge_amt: Wad,
@@ -256,8 +250,6 @@ mod Purger {
         funder: ContractAddress,
         recipient: ContractAddress,
     ) -> (Span<ContractAddress>, Span<u128>) {
-        let shrine: IShrineDispatcher = shrine::read();
-
         // Melt from the funder address directly
         shrine.melt(funder, trove_id, purge_amt);
 
@@ -319,8 +311,7 @@ mod Purger {
     }
 
     fn get_max_close_amount_internal(trove_ltv: Ray, debt: Wad) -> Wad {
-        let close_factor: Ray = get_close_factor(trove_ltv);
-        let close_amt: Wad = wadray::rmul_wr(debt, close_factor);
+        let close_amt: Wad = wadray::rmul_wr(debt, get_close_factor(trove_ltv));
         if debt <= close_amt {
             debt
         } else {
@@ -357,7 +348,7 @@ mod Purger {
             return (m * trove_ltv) + b;
         }
 
-        return wadray::rdiv_ww(trove_value - trove_debt, trove_debt);
+        wadray::rdiv_ww(trove_value - trove_debt, trove_debt)
     }
 
     // Helper function to calculate percentage of collateral freed.
