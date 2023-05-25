@@ -38,13 +38,16 @@ mod TestShrineCompound2 {
         // Advance one interval to avoid overwriting the last price
         ShrineUtils::advance_interval();
 
-        // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
+        let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang2_addr());
+
+        // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`'
         let intervals_to_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
             shrine,
             intervals_to_skip,
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into()
+            yang1_price,
+            yang2_price
         );
         let last_updated_interval_before_start: u64 = ShrineUtils::current_interval();
 

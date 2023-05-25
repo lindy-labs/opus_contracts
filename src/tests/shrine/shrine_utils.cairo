@@ -347,21 +347,30 @@ mod ShrineUtils {
     ///    over the time period `end_interval - start_interval`.
     ///    e.g. [[rate at update interval 1 for yang 1, ..., rate at update interval 1 for yang 2],
     ///          [rate at update interval n for yang 1, ..., rate at update interval n for yang 2]]`
+    ///
     /// * `yang_rate_update_intervals` - Ordered list of the intervals at which each of the updates to the base rates were made.
     ///    The first interval in this list should be <= `start_interval`.
+    ///
     /// * `yang_amts` - Ordered list of the amounts of each Yang over the given time period
+    ///
     /// * `yang_avg_prices` - Ordered list of the average prices of each yang over each
     ///    base rate "era" (time period over which the base rate doesn't change).
     ///    [[yang1_price_era1, yang2_price_era1], [yang1_price_era2, yang2_price_era2]]
     ///    The first average price of each yang should be from `start_interval` to `yang_rate_update_intervals[1]`,
     ///    and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
+    ///
     /// * `avg_multipliers` - List of average multipliers over each base rate "era"
     ///    (time period over which the base rate doesn't change).
     ///    The first average multiplier should be from `start_interval` to `yang_rate_update_intervals[1]`,
     ///    and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
-    /// * `start_interval` - Start interval for the compounding period
-    /// * `end_interval` - End interval for the compounding period
-    /// * `debt`` - Amount of debt at `start_interval`
+    ///
+    /// * `start_interval` - Start interval for the compounding period. This should be greater than the first interval 
+    ///    in `yang_rate_update_intervals`.
+    ///    
+    /// * `end_interval` - End interval for the compounding period. This should not be greater than the last interval
+    ///    in  `yang_rate_update_intervals`.
+    ///
+    /// * `debt` - Amount of debt at `start_interval`
     fn compound(
         mut yang_base_rates_history: Span<Span<Ray>>,
         mut yang_rate_update_intervals: Span<u64>,
@@ -384,7 +393,7 @@ mod ShrineUtils {
             }
 
             let mut weighted_rate_sum: Ray = RayZeroable::zero();
-            let mut total_yang_value: Wad = WadZeroable::zero();
+            let mut total_avg_yang_value: Wad = WadZeroable::zero();
 
             let mut j: usize = 0;
             loop {
@@ -392,7 +401,7 @@ mod ShrineUtils {
                     break ();
                 }
                 let yang_value: Wad = *yang_amts[j] * *yang_avg_prices[i][j];
-                total_yang_value += yang_value;
+                total_avg_yang_value += yang_value;
 
                 let weighted_rate: Ray = wadray::wmul_rw(
                     *yang_base_rates_history[i][j], yang_value
@@ -401,7 +410,7 @@ mod ShrineUtils {
 
                 j += 1;
             };
-            let base_rate: Ray = wadray::wdiv_rw(weighted_rate_sum, total_yang_value);
+            let base_rate: Ray = wadray::wdiv_rw(weighted_rate_sum, total_avg_yang_value);
             let rate: Ray = base_rate * *avg_multipliers[i];
 
             // By default, the start interval for the current era is read from the provided array.
