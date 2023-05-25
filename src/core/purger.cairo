@@ -143,7 +143,7 @@ mod Purger {
 
         // Safety check to ensure the new LTV is lower than old LTV 
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
-        assert(updated_trove_ltv <= trove_ltv, 'LTV increased');
+        assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
         (yangs, freed_assets_amts)
     }
@@ -162,7 +162,7 @@ mod Purger {
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert_liquidatable(trove_threshold, trove_ltv);
-        assert(trove_ltv.val > MAX_PENALTY_LTV, 'Not absorbable');
+        assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
@@ -227,7 +227,7 @@ mod Purger {
     // Asserts that a trove is liquidatable given its LTV and threshold
     #[inline(always)]
     fn assert_liquidatable(threshold: Ray, ltv: Ray) {
-        assert(ltv > threshold, 'Not liquidatable');
+        assert(ltv > threshold, 'PU: Not liquidatable');
     }
 
     // Internal function to handle the paying down of a trove's debt in return for the
