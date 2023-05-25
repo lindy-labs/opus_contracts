@@ -25,7 +25,7 @@ mod AccessControl {
         StorageAccessContractAddress, StorageAccessU128, StorageBaseAddress,
         storage_base_address_from_felt252, storage_base_address_const
     };
-    use traits::{Into, TryInto};
+    use traits::{Default, Into, TryInto};
 
     fn initializer(admin: ContractAddress) {
         set_admin_internal(admin);
@@ -204,7 +204,7 @@ mod AccessControl {
     // all of the events emitted from this module take up to 2 data values
     // so we pass them separately into `emit`
     fn emit(event_key: felt252, event_data_1: felt252, event_data_2: Option<felt252>) {
-        let mut data = ArrayTrait::new();
+        let mut data = Default::default();
         data.append(event_data_1);
 
         match event_data_2 {
@@ -214,7 +214,7 @@ mod AccessControl {
             Option::None(_) => {},
         };
 
-        let mut keys = ArrayTrait::new();
+        let mut keys = Default::default();
         keys.append(event_key);
         starknet::emit_event_syscall(keys.span(), data.span()).unwrap_syscall();
     }

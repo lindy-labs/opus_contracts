@@ -3,7 +3,7 @@ mod Allocator {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::ContractAddress;
-    use traits::Into;
+    use traits::{Default, Into};
 
     use aura::core::roles::AllocatorRoles;
 
@@ -56,8 +56,8 @@ mod Allocator {
     // percentage share of newly minted surplus debt.
     #[view]
     fn get_allocation() -> (Span<ContractAddress>, Span<Ray>) {
-        let mut recipients: Array<ContractAddress> = ArrayTrait::new();
-        let mut percentages: Array<Ray> = ArrayTrait::new();
+        let mut recipients: Array<ContractAddress> = Default::default();
+        let mut percentages: Array<Ray> = Default::default();
 
         let mut idx: u32 = 0;
         let recipients_count: u32 = recipients_count::read();
