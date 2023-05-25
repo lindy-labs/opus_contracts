@@ -21,7 +21,7 @@ mod TestShrine {
         Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_SCALE
     };
 
-    use aura::tests::shrine::shrine_utils::ShrineUtils;
+    use aura::tests::shrine::utils::ShrineUtils;
 
     //
     // Tests - Deployment and initial setup of Shrine
