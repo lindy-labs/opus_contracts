@@ -37,23 +37,13 @@ mod TestShrine {
 
         let success: bool = yin.transfer(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
 
-        // TODO: Moving this call up here prevents the assert from triggering failed calculating gas
         yin.transfer(yin_user, 0_u256);
         assert(success, 'yin transfer fail');
-
         assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
-
-        // TODO: Adding this call prevents failed calculating gas error
-        yin.transfer(yin_user, 0_u256);
-
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
         );
-
-        // TODO: Adding all these calls prevents failed calculating gas error
-        yin.transfer(yin_user, 0_u256);
-        yin.transfer(yin_user, 0_u256);
     }
 
     #[test]

@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod TestShrineCompound2 {
+mod TestShrineCompound {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use traits::{Into, TryInto};
