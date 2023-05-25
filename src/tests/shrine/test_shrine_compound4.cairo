@@ -39,7 +39,7 @@ mod TestShrineCompound {
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
 
-        let mut yang_addrs: Array<ContractAddress> = ArrayTrait::new();
+        let mut yang_addrs: Array<ContractAddress> = Default::default();
         yang_addrs.append(yang1_addr);
         yang_addrs.append(yang2_addr);
 
@@ -62,17 +62,17 @@ mod TestShrineCompound {
         // (2) `yang_base_rates_history_to_compound` has an extra item for the initial base rates at the time
         //     the trove was last charged, in order to calculate the compound interest from this interval until
         //     the first rate update interval.
-        let mut yang_base_rates_history_to_update: Array<Span<Ray>> = ArrayTrait::new();
-        let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = ArrayTrait::new();
+        let mut yang_base_rates_history_to_update: Array<Span<Ray>> = Default::default();
+        let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = Default::default();
 
         // Add initial base rates for rates history to calculate compound interest
-        let mut initial_rate_history_to_compound: Array<Ray> = ArrayTrait::new();
+        let mut initial_rate_history_to_compound: Array<Ray> = Default::default();
         initial_rate_history_to_compound.append(ShrineUtils::YANG1_BASE_RATE.into());
         initial_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
         yang_base_rates_history_to_compound.append(initial_rate_history_to_compound.span());
 
-        let mut first_rate_history_to_update: Array<Ray> = ArrayTrait::new();
-        let mut first_rate_history_to_compound: Array<Ray> = ArrayTrait::new();
+        let mut first_rate_history_to_update: Array<Ray> = Default::default();
+        let mut first_rate_history_to_compound: Array<Ray> = Default::default();
 
         // For first rate update, yang 1 is updated and yang 2 uses previous base rate
         let yang1_first_rate_update: Ray = 25000000000000000000000000_u128.into(); // 2.5% (Ray)
@@ -86,8 +86,8 @@ mod TestShrineCompound {
         yang_base_rates_history_to_compound.append(first_rate_history_to_compound.span());
 
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
-        let mut second_rate_history_to_update: Array<Ray> = ArrayTrait::new();
-        let mut second_rate_history_to_compound: Array<Ray> = ArrayTrait::new();
+        let mut second_rate_history_to_update: Array<Ray> = Default::default();
+        let mut second_rate_history_to_compound: Array<Ray> = Default::default();
 
         second_rate_history_to_update.append((RAY_SCALE + 1).into());
         second_rate_history_to_compound.append(yang1_first_rate_update);
@@ -100,8 +100,8 @@ mod TestShrineCompound {
         yang_base_rates_history_to_compound.append(second_rate_history_to_compound.span());
 
         // For third rate update, yang 1 is updated and yang 2 uses previous base rate
-        let mut third_rate_history_to_update: Array<Ray> = ArrayTrait::new();
-        let mut third_rate_history_to_compound: Array<Ray> = ArrayTrait::new();
+        let mut third_rate_history_to_update: Array<Ray> = Default::default();
+        let mut third_rate_history_to_compound: Array<Ray> = Default::default();
 
         let yang1_third_rate_update: Ray = 27500000000000000000000000_u128.into(); // 2.75% (Ray)
         third_rate_history_to_update.append(yang1_third_rate_update);
@@ -130,7 +130,7 @@ mod TestShrineCompound {
 
         // Generating the list of intervals at which the base rates will be updated (needed for `compound`)
         // Adding zero as the first interval since that's when the base rates were first added in `add_yang`
-        let mut rate_update_intervals: Array<u64> = ArrayTrait::new();
+        let mut rate_update_intervals: Array<u64> = Default::default();
         rate_update_intervals.append(0);
         let mut i = 0;
         loop {
@@ -142,9 +142,9 @@ mod TestShrineCompound {
             i += 1;
         };
 
-        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
+        let mut avg_multipliers: Array<Ray> = Default::default();
 
-        let mut avg_yang_prices_by_era: Array<Span<Wad>> = ArrayTrait::new();
+        let mut avg_yang_prices_by_era: Array<Span<Wad>> = Default::default();
 
         // Deposit yangs into trove and forge debt
         set_contract_address(ShrineUtils::admin());
@@ -155,7 +155,7 @@ mod TestShrineCompound {
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt);
 
-        let mut yangs_deposited: Array<Wad> = ArrayTrait::new();
+        let mut yangs_deposited: Array<Wad> = Default::default();
         yangs_deposited.append(yang1_deposit_amt);
         yangs_deposited.append(yang2_deposit_amt);
 
@@ -188,7 +188,7 @@ mod TestShrineCompound {
             let era_end_interval: u64 = era_start_interval + BASE_RATE_UPDATE_SPACING;
 
             // Calculate average price of yangs over the era for calculating the compounded interest
-            let mut avg_yang_prices_for_era: Array<Wad> = ArrayTrait::new();
+            let mut avg_yang_prices_for_era: Array<Wad> = Default::default();
             let yang1_avg_price: Wad = ShrineUtils::get_avg_yang_price(
                 shrine, yang1_addr, era_start_interval, era_end_interval
             );

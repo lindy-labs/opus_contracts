@@ -2,7 +2,7 @@ mod ShrineUtils {
     use array::{ArrayTrait, SpanTrait};
     use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
     use option::OptionTrait;
-    use traits::{Into, TryInto};
+    use traits::{Default, Into, TryInto};
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
         ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait
@@ -143,7 +143,7 @@ mod ShrineUtils {
     }
 
     fn yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = ArrayTrait::new();
+        let mut yang_addrs: Array<ContractAddress> = Default::default();
         yang_addrs.append(yang1_addr());
         yang_addrs.append(yang2_addr());
         yang_addrs.span()
@@ -152,7 +152,7 @@ mod ShrineUtils {
     fn shrine_deploy() -> ContractAddress {
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
-        let mut calldata = ArrayTrait::new();
+        let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin()));
         calldata.append(YIN_NAME);
         calldata.append(YIN_SYMBOL);
@@ -210,11 +210,11 @@ mod ShrineUtils {
         let yang2_addr: ContractAddress = yang2_addr();
         let yang2_feed: Span<Wad> = generate_yang_feed(yang2_start_price);
 
-        let mut yang_addrs: Array<ContractAddress> = ArrayTrait::new();
+        let mut yang_addrs: Array<ContractAddress> = Default::default();
         yang_addrs.append(yang1_addr);
         yang_addrs.append(yang2_addr);
 
-        let mut yang_feeds: Array<Span<Wad>> = ArrayTrait::new();
+        let mut yang_feeds: Array<Span<Wad>> = Default::default();
         yang_feeds.append(yang1_feed);
         yang_feeds.append(yang2_feed);
 
@@ -289,7 +289,7 @@ mod ShrineUtils {
     // Helper function to generate a price feed for a yang given a starting price
     // Currently increases the price at a fixed percentage per step
     fn generate_yang_feed(price: Wad) -> Span<Wad> {
-        let mut prices: Array<Wad> = ArrayTrait::new();
+        let mut prices: Array<Wad> = Default::default();
         let mut price: Wad = price.into();
         let mut idx: u64 = 0;
 

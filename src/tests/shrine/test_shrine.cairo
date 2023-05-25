@@ -3,7 +3,7 @@ mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
     use integer::BoundedU256;
     use option::OptionTrait;
-    use traits::Into;
+    use traits::{Default, Into};
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -119,7 +119,7 @@ mod TestShrine {
 
         let shrine = ShrineUtils::shrine(shrine_addr);
 
-        let mut exp_start_cumulative_prices: Array<Wad> = ArrayTrait::new();
+        let mut exp_start_cumulative_prices: Array<Wad> = Default::default();
         exp_start_cumulative_prices.append(ShrineUtils::YANG1_START_PRICE.into());
         exp_start_cumulative_prices.append(ShrineUtils::YANG2_START_PRICE.into());
         let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
@@ -397,13 +397,13 @@ mod TestShrine {
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
 
-        let mut yang_prices: Array<Wad> = ArrayTrait::new();
+        let mut yang_prices: Array<Wad> = Default::default();
         yang_prices.append(yang1_price);
 
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        let mut yang_amts: Array<Wad> = Default::default();
         yang_amts.append(ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
-        let mut yang_thresholds: Array<Ray> = ArrayTrait::new();
+        let mut yang_thresholds: Array<Ray> = Default::default();
         yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
 
         let expected_max_forge: Wad = ShrineUtils::calculate_max_forge(
@@ -472,13 +472,13 @@ mod TestShrine {
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
 
-        let mut yang_prices: Array<Wad> = ArrayTrait::new();
+        let mut yang_prices: Array<Wad> = Default::default();
         yang_prices.append(yang1_price);
 
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        let mut yang_amts: Array<Wad> = Default::default();
         yang_amts.append(remaining_amt);
 
-        let mut yang_thresholds: Array<Ray> = ArrayTrait::new();
+        let mut yang_thresholds: Array<Ray> = Default::default();
         yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
 
         let expected_max_forge: Wad = ShrineUtils::calculate_max_forge(

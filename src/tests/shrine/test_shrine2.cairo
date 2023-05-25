@@ -2,7 +2,7 @@
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
-    use traits::Into;
+    use traits::{Default, Into};
     use starknet::{ContractAddress, contract_address_const};
     use starknet::testing::set_contract_address;
 
@@ -220,19 +220,19 @@ mod TestShrine {
     fn test_get_trove_info() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        let mut yangs: Array<ContractAddress> = ArrayTrait::new();
+        let mut yangs: Array<ContractAddress> = Default::default();
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
 
         yangs.append(yang1_addr);
         yangs.append(yang2_addr);
 
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        let mut yang_amts: Array<Wad> = Default::default();
         yang_amts.append(ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         yang_amts.append(ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
 
         // Manually set the prices
-        let mut yang_prices: Array<Wad> = ArrayTrait::new();
+        let mut yang_prices: Array<Wad> = Default::default();
         let yang1_price: Wad = 2500000000000000000000_u128.into(); // 2_500 (Wad)
         let yang2_price: Wad = 625000000000000000000_u128.into(); // 625 (Wad)
         yang_prices.append(yang1_price);
@@ -256,7 +256,7 @@ mod TestShrine {
                 }
             };
         };
-        let mut yang_thresholds: Array<Ray> = ArrayTrait::new();
+        let mut yang_thresholds: Array<Ray> = Default::default();
         yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
         yang_thresholds.append(ShrineUtils::YANG2_THRESHOLD.into());
 
@@ -294,19 +294,19 @@ mod TestShrine {
     fn test_get_shrine_info() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        let mut yangs: Array<ContractAddress> = ArrayTrait::new();
+        let mut yangs: Array<ContractAddress> = Default::default();
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
 
         yangs.append(yang1_addr);
         yangs.append(yang2_addr);
 
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        let mut yang_amts: Array<Wad> = Default::default();
         yang_amts.append(ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         yang_amts.append(ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
 
         // Manually set the prices
-        let mut yang_prices: Array<Wad> = ArrayTrait::new();
+        let mut yang_prices: Array<Wad> = Default::default();
         let yang1_price: Wad = 2500000000000000000000_u128.into(); // 2_500 (Wad)
         let yang2_price: Wad = 625000000000000000000_u128.into(); // 625 (Wad)
         yang_prices.append(yang1_price);
@@ -336,11 +336,11 @@ mod TestShrine {
         };
 
         // Update the amounts with the total amount deposited into troves 1 and 2
-        let mut yang_amts: Array<Wad> = ArrayTrait::new();
+        let mut yang_amts: Array<Wad> = Default::default();
         yang_amts.append((ShrineUtils::TROVE1_YANG1_DEPOSIT * 3).into());
         yang_amts.append((ShrineUtils::TROVE1_YANG2_DEPOSIT * 3).into());
 
-        let mut yang_thresholds: Array<Ray> = ArrayTrait::new();
+        let mut yang_thresholds: Array<Ray> = Default::default();
         yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
         yang_thresholds.append(ShrineUtils::YANG2_THRESHOLD.into());
 
