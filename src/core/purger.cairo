@@ -27,10 +27,11 @@ mod Purger {
     // Minimum liquidation penalty (ray): 0.03 * RAY_ONE
     const MIN_PENALTY: u128 = 30000000000000000000000000;
 
-    // TV at the maximum liquidation penalty (ray): 0.8888 * RAY_ONE
+    // LTV at the maximum liquidation penalty (ray): 0.8888 * RAY_ONE
+    // `absorb` can be called only if a trove's LTV exceeds this value
     const MAX_PENALTY_LTV: u128 = 888800000000000000000000000;
 
-    // percentage of each asset being purged in `absorb`
+    // Percentage of each asset being purged in `absorb`
     // that's transferred to the caller as compensation
     const COMPENSATION_PCT: u128 = 3;
 
@@ -113,10 +114,10 @@ mod Purger {
 
     // Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
     // and the recipient address to send the freed collateral to.
-    // Reverts if the trove is not liquidatable (i.e. LTV > threshold)
-    // Reverts if the repayment amount exceeds the maximum amount as determined by the close factor.
-    // Reverts if the trove's LTV is worse off than before the purge
-    // - This should not be possible, but is added in for safety.
+    // Reverts if:
+    // - the trove is not liquidatable (i.e. LTV > threshold).
+    // - the repayment amount exceeds the maximum amount as determined by the close factor.
+    // - if the trove's LTV is worse off than before the purge (should not be possible, but as a precaution)
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
     #[external]
     fn liquidate(
@@ -152,8 +153,8 @@ mod Purger {
     // the trove's debt and collateral will be proportionally redistributed among all troves 
     // containing the trove's collateral.
     // - Amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
-    // Reverts if the trove's LTV is not above the max penalty LTV
-    // - It follows that the trove must also be liquidatable because threshold < max penalty LTV.
+    // Reverts if the trove's LTV is not above the maximum penalty LTV
+    // - This also checks the trove is liquidatable because threshold must be lower than max penalty LTV.
     // Returns a tuple of an ordered array of yang addresses and an ordered array of amount of asset freed
     #[external]
     fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
@@ -314,18 +315,17 @@ mod Purger {
     // Assumption: Trove's LTV has exceeded its threshold
     //
     //                                              maxLiqPenalty - minLiqPenalty
-    // - If LTV <= MAX_PENALTY_LTV, penalty = LTV * ----------------------------- + b
+    // 1. If LTV <= MAX_PENALTY_LTV, penalty = LTV * ----------------------------- + b
     //                                              maxPenaltyLTV - liqThreshold
     //
     //                                      = LTV * m + b
     //
     //
     //                                               (trove_value - trove_debt)
-    // - If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
+    // 2. If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
     //                                                      trove_debt
     //
-    // - If 100% < LTV, penalty = 0
-    // Return value is a tuple so that function can be modified as an external view for testing
+    // 3. If 100% < LTV, penalty = 0
     fn get_penalty_internal(
         trove_threshold: Ray, trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, 
     ) -> Ray {
@@ -364,7 +364,7 @@ mod Purger {
     }
 
     // Divide the purged assets into two groups - one that's kept in the Absorber and
-    // another one that's sent to the caller as compensation. `freed_assets_amt` values
+    // another one that's sent to the caller as compensation. `freed_assets_amts` values
     // are in decimals of each token (hence using `u128`).
     // Returns a tuple of an ordered array of freed collateral asset amounts due to absorber 
     // and an ordered array of freed collateral asset amounts due to caller as compensation
