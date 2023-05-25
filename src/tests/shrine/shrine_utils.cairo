@@ -463,8 +463,7 @@ mod ShrineUtils {
         }
     }
 
-    // Wrapper function over `compound` to calculate the debt of a trove assuming the trove only deposited
-    // a single yang and the yang has a single rate update interval.
+    // Compound function for a single yang, within a single era
     fn compound_for_single_yang(
         base_rate: Ray,
         avg_multiplier: Ray,
