@@ -119,6 +119,7 @@ mod Purger {
     // - the repayment amount exceeds the maximum amount as determined by the close factor.
     // - if the trove's LTV is worse off than before the purge (should not be possible, but as a precaution)
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
+    // in the decimals of each respective asset.
     #[external]
     fn liquidate(
         trove_id: u64, amt: Wad, recipient: ContractAddress
@@ -156,6 +157,7 @@ mod Purger {
     // Reverts if the trove's LTV is not above the maximum penalty LTV
     // - This also checks the trove is liquidatable because threshold must be lower than max penalty LTV.
     // Returns a tuple of an ordered array of yang addresses and an ordered array of amount of asset freed
+    // in the decimals of each respective asset.
     #[external]
     fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
         let shrine: IShrineDispatcher = shrine::read();
@@ -233,7 +235,7 @@ mod Purger {
     // Internal function to handle the paying down of a trove's debt in return for the
     // corresponding freed collateral to be sent to the recipient address
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral 
-    // asset amounts
+    // asset amounts in the decimals of each respective asset.
     fn purge(
         shrine: IShrineDispatcher,
         trove_id: u64,
@@ -290,8 +292,6 @@ mod Purger {
             freed_assets_amts.span()
         );
 
-        // The denomination for each value in `freed_assets_amts` will be based on the decimals
-        // for the respective asset.
         (yangs, freed_assets_amts.span())
     }
 
