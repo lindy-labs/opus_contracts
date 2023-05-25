@@ -80,6 +80,7 @@ mod ShrineRoles {
         INJECT + EJECT
     }
 
+    #[cfg(test)]
     #[inline(always)]
     fn all_roles() -> u128 {
         ADD_YANG

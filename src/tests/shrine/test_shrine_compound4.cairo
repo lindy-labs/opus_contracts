@@ -53,6 +53,15 @@ mod TestShrineCompound2 {
         //
         // Note that the arrays are created as a list of yang base rate updates
 
+        // `yang_base_rates_history_to_update` is used to perform the rate updates, while 
+        // `yang_base_rates_history_to_compound` is used to perform calculation of the compounded interest
+        // The main difference between the two arrays are:
+        // (1) When setting a base rate to its previous value, the value to update in Shrine is `USE_PREV_BASE_RATE`
+        //     which is equivalent to `RAY_SCALE + 1`, whereas the actual value that is used to calculate
+        //     compound interest is the previous base rate.
+        // (2) `yang_base_rates_history_to_compound` has an extra item for the initial base rates at the time
+        //     the trove was last charged, in order to calculate the compound interest from this interval until
+        //     the first rate update interval.
         let mut yang_base_rates_history_to_update: Array<Span<Ray>> = ArrayTrait::new();
         let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = ArrayTrait::new();
 
