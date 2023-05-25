@@ -159,7 +159,7 @@ mod TestShrineCompound {
         yangs_deposited.append(yang1_deposit_amt);
         yangs_deposited.append(yang2_deposit_amt);
 
-        let mut yang_base_rates_history_copy: Span<Span<Ray>> = yang_base_rates_history_to_update
+        let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> = yang_base_rates_history_to_update
             .span();
         let mut yang_base_rates_history_to_compound_copy: Span<Span<Ray>> =
             yang_base_rates_history_to_compound
@@ -206,7 +206,7 @@ mod TestShrineCompound {
 
             if i < num_base_rate_updates {
                 // Update base rates
-                let mut yang_base_rates_to_update: Span<Ray> = yang_base_rates_history_to_update
+                let mut yang_base_rates_to_update: Span<Ray> = *yang_base_rates_history_to_update_copy
                     .pop_front()
                     .unwrap();
                 shrine.update_rates(yang_addrs.span(), yang_base_rates_to_update);
