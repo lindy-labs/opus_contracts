@@ -106,7 +106,7 @@ mod Equalizer {
                     minted_surplus += amount;
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 }
             };
         };
