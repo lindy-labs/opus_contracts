@@ -1,3 +1,16 @@
+mod AbsorberRoles {
+    const COMPENSATE: u128 = 1;
+    const KILL: u128 = 2;
+    const SET_REMOVAL_LIMIT: u128 = 4;
+    const SET_REWARD: u128 = 8;
+    const UPDATE: u128 = 16;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REMOVAL_LIMIT + SET_REWARD
+    }
+}
+
 mod AllocatorRoles {
     const SET_ALLOCATION: u128 = 1;
 
@@ -27,6 +40,19 @@ mod GateRoles {
     }
 }
 
+mod PragmaRoles {
+    const ADD_YANG: u128 = 1;
+    const SET_ORACLE_ADDRESS: u128 = 2;
+    const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
+    const SET_UPDATE_FREQUENCY: u128 = 8;
+    const UPDATE_PRICES: u128 = 16;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;
@@ -38,7 +64,7 @@ mod ShrineRoles {
     const MELT: u128 = 128;
     const REDISTRIBUTE: u128 = 256;
     const SEIZE: u128 = 512;
-    const SET_CEILING: u128 = 1024;
+    const SET_DEBT_CEILING: u128 = 1024;
     const SET_MULTIPLIER: u128 = 2048;
     const SET_THRESHOLD: u128 = 4096;
     const UPDATE_RATES: u128 = 8192;
@@ -46,7 +72,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
+        ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
     }
 
     #[inline(always)]
@@ -54,6 +80,7 @@ mod ShrineRoles {
         INJECT + EJECT
     }
 
+    #[cfg(test)]
     #[inline(always)]
     fn all_roles() -> u128 {
         ADD_YANG
@@ -66,7 +93,7 @@ mod ShrineRoles {
             + MELT
             + REDISTRIBUTE
             + SEIZE
-            + SET_CEILING
+            + SET_DEBT_CEILING
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES

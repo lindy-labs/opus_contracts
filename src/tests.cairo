@@ -1,2 +1,3 @@
-mod test_shrine;
+mod shrine;
 mod test_flashmint;
+mod utils;

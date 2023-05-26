@@ -11,7 +11,6 @@ mod TestFlashmint {
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait}; 
-    use aura::tests::test_shrine::TestShrine::{advance_prices_and_set_multiplier, shrine_deploy, shrine_setup, trove1_owner_addr, yang1_addr};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::misc;
     use aura::utils::u256_conversions;
@@ -40,11 +39,11 @@ mod TestFlashmint {
 
     // Workaround for gas calculation error
     fn flashmint_setup_internal() -> (ContractAddress, IFlashMintDispatcher) {
-        let shrine: ContractAddress = shrine_deploy(); 
+        let shrine: ContractAddress = ShrineUtils::shrine_deploy(); 
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
         
-        shrine_setup(shrine);
-        advance_prices_and_set_multiplier(shrine, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
+        ShrineUtils::shrine_setup(shrine);
+        ShrineUtils::advance_prices_and_set_multiplier(shrine, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
 
         // Grant flashmint contract the FLASHMINT role 
         let shrine_accesscontrol = IAccessControlDispatcher {contract_address: shrine};
@@ -58,8 +57,8 @@ mod TestFlashmint {
 
         // Mint some yin in shrine 
         let shrine_dispatcher = IShrineDispatcher{contract_address: shrine};
-        shrine_dispatcher.deposit(yang1_addr(), 0, (50 * WAD_ONE).into());
-        shrine_dispatcher.forge(trove1_owner_addr(), 0, (20000 * WAD_ONE).into());
+        shrine_dispatcher.deposit(ShrineUtils::yang1_addr(), 0, (50 * WAD_ONE).into());
+        shrine_dispatcher.forge(ShrineUtils::trove1_owner_addr(), 0, (20000 * WAD_ONE).into());
         (shrine, flashmint)
     }
 
@@ -90,7 +89,7 @@ mod TestFlashmint {
     #[test]
     #[available_gas(20000000000)]
     fn test_flash_fee() {
-        let shrine: ContractAddress = shrine_deploy();
+        let shrine: ContractAddress = ShrineUtils::shrine_deploy();
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
 
         // Check that flash fee is correct

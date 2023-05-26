@@ -62,7 +62,7 @@ fn exp(x: Wad) -> Wad {
 
     assert(x <= MAX_NATURAL_EXPONENT, 'exp: x is out of bounds');
 
-    let mut firstAN: u256 = u256 { low: 0, high: 0 };
+    let mut firstAN: u256 = 0_u256;
 
     // First, we use the fact that e^(x+y) = e^x * e^y to decompose x into a sum of powers of two, which we call x_n,
     // where x_n == 2^(7 - n), and e^x_n = a_n has been precomputed. We choose the first x_n, x0, to equal 2^7
@@ -145,40 +145,40 @@ fn exp(x: Wad) -> Wad {
     // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
     // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
 
-    term = term * x / u256 { low: 100000000000000000000, high: 0 };
+    term = term * x / 100000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 200000000000000000000, high: 0 };
+    term = term * x / 200000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 300000000000000000000, high: 0 };
+    term = term * x / 300000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 400000000000000000000, high: 0 };
+    term = term * x / 400000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 500000000000000000000, high: 0 };
+    term = term * x / 500000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 600000000000000000000, high: 0 };
+    term = term * x / 600000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 700000000000000000000, high: 0 };
+    term = term * x / 700000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 800000000000000000000, high: 0 };
+    term = term * x / 800000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 900000000000000000000, high: 0 };
+    term = term * x / 900000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 1000000000000000000000, high: 0 };
+    term = term * x / 1000000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 1100000000000000000000, high: 0 };
+    term = term * x / 1100000000000000000000_u256;
     series_sum += term;
 
-    term = term * x / u256 { low: 1200000000000000000000, high: 0 };
+    term = term * x / 1200000000000000000000_u256;
     series_sum += term;
 
     // 12 Taylor terms are sufficient for 18 decimal precision.
@@ -191,74 +191,4 @@ fn exp(x: Wad) -> Wad {
     let result: u256 = (((product * series_sum) / ONE_20) * firstAN) / 100.into();
 
     Wad { val: result.try_into().unwrap() }
-}
-
-#[cfg(test)]
-mod tests {
-    use aura::utils::exp::exp;
-    use aura::utils::wadray::Wad;
-    use aura::utils::wadray::WAD_ONE;
-
-    // Acceptable error for e^x where x <= 20. Corresponds to 0.000000000001 (10^-12) precision
-    const ACCEPTABLE_ERROR: u128 = 1000000;
-
-    #[inline(always)]
-    fn assert_equalish(a: Wad, b: Wad) {
-        if (a > b) {
-            assert((a - b).val <= ACCEPTABLE_ERROR, 'exp-test: error exceeds bounds');
-        } else {
-            assert((b - a).val <= ACCEPTABLE_ERROR, 'exp-test: error exceeds bounds');
-        }
-    }
-
-    #[test]
-    #[available_gas(9999999)]
-    fn test_exp_basic() {
-        // Basic tests
-        assert(exp(Wad { val: 0 }) == Wad { val: WAD_ONE }, 'Incorrect e^0 result');
-        assert(
-            exp(Wad { val: WAD_ONE }) == Wad { val: 2718281828459045235 }, 'Incorrect e^1 result'
-        );
-
-        let res = exp(Wad { val: WAD_ONE * 10 });
-        assert_equalish(res, Wad { val: 22026465794806716516957 });
-
-        let res = exp(Wad { val: WAD_ONE * 20 });
-        assert_equalish(res, Wad { val: 485165195409790277969106830 });
-
-        // Highest possible value the function will accept
-        exp(Wad { val: 42600000000000000000 });
-    }
-
-    #[test]
-    #[available_gas(9999999)]
-    fn test_exp_add() {
-        // Exponent law: e^x * e^y = e^(x + y)
-        let a: Wad = exp(Wad { val: WAD_ONE });
-        let a: Wad = a * a;
-
-        let b: Wad = exp(Wad { val: 2 * WAD_ONE });
-
-        //e^1 * e^1 = e^2
-        assert_equalish(a, b);
-    }
-
-    #[test]
-    #[available_gas(9999999)]
-    fn test_exp_sub() {
-        //Exponent law: e^x / e^y = e^(x - y)
-        let a: Wad = exp(Wad { val: 8 * WAD_ONE });
-        let b: Wad = exp(Wad { val: 3 * WAD_ONE });
-        let c: Wad = exp(Wad { val: 5 * WAD_ONE });
-
-        assert_equalish(a / b, c);
-    }
-
-
-    #[test]
-    #[available_gas(9999999)]
-    #[should_panic(expected: ('exp: x is out of bounds', ))]
-    fn test_exp_fail() {
-        let res = exp(Wad { val: 42600000000000000001 });
-    }
 }

@@ -3,7 +3,7 @@ mod Sentinel {
     use array::{ArrayTrait, SpanTrait};
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use traits::Into;
+    use traits::{Default, Into};
     use zeroable::Zeroable;
 
     use aura::core::roles::SentinelRoles;
@@ -63,7 +63,7 @@ mod Sentinel {
     fn get_yang_addresses() -> Span<ContractAddress> {
         let count: u64 = yang_addresses_count::read();
         let mut idx: u64 = 0;
-        let mut addresses: Array<ContractAddress> = ArrayTrait::new();
+        let mut addresses: Array<ContractAddress> = Default::default();
         loop {
             if idx == count {
                 break ();
