@@ -5,7 +5,7 @@ mod Caretaker {
     use cmp::min;
     use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use traits::{Into, TryInto};
+    use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
     use aura::core::roles::CaretakerRoles;
@@ -16,7 +16,7 @@ mod Caretaker {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
-    use aura::utils::serde::SpanSerde;
+    use aura::utils::serde;
     use aura::utils::storage_access;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
@@ -30,9 +30,13 @@ mod Caretaker {
     const DUMMY_TROVE_ID: u64 = 0;
 
     struct Storage {
+        // Abbot associated with the Shrine for this Caretaker
         abbot: IAbbotDispatcher,
+        // Equalizer associated with the Shrine for this Caretaker
         equalizer: IEqualizerDispatcher,
+        // Sentinel associated with the Shrine for this Caretaker
         sentinel: ISentinelDispatcher,
+        // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
         // Final price of yangs
         // (yang_address) -> (Wad)
@@ -79,6 +83,87 @@ mod Caretaker {
         equalizer::write(IEqualizerDispatcher { contract_address: equalizer });
 
         is_live::write(true);
+    }
+
+    //
+    // View functions
+    //
+
+    #[view]
+    fn get_live() -> bool {
+        is_live::read()
+    }
+
+    // Simulates the effects of `release` at the current on-chain conditions.
+    #[view]
+    fn preview_release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
+        assert(is_live::read() == false, 'System is live');
+
+        // Calculate trove value using last price
+        let sentinel: ISentinelDispatcher = sentinel::read();
+        let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
+
+        let shrine: IShrineDispatcher = shrine::read();
+        let mut asset_amts: Array<u128> = Default::default();
+        let mut yangs_copy = yangs;
+
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
+
+                    if deposited_yang.is_zero() {
+                        asset_amts.append(0_u128);
+                        continue;
+                    }
+
+                    let asset_amt: u128 = sentinel.preview_exit(*yang, deposited_yang);
+                    asset_amts.append(asset_amt);
+                },
+                Option::None(_) => {
+                    break (yangs, asset_amts.span());
+                },
+            };
+        }
+    }
+
+    // Simulates the effects of `reclaim` at the current on-chain conditions.
+    #[view]
+    fn preview_reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
+        assert(is_live::read() == false, 'System is live');
+
+        let shrine: IShrineDispatcher = shrine::read();
+
+        // Cap percentage of amount to be reclaimed to 100% to catch
+        // invalid values beyond total yin
+        let pct_to_reclaim: Ray = wadray::rdiv_ww(yin, shrine.get_total_yin());
+        let capped_pct: Ray = min(pct_to_reclaim, RAY_ONE.into());
+
+        let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
+
+        let mut asset_amts: Array<u128> = Default::default();
+        let caretaker: ContractAddress = get_contract_address();
+        let mut yangs_copy = yangs;
+
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    let asset = IERC20Dispatcher { contract_address: *yang };
+                    let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
+                    let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
+
+                    if asset_amt.is_zero() {
+                        asset_amts.append(0_u128);
+                        continue;
+                    }
+
+                    asset_amts.append(asset_amt.val);
+                },
+                Option::None(_) => {
+                    break (yangs, asset_amts.span());
+                },
+            };
+        }
     }
 
     //
@@ -153,27 +238,27 @@ mod Caretaker {
     }
 
     // Releases all remaining collateral in a trove to the trove owner directly.
-    // - After `shut`, troves have the same amount of yang, but the asset amount per yang may 
-    //   have decreased because the assets needed to back yin 1 : 1 have been transferred from 
-    //   the Gates to the Caretaker.
-    // Returns a tuple of arrays of the released asset addresses and released asset amounts.
+    // - Note that after `shut` is triggered, the amount of yang in a trove will be fixed, 
+    //   but the asset amount per yang may have decreased because the assets needed to back 
+    //   yin 1 : 1 have been transferred from the Gates to the Caretaker.
+    // Returns a tuple of arrays of the released asset addresses and released asset amounts
+    // denominated in each respective asset's decimals.
     #[external]
     fn release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
         assert(is_live::read() == false, 'System is live');
 
         // Assert caller is trove owner
         let trove_owner: ContractAddress = abbot::read().get_trove_owner(trove_id);
-        let caller: ContractAddress = get_caller_address();
-        assert(caller == trove_owner, 'Not trove owner');
+        assert(trove_owner == get_caller_address(), 'Not trove owner');
 
-        // Calculate trove value using last price
         let sentinel: ISentinelDispatcher = sentinel::read();
-        let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
+        let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
         let shrine: IShrineDispatcher = shrine::read();
-        let mut asset_amts: Array<u128> = ArrayTrait::new();
+        let mut asset_amts: Array<u128> = Default::default();
         let mut yangs_copy = yangs;
 
+        // Loop over yangs deposited in trove and transfer to trove owner
         loop {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
@@ -184,9 +269,10 @@ mod Caretaker {
                         continue;
                     }
 
-                    let asset_amt: u128 = sentinel.exit(*yang, caller, trove_id, deposited_yang);
-                    // Seize the collateral only after assets have been transferred so that user
-                    // receives the correct amount
+                    let asset_amt: u128 = sentinel
+                        .exit(*yang, trove_owner, trove_id, deposited_yang);
+                    // Seize the collateral only after assets have been transferred so that the asset 
+                    // amount per yang in Gate does not change and user receives the correct amount
                     shrine.seize(*yang, trove_id, deposited_yang);
 
                     asset_amts.append(asset_amt);
@@ -197,13 +283,13 @@ mod Caretaker {
             };
         };
 
-        Release(caller, trove_id, yangs, asset_amts.span());
+        Release(trove_owner, trove_id, yangs, asset_amts.span());
 
         (yangs, asset_amts.span())
     }
 
     // Allow yin holders to burn their yin and receive their proportionate share of collateral assets
-    // withdrawn to the Caretaker contract based on the amount of yin as a proportion of total supply.
+    // in the Caretaker contract based on the amount of yin as a proportion of total supply.
     // Example: assuming total system yin of 1_000, and Caretaker has a yang A asset balance of 4_000.
     //          User A and User B each wants to reclaim 100 yin, and expects to receive the same amount 
     //          of yang assets from the Caretaker regardless of who does so first.
@@ -216,14 +302,16 @@ mod Caretaker {
     //          2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which entitles him to receive 
     //             11.1% * 3_600 = 400 yang A assets approximately.
     //              
-    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts
+    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts // denominated 
+    // in each respective asset's decimals.
     #[external]
     fn reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
         assert(is_live::read() == false, 'System is live');
 
-        let caller: ContractAddress = get_caller_address();
+        let caller = get_caller_address();
         let shrine: IShrineDispatcher = shrine::read();
 
+        // Cap the amount reclaimed to the caller's balance
         let burn_amt: Wad = min(yin, shrine.get_yin(caller));
 
         // Calculate percentage of amount to be reclaimed out of total yin
@@ -231,8 +319,8 @@ mod Caretaker {
 
         let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
 
-        let mut asset_amts: Array<u128> = ArrayTrait::new();
-        let caretaker: ContractAddress = get_caller_address();
+        let mut asset_amts: Array<u128> = Default::default();
+        let caretaker = get_contract_address();
         let mut yangs_copy = yangs;
 
         // Loop through yangs and transfer a proportionate share of each 
@@ -240,7 +328,7 @@ mod Caretaker {
         loop {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
-                    let asset: IERC20Dispatcher = IERC20Dispatcher { contract_address: *yang };
+                    let asset = IERC20Dispatcher { contract_address: *yang };
                     let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
                     let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
 
