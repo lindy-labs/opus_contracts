@@ -1,3 +1,16 @@
+mod AbsorberRoles {
+    const COMPENSATE: u128 = 1;
+    const KILL: u128 = 2;
+    const SET_REMOVAL_LIMIT: u128 = 4;
+    const SET_REWARD: u128 = 8;
+    const UPDATE: u128 = 16;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REMOVAL_LIMIT + SET_REWARD
+    }
+}
+
 mod AllocatorRoles {
     const SET_ALLOCATION: u128 = 1;
 
@@ -33,6 +46,19 @@ mod GateRoles {
     #[inline(always)]
     fn default_admin_role() -> u128 {
         KILL
+    }
+}
+
+mod PragmaRoles {
+    const ADD_YANG: u128 = 1;
+    const SET_ORACLE_ADDRESS: u128 = 2;
+    const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
+    const SET_UPDATE_FREQUENCY: u128 = 8;
+    const UPDATE_PRICES: u128 = 16;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
     }
 }
 

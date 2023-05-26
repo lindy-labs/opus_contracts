@@ -13,10 +13,14 @@ impl U128TupleStorageAccess of StorageAccess<U128Tuple> {
     fn read(address_domain: u32, base: StorageBaseAddress) -> SyscallResult::<U128Tuple> {
         let first_val = storage_read_syscall(
             address_domain, storage_address_from_base_and_offset(base, 0_u8)
-        )?.try_into().unwrap();
+        )?
+            .try_into()
+            .unwrap();
         let second_val = storage_read_syscall(
             address_domain, storage_address_from_base_and_offset(base, 1_u8)
-        )?.try_into().unwrap();
+        )?
+            .try_into()
+            .unwrap();
 
         Result::Ok((first_val, second_val))
     }
