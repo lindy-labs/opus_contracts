@@ -581,7 +581,7 @@ mod Absorber {
                     update_absorbed_asset(current_absorption_id, total_shares, *asset, asset_amt);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 }
             };
         };
@@ -746,7 +746,7 @@ mod Absorber {
         absorption_id: u32, total_shares: Wad, asset: ContractAddress, amount: u128
     ) {
         if amount == 0 {
-            return ();
+            return;
         }
 
         let last_error: u128 = get_recent_asset_absorption_error(asset, absorption_id);
@@ -863,7 +863,7 @@ mod Absorber {
 
                     loop {
                         if start_absorption_id == current_absorption_id {
-                            break ();
+                            break;
                         }
 
                         start_absorption_id += 1;
@@ -876,7 +876,7 @@ mod Absorber {
 
                         // Terminate if provider does not have any shares for current epoch
                         if adjusted_shares.is_zero() {
-                            break ();
+                            break;
                         }
 
                         let absorption: DistributionInfo = asset_absorption::read(
@@ -892,12 +892,10 @@ mod Absorber {
                     asset_amts.append(absorbed_amt);
                 },
                 Option::None(_) => {
-                    break ();
+                    break (assets, asset_amts.span());
                 }
             };
-        };
-
-        (assets, asset_amts.span())
+        }
     }
 
 
@@ -915,7 +913,7 @@ mod Absorber {
                     }
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 },
             };
         };
@@ -961,7 +959,7 @@ mod Absorber {
         // Defer rewards until at least one provider deposits
         let total_shares: Wad = total_shares::read();
         if total_shares.is_zero() {
-            return ();
+            return;
         }
 
         // Trigger issuance of active rewards
@@ -971,7 +969,7 @@ mod Absorber {
 
         loop {
             if current_rewards_id == rewards_count + REWARDS_LOOP_START {
-                break ();
+                break;
             }
 
             let reward: Reward = rewards::read(current_rewards_id);
@@ -1047,7 +1045,7 @@ mod Absorber {
                 // epoch first
                 // There is also an early termination if the provider has no shares in current epoch
                 if epoch == current_epoch + 1 | epoch_shares.is_zero() {
-                    break ();
+                    break;
                 }
 
                 let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
@@ -1094,7 +1092,7 @@ mod Absorber {
                     )
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 },
             };
         };
@@ -1107,7 +1105,7 @@ mod Absorber {
 
         loop {
             if current_rewards_id == rewards_count + REWARDS_LOOP_START {
-                break ();
+                break;
             }
 
             let reward: Reward = rewards::read(current_rewards_id);
@@ -1158,7 +1156,7 @@ mod Absorber {
                     current_rewards_id += 1;
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 },
             };
         };
