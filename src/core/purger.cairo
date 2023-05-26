@@ -202,12 +202,7 @@ mod Purger {
                 absorber.contract_address
             );
 
-            // Split freed amounts to compensate caller for keeping protocol stable
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
-
             shrine.redistribute(trove_id);
-
-            absorber.compensate(caller, yangs, compensations);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
@@ -215,7 +210,10 @@ mod Purger {
 
             // Only update absorber if its yin was used
             if absorber_yin_bal.val.is_non_zero() {
-                absorber.update(yangs, freed_assets_amts);
+                // Split freed amounts to compensate caller for keeping protocol stable
+                let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
+                absorber.compensate(caller, yangs, compensations);
+                absorber.update(yangs, absorbed_assets);
             }
 
             (yangs, freed_assets_amts)
@@ -294,7 +292,7 @@ mod Purger {
     //              [CF1]                        [CF2]
     #[inline(always)]
     fn get_close_factor(ltv: Ray) -> Ray {
-        (CF1.into() * (ltv * ltv)) - (2 * ltv.val).into() + CF2.into();
+        (CF1.into() * (ltv * ltv)) - (2 * ltv.val).into() + CF2.into()
     }
 
     #[inline(always)]
