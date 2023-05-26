@@ -215,7 +215,7 @@ mod Pragma {
 
         loop {
             if idx == yangs_count {
-                break ();
+                break;
             }
 
             let settings: YangSettings = yang_settings::read(idx);
@@ -278,7 +278,7 @@ mod Pragma {
 
         loop {
             if idx == yangs_count {
-                break ();
+                break;
             }
 
             let settings: YangSettings = yang_settings::read(idx);
