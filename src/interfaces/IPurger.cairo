@@ -4,7 +4,7 @@ use aura::utils::serde;
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
-trait IAbsorber {
+trait IPurger {
     // view
     fn get_penalty(trove_id: u64) -> Ray;
     fn get_max_close_amount(trove_id: u64) -> Wad;

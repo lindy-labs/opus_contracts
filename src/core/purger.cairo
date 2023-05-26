@@ -62,6 +62,23 @@ mod Purger {
     ) {}
 
     //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(
+        shrine: ContractAddress,
+        sentinel: ContractAddress,
+        absorber: ContractAddress,
+        oracle: ContractAddress,
+    ) {
+        shrine::write(IShrineDispatcher { contract_address: shrine });
+        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
+        absorber::write(IAbsorberDispatcher { contract_address: absorber });
+        oracle::write(IOracleDispatcher { contract_address: oracle });
+    }
+
+    //
     // View
     //
 
@@ -92,23 +109,6 @@ mod Purger {
     }
 
     //
-    // Constructor
-    //
-
-    #[constructor]
-    fn constructor(
-        shrine: ContractAddress,
-        sentinel: ContractAddress,
-        absorber: ContractAddress,
-        oracle: ContractAddress,
-    ) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
-        absorber::write(IAbsorberDispatcher { contract_address: absorber });
-        oracle::write(IOracleDispatcher { contract_address: oracle });
-    }
-
-    //
     // External
     //
 
@@ -127,7 +127,7 @@ mod Purger {
         let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
-        assert_liquidatable(trove_threshold, trove_ltv);
+        assert(trove_threshold < trove_ltv, 'PU: Not liquidatable');
 
         // Cap the liquidation amount to the trove's maximum close amount
         let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
@@ -163,7 +163,6 @@ mod Purger {
         let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
-        assert_liquidatable(trove_threshold, trove_ltv);
         assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
@@ -171,13 +170,14 @@ mod Purger {
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
 
+        // This `if` branch means the debt is fully absorbable by the Absorber
         if trove_debt <= absorber_yin_bal {
             let (yangs, freed_assets_amts) = purge(
                 shrine,
                 trove_id,
                 trove_ltv,
                 trove_debt,
-                RAY_ONE.into(),
+                RAY_ONE.into(), // Set `percentage_freed` to 100%
                 absorber.contract_address,
                 absorber.contract_address
             );
@@ -214,7 +214,7 @@ mod Purger {
             oracle::read().update_prices();
 
             // Only update absorber if its yin was used
-            if absorber_yin_bal.val != 0 {
+            if absorber_yin_bal.val.is_non_zero() {
                 absorber.update(yangs, freed_assets_amts);
             }
 
@@ -225,12 +225,6 @@ mod Purger {
     //
     // Internal
     //
-
-    // Asserts that a trove is liquidatable given its LTV and threshold
-    #[inline(always)]
-    fn assert_liquidatable(threshold: Ray, ltv: Ray) {
-        assert(ltv > threshold, 'PU: Not liquidatable');
-    }
 
     // Internal function to handle the paying down of a trove's debt in return for the
     // corresponding freed collateral to be sent to the recipient address
@@ -297,13 +291,10 @@ mod Purger {
 
     // Returns the close factor based on the LTV (ray)
     // closeFactor = 2.7 * (LTV ** 2) - 2 * LTV + 0.22
-    //               [CF1]                       [CF2]
-    //               [  factor_one  ] - [ factor_two ]
+    //              [CF1]                        [CF2]
     #[inline(always)]
     fn get_close_factor(ltv: Ray) -> Ray {
-        let factor_one: Ray = CF1.into() * (ltv * ltv);
-        let factor_two: Ray = (2 * ltv.val + CF2).into();
-        factor_one - factor_two
+        (CF1.into() * (ltv * ltv)) - (2 * ltv.val).into() + CF2.into();
     }
 
     #[inline(always)]
@@ -314,12 +305,14 @@ mod Purger {
 
     // Assumption: Trove's LTV has exceeded its threshold
     //
-    //                                              maxLiqPenalty - minLiqPenalty
-    // 1. If LTV <= MAX_PENALTY_LTV, penalty = LTV * ----------------------------- + b
-    //                                              maxPenaltyLTV - liqThreshold
+    //                                                maxLiqPenalty - minLiqPenalty
+    // 1. If LTV <= MAX_PENALTY_LTV, penalty = LTV * ------------------------------- + b
+    //                                                maxPenaltyLTV - liqThreshold
     //
-    //                                      = LTV * m + b
+    //                                       = LTV * m + b
     //
+    //    `b` is to be derived by solving `penalty = LTV * m + b` using the minimum liquidation
+    //     penalty, the derived `m` and the trove's threshold.
     //
     //                                               (trove_value - trove_debt)
     // 2. If MAX_PENALTY_LTV < LTV <= 100%, penalty = -------------------------
@@ -337,15 +330,15 @@ mod Purger {
             let m: Ray = (MAX_PENALTY - MIN_PENALTY).into()
                 / (MAX_PENALTY_LTV.into() - trove_threshold);
             let b: Ray = MIN_PENALTY.into() - (trove_threshold * m);
-            return (m * trove_ltv) + b;
+            return (trove_ltv * m) + b;
         }
 
         wadray::rdiv_ww(trove_value - trove_debt, trove_debt)
     }
 
     // Helper function to calculate percentage of collateral freed.
-    // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
     // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided
+    // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
     // by total trove value.
     fn get_percentage_freed(
         trove_threshold: Ray, trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, purge_amt: Wad, 
