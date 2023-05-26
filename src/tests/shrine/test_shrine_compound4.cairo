@@ -66,52 +66,52 @@ mod TestShrineCompound {
         let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = Default::default();
 
         // Add initial base rates for rates history to calculate compound interest
-        let mut initial_rate_history_to_compound: Array<Ray> = Default::default();
-        initial_rate_history_to_compound.append(ShrineUtils::YANG1_BASE_RATE.into());
-        initial_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
-        yang_base_rates_history_to_compound.append(initial_rate_history_to_compound.span());
+        let mut first_rate_history_to_compound: Array<Ray> = Default::default();
+        first_rate_history_to_compound.append(ShrineUtils::YANG1_BASE_RATE.into());
+        first_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
+        yang_base_rates_history_to_compound.append(first_rate_history_to_compound.span());
 
         let mut first_rate_history_to_update: Array<Ray> = Default::default();
-        let mut first_rate_history_to_compound: Array<Ray> = Default::default();
+        let mut second_rate_history_to_compound: Array<Ray> = Default::default();
 
         // For first rate update, yang 1 is updated and yang 2 uses previous base rate
         let yang1_first_rate_update: Ray = 25000000000000000000000000_u128.into(); // 2.5% (Ray)
         first_rate_history_to_update.append(yang1_first_rate_update);
-        first_rate_history_to_compound.append(yang1_first_rate_update);
+        second_rate_history_to_compound.append(yang1_first_rate_update);
 
         first_rate_history_to_update.append((RAY_SCALE + 1).into());
-        first_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
+        second_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
 
         yang_base_rates_history_to_update.append(first_rate_history_to_update.span());
-        yang_base_rates_history_to_compound.append(first_rate_history_to_compound.span());
+        yang_base_rates_history_to_compound.append(second_rate_history_to_compound.span());
 
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
         let mut second_rate_history_to_update: Array<Ray> = Default::default();
-        let mut second_rate_history_to_compound: Array<Ray> = Default::default();
+        let mut third_rate_history_to_compound: Array<Ray> = Default::default();
 
         second_rate_history_to_update.append((RAY_SCALE + 1).into());
-        second_rate_history_to_compound.append(yang1_first_rate_update);
+        third_rate_history_to_compound.append(yang1_first_rate_update);
 
         let yang2_second_rate_update: Ray = 43500000000000000000000000_u128.into(); // 4.35% (Ray)
         second_rate_history_to_update.append(yang2_second_rate_update);
-        second_rate_history_to_compound.append(yang2_second_rate_update);
+        third_rate_history_to_compound.append(yang2_second_rate_update);
 
         yang_base_rates_history_to_update.append(second_rate_history_to_update.span());
-        yang_base_rates_history_to_compound.append(second_rate_history_to_compound.span());
+        yang_base_rates_history_to_compound.append(third_rate_history_to_compound.span());
 
         // For third rate update, yang 1 is updated and yang 2 uses previous base rate
         let mut third_rate_history_to_update: Array<Ray> = Default::default();
-        let mut third_rate_history_to_compound: Array<Ray> = Default::default();
+        let mut fourth_rate_history_to_compound: Array<Ray> = Default::default();
 
         let yang1_third_rate_update: Ray = 27500000000000000000000000_u128.into(); // 2.75% (Ray)
         third_rate_history_to_update.append(yang1_third_rate_update);
-        third_rate_history_to_compound.append(yang1_third_rate_update);
+        fourth_rate_history_to_compound.append(yang1_third_rate_update);
 
         third_rate_history_to_update.append((RAY_SCALE + 1).into());
-        third_rate_history_to_compound.append(yang2_second_rate_update);
+        fourth_rate_history_to_compound.append(yang2_second_rate_update);
 
         yang_base_rates_history_to_update.append(third_rate_history_to_update.span());
-        yang_base_rates_history_to_compound.append(third_rate_history_to_compound.span());
+        yang_base_rates_history_to_compound.append(fourth_rate_history_to_compound.span());
 
         // The number of base rate updates
         let num_base_rate_updates: u64 = 3;
