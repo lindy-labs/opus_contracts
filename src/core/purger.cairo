@@ -209,7 +209,7 @@ mod Purger {
             oracle::read().update_prices();
 
             // Only update absorber if its yin was used
-            if absorber_yin_bal.val.is_non_zero() {
+            if absorber_yin_bal.is_non_zero() {
                 // Split freed amounts to compensate caller for keeping protocol stable
                 let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
                 absorber.compensate(caller, yangs, compensations);
