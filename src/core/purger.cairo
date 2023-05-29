@@ -148,7 +148,7 @@ mod Purger {
         let funder: ContractAddress = get_caller_address();
 
         // Melt from the funder address directly
-        shrine.melt(funder, trove_id, purge_amt);
+        shrine.melt(funder, trove_id, checked_amt);
 
         // Free collateral corresopnding to the purged amount
         let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
@@ -194,10 +194,10 @@ mod Purger {
         let purge_amt: Wad = min(trove_debt, absorber_yin_bal);
 
         // Set the initial value of `percentage_freed` to 100%, assuming a full absorption
-        // If the absorber's yin balance is less than the trove's debt (i.e. partial absorption),
-        // calculate `percentage_freed` based on the absorber's yin balance.
+        // If it is not a full absorption, calculate `percentage_freed` based on the absorber's yin balance.
         let mut percentage_freed: Ray = RAY_ONE.into();
-        if purge_amt < trove_debt {
+        let is_fully_absorbed: bool = purge_amt == trove_debt;
+        if !is_fully_absorbed {
             percentage_freed =
                 get_percentage_freed(
                     trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
@@ -205,7 +205,7 @@ mod Purger {
         }
 
         // Melt the trove's debt using the absorber's yin directly
-        shrine.melt(funder, trove_id, purge_amt);
+        shrine.melt(absorber.contract_address, trove_id, purge_amt);
 
         // Free collateral corresopnding to the purged amount
         // If `percentage_freed` is zero, return values are empty arrays.
@@ -217,7 +217,7 @@ mod Purger {
         absorber.update(yangs, absorbed_assets_amts);
 
         // If it is not a full absorption, perform redistribution.
-        if purge_amt < trove_debt {
+        if !is_fully_absorbed {
             shrine.redistribute(trove_id);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
@@ -225,15 +225,19 @@ mod Purger {
             oracle::read().update_prices();
         }
 
-        Purged(
-            trove_id,
-            purge_amt,
-            percentage_freed,
-            absorber.contract_address,
-            absorber.contract_address,
-            yangs,
-            absorbed_assets_amts
-        );
+        // Only emit the event if Absorber's yin balance was used to melt the 
+        // trove's debt and some assets were freed to the Absorber
+        if yangs.len().is_non_zero() {
+            Purged(
+                trove_id,
+                purge_amt,
+                percentage_freed,
+                absorber.contract_address,
+                absorber.contract_address,
+                yangs,
+                absorbed_assets_amts
+            );
+        }
         Compensate(caller, yangs, compensations);
 
         (yangs, absorbed_assets_amts)
