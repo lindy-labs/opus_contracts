@@ -32,8 +32,11 @@ mod Purger {
     const MAX_PENALTY_LTV: u128 = 888800000000000000000000000;
 
     // Percentage of each asset being purged in `absorb`
-    // that's transferred to the caller as compensation
-    const COMPENSATION_PCT: u128 = 3;
+    // that's transferred to the caller as compensation: 0.03 (Ray)
+    const COMPENSATION_PCT: u128 = 30000000000000000000000000;
+
+    // Cap on compensation value: 200 (Wad)
+    const COMPENSATION_CAP: u128 = 200000000000000000000;
 
     struct Storage {
         // the Shrine associated with this Purger
@@ -182,41 +185,76 @@ mod Purger {
                 absorber.contract_address
             );
 
-            let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
+            // Calculate the compensation as a percentage of the freed value, which 
+            // in this case is the entire trove's value
+            let compensation_pct: Ray = get_compensation_pct(trove_value);
+            let (absorbed_assets, compensations) = split_purged_assets(
+                compensation_pct, freed_assets_amts
+            );
 
             absorber.compensate(caller, yangs, compensations);
             absorber.update(yangs, absorbed_assets);
 
             (yangs, freed_assets_amts)
         } else {
-            let percentage_freed: Ray = get_percentage_freed(
-                trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_bal
-            );
-            let (yangs, freed_assets_amts) = purge(
-                shrine,
-                trove_id,
-                trove_ltv,
-                absorber_yin_bal,
-                percentage_freed,
-                absorber.contract_address,
-                absorber.contract_address
-            );
-
-            shrine.redistribute(trove_id);
-
-            // Update yang prices due to an appreciation in ratio of asset to yang from 
-            // redistribution
-            oracle::read().update_prices();
-
-            // Only update absorber if its yin was used
             if absorber_yin_bal.is_non_zero() {
-                // Split freed amounts to compensate caller for keeping protocol stable
-                let (absorbed_assets, compensations) = split_purged_assets(freed_assets_amts);
+                let percentage_freed: Ray = get_percentage_freed(
+                    trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_bal
+                );
+                let (yangs, freed_assets_amts) = purge(
+                    shrine,
+                    trove_id,
+                    trove_ltv,
+                    absorber_yin_bal,
+                    percentage_freed,
+                    absorber.contract_address,
+                    absorber.contract_address
+                );
+
+                // Calculate the compensation as a percentage of the freed value, which 
+                // in this case is the trove's value corresponding to the percentage freed
+                let freed_value: Wad = wadray::rmul_wr(trove_value, percentage_freed);
+                let compensation_pct: Ray = get_compensation_pct(freed_value);
+
+                let (absorbed_assets, compensations) = split_purged_assets(
+                    compensation_pct, freed_assets_amts
+                );
                 absorber.compensate(caller, yangs, compensations);
                 absorber.update(yangs, absorbed_assets);
-            }
 
-            (yangs, freed_assets_amts)
+                shrine.redistribute(trove_id);
+
+                // Update yang prices due to an appreciation in ratio of asset to yang from 
+                // redistribution
+                oracle::read().update_prices();
+
+                (yangs, freed_assets_amts)
+            } else {
+                // Calculate the compensation as a percentage of the freed value, which 
+                // in this case is the entire trove's value that would have been redistributed
+                let compensation_pct: Ray = get_compensation_pct(trove_value);
+
+                // Transfer the compensation to the absorber before redistributing the 
+                // remaining trove value
+                let (yangs, compensations) = purge(
+                    shrine,
+                    trove_id,
+                    trove_ltv,
+                    WadZeroable::zero(), // zero, because absorber has zero yin
+                    compensation_pct,
+                    absorber.contract_address,
+                    absorber.contract_address
+                );
+                absorber.compensate(caller, yangs, compensations);
+
+                shrine.redistribute(trove_id);
+
+                // Update yang prices due to an appreciation in ratio of asset to yang from 
+                // redistribution
+                oracle::read().update_prices();
+
+                (yangs, compensations)
+            }
         }
     }
 
@@ -354,12 +392,29 @@ mod Purger {
         }
     }
 
+    // Returns the amount of compensation due to the caller of `absorb` as a percentage of 
+    // the value of:
+    // - the freed collateral (in the case of full absorptions and partial absorptions 
+    // with redistributions); or 
+    // - the trove's collateral (in the case of a full redistribution).
+    fn get_compensation_pct(freed_value: Wad) -> Ray {
+        let base_compensation_pct: Ray = COMPENSATION_PCT.into();
+        let base_compensation: Wad = wadray::rmul_wr(freed_value, base_compensation_pct);
+        if base_compensation.val < COMPENSATION_CAP {
+            base_compensation_pct
+        } else {
+            wadray::rdiv_ww(COMPENSATION_CAP.into(), freed_value)
+        }
+    }
+
     // Divide the purged assets into two groups - one that's kept in the Absorber and
     // another one that's sent to the caller as compensation. `freed_assets_amts` values
     // are in decimals of each token (hence using `u128`).
     // Returns a tuple of an ordered array of freed collateral asset amounts due to absorber 
     // and an ordered array of freed collateral asset amounts due to caller as compensation
-    fn split_purged_assets(mut freed_assets_amts: Span<u128>) -> (Span<u128>, Span<u128>) {
+    fn split_purged_assets(
+        split_pct: Ray, mut freed_assets_amts: Span<u128>
+    ) -> (Span<u128>, Span<u128>) {
         let mut absorbed_assets: Array<u128> = Default::default();
         let mut compensations: Array<u128> = Default::default();
 
@@ -367,10 +422,9 @@ mod Purger {
             match freed_assets_amts.pop_front() {
                 Option::Some(amount) => {
                     // Rounding is intended to benefit the protocol
-                    let one_percent: u128 = *amount / 100;
-                    let compensation: u128 = one_percent * COMPENSATION_PCT;
-                    compensations.append(compensation);
-                    absorbed_assets.append(*amount - compensation);
+                    let compensation: Wad = wadray::rmul_wr((*amount).into(), split_pct);
+                    compensations.append(compensation.val);
+                    absorbed_assets.append(*amount - compensation.val);
                 },
                 Option::None(_) => {
                     break (absorbed_assets.span(), compensations.span());
