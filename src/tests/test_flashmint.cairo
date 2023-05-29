@@ -3,7 +3,7 @@ mod TestFlashmint {
     use array::ArrayTrait;
     use option::OptionTrait;
     use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait};
-    use traits::Into;
+    use traits::{Default, Into};
 
     use aura::core::flashmint::FlashMint;
     use aura::core::roles::ShrineRoles;
@@ -17,19 +17,21 @@ mod TestFlashmint {
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WAD_ONE};
 
+    use aura::tests::shrine::utils::ShrineUtils;
+
     use super::FlashBorrower;
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
     fn build_calldata(should_return_correct: bool, usage: felt252) -> Span<felt252> {
-        let mut calldata = ArrayTrait::new(); 
+        let mut calldata = Default::default(); 
         calldata.append(should_return_correct.into());
         calldata.append(usage); 
         calldata.span()
     }
 
     fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
-        let mut calldata = ArrayTrait::new();
+        let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(shrine));
 
         let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(FlashMint::TEST_CLASS_HASH).unwrap();
@@ -43,7 +45,7 @@ mod TestFlashmint {
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
         
         ShrineUtils::shrine_setup(shrine);
-        ShrineUtils::advance_prices_and_set_multiplier(shrine, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
+        ShrineUtils::advance_prices_and_set_multiplier(IShrineDispatcher{contract_address: shrine}, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
 
         // Grant flashmint contract the FLASHMINT role 
         let shrine_accesscontrol = IAccessControlDispatcher {contract_address: shrine};
@@ -63,7 +65,7 @@ mod TestFlashmint {
     }
 
     fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
-        let mut calldata = ArrayTrait::new(); 
+        let mut calldata = Default::default(); 
         calldata.append(contract_address_to_felt252(flashmint));
 
         let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(FlashBorrower::TEST_CLASS_HASH).unwrap();

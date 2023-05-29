@@ -1,6 +1,5 @@
 mod access_control;
 mod exp;
-mod misc;
 mod pow;
 mod misc;
 mod reentrancy_guard;
