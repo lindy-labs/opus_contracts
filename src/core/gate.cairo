@@ -11,8 +11,8 @@ mod Gate {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::pow::pow10;
     use aura::utils::wadray;
-    use aura::utils::wadray::{fixed_point_to_wad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
-    use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
+    use aura::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use aura::utils::u256_conversions;
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
@@ -90,7 +90,7 @@ mod Gate {
             return amt.into();
         }
 
-        fixed_point_to_wad(amt, decimals)
+        wadray::fixed_point_to_wad(amt, decimals)
     }
 
     // Simulates the effects of `enter` at the current on-chain conditions.
@@ -213,7 +213,7 @@ mod Gate {
 
             // Otherwise, scale `asset_amt` up by the difference to match `Wad` precision
             // of yang
-            fixed_point_to_wad(asset_amt, decimals)
+            wadray::fixed_point_to_wad(asset_amt, decimals)
         } else {
             (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
         }
