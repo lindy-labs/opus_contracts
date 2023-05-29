@@ -31,7 +31,7 @@ mod Purger {
     // `absorb` can be called only if a trove's LTV exceeds this value
     const MAX_PENALTY_LTV: u128 = 888800000000000000000000000;
 
-    // Percentage of each asset being purged in `absorb`
+    // Percentage of each asset being freed in `absorb`
     // that's transferred to the caller as compensation: 0.03 (Ray)
     const COMPENSATION_PCT: u128 = 30000000000000000000000000;
 
@@ -125,7 +125,7 @@ mod Purger {
     // Reverts if:
     // - the trove is not liquidatable (i.e. LTV > threshold).
     // - the repayment amount exceeds the maximum amount as determined by the close factor.
-    // - if the trove's LTV is worse off than before the purge (should not be possible, but as a precaution)
+    // - if the trove's LTV is worse off than before the liquidation (should not be possible, but as a precaution)
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
     // in the decimals of each respective asset due to the recipient for performing the liquidation.
     #[external]
@@ -139,16 +139,16 @@ mod Purger {
 
         // Cap the liquidation amount to the trove's maximum close amount
         let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
-        let checked_amt: Wad = min(amt, max_close_amt);
+        let purge_amt: Wad = min(amt, max_close_amt);
 
         let percentage_freed: Ray = get_percentage_freed(
-            trove_threshold, trove_ltv, trove_value, trove_debt, checked_amt
+            trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
         );
 
         let funder: ContractAddress = get_caller_address();
 
         // Melt from the funder address directly
-        shrine.melt(funder, trove_id, checked_amt);
+        shrine.melt(funder, trove_id, purge_amt);
 
         // Free collateral corresopnding to the purged amount
         let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
@@ -158,7 +158,7 @@ mod Purger {
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
         Purged(
-            trove_id, checked_amt, percentage_freed, funder, recipient, yangs, freed_assets_amts, 
+            trove_id, purge_amt, percentage_freed, funder, recipient, yangs, freed_assets_amts, 
         );
 
         (yangs, freed_assets_amts)
@@ -187,7 +187,7 @@ mod Purger {
 
         let compensation_pct: Ray = get_compensation_pct(trove_value);
 
-        // Use `purge` to transfer compensation to caller
+        // Transfer compensation to caller
         let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
 
         // Cap the liquidation amount to the trove's maximum close amount
