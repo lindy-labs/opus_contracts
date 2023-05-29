@@ -173,89 +173,60 @@ mod Purger {
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
 
-        // This `if` branch means the debt is fully absorbable by the Absorber
-        if trove_debt <= absorber_yin_bal {
-            let (yangs, freed_assets_amts) = purge(
-                shrine,
-                trove_id,
-                trove_ltv,
-                trove_debt,
-                RAY_ONE.into(), // Set `percentage_freed` to 100%
-                absorber.contract_address,
-                absorber.contract_address
-            );
+        let compensation_pct: Ray = get_compensation_pct(trove_value);
 
-            // Calculate the compensation as a percentage of the freed value, which 
-            // in this case is the entire trove's value
-            let compensation_pct: Ray = get_compensation_pct(trove_value);
-            let (absorbed_assets, compensations) = split_purged_assets(
-                compensation_pct, freed_assets_amts
-            );
+        // Use `purge` to transfer compensation to caller
+        let (yangs, compensations) = purge(
+            shrine,
+            trove_id,
+            trove_ltv,
+            WadZeroable::zero(),
+            compensation_pct,
+            absorber.contract_address,
+            caller
+        );
 
-            absorber.compensate(caller, yangs, compensations);
-            absorber.update(yangs, absorbed_assets);
+        // TODO: move compensation event from Absorber to here
 
-            (yangs, freed_assets_amts)
-        } else {
-            if absorber_yin_bal.is_non_zero() {
-                let percentage_freed: Ray = get_percentage_freed(
-                    trove_threshold, trove_ltv, trove_value, trove_debt, absorber_yin_bal
+        // Cap the liquidation amount to the trove's maximum close amount
+        let purge_amt: Wad = min(trove_debt, absorber_yin_bal);
+
+        // Set the initial value of `percentage_freed` to 100%, assuming a full absorption
+        // If the absorber's yin balance is less than the trove's debt (i.e. partial absorption),
+        // calculate `percentage_freed` based on the absorber's yin balance.
+        let mut percentage_freed: Ray = RAY_ONE.into();
+        if purge_amt < trove_debt {
+            percentage_freed =
+                get_percentage_freed(
+                    trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
                 );
-                let (yangs, freed_assets_amts) = purge(
-                    shrine,
-                    trove_id,
-                    trove_ltv,
-                    absorber_yin_bal,
-                    percentage_freed,
-                    absorber.contract_address,
-                    absorber.contract_address
-                );
-
-                // Calculate the compensation as a percentage of the freed value, which 
-                // in this case is the trove's value corresponding to the percentage freed
-                let freed_value: Wad = wadray::rmul_wr(trove_value, percentage_freed);
-                let compensation_pct: Ray = get_compensation_pct(freed_value);
-
-                let (absorbed_assets, compensations) = split_purged_assets(
-                    compensation_pct, freed_assets_amts
-                );
-                absorber.compensate(caller, yangs, compensations);
-                absorber.update(yangs, absorbed_assets);
-
-                shrine.redistribute(trove_id);
-
-                // Update yang prices due to an appreciation in ratio of asset to yang from 
-                // redistribution
-                oracle::read().update_prices();
-
-                (yangs, freed_assets_amts)
-            } else {
-                // Calculate the compensation as a percentage of the freed value, which 
-                // in this case is the entire trove's value that would have been redistributed
-                let compensation_pct: Ray = get_compensation_pct(trove_value);
-
-                // Transfer the compensation to the absorber before redistributing the 
-                // remaining trove value
-                let (yangs, compensations) = purge(
-                    shrine,
-                    trove_id,
-                    trove_ltv,
-                    WadZeroable::zero(), // zero, because absorber has zero yin
-                    compensation_pct,
-                    absorber.contract_address,
-                    absorber.contract_address
-                );
-                absorber.compensate(caller, yangs, compensations);
-
-                shrine.redistribute(trove_id);
-
-                // Update yang prices due to an appreciation in ratio of asset to yang from 
-                // redistribution
-                oracle::read().update_prices();
-
-                (yangs, compensations)
-            }
         }
+
+        // Perform the absorption and update the absorber.
+        // If `percentage_freed` is zero, return values are empty arrays.
+        let (yangs, absorbed_asset_amts) = purge(
+            shrine,
+            trove_id,
+            trove_ltv,
+            purge_amt,
+            percentage_freed,
+            absorber.contract_address,
+            absorber.contract_address
+        );
+
+        // If array arguments are empty, `absorber.update` is returned early.
+        absorber.update(yangs, absorbed_asset_amts);
+
+        // If it is not a full absorption, perform redistribution.
+        if purge_amt < trove_debt {
+            shrine.redistribute(trove_id);
+
+            // Update yang prices due to an appreciation in ratio of asset to yang from 
+            // redistribution
+            oracle::read().update_prices();
+        }
+
+        (yangs, absorbed_asset_amts)
     }
 
     //
@@ -283,6 +254,13 @@ mod Purger {
         let mut freed_assets_amts: Array<u128> = Default::default();
 
         let mut yangs_copy: Span<ContractAddress> = yangs;
+
+        // Early return if nothing to free (e.g. full redistribution)
+        if percentage_freed.is_zero() {
+            let yangs: Array<ContractAddress> = Default::default();
+            let asset_amts: Array<u128> = Default::default();
+            return (yangs.span(), asset_amts.span());
+        }
 
         // Loop through yang addresses and transfer to recipient
         loop {

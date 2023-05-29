@@ -556,6 +556,10 @@ mod Absorber {
     fn update(mut assets: Span<ContractAddress>, mut asset_amts: Span<u128>) {
         AccessControl::assert_has_role(AbsorberRoles::UPDATE);
 
+        if assets.len().is_zero() {
+            return;
+        }
+
         let current_epoch: u32 = current_epoch::read();
 
         // Trigger issuance of rewards
