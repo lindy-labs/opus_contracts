@@ -142,7 +142,7 @@ mod Caretaker {
         let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
 
         let mut asset_amts: Array<u128> = Default::default();
-        let caretaker: ContractAddress = get_contract_address();
+        let caretaker = get_contract_address();
         let mut yangs_copy = yangs;
 
         loop {
@@ -205,7 +205,7 @@ mod Caretaker {
         // of yang is not updated in Shrine, the asset amount per yang will decrease. 
         let sentinel: ISentinelDispatcher = sentinel::read();
         let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-        let caretaker: ContractAddress = get_contract_address();
+        let caretaker = get_contract_address();
 
         loop {
             match yangs.pop_front() {
@@ -302,7 +302,7 @@ mod Caretaker {
     //          2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which entitles him to receive 
     //             11.1% * 3_600 = 400 yang A assets approximately.
     //              
-    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts // denominated 
+    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts denominated 
     // in each respective asset's decimals.
     #[external]
     fn reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
