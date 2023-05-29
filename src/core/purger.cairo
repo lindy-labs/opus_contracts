@@ -374,30 +374,4 @@ mod Purger {
             wadray::rdiv_ww(COMPENSATION_CAP.into(), freed_value)
         }
     }
-
-    // Divide the purged assets into two groups - one that's kept in the Absorber and
-    // another one that's sent to the caller as compensation. `freed_assets_amts` values
-    // are in decimals of each token (hence using `u128`).
-    // Returns a tuple of an ordered array of freed collateral asset amounts due to absorber 
-    // and an ordered array of freed collateral asset amounts due to caller as compensation
-    fn split_purged_assets(
-        split_pct: Ray, mut freed_assets_amts: Span<u128>
-    ) -> (Span<u128>, Span<u128>) {
-        let mut absorbed_assets: Array<u128> = Default::default();
-        let mut compensations: Array<u128> = Default::default();
-
-        loop {
-            match freed_assets_amts.pop_front() {
-                Option::Some(amount) => {
-                    // Rounding is intended to benefit the protocol
-                    let compensation: Wad = wadray::rmul_wr((*amount).into(), split_pct);
-                    compensations.append(compensation.val);
-                    absorbed_assets.append(*amount - compensation.val);
-                },
-                Option::None(_) => {
-                    break (absorbed_assets.span(), compensations.span());
-                }
-            };
-        }
-    }
 }
