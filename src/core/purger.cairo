@@ -240,7 +240,7 @@ mod Purger {
         }
         Compensate(caller, yangs, compensations);
 
-        (yangs, absorbed_assets_amts)
+        (yangs, compensations)
     }
 
     //
