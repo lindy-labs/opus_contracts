@@ -1,9 +1,8 @@
 mod AbsorberRoles {
-    const COMPENSATE: u128 = 1;
-    const KILL: u128 = 2;
-    const SET_REMOVAL_LIMIT: u128 = 4;
-    const SET_REWARD: u128 = 8;
-    const UPDATE: u128 = 16;
+    const KILL: u128 = 1;
+    const SET_REMOVAL_LIMIT: u128 = 2;
+    const SET_REWARD: u128 = 4;
+    const UPDATE: u128 = 8;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {

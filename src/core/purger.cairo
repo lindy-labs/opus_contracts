@@ -57,11 +57,16 @@ mod Purger {
     fn Purged(
         trove_id: u64,
         purge_amt: Wad,
+        percentage_freed: Ray,
         funder: ContractAddress,
         recipient: ContractAddress,
-        percentage_freed: Ray,
         yangs: Span<ContractAddress>,
         freed_assets_amts: Span<u128>,
+    ) {}
+
+    #[event]
+    fn Compensate(
+        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>, 
     ) {}
 
     //
@@ -122,7 +127,7 @@ mod Purger {
     // - the repayment amount exceeds the maximum amount as determined by the close factor.
     // - if the trove's LTV is worse off than before the purge (should not be possible, but as a precaution)
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
-    // in the decimals of each respective asset.
+    // in the decimals of each respective asset due to the recipient for performing the liquidation.
     #[external]
     fn liquidate(
         trove_id: u64, amt: Wad, recipient: ContractAddress
@@ -141,13 +146,20 @@ mod Purger {
         );
 
         let funder: ContractAddress = get_caller_address();
-        let (yangs, freed_assets_amts) = purge(
-            shrine, trove_id, trove_ltv, checked_amt, percentage_freed, funder, recipient
-        );
+
+        // Melt from the funder address directly
+        shrine.melt(funder, trove_id, purge_amt);
+
+        // Free collateral corresopnding to the purged amount
+        let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
 
         // Safety check to ensure the new LTV is lower than old LTV 
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
+
+        Purged(
+            trove_id, checked_amt, percentage_freed, funder, recipient, yangs, freed_assets_amts, 
+        );
 
         (yangs, freed_assets_amts)
     }
@@ -159,8 +171,8 @@ mod Purger {
     // - Amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
     // Reverts if the trove's LTV is not above the maximum penalty LTV
     // - This also checks the trove is liquidatable because threshold must be lower than max penalty LTV.
-    // Returns a tuple of an ordered array of yang addresses and an ordered array of amount of asset freed
-    // in the decimals of each respective asset.
+    // Returns a tuple of an ordered array of yang addresses and an ordered array of asset amounts
+    // in the decimals of each respective asset due to the caller as compensation.
     #[external]
     fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
         let shrine: IShrineDispatcher = shrine::read();
@@ -176,17 +188,7 @@ mod Purger {
         let compensation_pct: Ray = get_compensation_pct(trove_value);
 
         // Use `purge` to transfer compensation to caller
-        let (yangs, compensations) = purge(
-            shrine,
-            trove_id,
-            trove_ltv,
-            WadZeroable::zero(),
-            compensation_pct,
-            absorber.contract_address,
-            caller
-        );
-
-        // TODO: move compensation event from Absorber to here
+        let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
 
         // Cap the liquidation amount to the trove's maximum close amount
         let purge_amt: Wad = min(trove_debt, absorber_yin_bal);
@@ -202,20 +204,17 @@ mod Purger {
                 );
         }
 
-        // Perform the absorption and update the absorber.
+        // Melt the trove's debt using the absorber's yin directly
+        shrine.melt(funder, trove_id, purge_amt);
+
+        // Free collateral corresopnding to the purged amount
         // If `percentage_freed` is zero, return values are empty arrays.
-        let (yangs, absorbed_asset_amts) = purge(
-            shrine,
-            trove_id,
-            trove_ltv,
-            purge_amt,
-            percentage_freed,
-            absorber.contract_address,
-            absorber.contract_address
+        let (yangs, absorbed_assets_amts) = free(
+            shrine, trove_id, percentage_freed, absorber.contract_address
         );
 
         // If array arguments are empty, `absorber.update` is returned early.
-        absorber.update(yangs, absorbed_asset_amts);
+        absorber.update(yangs, absorbed_assets_amts);
 
         // If it is not a full absorption, perform redistribution.
         if purge_amt < trove_debt {
@@ -226,29 +225,31 @@ mod Purger {
             oracle::read().update_prices();
         }
 
-        (yangs, absorbed_asset_amts)
+        Purged(
+            trove_id,
+            purge_amt,
+            percentage_freed,
+            absorber.contract_address,
+            absorber.contract_address,
+            yangs,
+            absorbed_assets_amts
+        );
+        Compensate(caller, yangs, compensations);
+
+        (yangs, absorbed_assets_amts)
     }
 
     //
     // Internal
     //
 
-    // Internal function to handle the paying down of a trove's debt in return for the
-    // corresponding freed collateral to be sent to the recipient address
+    // Internal function to transfer the given percentage of a trove's collateral to the given
+    // recipient address.
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral 
     // asset amounts in the decimals of each respective asset.
-    fn purge(
-        shrine: IShrineDispatcher,
-        trove_id: u64,
-        trove_ltv: Ray,
-        purge_amt: Wad,
-        percentage_freed: Ray,
-        funder: ContractAddress,
-        recipient: ContractAddress,
+    fn free(
+        shrine: IShrineDispatcher, trove_id: u64, percentage_freed: Ray, recipient: ContractAddress, 
     ) -> (Span<ContractAddress>, Span<u128>) {
-        // Melt from the funder address directly
-        shrine.melt(funder, trove_id, purge_amt);
-
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let mut freed_assets_amts: Array<u128> = Default::default();
@@ -289,16 +290,6 @@ mod Purger {
                 }
             };
         };
-
-        Purged(
-            trove_id,
-            purge_amt,
-            funder,
-            recipient,
-            percentage_freed,
-            yangs,
-            freed_assets_amts.span()
-        );
 
         (yangs, freed_assets_amts.span())
     }

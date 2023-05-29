@@ -172,12 +172,6 @@ mod Absorber {
     #[event]
     fn Killed() {}
 
-    #[event]
-    fn Compensate(
-        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>, 
-    ) {}
-
-
     //
     // Constructor
     //
@@ -638,15 +632,6 @@ mod Absorber {
         AccessControl::assert_has_role(AbsorberRoles::KILL);
         is_live::write(false);
         Killed();
-    }
-
-    #[external]
-    fn compensate(
-        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>
-    ) {
-        AccessControl::assert_has_role(AbsorberRoles::COMPENSATE);
-        transfer_assets(recipient, assets, asset_amts);
-        Compensate(recipient, assets, asset_amts);
     }
 
     //
