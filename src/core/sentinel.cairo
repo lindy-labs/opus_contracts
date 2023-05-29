@@ -31,6 +31,8 @@ mod Sentinel {
         // mapping between a yang address and the cap on the yang's asset in the
         // asset's decimals
         yang_asset_max: LegacyMap::<ContractAddress, u128>,
+        // mapping between a yang address and whether its Gate is live
+        yang_to_live: LegacyMap::<ContractAddress, bool>,
     }
 
     //
@@ -50,6 +52,9 @@ mod Sentinel {
         shrine::write(IShrineDispatcher { contract_address: shrine });
     }
 
+    #[event]
+    fn GateKilled(yang: ContractAddress, gate: ContractAddress) {}
+
     //
     // View Functions
     // 
@@ -57,6 +62,11 @@ mod Sentinel {
     #[view]
     fn get_gate_address(yang: ContractAddress) -> ContractAddress {
         yang_to_gate::read(yang).contract_address
+    }
+
+    #[view]
+    fn get_gate_live(yang: ContractAddress) -> bool {
+        yang_to_live::read(yang)
     }
 
     #[view]
@@ -140,6 +150,7 @@ mod Sentinel {
         yang_addresses_count::write(yang_count + 1);
         yang_addresses::write(yang_count, yang);
         yang_to_gate::write(yang, gate);
+        yang_to_live::write(yang, true);
         yang_asset_max::write(yang, yang_asset_max);
 
         // Require an initial deposit when adding a yang to prevent first depositor from front-running
@@ -180,6 +191,8 @@ mod Sentinel {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
 
+        assert(yang_to_live::read(yang), 'Gate is not live');
+
         let yang_max: u128 = yang_asset_max::read(yang);
         let current_total: u128 = gate.get_total_assets();
 
@@ -196,6 +209,15 @@ mod Sentinel {
         assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
 
         gate.exit(user, trove_id, yang_amt)
+    }
+
+    #[external]
+    fn kill_gate(yang: ContractAddress) {
+        AccessControl::assert_has_role(SentinelRoles::KILL_GATE);
+
+        yang_to_live::write(yang, false);
+
+        GateKilled(yang, yang_to_gate::read(yang).contract_address);
     }
 
 

@@ -2,15 +2,13 @@
 mod Gate {
     use integer::u128_try_from_felt252;
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_contract_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
-    use aura::core::roles::GateRoles;
-
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::pow::pow10;
     use aura::utils::wadray;
     use aura::utils::wadray::{fixed_point_to_wad, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
@@ -25,10 +23,11 @@ mod Gate {
     struct Storage {
         // the Shrine associated with this Gate
         shrine: IShrineDispatcher,
+        // the Sentinel associated with this Gate
+        // Also the only authorized caller of Gate
+        sentinel: ISentinelDispatcher,
         // the ERC-20 asset that is the underlying asset of this Gate's yang
         asset: IERC20Dispatcher,
-        // Keeps track of whether this Gate is live or killed
-        is_live: bool,
     }
 
     //
@@ -41,23 +40,15 @@ mod Gate {
     #[event]
     fn Exit(user: ContractAddress, trove_id: u64, asset_amt: u128, yang_amt: Wad) {}
 
-    #[event]
-    fn Killed() {}
-
     //
     // Constructor
     //
 
     #[constructor]
-    fn constructor(admin: ContractAddress, shrine: ContractAddress, asset: ContractAddress) {
-        AccessControl::initializer(admin);
-
-        // Grant permission
-        AccessControl::grant_role_internal(GateRoles::default_admin_role(), admin);
-
+    fn constructor(shrine: ContractAddress, sentinel: ContractAddress, asset: ContractAddress) {
         shrine::write(IShrineDispatcher { contract_address: shrine });
+        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         asset::write(IERC20Dispatcher { contract_address: asset });
-        is_live::write(true);
     }
 
     //
@@ -116,30 +107,16 @@ mod Gate {
         convert_to_assets(yang_amt)
     }
 
-    #[view]
-    fn get_live() -> bool {
-        is_live::read()
-    }
-
     //
     // External
     //
-
-    #[external]
-    fn kill() {
-        AccessControl::assert_has_role(GateRoles::KILL);
-        is_live::write(false);
-        Killed();
-    }
 
     // Transfers the stipulated amount of assets, in the asset's decimals, from the given 
     // user to the Gate and returns the corresponding yang amount in Wad.
     // `asset_amt` is denominated in the decimals of the asset.
     #[external]
     fn enter(user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
-        assert_live();
-
-        AccessControl::assert_has_role(GateRoles::ENTER);
+        assert_sentinel();
 
         let yang_amt: Wad = convert_to_yang(asset_amt);
         if yang_amt.is_zero() {
@@ -160,7 +137,7 @@ mod Gate {
     // The return value is denominated in the decimals of the asset.
     #[external]
     fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
-        AccessControl::assert_has_role(GateRoles::EXIT);
+        assert_sentinel();
 
         let asset_amt: u128 = convert_to_assets(yang_amt);
         if asset_amt == 0 {
@@ -180,8 +157,10 @@ mod Gate {
     //
 
     #[inline(always)]
-    fn assert_live() {
-        assert(is_live::read(), 'Gate is not live');
+    fn assert_sentinel() {
+        assert(
+            get_caller_address() == sentinel::read().contract_address, 'Caller is not authorized'
+        );
     }
 
     #[inline(always)]
@@ -238,49 +217,5 @@ mod Gate {
         } else {
             (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
         }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[view]
-    fn get_roles(account: ContractAddress) -> u128 {
-        AccessControl::get_roles(account)
-    }
-
-    #[view]
-    fn has_role(role: u128, account: ContractAddress) -> bool {
-        AccessControl::has_role(role, account)
-    }
-
-    #[view]
-    fn get_admin() -> ContractAddress {
-        AccessControl::get_admin()
-    }
-
-    #[external]
-    fn grant_role(role: u128, account: ContractAddress) {
-        AccessControl::grant_role(role, account);
-    }
-
-    #[external]
-    fn revoke_role(role: u128, account: ContractAddress) {
-        AccessControl::revoke_role(role, account);
-    }
-
-    #[external]
-    fn renounce_role(role: u128) {
-        AccessControl::renounce_role(role);
-    }
-
-    #[external]
-    fn set_pending_admin(new_admin: ContractAddress) {
-        AccessControl::set_pending_admin(new_admin);
-    }
-
-    #[external]
-    fn accept_admin() {
-        AccessControl::accept_admin();
     }
 }
