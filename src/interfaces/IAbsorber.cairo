@@ -36,9 +36,6 @@ trait IAbsorber {
     fn reap();
     fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>);
     fn kill();
-    fn compensate(
-        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>
-    );
 }
 
 #[abi]
