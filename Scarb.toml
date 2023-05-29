@@ -11,19 +11,4 @@ check_fmt = "cairo-format --recursive --check --print-parsing-errors src/"
 
 test = "cairo-test --starknet ."
 
-test_utils = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_access_control;\nmod test_exp;\nmod test_pow;\nmod test_reentrancy_guard;\nmod test_u256_conversions;' >> src/tests/utils.cairo; cairo-test --starknet ."
-test_wadray = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_wadray;' >> src/tests/utils.cairo; cairo-test --starknet ."
-
-test_shrine1 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-test_shrine2 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine2;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-
-test_shrine_compound = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-test_shrine_compound2 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound2;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-test_shrine_compound3 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound3;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-test_shrine_compound4 = "sed 's,mod test,//mod test,g' -i src/tests/shrine.cairo src/tests/utils.cairo; echo '\nmod test_shrine_compound4;' >> src/tests/shrine.cairo; cairo-test --starknet ."
-
-reset_tests = "git checkout HEAD -- src/tests/shrine.cairo src/tests/utils.cairo"
-
-all_tests = "scarb run test_utils; scarb run test_wadray; scarb run test_shrine1; scarb run test_shrine2; scarb run test_shrine_compound; scarb run test_shrine_compound2; scarb run test_shrine_compound3; scarb run test_shrine_compound4; scarb run reset_tests"
-
 [dependencies]

@@ -66,12 +66,11 @@ mod Sentinel {
         let mut addresses: Array<ContractAddress> = Default::default();
         loop {
             if idx == count {
-                break ();
+                break addresses.span();
             }
             addresses.append(yang_addresses::read(idx));
             idx += 1;
-        };
-        addresses.span()
+        }
     }
 
     #[view]

@@ -553,7 +553,7 @@ mod Shrine {
                     }
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 }
             };
         };
@@ -1117,7 +1117,7 @@ mod Shrine {
         let mut current_yang_id: u32 = yangs_count::read();
         loop {
             if current_yang_id == 0 {
-                break ();
+                break;
             }
 
             let deposited: Wad = deposits::read((current_yang_id, trove_id));
@@ -1127,7 +1127,7 @@ mod Shrine {
                 let mut debt_increment: Wad = 0_u128.into();
                 loop {
                     if trove_last_redistribution_id == current_redistribution_id_temp {
-                        break ();
+                        break;
                     }
 
                     // Get the amount of debt per yang for the current redistribution
@@ -1289,7 +1289,7 @@ mod Shrine {
 
         loop {
             if current_yang_id == 0 {
-                break ();
+                break;
             }
 
             let deposited: Wad = deposits::read((current_yang_id, trove_id));
@@ -1326,7 +1326,7 @@ mod Shrine {
 
         loop {
             if current_yang_id == 0 {
-                break ();
+                break;
             }
 
             let deposited: Wad = yang_total::read(current_yang_id);

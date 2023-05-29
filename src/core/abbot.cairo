@@ -116,7 +116,7 @@ mod Abbot {
                     deposit_internal(*yang, user, new_trove_id, amount);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 }
             };
         };
@@ -149,7 +149,7 @@ mod Abbot {
                     withdraw_internal(*yang, user, trove_id, yang_amount);
                 },
                 Option::None(_) => {
-                    break ();
+                    break;
                 }
             };
         };
