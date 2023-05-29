@@ -361,17 +361,15 @@ mod Purger {
     }
 
     // Returns the amount of compensation due to the caller of `absorb` as a percentage of 
-    // the value of:
-    // - the freed collateral (in the case of full absorptions and partial absorptions 
-    // with redistributions); or 
-    // - the trove's collateral (in the case of a full redistribution).
-    fn get_compensation_pct(freed_value: Wad) -> Ray {
-        let base_compensation_pct: Ray = COMPENSATION_PCT.into();
-        let base_compensation: Wad = wadray::rmul_wr(freed_value, base_compensation_pct);
-        if base_compensation.val < COMPENSATION_CAP {
-            base_compensation_pct
+    // the value of the trove's collateral, capped at 3% of the trove's value or the percentage
+    // of the trove's value equivalent to `COMPENSATION_CAP`.
+    fn get_compensation_pct(trove_value: Wad) -> Ray {
+        let default_compensation_pct: Ray = COMPENSATION_PCT.into();
+        let default_compensation: Wad = wadray::rmul_wr(trove_value, default_compensation_pct);
+        if default_compensation.val < COMPENSATION_CAP {
+            default_compensation_pct
         } else {
-            wadray::rdiv_ww(COMPENSATION_CAP.into(), freed_value)
+            wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value)
         }
     }
 }
