@@ -9,6 +9,7 @@ mod IFlashMint;
 mod IGate;
 mod IOracle;
 mod IPragma;
+mod IPurger;
 mod ISentinel;
 mod IShrine;
 mod external;
