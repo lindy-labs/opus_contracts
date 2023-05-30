@@ -630,9 +630,8 @@ mod TestShrine {
         assert(after_max_forge_amt == before_max_forge_amt - forge_amt, 'incorrect max forge amt');
 
         let yin = ShrineUtils::yin(shrine.contract_address);
-        // TODO: replace with WadIntoU256 from Absorber PR
         assert(
-            yin.balance_of(ShrineUtils::trove1_owner_addr()) == forge_amt.val.into(),
+            yin.balance_of(ShrineUtils::trove1_owner_addr()) == forge_amt.into(),
             'incorrect ERC-20 balance'
         );
         assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
@@ -731,8 +730,7 @@ mod TestShrine {
         assert(after_trove_debt == before_trove_debt - melt_amt, 'incorrect trove debt');
 
         let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
-        // TODO: replace with WadIntoU256 from Absorber PR
-        assert(after_yin_bal == before_yin_bal - melt_amt.val.into(), 'incorrect yin balance');
+        assert(after_yin_bal == before_yin_bal - melt_amt.into(), 'incorrect yin balance');
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
         let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
@@ -1086,9 +1084,8 @@ mod TestShrine {
         let inject_amt = ShrineUtils::TROVE1_FORGE_AMT.into();
         shrine.inject(trove1_owner, inject_amt);
 
-        // TODO: replace with WadIntoU256 from Absorber PR
         assert(
-            yin.total_supply() == before_total_supply + inject_amt.val.into(),
+            yin.total_supply() == before_total_supply + inject_amt.into(),
             'incorrect total supply'
         );
         assert(
