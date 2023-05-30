@@ -23,6 +23,7 @@ mod TestFlashmint {
     use super::FlashBorrower;
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
+    const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000_u256; // 500 * WAD_ONE
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
@@ -105,7 +106,8 @@ mod TestFlashmint {
 
         // `borrower` contains a check that ensures that `flashmint` actually transferred 
         // the full flash_loan amount
-        flashmint.flash_loan(borrower, shrine, (500 * WAD_ONE).into(), calldata);
+        flashmint.flash_loan(borrower, shrine, 1_u128.into(), calldata);
+        flashmint.flash_loan(borrower, shrine, DEFAULT_MINT_AMOUNT, calldata);
         flashmint.flash_loan(borrower, shrine, (1000 * WAD_ONE).into(), calldata);
 
         // TODO: check event emissions for correct calldata
@@ -113,10 +115,18 @@ mod TestFlashmint {
 
     #[test]
     #[available_gas(20000000000)]
+    #[should_panic(expected: ('FM: amount exceeds maximum', 'ENTRYPOINT_FAILED'))]
+    fn test_flashmint_excess_minting() {
+        let (shrine, flashmint, borrower) = flash_borrower_setup();
+        flashmint.flash_loan(borrower, shrine, 1000000000000000000001_u256, build_calldata(true, FlashBorrower::VALID_USAGE));
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
     #[should_panic(expected: ('FM: on_flash_loan failed', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_incorrect_return() {
         let (shrine, flashmint, borrower) = flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, (500 * WAD_ONE).into(), build_calldata(false, FlashBorrower::VALID_USAGE));
+        flashmint.flash_loan(borrower, shrine, DEFAULT_MINT_AMOUNT, build_calldata(false, FlashBorrower::VALID_USAGE));
     }
 
     #[test]
@@ -124,7 +134,7 @@ mod TestFlashmint {
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_steal() {
         let (shrine, flashmint, borrower) = flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, (500 * WAD_ONE).into(), build_calldata(true, FlashBorrower::ATTEMPT_TO_STEAL));
+        flashmint.flash_loan(borrower, shrine, DEFAULT_MINT_AMOUNT, build_calldata(true, FlashBorrower::ATTEMPT_TO_STEAL));
     }
 
     #[test]
@@ -132,7 +142,7 @@ mod TestFlashmint {
     #[should_panic(expected: ('RG: reentrant call', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_reenter() {
         let (shrine, flashmint, borrower) = flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, (500 * WAD_ONE).into(), build_calldata(true, FlashBorrower::ATTEMPT_TO_REENTER));
+        flashmint.flash_loan(borrower, shrine, DEFAULT_MINT_AMOUNT, build_calldata(true, FlashBorrower::ATTEMPT_TO_REENTER));
 
     }
 }
