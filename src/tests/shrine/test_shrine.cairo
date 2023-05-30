@@ -835,15 +835,14 @@ mod TestShrine {
     fn test_yin_transfer_from_pass() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
         set_contract_address(trove1_owner);
-
         yin.approve(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         set_contract_address(yin_user);
@@ -865,7 +864,6 @@ mod TestShrine {
     fn test_yin_transfer_from_unapproved_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
@@ -883,6 +881,7 @@ mod TestShrine {
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -905,6 +904,7 @@ mod TestShrine {
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -926,6 +926,7 @@ mod TestShrine {
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);

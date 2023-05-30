@@ -68,6 +68,7 @@ mod TestShrineCompound {
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
         // Trigger charge and check interest is accrued
+        set_contract_address(ShrineUtils::admin());
         shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -152,6 +153,7 @@ mod TestShrineCompound {
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
         // Trigger charge and check interest is accrued
+        set_contract_address(ShrineUtils::admin());
         shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -343,6 +345,7 @@ mod TestShrineCompound {
         set_block_timestamp(end_timestamp);
         assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
+        set_contract_address(ShrineUtils::admin());
         shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
 
         // Manually calculate the average since end interval does not have a cumulative value
@@ -368,6 +371,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -530,6 +534,7 @@ mod TestShrineCompound {
 
         let end_price: Wad = 2333000000000000000000_u128.into(); // 2_333 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
+        set_contract_address(ShrineUtils::admin());
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
@@ -562,6 +567,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
+        set_contract_address(ShrineUtils::admin());
         shrine.deposit(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -753,6 +759,8 @@ mod TestShrineCompound {
                 let mut yang_base_rates_to_update: Span<Ray> = *yang_base_rates_history_to_update_copy
                     .pop_front()
                     .unwrap();
+
+                set_contract_address(ShrineUtils::admin());
                 shrine.update_rates(yang_addrs.span(), yang_base_rates_to_update);
 
                 // Check that base rates are updated correctly
@@ -798,6 +806,7 @@ mod TestShrineCompound {
 
         assert(debt == expected_debt, 'wrong compounded debt');
 
+        set_contract_address(ShrineUtils::admin());
         shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }

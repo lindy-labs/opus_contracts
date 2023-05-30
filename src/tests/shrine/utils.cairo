@@ -195,6 +195,9 @@ mod ShrineUtils {
                 YANG2_BASE_RATE.into(),
                 INITIAL_YANG_AMT.into()
             );
+
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
     }
 
     // Advance the prices for two yangs, starting from the current interval and up to current interval + `num_intervals` - 1
@@ -237,6 +240,9 @@ mod ShrineUtils {
             idx += 1;
         };
 
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
+
         (yang_addrs.span(), yang_feeds.span())
     }
 
@@ -256,24 +262,32 @@ mod ShrineUtils {
     fn trove1_deposit(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
         shrine.deposit(yang1_addr(), TROVE_1, amt);
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
     }
 
     #[inline(always)]
     fn trove1_withdraw(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
         shrine.withdraw(yang1_addr(), TROVE_1, amt);
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
     }
 
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
         shrine.forge(trove1_owner_addr(), TROVE_1, amt);
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
     }
 
     #[inline(always)]
     fn trove1_melt(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
         shrine.melt(trove1_owner_addr(), TROVE_1, amt);
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
     }
 
     //
@@ -365,7 +379,7 @@ mod ShrineUtils {
 
     /// Helper function to calculate the compounded debt over a given set of intervals.
     ///
-    /// # Arguments
+    /// Arguments
     ///
     /// * `yang_base_rates_history` - Ordered list of the lists of base rates of each yang at each rate update interval
     ///    over the time period `end_interval - start_interval`.
