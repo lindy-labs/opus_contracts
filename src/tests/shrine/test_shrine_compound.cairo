@@ -52,7 +52,7 @@ mod TestShrineCompound {
         // Offset by 1 because `advance_prices_and_set_multiplier` updates `start_interval`.
         let end_interval: u64 = start_interval + ShrineUtils::FEED_LEN - 1;
         // commented out because of gas usage error
-        //assert(current_interval() == end_interval, 'wrong end interval');  // sanity check
+        assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
@@ -134,7 +134,7 @@ mod TestShrineCompound {
         let end_interval: u64 = start_interval
             + (num_intervals_before_skip + num_intervals_after_skip);
         // commented out because of gas usage error
-        //assert(current_interval() == end_interval + 1, 'wrong end interval');  // sanity check
+        assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         let expected_avg_price: Wad = ShrineUtils::get_avg_yang_price(
             shrine, yang1_addr, start_interval, end_interval
@@ -277,6 +277,7 @@ mod TestShrineCompound {
         // instead of via `advance_prices_and_set_multiplier`
         let end_interval: u64 = start_interval + intervals_after_last_update;
         set_block_timestamp(end_timestamp);
+        assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
 
@@ -340,6 +341,7 @@ mod TestShrineCompound {
 
         let end_interval: u64 = start_interval + intervals_to_skip + intervals_after_last_update;
         set_block_timestamp(end_timestamp);
+        assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
 
@@ -430,7 +432,8 @@ mod TestShrineCompound {
         let time_to_skip: u64 = intervals_from_last_update_to_end * Shrine::TIME_INTERVAL;
         let end_timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(end_timestamp);
-        let end_interval: u64 = ShrineUtils::current_interval();
+        let end_interval: u64 = start_interval + intervals_to_last_update_after_start + intervals_from_last_update_to_end;
+        assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
 
@@ -522,7 +525,8 @@ mod TestShrineCompound {
         let time_to_skip: u64 = intervals_from_start_to_end * Shrine::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(timestamp);
-        let end_interval: u64 = ShrineUtils::current_interval();
+        let end_interval: u64 = start_interval + intervals_from_start_to_end;
+        assert(ShrineUtils::current_interval() == end_interval, 'wrong end interval');  // sanity check
 
         let end_price: Wad = 2333000000000000000000_u128.into(); // 2_333 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();

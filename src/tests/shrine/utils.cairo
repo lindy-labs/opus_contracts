@@ -405,7 +405,25 @@ mod ShrineUtils {
         end_interval: u64,
         mut debt: Wad
     ) -> Wad {
-        // TODO: it will be helpful to validate the input arrays once gas calculation issue is fixed
+        // Sanity check on input array lengths
+        assert(yang_base_rates_history.len() == yang_rate_update_intervals.len(), 'array length mismatch');
+        assert(yang_base_rates_history.len() == yang_avg_prices.len(), 'array length mismatch');
+        assert(yang_base_rates_history.len() == avg_multipliers.len(), 'array length mismatch');
+        assert((*yang_base_rates_history.at(0)).len() == yang_amts.len(), 'array length mismatch');
+        let mut yang_base_rates_history_copy = yang_base_rates_history;
+        let mut yang_avg_prices_copy = yang_avg_prices;
+        loop {
+            match yang_base_rates_history_copy.pop_front() {
+                Option::Some(base_rates_history) => {
+                    assert((*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(), 'array length mismatch');
+                },
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
+
+        // Start of tests
 
         let eras_count: usize = yang_base_rates_history.len();
         let yangs_count: usize = yang_amts.len();
