@@ -43,7 +43,7 @@ mod Shrine {
 
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
-    const USE_PREV_BASE_RATE: u128 = 100000000000000000000000001;
+    const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -371,7 +371,7 @@ mod Shrine {
     ) {
         AccessControl::assert_has_role(ShrineRoles::ADD_YANG);
 
-        assert(yang_ids::read(yang) == 0, 'Yang already exists');
+        assert(yang_ids::read(yang) == 0, 'SH: Yang already exists');
 
         assert_rate_is_valid(initial_rate);
 
@@ -417,8 +417,8 @@ mod Shrine {
     }
 
     #[external]
-    fn set_ceiling(new_ceiling: Wad) {
-        AccessControl::assert_has_role(ShrineRoles::SET_CEILING);
+    fn set_debt_ceiling(new_ceiling: Wad) {
+        AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
         debt_ceiling::write(new_ceiling);
 
         //Event emission
@@ -429,7 +429,7 @@ mod Shrine {
     fn set_threshold(yang: ContractAddress, new_threshold: Ray) {
         AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
-        assert(new_threshold.val <= MAX_THRESHOLD, 'Threshold > max');
+        assert(new_threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
         thresholds::write(get_valid_yang_id(yang), new_threshold);
 
         // Event emission
@@ -454,7 +454,7 @@ mod Shrine {
     fn advance(yang: ContractAddress, price: Wad) {
         AccessControl::assert_has_role(ShrineRoles::ADVANCE);
 
-        assert(price.is_non_zero(), 'Cannot set a price to 0');
+        assert(price.is_non_zero(), 'SH: Price cannot be 0');
 
         let interval: u64 = now();
         let yang_id: u32 = get_valid_yang_id(yang);
@@ -483,8 +483,8 @@ mod Shrine {
         AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
 
         // TODO: Should this be here? Maybe multiplier should be able to go to zero
-        assert(new_multiplier.is_non_zero(), 'Cannot set multiplier to zero');
-        assert(new_multiplier.val <= MAX_MULTIPLIER, 'multiplier exceeds maximum');
+        assert(new_multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
+        assert(new_multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
 
         let interval: u64 = now();
         let (last_multiplier, last_cumulative_multiplier, last_interval) =
@@ -514,7 +514,7 @@ mod Shrine {
         let num_yangs: u32 = yangs_count::read();
 
         assert(
-            yangs_len == new_rates.len() & yangs_len == num_yangs, 'yangs.len() != new_rates.len()'
+            yangs_len == new_rates.len() & yangs_len == num_yangs, 'SH: yangs.len != new_rates.len'
         );
 
         let latest_era: u64 = rates_latest_era::read();
@@ -565,13 +565,13 @@ mod Shrine {
         // Even though this is an admin/governance function, such a mistake could break 
         // interest rate calculations, which is why it's important that we verify that all yangs' 
         // rates were correctly updated.
-        let mut idx: u32 = 0;
+        let mut idx: u32 = num_yangs;
         loop {
-            if idx == num_yangs {
-                break;
+            if idx == 0 {
+                break ();
             }
-            assert(yang_rates::read((idx, new_era)).is_non_zero(), 'Incorrect rate update');
-            idx += 1;
+            assert(yang_rates::read((idx, new_era)).is_non_zero(), 'SH: Incorrect rate update');
+            idx -= 1;
         };
     }
 
@@ -617,7 +617,7 @@ mod Shrine {
         charge(trove_id);
 
         let new_system_debt = total_debt::read() + amount;
-        assert(new_system_debt <= debt_ceiling::read(), 'Debt ceiling reached');
+        assert(new_system_debt <= debt_ceiling::read(), 'SH: Debt ceiling reached');
         total_debt::write(new_system_debt);
 
         // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`. 
@@ -793,14 +793,14 @@ mod Shrine {
 
     // Check that system is live
     fn assert_live() {
-        assert(is_live::read(), 'System is not live');
+        assert(is_live::read(), 'SH: System is not live');
     }
 
     // Helper function to get the yang ID given a yang address, and throw an error if
     // yang address has not been added (i.e. yang ID = 0)
     fn get_valid_yang_id(yang: ContractAddress) -> u32 {
         let yang_id: u32 = yang_ids::read(yang);
-        assert(yang_id != 0, 'Yang does not exist');
+        assert(yang_id != 0, 'SH: Yang does not exist');
         yang_id
     }
 
@@ -843,7 +843,7 @@ mod Shrine {
 
     // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
     fn assert_rate_is_valid(rate: Ray) {
-        assert(0 < rate.val & rate.val <= MAX_YANG_RATE, 'Rate out of bounds');
+        assert(0 < rate.val & rate.val <= MAX_YANG_RATE, 'SH: Rate out of bounds');
     }
 
     // Adds the accumulated interest as debt to the trove
@@ -1276,7 +1276,7 @@ mod Shrine {
     //
 
     fn assert_healthy(trove_id: u64) {
-        assert(is_healthy(trove_id), 'Trove LTV is too high');
+        assert(is_healthy(trove_id), 'SH: Trove LTV is too high');
     }
 
     // Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value, at a given interval.
@@ -1358,7 +1358,7 @@ mod Shrine {
     //
 
     fn transfer_internal(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
-        assert(recipient.is_non_zero(), 'cannot transfer to 0 address');
+        assert(recipient.is_non_zero(), 'SH: No transfer to 0 address');
 
         let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
 
@@ -1370,8 +1370,8 @@ mod Shrine {
     }
 
     fn approve_internal(owner: ContractAddress, spender: ContractAddress, amount: u256) {
-        assert(spender.is_non_zero(), 'cannot approve 0 address');
-        assert(owner.is_non_zero(), 'cannot approve for 0 address');
+        assert(spender.is_non_zero(), 'SH: No approval of 0 address');
+        assert(owner.is_non_zero(), 'SH: No approval for 0 address');
 
         yin_allowances::write((owner, spender), amount);
 
