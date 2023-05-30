@@ -1,8 +1,8 @@
-#[cfg(test)]
 mod TestFlashmint {
     use array::ArrayTrait;
     use option::OptionTrait;
     use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait};
+    use starknet::contract_address::ContractAddressZeroable;
     use traits::{Default, Into};
 
     use aura::core::flashmint::FlashMint;
@@ -20,6 +20,8 @@ mod TestFlashmint {
     use aura::tests::shrine::utils::ShrineUtils;
 
     use super::FlashBorrower;
+
+    const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
@@ -39,28 +41,21 @@ mod TestFlashmint {
         IFlashMintDispatcher{contract_address: flashmint_addr}
     }
 
-    // Workaround for gas calculation error
-    fn flashmint_setup_internal() -> (ContractAddress, IFlashMintDispatcher) {
+    fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
         let shrine: ContractAddress = ShrineUtils::shrine_deploy(); 
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
         
+        let shrine_dispatcher = IShrineDispatcher{contract_address: shrine};
+
         ShrineUtils::shrine_setup(shrine);
-        ShrineUtils::advance_prices_and_set_multiplier(IShrineDispatcher{contract_address: shrine}, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
+        ShrineUtils::advance_prices_and_set_multiplier(shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
 
         // Grant flashmint contract the FLASHMINT role 
         let shrine_accesscontrol = IAccessControlDispatcher {contract_address: shrine};
         shrine_accesscontrol.grant_role(ShrineRoles::flash_mint(), flashmint.contract_address);
-        (shrine, flashmint)
-
-    }
-
-    fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
-        let (shrine, flashmint) = flashmint_setup_internal();
 
         // Mint some yin in shrine 
-        let shrine_dispatcher = IShrineDispatcher{contract_address: shrine};
-        shrine_dispatcher.deposit(ShrineUtils::yang1_addr(), 0, (50 * WAD_ONE).into());
-        shrine_dispatcher.forge(ShrineUtils::trove1_owner_addr(), 0, (20000 * WAD_ONE).into());
+        shrine_dispatcher.inject(ContractAddressZeroable::zero(), YIN_TOTAL_SUPPLY.into());
         (shrine, flashmint)
     }
 
@@ -84,8 +79,9 @@ mod TestFlashmint {
         let (shrine, flashmint) = flashmint_setup();
 
         // Check that max loan is correct
-        //let max_loan: u256 = flashmint.max_flash_loan(shrine);
-        //assert(max_loan == (1000 * WAD_ONE).into(), 'Incorrect max flash loan');
+        let max_loan: u256 = flashmint.max_flash_loan(shrine);
+        let expected_max_loan: u256 = (Wad{val:YIN_TOTAL_SUPPLY} * Wad{val: FlashMint::FLASH_MINT_AMOUNT_PCT}).into();
+        assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
     }
 
     #[test]
@@ -150,9 +146,6 @@ mod FlashBorrower {
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::utils::serde;
 
-    const SHOULD_RETURN_INCORRECT: felt252 = 0; 
-    const SHOULD_RETURN_CORRECT: felt252 = 1; 
-
     const VALID_USAGE: felt252 = 0;
     const ATTEMPT_TO_STEAL: felt252 = 1; 
     const ATTEMPT_TO_REENTER: felt252 = 2;
@@ -182,13 +175,12 @@ mod FlashBorrower {
         let should_return_correct: bool = *call_data.pop_front().unwrap() != 0;
         let action: felt252 = *call_data.pop_front().unwrap();
 
-
-        if action == ATTEMPT_TO_STEAL {
+        if action == VALID_USAGE {
+            assert(IERC20Dispatcher{contract_address: token}.balance_of(get_contract_address()) == amount, 'FB: incorrect loan amount');
+        }else if action == ATTEMPT_TO_STEAL {
             IERC20Dispatcher{contract_address: token}.transfer(contract_address_const::<0xbeef>(), amount);
         } else if action == ATTEMPT_TO_REENTER {
             flashmint::read().flash_loan(initiator, token, amount, call_data_copy);
-        } else if action == VALID_USAGE {
-            assert(IERC20Dispatcher{contract_address: token}.balance_of(get_contract_address()) == amount, 'FB: incorrect loan amount');
         }
 
         // Emit event so tests can check that the function arguments are correct 
