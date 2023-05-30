@@ -38,9 +38,6 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
-        // Final price of yangs
-        // (yang_address) -> (Wad)
-        yang_prices: LegacyMap::<ContractAddress, Wad>,
         // Keeps track of whether Caretaker is live or killed
         is_live: bool,
     }
