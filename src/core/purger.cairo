@@ -256,6 +256,9 @@ mod Purger {
     fn free(
         shrine: IShrineDispatcher, trove_id: u64, percentage_freed: Ray, recipient: ContractAddress, 
     ) -> (Span<ContractAddress>, Span<u128>) {
+        // reentrancy guard is used as a precaution
+        ReentrancyGuard::start();
+
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let mut freed_assets_amts: Array<u128> = Default::default();
@@ -276,19 +279,18 @@ mod Purger {
 
                     let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
 
-                    // reentrancy guard is used as a precaution
-                    ReentrancyGuard::start();
                     let freed_asset_amt: u128 = sentinel
                         .exit(*yang, recipient, trove_id, freed_yang);
                     freed_assets_amts.append(freed_asset_amt);
                     shrine.seize(*yang, trove_id, freed_yang);
-                    ReentrancyGuard::end();
                 },
                 Option::None(_) => {
                     break;
                 }
             };
         };
+
+        ReentrancyGuard::end();
 
         (yangs, freed_assets_amts.span())
     }
