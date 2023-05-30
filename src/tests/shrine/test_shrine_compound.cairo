@@ -806,10 +806,7 @@ mod TestShrineCompound {
 
         assert(debt == expected_debt, 'wrong compounded debt');
 
-<<<<<<< HEAD
-=======
         set_contract_address(ShrineUtils::admin());
->>>>>>> main
         shrine.withdraw(yang1_addr, ShrineUtils::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }

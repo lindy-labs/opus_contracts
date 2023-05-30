@@ -3,6 +3,7 @@ mod TestFlashmint {
     use option::OptionTrait;
     use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
     use traits::{Default, Into};
 
     use aura::core::flashmint::FlashMint;
@@ -51,6 +52,7 @@ mod TestFlashmint {
         ShrineUtils::advance_prices_and_set_multiplier(shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
 
         // Grant flashmint contract the FLASHMINT role 
+        set_contract_address(ShrineUtils::admin());
         let shrine_accesscontrol = IAccessControlDispatcher {contract_address: shrine};
         shrine_accesscontrol.grant_role(ShrineRoles::flash_mint(), flashmint.contract_address);
 
