@@ -190,7 +190,8 @@ mod Purger {
         // Transfer compensation to caller
         let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
 
-        // Cap the liquidation amount to the trove's maximum close amount
+        // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
+        // cap the amount to pay down to the absorber's balance (including if it is zero).
         let purge_amt: Wad = min(trove_debt, absorber_yin_bal);
 
         let can_absorb_any: bool = purge_amt.is_non_zero();
