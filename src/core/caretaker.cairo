@@ -137,30 +137,8 @@ mod Caretaker {
         let capped_pct: Ray = min(pct_to_reclaim, RAY_ONE.into());
 
         let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
-
-        let mut asset_amts: Array<u128> = Default::default();
-        let caretaker = get_contract_address();
-        let mut yangs_copy = yangs;
-
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    let asset = IERC20Dispatcher { contract_address: *yang };
-                    let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
-                    let asset_amt: Wad = wadray::rmul_rw(pct_to_reclaim, caretaker_balance.into());
-
-                    if asset_amt.is_zero() {
-                        asset_amts.append(0_u128);
-                        continue;
-                    }
-
-                    asset_amts.append(asset_amt.val);
-                },
-                Option::None(_) => {
-                    break (yangs, asset_amts.span());
-                },
-            };
-        }
+        let asset_amts: Span<u128> = preview_reclaim_internal(capped_pct, yangs);
+        (yangs, asset_amts)
     }
 
     //
@@ -318,19 +296,57 @@ mod Caretaker {
         // Calculate percentage of amount to be reclaimed out of total yin
         let pct_to_reclaim: Ray = wadray::rdiv_ww(burn_amt, shrine.get_total_yin());
 
-        let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
-
-        let mut asset_amts: Array<u128> = Default::default();
-        let caretaker = get_contract_address();
-        let mut yangs_copy = yangs;
-
         // Burn the reclaimed yin amount from the caller
         shrine.eject(caller, burn_amt);
 
+        let yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
+        let asset_amts: Span<u128> = preview_reclaim_internal(pct_to_reclaim, yangs);
+
         // Loop through yangs and transfer a proportionate share of each 
         // yang asset in the Caretaker to caller
+        let caretaker = get_contract_address();
+        let mut yangs_copy = yangs;
+        let mut asset_amts_copy = asset_amts;
         loop {
             match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    let asset_amt: u128 = *asset_amts_copy.pop_front().unwrap();
+
+                    if asset_amt.is_zero() {
+                        continue;
+                    }
+
+                    let success: bool = IERC20Dispatcher {
+                        contract_address: *yang
+                    }.transfer(caller, asset_amt.into());
+                    assert(success, 'Asset transfer failed');
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        Reclaim(caller, burn_amt, yangs, asset_amts);
+
+        ReentrancyGuard::end();
+        (yangs, asset_amts)
+    }
+
+    //
+    // Internal
+    //
+
+    // Helper function to return an array of asset amounts corresponding to the percentage of the total
+    // yin supply to be reclaimed.
+    fn preview_reclaim_internal(
+        pct_to_reclaim: Ray, mut yangs: Span<ContractAddress>
+    ) -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        let caretaker = get_contract_address();
+
+        loop {
+            match yangs.pop_front() {
                 Option::Some(yang) => {
                     let asset = IERC20Dispatcher { contract_address: *yang };
                     let caretaker_balance: u128 = asset.balance_of(caretaker).try_into().unwrap();
@@ -341,19 +357,12 @@ mod Caretaker {
                         continue;
                     }
 
-                    let success: bool = asset.transfer(caller, asset_amt.val.into());
-                    assert(success, 'Asset transfer failed');
                     asset_amts.append(asset_amt.val);
                 },
                 Option::None(_) => {
-                    break;
+                    break asset_amts.span();
                 },
             };
-        };
-
-        Reclaim(caller, burn_amt, yangs, asset_amts.span());
-
-        ReentrancyGuard::end();
-        (yangs, asset_amts.span())
+        }
     }
 }
