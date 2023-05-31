@@ -257,7 +257,46 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_shrine_redistribution_dust_yang_rounding() {
-        let shrine: IShrineDispatcher = redistribution_setup();
+    fn test_shrine_redistribute_dust_yang_rounding() {
+        // Manually set up troves so that the redistributed trove has a dust amount of one
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        setup_trove1(shrine);
+        setup_trove3(shrine);
+
+        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang2_addr = ShrineUtils::yang2_addr();
+
+        let trove2_owner = ShrineUtils::trove2_owner_addr();
+        let trove2_yang1_amt: Wad = 1000_u128.into();  // 1E-15 (Wad)
+        let trove2_yang2_amt: Wad = 1000000000000000000000_u128.into();  // 1_000 (Wad)
+        shrine.deposit(yang1_addr, ShrineUtils::TROVE_2, trove2_yang1_amt);
+        shrine.deposit(yang2_addr, ShrineUtils::TROVE_2, trove2_yang2_amt);
+        shrine.forge(trove2_owner, ShrineUtils::TROVE_2, TROVE2_FORGE_AMT.into());
+
+        // Save information before redistribution
+        let (_, _, trove2_value, trove2_debt) = shrine.get_trove_info(ShrineUtils::TROVE_2);
+   
+        let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
+        let (trove2_yang_values, _, _) = preview_trove_redistribution(shrine, yang_addrs, ShrineUtils::TROVE_2);
+
+        // Sanity check that the amount of debt attributed to YANG_2 falls below the thre
+        let trove2_yang1_debt = wadray::rmul_rw(wadray::rdiv_ww(*trove2_yang_values.at(0), trove2_value), trove2_debt);
+        assert(trove2_yang1_debt < Shrine::ROUNDING_THRESHOLD.into(), 'not below rounding threshold');
+
+        // Redistribute trove 2
+        shrine.melt(trove2_owner, ShrineUtils::TROVE_2, WadZeroable::zero());
+        shrine.redistribute(ShrineUtils::TROVE_2);
+
+        // Check that yang 1 unit debt is not zero
+        let expected_redistribution_id: u32 = 1;
+        assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');
+        assert(shrine.get_redistributed_unit_debt_for_yang(yang1_addr, expected_redistribution_id) == WadZeroable::zero(), 'should be skipped');
+        
+        // Check that all of trove 2's debt was distributed to yang 2
+        let expected_remaining_yang2: Wad = (ShrineUtils::TROVE1_YANG2_DEPOSIT + TROVE3_YANG2_DEPOSIT).into();
+        let expected_unit_debt_for_yang2 = trove2_debt / expected_remaining_yang2;
+        assert(shrine.get_redistributed_unit_debt_for_yang(yang2_addr, expected_redistribution_id) == expected_unit_debt_for_yang2, 'wrong unit debt');
     }
 }
