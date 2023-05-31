@@ -16,6 +16,7 @@ mod Caretaker {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
+    use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::storage_access;
     use aura::utils::u256_conversions;
@@ -181,13 +182,13 @@ mod Caretaker {
         // Note that the total debt may stil be higher than total yin after this final
         // minting of surplus debt due to loss of precision. Any excess debt is ignored
         // because trove owners can withdraw all excess collateral in their trove after 
-        // assets needed to back yin has been transferred to the Caretaker.
+        // assets needed to back total yin supply has been transferred to the Caretaker.
         equalizer::read().equalize();
 
         let shrine: IShrineDispatcher = shrine::read();
 
         // Calculate the percentage of collateral needed to back yin 1 : 1
-        // based on the last value
+        // based on the last value of all collateral in Shrine
         let (_, total_value) = shrine.get_shrine_threshold_and_value();
         let backing_pct: Ray = wadray::rdiv_ww(shrine.get_total_yin(), total_value);
 
@@ -244,6 +245,9 @@ mod Caretaker {
     fn release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
         assert(is_live::read() == false, 'System is live');
 
+        // reentrancy guard is used as a precaution
+        ReentrancyGuard::start();
+
         // Assert caller is trove owner
         let trove_owner: ContractAddress = abbot::read().get_trove_owner(trove_id);
         assert(trove_owner == get_caller_address(), 'Not trove owner');
@@ -282,6 +286,7 @@ mod Caretaker {
 
         Release(trove_owner, trove_id, yangs, asset_amts.span());
 
+        ReentrancyGuard::end();
         (yangs, asset_amts.span())
     }
 
@@ -305,6 +310,9 @@ mod Caretaker {
     fn reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
         assert(is_live::read() == false, 'System is live');
 
+        // reentrancy guard is used as a precaution
+        ReentrancyGuard::start();
+
         let caller = get_caller_address();
         let shrine: IShrineDispatcher = shrine::read();
 
@@ -319,6 +327,9 @@ mod Caretaker {
         let mut asset_amts: Array<u128> = Default::default();
         let caretaker = get_contract_address();
         let mut yangs_copy = yangs;
+
+        // Burn the reclaimed yin amount from the caller
+        shrine.eject(caller, burn_amt);
 
         // Loop through yangs and transfer a proportionate share of each 
         // yang asset in the Caretaker to caller
@@ -344,11 +355,9 @@ mod Caretaker {
             };
         };
 
-        // Burn balance
-        shrine.eject(caller, burn_amt);
-
         Reclaim(caller, burn_amt, yangs, asset_amts.span());
 
+        ReentrancyGuard::end();
         (yangs, asset_amts.span())
     }
 }
