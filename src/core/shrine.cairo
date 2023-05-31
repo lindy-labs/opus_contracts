@@ -720,6 +720,7 @@ mod Shrine {
     #[external]
     fn inject(receiver: ContractAddress, amount: Wad) {
         AccessControl::assert_has_role(ShrineRoles::INJECT);
+        // Prevent any debt creation, including via flash mints, once the Shrine is killed
         assert_live();
         forge_internal(receiver, amount);
     }

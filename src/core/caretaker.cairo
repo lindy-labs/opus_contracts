@@ -1,10 +1,9 @@
 #[contract]
 mod Caretaker {
     use array::{ArrayTrait, SpanTrait};
-    use clone::Clone;
     use cmp::min;
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
@@ -48,7 +47,7 @@ mod Caretaker {
     //
 
     #[event]
-    fn Shut(shut_time: u64) {}
+    fn Shut() {}
 
     #[event]
     fn Release(
@@ -168,21 +167,19 @@ mod Caretaker {
     // External
     //
 
-    // Admin will initially have access to `terminate`. At a later date, this access will be
-    // transferred to a new module that allows users to irreversibly deposit AURA tokens to
-    // trigger this emergency shutdown.
+    // Admin will initially have access to `shut`.
     #[external]
     fn shut() {
         AccessControl::assert_has_role(CaretakerRoles::SHUT);
 
         // Prevent repeated `shut`
-        assert(is_live::read() == true, 'Caretaker is not live');
+        assert(is_live::read(), 'Caretaker is not live');
 
         // Mint surplus debt
-        // Note that the total debt may stil be higher than total yin after this final
-        // minting of surplus debt due to loss of precision. Any excess debt is ignored
-        // because trove owners can withdraw all excess collateral in their trove after 
-        // assets needed to back total yin supply has been transferred to the Caretaker.
+        // Note that the total system debt may stil be higher than total yin after this 
+        // final minting of surplus debt due to loss of precision. However, any such 
+        // excess system debt is inconsequential because they can no longer be minted
+        // as yin. This excess debt will also not be backed by any collateral.
         equalizer::read().equalize();
 
         let shrine: IShrineDispatcher = shrine::read();
@@ -231,8 +228,7 @@ mod Caretaker {
         // the Absorber, and allow the first provider in such a situation to gain a windfall
         // of the final debt surplus minted to the Absorber.
 
-        let shut_time: u64 = get_block_timestamp();
-        Shut(shut_time);
+        Shut();
     }
 
     // Releases all remaining collateral in a trove to the trove owner directly.
@@ -267,16 +263,16 @@ mod Caretaker {
 
                     if deposited_yang.is_zero() {
                         asset_amts.append(0_u128);
-                        continue;
+                    } else {
+                        let asset_amt: u128 = sentinel
+                            .exit(*yang, trove_owner, trove_id, deposited_yang);
+                        // Seize the collateral only after assets have been 
+                        // transferred so that the asset amount per yang in Gate 
+                        // does not change and user receives the correct amount
+                        shrine.seize(*yang, trove_id, deposited_yang);
+
+                        asset_amts.append(asset_amt);
                     }
-
-                    let asset_amt: u128 = sentinel
-                        .exit(*yang, trove_owner, trove_id, deposited_yang);
-                    // Seize the collateral only after assets have been transferred so that the asset 
-                    // amount per yang in Gate does not change and user receives the correct amount
-                    shrine.seize(*yang, trove_id, deposited_yang);
-
-                    asset_amts.append(asset_amt);
                 },
                 Option::None(_) => {
                     break;
