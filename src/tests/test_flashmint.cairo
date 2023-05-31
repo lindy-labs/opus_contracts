@@ -9,6 +9,7 @@ mod TestFlashmint {
     use aura::core::flashmint::FlashMint;
     use aura::core::roles::ShrineRoles;
 
+    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait}; 
@@ -101,14 +102,18 @@ mod TestFlashmint {
     #[available_gas(20000000000)]
     fn test_flashmint_pass() {
         let (shrine, flashmint, borrower) = flash_borrower_setup();
+        let yin = ShrineUtils::yin(shrine);
 
         let mut calldata: Span<felt252> = build_calldata(true, FlashBorrower::VALID_USAGE);
 
         // `borrower` contains a check that ensures that `flashmint` actually transferred 
         // the full flash_loan amount
         flashmint.flash_loan(borrower, shrine, 1_u128.into(), calldata);
+        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 1'); 
         flashmint.flash_loan(borrower, shrine, DEFAULT_MINT_AMOUNT, calldata);
+        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 2');
         flashmint.flash_loan(borrower, shrine, (1000 * WAD_ONE).into(), calldata);
+        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 3');
 
         // TODO: check event emissions for correct calldata
     }
