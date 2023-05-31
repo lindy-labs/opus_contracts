@@ -150,7 +150,7 @@ mod Purger {
         // Melt from the funder address directly
         shrine.melt(funder, trove_id, purge_amt);
 
-        // Free collateral corresopnding to the purged amount
+        // Free collateral corresponding to the purged amount
         let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
 
         // Safety check to ensure the new LTV is lower than old LTV 
@@ -187,7 +187,8 @@ mod Purger {
 
         let compensation_pct: Ray = get_compensation_pct(trove_value);
 
-        // Transfer compensation to caller
+        // Transfer a percentage of the trove value as compensation to caller.
+        // This is independent of the amount of yin repaid by the absorber.
         let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
 
         // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
@@ -200,22 +201,20 @@ mod Purger {
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
         if can_absorb_any {
-            // Set the initial value of `percentage_freed` to 100%, assuming a full absorption
-            // If it is not a full absorption, calculate `percentage_freed` based on the absorber's yin balance.
-            let mut percentage_freed: Ray = RAY_ONE.into();
-
-            if !is_fully_absorbed {
-                percentage_freed =
-                    get_percentage_freed(
-                        trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
-                    );
-            }
+            // Calculate the percentage of the remaining trove value (after deducting the compensation) 
+            // that should be transferred to the Absorber for repaying the `purge_amt`.
+            // This value is set to 100% for a full absorption, or otherwise calculated based on the 
+            // absorber's yin balance.
+            let percentage_freed: Ray = if is_fully_absorbed {
+                RAY_ONE.into()
+            } else {
+                get_percentage_freed(trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt)
+            };
 
             // Melt the trove's debt using the absorber's yin directly
             shrine.melt(absorber.contract_address, trove_id, purge_amt);
 
-            // Free collateral corresopnding to the purged amount
-            // If `percentage_freed` is zero, return values are empty arrays.
+            // Free collateral corresponding to the purged amount
             let (yangs, absorbed_assets_amts) = free(
                 shrine, trove_id, percentage_freed, absorber.contract_address
             );
