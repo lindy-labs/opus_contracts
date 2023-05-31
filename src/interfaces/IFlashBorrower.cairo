@@ -1,5 +1,7 @@
+use array::SpanTrait;
 use starknet::ContractAddress;
-use array::ArrayTrait;
+
+use aura::utils::serde::SpanSerde;
 
 #[abi]
 trait IFlashBorrower {
@@ -8,6 +10,6 @@ trait IFlashBorrower {
         token: ContractAddress,
         amount: u256,
         fee: u256,
-        calldata: Array<felt252>
+        call_data: Span<felt252>
     ) -> u256;
 }
