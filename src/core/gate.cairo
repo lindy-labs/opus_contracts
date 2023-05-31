@@ -23,11 +23,11 @@ mod Gate {
     struct Storage {
         // the Shrine associated with this Gate
         shrine: IShrineDispatcher,
-        // the Sentinel associated with this Gate
-        // Also the only authorized caller of Gate
-        sentinel: ISentinelDispatcher,
         // the ERC-20 asset that is the underlying asset of this Gate's yang
         asset: IERC20Dispatcher,
+        // the address of the Sentinel associated with this Gate
+        // Also the only authorized caller of Gate
+        sentinel: ContractAddress,
     }
 
     //
@@ -45,10 +45,10 @@ mod Gate {
     //
 
     #[constructor]
-    fn constructor(shrine: ContractAddress, sentinel: ContractAddress, asset: ContractAddress) {
+    fn constructor(shrine: ContractAddress, asset: ContractAddress, sentinel: ContractAddress) {
         shrine::write(IShrineDispatcher { contract_address: shrine });
-        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         asset::write(IERC20Dispatcher { contract_address: asset });
+        sentinel::write(sentinel);
     }
 
     //
@@ -125,7 +125,7 @@ mod Gate {
 
         let success: bool = asset::read()
             .transfer_from(user, get_contract_address(), asset_amt.into());
-        assert(success, 'Asset transfer failed');
+        assert(success, 'GA: Asset transfer failed');
 
         Enter(user, trove_id, asset_amt, yang_amt);
 
@@ -145,7 +145,7 @@ mod Gate {
         }
 
         let success: bool = asset::read().transfer(user, asset_amt.into());
-        assert(success, 'Asset transfer failed');
+        assert(success, 'GA: Asset transfer failed');
 
         Exit(user, trove_id, asset_amt, yang_amt);
 
@@ -158,9 +158,7 @@ mod Gate {
 
     #[inline(always)]
     fn assert_sentinel() {
-        assert(
-            get_caller_address() == sentinel::read().contract_address, 'Caller is not authorized'
-        );
+        assert(get_caller_address() == sentinel::read(), 'GA: Caller is not authorized');
     }
 
     #[inline(always)]

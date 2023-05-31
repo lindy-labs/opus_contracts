@@ -32,7 +32,7 @@ mod Sentinel {
         // asset's decimals
         yang_asset_max: LegacyMap::<ContractAddress, u128>,
         // mapping between a yang address and whether its Gate is live
-        yang_to_live: LegacyMap::<ContractAddress, bool>,
+        yang_is_live: LegacyMap::<ContractAddress, bool>,
     }
 
     //
@@ -66,7 +66,7 @@ mod Sentinel {
 
     #[view]
     fn get_gate_live(yang: ContractAddress) -> bool {
-        yang_to_live::read(yang)
+        yang_is_live::read(yang)
     }
 
     #[view]
@@ -114,14 +114,15 @@ mod Sentinel {
     #[view]
     fn preview_enter(yang: ContractAddress, asset_amt: u128) -> Wad {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
+        assert(yang_is_live::read(yang), 'SE: Gate is not live');
         gate.preview_enter(asset_amt)
     }
 
     #[view]
     fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128 {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
         gate.preview_exit(yang_amt)
     }
 
@@ -139,18 +140,18 @@ mod Sentinel {
         gate: ContractAddress
     ) {
         AccessControl::assert_has_role(SentinelRoles::ADD_YANG);
-        assert(yang.is_non_zero(), 'Yang cannot be zero address');
-        assert(gate.is_non_zero(), 'Gate cannot be zero address');
-        assert(yang_to_gate::read(yang).contract_address.is_zero(), 'Yang already added');
+        assert(yang.is_non_zero(), 'SE: Yang cannot be zero address');
+        assert(gate.is_non_zero(), 'SE: Gate cannot be zero address');
+        assert(yang_to_gate::read(yang).contract_address.is_zero(), 'SE: Yang already added');
 
         let gate = IGateDispatcher { contract_address: gate };
-        assert(gate.get_asset() == yang, 'Yang does not match gate asset');
+        assert(gate.get_asset() == yang, 'SE: Asset of gate is not yang');
 
         let yang_count: u64 = yang_addresses_count::read();
         yang_addresses_count::write(yang_count + 1);
         yang_addresses::write(yang_count, yang);
         yang_to_gate::write(yang, gate);
-        yang_to_live::write(yang, true);
+        yang_is_live::write(yang, true);
         yang_asset_max::write(yang, yang_asset_max);
 
         // Require an initial deposit when adding a yang to prevent first depositor from front-running
@@ -161,7 +162,7 @@ mod Sentinel {
         let success: bool = IERC20Dispatcher {
             contract_address: yang
         }.transfer_from(caller, gate.contract_address, initial_deposit_amt);
-        assert(success, 'Yang transfer failed');
+        assert(success, 'SE: Yang transfer failed');
 
         let shrine: IShrineDispatcher = shrine::read();
         shrine.add_yang(yang, yang_threshold, yang_price, yang_rate, initial_yang_amt);
@@ -176,7 +177,7 @@ mod Sentinel {
         AccessControl::assert_has_role(SentinelRoles::SET_YANG_ASSET_MAX);
 
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
 
         let old_asset_max: u128 = yang_asset_max::read(yang);
         yang_asset_max::write(yang, new_asset_max);
@@ -189,14 +190,14 @@ mod Sentinel {
         AccessControl::assert_has_role(SentinelRoles::ENTER);
 
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
 
-        assert(yang_to_live::read(yang), 'Gate is not live');
+        assert(yang_is_live::read(yang), 'SE: Gate is not live');
 
         let yang_max: u128 = yang_asset_max::read(yang);
         let current_total: u128 = gate.get_total_assets();
 
-        assert(current_total + asset_amt <= yang_max, 'Exceeds max amount allowed');
+        assert(current_total + asset_amt <= yang_max, 'SE: Exceeds max amount allowed');
 
         gate.enter(user, trove_id, asset_amt)
     }
@@ -206,7 +207,7 @@ mod Sentinel {
         AccessControl::assert_has_role(SentinelRoles::EXIT);
 
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
 
         gate.exit(user, trove_id, yang_amt)
     }
@@ -215,7 +216,7 @@ mod Sentinel {
     fn kill_gate(yang: ContractAddress) {
         AccessControl::assert_has_role(SentinelRoles::KILL_GATE);
 
-        yang_to_live::write(yang, false);
+        yang_is_live::write(yang, false);
 
         GateKilled(yang, yang_to_gate::read(yang).contract_address);
     }
