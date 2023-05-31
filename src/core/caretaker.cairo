@@ -94,7 +94,7 @@ mod Caretaker {
     // Simulates the effects of `release` at the current on-chain conditions.
     #[view]
     fn preview_release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'System is live');
+        assert(is_live::read() == false, 'CA: System is live');
 
         // Calculate trove value using last price
         let sentinel: ISentinelDispatcher = sentinel::read();
@@ -127,7 +127,7 @@ mod Caretaker {
     // Simulates the effects of `reclaim` at the current on-chain conditions.
     #[view]
     fn preview_reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'System is live');
+        assert(is_live::read() == false, 'CA: System is live');
 
         let shrine: IShrineDispatcher = shrine::read();
 
@@ -151,7 +151,7 @@ mod Caretaker {
         AccessControl::assert_has_role(CaretakerRoles::SHUT);
 
         // Prevent repeated `shut`
-        assert(is_live::read(), 'Caretaker is not live');
+        assert(is_live::read(), 'CA: Caretaker is not live');
 
         // Mint surplus debt
         // Note that the total system debt may stil be higher than total yin after this 
@@ -217,14 +217,14 @@ mod Caretaker {
     // denominated in each respective asset's decimals.
     #[external]
     fn release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'System is live');
+        assert(is_live::read() == false, 'CA: System is live');
 
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
         // Assert caller is trove owner
         let trove_owner: ContractAddress = abbot::read().get_trove_owner(trove_id);
-        assert(trove_owner == get_caller_address(), 'Not trove owner');
+        assert(trove_owner == get_caller_address(), 'CA: Not trove owner');
 
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
@@ -282,7 +282,7 @@ mod Caretaker {
     // in each respective asset's decimals.
     #[external]
     fn reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'System is live');
+        assert(is_live::read() == false, 'CA: System is live');
 
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
@@ -319,7 +319,7 @@ mod Caretaker {
                     let success: bool = IERC20Dispatcher {
                         contract_address: *yang
                     }.transfer(caller, asset_amt.into());
-                    assert(success, 'Asset transfer failed');
+                    assert(success, 'CA: Asset transfer failed');
                 },
                 Option::None(_) => {
                     break;
