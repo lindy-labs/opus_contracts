@@ -114,8 +114,7 @@ mod Sentinel {
     #[view]
     fn preview_enter(yang: ContractAddress, asset_amt: u128) -> Wad {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
-        assert(yang_is_live::read(yang), 'SE: Gate is not live');
+        assert_can_enter(yang, gate, asset_amt);
         gate.preview_enter(asset_amt)
     }
 
@@ -190,15 +189,7 @@ mod Sentinel {
         AccessControl::assert_has_role(SentinelRoles::ENTER);
 
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
-
-        assert(yang_is_live::read(yang), 'SE: Gate is not live');
-
-        let yang_max: u128 = yang_asset_max::read(yang);
-        let current_total: u128 = gate.get_total_assets();
-
-        assert(current_total + asset_amt <= yang_max, 'SE: Exceeds max amount allowed');
-
+        assert_can_enter(yang, gate, asset_amt);
         gate.enter(user, trove_id, asset_amt)
     }
 
@@ -221,6 +212,20 @@ mod Sentinel {
         GateKilled(yang, yang_to_gate::read(yang).contract_address);
     }
 
+    //
+    // Internal
+    //
+
+    // Helper function to check that `enter` is a valid operation at the current
+    // on-chain conditions
+    #[inline(always)]
+    fn assert_can_enter(yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
+        assert(yang_is_live::read(yang), 'SE: Gate is not live');
+        let current_total: u128 = gate.get_total_assets();
+        let max_amt: u128 = yang_asset_max::read(yang);
+        assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
+    }
 
     //
     // Public AccessControl functions
