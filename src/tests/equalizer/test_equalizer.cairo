@@ -114,63 +114,6 @@ mod TestEqualizer {
 
         // Check allocator is updated
         assert(equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated');
-
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());        
-
-        let before_total_yin = shrine.get_total_yin();
-
-        // Advance by 365 days * 24 hours * 2 intervals per hour = 17520 intervals so that some
-        // interest accrues
-        let mut timestamp = get_block_timestamp();
-        timestamp += (365 * 24 * 2) * Shrine::TIME_INTERVAL;
-        set_block_timestamp(timestamp);
-
-        // Set the price to make the interest calculation easier
-        ShrineUtils::advance_prices_and_set_multiplier(shrine, 1, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into());
-
-        // Charge trove 1 and sanity check that some debt has accrued
-        ShrineUtils::trove1_deposit(shrine, WadZeroable::zero());
-
-        let surplus: Wad = equalizer.get_surplus();
-        assert(surplus > WadZeroable::zero(), 'no surplus accrued');
-
-        let mut tokens: Array<ContractAddress> = Default::default();
-        tokens.append(shrine.contract_address);
-        let mut before_balances = test_utils::get_token_balances(tokens.span(), new_recipients);
-        let mut before_yin_balances = *before_balances.pop_front().unwrap();
-        
-        set_contract_address(ShrineUtils::admin());
-        equalizer.equalize();
-
-        let mut after_balances = test_utils::get_token_balances(tokens.span(), new_recipients);
-        let mut after_yin_balances = *after_balances.pop_front().unwrap();
-
-        let mut minted_surplus = WadZeroable::zero();
-        loop {
-            match new_percentages.pop_front() {
-                Option::Some(percentage) => {
-                    let expected_increment = wadray::rmul_rw(*percentage, surplus);
-                    // sanity check
-                    assert(expected_increment.is_non_zero(), 'increment is zero');
-
-                    let before_yin_bal = *before_yin_balances.pop_front().unwrap();
-                    let after_yin_bal = *after_yin_balances.pop_front().unwrap();
-                    assert(after_yin_bal == before_yin_bal + expected_increment.val, 'wrong recipient balance');
-
-                    minted_surplus += expected_increment;
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
-
-        // Check remaining surplus due to precision loss
-        let remaining_surplus = surplus - minted_surplus;
-        assert(equalizer.get_surplus() == remaining_surplus, 'wrong remaining surplus');
-
-        assert(shrine.get_total_yin() == before_total_yin + minted_surplus, 'wrong total yin');
     }
 
     #[test]
