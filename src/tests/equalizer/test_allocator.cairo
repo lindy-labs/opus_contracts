@@ -28,8 +28,8 @@ mod TestAllocator {
 
         let (recipients, percentages) = allocator.get_allocation();
 
-        test_utils::assert_spans_equal(recipients, expected_recipients);
-        test_utils::assert_spans_equal(percentages, expected_percentages);
+        assert(recipients == expected_recipients, 'wrong recipients');
+        assert(percentages == expected_percentages, 'wrong percentages');
         assert(recipients.len() == 3, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
@@ -91,8 +91,8 @@ mod TestAllocator {
         allocator.set_allocation(new_recipients, new_percentages);
 
         let (recipients, percentages) = allocator.get_allocation();
-        test_utils::assert_spans_equal(recipients, new_recipients);
-        test_utils::assert_spans_equal(percentages, new_percentages);
+        assert(recipients == new_recipients, 'wrong recipients');
+        assert(percentages == new_percentages, 'wrong percentages');
         assert(recipients.len() == 4, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
     }

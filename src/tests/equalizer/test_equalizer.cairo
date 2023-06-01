@@ -19,7 +19,7 @@ mod TestEqualizer {
 
     use aura::tests::equalizer::utils::EqualizerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils;;
+    use aura::tests::test_utils;
 
     #[test]
     #[available_gas(20000000000)]

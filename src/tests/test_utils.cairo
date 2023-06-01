@@ -6,19 +6,27 @@ use traits::{Default, TryInto};
 use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use aura::utils::wadray;
 
-fn assert_spans_equal<T, impl TPartialEq: PartialEq<T>, impl DropT: Drop<T>, impl CopyT: Copy<T>>(
-    mut a: Span<T>, mut b: Span<T>
-) {
-    loop {
-        match a.pop_front() {
-            Option::Some(i) => {
-                assert(*i == *b.pop_front().unwrap(), 'elements not equal');
-            },
-            Option::None(_) => {
-                break;
-            }
-        };
-    };
+
+impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>> of PartialEq<Span<T>> {
+    fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
+        loop {
+            match lhs.pop_front() {
+                Option::Some(lhs) => {
+                    let rhs = *rhs.pop_front().unwrap();
+                    if *lhs !=  rhs {
+                        break false;
+                    }
+                },
+                Option::None(_) => {
+                    break true;
+                }
+            };
+        }
+    }
+
+    fn ne(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
+        !(lhs == rhs)
+    }
 }
 
 
