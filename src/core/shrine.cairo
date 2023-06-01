@@ -167,7 +167,7 @@ mod Shrine {
     fn YangPriceUpdated(yang: ContractAddress, price: Wad, cumulative_price: Wad, interval: u64) {}
 
     #[event]
-    fn YinPriceUpdate(old_price: Wad, new_price: Wad) {}
+    fn YinPriceUpdated(old_price: Wad, new_price: Wad) {}
 
     #[event]
     fn DebtCeilingUpdated(ceiling: Wad) {}
@@ -524,6 +524,7 @@ mod Shrine {
     #[external]
     fn update_yin_market_price(new_price: Wad) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_PRICE);
+        YinPriceUpdated(yin_market_price::read(), new_price);
         yin_market_price::write(new_price);
     }
 
