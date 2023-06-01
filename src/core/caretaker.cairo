@@ -96,7 +96,6 @@ mod Caretaker {
     fn preview_release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
         assert(is_live::read() == false, 'CA: System is live');
 
-        // Calculate trove value using last price
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
@@ -171,8 +170,10 @@ mod Caretaker {
         // Mint surplus debt
         // Note that the total system debt may stil be higher than total yin after this 
         // final minting of surplus debt due to loss of precision. However, any such 
-        // excess system debt is inconsequential because they can no longer be minted
-        // as yin. This excess debt will also not be backed by any collateral.
+        // excess system debt is inconsequential because only the total yin supply will 
+        // be backed by collateral, and it would not be possible to mint this excess 
+        // system debt from this point onwards. Therefore, this excess system debt would
+        // not affect the accounting for `release` and `reclaim` in this contract.
         equalizer::read().equalize();
 
         let shrine: IShrineDispatcher = shrine::read();
