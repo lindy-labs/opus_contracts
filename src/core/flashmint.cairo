@@ -23,6 +23,7 @@ mod FlashMint {
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
+    use aura::utils::serde;
     use aura::utils::u256_conversions::{U256TryIntoU128, U128IntoU256};
     use aura::utils::wadray::Wad;
 
@@ -70,7 +71,7 @@ mod FlashMint {
     fn flash_fee(token: ContractAddress, amount: u256) -> u256 {
         // as per EIP3156, if a token is not supported, this function must revert
         // and we only support flash minting of our own synthetic
-        assert(shrine::read().contract_address == token, 'Unsupported token');
+        assert(shrine::read().contract_address == token, 'FM: Unsupported token');
 
         FLASH_FEE
     }
@@ -81,14 +82,14 @@ mod FlashMint {
 
     #[external]
     fn flash_loan(
-        receiver: ContractAddress, token: ContractAddress, amount: u256, calldata: Array<felt252>
+        receiver: ContractAddress, token: ContractAddress, amount: u256, call_data: Span<felt252>
     ) -> bool {
         // prevents looping which would lead to excessive minting
         // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
         // yin to be minted, as per spec
         ReentrancyGuard::start();
 
-        assert(amount <= max_flash_loan(token), 'amount exceeds maximum');
+        assert(amount <= max_flash_loan(token), 'FM: amount exceeds maximum');
 
         let shrine = shrine::read();
 
@@ -100,9 +101,9 @@ mod FlashMint {
 
         let borrower_resp: u256 = IFlashBorrowerDispatcher {
             contract_address: receiver
-        }.on_flash_loan(initiator, token, amount, FLASH_FEE, calldata);
+        }.on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
 
-        assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'on_flash_loan callback failed');
+        assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
 
         // This function in Shrine takes care of balance validation
         shrine.eject(receiver, amount_wad);

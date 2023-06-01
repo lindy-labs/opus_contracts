@@ -1,6 +1,7 @@
 mod IAbbot;
 mod IAbsorber;
 mod IAllocator;
+mod ICaretaker;
 mod IEqualizer;
 mod IERC20;
 mod IFlashBorrower;
@@ -8,6 +9,7 @@ mod IFlashMint;
 mod IGate;
 mod IOracle;
 mod IPragma;
+mod IPurger;
 mod ISentinel;
 mod IShrine;
 mod external;

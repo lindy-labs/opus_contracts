@@ -586,15 +586,16 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
-        let (threshold, ltv, trove_value, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
+        let (threshold, _, trove_value, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
 
         // Value of trove needed for existing forged amount to be safe
-        let unsafe_trove_value: Wad = wadray::rmul_wr(
+        let unsafe_trove_value: Wad = wadray::rdiv_wr(
             ShrineUtils::TROVE1_FORGE_AMT.into(), threshold
         );
         // Amount of yang to be withdrawn to decrease the trove's value to unsafe
-        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price;
+        // `WAD_SCALE` is added to account for loss of precision from fixed point division
+        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price + WAD_SCALE.into();
         set_contract_address(ShrineUtils::admin());
         shrine.withdraw(ShrineUtils::yang1_addr(), ShrineUtils::TROVE_1, unsafe_withdraw_yang_amt);
     }
@@ -616,7 +617,7 @@ mod TestShrine {
 
         assert(shrine.get_total_debt() == forge_amt, 'incorrect system debt');
 
-        let (_, ltv, trove_value, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
+        let (_, ltv, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(debt == forge_amt, 'incorrect trove debt');
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang1_addr());
@@ -834,15 +835,14 @@ mod TestShrine {
     fn test_yin_transfer_from_pass() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
+
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
         set_contract_address(trove1_owner);
-
         yin.approve(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         set_contract_address(yin_user);
@@ -864,7 +864,6 @@ mod TestShrine {
     fn test_yin_transfer_from_unapproved_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::admin());
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
@@ -882,6 +881,7 @@ mod TestShrine {
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -904,6 +904,7 @@ mod TestShrine {
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -925,6 +926,7 @@ mod TestShrine {
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        set_contract_address(ShrineUtils::admin());
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let yin = ShrineUtils::yin(shrine.contract_address);
