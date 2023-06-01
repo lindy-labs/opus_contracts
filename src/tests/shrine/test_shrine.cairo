@@ -346,6 +346,7 @@ mod TestShrine {
     fn test_killed_withdraw_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         assert(shrine.get_live(), 'should be live');
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
         set_contract_address(ShrineUtils::admin());
         shrine.kill();
@@ -376,6 +377,8 @@ mod TestShrine {
     fn test_killed_melt_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         assert(shrine.get_live(), 'should be live');
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         set_contract_address(ShrineUtils::admin());
         shrine.kill();
