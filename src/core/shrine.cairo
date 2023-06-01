@@ -12,13 +12,13 @@ mod Shrine {
     use aura::core::roles::ShrineRoles;
 
     use aura::utils::access_control::AccessControl;
-    use aura::utils::exp::exp;
+    use aura::utils::exp::{exp, neg_exp};
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS};
+    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -46,10 +46,11 @@ mod Shrine {
     const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
 
     // Opening fee function parameters 
-    const OPENING_FEE_A: u128 = 115129254649702284200899572734; // 115.129254649702284200899572734 (ray)
+    const OPENING_FEE_A: u128 =
+        115129254649702284200899572734; // 115.129254649702284200899572734 (ray)
     const OPENING_FEE_B: u128 = 40000000000000000; // 0.04 (wad)
     const FEE_CAP: u128 = 4000000000000000000; // 400% or 4 (wad)
-    
+
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
         // (trove_id) -> (Trove)
@@ -662,7 +663,7 @@ mod Shrine {
 
         // Events
         DebtTotalUpdated(new_system_debt);
-        TroveUpdated(trove_id, new_trove_info);
+        TroveUpdated(trove_id, trove_info);
     }
 
     // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -820,13 +821,13 @@ mod Shrine {
         // This is a workaround since we don't yet have negative numbers
         let fee: Wad = if deviation >= OPENING_FEE_B.into() {
             let temp_factor: Wad = deviation - OPENING_FEE_B.into();
-            exp(wadray::rmul_rw(OPENING_FEE_A.into(), temp_factor)
+            exp(wadray::rmul_rw(OPENING_FEE_A.into(), temp_factor))
         } else {
             // This should technically be deviation - OPENING_FEE_B
-            let temp_factor: Wad = OPENING_FEE_B.into() - deviation; 
+            let temp_factor: Wad = OPENING_FEE_B.into() - deviation;
             // `neg_exp` calculates e^(-x) given x. 
-            neg_exp(wadray::rmul_rw(OPENING_FEE_A.into(), temp_factor)
-        }
+            neg_exp(wadray::rmul_rw(OPENING_FEE_A.into(), temp_factor))
+        };
 
         // Cap the fee to FEE_CAP
         min(fee, FEE_CAP.into())
@@ -1063,12 +1064,12 @@ mod Shrine {
             return;
         }
 
-        let fee_amt = forge_amt * fee; 
+        let fee_amt = forge_amt * fee;
 
         // Update trove's debt 
         // The trove owner is not credited with yin
         let mut trove: Trove = troves::read(trove_id);
-        trove.debt += fee_amt; 
+        trove.debt += fee_amt;
         troves::write(trove_id, trove);
 
         // Update total debt 

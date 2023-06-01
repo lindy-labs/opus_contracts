@@ -3,7 +3,7 @@ use option::OptionTrait;
 use traits::{Into, TryInto};
 
 use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
-use aura::utils::wadray::Wad;
+use aura::utils::wadray::{Wad, WAD_ONE, U128IntoWad};
 
 // PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 
