@@ -2,7 +2,7 @@
 mod tests {
     use aura::utils::exp::exp;
     use aura::utils::wadray::Wad;
-    use aura::utils::wadray::WAD_ONE;
+    use aura::utils::wadray::{WAD_ONE, WAD_PERCENT};
 
     // Acceptable error for e^x where x <= 20. Corresponds to 0.000000000001 (10^-12) precision
     const ACCEPTABLE_ERROR: u128 = 1000000;
@@ -24,6 +24,9 @@ mod tests {
         assert(
             exp(Wad { val: WAD_ONE }) == Wad { val: 2718281828459045235 }, 'Incorrect e^1 result'
         );
+
+        let res = exp(Wad { val: WAD_PERCENT * 2 });
+        assert_equalish(res, Wad { val: 1020201340026755810 });
 
         let res = exp(Wad { val: WAD_ONE * 10 });
         assert_equalish(res, Wad { val: 22026465794806716516957 });
