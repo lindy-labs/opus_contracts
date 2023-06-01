@@ -144,4 +144,20 @@ mod TestAllocator {
         let new_percentages = EqualizerUtils::invalid_percentages();
         allocator.set_allocation(new_recipients, new_percentages);
     }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_allocation_unauthorized_fail() {
+        let allocator = EqualizerUtils::allocator_deploy(
+            EqualizerUtils::initial_recipients(),
+            EqualizerUtils::initial_percentages()
+        );
+
+        set_contract_address(ShrineUtils::badguy());
+        allocator.set_allocation(
+            EqualizerUtils::new_recipients(),
+            EqualizerUtils::new_percentages()
+        );
+    }
 }
