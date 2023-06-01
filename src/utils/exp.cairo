@@ -190,3 +190,8 @@ fn exp(x: Wad) -> Wad {
 
     Wad { val: result.try_into().unwrap() }
 }
+
+// Computes 1/exp(x) = exp(-x)
+fn neg_exp(x: Wad) -> Wad {
+    WAD_ONE.into() / exp(x)
+}

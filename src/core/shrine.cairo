@@ -45,6 +45,11 @@ mod Shrine {
     // (ray): MAX_YANG_RATE + 1
     const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
 
+    // Opening fee function parameters 
+    const OPENING_FEE_A: u128 = 115129254649702284200899572734; // 115.129254649702284200899572734 (ray)
+    const OPENING_FEE_B: u128 = 40000000000000000; // 0.04 (wad)
+    const FEE_CAP: u128 = 4000000000000000000; // 400% or 4 (wad)
+    
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
         // (trove_id) -> (Trove)
@@ -75,6 +80,8 @@ mod Shrine {
         // - interval: timestamp divided by TIME_INTERVAL.
         // (yang_id, interval) -> (price, cumulative_price)
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
+        // Market price of yin
+        yin_market_price: Wad,
         // Maximum amount of debt that can exist at any given time
         debt_ceiling: Wad,
         // Global interest rate multiplier
@@ -159,6 +166,9 @@ mod Shrine {
     fn YangPriceUpdated(yang: ContractAddress, price: Wad, cumulative_price: Wad, interval: u64) {}
 
     #[event]
+    fn YinPriceUpdate(old_price: Wad, new_price: Wad) {}
+
+    #[event]
     fn DebtCeilingUpdated(ceiling: Wad) {}
 
     #[event]
@@ -191,6 +201,9 @@ mod Shrine {
         let prev_interval: u64 = now() - 1;
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         multiplier::write(prev_interval, (init_multiplier, init_multiplier));
+
+        // Setting initial yin market price to 1
+        yin_market_price::write(WAD_ONE.into());
 
         // Emit event
         MultiplierUpdated(init_multiplier, init_multiplier, prev_interval);
@@ -500,6 +513,19 @@ mod Shrine {
         MultiplierUpdated(new_multiplier, new_cumulative_multiplier, interval);
     }
 
+    // Updates market price of yin 
+    //
+    // Shrine normalizes the value of yin to 1 (wad)
+    // Therefore, it is expected that the market price is denominated in yin, in order to
+    // get the true deviation of the market price from the peg/target price.
+    // TODO: should there be any checks on `new_price` within Shrine? Or should they be done
+    // outside of Shrine? 
+    #[external]
+    fn update_yin_market_price(new_price: Wad) {
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_PRICE);
+        yin_market_price::write(new_price);
+    }
+
 
     // Update the base rates of all yangs
     // A base rate of USE_PREV_BASE_RATE means the base rate for the yang stays the same
@@ -620,18 +646,16 @@ mod Shrine {
         charge(trove_id);
 
         let new_system_debt = total_debt::read() + amount;
-        assert(new_system_debt <= debt_ceiling::read(), 'SH: Debt ceiling reached');
         total_debt::write(new_system_debt);
 
         // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`. 
-        let old_trove_info: Trove = troves::read(trove_id);
-        let new_trove_info = Trove {
-            charge_from: old_trove_info.charge_from,
-            debt: old_trove_info.debt + amount,
-            last_rate_era: old_trove_info.last_rate_era
-        };
-        troves::write(trove_id, new_trove_info);
+        let mut trove_info: Trove = troves::read(trove_id);
+        trove_info.debt += amount;
+        troves::write(trove_id, trove_info);
 
+        charge_opening_fee(trove_id, amount);
+
+        assert(new_system_debt <= debt_ceiling::read(), 'SH: Debt ceiling reached');
         assert_healthy(trove_id);
 
         forge_internal(user, amount);
@@ -774,6 +798,39 @@ mod Shrine {
         get_recent_multiplier_from(now())
     }
 
+    // Get yin market price 
+    #[view]
+    fn get_yin_market_price() -> Wad {
+        yin_market_price::read()
+    }
+
+    // Returns the current opening fee
+    #[view]
+    #[inline(always)]
+    fn get_opening_fee() -> Wad {
+        let yin_price: Wad = yin_market_price::read();
+
+        if yin_price >= WAD_ONE.into() {
+            return 0_u128.into();
+        }
+
+        // Won't underflow since yin_price < WAD_ONE
+        let deviation: Wad = WAD_ONE.into() - yin_price;
+
+        // This is a workaround since we don't yet have negative numbers
+        let fee: Wad = if deviation >= OPENING_FEE_B.into() {
+            let temp_factor: Wad = deviation - OPENING_FEE_B.into();
+            exp(wadray::rmul_rw(OPENING_FEE_A.into(), temp_factor)
+        } else {
+            // This should technically be deviation - OPENING_FEE_B
+            let temp_factor: Wad = OPENING_FEE_B.into() - deviation; 
+            // `neg_exp` calculates e^(-x) given x. 
+            neg_exp(wadray::rmul_rw(OPENING_FEE_A.into(), temp_factor)
+        }
+
+        // Cap the fee to FEE_CAP
+        min(fee, FEE_CAP.into())
+    }
 
     // Returns a bool indicating whether the given trove is healthy or not
     #[view]
@@ -993,6 +1050,29 @@ mod Shrine {
             }
             current_yang_id -= 1;
         }
+    }
+
+    // Debt ceiling and trove health checks should be done 
+    // after calling this function 
+    #[inline(always)]
+    fn charge_opening_fee(trove_id: u64, forge_amt: Wad) {
+        let fee: Wad = get_opening_fee();
+
+        // Early return if the fee is zero
+        if fee.is_zero() {
+            return;
+        }
+
+        let fee_amt = forge_amt * fee; 
+
+        // Update trove's debt 
+        // The trove owner is not credited with yin
+        let mut trove: Trove = troves::read(trove_id);
+        trove.debt += fee_amt; 
+        troves::write(trove_id, trove);
+
+        // Update total debt 
+        total_debt::write(total_debt::read() + fee_amt);
     }
 
     // Loop through yangs for the trove:
