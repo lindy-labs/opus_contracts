@@ -677,29 +677,25 @@ mod Shrine {
         // Charge interest
         charge(trove_id);
 
-        let old_trove_info: Trove = troves::read(trove_id);
+        let mut trove_info: Trove = troves::read(trove_id);
 
-        // If `amount` exceeds `old_trove_info.debt`, then melt all the debt. 
+        // If `amount` exceeds `trove_info.debt`, then melt all the debt. 
         // This is nice for UX so that maximum debt can be melted without knowing the exact 
         // of debt in the trove down to the 10**-18. 
-        let melt_amt: Wad = min(old_trove_info.debt, amount);
+        let melt_amt: Wad = min(trove_info.debt, amount);
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
 
         // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
-        let new_trove_info: Trove = Trove {
-            charge_from: old_trove_info.charge_from,
-            debt: old_trove_info.debt - melt_amt,
-            last_rate_era: old_trove_info.last_rate_era
-        };
-        troves::write(trove_id, new_trove_info);
+        trove_info.debt -= melt_amt;
+        troves::write(trove_id, trove_info);
 
         // Update user balance
         melt_internal(user, melt_amt);
 
         // Events
         DebtTotalUpdated(new_system_debt);
-        TroveUpdated(trove_id, new_trove_info);
+        TroveUpdated(trove_id, trove_info);
     }
 
     // Withdraw a specified amount of a Yang from a Trove without trove safety check.
@@ -721,7 +717,7 @@ mod Shrine {
         // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
         // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
         // system has accounted for the accrued interest.
-        let trove: Trove = troves::read(trove_id);
+        let mut trove: Trove = troves::read(trove_id);
 
         // Increment redistribution ID
         let redistribution_id: u32 = redistributions_count::read() + 1;
@@ -732,10 +728,9 @@ mod Shrine {
             redistribution_id, trove_id, trove_value, trove.debt, current_interval
         );
 
-        let updated_trove = Trove {
-            charge_from: current_interval, debt: 0_u128.into(), last_rate_era: trove.last_rate_era
-        };
-        troves::write(trove_id, updated_trove);
+        trove.charge_from = current_interval;
+        trove.debt = 0_u128.into();
+        troves::write(trove_id, trove);
 
         // Event 
         TroveRedistributed(redistribution_id, trove_id, redistributed_debt);
