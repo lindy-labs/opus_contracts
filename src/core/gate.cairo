@@ -7,7 +7,6 @@ mod Gate {
     use zeroable::Zeroable;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::pow::pow10;
     use aura::utils::wadray;
