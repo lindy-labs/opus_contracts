@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod TestShrine {
+mod TestShrineRedistribution {
     use array::{ArrayTrait, SpanTrait};
     use integer::BoundedU256;
     use option::OptionTrait;
