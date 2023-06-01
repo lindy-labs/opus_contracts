@@ -1,29 +1,20 @@
 #[cfg(test)]
 mod TestShrineRedistribution {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU256;
     use option::OptionTrait;
     use traits::{Default, Into};
-    use starknet::{contract_address_const, ContractAddress};
-    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
     use aura::core::shrine::Shrine;
-    use aura::core::roles::ShrineRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_SCALE
-    };
+    use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     use aura::tests::shrine::utils::ShrineUtils;
-
-    use debug::PrintTrait;
 
     //
     // Setup
@@ -69,8 +60,7 @@ mod TestShrineRedistribution {
 
     // Helper function to set up three troves
     // - Trove 1 deposits and forges the amounts specified in `src/tests/shrine/utils.cairo`
-    // - Trove 2 mimics trove 1 except with all amounts halved
-    // - Trove 3 deposits and forges the amounts specified in this file
+    // - Troves 2 and 3 deposits and forges the amounts specified in this file
     fn redistribution_setup() -> IShrineDispatcher {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
@@ -103,7 +93,8 @@ mod TestShrineRedistribution {
 
                     trove_yang_values.append(yang_price * deposited);
 
-                    // Calculate error after redistributing debt for each yang
+                    // Calculate redistributed unit debt and error after redistributing debt
+                    // for each yang
                     let expected_yang_debt = yang_value / trove_value * trove_debt;
                     let expected_remaining_yang = shrine.get_yang_total(*yang) - deposited;
                     let expected_unit_debt = expected_yang_debt / expected_remaining_yang;
@@ -154,6 +145,7 @@ mod TestShrineRedistribution {
 
         let mut expected_trove2_debt = before_trove2_debt;
 
+        // Check unit debt
         let mut yang_addrs_copy = yang_addrs;
         loop {
             match yang_addrs_copy.pop_front() {
@@ -177,7 +169,7 @@ mod TestShrineRedistribution {
 
         assert(after_trove2_debt == expected_trove2_debt, 'wrong debt after redistribution');
         
-        //assert(shrine.get_trove_redistribution_id(ShrineUtils::TROVE_2) == 0, 'wrong redistribution id');
+        assert(shrine.get_trove_redistribution_id(ShrineUtils::TROVE_2) == 0, 'wrong redistribution id');
         // Trigger an update in trove 2 with an empty melt
         shrine.melt(trove1_owner, ShrineUtils::TROVE_2, WadZeroable::zero());
         // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
@@ -220,6 +212,7 @@ mod TestShrineRedistribution {
 
         let mut yang_addrs_copy = yang_addrs;
 
+        // Check unit debt
         loop {
             match yang_addrs_copy.pop_front() {
                 Option::Some(yang) => {
@@ -249,6 +242,7 @@ mod TestShrineRedistribution {
         let (_, _, _, after_trove3_debt) = shrine.get_trove_info(ShrineUtils::TROVE_3);
         assert(after_trove3_debt == expected_trove3_debt, 'wrong debt after redistribution');
         
+        assert(shrine.get_trove_redistribution_id(ShrineUtils::TROVE_3) == 0, 'wrong redistribution id');
         // Trigger an update in trove 3 with an empty melt
         shrine.melt(trove2_owner, ShrineUtils::TROVE_3, WadZeroable::zero());
         // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
@@ -275,7 +269,7 @@ mod TestShrineRedistribution {
         shrine.deposit(yang2_addr, ShrineUtils::TROVE_2, trove2_yang2_amt);
         shrine.forge(trove2_owner, ShrineUtils::TROVE_2, TROVE2_FORGE_AMT.into());
 
-        // Save information before redistribution
+        // Get information before redistribution
         let (_, _, trove2_value, trove2_debt) = shrine.get_trove_info(ShrineUtils::TROVE_2);
    
         let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
