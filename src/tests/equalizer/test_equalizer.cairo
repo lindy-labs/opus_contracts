@@ -26,6 +26,8 @@ mod TestEqualizer {
     fn test_equalizer_deploy() {
         let (shrine, equalizer, allocator) = EqualizerUtils::equalizer_deploy();
 
+        assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
+
         let equalizer_ac = IAccessControlDispatcher { contract_address: equalizer.contract_address };
         let admin = ShrineUtils::admin();
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
@@ -54,8 +56,6 @@ mod TestEqualizer {
 
         // Charge trove 1 and sanity check that some debt has accrued
         ShrineUtils::trove1_deposit(shrine, WadZeroable::zero());
-
-        let (_, _, _, after_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
 
         let surplus: Wad = equalizer.get_surplus();
         assert(surplus > WadZeroable::zero(), 'no surplus accrued');
@@ -131,8 +131,6 @@ mod TestEqualizer {
 
         // Charge trove 1 and sanity check that some debt has accrued
         ShrineUtils::trove1_deposit(shrine, WadZeroable::zero());
-
-        let (_, _, _, after_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
 
         let surplus: Wad = equalizer.get_surplus();
         assert(surplus > WadZeroable::zero(), 'no surplus accrued');
