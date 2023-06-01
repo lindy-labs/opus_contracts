@@ -12,8 +12,7 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
         loop {
             match lhs.pop_front() {
                 Option::Some(lhs) => {
-                    let rhs = *rhs.pop_front().unwrap();
-                    if *lhs !=  rhs {
+                    if *lhs != *rhs.pop_front().unwrap() {
                         break false;
                     }
                 },
@@ -24,7 +23,7 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
         }
     }
 
-    fn ne(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
+    fn ne(lhs: Span<T>, rhs: Span<T>) -> bool {
         !(lhs == rhs)
     }
 }
