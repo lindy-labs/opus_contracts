@@ -141,12 +141,10 @@ fn exp(x: Wad) -> Wad {
     let mut series_sum: u256 = ONE_20; // The initial one in the sum, with 20 decimal places.
     let x: u256 = x.into();
     let mut term: u256 = x; // Each term in the sum, where the nth term is (x^n / n!).
+    series_sum += term;
 
     // Each term (x^n / n!) equals the previous one times x, divided by n. Since x is a fixed point number,
     // multiplying by it requires dividing by ONE_20, but dividing by the non-fixed point n values does not.
-
-    term = term * x / 100000000000000000000_u256;
-    series_sum += term;
 
     term = term * x / 200000000000000000000_u256;
     series_sum += term;
