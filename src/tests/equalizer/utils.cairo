@@ -77,11 +77,31 @@ mod EqualizerUtils {
         recipients.span()
     }
 
+    fn new_recipients() -> Span<ContractAddress> {
+        let mut recipients: Array<ContractAddress> = Default::default();
+        recipients.append(contract_address_const::<0x34563456>());
+        recipients.append(contract_address_const::<0x45634563>());
+        recipients.append(contract_address_const::<0x56345634>());
+        recipients.append(contract_address_const::<0x63456345>());
+
+        recipients.span()
+    }
+
     fn initial_percentages() -> Span<Ray> {
         let mut percentages: Array<Ray> = Default::default();
         percentages.append(150000000000000000000000000_u128.into());  // 15% (Ray)
         percentages.append(500000000000000000000000000_u128.into());  // 50% (Ray)
         percentages.append(350000000000000000000000000_u128.into());  // 35% (Ray)
+
+        percentages.span()
+    }
+
+    fn new_percentages() -> Span<Ray> {
+        let mut percentages: Array<Ray> = Default::default();
+        percentages.append(125000000000000000000000000_u128.into());  // 12.5% (Ray)
+        percentages.append(372500000000000000000000000_u128.into());  // 37.25% (Ray)
+        percentages.append(216350000000000000000000000_u128.into());  // 21.635% (Ray)
+        percentages.append(286150000000000000000000000_u128.into());  // 28.615% (Ray)
 
         percentages.span()
     }

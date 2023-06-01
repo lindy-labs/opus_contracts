@@ -2,6 +2,7 @@
 mod TestAllocator {
     use array::{ArrayTrait, SpanTrait};
     use starknet::ContractAddress;
+    use starknet::testing::set_contract_address;
     use traits::Default;
 
     use aura::core::roles::AllocatorRoles;
@@ -29,6 +30,7 @@ mod TestAllocator {
 
         test_utils::assert_spans_equal(recipients, expected_recipients);
         test_utils::assert_spans_equal(percentages, expected_percentages);
+        assert(recipients.len() == 3, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
         let allocator_ac = IAccessControlDispatcher { contract_address: allocator.contract_address };
@@ -73,5 +75,73 @@ mod TestAllocator {
             EqualizerUtils::initial_recipients(),
             EqualizerUtils::invalid_percentages()
         );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_allocation_pass() {
+        let allocator = EqualizerUtils::allocator_deploy(
+            EqualizerUtils::initial_recipients(),
+            EqualizerUtils::initial_percentages()
+        );
+
+        set_contract_address(ShrineUtils::admin());
+        let new_recipients = EqualizerUtils::new_recipients();
+        let new_percentages = EqualizerUtils::new_percentages();
+        allocator.set_allocation(new_recipients, new_percentages);
+
+        let (recipients, percentages) = allocator.get_allocation();
+        test_utils::assert_spans_equal(recipients, new_recipients);
+        test_utils::assert_spans_equal(percentages, new_percentages);
+        assert(recipients.len() == 4, 'wrong array length');
+        assert(recipients.len() == percentages.len(), 'array length mismatch');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('AL: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
+    fn test_set_allocation_arrays_mismatch_fail() {
+        let allocator = EqualizerUtils::allocator_deploy(
+            EqualizerUtils::initial_recipients(),
+            EqualizerUtils::initial_percentages()
+        );
+
+        set_contract_address(ShrineUtils::admin());
+        let new_recipients = EqualizerUtils::new_recipients();
+        let mut new_percentages = EqualizerUtils::new_percentages();
+        new_percentages.pop_front();
+        allocator.set_allocation(new_recipients, new_percentages);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('AL: No recipients', 'ENTRYPOINT_FAILED'))]
+    fn test_set_allocation_no_recipients_fail() {
+        let allocator = EqualizerUtils::allocator_deploy(
+            EqualizerUtils::initial_recipients(),
+            EqualizerUtils::initial_percentages()
+        );
+
+        set_contract_address(ShrineUtils::admin());
+        let recipients: Array<ContractAddress> = Default::default();
+        let percentages: Array<Ray> = Default::default();
+        allocator.set_allocation(recipients.span(), percentages.span());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE', 'ENTRYPOINT_FAILED'))]
+    fn test_set_allocation_invalid_percentage_fail() {
+        let allocator = EqualizerUtils::allocator_deploy(
+            EqualizerUtils::initial_recipients(),
+            EqualizerUtils::initial_percentages()
+        );
+
+        set_contract_address(ShrineUtils::admin());
+        let mut new_recipients = EqualizerUtils::new_recipients();
+        // Pop one off new recipients to set it to same length as invalid percentages
+        new_recipients.pop_front();
+        let new_percentages = EqualizerUtils::invalid_percentages();
+        allocator.set_allocation(new_recipients, new_percentages);
     }
 }
