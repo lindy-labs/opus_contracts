@@ -28,17 +28,6 @@ mod EqualizerRoles {
     }
 }
 
-mod GateRoles {
-    const ENTER: u128 = 1;
-    const EXIT: u128 = 2;
-    const KILL: u128 = 4;
-
-    #[inline(always)]
-    fn default_admin_role() -> u128 {
-        KILL
-    }
-}
-
 mod PragmaRoles {
     const ADD_YANG: u128 = 1;
     const SET_ORACLE_ADDRESS: u128 = 2;
@@ -105,10 +94,11 @@ mod SentinelRoles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
     const EXIT: u128 = 4;
-    const SET_YANG_ASSET_MAX: u128 = 8;
+    const KILL_GATE: u128 = 8;
+    const SET_YANG_ASSET_MAX: u128 = 16;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + SET_YANG_ASSET_MAX
+        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX
     }
 }
