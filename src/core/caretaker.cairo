@@ -26,7 +26,7 @@ mod Caretaker {
     // Constants
     //
 
-    // A dummy trove ID for Caretaker
+    // A dummy trove ID for Caretaker, required in Gate to emit events
     const DUMMY_TROVE_ID: u64 = 0;
 
     struct Storage {
@@ -186,12 +186,11 @@ mod Caretaker {
         // Cap the percentage to 100%
         let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
 
-        // Loop through yangs and transfer the amount of each yang asset needed
-        // to back yin to this contract.
-        // This is equivalent to a final redistribution enforced on all trove
-        // owners.
-        // Since yang assets are transferred out of the Gate and the total number 
-        // of yang is not updated in Shrine, the asset amount per yang will decrease. 
+        // Loop through yangs and transfer the amount of each yang asset needed to back 
+        // yin to this contract. This is equivalent to a final redistribution enforced 
+        // on all trove owners.
+        // Since yang assets are transferred out of the Gate and the total number of yang 
+        // is not updated in Shrine, the asset amount per yang in Gate will decrease. 
         let sentinel: ISentinelDispatcher = sentinel::read();
         let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let caretaker = get_contract_address();
@@ -314,8 +313,8 @@ mod Caretaker {
         // This call will revert if `yin` is greater than the caller's balance.
         shrine.eject(caller, yin);
 
-        // Loop through yangs and transfer a proportionate share of each 
-        // yang asset in the Caretaker to caller
+        // Loop through yangs and transfer a proportionate share of each yang asset in 
+        // the Caretaker to caller
         let mut yangs_copy = yangs;
         let mut asset_amts_copy = asset_amts;
         loop {
