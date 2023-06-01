@@ -1,6 +1,7 @@
 mod abbot;
 mod absorber;
 mod allocator;
+mod caretaker;
 mod equalizer;
 mod flashmint;
 mod gate;
