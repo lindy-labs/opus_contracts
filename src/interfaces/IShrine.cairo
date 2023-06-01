@@ -19,7 +19,7 @@ trait IShrine {
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
-    fn get_redistributions_count() -> u64;
+    fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;
     fn get_redistributed_unit_debt_for_yang(yang: ContractAddress, redistribution_id: u32) -> Wad;
     fn get_live() -> bool;
