@@ -320,8 +320,7 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
         shrine.kill();
 
-        // Check withdraw pass
-        let withdraw_amt: Wad = WAD_SCALE.into();
+        // Check eject pass
         shrine.eject(ShrineUtils::trove1_owner_addr(), 1_u128.into());
 
         assert(!shrine.get_live(), 'should not be live');
