@@ -322,11 +322,7 @@ mod TestShrine {
 
         // Check withdraw pass
         let withdraw_amt: Wad = WAD_SCALE.into();
-        ShrineUtils::trove1_withdraw(shrine, withdraw_amt);
-
-        // Check melt pass
-        let melt_amt: Wad = (forge_amt.val / 2).into();
-        ShrineUtils::trove1_melt(shrine, melt_amt);
+        shrine.eject(ShrineUtils::trove1_owner_addr(), 1_u128.into());
 
         assert(!shrine.get_live(), 'should not be live');
     }
@@ -348,6 +344,20 @@ mod TestShrine {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: System is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_killed_withdraw_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        assert(shrine.get_live(), 'should be live');
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.kill();
+        assert(!shrine.get_live(), 'should not be live');
+
+        ShrineUtils::trove1_withdraw(shrine, 1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: System is not live', 'ENTRYPOINT_FAILED'))]
     fn test_killed_forge_fail() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         assert(shrine.get_live(), 'should be live');
@@ -359,6 +369,34 @@ mod TestShrine {
 
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         ShrineUtils::trove1_forge(shrine, forge_amt);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: System is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_killed_melt_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        assert(shrine.get_live(), 'should be live');
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.kill();
+        assert(!shrine.get_live(), 'should not be live');
+
+        ShrineUtils::trove1_melt(shrine, 1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: System is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_killed_inject_fail() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        assert(shrine.get_live(), 'should be live');
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.kill();
+        assert(!shrine.get_live(), 'should not be live');
+
+        shrine.inject(ShrineUtils::admin(), 1_u128.into());
     }
 
     #[test]
