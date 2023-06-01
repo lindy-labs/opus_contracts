@@ -6,12 +6,18 @@ mod EqualizerUtils {
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
         ContractAddress, contract_address_to_felt252, SyscallResultTrait
     };
+    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::testing::set_contract_address;
 
     use aura::core::allocator::Allocator;
-    use aura::core::roles::AllocatorRoles;
+    use aura::core::equalizer::Equalizer;
+    use aura::core::roles::ShrineRoles;
 
     use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
     use aura::utils::wadray;
     use aura::utils::wadray::Ray;
@@ -155,5 +161,31 @@ mod EqualizerUtils {
             .unwrap_syscall();
 
         IAllocatorDispatcher { contract_address: allocator_addr }
+    }
+
+    fn equalizer_deploy() -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let allocator: IAllocatorDispatcher = allocator_deploy(initial_recipients(), initial_percentages());
+        let admin = ShrineUtils::admin();
+
+        let mut calldata = Default::default();
+        calldata.append(contract_address_to_felt252(admin));
+        calldata.append(contract_address_to_felt252(shrine.contract_address));
+        calldata.append(contract_address_to_felt252(allocator.contract_address));
+
+        let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(Equalizer::TEST_CLASS_HASH)
+            .unwrap();
+        let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false)
+            .unwrap_syscall();
+
+        set_contract_address(admin);
+        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine.contract_address };
+        shrine_ac.grant_role(ShrineRoles::INJECT, equalizer_addr);
+
+        set_contract_address(ContractAddressZeroable::zero());
+
+        let equalizer: IEqualizerDispatcher = IEqualizerDispatcher { contract_address: equalizer_addr };
+
+        (shrine, equalizer, allocator)
     }
 }
