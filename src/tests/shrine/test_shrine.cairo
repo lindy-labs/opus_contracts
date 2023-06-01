@@ -18,10 +18,12 @@ mod TestShrine {
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_SCALE
+        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
+
+    use debug::PrintTrait;
 
     //
     // Tests - Deployment and initial setup of Shrine
@@ -698,6 +700,37 @@ mod TestShrine {
             );
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_shrine_forge_nonzero_opening_fee() {
+        let error_margin: Wad = 10000000000000000_u128.into(); // 0.01 (wad)
+        let yin_price1: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
+        let yin_price2: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
+        let forge_amt: Wad = 100000000000000000000_u128.into(); // 100 (wad)
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.update_yin_market_price(yin_price1);
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::trove1_forge(shrine, forge_amt);
+
+        let fee: Wad = shrine.get_opening_fee();
+
+        let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
+        let charged_fee = debt - forge_amt;
+        ShrineUtils::assert_equalish(charged_fee, fee * forge_amt, error_margin, 'wrong opening fee charged #1');
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.update_yin_market_price(yin_price1);
+        ShrineUtils::trove1_forge(shrine, forge_amt);
+
+        let fee: Wad = shrine.get_opening_fee();
+
+        let (_, _, _, new_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
+        let charged_fee = new_debt - debt - forge_amt;
+        ShrineUtils::assert_equalish(charged_fee, fee * forge_amt, error_margin, 'wrong opening fee charged #2');
+    }
+
     //
     // Tests - Trove melt
     //
@@ -1300,5 +1333,43 @@ mod TestShrine {
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
         assert(threshold == expected_threshold, 'wrong threshold');
         assert(value == expected_value, 'wrong value');
+    }
+
+    // Tests - Getter for opening fee
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_shrine_get_opening_fee() {
+        let error_margin: Wad = 5_u128.into(); // 5 * 10^-18 (wad)
+        let first_yin_price: Wad = 999999999999999999_u128.into(); // 0.999... (wad)
+        let second_yin_price: Wad = 990000000000000000_u128.into(); // 0.99 (wad)
+        let third_yin_price: Wad = 920000000000000000_u128.into(); // 0.92 (wad)
+        let fourth_yin_price: Wad = WAD_ONE.into(); // 1 (wad)
+        let fifth_yin_price: Wad = 1100000000000000000_u128.into(); // 1.1 (wad)
+
+        let first_opening_fee: Wad = WAD_PERCENT.into(); // 0.01 (wad)
+        let second_opening_fee: Wad = 31622776601683793_u128.into(); // 0.031622776601683793 (wad)
+
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        
+        set_contract_address(ShrineUtils::admin());
+
+        shrine.update_yin_market_price(first_yin_price); 
+        let first_fee = shrine.get_opening_fee();
+        ShrineUtils::assert_equalish(first_fee, first_opening_fee, error_margin, 'wrong opening fee #1');
+
+        shrine.update_yin_market_price(second_yin_price);
+        let second_fee = shrine.get_opening_fee();
+        ShrineUtils::assert_equalish(second_fee, second_opening_fee, error_margin, 'wrong opening fee #2');
+
+        // Opening fee should be capped to `FEE_CAP`
+        shrine.update_yin_market_price(third_yin_price);
+        assert(shrine.get_opening_fee() == Shrine::FEE_CAP.into(), 'wrong opening fee #3');
+
+        // Opening fee should be 0 for yin price >= 1
+        shrine.update_yin_market_price(fourth_yin_price);
+        assert(shrine.get_opening_fee() == WadZeroable::zero(), 'wrong opening fee #4');
+
+        shrine.update_yin_market_price(fifth_yin_price);
+        assert(shrine.get_opening_fee() == WadZeroable::zero(), 'wrong opening fee #5');
     }
 }

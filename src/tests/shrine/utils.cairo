@@ -534,4 +534,12 @@ mod ShrineUtils {
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
     }
+
+    fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+        if a >= b {
+            assert(a - b <= error, message);
+        } else {
+            assert(b - a <= error, message);
+        }
+    }
 }

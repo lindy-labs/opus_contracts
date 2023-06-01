@@ -528,7 +528,6 @@ mod Shrine {
         yin_market_price::write(new_price);
     }
 
-
     // Update the base rates of all yangs
     // A base rate of USE_PREV_BASE_RATE means the base rate for the yang stays the same
     // Takes an array of yangs and their updated rates.
