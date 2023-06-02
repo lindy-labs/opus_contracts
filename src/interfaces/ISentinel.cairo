@@ -20,9 +20,10 @@ trait ISentinel<TStorage> {
     fn add_yang(
         ref self: TStorage,
         yang: ContractAddress,
-        yang_max: Wad,
+        yang_asset_max: u128,
         yang_threshold: Ray,
         yang_price: Wad,
+        yang_rate: Ray,
         gate: ContractAddress
     );
     fn set_yang_asset_max(ref self: TStorage, yang: ContractAddress, new_asset_max: u128);
