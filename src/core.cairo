@@ -1,6 +1,6 @@
 mod abbot;
 mod absorber;
-//mod allocator;
+mod allocator;
 //mod caretaker;
 //mod equalizer;
 mod flashmint;

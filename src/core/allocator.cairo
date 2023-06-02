@@ -7,13 +7,14 @@ mod Allocator {
 
     use aura::core::roles::AllocatorRoles;
 
-    use aura::interfaces::IAllocator;
+    use aura::interfaces::IAllocator::IAllocator;
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
+    #[starknet::storage]
     struct Storage {
         // Number of recipients in the current allocation
         recipients_count: u32,
@@ -50,12 +51,12 @@ mod Allocator {
 
     #[constructor]
     fn constructor(
-        admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
+        ref self: Storage, admin: ContractAddress, recipients: Span<ContractAddress>, percentages: Span<Ray>
     ) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(AllocatorRoles::default_admin_role(), admin);
 
-        set_allocation_internal(recipients, percentages);
+        self.set_allocation_internal(recipients, percentages);
     }
 
     impl IAllocatorImpl of IAllocator<Storage> {
@@ -96,7 +97,7 @@ mod Allocator {
         ) {
             AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
 
-            set_allocation_internal(recipients, percentages);
+            self.set_allocation_internal(recipients, percentages);
         }
     }
 
@@ -122,7 +123,7 @@ mod Allocator {
             let mut idx: u32 = 0;
 
             // Event is emitted here because the spans will be modified in the loop below
-            AllocationUpdated(recipients, percentages);
+            self.emit(Event::AllocationUpdated(AllocationUpdated{recipients, percentages}));
 
             loop {
                 match recipients.pop_front() {
@@ -146,49 +147,5 @@ mod Allocator {
 
             self.recipients_count.write(recipients_len);
         }
-    }
-
-    //
-    // Public AccessControl functions
-    //
-
-    #[view]
-    fn get_roles(account: ContractAddress) -> u128 {
-        AccessControl::get_roles(account)
-    }
-
-    #[view]
-    fn has_role(role: u128, account: ContractAddress) -> bool {
-        AccessControl::has_role(role, account)
-    }
-
-    #[view]
-    fn get_admin() -> ContractAddress {
-        AccessControl::get_admin()
-    }
-
-    #[external]
-    fn grant_role(role: u128, account: ContractAddress) {
-        AccessControl::grant_role(role, account);
-    }
-
-    #[external]
-    fn revoke_role(role: u128, account: ContractAddress) {
-        AccessControl::revoke_role(role, account);
-    }
-
-    #[external]
-    fn renounce_role(role: u128) {
-        AccessControl::renounce_role(role);
-    }
-
-    #[external]
-    fn set_pending_admin(new_admin: ContractAddress) {
-        AccessControl::set_pending_admin(new_admin);
-    }
-
-    #[external]
-    fn accept_admin() {
-        AccessControl::accept_admin();
     }
 }
