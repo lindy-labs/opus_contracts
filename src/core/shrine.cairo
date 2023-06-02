@@ -47,6 +47,7 @@ mod Shrine {
     // (ray): MAX_YANG_RATE + 1
     const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
 
+    #[derive(Copy)]
     #[starknet::storage]
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -189,7 +190,7 @@ mod Shrine {
 
     #[derive(Drop, starknet::Event)]
     struct YangRatesUpdated {
-        new_rate_idx: u64,
+        new_era: u64,
         current_interval: u64,
         yangs: Span<ContractAddress>,
         new_rates: Span<Ray>,
@@ -308,7 +309,7 @@ mod Shrine {
             }
 
             let debt: Wad = self.compound(trove_id, trove, interval);
-            let debt: Wad = self.pull_redistributed_debt(trove_id, debt, false);
+            let (debt, _) = self.pull_redistributed_debt(trove_id, debt);
             let ltv: Ray = wadray::rdiv_ww(debt, value);
 
             (threshold, ltv, value, debt)
@@ -428,16 +429,16 @@ mod Shrine {
             self.yang_rates.write((yang_id, latest_era), initial_rate);
 
             // Event emissions
-            self.emit(Event::YangAdded(YangAdded{ yang, yang_id, initial_price, initial_rate }));
+            self.emit(Event::YangAdded(YangAdded{ yang, yang_id, start_price: initial_price, initial_rate }));
             self.emit(Event::YangsCountUpdated(YangsCountUpdated{ count: yang_id }));
-            self.emit(Event::YangTotalUpdated(YangTotalUpdated{ yang, new_total: initial_yang_amt }));
+            self.emit(Event::YangTotalUpdated(YangTotalUpdated{ yang, total: initial_yang_amt }));
         }
         fn set_debt_ceiling(ref self: Storage, new_ceiling: Wad) {
             AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
             self.debt_ceiling.write(new_ceiling);
 
             //Event emission
-            self.emit(Event::DebtCeilingUpdated(DebtCeilingUpdated{ ceiling }));
+            self.emit(Event::DebtCeilingUpdated(DebtCeilingUpdated{ ceiling: new_ceiling }));
         }
         fn set_threshold(ref self: Storage, yang: ContractAddress, new_threshold: Ray) {
             AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
@@ -446,7 +447,7 @@ mod Shrine {
             self.thresholds.write(self.get_valid_yang_id(yang), new_threshold);
 
             // Event emission
-            self.emit(Event::ThresholdUpdated(ThresholdUpdated{ yang, new_threshold }));
+            self.emit(Event::ThresholdUpdated(ThresholdUpdated{ yang, threshold: new_threshold }));
         }
         fn kill(ref self: Storage, ) {
             AccessControl::assert_has_role(ShrineRoles::KILL);
@@ -506,7 +507,7 @@ mod Shrine {
                 + new_multiplier;
             self.multiplier.write(interval, (new_multiplier, new_cumulative_multiplier));
 
-            MultiplierUpdated(new_multiplier, new_cumulative_multiplier, interval);
+            self.emit(Event::MultiplierUpdated(MultiplierUpdated{ multiplier: new_multiplier, cumulative_multiplier: new_cumulative_multiplier, interval }));
         }
 
 
@@ -541,7 +542,7 @@ mod Shrine {
             }
 
             // Event is emitted here because the spans will be modified in the loop below
-            self.emit(Event::YangRatesUpdated(YangRatesUpdated{era: new_era, interval: current_interval, yangs, new_rates}));
+            self.emit(Event::YangRatesUpdated(YangRatesUpdated{new_era, current_interval, yangs, new_rates}));
 
             // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
             // yang's rate isn't being updated, and so we get the previous value.
@@ -604,8 +605,8 @@ mod Shrine {
             self.deposits.write((yang_id, trove_id), new_trove_balance);
 
             // Events
-            self.emit(Event::YangTotalUpdated(YangTotalUpdated(yang, new_total)));
-            self.emit(Event::DepositUpdated(DepositUpdated(yang, trove_id, new_trove_balance)));
+            self.emit(Event::YangTotalUpdated(YangTotalUpdated{yang, total: new_total}));
+            self.emit(Event::DepositUpdated(DepositUpdated{yang, trove_id, amount: new_trove_balance}));
         }
 
 
@@ -644,8 +645,8 @@ mod Shrine {
             self.forge_internal(user, amount);
 
             // Events
-            self.emit(Event::DebtTotalUpdated(DebtTotalUpdated{new_system_debt}));
-            self.emit(Event::TroveUpdated(TroveUpdated{trove_id, new_trove_info}));
+            self.emit(Event::DebtTotalUpdated(DebtTotalUpdated{total: new_system_debt}));
+            self.emit(Event::TroveUpdated(TroveUpdated{trove_id, trove: new_trove_info}));
         }
 
         // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -679,9 +680,8 @@ mod Shrine {
             self.melt_internal(user, melt_amt);
 
             // Events
-            DebtTotalUpdated(new_system_debt);
-            self.emit(Event::DebtTotalUpdated(DebtTotalUpdated{new_system_debt}));
-            self.emit(Event::TroveUpdated(TroveUpdated{trove_id, new_trove_info}));
+            self.emit(Event::DebtTotalUpdated(DebtTotalUpdated{total: new_system_debt}));
+            self.emit(Event::TroveUpdated(TroveUpdated{trove_id, trove: new_trove_info}));
         }
 
         // Withdraw a specified amount of a Yang from a Trove without trove safety check.
@@ -718,7 +718,7 @@ mod Shrine {
 
             // Event 
             self.emit(Event::TroveRedistributed(TroveRedistributed{
-                redistribution_id, trove_id, redistributed_debt
+                redistribution_id, trove_id, debt: redistributed_debt
             }));
         }
 
@@ -830,14 +830,18 @@ mod Shrine {
             self.yin.write(user, self.yin.read(user) + amount);
             self.total_yin.write(self.total_yin.read() + amount);
 
-            Transfer(ContractAddressZeroable::zero(), user, amount.val.into());
+            self.emit(Event::Transfer(Transfer{
+                from: ContractAddressZeroable::zero(), to: user, value: amount.val.into()
+            }));
         }
 
         fn melt_internal(ref self: Storage, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) - amount);
             self.total_yin.write(self.total_yin.read() - amount);
 
-            Transfer(user, ContractAddressZeroable::zero(), amount.val.into());
+            self.emit(Event::Transfer(Transfer{
+                from: user, to: ContractAddressZeroable::zero(), value: amount.val.into()
+            }));
         }
 
         // Withdraw a specified amount of a Yang from a Trove
@@ -854,8 +858,8 @@ mod Shrine {
             self.deposits.write((yang_id, trove_id), trove_yang_balance);
 
             // Emit events
-            self.emit(Event::YangTotalUpdated(YangTotalUpdated(yang, total_yang)));
-            self.emit(Event::DepositUpdated(DepositUpdated(yang, trove_id, trove_yang_balance)));
+            self.emit(Event::YangTotalUpdated(YangTotalUpdated{yang, total: total_yang}));
+            self.emit(Event::DepositUpdated(DepositUpdated{yang, trove_id, amount: trove_yang_balance}));
         }
 
         // Adds the accumulated interest as debt to the trove
@@ -875,8 +879,9 @@ mod Shrine {
             let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
 
             // Pull undistributed debt and update state
-            let new_trove_debt: Wad = self.pull_redistributed_debt(trove_id, compounded_trove_debt, true);
-
+            let (new_trove_debt, current_redistribution_id) = self.pull_redistributed_debt(trove_id, compounded_trove_debt);
+            self.trove_redistribution_id.write(trove_id, current_redistribution_id);
+            
             // Update trove
             let updated_trove: Trove = Trove {
                 charge_from: current_interval,
@@ -893,8 +898,8 @@ mod Shrine {
 
             // Emit events only if there is a change in the trove's debt
             if compounded_trove_debt != trove.debt {
-                DebtTotalUpdated(new_system_debt);
-                TroveUpdated(trove_id, updated_trove);
+                self.emit(Event::DebtTotalUpdated(DebtTotalUpdated{total: new_system_debt}));
+                self.emit(Event::TroveUpdated(TroveUpdated{trove_id, trove: updated_trove}));
             }
         }
 
@@ -1101,14 +1106,13 @@ mod Shrine {
         // Takes in a boolean flag to determine whether the redistribution ID for the trove should be updated.
         // Any state update of the trove's debt should be performed in the caller function.
         fn pull_redistributed_debt(
-            ref self: Storage, trove_id: u64, mut trove_debt: Wad, update_redistribution_id: bool
-        ) -> Wad {
+            self: @Storage, trove_id: u64, mut trove_debt: Wad) -> (Wad, u32) {
             let current_redistribution_id: u32 = self.redistributions_count.read();
             let trove_last_redistribution_id: u32 = self.trove_redistribution_id.read(trove_id);
 
             // Early termination if no redistributions since trove was last updated
             if current_redistribution_id == trove_last_redistribution_id {
-                return trove_debt;
+                return (trove_debt, trove_last_redistribution_id);
             }
 
             // Outer loop iterating over the trove's yangs
@@ -1144,11 +1148,7 @@ mod Shrine {
                 current_yang_id -= 1;
             };
 
-            if update_redistribution_id {
-                self.trove_redistribution_id.write(trove_id, current_redistribution_id);
-            }
-
-            trove_debt
+            (trove_debt, current_redistribution_id)
         }
 
         // Returns the price for `yang_id` at `interval` if it is non-zero.
@@ -1317,7 +1317,7 @@ mod Shrine {
         // Returns a tuple of the threshold and value of all troves combined.
         // This function uses historical prices but the total amount of currently deposited yangs across
         // all troves to calculate the total value of all troves.
-        fn get_shrine_threshold_and_value_internal(ref self: Storage, current_interval: u64) -> (Ray, Wad) {
+        fn get_shrine_threshold_and_value_internal(self: @Storage, current_interval: u64) -> (Ray, Wad) {
             let mut current_yang_id: u32 = self.yangs_count.read();
             let mut weighted_threshold: Ray = 0_u128.into();
             let mut value: Wad = 0_u128.into();
