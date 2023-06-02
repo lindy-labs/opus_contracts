@@ -7,7 +7,8 @@ mod TestShrine {
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-
+    use zeroable::Zeroable; 
+    
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
 
@@ -742,33 +743,37 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_shrine_forge_nonzero_opening_fee() {
-        let error_margin: Wad = 10000000000000000_u128.into(); // 0.01 (wad)
+    fn test_shrine_forge_nonzero_forge_fee() {
+        let error_margin: Wad = 0_u128.into(); // 0.01 (wad)
         let yin_price1: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
         let yin_price2: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let forge_amt: Wad = 100000000000000000000_u128.into(); // 100 (wad)
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+
+        let before_max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
         set_contract_address(ShrineUtils::admin());
         shrine.update_yin_market_price(yin_price1);
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, forge_amt);
+        let after_max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
 
-        let fee: Wad = shrine.get_opening_fee();
+        let fee: Wad = shrine.get_forge_fee();
+
+        assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee), 'incorrect max forge amt');
+        
+        ShrineUtils::trove1_forge(shrine, forge_amt);
 
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-        let charged_fee = debt - forge_amt;
-        ShrineUtils::assert_equalish(charged_fee, fee * forge_amt, error_margin, 'wrong opening fee charged #1');
+        assert(debt - forge_amt == fee * forge_amt, 'wrong opening fee charged #1');
 
         set_contract_address(ShrineUtils::admin());
         shrine.update_yin_market_price(yin_price1);
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
-        let fee: Wad = shrine.get_opening_fee();
+        let fee: Wad = shrine.get_forge_fee();
 
         let (_, _, _, new_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-        let charged_fee = new_debt - debt - forge_amt;
-        ShrineUtils::assert_equalish(charged_fee, fee * forge_amt, error_margin, 'wrong opening fee charged #2');
+        assert(new_debt - debt - forge_amt == fee * forge_amt, 'wrong opening fee charged #2');
     }
 
     //
@@ -1375,41 +1380,36 @@ mod TestShrine {
         assert(value == expected_value, 'wrong value');
     }
 
-    // Tests - Getter for opening fee
+    // Tests - Getter for forge fee
     #[test]
     #[available_gas(20000000000)]
-    fn test_shrine_get_opening_fee() {
+    fn test_shrine_get_forge_fee() {
         let error_margin: Wad = 5_u128.into(); // 5 * 10^-18 (wad)
-        let first_yin_price: Wad = 999999999999999999_u128.into(); // 0.999... (wad)
-        let second_yin_price: Wad = 990000000000000000_u128.into(); // 0.99 (wad)
-        let third_yin_price: Wad = 920000000000000000_u128.into(); // 0.92 (wad)
-        let fourth_yin_price: Wad = WAD_ONE.into(); // 1 (wad)
-        let fifth_yin_price: Wad = 1100000000000000000_u128.into(); // 1.1 (wad)
 
-        let first_opening_fee: Wad = WAD_PERCENT.into(); // 0.01 (wad)
-        let second_opening_fee: Wad = 31622776601683793_u128.into(); // 0.031622776601683793 (wad)
+        let first_yin_price: Wad = 995000000000000000_u128.into(); // 0.99 (wad)
+        let second_yin_price: Wad = 994999999999999999_u128.into(); // 0.994999... (wad)
+        let third_yin_price: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
+        let fourth_yin_price: Wad = (Shrine::FEE_CAP_DEVIATION - 1).into();
+
+        let third_opening_fee: Wad = 39810717055349725_u128.into(); // 0.039810717055349725 (wad)
 
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         
         set_contract_address(ShrineUtils::admin());
 
         shrine.update_yin_market_price(first_yin_price); 
-        let first_fee = shrine.get_opening_fee();
-        ShrineUtils::assert_equalish(first_fee, first_opening_fee, error_margin, 'wrong opening fee #1');
+        assert(shrine.get_forge_fee().is_zero(), 'wrong opening fee #1');
 
         shrine.update_yin_market_price(second_yin_price);
-        let second_fee = shrine.get_opening_fee();
-        ShrineUtils::assert_equalish(second_fee, second_opening_fee, error_margin, 'wrong opening fee #2');
+        ShrineUtils::assert_equalish(shrine.get_forge_fee(), WAD_PERCENT.into(), error_margin, 'wrong opening fee #2');
 
         // Opening fee should be capped to `FEE_CAP`
         shrine.update_yin_market_price(third_yin_price);
-        assert(shrine.get_opening_fee() == Shrine::FEE_CAP.into(), 'wrong opening fee #3');
+        ShrineUtils::assert_equalish(shrine.get_forge_fee(), third_opening_fee, error_margin, 'wrong opening fee #3');
 
-        // Opening fee should be 0 for yin price >= 1
+        // Opening fee should be `FEE_CAP` for yin price <= `FEE_CAP_DEVIATION`
         shrine.update_yin_market_price(fourth_yin_price);
-        assert(shrine.get_opening_fee() == WadZeroable::zero(), 'wrong opening fee #4');
+        assert(shrine.get_forge_fee() == Shrine::FEE_CAP.into(), 'wrong opening fee #4');
 
-        shrine.update_yin_market_price(fifth_yin_price);
-        assert(shrine.get_opening_fee() == WadZeroable::zero(), 'wrong opening fee #5');
     }
 }

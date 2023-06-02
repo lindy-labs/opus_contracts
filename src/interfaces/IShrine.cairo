@@ -48,7 +48,7 @@ trait IShrine {
     fn get_current_yang_price(yang: ContractAddress) -> (Wad, Wad, u64);
     fn get_current_multiplier() -> (Ray, Ray, u64);
     fn get_yin_market_price() -> Wad;
-    fn get_opening_fee() -> Wad;
+    fn get_forge_fee() -> Wad;
     fn is_healthy(trove_id: u64) -> bool;
     fn get_max_forge(trove_id: u64) -> Wad;
 }
