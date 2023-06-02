@@ -66,6 +66,7 @@ jobs:
           else
             echo "Cairo directory does not exist"
             git clone --filter=tree:0 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
+            git fetch origin fecc9dc533ba78bb333d8f444d86ad9dd9b61e82
             git checkout fecc9dc533ba78bb333d8f444d86ad9dd9b61e82
           fi
 
