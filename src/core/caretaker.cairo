@@ -11,7 +11,7 @@ mod Caretaker {
     use aura::core::roles::CaretakerRoles;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::ICaretaker;
+    use aura::interfaces::ICaretaker::ICaretaker;
     use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -31,6 +31,7 @@ mod Caretaker {
     // A dummy trove ID for Caretaker
     const DUMMY_TROVE_ID: u64 = 0;
 
+    #[starknet::storage]
     struct Storage {
         // Abbot associated with the Shrine for this Caretaker
         abbot: IAbbotDispatcher,
@@ -84,6 +85,7 @@ mod Caretaker {
 
     #[constructor]
     fn constructor(
+        ref self: Storage,
         admin: ContractAddress,
         shrine: ContractAddress,
         abbot: ContractAddress,
@@ -253,7 +255,7 @@ mod Caretaker {
             // of the final debt surplus minted to the Absorber.
 
             let shut_time: u64 = get_block_timestamp();
-            Shut(shut_time);
+            self.emit(Event::Shut(Shut{}));
         }
 
         // Releases all remaining collateral in a trove to the trove owner directly.
@@ -305,8 +307,7 @@ mod Caretaker {
                 };
             };
 
-            Release(trove_owner, trove_id, yangs, asset_amts.span());
-
+            self.emit(Event::Release(Release{user: trove_owner, trove_id, assets: yangs, asset_amts: asset_amts.span()}));
             ReentrancyGuard::end();
             (yangs, asset_amts.span())
         }
@@ -381,8 +382,7 @@ mod Caretaker {
                 };
             };
 
-            Reclaim(caller, burn_amt, yangs, asset_amts.span());
-
+            self.emit(Event::Reclaim(Reclaim{user: caller, yin_amt: burn_amt, assets: yangs, asset_amts: asset_amts.span()}));
             ReentrancyGuard::end();
             (yangs, asset_amts.span())
         }

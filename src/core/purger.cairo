@@ -8,6 +8,7 @@ mod Purger {
 
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use aura::interfaces::IPurger::IPurger;
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
@@ -38,6 +39,7 @@ mod Purger {
     // Cap on compensation value: 200 (Wad)
     const COMPENSATION_CAP: u128 = 200000000000000000000;
 
+    #[starknet::storage]
     struct Storage {
         // the Shrine associated with this Purger
         shrine: IShrineDispatcher,
@@ -86,6 +88,7 @@ mod Purger {
 
     #[constructor]
     fn constructor(
+        ref self: Storage,
         shrine: ContractAddress,
         sentinel: ContractAddress,
         absorber: ContractAddress,
@@ -97,163 +100,159 @@ mod Purger {
         self.oracle.write(IOracleDispatcher { contract_address: oracle });
     }
 
-    //
-    // View
-    //
+    impl IPurgerImpl of IPurger<Storage> {
 
-    // Returns the liquidation penalty based on the LTV (ray)
-    // Returns 0 if trove is healthy
-    #[view]
-    fn get_penalty(trove_id: u64) -> Ray {
-        let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
+        //
+        // View
+        //
 
-        if ltv <= threshold {
-            return RayZeroable::zero();
+        // Returns the liquidation penalty based on the LTV (ray)
+        // Returns 0 if trove is healthy
+        fn get_penalty(self: @Storage, trove_id: u64) -> Ray {
+            let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
+
+            if ltv <= threshold {
+                return RayZeroable::zero();
+            }
+
+            get_penalty_internal(threshold, ltv, value, debt)
         }
 
-        get_penalty_internal(threshold, ltv, value, debt)
-    }
+        // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
+        // Returns 0 if trove is healthy
+        fn get_max_close_amount(self: @Storage, trove_id: u64) -> Wad {
+            let (threshold, ltv, _, debt) = self.shrine.read().get_trove_info(trove_id);
 
-    // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
-    // Returns 0 if trove is healthy
-    #[view]
-    fn get_max_close_amount(trove_id: u64) -> Wad {
-        let (threshold, ltv, _, debt) = self.shrine.read().get_trove_info(trove_id);
+            if ltv <= threshold {
+                return WadZeroable::zero();
+            }
 
-        if ltv <= threshold {
-            return WadZeroable::zero();
+            get_max_close_amount_internal(ltv, debt)
         }
 
-        get_max_close_amount_internal(ltv, debt)
-    }
+        //
+        // External
+        //
 
-    //
-    // External
-    //
+        // Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
+        // and the recipient address to send the freed collateral to.
+        // Reverts if:
+        // - the trove is not liquidatable (i.e. LTV > threshold).
+        // - the repayment amount exceeds the maximum amount as determined by the close factor.
+        // - if the trove's LTV is worse off than before the liquidation (should not be possible, but as a precaution)
+        // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
+        // in the decimals of each respective asset due to the recipient for performing the liquidation.
+        fn liquidate(
+            ref self: Storage, trove_id: u64, amt: Wad, recipient: ContractAddress
+        ) -> (Span<ContractAddress>, Span<u128>) {
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
-    // Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
-    // and the recipient address to send the freed collateral to.
-    // Reverts if:
-    // - the trove is not liquidatable (i.e. LTV > threshold).
-    // - the repayment amount exceeds the maximum amount as determined by the close factor.
-    // - if the trove's LTV is worse off than before the liquidation (should not be possible, but as a precaution)
-    // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
-    // in the decimals of each respective asset due to the recipient for performing the liquidation.
-    #[external]
-    fn liquidate(
-        trove_id: u64, amt: Wad, recipient: ContractAddress
-    ) -> (Span<ContractAddress>, Span<u128>) {
-        let shrine: IShrineDispatcher = self.shrine.read();
-        let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
+            assert(trove_threshold < trove_ltv, 'PU: Not liquidatable');
 
-        assert(trove_threshold < trove_ltv, 'PU: Not liquidatable');
+            // Cap the liquidation amount to the trove's maximum close amount
+            let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
+            let purge_amt: Wad = min(amt, max_close_amt);
 
-        // Cap the liquidation amount to the trove's maximum close amount
-        let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
-        let purge_amt: Wad = min(amt, max_close_amt);
+            let percentage_freed: Ray = get_percentage_freed(
+                trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
+            );
 
-        let percentage_freed: Ray = get_percentage_freed(
-            trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
-        );
+            let funder: ContractAddress = get_caller_address();
 
-        let funder: ContractAddress = get_caller_address();
-
-        // Melt from the funder address directly
-        shrine.melt(funder, trove_id, purge_amt);
-
-        // Free collateral corresponding to the purged amount
-        let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
-
-        // Safety check to ensure the new LTV is lower than old LTV 
-        let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
-        assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
-
-        Purged(
-            trove_id, purge_amt, percentage_freed, funder, recipient, yangs, freed_assets_amts, 
-        );
-
-        (yangs, freed_assets_amts)
-    }
-
-    // Performs stability pool liquidations to pay down a trove's debt in full and transfer the 
-    // freed collateral to the stability pool. If the stability pool does not have sufficient yin, 
-    // the trove's debt and collateral will be proportionally redistributed among all troves 
-    // containing the trove's collateral.
-    // - Amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
-    // Reverts if the trove's LTV is not above the maximum penalty LTV
-    // - This also checks the trove is liquidatable because threshold must be lower than max penalty LTV.
-    // Returns a tuple of an ordered array of yang addresses and an ordered array of asset amounts
-    // in the decimals of each respective asset due to the caller as compensation.
-    #[external]
-    fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
-        let shrine: IShrineDispatcher = self.shrine.read();
-        let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
-
-        assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
-
-        let caller: ContractAddress = get_caller_address();
-        let absorber: IAbsorberDispatcher = self.absorber.read();
-
-        let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
-
-        let compensation_pct: Ray = get_compensation_pct(trove_value);
-
-        // Transfer a percentage of the trove value as compensation to caller.
-        // This is independent of the amount of yin repaid by the absorber.
-        let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
-
-        // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
-        // cap the amount to pay down to the absorber's balance (including if it is zero).
-        let purge_amt: Wad = min(trove_debt, absorber_yin_bal);
-
-        let can_absorb_any: bool = purge_amt.is_non_zero();
-        let is_fully_absorbed: bool = purge_amt == trove_debt;
-
-        // Only update the absorber and emit the `Purged` event if Absorber has some yin  
-        // to melt the trove's debt and receive freed trove assets in return
-        if can_absorb_any {
-            // Calculate the percentage of the remaining trove value (after deducting the compensation) 
-            // that should be transferred to the Absorber for repaying the `purge_amt`.
-            // This value is set to 100% for a full absorption, or otherwise calculated based on the 
-            // absorber's yin balance.
-            let percentage_freed: Ray = if is_fully_absorbed {
-                RAY_ONE.into()
-            } else {
-                get_percentage_freed(trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt)
-            };
-
-            // Melt the trove's debt using the absorber's yin directly
-            shrine.melt(absorber.contract_address, trove_id, purge_amt);
+            // Melt from the funder address directly
+            shrine.melt(funder, trove_id, purge_amt);
 
             // Free collateral corresponding to the purged amount
-            let (yangs, absorbed_assets_amts) = free(
-                shrine, trove_id, percentage_freed, absorber.contract_address
-            );
+            let (yangs, freed_assets_amts) = self.free(shrine, trove_id, percentage_freed, recipient);
 
-            absorber.update(yangs, absorbed_assets_amts);
-            Purged(
-                trove_id,
-                purge_amt,
-                percentage_freed,
-                absorber.contract_address,
-                absorber.contract_address,
-                yangs,
-                absorbed_assets_amts
-            );
+            // Safety check to ensure the new LTV is lower than old LTV 
+            let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
+            assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
+
+            self.emit(Event::Purged(Purged{
+                trove_id, purge_amt, percentage_freed, funder, recipient, yangs, freed_assets_amts, 
+            }));
+
+            (yangs, freed_assets_amts)
         }
 
-        // If it is not a full absorption, perform redistribution.
-        if !is_fully_absorbed {
-            shrine.redistribute(trove_id);
+        // Performs stability pool liquidations to pay down a trove's debt in full and transfer the 
+        // freed collateral to the stability pool. If the stability pool does not have sufficient yin, 
+        // the trove's debt and collateral will be proportionally redistributed among all troves 
+        // containing the trove's collateral.
+        // - Amount of debt distributed to each collateral = (value of collateral / trove value) * trove debt
+        // Reverts if the trove's LTV is not above the maximum penalty LTV
+        // - This also checks the trove is liquidatable because threshold must be lower than max penalty LTV.
+        // Returns a tuple of an ordered array of yang addresses and an ordered array of asset amounts
+        // in the decimals of each respective asset due to the caller as compensation.
+        fn absorb(ref self: Storage, trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
-            // Update yang prices due to an appreciation in ratio of asset to yang from 
-            // redistribution
-            self.oracle.read().update_prices();
+            assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
+
+            let caller: ContractAddress = get_caller_address();
+            let absorber: IAbsorberDispatcher = self.absorber.read();
+
+            let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
+
+            let compensation_pct: Ray = get_compensation_pct(trove_value);
+
+            // Transfer a percentage of the trove value as compensation to caller.
+            // This is independent of the amount of yin repaid by the absorber.
+            let (yangs, compensations) = self.free(shrine, trove_id, compensation_pct, caller);
+
+            // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
+            // cap the amount to pay down to the absorber's balance (including if it is zero).
+            let purge_amt: Wad = min(trove_debt, absorber_yin_bal);
+
+            let can_absorb_any: bool = purge_amt.is_non_zero();
+            let is_fully_absorbed: bool = purge_amt == trove_debt;
+
+            // Only update the absorber and emit the `Purged` event if Absorber has some yin  
+            // to melt the trove's debt and receive freed trove assets in return
+            if can_absorb_any {
+                // Calculate the percentage of the remaining trove value (after deducting the compensation) 
+                // that should be transferred to the Absorber for repaying the `purge_amt`.
+                // This value is set to 100% for a full absorption, or otherwise calculated based on the 
+                // absorber's yin balance.
+                let percentage_freed: Ray = if is_fully_absorbed {
+                    RAY_ONE.into()
+                } else {
+                    get_percentage_freed(trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt)
+                };
+
+                // Melt the trove's debt using the absorber's yin directly
+                shrine.melt(absorber.contract_address, trove_id, purge_amt);
+
+                // Free collateral corresponding to the purged amount
+                let (yangs, absorbed_assets_amts) = self.free(
+                    shrine, trove_id, percentage_freed, absorber.contract_address
+                );
+
+                absorber.update(yangs, absorbed_assets_amts);
+                self.emit(Event::Purged(Purged{
+                    trove_id, purge_amt, percentage_freed, funder: absorber.contract_address, 
+                    recipient: absorber.contract_address, yangs, freed_assets_amts: absorbed_assets_amts,
+                }));
+            }
+
+            // If it is not a full absorption, perform redistribution.
+            if !is_fully_absorbed {
+                shrine.redistribute(trove_id);
+
+                // Update yang prices due to an appreciation in ratio of asset to yang from 
+                // redistribution
+                self.oracle.read().update_prices();
+            }
+
+            self.emit(Event::Compensate(Compensate{
+                recipient: caller, assets: yangs, asset_amts: compensations,
+            }));
+
+            (yangs, compensations)
         }
-
-        Compensate(caller, yangs, compensations);
-
-        (yangs, compensations)
     }
 
     //
@@ -264,46 +263,49 @@ mod Purger {
     // recipient address.
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral 
     // asset amounts in the decimals of each respective asset.
-    fn free(
-        shrine: IShrineDispatcher, trove_id: u64, percentage_freed: Ray, recipient: ContractAddress, 
-    ) -> (Span<ContractAddress>, Span<u128>) {
-        // reentrancy guard is used as a precaution
-        ReentrancyGuard::start();
+    #[generate_trait]
+    impl StorageImpl of StorageTrait {
+        fn free(
+            ref self: Storage, shrine: IShrineDispatcher, trove_id: u64, percentage_freed: Ray, recipient: ContractAddress, 
+        ) -> (Span<ContractAddress>, Span<u128>) {
+            // reentrancy guard is used as a precaution
+            ReentrancyGuard::start();
 
-        let sentinel: ISentinelDispatcher = self.sentinel.read();
-        let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-        let mut freed_assets_amts: Array<u128> = Default::default();
+            let sentinel: ISentinelDispatcher = self.sentinel.read();
+            let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
+            let mut freed_assets_amts: Array<u128> = Default::default();
 
-        let mut yangs_copy: Span<ContractAddress> = yangs;
+            let mut yangs_copy: Span<ContractAddress> = yangs;
 
-        // Loop through yang addresses and transfer to recipient
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
+            // Loop through yang addresses and transfer to recipient
+            loop {
+                match yangs_copy.pop_front() {
+                    Option::Some(yang) => {
+                        let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
 
-                    // Continue iteration if no yang deposited
-                    if deposited_yang_amt.is_zero() {
-                        freed_assets_amts.append(0);
-                        continue;
+                        // Continue iteration if no yang deposited
+                        if deposited_yang_amt.is_zero() {
+                            freed_assets_amts.append(0);
+                            continue;
+                        }
+
+                        let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
+
+                        let freed_asset_amt: u128 = sentinel
+                            .exit(*yang, recipient, trove_id, freed_yang);
+                        freed_assets_amts.append(freed_asset_amt);
+                        shrine.seize(*yang, trove_id, freed_yang);
+                    },
+                    Option::None(_) => {
+                        break;
                     }
-
-                    let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
-
-                    let freed_asset_amt: u128 = sentinel
-                        .exit(*yang, recipient, trove_id, freed_yang);
-                    freed_assets_amts.append(freed_asset_amt);
-                    shrine.seize(*yang, trove_id, freed_yang);
-                },
-                Option::None(_) => {
-                    break;
-                }
+                };
             };
-        };
 
-        ReentrancyGuard::end();
+            ReentrancyGuard::end();
 
-        (yangs, freed_assets_amts.span())
+            (yangs, freed_assets_amts.span())
+        }
     }
 
     // Returns the close factor based on the LTV (ray)
