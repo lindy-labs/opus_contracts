@@ -63,6 +63,7 @@ mod Equalizer {
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
     }
 
+    #[external]
     impl IEqualizerImpl of IEqualizer<Storage> {
         //
         // Getters

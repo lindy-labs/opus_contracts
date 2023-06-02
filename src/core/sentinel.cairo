@@ -77,6 +77,7 @@ mod Sentinel {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
+    #[external]
     impl ISentinelImpl of ISentinel<Storage> {
         //
         // View Functions

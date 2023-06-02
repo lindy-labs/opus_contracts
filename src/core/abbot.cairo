@@ -70,7 +70,7 @@ mod Abbot {
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
     }
 
-
+    #[external]
     impl IAbbotImpl of IAbbot<Storage> {
         //
         // View functions

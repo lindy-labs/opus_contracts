@@ -71,6 +71,7 @@ mod Gate {
         self.sentinel.write(sentinel);
     }
 
+    #[external]
     impl IGateImpl of IGate<Storage> {
 
         //

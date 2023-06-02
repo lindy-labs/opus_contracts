@@ -100,6 +100,7 @@ mod Purger {
         self.oracle.write(IOracleDispatcher { contract_address: oracle });
     }
 
+    #[external]
     impl IPurgerImpl of IPurger<Storage> {
 
         //

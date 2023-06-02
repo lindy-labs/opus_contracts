@@ -59,6 +59,7 @@ mod Allocator {
         self.set_allocation_internal(recipients, percentages);
     }
 
+    #[external]
     impl IAllocatorImpl of IAllocator<Storage> {
         //
         // Getters

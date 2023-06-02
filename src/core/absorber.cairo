@@ -240,6 +240,7 @@ mod Absorber {
     }
 
 
+    #[external]
     impl IAbsorberImpl of IAbsorber<Storage> {
         //
         // Getters

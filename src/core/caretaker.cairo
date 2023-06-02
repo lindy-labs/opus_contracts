@@ -103,6 +103,7 @@ mod Caretaker {
         self.is_live.write(true);
     }
 
+    #[external]
     impl ICaretakerImpl of ICaretaker<Storage> {
         //
         // View functions

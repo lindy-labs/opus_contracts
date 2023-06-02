@@ -19,7 +19,7 @@ trait IShrine<TStorage> {
     fn get_debt_ceiling(self: @TStorage) -> Wad;
     fn get_multiplier(self: @TStorage, interval: u64) -> (Ray, Ray);
     fn get_yang_threshold(self: @TStorage, yang: ContractAddress) -> Ray;
-    fn get_redistributions_count(self: @TStorage) -> u64;
+    fn get_redistributions_count(self: @TStorage) -> u32;
     fn get_trove_redistribution_id(self: @TStorage, trove_id: u64) -> u32;
     fn get_redistributed_unit_debt_for_yang(
         self: @TStorage, yang: ContractAddress, redistribution_id: u32
@@ -30,7 +30,7 @@ trait IShrine<TStorage> {
         ref self: TStorage,
         yang: ContractAddress,
         threshold: Ray,
-        price: Wad,
+        initial_price: Wad,
         initial_rate: Ray,
         initial_yang_amt: Wad
     );
@@ -39,7 +39,7 @@ trait IShrine<TStorage> {
     fn kill(ref self: TStorage);
     fn advance(ref self: TStorage, yang: ContractAddress, price: Wad);
     fn set_multiplier(ref self: TStorage, new_multiplier: Ray);
-    fn update_rates(ref self: TStorage, yang: Span<ContractAddress>, new_rate: Span<Ray>);
+    fn update_rates(ref self: TStorage, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
     fn deposit(ref self: TStorage, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(ref self: TStorage, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn forge(ref self: TStorage, user: ContractAddress, trove_id: u64, amount: Wad);
