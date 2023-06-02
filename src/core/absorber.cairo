@@ -16,7 +16,8 @@ mod Absorber {
 
     use aura::core::roles::AbsorberRoles;
 
-    use aura::interfaces::IAbsorber;
+    use aura::interfaces::IAbsorber::IAbsorber;
+    use aura::interfaces::IAbsorber::{IBlesserDispatcher, IBlesserDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -67,6 +68,7 @@ mod Absorber {
     // in the order they were added
     const REWARDS_LOOP_START: u8 = 1;
 
+    #[starknet::storage]
     struct Storage {
         sentinel: ISentinelDispatcher,
         shrine: IShrineDispatcher,
@@ -174,7 +176,7 @@ mod Absorber {
     #[derive(Drop, starknet::Event)]
     struct Provide {
         provider: ContractAddress,
-        epoch: u32,
+        current_epoch: u32,
         yin: Wad,
     }
 
@@ -226,7 +228,7 @@ mod Absorber {
     //
     #[constructor]
     fn constructor(
-        admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress, limit: Ray
+        ref self: Storage, admin: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress, limit: Ray
     ) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(AbsorberRoles::default_admin_role(), admin);
@@ -404,7 +406,7 @@ mod Absorber {
             }
 
             // Emit event 
-            RewardSet(asset, blesser, is_active);
+            self.emit(Event::RewardSet(RewardSet{asset, blesser, is_active}));
         }
 
 
@@ -451,13 +453,12 @@ mod Absorber {
             let absorber: ContractAddress = get_contract_address();
 
             let success: bool = self
-                .self
                 .yin_erc20()
                 .transfer_from(provider, absorber, amount.into());
             assert(success, 'ABS: Transfer failed');
 
             // Event emission
-            Provide(provider, current_epoch, amount);
+            self.emit(Event::Provide(Provide{provider, current_epoch, yin: amount}));
         }
 
 
@@ -492,7 +493,7 @@ mod Absorber {
                         timestamp: current_timestamp, timelock: capped_timelock, has_removed: false
                     }
                 );
-            RequestSubmitted(provider, current_timestamp, capped_timelock);
+            self.emit(Event::RequestSubmitted(RequestSubmitted{provider, timestamp: current_timestamp, timelock: capped_timelock}));
         }
 
         // Withdraw yin (if any) and all absorbed collateral assets from the absorber.
@@ -535,7 +536,8 @@ mod Absorber {
                     );
 
                 // Event emission
-                Remove(provider, current_epoch, 0_u128.into());
+                self.emit(Event::Remove(Remove{provider, epoch: current_epoch, yin: 0_u128.into()}));
+                
             } else {
                 // Calculations for yin need to be performed before updating total shares.
                 // Cap `amount` to maximum removable for provider, then derive the number of shares.
@@ -576,7 +578,7 @@ mod Absorber {
                 assert(success, 'ABS: Transfer failed');
 
                 // Event emission
-                Remove(provider, current_epoch, yin_amt);
+                self.emit(Event::Remove(Remove{provider, epoch: current_epoch, yin: yin_amt}));
             }
         }
 
@@ -626,7 +628,13 @@ mod Absorber {
             let total_shares: Wad = self.total_shares.read();
 
             // Emit `Gain` event before the loop as `assets` and `asset_amts` are consumed by the loop
-            Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
+            self.emit(Event::Gain(Gain {
+                assets,
+                asset_amts,
+                total_shares,
+                epoch: current_epoch,
+                absorption_id: current_absorption_id
+            }));
 
             loop {
                 match assets.pop_front() {
@@ -681,7 +689,7 @@ mod Absorber {
                     self.total_shares.write(0_u128.into());
                 }
 
-                EpochChanged(current_epoch, new_epoch);
+                self.emit(Event::EpochChanged(EpochChanged{old_epoch: current_epoch, new_epoch: new_epoch}));
 
                 // Transfer reward errors of current epoch to the next epoch
                 self.propagate_reward_errors(rewards_count, current_epoch);
@@ -692,7 +700,7 @@ mod Absorber {
         fn kill(ref self: Storage) {
             AccessControl::assert_has_role(AbsorberRoles::KILL);
             self.is_live.write(false);
-            Killed();
+            self.emit(Event::Killed(Killed{}));
         }
     }
 
@@ -723,7 +731,7 @@ mod Absorber {
         #[inline(always)]
         fn set_removal_limit_internal(ref self: Storage, limit: Ray) {
             assert(MIN_LIMIT <= limit.val, 'ABS: Limit is too low');
-            RemovalLimitUpdated(self.removal_limit.read(), limit);
+            self.emit(Event::RemovalLimitUpdated(RemovalLimitUpdated{old_limit: self.removal_limit.read(), new_limit: limit}));
             self.removal_limit.write(limit);
         }
 
@@ -811,7 +819,7 @@ mod Absorber {
                 return;
             }
 
-            let last_error: u128 = get_recent_asset_absorption_error(asset, absorption_id);
+            let last_error: u128 = self.get_recent_asset_absorption_error(asset, absorption_id);
             let total_amount_to_distribute: u128 = amount + last_error;
 
             let asset_amt_per_share: u128 = wadray::wdiv_internal(
@@ -845,7 +853,7 @@ mod Absorber {
                 return absorption.error;
             }
 
-            self.update_absorbed_asset(asset, absorption_id - 1)
+            self.get_recent_asset_absorption_error(asset, absorption_id - 1)
         }
 
 
@@ -880,11 +888,11 @@ mod Absorber {
             self.transfer_assets(provider, absorbed_assets, absorbed_asset_amts);
 
             // Loop over accumulated rewards, transfer and update provider's rewards cumulative
-            let (reward_assets, reward_asset_amts) = self
+            let (reward_assets, reward_amts) = self
                 .get_provider_accumulated_rewards(
                     provider, provision, current_epoch, rewards_count
                 );
-            self.transfer_assets(provider, reward_assets, reward_asset_amts);
+            self.transfer_assets(provider, reward_assets, reward_amts);
 
             // NOTE: it is very important that this function is called, even for a new provider. 
             // If a new provider's cumulative rewards are not updated to the current epoch,
@@ -897,7 +905,7 @@ mod Absorber {
                     provider, current_epoch, REWARDS_LOOP_START, reward_assets
                 );
 
-            Reap(provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_asset_amts);
+            self.emit(Event::Reap(Reap{provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_amts}));
         }
 
         // Internal function to calculate the absorbed assets that a provider is entitled to
@@ -1090,7 +1098,7 @@ mod Absorber {
             };
 
             if rewards.len() > 0 {
-                self.bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
+                self.emit(Event::Bestow(Bestow{assets: rewards.span(), asset_amts: blessed_amts.span(), total_shares, epoch}));
             }
         }
 

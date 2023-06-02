@@ -53,7 +53,7 @@ mod Abbot {
     #[derive(Drop, starknet::Event)]
     struct TroveOpened {
         user: ContractAddress,
-        trove_id: u64,
+        new_trove_id: u64,
     }
     #[derive(Drop, starknet::Event)]
     struct TroveClosed {
@@ -141,7 +141,7 @@ mod Abbot {
             // forge Yin
             self.shrine.read().forge(user, new_trove_id, forge_amount);
 
-            TroveOpened(user, new_trove_id);
+            self.emit(Event::TroveOpened(TroveOpened{user, new_trove_id}));
         }
 
         // close a trove, repaying its debt in full and withdrawing all the Yangs
@@ -170,7 +170,7 @@ mod Abbot {
                 };
             };
 
-            TroveClosed(trove_id);
+            self.emit(Event::TroveClosed(TroveClosed{trove_id}));
         }
 
         // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
