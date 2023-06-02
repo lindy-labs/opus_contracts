@@ -68,31 +68,60 @@ mod Pragma {
     // Events
     //
 
-    #[event]
-    fn InvalidPriceUpdate(
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[event]
+        InvalidPriceUpdate: InvalidPriceUpdate,
+        #[event]
+        OracleAddressUpdated: OracleAddressUpdated,
+        #[event]
+        PricesUpdated: PricesUpdated,
+        #[event]
+        PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
+        #[event]
+        UpdateFrequencyUpdated: UpdateFrequencyUpdated,
+        #[event]
+        YangAdded: YangAdded,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct InvalidPriceUpdate {
         yang: ContractAddress,
         price: Wad,
         pragma_last_updated_ts: u256,
         pragma_num_sources: u256,
-        asset_amt_per_yang: Wad
-    ) {}
+        asset_amt_per_yang: Wad,
+    }
 
-    #[event]
-    fn OracleAddressUpdated(old_address: ContractAddress, new_address: ContractAddress) {}
+    #[derive(Drop, starknet::Event)]
+    struct OracleAddressUpdated {
+        old_address: ContractAddress,
+        new_address: ContractAddress,
+    }
 
-    #[event]
-    fn PricesUpdated(timestamp: u64, caller: ContractAddress) {}
+    #[derive(Drop, starknet::Event)]
+    struct PricesUpdated {
+        timestamp: u64,
+        caller: ContractAddress,
+    }
 
-    #[event]
-    fn PriceValidityThresholdsUpdated(
-        old_thresholds: PriceValidityThresholds, new_thresholds: PriceValidityThresholds
-    ) {}
+    #[derive(Drop, starknet::Event)]
+    struct PriceValidityThresholdsUpdated {
+        old_thresholds: PriceValidityThresholds,
+        new_thresholds: PriceValidityThresholds,
+    }
 
-    #[event]
-    fn UpdateFrequencyUpdated(old_frequency: u64, new_frequency: u64) {}
+    #[derive(Drop, starknet::Event)]
+    struct UpdateFrequencyUpdated {
+        old_frequency: u64,
+        new_frequency: u64,
+    }
 
-    #[event]
-    fn YangAdded(index: u32, settings: YangSettings) {}
+    #[derive(Drop, starknet::Event)]
+    struct YangAdded {
+        index: u32,
+        settings: YangSettings,
+    }
 
     //
     // Constructor
@@ -112,14 +141,14 @@ mod Pragma {
         AccessControl::grant_role_internal(PragmaRoles::default_admin_role(), admin);
 
         // init storage
-        oracle::write(IPragmaOracleDispatcher { contract_address: oracle });
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
-        update_frequency::write(update_frequency);
+        self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
+        self.update_frequency.write(update_frequency);
         let pvt = PriceValidityThresholds {
             freshness: freshness_threshold, sources: sources_threshold
         };
-        price_validity_thresholds::write(pvt);
+        self.price_validity_thresholds.write(pvt);
 
         // emit events
         OracleAddressUpdated(Zeroable::zero(), oracle);
@@ -136,8 +165,8 @@ mod Pragma {
         AccessControl::assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
         assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');
 
-        let old_oracle: IPragmaOracleDispatcher = oracle::read();
-        oracle::write(IPragmaOracleDispatcher { contract_address: new_oracle });
+        let old_oracle: IPragmaOracleDispatcher = self.oracle.read();
+        self.oracle.write(IPragmaOracleDispatcher { contract_address: new_oracle });
 
         OracleAddressUpdated(old_oracle.contract_address, new_oracle);
     }
@@ -154,9 +183,9 @@ mod Pragma {
             'PGM: Sources out of bounds'
         );
 
-        let old_pvt: PriceValidityThresholds = price_validity_thresholds::read();
+        let old_pvt: PriceValidityThresholds = self.price_validity_thresholds.read();
         let new_pvt = PriceValidityThresholds { freshness, sources };
-        price_validity_thresholds::write(new_pvt);
+        self.price_validity_thresholds.write(new_pvt);
 
         PriceValidityThresholdsUpdated(old_pvt, new_pvt);
     }
@@ -170,8 +199,8 @@ mod Pragma {
             'PGM: Frequency out of bounds'
         );
 
-        let old_frequency: u64 = update_frequency::read();
-        update_frequency::write(new_frequency);
+        let old_frequency: u64 = self.update_frequency.read();
+        self.update_frequency.write(new_frequency);
         UpdateFrequencyUpdated(old_frequency, new_frequency);
     }
 
@@ -184,15 +213,15 @@ mod Pragma {
 
         // doing a sanity check if Pragma actually offers a price feed
         // of the requested asset and if it's suitable for our needs
-        let response: PricesResponse = oracle::read().get_data_median(DataType::Spot(pair_id));
+        let response: PricesResponse = self.oracle.read().get_data_median(DataType::Spot(pair_id));
         // Pragma returns 0 decimals for an unknown ID
         assert(response.decimals != 0, 'PGM: Unknown ID');
         assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
 
-        let index: u32 = yangs_count::read();
+        let index: u32 = self.yangs_count.read();
         let settings = YangSettings { pair_id, yang };
-        yang_settings::write(index, settings);
-        yangs_count::write(index + 1);
+        self.yang_settings.write(index, settings);
+        self.yangs_count.write(index + 1);
 
         YangAdded(index, settings);
     }
@@ -211,27 +240,32 @@ mod Pragma {
 
         let block_timestamp: u64 = get_block_timestamp();
         let mut idx: u32 = 0;
-        let yangs_count: u32 = yangs_count::read();
+        let yangs_count: u32 = self.yangs_count.read();
 
         loop {
             if idx == yangs_count {
                 break;
             }
 
-            let settings: YangSettings = yang_settings::read(idx);
-            let response: PricesResponse = oracle::read()
+            let settings: YangSettings = self.yang_settings.read(idx);
+            let response: PricesResponse = self
+                .oracle
+                .read()
                 .get_data_median(DataType::Spot(settings.pair_id));
 
             // convert price value to Wad
             let price: Wad = fixed_point_to_wad(
                 response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
             );
-            let asset_amt_per_yang: Wad = sentinel::read().get_asset_amt_per_yang(settings.yang);
+            let asset_amt_per_yang: Wad = self
+                .sentinel
+                .read()
+                .get_asset_amt_per_yang(settings.yang);
 
             // if we receive what we consider a valid price from the oracle, record it in the Shrine,
             // otherwise emit an event about the update being invalid
             if is_valid_price_update(response, asset_amt_per_yang) {
-                shrine::read().advance(settings.yang, price * asset_amt_per_yang);
+                self.shrine.read().advance(settings.yang, price * asset_amt_per_yang);
             } else {
                 InvalidPriceUpdate(
                     settings.yang,
@@ -246,7 +280,7 @@ mod Pragma {
         };
 
         // record and emit the latest prices update timestamp
-        last_price_update_timestamp::write(block_timestamp);
+        self.last_price_update_timestamp.write(block_timestamp);
         PricesUpdated(block_timestamp, get_caller_address());
     }
 
@@ -259,8 +293,8 @@ mod Pragma {
     #[inline(always)]
     fn probe_task() -> bool {
         let seconds_since_last_update: u64 = get_block_timestamp()
-            - last_price_update_timestamp::read();
-        update_frequency::read() <= seconds_since_last_update
+            - self.last_price_update_timestamp.read();
+        self.update_frequency.read() <= seconds_since_last_update
     }
 
     #[external]
@@ -274,14 +308,14 @@ mod Pragma {
 
     fn assert_new_yang(yang: ContractAddress) {
         let mut idx: u32 = 0;
-        let yangs_count: u32 = yangs_count::read();
+        let yangs_count: u32 = self.yangs_count.read();
 
         loop {
             if idx == yangs_count {
                 break;
             }
 
-            let settings: YangSettings = yang_settings::read(idx);
+            let settings: YangSettings = self.yang_settings.read(idx);
             assert(settings.yang != yang, 'PGM: Yang already present');
             idx += 1;
         };
@@ -293,7 +327,7 @@ mod Pragma {
             return false;
         }
 
-        let required: PriceValidityThresholds = price_validity_thresholds::read();
+        let required: PriceValidityThresholds = self.price_validity_thresholds.read();
 
         // check if the update is from enough sources
         let has_enough_sources = required

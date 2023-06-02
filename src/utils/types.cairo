@@ -2,7 +2,6 @@ use starknet::ContractAddress;
 use starknet::StorageBaseAddress;
 
 use aura::interfaces::IAbsorber::IBlesserDispatcher;
-use aura::utils::serde::IBlesserDispatcherSerde;
 use aura::utils::wadray::{Ray, Wad};
 
 #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]

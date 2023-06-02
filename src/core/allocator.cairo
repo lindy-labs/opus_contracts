@@ -7,6 +7,7 @@ mod Allocator {
 
     use aura::core::roles::AllocatorRoles;
 
+    use aura::interfaces::IAllocator;
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
@@ -31,8 +32,17 @@ mod Allocator {
     // Events
     //
 
-    #[event]
-    fn AllocationUpdated(recipients: Span<ContractAddress>, percentages: Span<Ray>) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[event]
+        AllocationUpdated: AllocationUpdated,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct AllocationUpdated {
+        recipients: Span<ContractAddress>,
+        percentages: Span<Ray>,
+    }
 
     //
     // Constructor
@@ -48,87 +58,94 @@ mod Allocator {
         set_allocation_internal(recipients, percentages);
     }
 
-    //
-    // Getters
-    //
+    impl IAllocatorImpl of IAllocator<Storage> {
+        //
+        // Getters
+        //
 
-    // Returns a tuple of ordered arrays of recipients' addresses and their respective
-    // percentage share of newly minted surplus debt.
-    #[view]
-    fn get_allocation() -> (Span<ContractAddress>, Span<Ray>) {
-        let mut recipients: Array<ContractAddress> = Default::default();
-        let mut percentages: Array<Ray> = Default::default();
+        // Returns a tuple of ordered arrays of recipients' addresses and their respective
+        // percentage share of newly minted surplus debt.
+        fn get_allocation(self: @Storage) -> (Span<ContractAddress>, Span<Ray>) {
+            let mut recipients: Array<ContractAddress> = Default::default();
+            let mut percentages: Array<Ray> = Default::default();
 
-        let mut idx: u32 = 0;
-        let recipients_count: u32 = recipients_count::read();
+            let mut idx: u32 = 0;
+            let recipients_count: u32 = self.recipients_count.read();
 
-        loop {
-            if idx == recipients_count {
-                break (recipients.span(), percentages.span());
+            loop {
+                if idx == recipients_count {
+                    break (recipients.span(), percentages.span());
+                }
+
+                let recipient: ContractAddress = self.recipients.read(idx);
+                recipients.append(recipient);
+                percentages.append(self.percentages.read(recipient));
+
+                idx += 1;
             }
+        }
 
-            let recipient: ContractAddress = recipients::read(idx);
-            recipients.append(recipient);
-            percentages.append(percentages::read(recipient));
+        //
+        // External
+        //
 
-            idx += 1;
+        // Update the recipients and their respective percentage share of newly minted surplus debt
+        // by overwriting the existing values in `recipients` and `percentages`.
+        fn set_allocation(
+            ref self: Storage, recipients: Span<ContractAddress>, percentages: Span<Ray>
+        ) {
+            AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
+
+            set_allocation_internal(recipients, percentages);
         }
     }
 
-    //
-    // External
-    //
+    #[generate_trait]
+    impl StorageImpl of StorageTrait {
+        //
+        // Internal
+        //
 
-    // Update the recipients and their respective percentage share of newly minted surplus debt
-    // by overwriting the existing values in `recipients` and `percentages`.
-    #[external]
-    fn set_allocation(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
-        AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
+        // Helper function to update the allocation.
+        // Ensures the following:
+        // - both arrays of recipient addresses and percentages are of equal length;
+        // - there is at least one recipient;
+        // - the percentages add up to one Ray.
+        fn set_allocation_internal(
+            ref self: Storage, mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>
+        ) {
+            let recipients_len: u32 = recipients.len();
+            assert(recipients_len != 0, 'No recipients');
+            assert(recipients_len == percentages.len(), 'Array length mismatch');
 
-        set_allocation_internal(recipients, percentages);
-    }
+            let mut total_percentage: Ray = RayZeroable::zero();
+            let mut idx: u32 = 0;
 
-    //
-    // Internal
-    //
+            // Event is emitted here because the spans will be modified in the loop below
+            AllocationUpdated(recipients, percentages);
 
-    // Helper function to update the allocation.
-    // Ensures the following:
-    // - both arrays of recipient addresses and percentages are of equal length;
-    // - there is at least one recipient;
-    // - the percentages add up to one Ray.
-    fn set_allocation_internal(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) {
-        let recipients_len: u32 = recipients.len();
-        assert(recipients_len != 0, 'No recipients');
-        assert(recipients_len == percentages.len(), 'Array length mismatch');
+            loop {
+                match recipients.pop_front() {
+                    Option::Some(recipient) => {
+                        self.recipients.write(idx, *recipient);
 
-        let mut total_percentage: Ray = RayZeroable::zero();
-        let mut idx: u32 = 0;
+                        let percentage: Ray = *(percentages.pop_front().unwrap());
+                        self.percentages.write(*recipient, percentage);
 
-        // Event is emitted here because the spans will be modified in the loop below
-        AllocationUpdated(recipients, percentages);
+                        total_percentage += percentage;
 
-        loop {
-            match recipients.pop_front() {
-                Option::Some(recipient) => {
-                    recipients::write(idx, *recipient);
-
-                    let percentage: Ray = *(percentages.pop_front().unwrap());
-                    percentages::write(*recipient, percentage);
-
-                    total_percentage += percentage;
-
-                    idx += 1;
-                },
-                Option::None(_) => {
-                    break;
-                }
+                        idx += 1;
+                    },
+                    Option::None(_) => {
+                        break;
+                    }
+                };
             };
-        };
 
-        assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
+            assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
 
-        recipients_count::write(recipients_len);
+            self.recipients_count.write(recipients_len);
+        }
     }
 
     //

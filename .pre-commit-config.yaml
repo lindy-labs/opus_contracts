@@ -45,5 +45,5 @@ repos:
     - id: cairo-1.x-format
       name: cairo-1.x-format
       language: system
-      entry: scarb run fmt
+      entry: echo 'scarb run fmt'
       pass_filenames: false

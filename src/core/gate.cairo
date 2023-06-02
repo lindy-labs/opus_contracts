@@ -33,11 +33,30 @@ mod Gate {
     // Events
     //
 
-    #[event]
-    fn Enter(user: ContractAddress, trove_id: u64, asset_amt: u128, yang_amt: Wad) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[event]
+        Enter: Enter,
+        #[event]
+        Exit: Exit,
+    }
 
-    #[event]
-    fn Exit(user: ContractAddress, trove_id: u64, asset_amt: u128, yang_amt: Wad) {}
+    #[derive(Drop, starknet::Event)]
+    struct Enter {
+        user: ContractAddress,
+        trove_id: u64,
+        asset_amt: u128,
+        yang_amt: Wad,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Exit {
+        user: ContractAddress,
+        trove_id: u64,
+        asset_amt: u128,
+        yang_amt: Wad,
+    }
+
 
     //
     // Constructor
@@ -45,9 +64,9 @@ mod Gate {
 
     #[constructor]
     fn constructor(shrine: ContractAddress, asset: ContractAddress, sentinel: ContractAddress) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        asset::write(IERC20Dispatcher { contract_address: asset });
-        sentinel::write(sentinel);
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.asset.write(IERC20Dispatcher { contract_address: asset });
+        self.sentinel.write(sentinel);
     }
 
     //
@@ -56,22 +75,22 @@ mod Gate {
 
     #[view]
     fn get_shrine() -> ContractAddress {
-        shrine::read().contract_address
+        self.shrine.read().contract_address
     }
 
     #[view]
     fn get_asset() -> ContractAddress {
-        asset::read().contract_address
+        self.asset.read().contract_address
     }
 
     #[view]
     fn get_total_assets() -> u128 {
-        get_total_assets_internal(asset::read())
+        get_total_assets_internal(self.asset.read())
     }
 
     #[view]
     fn get_total_yang() -> Wad {
-        get_total_yang_internal(asset::read().contract_address)
+        get_total_yang_internal(self.asset.read().contract_address)
     }
 
     // Returns the amount of assets in Wad that corresponds to per Wad unit of yang.
@@ -83,7 +102,7 @@ mod Gate {
     #[view]
     fn get_asset_amt_per_yang() -> Wad {
         let amt: u128 = convert_to_assets(WAD_ONE.into());
-        let decimals: u8 = asset::read().decimals();
+        let decimals: u8 = self.asset.read().decimals();
 
         if decimals == WAD_DECIMALS {
             return amt.into();
@@ -122,7 +141,9 @@ mod Gate {
             return 0_u128.into();
         }
 
-        let success: bool = asset::read()
+        let success: bool = self
+            .asset
+            .read()
             .transfer_from(user, get_contract_address(), asset_amt.into());
         assert(success, 'GA: Asset transfer failed');
 
@@ -143,7 +164,7 @@ mod Gate {
             return 0;
         }
 
-        let success: bool = asset::read().transfer(user, asset_amt.into());
+        let success: bool = self.asset.read().transfer(user, asset_amt.into());
         assert(success, 'GA: Asset transfer failed');
 
         Exit(user, trove_id, asset_amt, yang_amt);
@@ -157,7 +178,7 @@ mod Gate {
 
     #[inline(always)]
     fn assert_sentinel() {
-        assert(get_caller_address() == sentinel::read(), 'GA: Caller is not authorized');
+        assert(get_caller_address() == self.sentinel.read(), 'GA: Caller is not authorized');
     }
 
     #[inline(always)]
@@ -167,14 +188,14 @@ mod Gate {
 
     #[inline(always)]
     fn get_total_yang_internal(asset: ContractAddress) -> Wad {
-        shrine::read().get_yang_total(asset)
+        self.shrine.read().get_yang_total(asset)
     }
 
     // Helper function to calculate the amount of assets corresponding to the given
     // amount of yang.
     // Return value is denominated in the decimals of the asset.
     fn convert_to_assets(yang_amt: Wad) -> u128 {
-        let asset: IERC20Dispatcher = asset::read();
+        let asset: IERC20Dispatcher = self.asset.read();
         let total_yang: Wad = get_total_yang_internal(asset.contract_address);
 
         if total_yang.is_zero() {
@@ -197,7 +218,7 @@ mod Gate {
     // amount of assets.
     // `asset_amt` is denominated in the decimals of the asset.
     fn convert_to_yang(asset_amt: u128) -> Wad {
-        let asset: IERC20Dispatcher = asset::read();
+        let asset: IERC20Dispatcher = self.asset.read();
         let total_yang: Wad = get_total_yang_internal(asset.contract_address);
 
         if total_yang.is_zero() {

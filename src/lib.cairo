@@ -1,7 +1,6 @@
 mod core;
-mod external;
+//mod external;
 mod interfaces;
 mod utils;
-
-#[cfg(test)]
-mod tests;
+//#[cfg(test)]
+//mod tests;

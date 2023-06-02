@@ -3,14 +3,14 @@ use starknet::ContractAddress;
 use aura::utils::serde;
 use aura::utils::wadray::{Ray, Wad};
 
-#[abi]
-trait IPurger {
+#[starknet::interface]
+trait IPurger<TStorage> {
     // view
-    fn get_penalty(trove_id: u64) -> Ray;
-    fn get_max_close_amount(trove_id: u64) -> Wad;
+    fn get_penalty(self: @TStorage, trove_id: u64) -> Ray;
+    fn get_max_close_amount(self: @TStorage, trove_id: u64) -> Wad;
     // external
     fn liquidate(
-        trove_id: u64, amt: Wad, recipient: ContractAddress
+        ref self: TStorage, trove_id: u64, amt: Wad, recipient: ContractAddress
     ) -> (Span<ContractAddress>, Span<u128>);
-    fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>);
+    fn absorb(ref self: TStorage, trove_id: u64) -> (Span<ContractAddress>, Span<u128>);
 }

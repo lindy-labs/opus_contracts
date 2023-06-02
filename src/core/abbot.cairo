@@ -6,12 +6,14 @@ mod Abbot {
     use traits::{Default, Into};
     use zeroable::Zeroable;
 
+    use aura::interfaces::IAbbot::IAbbot;
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray::{Wad, U128IntoWad};
 
+    #[starknet::storage]
     struct Storage {
         // Shrine associated with this Abbot
         shrine: IShrineDispatcher,
@@ -40,187 +42,213 @@ mod Abbot {
     // Events
     //
 
-    #[event]
-    fn TroveOpened(user: ContractAddress, trove_id: u64) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[event]
+        TroveOpened: TroveOpened,
+        #[event]
+        TroveClosed: TroveClosed,
+    }
 
-    #[event]
-    fn TroveClosed(trove_id: u64) {}
+    #[derive(Drop, starknet::Event)]
+    struct TroveOpened {
+        user: ContractAddress,
+        trove_id: u64,
+    }
+    #[derive(Drop, starknet::Event)]
+    struct TroveClosed {
+        trove_id: u64
+    }
 
     //
     // Constructor
     //
 
     #[constructor]
-    fn constructor(shrine: ContractAddress, sentinel: ContractAddress) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
+    fn constructor(ref self: Storage, shrine: ContractAddress, sentinel: ContractAddress) {
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
     }
 
-    //
-    // View functions
-    //
 
-    #[view]
-    fn get_trove_owner(trove_id: u64) -> ContractAddress {
-        trove_owner::read(trove_id)
-    }
+    impl IAbbotImpl of IAbbot<Storage> {
+        //
+        // View functions
+        //
 
-    #[view]
-    fn get_user_trove_ids(user: ContractAddress) -> Span<u64> {
-        let mut trove_ids: Array<u64> = Default::default();
-        let user_troves_count: u64 = user_troves_count::read(user);
-        let mut idx: u64 = 0;
+        fn get_trove_owner(self: @Storage, trove_id: u64) -> ContractAddress {
+            self.trove_owner.read(trove_id)
+        }
 
-        loop {
-            if idx == user_troves_count {
-                break trove_ids.span();
+        fn get_user_trove_ids(self: @Storage, user: ContractAddress) -> Span<u64> {
+            let mut trove_ids: Array<u64> = Default::default();
+            let user_troves_count: u64 = self.user_troves_count.read(user);
+            let mut idx: u64 = 0;
+
+            loop {
+                if idx == user_troves_count {
+                    break trove_ids.span();
+                }
+                trove_ids.append(self.user_troves.read((user, idx)));
+                idx += 1;
             }
-            trove_ids.append(user_troves::read((user, idx)));
-            idx += 1;
+        }
+
+        fn get_troves_count(self: @Storage, ) -> u64 {
+            self.troves_count.read()
+        }
+
+        //
+        // External functions
+        //
+
+        // create a new trove in the system with Yang deposits, 
+        // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
+        // `amounts` are denominated in asset's decimals
+        fn open_trove(
+            ref self: Storage,
+            forge_amount: Wad,
+            mut yangs: Span<ContractAddress>,
+            mut amounts: Span<u128>
+        ) {
+            assert(yangs.len() != 0_usize, 'no yangs');
+            assert(yangs.len() == amounts.len(), 'arrays of different length');
+
+            let troves_count: u64 = self.troves_count.read();
+            self.troves_count.write(troves_count + 1);
+
+            let user = get_caller_address();
+            let user_troves_count: u64 = self.user_troves_count.read(user);
+            self.user_troves_count.write(user, user_troves_count + 1);
+
+            let new_trove_id: u64 = troves_count + 1;
+            self.user_troves.write((user, user_troves_count), new_trove_id);
+            self.trove_owner.write(new_trove_id, user);
+
+            // deposit all requested Yangs into the system
+            loop {
+                match yangs.pop_front() {
+                    Option::Some(yang) => {
+                        let amount: u128 = *amounts.pop_front().unwrap();
+                        self.deposit_internal(*yang, user, new_trove_id, amount);
+                    },
+                    Option::None(_) => {
+                        break;
+                    }
+                };
+            };
+
+            // forge Yin
+            self.shrine.read().forge(user, new_trove_id, forge_amount);
+
+            TroveOpened(user, new_trove_id);
+        }
+
+        // close a trove, repaying its debt in full and withdrawing all the Yangs
+        fn close_trove(ref self: Storage, trove_id: u64) {
+            let user = get_caller_address();
+            self.assert_trove_owner(user, trove_id);
+
+            let shrine = self.shrine.read();
+            // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
+            shrine.melt(user, trove_id, integer::BoundedU128::max().into());
+
+            let mut yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
+            // withdraw each and every Yang belonging to the trove from the system
+            loop {
+                match yangs.pop_front() {
+                    Option::Some(yang) => {
+                        let yang_amount: Wad = shrine.get_deposit(*yang, trove_id);
+                        if yang_amount.is_zero() {
+                            continue;
+                        }
+                        self.withdraw_internal(*yang, user, trove_id, yang_amount);
+                    },
+                    Option::None(_) => {
+                        break;
+                    }
+                };
+            };
+
+            TroveClosed(trove_id);
+        }
+
+        // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
+        fn deposit(ref self: Storage, yang: ContractAddress, trove_id: u64, amount: u128) {
+            assert(yang.is_non_zero(), 'yang address cannot be zero');
+            assert(trove_id != 0, 'trove ID cannot be zero');
+            assert(trove_id <= self.troves_count.read(), 'non-existing trove');
+            // note that caller does not need to be the trove's owner to deposit
+
+            self.deposit_internal(yang, get_caller_address(), trove_id, amount);
+        }
+
+        // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
+        fn withdraw(ref self: Storage, yang: ContractAddress, trove_id: u64, amount: Wad) {
+            assert(yang.is_non_zero(), 'yang address cannot be zero');
+            let user = get_caller_address();
+            self.assert_trove_owner(user, trove_id);
+
+            self.withdraw_internal(yang, user, trove_id, amount);
+        }
+
+        // create Yin in a trove; `amount` is denominated in WAD_DECIMALS
+        fn forge(ref self: Storage, trove_id: u64, amount: Wad) {
+            let user = get_caller_address();
+            self.assert_trove_owner(user, trove_id);
+            self.shrine.read().forge(user, trove_id, amount);
+        }
+
+        // destroy Yin from a trove; `amount` is denominated in WAD_DECIMALS
+        fn melt(ref self: Storage, trove_id: u64, amount: Wad) {
+            // note that caller does not need to be the trove's owner to melt
+            self.shrine.read().melt(get_caller_address(), trove_id, amount);
         }
     }
 
-    #[view]
-    fn get_troves_count() -> u64 {
-        troves_count::read()
-    }
+    #[generate_trait]
+    impl StorageImpl of StorageTrait {
+        //
+        // Internal functions
+        //
 
-    //
-    // External functions
-    //
+        #[inline(always)]
+        fn assert_trove_owner(self: @Storage, user: ContractAddress, trove_id: u64) {
+            assert(user == self.trove_owner.read(trove_id), 'not trove owner')
+        }
 
-    // create a new trove in the system with Yang deposits, 
-    // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
-    // `amounts` are denominated in asset's decimals
-    #[external]
-    fn open_trove(forge_amount: Wad, mut yangs: Span<ContractAddress>, mut amounts: Span<u128>) {
-        assert(yangs.len() != 0_usize, 'no yangs');
-        assert(yangs.len() == amounts.len(), 'arrays of different length');
+        #[inline(always)]
+        fn deposit_internal(
+            ref self: Storage,
+            yang: ContractAddress,
+            user: ContractAddress,
+            trove_id: u64,
+            amount: u128
+        ) {
+            // reentrancy guard is used as a precaution
+            ReentrancyGuard::start();
 
-        let troves_count: u64 = troves_count::read();
-        troves_count::write(troves_count + 1);
+            let yang_amount: Wad = self.sentinel.read().enter(yang, user, trove_id, amount);
+            self.shrine.read().deposit(yang, trove_id, yang_amount);
 
-        let user = get_caller_address();
-        let user_troves_count: u64 = user_troves_count::read(user);
-        user_troves_count::write(user, user_troves_count + 1);
+            ReentrancyGuard::end();
+        }
 
-        let new_trove_id: u64 = troves_count + 1;
-        user_troves::write((user, user_troves_count), new_trove_id);
-        trove_owner::write(new_trove_id, user);
+        #[inline(always)]
+        fn withdraw_internal(
+            ref self: Storage,
+            yang: ContractAddress,
+            user: ContractAddress,
+            trove_id: u64,
+            amount: Wad
+        ) {
+            // reentrancy guard is used as a precaution
+            ReentrancyGuard::start();
 
-        // deposit all requested Yangs into the system
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let amount: u128 = *amounts.pop_front().unwrap();
-                    deposit_internal(*yang, user, new_trove_id, amount);
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
+            self.sentinel.read().exit(yang, user, trove_id, amount);
+            self.shrine.read().withdraw(yang, trove_id, amount);
 
-        // forge Yin
-        shrine::read().forge(user, new_trove_id, forge_amount);
-
-        TroveOpened(user, new_trove_id);
-    }
-
-    // close a trove, repaying its debt in full and withdrawing all the Yangs
-    #[external]
-    fn close_trove(trove_id: u64) {
-        let user = get_caller_address();
-        assert_trove_owner(user, trove_id);
-
-        let shrine = shrine::read();
-        // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-        shrine.melt(user, trove_id, integer::BoundedU128::max().into());
-
-        let mut yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
-        // withdraw each and every Yang belonging to the trove from the system
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let yang_amount: Wad = shrine.get_deposit(*yang, trove_id);
-                    if yang_amount.is_zero() {
-                        continue;
-                    }
-                    withdraw_internal(*yang, user, trove_id, yang_amount);
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
-
-        TroveClosed(trove_id);
-    }
-
-    // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
-    #[external]
-    fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
-        assert(yang.is_non_zero(), 'yang address cannot be zero');
-        assert(trove_id != 0, 'trove ID cannot be zero');
-        assert(trove_id <= troves_count::read(), 'non-existing trove');
-        // note that caller does not need to be the trove's owner to deposit
-
-        deposit_internal(yang, get_caller_address(), trove_id, amount);
-    }
-
-    // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
-    #[external]
-    fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        assert(yang.is_non_zero(), 'yang address cannot be zero');
-        let user = get_caller_address();
-        assert_trove_owner(user, trove_id);
-
-        withdraw_internal(yang, user, trove_id, amount);
-    }
-
-    // create Yin in a trove; `amount` is denominated in WAD_DECIMALS
-    #[external]
-    fn forge(trove_id: u64, amount: Wad) {
-        let user = get_caller_address();
-        assert_trove_owner(user, trove_id);
-        shrine::read().forge(user, trove_id, amount);
-    }
-
-    // destroy Yin from a trove; `amount` is denominated in WAD_DECIMALS
-    #[external]
-    fn melt(trove_id: u64, amount: Wad) {
-        // note that caller does not need to be the trove's owner to melt
-        shrine::read().melt(get_caller_address(), trove_id, amount);
-    }
-
-    //
-    // Internal functions
-    //
-
-    #[inline(always)]
-    fn assert_trove_owner(user: ContractAddress, trove_id: u64) {
-        assert(user == trove_owner::read(trove_id), 'not trove owner')
-    }
-
-    #[inline(always)]
-    fn deposit_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: u128) {
-        // reentrancy guard is used as a precaution
-        ReentrancyGuard::start();
-
-        let yang_amount: Wad = sentinel::read().enter(yang, user, trove_id, amount);
-        shrine::read().deposit(yang, trove_id, yang_amount);
-
-        ReentrancyGuard::end();
-    }
-
-    #[inline(always)]
-    fn withdraw_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: Wad) {
-        // reentrancy guard is used as a precaution
-        ReentrancyGuard::start();
-
-        sentinel::read().exit(yang, user, trove_id, amount);
-        shrine::read().withdraw(yang, trove_id, amount);
-
-        ReentrancyGuard::end();
+            ReentrancyGuard::end();
+        }
     }
 }

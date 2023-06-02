@@ -53,8 +53,16 @@ mod Purger {
     // Events
     //
 
-    #[event]
-    fn Purged(
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[event]
+        Purged: Purged,
+        #[event]
+        Compensate: Compensate,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Purged {
         trove_id: u64,
         purge_amt: Wad,
         percentage_freed: Ray,
@@ -62,12 +70,15 @@ mod Purger {
         recipient: ContractAddress,
         yangs: Span<ContractAddress>,
         freed_assets_amts: Span<u128>,
-    ) {}
+    }
 
-    #[event]
-    fn Compensate(
-        recipient: ContractAddress, assets: Span<ContractAddress>, asset_amts: Span<u128>, 
-    ) {}
+    #[derive(Drop, starknet::Event)]
+    struct Compensate {
+        recipient: ContractAddress,
+        assets: Span<ContractAddress>,
+        asset_amts: Span<u128>,
+    }
+
 
     //
     // Constructor
@@ -80,10 +91,10 @@ mod Purger {
         absorber: ContractAddress,
         oracle: ContractAddress,
     ) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        sentinel::write(ISentinelDispatcher { contract_address: sentinel });
-        absorber::write(IAbsorberDispatcher { contract_address: absorber });
-        oracle::write(IOracleDispatcher { contract_address: oracle });
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
+        self.absorber.write(IAbsorberDispatcher { contract_address: absorber });
+        self.oracle.write(IOracleDispatcher { contract_address: oracle });
     }
 
     //
@@ -94,7 +105,7 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_penalty(trove_id: u64) -> Ray {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (threshold, ltv, value, debt) = self.shrine.read().get_trove_info(trove_id);
 
         if ltv <= threshold {
             return RayZeroable::zero();
@@ -107,7 +118,7 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_max_close_amount(trove_id: u64) -> Wad {
-        let (threshold, ltv, _, debt) = shrine::read().get_trove_info(trove_id);
+        let (threshold, ltv, _, debt) = self.shrine.read().get_trove_info(trove_id);
 
         if ltv <= threshold {
             return WadZeroable::zero();
@@ -132,7 +143,7 @@ mod Purger {
     fn liquidate(
         trove_id: u64, amt: Wad, recipient: ContractAddress
     ) -> (Span<ContractAddress>, Span<u128>) {
-        let shrine: IShrineDispatcher = shrine::read();
+        let shrine: IShrineDispatcher = self.shrine.read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert(trove_threshold < trove_ltv, 'PU: Not liquidatable');
@@ -175,13 +186,13 @@ mod Purger {
     // in the decimals of each respective asset due to the caller as compensation.
     #[external]
     fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
-        let shrine: IShrineDispatcher = shrine::read();
+        let shrine: IShrineDispatcher = self.shrine.read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
         assert(trove_ltv.val > MAX_PENALTY_LTV, 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
-        let absorber: IAbsorberDispatcher = absorber::read();
+        let absorber: IAbsorberDispatcher = self.absorber.read();
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
 
@@ -237,7 +248,7 @@ mod Purger {
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
-            oracle::read().update_prices();
+            self.oracle.read().update_prices();
         }
 
         Compensate(caller, yangs, compensations);
@@ -259,7 +270,7 @@ mod Purger {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
-        let sentinel: ISentinelDispatcher = sentinel::read();
+        let sentinel: ISentinelDispatcher = self.sentinel.read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let mut freed_assets_amts: Array<u128> = Default::default();
 

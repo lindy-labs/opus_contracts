@@ -3,9 +3,10 @@ use starknet::ContractAddress;
 
 use aura::utils::serde::SpanSerde;
 
-#[abi]
-trait IFlashBorrower {
+#[starknet::interface]
+trait IFlashBorrower<TStorage> {
     fn on_flash_loan(
+        ref self: TStorage,
         initiator: ContractAddress,
         token: ContractAddress,
         amount: u256,

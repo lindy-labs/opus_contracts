@@ -2,12 +2,12 @@ use starknet::ContractAddress;
 
 use aura::utils::wadray::Wad;
 
-#[abi]
-trait IEqualizer {
+#[starknet::interface]
+trait IEqualizer<TStorage> {
     // getter
-    fn get_allocator() -> ContractAddress;
-    fn get_surplus() -> Wad;
+    fn get_allocator(self: @TStorage) -> ContractAddress;
+    fn get_surplus(self: @TStorage) -> Wad;
     // external
-    fn set_allocator(allocator: ContractAddress);
-    fn equalize() -> Wad;
+    fn set_allocator(ref self: TStorage, allocator: ContractAddress);
+    fn equalize(ref self: TStorage) -> Wad;
 }
