@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Get latest commit hash
         run: |
-          echo "CAIRO_HASH=fecc9dc533ba78bb333d8f444d86ad9dd9b61e82" >> $GITHUB_ENV
+          echo "CAIRO_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/starkware-libs/cairo/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
           echo "SCARB_HASH=$( curl -u "u:${{ github.token }}" https://api.github.com/repos/software-mansion/scarb/git/ref/heads/main | jq .object.sha | tr -d '"' )" >> $GITHUB_ENV
 
       - name: Checkout
@@ -65,9 +65,7 @@ jobs:
             git -C $CAIRO_FOLDER pull
           else
             echo "Cairo directory does not exist"
-            git clone --filter=tree:0 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
-            git fetch origin fecc9dc533ba78bb333d8f444d86ad9dd9b61e82
-            git checkout fecc9dc533ba78bb333d8f444d86ad9dd9b61e82
+            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
           fi
 
       - name: Install dependencies
