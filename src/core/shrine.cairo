@@ -845,7 +845,11 @@ mod Shrine {
         let max_debt: Wad = wadray::rmul_rw(threshold, value);
 
         if debt < max_debt {
-            return (max_debt - debt) / (WAD_ONE.into() + forge_fee);
+            if forge_fee.is_zero() {
+                return max_debt - debt;
+            } else {
+                return (max_debt - debt) / (WAD_ONE.into() + forge_fee);
+            }
         }
 
         0_u128.into()
