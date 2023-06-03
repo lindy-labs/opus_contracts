@@ -36,7 +36,7 @@ trait IShrine {
     fn update_rates(yang: Span<ContractAddress>, new_rate: Span<Ray>);
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn forge(user: ContractAddress, trove_id: u64, amount: Wad);
+    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee: Wad);
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad);
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn redistribute(trove_id: u64);

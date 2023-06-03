@@ -277,7 +277,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.forge(trove1_owner_addr(), TROVE_1, amt);
+        shrine.forge(trove1_owner_addr(), TROVE_1, amt, 0_u128.into());
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }

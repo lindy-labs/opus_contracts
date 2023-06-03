@@ -48,12 +48,12 @@ mod Shrine {
     // Forge fee function parameters 
     const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
     const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
-    // The lowest the yin market price where the opening fee will still be zero
-    const MAX_ACCEPTABLE_DEVIATION: u128 = 995000000000000000; // 0.995 (wad)
+    // The lowest yin market price where the forge fee will still be zero
+    const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
     // The maximum forge fee
-    const FEE_CAP: u128 = 4000000000000000000; // 400% or 4 (wad)
-    // The maximum deviation before `FEE_CAP` is reached
-    const FEE_CAP_DEVIATION: u128 = 929900000000000000; // 1 (wad)
+    const FORGE_FEE_CAP: u128 = 4000000000000000000; // 400% or 4 (wad)
+    // The maximum deviation before `FORGE_FEE_CAP` is reached
+    const FORGE_FEE_CAP_DEVIATION: u128 = 929900000000000000; // 0.9299 (wad)
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -642,13 +642,15 @@ mod Shrine {
 
     // Mint a specified amount of synthetic and attribute the debt to a Trove
     #[external]
-    fn forge(user: ContractAddress, trove_id: u64, amount: Wad) {
+    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee: Wad) {
         AccessControl::assert_has_role(ShrineRoles::FORGE);
         assert_live();
 
         charge(trove_id);
 
         let forge_fee: Wad = get_forge_fee();
+        assert(forge_fee <= max_forge_fee, 'SH: forge_fee > max_forge_fee');
+
         let debt_amount = if forge_fee.is_non_zero() {
             amount + (amount * forge_fee)
         } else {
@@ -806,16 +808,16 @@ mod Shrine {
         yin_market_price::read()
     }
 
-    // Returns the current opening fee
+    // Returns the current forge fee
     #[view]
     #[inline(always)]
     fn get_forge_fee() -> Wad {
         let yin_price: Wad = yin_market_price::read();
 
-        if yin_price >= MAX_ACCEPTABLE_DEVIATION.into() {
+        if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
             return 0_u128.into();
-        } else if yin_price < FEE_CAP_DEVIATION.into() {
-            return FEE_CAP.into();
+        } else if yin_price < FORGE_FEE_CAP_DEVIATION.into() {
+            return FORGE_FEE_CAP.into();
         }
 
         // Won't underflow since yin_price < WAD_ONE
