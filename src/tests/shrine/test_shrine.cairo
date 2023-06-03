@@ -24,8 +24,6 @@ mod TestShrine {
 
     use aura::tests::shrine::utils::ShrineUtils;
 
-    use debug::PrintTrait;
-
     //
     // Tests - Deployment and initial setup of Shrine
     //
@@ -764,7 +762,7 @@ mod TestShrine {
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-        assert(debt - forge_amt == fee * forge_amt, 'wrong opening fee charged #1');
+        assert(debt - forge_amt == fee * forge_amt, 'wrong forge fee charged #1');
 
         set_contract_address(ShrineUtils::admin());
         shrine.update_yin_market_price(yin_price1);
@@ -773,7 +771,7 @@ mod TestShrine {
         let fee: Wad = shrine.get_forge_fee();
 
         let (_, _, _, new_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-        assert(new_debt - debt - forge_amt == fee * forge_amt, 'wrong opening fee charged #2');
+        assert(new_debt - debt - forge_amt == fee * forge_amt, 'wrong forge fee charged #2');
     }
 
     //
@@ -1391,25 +1389,25 @@ mod TestShrine {
         let third_yin_price: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
         let fourth_yin_price: Wad = (Shrine::FEE_CAP_DEVIATION - 1).into();
 
-        let third_opening_fee: Wad = 39810717055349725_u128.into(); // 0.039810717055349725 (wad)
+        let third_forge_fee: Wad = 39810717055349725_u128.into(); // 0.039810717055349725 (wad)
 
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         
         set_contract_address(ShrineUtils::admin());
 
         shrine.update_yin_market_price(first_yin_price); 
-        assert(shrine.get_forge_fee().is_zero(), 'wrong opening fee #1');
+        assert(shrine.get_forge_fee().is_zero(), 'wrong forge fee #1');
 
         shrine.update_yin_market_price(second_yin_price);
-        ShrineUtils::assert_equalish(shrine.get_forge_fee(), WAD_PERCENT.into(), error_margin, 'wrong opening fee #2');
+        ShrineUtils::assert_equalish(shrine.get_forge_fee(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
 
-        // Opening fee should be capped to `FEE_CAP`
+        // forge fee should be capped to `FEE_CAP`
         shrine.update_yin_market_price(third_yin_price);
-        ShrineUtils::assert_equalish(shrine.get_forge_fee(), third_opening_fee, error_margin, 'wrong opening fee #3');
+        ShrineUtils::assert_equalish(shrine.get_forge_fee(), third_forge_fee, error_margin, 'wrong forge fee #3');
 
-        // Opening fee should be `FEE_CAP` for yin price <= `FEE_CAP_DEVIATION`
+        // forge fee should be `FEE_CAP` for yin price <= `FEE_CAP_DEVIATION`
         shrine.update_yin_market_price(fourth_yin_price);
-        assert(shrine.get_forge_fee() == Shrine::FEE_CAP.into(), 'wrong opening fee #4');
+        assert(shrine.get_forge_fee() == Shrine::FEE_CAP.into(), 'wrong forge fee #4');
 
     }
 }
