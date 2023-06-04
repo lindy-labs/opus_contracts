@@ -28,14 +28,6 @@ mod GateUtils {
     // Address constants
     //
 
-    fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
-    }
-
-    // fn asset() -> ContractAddress {
-    //     contract_address_const::<0xaa00>()
-    // }
-
     fn sentinel() -> ContractAddress {
         contract_address_const::<0x1234>()
     }

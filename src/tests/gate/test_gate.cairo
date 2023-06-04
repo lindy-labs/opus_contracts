@@ -1,3 +1,6 @@
+// NOTE: no need to test access control in Gate because only Sentinel, as
+//       decalred in constructor args when deploying, can call the gate
+
 #[cfg(test)]
 mod TestGate {
     use traits::Into;
@@ -24,4 +27,19 @@ mod TestGate {
         assert(gate.get_total_yang() == 0_u128.into(), 'get_total_yang');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
     }
+
+    #[test]
+    #[available_gas(10000000000)]
+    fn test_preview_enter() {
+        let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
+        let gate = IGateDispatcher { contract_address: gate };
+    }
+
+
+    // TODO: test preview_enter, preview_exit
+
+    // TODO: test enter, test exit
+    //       test enter wrong call on enter, wrong caller on exit
+
+    // TODO: test w/ USDC or WBTC (different decimals than 18)
 }
