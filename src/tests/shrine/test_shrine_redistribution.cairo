@@ -184,8 +184,7 @@ mod TestShrineRedistribution {
         let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
         let (_, _, mut expected_trove1_errors) = preview_trove_redistribution(shrine, yang_addrs, ShrineUtils::TROVE_1);
 
-        // Skip to 2nd redistribution
-        // Simulate purge with 0 yin to update the trove's debt
+        // Perform first redistribution - covered by previous test
         set_contract_address(ShrineUtils::admin());
         shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
         shrine.redistribute(ShrineUtils::TROVE_1);
@@ -202,6 +201,7 @@ mod TestShrineRedistribution {
         expected_remaining_yangs.append(TROVE3_YANG2_DEPOSIT.into());
         let mut expected_remaining_yangs = expected_remaining_yangs.span();
 
+        // Perform second redistribution
         shrine.melt(trove2_owner, ShrineUtils::TROVE_2, WadZeroable::zero());
         shrine.redistribute(ShrineUtils::TROVE_2);
 
