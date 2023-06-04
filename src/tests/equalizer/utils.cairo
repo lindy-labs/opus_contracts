@@ -25,52 +25,6 @@ mod EqualizerUtils {
     use aura::tests::shrine::utils::ShrineUtils;
 
     //
-    // Constants
-    //
-
-
-
-    //
-    // Address constants
-    //
-
-    fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
-    }
-
-    fn badguy() -> ContractAddress {
-        contract_address_const::<0x42069>()
-    }
-
-    fn trove1_owner_addr() -> ContractAddress {
-        contract_address_const::<0x0001>()
-    }
-
-    fn trove2_owner_addr() -> ContractAddress {
-        contract_address_const::<0x0002>()
-    }
-
-    fn trove3_owner_addr() -> ContractAddress {
-        contract_address_const::<0x0003>()
-    }
-
-    fn yin_user_addr() -> ContractAddress {
-        contract_address_const::<0x0004>()
-    }
-
-    fn yang1_addr() -> ContractAddress {
-        contract_address_const::<0x1234>()
-    }
-
-    fn yang2_addr() -> ContractAddress {
-        contract_address_const::<0x2345>()
-    }
-
-    fn invalid_yang_addr() -> ContractAddress {
-        contract_address_const::<0xabcd>()
-    }
-
-    //
     // Convenience helpers
     // 
 
