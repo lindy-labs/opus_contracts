@@ -105,13 +105,14 @@ mod Purger {
     // Returns 0 if trove is healthy
     #[view]
     fn get_max_close_amount(trove_id: u64) -> Wad {
-        let (threshold, ltv, _, debt) = shrine::read().get_trove_info(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
 
         if ltv <= threshold {
             return WadZeroable::zero();
         }
 
-        get_max_close_amount_internal(ltv, debt)
+        let penalty: Ray = get_penalty_internal(threshold, ltv, value, debt);
+        get_max_close_amount_internal(threshold, ltv, value, debt, penalty)
     }
 
     //
@@ -135,12 +136,18 @@ mod Purger {
 
         assert(trove_threshold < trove_ltv, 'PU: Not liquidatable');
 
+        let trove_penalty: Ray = get_penalty_internal(
+            trove_threshold, trove_ltv, trove_value, trove_debt
+        );
+        let max_close_amt: Wad = get_max_close_amount_internal(
+            trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty
+        );
+
         // Cap the liquidation amount to the trove's maximum close amount
-        let max_close_amt: Wad = get_max_close_amount_internal(trove_ltv, trove_debt);
         let purge_amt: Wad = min(amt, max_close_amt);
 
         let percentage_freed: Ray = get_percentage_freed(
-            trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt
+            trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
         );
 
         let funder: ContractAddress = get_caller_address();
@@ -206,7 +213,12 @@ mod Purger {
             let percentage_freed: Ray = if is_fully_absorbed {
                 RAY_ONE.into()
             } else {
-                get_percentage_freed(trove_threshold, trove_ltv, trove_value, trove_debt, purge_amt)
+                let trove_penalty: Ray = get_penalty_internal(
+                    trove_threshold, trove_ltv, trove_value, trove_debt
+                );
+                get_percentage_freed(
+                    trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
+                )
             };
 
             // Melt the trove's debt using the absorber's yin directly
@@ -298,7 +310,7 @@ mod Purger {
     // Note: this function reverts if the trove's LTV is below its threshold
     #[inline(always)]
     fn get_max_close_amount_internal(
-        debt: Wad, value: Wad, ltv: Ray, threshold: Ray, penalty: Ray
+        threshold: Ray, ltv: Ray, value: Wad, debt: Wad, penalty: Ray
     ) -> Wad {
         let penalty_multiplier = RAY_ONE.into() + penalty;
         if ltv >= RAY_ONE.into() / penalty_multiplier {
@@ -351,12 +363,14 @@ mod Purger {
     // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
     // by total trove value.
     fn get_percentage_freed(
-        trove_threshold: Ray, trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, purge_amt: Wad, 
+        trove_threshold: Ray,
+        trove_ltv: Ray,
+        trove_value: Wad,
+        trove_debt: Wad,
+        penalty: Ray,
+        purge_amt: Wad,
     ) -> Ray {
         if trove_ltv.val <= RAY_ONE {
-            let penalty: Ray = get_penalty_internal(
-                trove_threshold, trove_ltv, trove_value, trove_debt
-            );
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
             // Capping the freed amount to the maximum possible (which is the trove's entire value)
             let freed_amt: Wad = min(penalty_amt + purge_amt, trove_value);
