@@ -810,6 +810,8 @@ mod Shrine {
     }
 
     // Returns the current forge fee
+    // `forge_fee_pct` is a Wad and not Ray because the `exp` function
+    // only returns Wads. 
     #[view]
     #[inline(always)]
     fn get_forge_fee_pct() -> Wad {
