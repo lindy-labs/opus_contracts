@@ -48,7 +48,7 @@ mod Shrine {
     // Forge fee function parameters 
     const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
     const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
-    // The lowest yin market price where the forge fee will still be zero
+    // The lowest yin spot price where the forge fee will still be zero
     const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
     // The maximum forge fee as a percentage of forge amount 
     const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
@@ -85,7 +85,7 @@ mod Shrine {
         // - interval: timestamp divided by TIME_INTERVAL.
         // (yang_id, interval) -> (price, cumulative_price)
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
-        // Market price of yin
+        // Spot price of yin
         yin_spot_price: Wad,
         // Maximum amount of debt that can exist at any given time
         debt_ceiling: Wad,
@@ -210,7 +210,7 @@ mod Shrine {
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         multiplier::write(prev_interval, (init_multiplier, init_multiplier));
 
-        // Setting initial yin market price to 1
+        // Setting initial yin spot price to 1
         yin_spot_price::write(WAD_ONE.into());
 
         // Emit event
@@ -521,11 +521,11 @@ mod Shrine {
         MultiplierUpdated(new_multiplier, new_cumulative_multiplier, interval);
     }
 
-    // Updates market price of yin 
+    // Updates spot price of yin 
     //
     // Shrine denominates all prices (including that of yin) in yin, meaning yin's peg/target price is 1 (wad).
-    // Therefore, it's expected that the market price is denominated in yin, in order to
-    // get the true deviation of the market price from the peg/target price.
+    // Therefore, it's expected that the spot price is denominated in yin, in order to
+    // get the true deviation of the spot price from the peg/target price.
     #[external]
     fn update_yin_spot_price(new_price: Wad) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_PRICE);
@@ -803,7 +803,7 @@ mod Shrine {
         get_recent_multiplier_from(now())
     }
 
-    // Get yin market price 
+    // Get yin spot price 
     #[view]
     fn get_yin_spot_price() -> Wad {
         yin_spot_price::read()

@@ -755,7 +755,7 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
 
         let before_max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
-        shrine.update_yin_market_price(yin_price1);
+        shrine.update_yin_spot_price(yin_price1);
         let after_max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
 
         let fee_pct: Wad = shrine.get_forge_fee_pct();
@@ -767,7 +767,7 @@ mod TestShrine {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
 
-        shrine.update_yin_market_price(yin_price2);
+        shrine.update_yin_spot_price(yin_price2);
         let fee_pct: Wad = shrine.get_forge_fee_pct();
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee_pct);
 
@@ -787,12 +787,12 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         set_contract_address(ShrineUtils::admin());
 
-        shrine.update_yin_market_price(yin_price1);
+        shrine.update_yin_spot_price(yin_price1);
         // Front end fetches the forge fee for the user
         let stale_fee_pct: Wad = shrine.get_forge_fee_pct();
 
         // Oops! Whale dumps and yin price suddenly drops, causing the forge fee to increase
-        shrine.update_yin_market_price(yin_price2);
+        shrine.update_yin_spot_price(yin_price2);
 
         // Should revert since the forge fee exceeds the maximum set by the frontend
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct);
@@ -1419,18 +1419,18 @@ mod TestShrine {
         
         set_contract_address(ShrineUtils::admin());
 
-        shrine.update_yin_market_price(first_yin_price); 
+        shrine.update_yin_spot_price(first_yin_price); 
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
-        shrine.update_yin_market_price(second_yin_price);
+        shrine.update_yin_spot_price(second_yin_price);
         ShrineUtils::assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
-        shrine.update_yin_market_price(third_yin_price);
+        shrine.update_yin_spot_price(third_yin_price);
         ShrineUtils::assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
 
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
-        shrine.update_yin_market_price(fourth_yin_price);
+        shrine.update_yin_spot_price(fourth_yin_price);
         assert(shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4');
 
     }
