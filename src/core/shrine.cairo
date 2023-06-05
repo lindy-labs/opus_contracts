@@ -1103,9 +1103,14 @@ mod Shrine {
             let (yang_price, _, _) = get_recent_price_from(current_yang_id, current_interval);
             let raw_debt_to_distribute = ((deposited * yang_price) / trove_value) * trove_debt;
 
-            let (debt_to_distribute, redistributed_debt) = round_distributed_debt(
+            let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
                 trove_debt, raw_debt_to_distribute, redistributed_debt
             );
+
+            // TODO: using `redistributed_debt` directly as return value of `round_distributed_debt`
+            // causes it to reset to zero at the start of the loop. To re-try this pattern when updating
+            // Cairo syntax post-audit, and file a bug report if the issue persists.
+            redistributed_debt = updated_redistributed_debt;
 
             // Adjust debt to distribute by adding the error from the last redistribution
             let last_error: Wad = get_recent_redistribution_error_for_yang(

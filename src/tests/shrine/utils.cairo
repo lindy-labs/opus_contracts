@@ -142,10 +142,13 @@ mod ShrineUtils {
         set_block_timestamp(get_block_timestamp() + Shrine::TIME_INTERVAL);
     }
 
+    // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID 
+    // and terminates at yang ID 0. This affects which yang receives any rounding of
+    // debt that falls below the rounding threshold.
     fn yang_addrs() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang1_addr());
         yang_addrs.append(yang2_addr());
+        yang_addrs.append(yang1_addr());
         yang_addrs.span()
     }
 
