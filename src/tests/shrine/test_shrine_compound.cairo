@@ -296,7 +296,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
+        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero(), 0_u128.into());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
@@ -372,7 +372,7 @@ mod TestShrineCompound {
         assert(expected_debt == debt, 'wrong compounded debt');
 
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
+        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero(), 0_u128.into());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
@@ -481,7 +481,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
+        shrine.forge(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero(), 0_u128.into());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
 
@@ -703,7 +703,7 @@ mod TestShrineCompound {
         let yang2_deposit_amt: Wad = ShrineUtils::TROVE1_YANG2_DEPOSIT.into();
         shrine.deposit(yang2_addr, ShrineUtils::TROVE_1, yang2_deposit_amt);
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt);
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, 0_u128.into());
 
         let mut yangs_deposited: Array<Wad> = Default::default();
         yangs_deposited.append(yang1_deposit_amt);

@@ -277,7 +277,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.forge(trove1_owner_addr(), TROVE_1, amt);
+        shrine.forge(trove1_owner_addr(), TROVE_1, amt, 0_u128.into());
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -533,5 +533,13 @@ mod ShrineUtils {
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+    }
+
+    fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+        if a >= b {
+            assert(a - b <= error, message);
+        } else {
+            assert(b - a <= error, message);
+        }
     }
 }
