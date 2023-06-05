@@ -35,7 +35,7 @@ mod TestShrineRedistribution {
         let trove1_owner = ShrineUtils::trove1_owner_addr();
         shrine.deposit(yang1_addr, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
-        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into());
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
     }
 
     fn setup_trove2(shrine: IShrineDispatcher) {
@@ -45,7 +45,7 @@ mod TestShrineRedistribution {
         let trove2_owner = ShrineUtils::trove2_owner_addr();
         shrine.deposit(yang1_addr, ShrineUtils::TROVE_2, TROVE2_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, ShrineUtils::TROVE_2, TROVE2_YANG2_DEPOSIT.into());
-        shrine.forge(trove2_owner, ShrineUtils::TROVE_2, TROVE2_FORGE_AMT.into());
+        shrine.forge(trove2_owner, ShrineUtils::TROVE_2, TROVE2_FORGE_AMT.into(), 0_u128.into());
     }
 
     fn setup_trove3(shrine: IShrineDispatcher) {
@@ -55,7 +55,7 @@ mod TestShrineRedistribution {
         let trove3_owner = ShrineUtils::trove3_owner_addr();
         shrine.deposit(yang1_addr, ShrineUtils::TROVE_3, TROVE3_YANG1_DEPOSIT.into());
         shrine.deposit(yang2_addr, ShrineUtils::TROVE_3, TROVE3_YANG2_DEPOSIT.into());
-        shrine.forge(trove3_owner, ShrineUtils::TROVE_3, TROVE3_FORGE_AMT.into());
+        shrine.forge(trove3_owner, ShrineUtils::TROVE_3, TROVE3_FORGE_AMT.into(), 0_u128.into());
     }
 
     // Helper function to set up three troves
@@ -267,7 +267,7 @@ mod TestShrineRedistribution {
         let trove2_yang2_amt: Wad = 1000000000000000000000_u128.into();  // 1_000 (Wad)
         shrine.deposit(yang1_addr, ShrineUtils::TROVE_2, trove2_yang1_amt);
         shrine.deposit(yang2_addr, ShrineUtils::TROVE_2, trove2_yang2_amt);
-        shrine.forge(trove2_owner, ShrineUtils::TROVE_2, TROVE2_FORGE_AMT.into());
+        shrine.forge(trove2_owner, ShrineUtils::TROVE_2, TROVE2_FORGE_AMT.into(), 0_u128.into());
 
         // Get information before redistribution
         let (_, _, trove2_value, trove2_debt) = shrine.get_trove_info(ShrineUtils::TROVE_2);
