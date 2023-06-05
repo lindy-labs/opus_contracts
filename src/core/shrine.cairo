@@ -86,7 +86,7 @@ mod Shrine {
         // (yang_id, interval) -> (price, cumulative_price)
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
         // Market price of yin
-        yin_market_price: Wad,
+        yin_spot_price: Wad,
         // Maximum amount of debt that can exist at any given time
         debt_ceiling: Wad,
         // Global interest rate multiplier
@@ -211,7 +211,7 @@ mod Shrine {
         multiplier::write(prev_interval, (init_multiplier, init_multiplier));
 
         // Setting initial yin market price to 1
-        yin_market_price::write(WAD_ONE.into());
+        yin_spot_price::write(WAD_ONE.into());
 
         // Emit event
         MultiplierUpdated(init_multiplier, init_multiplier, prev_interval);
@@ -527,10 +527,10 @@ mod Shrine {
     // Therefore, it's expected that the market price is denominated in yin, in order to
     // get the true deviation of the market price from the peg/target price.
     #[external]
-    fn update_yin_market_price(new_price: Wad) {
+    fn update_yin_spot_price(new_price: Wad) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_PRICE);
-        YinPriceUpdated(yin_market_price::read(), new_price);
-        yin_market_price::write(new_price);
+        YinPriceUpdated(yin_spot_price::read(), new_price);
+        yin_spot_price::write(new_price);
     }
 
     // Update the base rates of all yangs
@@ -805,8 +805,8 @@ mod Shrine {
 
     // Get yin market price 
     #[view]
-    fn get_yin_market_price() -> Wad {
-        yin_market_price::read()
+    fn get_yin_spot_price() -> Wad {
+        yin_spot_price::read()
     }
 
     // Returns the current forge fee
@@ -815,7 +815,7 @@ mod Shrine {
     #[view]
     #[inline(always)]
     fn get_forge_fee_pct() -> Wad {
-        let yin_price: Wad = yin_market_price::read();
+        let yin_price: Wad = yin_spot_price::read();
 
         if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
             return 0_u128.into();
