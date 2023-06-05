@@ -84,8 +84,8 @@ jobs:
         run: cairo-format --recursive --check --print-parsing-errors src/
 
       # Copy `corelib` to build folder so it can be detected
-      # - name: Copy `corelib`
-      #   run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
+      - name: Copy `corelib`
+        run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
 
       - name: Test Cairo 1.x code in Cairo
         if: ${{ success() || steps.lint.conclusion == 'failure' }}
