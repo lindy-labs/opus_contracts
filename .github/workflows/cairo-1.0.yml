@@ -63,7 +63,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd $CAIRO_FOLDER && git checkout $CAIRO_HASH && cd -
-          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
+          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo --release --all
 
       # - name: Save cache
       #   uses: actions/cache/save@v3
@@ -79,7 +79,7 @@ jobs:
       #     key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Add Cairo to PATH
-        run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
+        run: echo "$BUILD_FOLDER/cairo/release" >> $GITHUB_PATH
 
       - name: Lint Cairo 1.x code
         id: lint
