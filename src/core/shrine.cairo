@@ -1108,7 +1108,8 @@ mod Shrine {
             );
 
             // TODO: using `redistributed_debt` directly as return value of `round_distributed_debt`
-            // causes it to reset to zero at the start of the loop
+            // causes it to reset to zero at the start of the loop. To re-try this pattern when updating
+            // Cairo syntax post-audit, and file a bug report if the issue persists.
             redistributed_debt = updated_redistributed_debt;
 
             // Adjust debt to distribute by adding the error from the last redistribution
