@@ -248,7 +248,7 @@ mod Shrine {
         }
 
         let debt: Wad = compound(trove_id, trove, interval);
-        let debt: Wad = pull_redistributed_debt(trove_id, debt, false);
+        let debt: Wad = pull_redistributed_debt(trove_id, debt, redistributions_count::read());
         let ltv: Ray = wadray::rdiv_ww(debt, value);
 
         (threshold, ltv, value, debt)
@@ -932,7 +932,10 @@ mod Shrine {
         let compounded_trove_debt: Wad = compound(trove_id, trove, current_interval);
 
         // Pull undistributed debt and update state
-        let new_trove_debt: Wad = pull_redistributed_debt(trove_id, compounded_trove_debt, true);
+        let current_redistribution_id: u32 = redistributions_count::read();
+        let new_trove_debt: Wad = pull_redistributed_debt(
+            trove_id, compounded_trove_debt, current_redistribution_id
+        );
 
         // Update trove
         let updated_trove: Trove = Trove {
@@ -941,6 +944,7 @@ mod Shrine {
             last_rate_era: rates_latest_era::read()
         };
         troves::write(trove_id, updated_trove);
+        trove_redistribution_id::write(trove_id, current_redistribution_id);
 
         // Get new system debt
         // This adds the interest charged on the trove's debt to the total debt.
@@ -1174,14 +1178,11 @@ mod Shrine {
         (debt_to_distribute, updated_cumulative_redistributed_debt)
     }
 
-    // Takes in a value for the trove's debt, and returns the updated value after adding
+    // Takes in a value for the trove's debt, and calculates the updated value after adding
     // the redistributed debt, if any.
-    // Takes in a boolean flag to determine whether the redistribution ID for the trove should be updated.
-    // Any state update of the trove's debt should be performed in the caller function.
     fn pull_redistributed_debt(
-        trove_id: u64, mut trove_debt: Wad, update_redistribution_id: bool
+        trove_id: u64, mut trove_debt: Wad, current_redistribution_id: u32
     ) -> Wad {
-        let current_redistribution_id: u32 = redistributions_count::read();
         let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
 
         // Early termination if no redistributions since trove was last updated
@@ -1221,10 +1222,6 @@ mod Shrine {
             }
             current_yang_id -= 1;
         };
-
-        if update_redistribution_id {
-            trove_redistribution_id::write(trove_id, current_redistribution_id);
-        }
 
         trove_debt
     }
