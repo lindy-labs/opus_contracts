@@ -58,6 +58,11 @@ jobs:
             git clone https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
           fi
 
+      - name: View
+        run: |
+          ls -la
+          ls -la $CAIRO_FOLDER
+
       - name: Install dependencies
         run: |
           cd $CAIRO_FOLDER && git checkout $CAIRO_HASH && cd -
@@ -65,7 +70,6 @@ jobs:
 
       - name: Save cache
         uses: actions/cache/save@v3
-        if: always()
         with:
           path: |
             ~/.cargo/bin/
