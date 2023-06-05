@@ -46,20 +46,21 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_input_args_mismatch_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
+    // TODO: Error msg from Sentinel
     #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
 
@@ -73,7 +74,7 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_close_non_owner_fail() {
 
     }
@@ -86,20 +87,21 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_address_yang_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
+    // TODO: error msg from Sentinel
     #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_invalid_yang_fail() {
 
@@ -107,13 +109,14 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_non_existent_trove_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
+    // Error message from Sentinel
     #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_exceeds_asset_cap_fail() {
 
@@ -127,13 +130,14 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
+    // TODO: error msg from Sentinel
     #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_invalid_yang_fail() {
 
@@ -141,7 +145,7 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_non_owner_fail() {
 
     }
@@ -154,14 +158,14 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
     fn test_forge_ltv_unsafe_fail() {
 
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_forge_non_owner_fail() {
 
     }
@@ -183,5 +187,4 @@ mod TestAbbot {
     fn test_get_user_trove_ids() {
 
     }
-
 }
