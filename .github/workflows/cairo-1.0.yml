@@ -32,49 +32,51 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
-      - name: Get cache
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            **/target
-            **/cairo
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
-          restore-keys: Linux-cargo-
+      # - name: Get cache
+      #   id: cache
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.cargo/bin/
+      #       ~/.cargo/registry/index/
+      #       ~/.cargo/registry/cache/
+      #       ~/.cargo/git/db/
+      #       **/target
+      #       **/cairo
+      #     key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+      #     restore-keys: Linux-cargo-
 
         # Always pull dependencies to access `corelib`
       - name: Pull dependencies
         shell: bash
-        run: |
-          if [ -d $CAIRO_FOLDER ]; then
-            echo "Cairo directory exists"
-            git -C $CAIRO_FOLDER pull
-          else
-            echo "Cairo directory does not exist"
-            git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
-          fi
+        run: git clone https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
+        # run: |
+        #   git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
+        #   if [ -d $CAIRO_FOLDER ]; then
+        #     echo "Cairo directory exists"
+        #     git -C $CAIRO_FOLDER pull
+        #   else
+        #     echo "Cairo directory does not exist"
+        #     git clone --depth 1 https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
+        #   fi
 
       - name: Install dependencies
         run: |
           cd $CAIRO_FOLDER && git checkout $CAIRO_HASH
-          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
+          cargo build --target-dir $BUILD_FOLDER/cairo
 
-      - name: Save cache
-        uses: actions/cache/save@v3
-        if: always()
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            **/target
-            **/cairo
-          key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
+      # - name: Save cache
+      #   uses: actions/cache/save@v3
+      #   if: always()
+      #   with:
+      #     path: |
+      #       ~/.cargo/bin/
+      #       ~/.cargo/registry/index/
+      #       ~/.cargo/registry/cache/
+      #       ~/.cargo/git/db/
+      #       **/target
+      #       **/cairo
+      #     key: ${{ runner.os }}-cargo-${{ env.CAIRO_HASH }}
 
       - name: Add Cairo to PATH
         run: echo "$BUILD_FOLDER/cairo/debug" >> $GITHUB_PATH
