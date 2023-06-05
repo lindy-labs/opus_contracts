@@ -32,19 +32,19 @@ jobs:
         with:
           toolchain: nightly-2022-11-03
 
-      - name: Get cache
-        id: cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            **/target
-            **/cairo
-          key: ${{ runner.os }}-cairo-${{ env.CAIRO_HASH }}
-          restore-keys: Linux-cairo-
+      # - name: Get cache
+      #   id: cache
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.cargo/bin/
+      #       ~/.cargo/registry/index/
+      #       ~/.cargo/registry/cache/
+      #       ~/.cargo/git/db/
+      #       **/target
+      #       **/cairo
+      #     key: ${{ runner.os }}-cairo-${{ env.CAIRO_HASH }}
+      #     restore-keys: Linux-cairo-
 
         # Always pull dependencies to access `corelib`
       - name: Pull dependencies
@@ -58,27 +58,27 @@ jobs:
             git clone https://github.com/starkware-libs/cairo.git $CAIRO_FOLDER
           fi
 
-      - name: View
-        run: |
-          ls -la
-          ls -la $CAIRO_FOLDER
+      # - name: View
+      #   run: |
+      #     ls -la
+      #     ls -la $CAIRO_FOLDER
 
       - name: Install dependencies
         run: |
           cd $CAIRO_FOLDER && git checkout $CAIRO_HASH && cd -
           cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo --release --all
 
-      - name: Save cache
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            **/target
-            **/cairo
-          key: ${{ runner.os }}-cairo-${{ env.CAIRO_HASH }}
+      # - name: Save cache
+      #   uses: actions/cache/save@v3
+      #   with:
+      #     path: |
+      #       ~/.cargo/bin/
+      #       ~/.cargo/registry/index/
+      #       ~/.cargo/registry/cache/
+      #       ~/.cargo/git/db/
+      #       **/target
+      #       **/cairo
+      #     key: ${{ runner.os }}-cairo-${{ env.CAIRO_HASH }}
 
       - name: Add Cairo to PATH
         run: echo "$BUILD_FOLDER/cairo/release" >> $GITHUB_PATH
