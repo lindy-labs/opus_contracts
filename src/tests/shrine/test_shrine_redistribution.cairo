@@ -17,21 +17,6 @@ mod TestShrineRedistribution {
     use aura::tests::shrine::utils::ShrineUtils;
 
     //
-    // Test setup helpers
-    //
-
-    // This helper overrides the equivalent in Shrine because iteration of yangs in 
-    // redistributions start from the latest yang ID and terminates at yang ID 0, 
-    // and this affects which yang receives any rounding of debt that falls below
-    // the rounding threshold.
-    fn yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(ShrineUtils::yang2_addr());
-        yang_addrs.append(ShrineUtils::yang1_addr());
-        yang_addrs.span()
-    }
-
-    //
     // Setup
     //
 
@@ -92,7 +77,7 @@ mod TestShrineRedistribution {
     // - unit debt after redistributing debt for each yang
     // - error after redistributing debt for each yang
     // Note that once the remaining redistribution value falls below the threshold, an early
-    // return will be performed, so yangs that with dust value of debt will not be included.
+    // return will be performed, so yangs with dust value of debt will not be included.
     fn preview_trove_redistribution(shrine: IShrineDispatcher, mut yang_addrs: Span<ContractAddress>, trove: u64) -> (Span<Wad>, Span<Wad>, Span<Wad>) {
         let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove);
 
@@ -159,7 +144,7 @@ mod TestShrineRedistribution {
         trove2_yang_deposits.append(TROVE2_YANG1_DEPOSIT.into());
         let mut trove2_yang_deposits = trove2_yang_deposits.span();
 
-        let yang_addrs: Span<ContractAddress> = yang_addrs();
+        let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
         let (mut trove1_yang_values, mut expected_unit_debts, mut expected_errors) = preview_trove_redistribution(shrine, yang_addrs, ShrineUtils::TROVE_1);
 
         // Simulate purge with 0 yin to update the trove's debt
@@ -225,7 +210,7 @@ mod TestShrineRedistribution {
     fn test_shrine_two_redistributions() {
         let shrine: IShrineDispatcher = redistribution_setup();
 
-        let yang_addrs: Span<ContractAddress> = yang_addrs();
+        let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
         let (_, _, mut expected_trove1_errors) = preview_trove_redistribution(shrine, yang_addrs, ShrineUtils::TROVE_1);
 
         // Perform first redistribution - covered by previous test
@@ -337,7 +322,7 @@ mod TestShrineRedistribution {
         // Get information before redistribution
         let (_, _, trove2_value, trove2_debt) = shrine.get_trove_info(ShrineUtils::TROVE_2);
    
-        let yang_addrs: Span<ContractAddress> = yang_addrs();
+        let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
 
         // Sanity check that the amount of debt attributed to YANG_2 falls below the threshold
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
