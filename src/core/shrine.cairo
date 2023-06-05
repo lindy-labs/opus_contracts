@@ -50,7 +50,7 @@ mod Shrine {
     const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
     // The lowest yin market price where the forge fee will still be zero
     const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
-    // The maximum forge fee
+    // The maximum forge fee as a percentage of forge amount 
     const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
     // The maximum deviation before `FORGE_FEE_CAP_PCT` is reached
     const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
@@ -159,7 +159,7 @@ mod Shrine {
     fn ThresholdUpdated(yang: ContractAddress, threshold: Ray) {}
 
     #[external]
-    fn ForgeFeePaid(fee: Wad) {}
+    fn ForgeFeePaid(trove_id: u64, fee: Wad, fee_pct: Wad) {}
 
     #[event]
     fn TroveUpdated(trove_id: u64, trove: Trove) {}
@@ -651,10 +651,11 @@ mod Shrine {
 
         charge(trove_id);
 
-        let forge_fee: Wad = get_forge_fee_pct();
-        assert(forge_fee <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
+        let forge_fee_pct: Wad = get_forge_fee_pct();
+        assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
 
-        let debt_amount = amount + (amount * forge_fee);
+        let forge_fee = amount * forge_fee_pct;
+        let debt_amount = amount + forge_fee;
 
         let mut new_system_debt = total_debt::read() + debt_amount;
         assert(new_system_debt <= debt_ceiling::read(), 'SH: Debt ceiling reached');
@@ -669,7 +670,7 @@ mod Shrine {
         forge_internal(user, amount);
 
         // Events
-        ForgeFeePaid(debt_amount - amount);
+        ForgeFeePaid(trove_id, forge_fee, forge_fee_pct);
         DebtTotalUpdated(new_system_debt);
         TroveUpdated(trove_id, trove_info);
     }
@@ -843,11 +844,11 @@ mod Shrine {
     fn get_max_forge(trove_id: u64) -> Wad {
         let (threshold, _, value, debt) = get_trove_info(trove_id);
 
-        let forge_fee: Wad = get_forge_fee_pct();
+        let forge_fee_pct: Wad = get_forge_fee_pct();
         let max_debt: Wad = wadray::rmul_rw(threshold, value);
 
         if debt < max_debt {
-            return (max_debt - debt) / (WAD_ONE.into() + forge_fee);
+            return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
         }
 
         0_u128.into()

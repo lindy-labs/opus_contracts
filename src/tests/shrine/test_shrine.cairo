@@ -758,21 +758,21 @@ mod TestShrine {
         shrine.update_yin_market_price(yin_price1);
         let after_max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
 
-        let fee: Wad = shrine.get_forge_fee_pct();
+        let fee_pct: Wad = shrine.get_forge_fee_pct();
 
-        assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee), 'incorrect max forge amt');
+        assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee_pct), 'incorrect max forge amt');
         
-        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee);
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee_pct);
 
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-        assert(debt - forge_amt == fee * forge_amt, 'wrong forge fee charged #1');
+        assert(debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
 
         shrine.update_yin_market_price(yin_price2);
-        let fee: Wad = shrine.get_forge_fee_pct();
-        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee);
+        let fee_pct: Wad = shrine.get_forge_fee_pct();
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee_pct);
 
         let (_, _, _, new_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
-        assert(new_debt - debt - forge_amt == fee * forge_amt, 'wrong forge fee charged #2');
+        assert(new_debt - debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2');
     }
 
     #[test]
@@ -789,13 +789,13 @@ mod TestShrine {
 
         shrine.update_yin_market_price(yin_price1);
         // Front end fetches the forge fee for the user
-        let stale_fee: Wad = shrine.get_forge_fee_pct();
+        let stale_fee_pct: Wad = shrine.get_forge_fee_pct();
 
         // Oops! Whale dumps and yin price suddenly drops, causing the forge fee to increase
         shrine.update_yin_market_price(yin_price2);
 
         // Should revert since the forge fee exceeds the maximum set by the frontend
-        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee);
+        shrine.forge(trove1_owner, ShrineUtils::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct);
     }
 
     //
