@@ -166,11 +166,12 @@ mod TestShrineRedistribution {
         loop {
             match yang_addrs_copy.pop_front() {
                 Option::Some(yang) => {
-                    // Check unit debt for redistribution
                     assert(shrine.get_deposit(*yang, ShrineUtils::TROVE_1) == WadZeroable::zero(), 'deposit should be 0');
 
                     let unit_debt = shrine.get_redistributed_unit_debt_for_yang(*yang, expected_redistribution_id);
                     let expected_unit_debt = *expected_unit_debts.pop_front().unwrap();
+
+                    // Check unit debt for redistribution
                     assert(unit_debt == expected_unit_debt, 'wrong unit debt');
 
                     // Calculate debt of trove receiving redistributed debt has increased for subsequent check
