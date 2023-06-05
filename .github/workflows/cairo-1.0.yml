@@ -59,9 +59,8 @@ jobs:
           fi
 
       - name: Install dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          cd cairo && git checkout $CAIRO_HASH
+          cd $CAIRO_FOLDER && git checkout $CAIRO_HASH
           cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
 
       - name: Save cache
