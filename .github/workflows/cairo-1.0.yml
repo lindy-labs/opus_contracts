@@ -62,8 +62,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd $CAIRO_FOLDER && git checkout $CAIRO_HASH
-          cargo build --target-dir $BUILD_FOLDER/cairo
+          cd $CAIRO_FOLDER && git checkout $CAIRO_HASH && cd -
+          cargo build --manifest-path=./cairo/Cargo.toml --target-dir $BUILD_FOLDER/cairo
 
       # - name: Save cache
       #   uses: actions/cache/save@v3
@@ -87,6 +87,7 @@ jobs:
 
       # Copy `corelib` to build folder so it can be detected
       - name: Copy `corelib`
+        if: ${{ success() || steps.lint.conclusion == 'failure' }}
         run: cp -r $CAIRO_FOLDER/corelib $BUILD_FOLDER/cairo/corelib
 
       - name: Test Cairo 1.x code in Cairo
