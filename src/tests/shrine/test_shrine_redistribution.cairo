@@ -184,8 +184,7 @@ mod TestShrineRedistribution {
         let yang_addrs: Span<ContractAddress> = ShrineUtils::yang_addrs();
         let (_, _, mut expected_trove1_errors) = preview_trove_redistribution(shrine, yang_addrs, ShrineUtils::TROVE_1);
 
-        // Skip to 2nd redistribution
-        // Simulate purge with 0 yin to update the trove's debt
+        // Perform first redistribution - covered by previous test
         set_contract_address(ShrineUtils::admin());
         shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, WadZeroable::zero());
         shrine.redistribute(ShrineUtils::TROVE_1);
@@ -202,6 +201,7 @@ mod TestShrineRedistribution {
         expected_remaining_yangs.append(TROVE3_YANG2_DEPOSIT.into());
         let mut expected_remaining_yangs = expected_remaining_yangs.span();
 
+        // Perform second redistribution
         shrine.melt(trove2_owner, ShrineUtils::TROVE_2, WadZeroable::zero());
         shrine.redistribute(ShrineUtils::TROVE_2);
 
@@ -252,7 +252,7 @@ mod TestShrineRedistribution {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_redistribute_dust_yang_rounding() {
-        // Manually set up troves so that the redistributed trove has a dust amount of one
+        // Manually set up troves so that the redistributed trove has a dust amount of one yang
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         set_contract_address(ShrineUtils::admin());
@@ -283,7 +283,7 @@ mod TestShrineRedistribution {
         shrine.melt(trove2_owner, ShrineUtils::TROVE_2, WadZeroable::zero());
         shrine.redistribute(ShrineUtils::TROVE_2);
 
-        // Check that yang 1 unit debt is not zero
+        // Check that yang 1 unit debt is zero
         let expected_redistribution_id: u32 = 1;
         assert(shrine.get_redistributions_count() == expected_redistribution_id, 'wrong redistribution count');
         assert(shrine.get_redistributed_unit_debt_for_yang(yang1_addr, expected_redistribution_id) == WadZeroable::zero(), 'should be skipped');
