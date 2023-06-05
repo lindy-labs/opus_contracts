@@ -51,9 +51,9 @@ mod Shrine {
     // The lowest yin market price where the forge fee will still be zero
     const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
     // The maximum forge fee
-    const FORGE_FEE_CAP: u128 = 4000000000000000000; // 400% or 4 (wad)
-    // The maximum deviation before `FORGE_FEE_CAP` is reached
-    const FORGE_FEE_CAP_DEVIATION: u128 = 929900000000000000; // 0.9299 (wad)
+    const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
+    // The maximum deviation before `FORGE_FEE_CAP_PCT` is reached
+    const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -157,6 +157,9 @@ mod Shrine {
 
     #[event]
     fn ThresholdUpdated(yang: ContractAddress, threshold: Ray) {}
+
+    #[external]
+    fn ForgeFeePaid(fee: Wad) {}
 
     #[event]
     fn TroveUpdated(trove_id: u64, trove: Trove) {}
@@ -642,20 +645,16 @@ mod Shrine {
 
     // Mint a specified amount of synthetic and attribute the debt to a Trove
     #[external]
-    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee: Wad) {
+    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad) {
         AccessControl::assert_has_role(ShrineRoles::FORGE);
         assert_live();
 
         charge(trove_id);
 
-        let forge_fee: Wad = get_forge_fee();
-        assert(forge_fee <= max_forge_fee, 'SH: forge_fee > max_forge_fee');
+        let forge_fee: Wad = get_forge_fee_pct();
+        assert(forge_fee <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
 
-        let debt_amount = if forge_fee.is_non_zero() {
-            amount + (amount * forge_fee)
-        } else {
-            amount
-        };
+        let debt_amount = amount + (amount * forge_fee);
 
         let mut new_system_debt = total_debt::read() + debt_amount;
         assert(new_system_debt <= debt_ceiling::read(), 'SH: Debt ceiling reached');
@@ -670,6 +669,7 @@ mod Shrine {
         forge_internal(user, amount);
 
         // Events
+        ForgeFeePaid(debt_amount - amount);
         DebtTotalUpdated(new_system_debt);
         TroveUpdated(trove_id, trove_info);
     }
@@ -811,13 +811,13 @@ mod Shrine {
     // Returns the current forge fee
     #[view]
     #[inline(always)]
-    fn get_forge_fee() -> Wad {
+    fn get_forge_fee_pct() -> Wad {
         let yin_price: Wad = yin_market_price::read();
 
         if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
             return 0_u128.into();
-        } else if yin_price < FORGE_FEE_CAP_DEVIATION.into() {
-            return FORGE_FEE_CAP.into();
+        } else if yin_price < FORGE_FEE_CAP_PRICE.into() {
+            return FORGE_FEE_CAP_PCT.into();
         }
 
         // Won't underflow since yin_price < WAD_ONE
@@ -843,15 +843,11 @@ mod Shrine {
     fn get_max_forge(trove_id: u64) -> Wad {
         let (threshold, _, value, debt) = get_trove_info(trove_id);
 
-        let forge_fee: Wad = get_forge_fee();
+        let forge_fee: Wad = get_forge_fee_pct();
         let max_debt: Wad = wadray::rmul_rw(threshold, value);
 
         if debt < max_debt {
-            if forge_fee.is_zero() {
-                return max_debt - debt;
-            } else {
-                return (max_debt - debt) / (WAD_ONE.into() + forge_fee);
-            }
+            return (max_debt - debt) / (WAD_ONE.into() + forge_fee);
         }
 
         0_u128.into()

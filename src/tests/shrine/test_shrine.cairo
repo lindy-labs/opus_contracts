@@ -743,7 +743,6 @@ mod TestShrine {
     #[test]
     #[available_gas(20000000000)]
     fn test_shrine_forge_nonzero_forge_fee() {
-        let error_margin: Wad = 0_u128.into(); // 0.01 (wad)
         let yin_price1: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
         let yin_price2: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let forge_amt: Wad = 100000000000000000000_u128.into(); // 100 (wad)
@@ -759,7 +758,7 @@ mod TestShrine {
         shrine.update_yin_market_price(yin_price1);
         let after_max_forge_amt: Wad = shrine.get_max_forge(ShrineUtils::TROVE_1);
 
-        let fee: Wad = shrine.get_forge_fee();
+        let fee: Wad = shrine.get_forge_fee_pct();
 
         assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee), 'incorrect max forge amt');
         
@@ -768,8 +767,8 @@ mod TestShrine {
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
         assert(debt - forge_amt == fee * forge_amt, 'wrong forge fee charged #1');
 
-        shrine.update_yin_market_price(yin_price1);
-        let fee: Wad = shrine.get_forge_fee();
+        shrine.update_yin_market_price(yin_price2);
+        let fee: Wad = shrine.get_forge_fee_pct();
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee);
 
         let (_, _, _, new_debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
@@ -778,7 +777,7 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: forge_fee > max_forge_fee', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SH: forge_fee% > max_forge_fee%', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_forge_fee_exceeds_max() {
         let yin_price1: Wad = 985000000000000000_u128.into(); // 0.985 (wad)
         let yin_price2: Wad = 970000000000000000_u128.into(); // 0.985 (wad)
@@ -790,7 +789,7 @@ mod TestShrine {
 
         shrine.update_yin_market_price(yin_price1);
         // Front end fetches the forge fee for the user
-        let stale_fee: Wad = shrine.get_forge_fee();
+        let stale_fee: Wad = shrine.get_forge_fee_pct();
 
         // Oops! Whale dumps and yin price suddenly drops, causing the forge fee to increase
         shrine.update_yin_market_price(yin_price2);
@@ -1412,7 +1411,7 @@ mod TestShrine {
         let first_yin_price: Wad = 995000000000000000_u128.into(); // 0.995 (wad)
         let second_yin_price: Wad = 994999999999999999_u128.into(); // 0.994999... (wad)
         let third_yin_price: Wad = 980000000000000000_u128.into(); // 0.98 (wad)
-        let fourth_yin_price: Wad = (Shrine::FORGE_FEE_CAP_DEVIATION - 1).into();
+        let fourth_yin_price: Wad = (Shrine::FORGE_FEE_CAP_PRICE - 1).into();
 
         let third_forge_fee: Wad = 39810717055349725_u128.into(); // 0.039810717055349725 (wad)
 
@@ -1421,18 +1420,18 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
 
         shrine.update_yin_market_price(first_yin_price); 
-        assert(shrine.get_forge_fee().is_zero(), 'wrong forge fee #1');
+        assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
         shrine.update_yin_market_price(second_yin_price);
-        ShrineUtils::assert_equalish(shrine.get_forge_fee(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
+        ShrineUtils::assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
 
-        // forge fee should be capped to `FORGE_FEE_CAP`
+        // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_market_price(third_yin_price);
-        ShrineUtils::assert_equalish(shrine.get_forge_fee(), third_forge_fee, error_margin, 'wrong forge fee #3');
+        ShrineUtils::assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
 
-        // forge fee should be `FORGE_FEE_CAP` for yin price <= `FORGE_FEE_CAP_DEVIATION`
+        // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_market_price(fourth_yin_price);
-        assert(shrine.get_forge_fee() == Shrine::FORGE_FEE_CAP.into(), 'wrong forge fee #4');
+        assert(shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4');
 
     }
 }
