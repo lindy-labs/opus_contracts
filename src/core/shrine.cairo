@@ -528,7 +528,7 @@ mod Shrine {
     // get the true deviation of the spot price from the peg/target price.
     #[external]
     fn update_yin_spot_price(new_price: Wad) {
-        AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_PRICE);
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE);
         YinPriceUpdated(yin_spot_price::read(), new_price);
         yin_spot_price::write(new_price);
     }
