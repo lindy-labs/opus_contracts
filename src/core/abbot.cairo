@@ -94,8 +94,8 @@ mod Abbot {
     // `amounts` are denominated in asset's decimals
     #[external]
     fn open_trove(forge_amount: Wad, mut yangs: Span<ContractAddress>, mut amounts: Span<u128>) {
-        assert(yangs.len() != 0_usize, 'no yangs');
-        assert(yangs.len() == amounts.len(), 'arrays of different length');
+        assert(yangs.len() != 0_usize, 'ABB: No yangs');
+        assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
 
         let troves_count: u64 = troves_count::read();
         troves_count::write(troves_count + 1);
@@ -160,9 +160,9 @@ mod Abbot {
     // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
     #[external]
     fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
-        assert(yang.is_non_zero(), 'yang address cannot be zero');
-        assert(trove_id != 0, 'trove ID cannot be zero');
-        assert(trove_id <= troves_count::read(), 'non-existing trove');
+        assert(yang.is_non_zero(), 'ABB: Yang address cannot be 0');
+        assert(trove_id != 0, 'ABB: Trove ID cannot be 0');
+        assert(trove_id <= troves_count::read(), 'ABB: Non-existent trove');
         // note that caller does not need to be the trove's owner to deposit
 
         deposit_internal(yang, get_caller_address(), trove_id, amount);
@@ -171,7 +171,7 @@ mod Abbot {
     // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
     #[external]
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        assert(yang.is_non_zero(), 'yang address cannot be zero');
+        assert(yang.is_non_zero(), 'ABB: Yang address cannot be 0');
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
@@ -199,7 +199,7 @@ mod Abbot {
 
     #[inline(always)]
     fn assert_trove_owner(user: ContractAddress, trove_id: u64) {
-        assert(user == trove_owner::read(trove_id), 'not trove owner')
+        assert(user == trove_owner::read(trove_id), 'ABB: Not trove owner')
     }
 
     #[inline(always)]
