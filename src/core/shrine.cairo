@@ -12,13 +12,13 @@ mod Shrine {
     use aura::core::roles::ShrineRoles;
 
     use aura::utils::access_control::AccessControl;
-    use aura::utils::exp::exp;
+    use aura::utils::exp::{exp, neg_exp};
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
     use aura::utils::types::{Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS};
+    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -44,6 +44,16 @@ mod Shrine {
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
     const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
+
+    // Forge fee function parameters 
+    const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
+    const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
+    // The lowest yin spot price where the forge fee will still be zero
+    const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
+    // The maximum forge fee as a percentage of forge amount 
+    const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
+    // The maximum deviation before `FORGE_FEE_CAP_PCT` is reached
+    const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -75,6 +85,8 @@ mod Shrine {
         // - interval: timestamp divided by TIME_INTERVAL.
         // (yang_id, interval) -> (price, cumulative_price)
         yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
+        // Spot price of yin
+        yin_spot_price: Wad,
         // Maximum amount of debt that can exist at any given time
         debt_ceiling: Wad,
         // Global interest rate multiplier
@@ -146,6 +158,9 @@ mod Shrine {
     #[event]
     fn ThresholdUpdated(yang: ContractAddress, threshold: Ray) {}
 
+    #[external]
+    fn ForgeFeePaid(trove_id: u64, fee: Wad, fee_pct: Wad) {}
+
     #[event]
     fn TroveUpdated(trove_id: u64, trove: Trove) {}
 
@@ -157,6 +172,9 @@ mod Shrine {
 
     #[event]
     fn YangPriceUpdated(yang: ContractAddress, price: Wad, cumulative_price: Wad, interval: u64) {}
+
+    #[event]
+    fn YinPriceUpdated(old_price: Wad, new_price: Wad) {}
 
     #[event]
     fn DebtCeilingUpdated(ceiling: Wad) {}
@@ -191,6 +209,9 @@ mod Shrine {
         let prev_interval: u64 = now() - 1;
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         multiplier::write(prev_interval, (init_multiplier, init_multiplier));
+
+        // Setting initial yin spot price to 1
+        yin_spot_price::write(WAD_ONE.into());
 
         // Emit event
         MultiplierUpdated(init_multiplier, init_multiplier, prev_interval);
@@ -227,7 +248,7 @@ mod Shrine {
         }
 
         let debt: Wad = compound(trove_id, trove, interval);
-        let debt: Wad = pull_redistributed_debt(trove_id, debt, false);
+        let debt: Wad = pull_redistributed_debt(trove_id, debt, redistributions_count::read());
         let ltv: Ray = wadray::rdiv_ww(debt, value);
 
         (threshold, ltv, value, debt)
@@ -500,6 +521,17 @@ mod Shrine {
         MultiplierUpdated(new_multiplier, new_cumulative_multiplier, interval);
     }
 
+    // Updates spot price of yin 
+    //
+    // Shrine denominates all prices (including that of yin) in yin, meaning yin's peg/target price is 1 (wad).
+    // Therefore, it's expected that the spot price is denominated in yin, in order to
+    // get the true deviation of the spot price from the peg/target price.
+    #[external]
+    fn update_yin_spot_price(new_price: Wad) {
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE);
+        YinPriceUpdated(yin_spot_price::read(), new_price);
+        yin_spot_price::write(new_price);
+    }
 
     // Update the base rates of all yangs
     // A base rate of USE_PREV_BASE_RATE means the base rate for the yang stays the same
@@ -613,32 +645,34 @@ mod Shrine {
 
     // Mint a specified amount of synthetic and attribute the debt to a Trove
     #[external]
-    fn forge(user: ContractAddress, trove_id: u64, amount: Wad) {
+    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad) {
         AccessControl::assert_has_role(ShrineRoles::FORGE);
         assert_live();
 
         charge(trove_id);
 
-        let new_system_debt = total_debt::read() + amount;
+        let forge_fee_pct: Wad = get_forge_fee_pct();
+        assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
+
+        let forge_fee = amount * forge_fee_pct;
+        let debt_amount = amount + forge_fee;
+
+        let mut new_system_debt = total_debt::read() + debt_amount;
         assert(new_system_debt <= debt_ceiling::read(), 'SH: Debt ceiling reached');
         total_debt::write(new_system_debt);
 
         // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`. 
-        let old_trove_info: Trove = troves::read(trove_id);
-        let new_trove_info = Trove {
-            charge_from: old_trove_info.charge_from,
-            debt: old_trove_info.debt + amount,
-            last_rate_era: old_trove_info.last_rate_era
-        };
-        troves::write(trove_id, new_trove_info);
-
+        let mut trove_info: Trove = troves::read(trove_id);
+        trove_info.debt += debt_amount;
+        troves::write(trove_id, trove_info);
         assert_healthy(trove_id);
 
         forge_internal(user, amount);
 
         // Events
+        ForgeFeePaid(trove_id, forge_fee, forge_fee_pct);
         DebtTotalUpdated(new_system_debt);
-        TroveUpdated(trove_id, new_trove_info);
+        TroveUpdated(trove_id, trove_info);
     }
 
     // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -652,29 +686,25 @@ mod Shrine {
         // Charge interest
         charge(trove_id);
 
-        let old_trove_info: Trove = troves::read(trove_id);
+        let mut trove_info: Trove = troves::read(trove_id);
 
-        // If `amount` exceeds `old_trove_info.debt`, then melt all the debt. 
+        // If `amount` exceeds `trove_info.debt`, then melt all the debt. 
         // This is nice for UX so that maximum debt can be melted without knowing the exact 
         // of debt in the trove down to the 10**-18. 
-        let melt_amt: Wad = min(old_trove_info.debt, amount);
+        let melt_amt: Wad = min(trove_info.debt, amount);
         let new_system_debt: Wad = total_debt::read() - melt_amt;
         total_debt::write(new_system_debt);
 
         // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
-        let new_trove_info: Trove = Trove {
-            charge_from: old_trove_info.charge_from,
-            debt: old_trove_info.debt - melt_amt,
-            last_rate_era: old_trove_info.last_rate_era
-        };
-        troves::write(trove_id, new_trove_info);
+        trove_info.debt -= melt_amt;
+        troves::write(trove_id, trove_info);
 
         // Update user balance
         melt_internal(user, melt_amt);
 
         // Events
         DebtTotalUpdated(new_system_debt);
-        TroveUpdated(trove_id, new_trove_info);
+        TroveUpdated(trove_id, trove_info);
     }
 
     // Withdraw a specified amount of a Yang from a Trove without trove safety check.
@@ -696,7 +726,7 @@ mod Shrine {
         // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
         // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
         // system has accounted for the accrued interest.
-        let trove: Trove = troves::read(trove_id);
+        let mut trove: Trove = troves::read(trove_id);
 
         // Increment redistribution ID
         let redistribution_id: u32 = redistributions_count::read() + 1;
@@ -707,10 +737,9 @@ mod Shrine {
             redistribution_id, trove_id, trove_value, trove.debt, current_interval
         );
 
-        let updated_trove = Trove {
-            charge_from: current_interval, debt: 0_u128.into(), last_rate_era: trove.last_rate_era
-        };
-        troves::write(trove_id, updated_trove);
+        trove.charge_from = current_interval;
+        trove.debt = 0_u128.into();
+        troves::write(trove_id, trove);
 
         // Event 
         TroveRedistributed(redistribution_id, trove_id, redistributed_debt);
@@ -774,6 +803,37 @@ mod Shrine {
         get_recent_multiplier_from(now())
     }
 
+    // Get yin spot price 
+    #[view]
+    fn get_yin_spot_price() -> Wad {
+        yin_spot_price::read()
+    }
+
+    // Returns the current forge fee
+    // `forge_fee_pct` is a Wad and not Ray because the `exp` function
+    // only returns Wads. 
+    #[view]
+    #[inline(always)]
+    fn get_forge_fee_pct() -> Wad {
+        let yin_price: Wad = yin_spot_price::read();
+
+        if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
+            return 0_u128.into();
+        } else if yin_price < FORGE_FEE_CAP_PRICE.into() {
+            return FORGE_FEE_CAP_PCT.into();
+        }
+
+        // Won't underflow since yin_price < WAD_ONE
+        let deviation: Wad = WAD_ONE.into() - yin_price;
+
+        // This is a workaround since we don't yet have negative numbers
+        if deviation >= FORGE_FEE_B.into() {
+            exp(wadray::rmul_rw(FORGE_FEE_A.into(), deviation - FORGE_FEE_B.into()))
+        } else {
+            // `neg_exp` calculates e^(-x) given x. 
+            neg_exp(wadray::rmul_rw(FORGE_FEE_A.into(), FORGE_FEE_B.into() - deviation))
+        }
+    }
 
     // Returns a bool indicating whether the given trove is healthy or not
     #[view]
@@ -786,10 +846,11 @@ mod Shrine {
     fn get_max_forge(trove_id: u64) -> Wad {
         let (threshold, _, value, debt) = get_trove_info(trove_id);
 
+        let forge_fee_pct: Wad = get_forge_fee_pct();
         let max_debt: Wad = wadray::rmul_rw(threshold, value);
 
         if debt < max_debt {
-            return max_debt - debt;
+            return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
         }
 
         0_u128.into()
@@ -871,7 +932,10 @@ mod Shrine {
         let compounded_trove_debt: Wad = compound(trove_id, trove, current_interval);
 
         // Pull undistributed debt and update state
-        let new_trove_debt: Wad = pull_redistributed_debt(trove_id, compounded_trove_debt, true);
+        let current_redistribution_id: u32 = redistributions_count::read();
+        let new_trove_debt: Wad = pull_redistributed_debt(
+            trove_id, compounded_trove_debt, current_redistribution_id
+        );
 
         // Update trove
         let updated_trove: Trove = Trove {
@@ -880,6 +944,7 @@ mod Shrine {
             last_rate_era: rates_latest_era::read()
         };
         troves::write(trove_id, updated_trove);
+        trove_redistribution_id::write(trove_id, current_redistribution_id);
 
         // Get new system debt
         // This adds the interest charged on the trove's debt to the total debt.
@@ -995,6 +1060,7 @@ mod Shrine {
         }
     }
 
+
     // Loop through yangs for the trove:
     // 1. set the deposit to 0
     // 2. calculate the redistributed debt for that yang and fixed point division error, and write to storage
@@ -1037,9 +1103,14 @@ mod Shrine {
             let (yang_price, _, _) = get_recent_price_from(current_yang_id, current_interval);
             let raw_debt_to_distribute = ((deposited * yang_price) / trove_value) * trove_debt;
 
-            let (debt_to_distribute, redistributed_debt) = round_distributed_debt(
+            let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
                 trove_debt, raw_debt_to_distribute, redistributed_debt
             );
+
+            // TODO: using `redistributed_debt` directly as return value of `round_distributed_debt`
+            // causes it to reset to zero at the start of the loop. To re-try this pattern when updating
+            // Cairo syntax post-audit, and file a bug report if the issue persists.
+            redistributed_debt = updated_redistributed_debt;
 
             // Adjust debt to distribute by adding the error from the last redistribution
             let last_error: Wad = get_recent_redistribution_error_for_yang(
@@ -1112,14 +1183,11 @@ mod Shrine {
         (debt_to_distribute, updated_cumulative_redistributed_debt)
     }
 
-    // Takes in a value for the trove's debt, and returns the updated value after adding
+    // Takes in a value for the trove's debt, and calculates the updated value after adding
     // the redistributed debt, if any.
-    // Takes in a boolean flag to determine whether the redistribution ID for the trove should be updated.
-    // Any state update of the trove's debt should be performed in the caller function.
     fn pull_redistributed_debt(
-        trove_id: u64, mut trove_debt: Wad, update_redistribution_id: bool
+        trove_id: u64, mut trove_debt: Wad, current_redistribution_id: u32
     ) -> Wad {
-        let current_redistribution_id: u32 = redistributions_count::read();
         let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
 
         // Early termination if no redistributions since trove was last updated
@@ -1146,7 +1214,7 @@ mod Shrine {
 
                     // Get the amount of debt per yang for the current redistribution
                     let unit_debt: Wad = yang_redistributions::read(
-                        (current_yang_id, current_redistribution_id)
+                        (current_yang_id, current_redistribution_id_temp)
                     )
                         .unit_debt;
 
@@ -1159,10 +1227,6 @@ mod Shrine {
             }
             current_yang_id -= 1;
         };
-
-        if update_redistribution_id {
-            trove_redistribution_id::write(trove_id, current_redistribution_id);
-        }
 
         trove_debt
     }

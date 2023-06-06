@@ -142,10 +142,13 @@ mod ShrineUtils {
         set_block_timestamp(get_block_timestamp() + Shrine::TIME_INTERVAL);
     }
 
+    // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID 
+    // and terminates at yang ID 0. This affects which yang receives any rounding of
+    // debt that falls below the rounding threshold.
     fn yang_addrs() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang1_addr());
         yang_addrs.append(yang2_addr());
+        yang_addrs.append(yang1_addr());
         yang_addrs.span()
     }
 
@@ -277,7 +280,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.forge(trove1_owner_addr(), TROVE_1, amt);
+        shrine.forge(trove1_owner_addr(), TROVE_1, amt, 0_u128.into());
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -533,5 +536,13 @@ mod ShrineUtils {
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+    }
+
+    fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+        if a >= b {
+            assert(a - b <= error, message);
+        } else {
+            assert(b - a <= error, message);
+        }
     }
 }

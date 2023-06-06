@@ -19,7 +19,7 @@ trait IShrine {
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
-    fn get_redistributions_count() -> u64;
+    fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;
     fn get_redistributed_unit_debt_for_yang(yang: ContractAddress, redistribution_id: u32) -> Wad;
     fn get_live() -> bool;
@@ -32,10 +32,11 @@ trait IShrine {
     fn kill();
     fn advance(yang: ContractAddress, price: Wad);
     fn set_multiplier(new_multiplier: Ray);
+    fn update_yin_spot_price(new_price: Wad);
     fn update_rates(yang: Span<ContractAddress>, new_rate: Span<Ray>);
     fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn forge(user: ContractAddress, trove_id: u64, amount: Wad);
+    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad);
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad);
     fn redistribute(trove_id: u64);
@@ -46,6 +47,8 @@ trait IShrine {
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);
     fn get_current_yang_price(yang: ContractAddress) -> (Wad, Wad, u64);
     fn get_current_multiplier() -> (Ray, Ray, u64);
+    fn get_yin_spot_price() -> Wad;
+    fn get_forge_fee_pct() -> Wad;
     fn is_healthy(trove_id: u64) -> bool;
     fn get_max_forge(trove_id: u64) -> Wad;
 }
