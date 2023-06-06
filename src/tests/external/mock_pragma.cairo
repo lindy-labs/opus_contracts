@@ -1,3 +1,11 @@
+use aura::utils::types::Pragma::{DataType, PricesResponse};
+
+#[abi]
+trait IMockPragma {
+    fn next_get_data_median(pair_id: u256, price_response: PricesResponse);
+    fn get_data_median(data_type: DataType) -> PricesResponse;
+}
+
 #[contract]
 mod MockPragma {
     use aura::utils::types::Pragma::{DataType, PricesResponse};
