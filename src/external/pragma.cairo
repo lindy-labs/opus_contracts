@@ -326,4 +326,53 @@ mod Pragma {
 
         has_enough_sources & is_fresh
     }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[view]
+    fn get_pending_admin() -> ContractAddress {
+        AccessControl::get_pending_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn set_pending_admin(new_admin: ContractAddress) {
+        AccessControl::set_pending_admin(new_admin);
+    }
+
+    #[external]
+    fn accept_admin() {
+        AccessControl::accept_admin();
+    }
 }
