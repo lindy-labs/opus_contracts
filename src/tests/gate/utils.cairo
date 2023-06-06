@@ -1,5 +1,6 @@
 mod GateUtils {
     use array::{ArrayTrait, SpanTrait};
+    use integer::BoundedInt;
     use option::OptionTrait;
     use starknet::{ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const, contract_address_to_felt252, deploy_syscall, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
@@ -147,5 +148,12 @@ mod GateUtils {
             0_u128.into() // initial amount
         );
         set_contract_address(ContractAddressZeroable::zero());
+    }
+
+    fn approve_gate_to_user_token(gate: ContractAddress, user: ContractAddress, token: ContractAddress) {
+        // user no-limit approves gate to handle their share of token
+        set_contract_address(user);
+        IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());
+        set_contract_address(contract_address_const::<0>());
     }
 }
