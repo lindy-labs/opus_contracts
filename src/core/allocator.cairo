@@ -99,8 +99,8 @@ mod Allocator {
     // - the percentages add up to one Ray.
     fn set_allocation_internal(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
-        assert(recipients_len != 0, 'No recipients');
-        assert(recipients_len == percentages.len(), 'Array length mismatch');
+        assert(recipients_len != 0, 'AL: No recipients');
+        assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');
 
         let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
@@ -126,7 +126,7 @@ mod Allocator {
             };
         };
 
-        assert(total_percentage == RAY_ONE.into(), 'sum(percentages) != RAY_ONE');
+        assert(total_percentage == RAY_ONE.into(), 'AL: sum(percentages) != RAY_ONE');
 
         recipients_count::write(recipients_len);
     }

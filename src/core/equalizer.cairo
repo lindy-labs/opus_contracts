@@ -114,7 +114,7 @@ mod Equalizer {
         // Safety check to assert yin is less than or equal to total debt after minting surplus
         // It may not be equal due to rounding errors
         let updated_total_yin: Wad = shrine.get_total_yin();
-        assert(updated_total_yin <= total_debt, 'Yin exceeds debt');
+        assert(updated_total_yin <= total_debt, 'EQ: Yin exceeds debt');
 
         Equalize(recipients, percentages, minted_surplus);
 
