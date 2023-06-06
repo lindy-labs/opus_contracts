@@ -119,8 +119,7 @@ mod TestPragma {
         let new_freshness: u64 = 300;  // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
 
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
+        set_contract_address(ShrineUtils::admin());
         oracle.set_price_validity_thresholds(new_freshness, new_sources);
     }
 
@@ -133,8 +132,7 @@ mod TestPragma {
         let invalid_freshness: u64 = Pragma::LOWER_FRESHNESS_BOUND - 1;
         let valid_sources: u64 = SOURCES_THRESHOLD;
 
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
+        set_contract_address(ShrineUtils::admin());
         oracle.set_price_validity_thresholds(invalid_freshness, valid_sources);
     }
 
@@ -147,8 +145,7 @@ mod TestPragma {
         let invalid_freshness: u64 = Pragma::UPPER_FRESHNESS_BOUND + 1;
         let valid_sources: u64 = SOURCES_THRESHOLD;
 
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
+        set_contract_address(ShrineUtils::admin());
         oracle.set_price_validity_thresholds(invalid_freshness, valid_sources);
     }
 
@@ -161,8 +158,7 @@ mod TestPragma {
         let valid_freshness: u64 = FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;
 
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
+        set_contract_address(ShrineUtils::admin());
         oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
     }
 
@@ -175,8 +171,7 @@ mod TestPragma {
         let valid_freshness: u64 = FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = Pragma::UPPER_SOURCES_BOUND + 1;
 
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
+        set_contract_address(ShrineUtils::admin());
         oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
     }
 
@@ -198,10 +193,9 @@ mod TestPragma {
     fn test_set_oracle_address_pass() {
         let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
 
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
-
         let new_address: ContractAddress = contract_address_const::<0x9999>();
+
+        set_contract_address(ShrineUtils::admin());
         oracle.set_oracle(new_address);
     }
 
@@ -211,9 +205,20 @@ mod TestPragma {
     fn test_set_oracle_address_unauthorized_fail() {
         let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
 
-        set_contract_address(ShrineUtils::badguy());
-
         let new_address: ContractAddress = contract_address_const::<0x9999>();
+
+        set_contract_address(ShrineUtils::badguy());
         oracle.set_oracle(new_address);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_update_frequency_pass() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        
+        let new_frequency: u64 = UPDATE_FREQUENCY * 2;
+
+        set_contract_address(ShrineUtils::admin());
+        oracle.set_update_frequency(new_frequency);
     }
 }
