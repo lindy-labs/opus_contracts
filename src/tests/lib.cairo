@@ -1,4 +1,4 @@
-#[cfg(test)]
-mod test_shrine;
-#[cfg(test)]
+mod external;
+mod shrine;
 mod test_flashmint;
+mod utils;
