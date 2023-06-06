@@ -124,4 +124,59 @@ mod TestPragma {
         oracle.set_price_validity_thresholds(new_freshness, new_sources);
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
+    fn test_set_price_validity_threshold_freshness_too_low_fail() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        
+        let invalid_freshness: u64 = Pragma::LOWER_FRESHNESS_BOUND - 1;
+        let valid_sources: u64 = SOURCES_THRESHOLD;
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+        oracle.set_price_validity_thresholds(invalid_freshness, valid_sources);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
+    fn test_set_price_validity_threshold_freshness_too_high_fail() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        
+        let invalid_freshness: u64 = Pragma::UPPER_FRESHNESS_BOUND + 1;
+        let valid_sources: u64 = SOURCES_THRESHOLD;
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+        oracle.set_price_validity_thresholds(invalid_freshness, valid_sources);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
+    fn test_set_price_validity_threshold_sources_too_low_fail() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+
+        let valid_freshness: u64 = FRESHNESS_THRESHOLD;
+        let invalid_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+        oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
+    fn test_set_price_validity_threshold_sources_too_high_fail() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+
+        let valid_freshness: u64 = FRESHNESS_THRESHOLD;
+        let invalid_sources: u64 = Pragma::UPPER_SOURCES_BOUND + 1;
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+        oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
+    }
 }
