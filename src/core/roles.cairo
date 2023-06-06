@@ -65,7 +65,8 @@ mod ShrineRoles {
     const SET_MULTIPLIER: u128 = 2048;
     const SET_THRESHOLD: u128 = 4096;
     const UPDATE_RATES: u128 = 8192;
-    const WITHDRAW: u128 = 16384;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 16384;
+    const WITHDRAW: u128 = 32768;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
@@ -94,6 +95,7 @@ mod ShrineRoles {
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES
+            + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
     }
 }

@@ -93,7 +93,12 @@ mod Abbot {
     // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
     // `amounts` are denominated in asset's decimals
     #[external]
-    fn open_trove(forge_amount: Wad, mut yangs: Span<ContractAddress>, mut amounts: Span<u128>) {
+    fn open_trove(
+        forge_amount: Wad,
+        mut yangs: Span<ContractAddress>,
+        mut amounts: Span<u128>,
+        max_forge_fee_pct: Wad
+    ) {
         assert(yangs.len() != 0_usize, 'no yangs');
         assert(yangs.len() == amounts.len(), 'arrays of different length');
 
@@ -122,7 +127,7 @@ mod Abbot {
         };
 
         // forge Yin
-        shrine::read().forge(user, new_trove_id, forge_amount);
+        shrine::read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
 
         TroveOpened(user, new_trove_id);
     }
@@ -180,10 +185,10 @@ mod Abbot {
 
     // create Yin in a trove; `amount` is denominated in WAD_DECIMALS
     #[external]
-    fn forge(trove_id: u64, amount: Wad) {
+    fn forge(trove_id: u64, amount: Wad, max_forge_fee_pct: Wad) {
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
-        shrine::read().forge(user, trove_id, amount);
+        shrine::read().forge(user, trove_id, amount, max_forge_fee_pct);
     }
 
     // destroy Yin from a trove; `amount` is denominated in WAD_DECIMALS
