@@ -10,7 +10,7 @@ mod TestPragma {
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
 
-    use aura::core::roles::ShrineRoles;
+    use aura::core::roles::{PragmaRoles, ShrineRoles};
     use aura::external::pragma::Pragma;
 
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
@@ -21,6 +21,8 @@ mod TestPragma {
 
     use aura::tests::external::mock_pragma::{IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma};
     use aura::tests::shrine::utils::ShrineUtils;
+
+    use debug::PrintTrait;
 
     //
     // Constants
@@ -100,6 +102,26 @@ mod TestPragma {
     fn test_setup() {
         let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
 
+        // Check permissions
+        let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
+        let admin: ContractAddress = ShrineUtils::admin();
 
+        assert(oracle_ac.get_admin() == admin, 'wrong admin');
+        assert(oracle_ac.get_roles(admin) == PragmaRoles::default_admin_role(), 'wrong admin role');
+        assert(oracle_ac.has_role(PragmaRoles::default_admin_role(), admin), 'wrong admin role');
     }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_price_validity_thresholds() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        
+        let new_freshness: u64 = 300;  // 5 minutes * 60 seconds
+        let new_sources: u64 = 8;
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+        oracle.set_price_validity_thresholds(new_freshness, new_sources);
+    }
+
 }
