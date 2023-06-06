@@ -15,9 +15,10 @@ mod Purger {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
-    // This is mulitplied by a trove's threshold to determine the minimum LTV 
-    // the trove should have after a liquidation. 
-    const THRESHOLD_MARGIN: u128 = 900000000000000000000000000; // 0.9 (ray)
+    // This is multiplied by a trove's threshold to determine the target LTV 
+    // the trove should have after a liquidation, which in turn determines the
+    // maximum amount of the trove's debt that can be liquidated.
+    const THRESHOLD_SAFETY_MARGIN: u128 = 900000000000000000000000000; // 0.9 (ray)
 
     // Maximum liquidation penalty (ray): 0.125 * RAY_ONE
     const MAX_PENALTY: u128 = 125000000000000000000000000;
@@ -101,7 +102,7 @@ mod Purger {
         get_penalty_internal(threshold, ltv, value, debt)
     }
 
-    // Returns the maximum amount of debt that can be closed for a Trove based on the close factor
+    // Returns the maximum amount of debt that can be closed for a Trove
     // Returns 0 if trove is healthy
     #[view]
     fn get_max_close_amount(trove_id: u64) -> Wad {
@@ -123,7 +124,6 @@ mod Purger {
     // and the recipient address to send the freed collateral to.
     // Reverts if:
     // - the trove is not liquidatable (i.e. LTV > threshold).
-    // - the repayment amount exceeds the maximum amount as determined by the close factor.
     // - if the trove's LTV is worse off than before the liquidation (should not be possible, but as a precaution)
     // Returns a tuple of an ordered array of yang addresses and an ordered array of freed collateral amounts
     // in the decimals of each respective asset due to the recipient for performing the liquidation.
@@ -147,7 +147,7 @@ mod Purger {
         let purge_amt: Wad = min(amt, max_close_amt);
 
         let percentage_freed: Ray = get_percentage_freed(
-            trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
+            trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
         );
 
         let funder: ContractAddress = get_caller_address();
@@ -216,9 +216,7 @@ mod Purger {
                 let trove_penalty: Ray = get_penalty_internal(
                     trove_threshold, trove_ltv, trove_value, trove_debt
                 );
-                get_percentage_freed(
-                    trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
-                )
+                get_percentage_freed(trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt)
             };
 
             // Melt the trove's debt using the absorber's yin directly
@@ -307,17 +305,19 @@ mod Purger {
 
 
     // Returns the maximum amount of debt that can be paid off in a given liquidation
-    // Note: this function reverts if the trove's LTV is below its threshold
+    // Note: this function reverts if the trove's LTV is below its threshold multiplied by `THRESHOLD_SAFETY_MARGIN`. 
     #[inline(always)]
     fn get_max_close_amount_internal(
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad, penalty: Ray
     ) -> Wad {
         let penalty_multiplier = RAY_ONE.into() + penalty;
+        // If the LTV is greater than 1 / penalty_multiplier, then the max close amount
+        // the function will calculate will be greater than `debt`, so we cap it at `debt`. 
         if ltv >= RAY_ONE.into() / penalty_multiplier {
             return debt;
         }
 
-        let target_ltv = THRESHOLD_MARGIN.into() * threshold;
+        let target_ltv = THRESHOLD_SAFETY_MARGIN.into() * threshold;
 
         wadray::rdiv_wr(
             debt - wadray::rmul_wr(value, target_ltv),
@@ -359,16 +359,10 @@ mod Purger {
     }
 
     // Helper function to calculate percentage of collateral freed.
-    // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided
+    // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided by total trove value.
     // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
-    // by total trove value.
     fn get_percentage_freed(
-        trove_threshold: Ray,
-        trove_ltv: Ray,
-        trove_value: Wad,
-        trove_debt: Wad,
-        penalty: Ray,
-        purge_amt: Wad,
+        trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad, 
     ) -> Ray {
         if trove_ltv.val <= RAY_ONE {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
