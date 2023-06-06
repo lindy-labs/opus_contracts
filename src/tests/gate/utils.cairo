@@ -121,32 +121,36 @@ mod GateUtils {
     }
 
     fn add_eth_as_yang(shrine: ContractAddress, eth: ContractAddress) {
-        // TODO: eventually do add_yang via a fn in ShrineUtils 
+        // TODO: eventually do add_yang via a fn in ShrineUtils
         //       but one that takes `eth` as input, for we need a "real mock"
         //       contract deployed for the tests to run
         set_contract_address(ShrineUtils::admin());
-        IShrineDispatcher { contract_address: shrine }.add_yang(
+        let shrine = IShrineDispatcher { contract_address: shrine };
+        shrine.add_yang(
             eth,
             ShrineUtils::YANG1_THRESHOLD.into(),
             ShrineUtils::YANG1_START_PRICE.into(),
             ShrineUtils::YANG1_BASE_RATE.into(),
             0_u128.into() // initial amount
         );
+        shrine.set_debt_ceiling(ShrineUtils::DEBT_CEILING.into());
         set_contract_address(ContractAddressZeroable::zero());
     }
 
     fn add_wbtc_as_yang(shrine: ContractAddress, wbtc: ContractAddress) {
-        // TODO: eventually do add_yang via a fn in ShrineUtils 
+        // TODO: eventually do add_yang via a fn in ShrineUtils
         //       but one that takes `wbtc` as input, for we need a "real mock"
         //       contract deployed for the tests to run
         set_contract_address(ShrineUtils::admin());
-        IShrineDispatcher { contract_address: shrine }.add_yang(
+        let shrine = IShrineDispatcher { contract_address: shrine };
+        shrine.add_yang(
             wbtc,
             ShrineUtils::YANG2_THRESHOLD.into(),
             ShrineUtils::YANG2_START_PRICE.into(),
             ShrineUtils::YANG2_BASE_RATE.into(),
             0_u128.into() // initial amount
         );
+        shrine.set_debt_ceiling(ShrineUtils::DEBT_CEILING.into());
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -155,5 +159,9 @@ mod GateUtils {
         set_contract_address(user);
         IERC20Dispatcher { contract_address: token }.approve(gate, BoundedInt::max());
         set_contract_address(contract_address_const::<0>());
+    }
+
+    fn rebase(gate: ContractAddress, amount: u128) {
+        
     }
 }

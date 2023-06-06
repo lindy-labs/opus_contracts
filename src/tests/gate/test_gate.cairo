@@ -8,12 +8,14 @@ mod TestGate {
     use starknet::testing::set_contract_address;
     use traits::Into;
 
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::wadray;
     use aura::utils::wadray::{WAD_SCALE, Wad};
 
     use aura::tests::gate::utils::GateUtils;
+    use aura::tests::shrine::utils::ShrineUtils;
 
     #[test]
     #[available_gas(10000000000)]
@@ -102,8 +104,6 @@ mod TestGate {
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
     }
 
-    use debug::PrintTrait;
-
     #[test]
     #[available_gas(10000000000)]
     fn test_eth_gate_exit() {
@@ -150,5 +150,48 @@ mod TestGate {
         GateUtils::add_eth_as_yang(shrine, eth);
         let user = contract_address_const::<0xbeef>();
         IGateDispatcher { contract_address: gate }.exit(user, 1, WAD_SCALE.into());
+    }
+
+    use debug::PrintTrait;
+
+    #[test]
+    #[available_gas(10000000000)]
+    fn test_gate_rebasing() {
+        let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
+        GateUtils::add_eth_as_yang(shrine, eth);
+
+        let user1 = contract_address_const::<0xaa1>();
+        let user2 = contract_address_const::<0xbb2>();
+        let trove1 = 1_u64;
+        let trove2 = 2_u64;
+        let enter_amt1 = 5_u128 * WAD_SCALE;
+        let enter_amt2 = 12_u128 * WAD_SCALE;
+
+        GateUtils::approve_gate_to_user_token(gate, user1, eth);
+        GateUtils::approve_gate_to_user_token(gate, user2, eth);
+
+        let shrine = IShrineDispatcher { contract_address: shrine };
+        let eth = IERC20Dispatcher { contract_address: eth };
+        let gate = IGateDispatcher { contract_address: gate };
+
+        set_contract_address(GateUtils::eth_hoarder());
+        eth.transfer(user1, u256 { low: 10 * WAD_SCALE, high: 0 });
+        eth.transfer(user2, u256 { low: 20 * WAD_SCALE, high: 0 });
+
+        // simulate sentinel calling enter
+        set_contract_address(GateUtils::sentinel());
+        let yang_amt1 = gate.enter(user1, trove1, enter_amt1);
+        let yang_amt2 = gate.enter(user2, trove2, enter_amt2);
+
+        // simulate depositing
+        ShrineUtils::make_root(shrine.contract_address, ShrineUtils::admin());
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(eth.contract_address, trove1, yang_amt1);
+        shrine.deposit(eth.contract_address, trove2, yang_amt2);
+
+        let gate_yang = gate.get_total_yang();
+        assert(gate_yang == yang_amt1 + yang_amt2, 'get_total_yang');
+
+         // TODO: rebase (via mint), test shit
     }
 }
