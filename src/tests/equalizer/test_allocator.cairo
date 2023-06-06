@@ -19,8 +19,7 @@ mod TestAllocator {
     #[available_gas(20000000000)]
     fn test_allocator_deploy() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::initial_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
         let expected_recipients = EqualizerUtils::initial_recipients();
@@ -33,12 +32,13 @@ mod TestAllocator {
         assert(recipients.len() == 3, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
 
-        let allocator_ac = IAccessControlDispatcher { contract_address: allocator.contract_address };
+        let allocator_ac = IAccessControlDispatcher {
+            contract_address: allocator.contract_address
+        };
         let admin = ShrineUtils::admin();
         assert(allocator_ac.get_admin() == admin, 'wrong admin');
         assert(allocator_ac.get_roles(admin) == AllocatorRoles::SET_ALLOCATION, 'wrong role');
         assert(allocator_ac.has_role(AllocatorRoles::SET_ALLOCATION, admin), 'role not granted');
-
     }
 
     #[test]
@@ -49,8 +49,7 @@ mod TestAllocator {
         recipients.pop_front();
 
         let allocator = EqualizerUtils::allocator_deploy(
-            recipients,
-            EqualizerUtils::initial_percentages()
+            recipients, EqualizerUtils::initial_percentages()
         );
     }
 
@@ -61,10 +60,7 @@ mod TestAllocator {
         let recipients: Array<ContractAddress> = Default::default();
         let percentages: Array<Ray> = Default::default();
 
-        let allocator = EqualizerUtils::allocator_deploy(
-            recipients.span(),
-            percentages.span()
-        );
+        let allocator = EqualizerUtils::allocator_deploy(recipients.span(), percentages.span());
     }
 
     #[test]
@@ -72,8 +68,7 @@ mod TestAllocator {
     #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE', 'CONSTRUCTOR_FAILED'))]
     fn test_allocator_deploy_invalid_percentage_fail() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::invalid_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::invalid_percentages()
         );
     }
 
@@ -81,8 +76,7 @@ mod TestAllocator {
     #[available_gas(20000000000)]
     fn test_set_allocation_pass() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::initial_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
         set_contract_address(ShrineUtils::admin());
@@ -102,8 +96,7 @@ mod TestAllocator {
     #[should_panic(expected: ('AL: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
     fn test_set_allocation_arrays_mismatch_fail() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::initial_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
         set_contract_address(ShrineUtils::admin());
@@ -118,8 +111,7 @@ mod TestAllocator {
     #[should_panic(expected: ('AL: No recipients', 'ENTRYPOINT_FAILED'))]
     fn test_set_allocation_no_recipients_fail() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::initial_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
         set_contract_address(ShrineUtils::admin());
@@ -133,8 +125,7 @@ mod TestAllocator {
     #[should_panic(expected: ('AL: sum(percentages) != RAY_ONE', 'ENTRYPOINT_FAILED'))]
     fn test_set_allocation_invalid_percentage_fail() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::initial_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
         set_contract_address(ShrineUtils::admin());
@@ -150,14 +141,11 @@ mod TestAllocator {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_allocation_unauthorized_fail() {
         let allocator = EqualizerUtils::allocator_deploy(
-            EqualizerUtils::initial_recipients(),
-            EqualizerUtils::initial_percentages()
+            EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
         set_contract_address(ShrineUtils::badguy());
-        allocator.set_allocation(
-            EqualizerUtils::new_recipients(),
-            EqualizerUtils::new_percentages()
-        );
+        allocator
+            .set_allocation(EqualizerUtils::new_recipients(), EqualizerUtils::new_percentages());
     }
 }

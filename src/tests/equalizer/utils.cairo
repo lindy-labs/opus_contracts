@@ -49,19 +49,19 @@ mod EqualizerUtils {
 
     fn initial_percentages() -> Span<Ray> {
         let mut percentages: Array<Ray> = Default::default();
-        percentages.append(150000000000000000000000000_u128.into());  // 15% (Ray)
-        percentages.append(500000000000000000000000000_u128.into());  // 50% (Ray)
-        percentages.append(350000000000000000000000000_u128.into());  // 35% (Ray)
+        percentages.append(150000000000000000000000000_u128.into()); // 15% (Ray)
+        percentages.append(500000000000000000000000000_u128.into()); // 50% (Ray)
+        percentages.append(350000000000000000000000000_u128.into()); // 35% (Ray)
 
         percentages.span()
     }
 
     fn new_percentages() -> Span<Ray> {
         let mut percentages: Array<Ray> = Default::default();
-        percentages.append(125000000000000000000000000_u128.into());  // 12.5% (Ray)
-        percentages.append(372500000000000000000000000_u128.into());  // 37.25% (Ray)
-        percentages.append(216350000000000000000000000_u128.into());  // 21.635% (Ray)
-        percentages.append(286150000000000000000000000_u128.into());  // 28.615% (Ray)
+        percentages.append(125000000000000000000000000_u128.into()); // 12.5% (Ray)
+        percentages.append(372500000000000000000000000_u128.into()); // 37.25% (Ray)
+        percentages.append(216350000000000000000000000_u128.into()); // 21.635% (Ray)
+        percentages.append(286150000000000000000000000_u128.into()); // 28.615% (Ray)
 
         percentages.span()
     }
@@ -69,9 +69,9 @@ mod EqualizerUtils {
     // Percentages do not add to 1
     fn invalid_percentages() -> Span<Ray> {
         let mut percentages: Array<Ray> = Default::default();
-        percentages.append(150000000000000000000000000_u128.into());  // 15% (Ray)
-        percentages.append(500000000000000000000000000_u128.into());  // 50% (Ray)
-        percentages.append(350000000000000000000000001_u128.into());  // (35 + 1E-27)% (Ray)
+        percentages.append(150000000000000000000000000_u128.into()); // 15% (Ray)
+        percentages.append(500000000000000000000000000_u128.into()); // 50% (Ray)
+        percentages.append(350000000000000000000000001_u128.into()); // (35 + 1E-27)% (Ray)
 
         percentages.span()
     }
@@ -80,7 +80,9 @@ mod EqualizerUtils {
     // Test setup helpers
     //
 
-    fn allocator_deploy(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) -> IAllocatorDispatcher {
+    fn allocator_deploy(
+        mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>
+    ) -> IAllocatorDispatcher {
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(ShrineUtils::admin()));
 
@@ -95,7 +97,7 @@ mod EqualizerUtils {
                 }
             };
         };
-        
+
         calldata.append(percentages.len().into());
         loop {
             match percentages.pop_front() {
@@ -109,7 +111,9 @@ mod EqualizerUtils {
             };
         };
 
-        let allocator_class_hash: ClassHash = class_hash_try_from_felt252(Allocator::TEST_CLASS_HASH)
+        let allocator_class_hash: ClassHash = class_hash_try_from_felt252(
+            Allocator::TEST_CLASS_HASH
+        )
             .unwrap();
         let (allocator_addr, _) = deploy_syscall(allocator_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
@@ -119,7 +123,9 @@ mod EqualizerUtils {
 
     fn equalizer_deploy() -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        let allocator: IAllocatorDispatcher = allocator_deploy(initial_recipients(), initial_percentages());
+        let allocator: IAllocatorDispatcher = allocator_deploy(
+            initial_recipients(), initial_percentages()
+        );
         let admin = ShrineUtils::admin();
 
         let mut calldata = Default::default();
@@ -127,18 +133,24 @@ mod EqualizerUtils {
         calldata.append(contract_address_to_felt252(shrine.contract_address));
         calldata.append(contract_address_to_felt252(allocator.contract_address));
 
-        let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(Equalizer::TEST_CLASS_HASH)
+        let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(
+            Equalizer::TEST_CLASS_HASH
+        )
             .unwrap();
         let (equalizer_addr, _) = deploy_syscall(equalizer_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
         set_contract_address(admin);
-        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher { contract_address: shrine.contract_address };
+        let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
+            contract_address: shrine.contract_address
+        };
         shrine_ac.grant_role(ShrineRoles::INJECT, equalizer_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        let equalizer: IEqualizerDispatcher = IEqualizerDispatcher { contract_address: equalizer_addr };
+        let equalizer: IEqualizerDispatcher = IEqualizerDispatcher {
+            contract_address: equalizer_addr
+        };
 
         (shrine, equalizer, allocator)
     }

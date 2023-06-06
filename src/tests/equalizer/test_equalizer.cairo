@@ -28,7 +28,9 @@ mod TestEqualizer {
 
         assert(equalizer.get_allocator() == allocator.contract_address, 'wrong allocator address');
 
-        let equalizer_ac = IAccessControlDispatcher { contract_address: equalizer.contract_address };
+        let equalizer_ac = IAccessControlDispatcher {
+            contract_address: equalizer.contract_address
+        };
         let admin = ShrineUtils::admin();
         assert(equalizer_ac.get_admin() == admin, 'wrong admin');
         assert(equalizer_ac.get_roles(admin) == EqualizerRoles::SET_ALLOCATOR, 'wrong role');
@@ -41,7 +43,7 @@ mod TestEqualizer {
         let (shrine, equalizer, allocator) = EqualizerUtils::equalizer_deploy();
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());        
+        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
 
         let before_total_yin = shrine.get_total_yin();
 
@@ -52,7 +54,9 @@ mod TestEqualizer {
         set_block_timestamp(timestamp);
 
         // Set the price to make the interest calculation easier
-        ShrineUtils::advance_prices_and_set_multiplier(shrine, 1, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into());
+        ShrineUtils::advance_prices_and_set_multiplier(
+            shrine, 1, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into()
+        );
 
         // Charge trove 1 and sanity check that some debt has accrued
         ShrineUtils::trove1_deposit(shrine, WadZeroable::zero());
@@ -67,7 +71,7 @@ mod TestEqualizer {
         tokens.append(shrine.contract_address);
         let mut before_balances = test_utils::get_token_balances(tokens.span(), recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
-        
+
         set_contract_address(ShrineUtils::admin());
         equalizer.equalize();
 
@@ -84,7 +88,10 @@ mod TestEqualizer {
 
                     let before_yin_bal = *before_yin_balances.pop_front().unwrap();
                     let after_yin_bal = *after_yin_balances.pop_front().unwrap();
-                    assert(after_yin_bal == before_yin_bal + expected_increment.val, 'wrong recipient balance');
+                    assert(
+                        after_yin_bal == before_yin_bal + expected_increment.val,
+                        'wrong recipient balance'
+                    );
 
                     minted_surplus += expected_increment;
                 },
@@ -113,7 +120,9 @@ mod TestEqualizer {
         equalizer.set_allocator(new_allocator.contract_address);
 
         // Check allocator is updated
-        assert(equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated');
+        assert(
+            equalizer.get_allocator() == new_allocator.contract_address, 'allocator not updated'
+        );
     }
 
     #[test]
