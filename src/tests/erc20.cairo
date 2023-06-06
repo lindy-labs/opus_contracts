@@ -68,22 +68,25 @@ mod ERC20 {
     }
 
     #[external]
-    fn transfer(recipient: ContractAddress, amount: u256) {
+    fn transfer(recipient: ContractAddress, amount: u256) -> bool {
         let sender = get_caller_address();
         transfer_helper(sender, recipient, amount);
+        true
     }
 
     #[external]
-    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
         let caller = get_caller_address();
         spend_allowance(sender, caller, amount);
         transfer_helper(sender, recipient, amount);
+        true
     }
 
     #[external]
-    fn approve(spender: ContractAddress, amount: u256) {
+    fn approve(spender: ContractAddress, amount: u256) -> bool {
         let caller = get_caller_address();
         approve_helper(caller, spender, amount);
+        true
     }
 
     fn transfer_helper(sender: ContractAddress, recipient: ContractAddress, amount: u256) {
