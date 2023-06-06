@@ -305,14 +305,15 @@ mod Purger {
 
 
     // Returns the maximum amount of debt that can be paid off in a given liquidation
-    // Note: this function reverts if the trove's LTV is below its threshold multiplied by `THRESHOLD_SAFETY_MARGIN`. 
+    // Note: this function reverts if the trove's LTV is below its threshold multiplied by `THRESHOLD_SAFETY_MARGIN`
+    // because `debt - wadray::rmul_wr(value, target_ltv)` would underflow
     #[inline(always)]
     fn get_max_close_amount_internal(
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad, penalty: Ray
     ) -> Wad {
         let penalty_multiplier = RAY_ONE.into() + penalty;
         // If the LTV is greater than 1 / penalty_multiplier, then the max close amount
-        // the function will calculate will be greater than `debt`, so we cap it at `debt`. 
+        // based on the equation below will be greater than `debt`, so we cap it at `debt`. 
         if ltv >= RAY_ONE.into() / penalty_multiplier {
             return debt;
         }
