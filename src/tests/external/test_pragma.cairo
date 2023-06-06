@@ -113,7 +113,7 @@ mod TestPragma {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_set_price_validity_thresholds() {
+    fn test_set_price_validity_thresholds_pass() {
         let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
         
         let new_freshness: u64 = 300;  // 5 minutes * 60 seconds
@@ -178,5 +178,42 @@ mod TestPragma {
         let admin: ContractAddress = ShrineUtils::admin();
         set_contract_address(admin);
         oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_price_validity_threshold_unauthorized_fail() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+
+        let valid_freshness: u64 = FRESHNESS_THRESHOLD;
+        let valid_sources: u64 = SOURCES_THRESHOLD;
+
+        set_contract_address(ShrineUtils::badguy());
+        oracle.set_price_validity_thresholds(valid_freshness, valid_sources);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_oracle_address_pass() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+
+        let new_address: ContractAddress = contract_address_const::<0x9999>();
+        oracle.set_oracle(new_address);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_oracle_address_unauthorized_fail() {
+        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+
+        set_contract_address(ShrineUtils::badguy());
+
+        let new_address: ContractAddress = contract_address_const::<0x9999>();
+        oracle.set_oracle(new_address);
     }
 }
