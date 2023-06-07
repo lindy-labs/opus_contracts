@@ -22,6 +22,7 @@ mod TestPragma {
     use aura::utils::pow::pow10;
     use aura::utils::types::Pragma::{DataType, PricesResponse};
     use aura::utils::u256_conversions;
+    use aura::utils::wadray::WAD_DECIMALS;
 
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
@@ -47,6 +48,8 @@ mod TestPragma {
     const BTC_USD_PAIR_ID: u256 = 18669995996566340;  // str_to_felt("BTC/USD")
     const BTC_INIT_PRICE: u128 = 20000;
 
+    const PEPE_USD_PAIR_ID: u256 = 5784117554504356676;  // str_to_felt("PEPE/USD")
+
     const PRAGMA_DECIMALS: u8 = 8;
 
     //
@@ -62,7 +65,7 @@ mod TestPragma {
     // Test setup helpers
     //
 
-    fn mock_pragma_deploy() -> ContractAddress {
+    fn mock_pragma_deploy() -> IMockPragmaDispatcher {
         let mut calldata = Default::default();
         let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(
             MockPragma::TEST_CLASS_HASH
@@ -97,21 +100,21 @@ mod TestPragma {
         };
         mock_pragma.next_get_data_median(BTC_USD_PAIR_ID, btc_response);
 
-        mock_pragma_addr
+        mock_pragma
     }
 
     fn pragma_deploy() -> (
         IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher
     ) {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        let mock_pragma_addr: ContractAddress = mock_pragma_deploy();
+        let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
 
         let admin: ContractAddress = ShrineUtils::admin();
         let sentinel: ContractAddress = mock_sentinel();
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(mock_pragma_addr));
+        calldata.append(contract_address_to_felt252(mock_pragma.contract_address));
         calldata.append(contract_address_to_felt252(shrine.contract_address));
         calldata.append(contract_address_to_felt252(sentinel));
         calldata.append(UPDATE_FREQUENCY.into());
@@ -131,9 +134,8 @@ mod TestPragma {
 
         let sentinel = ISentinelDispatcher { contract_address: sentinel };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
-        let oracle = IMockPragmaDispatcher { contract_address: mock_pragma_addr };
 
-        (shrine, pragma, sentinel, oracle)
+        (shrine, pragma, sentinel, mock_pragma)
     }
 
     //
@@ -312,6 +314,77 @@ mod TestPragma {
 
         pragma.add_yang(ETH_USD_PAIR_ID, eth_token_addr);
         pragma.add_yang(BTC_USD_PAIR_ID, wbtc_token_addr);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_unauthorized_fail() {
+        let (_, pragma, _, _) = pragma_deploy();
+        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
+
+        set_contract_address(ShrineUtils::badguy());
+
+        pragma.add_yang(ETH_USD_PAIR_ID, eth_token_addr);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_invalid_pair_id_fail() {
+        let (_, pragma, _, _) = pragma_deploy();
+        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+
+        pragma.add_yang(0, eth_token_addr);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Invalid yang address', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_invalid_yang_address_fail() {
+        let (_, pragma, _, _) = pragma_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+
+        pragma.add_yang(ETH_USD_PAIR_ID, ContractAddressZeroable::zero());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Unknown pair ID', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_unknwon_pair_id_fail() {
+        let (_, pragma, _, _) = pragma_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+
+        pragma.add_yang(PEPE_USD_PAIR_ID, contract_address_const::<0xbebe>());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Too many decimals', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_too_many_decimals_fail() {
+        let (_, pragma, _, mock_pragma) = pragma_deploy();
+
+
+        let price_ts: u256 = (get_block_timestamp() - 1000).into();
+        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+
+        let pepe_price: u128 = 1000000 * pragma_price_scale;  // random price
+        let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
+        let pepe_response = PricesResponse {
+            price: pepe_price.into(),
+            decimals: invalid_decimals,
+            last_updated_timestamp: price_ts,
+            num_sources_aggregated: DEFAULT_NUM_SOURCES,
+        };
+        mock_pragma.next_get_data_median(PEPE_USD_PAIR_ID, pepe_response);
+
+        set_contract_address(ShrineUtils::admin());
+
+        pragma.add_yang(PEPE_USD_PAIR_ID, contract_address_const::<0xbebe>());
     }
 
     //
