@@ -8,7 +8,7 @@ mod GateUtils {
     use traits::{Default, Into};
 
     use aura::core::gate::Gate;
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
@@ -161,7 +161,7 @@ mod GateUtils {
         set_contract_address(contract_address_const::<0>());
     }
 
-    fn rebase(gate: ContractAddress, amount: u128) {
-        
+    fn rebase(gate: ContractAddress, token: ContractAddress, amount: u128) {
+        IMintableDispatcher { contract_address: token }.mint(gate, u256 { low: amount, high: 0 });
     }
 }

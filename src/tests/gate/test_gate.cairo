@@ -152,46 +152,141 @@ mod TestGate {
         IGateDispatcher { contract_address: gate }.exit(user, 1, WAD_SCALE.into());
     }
 
-    use debug::PrintTrait;
-
     #[test]
     #[available_gas(10000000000)]
-    fn test_gate_rebasing() {
+    fn test_gate_multi_user_enter_with_rebasing() {
         let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
         GateUtils::add_eth_as_yang(shrine, eth);
-
-        let user1 = contract_address_const::<0xaa1>();
-        let user2 = contract_address_const::<0xbb2>();
-        let trove1 = 1_u64;
-        let trove2 = 2_u64;
-        let enter_amt1 = 5_u128 * WAD_SCALE;
-        let enter_amt2 = 12_u128 * WAD_SCALE;
-
-        GateUtils::approve_gate_to_user_token(gate, user1, eth);
-        GateUtils::approve_gate_to_user_token(gate, user2, eth);
 
         let shrine = IShrineDispatcher { contract_address: shrine };
         let eth = IERC20Dispatcher { contract_address: eth };
         let gate = IGateDispatcher { contract_address: gate };
 
+        let user1 = contract_address_const::<0xaa1>();
+        let trove1 = 1_u64;
+        let enter1_amt = 50_u128 * WAD_SCALE;
+        let enter2_amt = 30_u128 * WAD_SCALE;
+
+        GateUtils::approve_gate_to_user_token(gate.contract_address, user1, eth.contract_address);
+
+        // fund user1
         set_contract_address(GateUtils::eth_hoarder());
-        eth.transfer(user1, u256 { low: 10 * WAD_SCALE, high: 0 });
-        eth.transfer(user2, u256 { low: 20 * WAD_SCALE, high: 0 });
+        eth.transfer(user1, u256 { low: enter1_amt + enter2_amt, high: 0 });
+
+        //
+        // first deposit to trove1
+        //
 
         // simulate sentinel calling enter
         set_contract_address(GateUtils::sentinel());
-        let yang_amt1 = gate.enter(user1, trove1, enter_amt1);
-        let yang_amt2 = gate.enter(user2, trove2, enter_amt2);
+        let enter1_yang_amt = gate.enter(user1, trove1, enter1_amt);
 
         // simulate depositing
         ShrineUtils::make_root(shrine.contract_address, ShrineUtils::admin());
         set_contract_address(ShrineUtils::admin());
-        shrine.deposit(eth.contract_address, trove1, yang_amt1);
-        shrine.deposit(eth.contract_address, trove2, yang_amt2);
+        shrine.deposit(eth.contract_address, trove1, enter1_yang_amt);
 
-        let gate_yang = gate.get_total_yang();
-        assert(gate_yang == yang_amt1 + yang_amt2, 'get_total_yang');
+        //
+        // rebase
+        //
 
-         // TODO: rebase (via mint), test shit
+        let rebase1_amt = 5_u128 * WAD_SCALE;
+        GateUtils::rebase(gate.contract_address, eth.contract_address, rebase1_amt);
+
+        // mark values before second deposit
+        let before_user_yang: Wad = shrine.get_deposit(eth.contract_address, trove1);
+        let before_total_yang: Wad = gate.get_total_yang();
+        let before_total_assets: u128 = gate.get_total_assets();
+        assert(before_total_yang == enter1_amt.into(), 'before_total_yang');
+        assert(before_total_assets == enter1_amt + rebase1_amt, 'before_total_assets');
+
+        //
+        // second deposit to trove1
+        //
+
+        // simulate sentinel calling enter
+        set_contract_address(GateUtils::sentinel());
+        let enter2_yang_amt = gate.enter(user1, trove1, enter2_amt);
+
+        // simulate depositing
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(eth.contract_address, trove1, enter2_yang_amt);
+
+        //
+        // checks
+        //
+
+        let expected_total_assets: u128 = enter1_amt + rebase1_amt + enter2_amt;
+        let expected_yang: Wad = before_total_yang * enter2_amt.into() / before_total_assets.into();
+        let expected_total_yang: Wad = before_total_yang + expected_yang;
+
+        assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 1');
+        assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 1');
+        assert(shrine.get_deposit(eth.contract_address, trove1) == before_user_yang + expected_yang, 'user deposits 1');
+
+        //
+        // deposit to trove 2 by user 2 after the previous deposits to trove 1 and rebase
+        //
+
+        let user2 = contract_address_const::<0xbbb>();
+        let trove2 = 2_u64;
+        let enter3_amt = 10_u128 * WAD_SCALE;
+        let enter4_amt = 8_u128 * WAD_SCALE;
+
+        GateUtils::approve_gate_to_user_token(gate.contract_address, user2, eth.contract_address);
+        set_contract_address(GateUtils::eth_hoarder());
+        eth.transfer(user2, u256 { low: enter3_amt + enter4_amt, high: 0});
+
+        let before_total_yang: Wad = gate.get_total_yang();
+        let before_total_assets: u128 = gate.get_total_assets();
+
+        // simulate sentinel calling enter
+        set_contract_address(GateUtils::sentinel());
+        let enter3_yang_amt = gate.enter(user2, trove2, enter3_amt);
+
+        // simulate depositing
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(eth.contract_address, trove2, enter3_yang_amt);
+
+        //
+        // checks
+        //
+
+        let expected_total_assets: u128 = expected_total_assets + enter3_amt;
+        let expected_total_yang: Wad = expected_total_yang + enter3_yang_amt;
+        let expected_trove2_deposit: Wad = before_total_yang * enter3_amt.into() / before_total_assets.into();
+
+        assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 2');
+        assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 2');
+        assert(shrine.get_deposit(eth.contract_address, trove2) = expected_trove2_deposit, 'user deposit 2');
+
+        //
+        // rebase
+        //
+
+        let rebase2_amt = 2_u128 * WAD_SCALE;
+        GateUtils::rebase(gate.contract_address, eth.contract_address, rebase2_amt);
+
+        //
+        // second deposit to trove 2 by user 2
+        //
+
+        // simulate entinel calling enter
+        set_contract_address(GateUtils::sentinel());
+        let enter4_yang_amt = gate.enter(user2, trove2, enter4_amt);
+
+        // simulate depositing
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(eth.contract_address, trove2, enter4_yang_amt);
+
+        //
+        // checks
+        //
+
+        let expected_total_assets = expected_total_assets + rebase2_amt + enter4_amt;
+        let expected_total_yang: Wad = expected_total_yang + enter4_yang_amt;
+
+        assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 3');
+        assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 3');
     }
 }
