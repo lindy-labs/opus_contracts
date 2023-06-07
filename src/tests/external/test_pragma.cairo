@@ -3,8 +3,8 @@ mod TestPragma {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::{
-        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_const, contract_address_to_felt252, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_const, contract_address_to_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -13,15 +13,20 @@ mod TestPragma {
     use aura::core::roles::{PragmaRoles, ShrineRoles};
     use aura::external::pragma::Pragma;
 
+    use aura::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::utils::pow::pow10;
+    use aura::utils::types::Pragma::{DataType, PricesResponse};
+    use aura::utils::u256_conversions;
 
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
     };
+    use aura::tests::gate::utils::GateUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
@@ -33,6 +38,16 @@ mod TestPragma {
     const FRESHNESS_THRESHOLD: u64 = 1800; // 30 minutes * 60 seconds
     const SOURCES_THRESHOLD: u64 = 3;
     const UPDATE_FREQUENCY: u64 = 600; // 10 minutes * 60 seconds
+
+    const DEFAULT_NUM_SOURCES: u256 = 5;
+
+    const ETH_USD_PAIR_ID: u256 = 19514442401534788;  // str_to_felt("ETH/USD")
+    const ETH_INIT_PRICE: u128 = 1888;
+    
+    const BTC_USD_PAIR_ID: u256 = 18669995996566340;  // str_to_felt("BTC/USD")
+    const BTC_INIT_PRICE: u128 = 20000;
+
+    const PRAGMA_DECIMALS: u8 = 8;
 
     //
     // Address constants
@@ -58,6 +73,30 @@ mod TestPragma {
         )
             .unwrap_syscall();
 
+        // Add ETH/USD and BTC/USD to mock Pragma oracle
+        let mock_pragma: IMockPragmaDispatcher = IMockPragmaDispatcher { contract_address: mock_pragma_addr };
+
+        let price_ts: u256 = (get_block_timestamp() - 1000).into();
+        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+
+        let eth_price: u128 = ETH_INIT_PRICE * pragma_price_scale;
+        let eth_response = PricesResponse {
+            price: eth_price.into(),
+            decimals: PRAGMA_DECIMALS.into(),
+            last_updated_timestamp: price_ts,
+            num_sources_aggregated: DEFAULT_NUM_SOURCES,
+        };
+        mock_pragma.next_get_data_median(ETH_USD_PAIR_ID, eth_response);
+
+        let btc_price: u128 = BTC_INIT_PRICE * pragma_price_scale;
+        let btc_response = PricesResponse {
+            price: btc_price.into(),
+            decimals: PRAGMA_DECIMALS.into(),
+            last_updated_timestamp: price_ts,
+            num_sources_aggregated: DEFAULT_NUM_SOURCES,
+        };
+        mock_pragma.next_get_data_median(BTC_USD_PAIR_ID, btc_response);
+
         mock_pragma_addr
     }
 
@@ -65,15 +104,15 @@ mod TestPragma {
         IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher
     ) {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        let oracle: ContractAddress = mock_pragma_deploy();
+        let mock_pragma_addr: ContractAddress = mock_pragma_deploy();
 
         let admin: ContractAddress = ShrineUtils::admin();
         let sentinel: ContractAddress = mock_sentinel();
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin));
+        calldata.append(contract_address_to_felt252(mock_pragma_addr));
         calldata.append(contract_address_to_felt252(shrine.contract_address));
-        calldata.append(contract_address_to_felt252(oracle));
         calldata.append(contract_address_to_felt252(sentinel));
         calldata.append(UPDATE_FREQUENCY.into());
         calldata.append(FRESHNESS_THRESHOLD.into());
@@ -92,7 +131,7 @@ mod TestPragma {
 
         let sentinel = ISentinelDispatcher { contract_address: sentinel };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
-        let oracle = IMockPragmaDispatcher { contract_address: oracle };
+        let oracle = IMockPragmaDispatcher { contract_address: mock_pragma_addr };
 
         (shrine, pragma, sentinel, oracle)
     }
@@ -104,167 +143,176 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_setup() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         // Check permissions
-        let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
+        let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
         let admin: ContractAddress = ShrineUtils::admin();
 
-        assert(oracle_ac.get_admin() == admin, 'wrong admin');
-        assert(oracle_ac.get_roles(admin) == PragmaRoles::default_admin_role(), 'wrong admin role');
-        assert(oracle_ac.has_role(PragmaRoles::default_admin_role(), admin), 'wrong admin role');
+        assert(pragma_ac.get_admin() == admin, 'wrong admin');
+        assert(pragma_ac.get_roles(admin) == PragmaRoles::default_admin_role(), 'wrong admin role');
+        assert(pragma_ac.has_role(PragmaRoles::default_admin_role(), admin), 'wrong admin role');
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_set_price_validity_thresholds_pass() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let new_freshness: u64 = 300; // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_price_validity_thresholds(new_freshness, new_sources);
+        pragma.set_price_validity_thresholds(new_freshness, new_sources);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_freshness_too_low_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let invalid_freshness: u64 = Pragma::LOWER_FRESHNESS_BOUND - 1;
         let valid_sources: u64 = SOURCES_THRESHOLD;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_price_validity_thresholds(invalid_freshness, valid_sources);
+        pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_freshness_too_high_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let invalid_freshness: u64 = Pragma::UPPER_FRESHNESS_BOUND + 1;
         let valid_sources: u64 = SOURCES_THRESHOLD;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_price_validity_thresholds(invalid_freshness, valid_sources);
+        pragma.set_price_validity_thresholds(invalid_freshness, valid_sources);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_sources_too_low_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let valid_freshness: u64 = FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
+        pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_sources_too_high_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let valid_freshness: u64 = FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = Pragma::UPPER_SOURCES_BOUND + 1;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_price_validity_thresholds(valid_freshness, invalid_sources);
+        pragma.set_price_validity_thresholds(valid_freshness, invalid_sources);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_unauthorized_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let valid_freshness: u64 = FRESHNESS_THRESHOLD;
         let valid_sources: u64 = SOURCES_THRESHOLD;
 
         set_contract_address(ShrineUtils::badguy());
-        oracle.set_price_validity_thresholds(valid_freshness, valid_sources);
+        pragma.set_price_validity_thresholds(valid_freshness, valid_sources);
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_set_oracle_address_pass() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let new_address: ContractAddress = contract_address_const::<0x9999>();
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_oracle(new_address);
+        pragma.set_oracle(new_address);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_oracle_address_unauthorized_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let new_address: ContractAddress = contract_address_const::<0x9999>();
 
         set_contract_address(ShrineUtils::badguy());
-        oracle.set_oracle(new_address);
+        pragma.set_oracle(new_address);
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_set_update_frequency_pass() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let new_frequency: u64 = UPDATE_FREQUENCY * 2;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_update_frequency(new_frequency);
+        pragma.set_update_frequency(new_frequency);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Frequency out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_too_low_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let invalid_frequency: u64 = Pragma::LOWER_UPDATE_FREQUENCY_BOUND - 1;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_update_frequency(invalid_frequency);
+        pragma.set_update_frequency(invalid_frequency);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Frequency out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_too_high_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let invalid_frequency: u64 = Pragma::UPPER_UPDATE_FREQUENCY_BOUND + 1;
 
         set_contract_address(ShrineUtils::admin());
-        oracle.set_update_frequency(invalid_frequency);
+        pragma.set_update_frequency(invalid_frequency);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_unauthorized_fail() {
-        let (shrine, oracle, sentinel, mock_pragma) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
         let new_frequency: u64 = UPDATE_FREQUENCY * 2;
 
         set_contract_address(ShrineUtils::badguy());
-        oracle.set_update_frequency(new_frequency);
+        pragma.set_update_frequency(new_frequency);
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_add_yang_pass() {}
+    fn test_add_yang_pass() {
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
+        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
+        let wbtc_token_addr: ContractAddress = GateUtils::wbtc_token_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+
+        pragma.add_yang(ETH_USD_PAIR_ID, eth_token_addr);
+        pragma.add_yang(BTC_USD_PAIR_ID, wbtc_token_addr);
+    }
 
     //
     // Tests - Functionality

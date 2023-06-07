@@ -3,7 +3,7 @@ use aura::utils::types::Pragma::{DataType, PricesResponse};
 #[abi]
 trait IMockPragma {
     fn next_get_data_median(pair_id: u256, price_response: PricesResponse);
-    fn get_data_median(data_type: DataType) -> PricesResponse;
+    // Note that `get_data_median()` is part of the `IPragmaOracleDispatcher`
 }
 
 #[contract]
@@ -16,7 +16,7 @@ mod MockPragma {
     }
 
     #[external]
-    fn next_get_data_median(pair_id: u256, price_response: PricesResponse, ) {
+    fn next_get_data_median(pair_id: u256, price_response: PricesResponse) {
         price_response::write(pair_id, price_response);
     }
 
@@ -27,12 +27,10 @@ mod MockPragma {
                 price_response::read(pair_id)
             },
             DataType::Future(pair_id) => {
-                panic_with_felt252('only spot');
-                price_response::read(pair_id) // unreachable
+                price_response::read(pair_id)
             },
             DataType::Generic(pair_id) => {
-                panic_with_felt252('only spot');
-                price_response::read(pair_id) // unreachable
+                price_response::read(pair_id)
             }
         }
     }

@@ -6,6 +6,22 @@ fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
     (a.into(), b.into())
 }
 
+// TODO: can be removed after audit
+impl U8IntoU256 of Into<u8, u256> {
+    #[inline(always)]
+    fn into(self: u8) -> u256 {
+        u256 { low: self.into(), high: 0_u128 }
+    }
+}
+
+// TODO: can be removed after audit
+impl U64IntoU256 of Into<u64, u256> {
+    #[inline(always)]
+    fn into(self: u64) -> u256 {
+        u256 { low: self.into(), high: 0_u128 }
+    }
+}
+
 impl U128IntoU256 of Into<u128, u256> {
     #[inline(always)]
     fn into(self: u128) -> u256 {
