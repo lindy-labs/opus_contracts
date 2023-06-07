@@ -97,6 +97,10 @@ mod TestPragma {
         (shrine, pragma, sentinel, oracle)
     }
 
+    //
+    // Tests - Deployment and setters
+    //
+
     #[test]
     #[available_gas(20000000000)]
     fn test_setup() {
@@ -257,4 +261,16 @@ mod TestPragma {
         set_contract_address(ShrineUtils::badguy());
         oracle.set_update_frequency(new_frequency);
     }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_add_yang_pass() {}
+
+    //
+    // Tests - Functionality
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_update_prices_pass() {}
 }
