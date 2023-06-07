@@ -1,5 +1,5 @@
 // NOTE: no need to test access control in Gate because only Sentinel, as
-//       decalred in constructor args when deploying, can call the gate
+//       declared in constructor args when deploying, can call the gate
 
 #[cfg(test)]
 mod TestGate {
@@ -15,6 +15,7 @@ mod TestGate {
     use aura::utils::wadray::{WAD_SCALE, Wad};
 
     use aura::tests::gate::utils::GateUtils;
+    use aura::tests::gate::utils::GateUtils::WBTC_SCALE;
     use aura::tests::shrine::utils::ShrineUtils;
 
     #[test]
@@ -59,13 +60,13 @@ mod TestGate {
         GateUtils::add_eth_as_yang(shrine, eth);
 
         let user = GateUtils::eth_hoarder();
-        GateUtils::approve_gate_to_user_token(gate, user, eth);
+        GateUtils::approve_gate_for_token(gate, eth, user);
 
         let trove_id = 1_u64;
         let asset_amt = 20_u128 * WAD_SCALE;
 
         // a gate can only be called from a sentinel
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
         let enter_amt: Wad = gate.enter(user, trove_id, asset_amt);
@@ -85,13 +86,13 @@ mod TestGate {
         GateUtils::add_wbtc_as_yang(shrine, wbtc);
 
         let user = GateUtils::wbtc_hoarder();
-        GateUtils::approve_gate_to_user_token(gate, user, wbtc);
+        GateUtils::approve_gate_for_token(gate, wbtc, user);
 
         let trove_id = 1_u64;
-        let asset_amt = 3_u128 * 100000000; // 3 WBTC, BTC has 8 decimals
+        let asset_amt = 3_u128 * WBTC_SCALE;
 
         // a gate can only be called from a sentinel
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
         let enter_amt: Wad = gate.enter(user, trove_id, asset_amt);
@@ -99,7 +100,7 @@ mod TestGate {
         let wbtc = IERC20Dispatcher { contract_address: wbtc };
 
         // check exchange rate and gate asset balance
-        assert(enter_amt.val == asset_amt * 10000000000, 'enter amount');
+        assert(enter_amt.val == asset_amt * (WAD_SCALE / WBTC_SCALE), 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
     }
@@ -111,7 +112,7 @@ mod TestGate {
         GateUtils::add_eth_as_yang(shrine, eth);
 
         let user = GateUtils::eth_hoarder();
-        GateUtils::approve_gate_to_user_token(gate, user, eth);
+        GateUtils::approve_gate_for_token(gate, eth, user);
 
         let eth = IERC20Dispatcher { contract_address: eth };
 
@@ -121,7 +122,7 @@ mod TestGate {
         let remaining_yang_amt = 8_u128 * WAD_SCALE;
 
         // a gate can only be called from a sentinel
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
         gate.enter(user, trove_id, asset_amt);
@@ -129,7 +130,7 @@ mod TestGate {
         let exit_amt = gate.exit(user, trove_id, exit_yang_amt);
         assert(exit_amt == exit_yang_amt.val, 'exit amount');
         assert(gate.get_total_assets() == remaining_yang_amt, 'get_total_assets');
-        assert(eth.balance_of(gate.contract_address) == u256 { low: remaining_yang_amt, high: 0 }, 'gate eth balance');
+        assert(eth.balance_of(gate.contract_address) == remaining_yang_amt.into(), 'gate eth balance');
     }
 
     #[test]
@@ -138,8 +139,7 @@ mod TestGate {
     fn test_gate_unauthorized_enter() {
         let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
         GateUtils::add_eth_as_yang(shrine, eth);
-        let user = contract_address_const::<0xbeef>();
-        IGateDispatcher { contract_address: gate }.enter(user, 1, WAD_SCALE);
+        IGateDispatcher { contract_address: gate }.enter(ShrineUtils::badguy(), 1, WAD_SCALE);
     }
 
     #[test]
@@ -148,8 +148,7 @@ mod TestGate {
     fn test_gate_unauthorized_exit() {
         let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
         GateUtils::add_eth_as_yang(shrine, eth);
-        let user = contract_address_const::<0xbeef>();
-        IGateDispatcher { contract_address: gate }.exit(user, 1, WAD_SCALE.into());
+        IGateDispatcher { contract_address: gate }.exit(ShrineUtils::badguy(), 1, WAD_SCALE.into());
     }
 
     #[test]
@@ -167,18 +166,18 @@ mod TestGate {
         let enter1_amt = 50_u128 * WAD_SCALE;
         let enter2_amt = 30_u128 * WAD_SCALE;
 
-        GateUtils::approve_gate_to_user_token(gate.contract_address, user1, eth.contract_address);
+        GateUtils::approve_gate_for_token(gate.contract_address, eth.contract_address, user1);
 
         // fund user1
         set_contract_address(GateUtils::eth_hoarder());
-        eth.transfer(user1, u256 { low: enter1_amt + enter2_amt, high: 0 });
+        eth.transfer(user1, (enter1_amt + enter2_amt).into());
 
         //
         // first deposit to trove1
         //
 
         // simulate sentinel calling enter
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
         let enter1_yang_amt = gate.enter(user1, trove1, enter1_amt);
 
         // simulate depositing
@@ -205,7 +204,7 @@ mod TestGate {
         //
 
         // simulate sentinel calling enter
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
         let enter2_yang_amt = gate.enter(user1, trove1, enter2_amt);
 
         // simulate depositing
@@ -233,15 +232,15 @@ mod TestGate {
         let enter3_amt = 10_u128 * WAD_SCALE;
         let enter4_amt = 8_u128 * WAD_SCALE;
 
-        GateUtils::approve_gate_to_user_token(gate.contract_address, user2, eth.contract_address);
+        GateUtils::approve_gate_for_token(gate.contract_address, eth.contract_address, user2);
         set_contract_address(GateUtils::eth_hoarder());
-        eth.transfer(user2, u256 { low: enter3_amt + enter4_amt, high: 0});
+        eth.transfer(user2, (enter3_amt + enter4_amt).into());
 
         let before_total_yang: Wad = gate.get_total_yang();
         let before_total_assets: u128 = gate.get_total_assets();
 
         // simulate sentinel calling enter
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
         let enter3_yang_amt = gate.enter(user2, trove2, enter3_amt);
 
         // simulate depositing
@@ -258,7 +257,7 @@ mod TestGate {
 
         assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 2');
         assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 2');
-        assert(shrine.get_deposit(eth.contract_address, trove2) = expected_trove2_deposit, 'user deposit 2');
+        assert(shrine.get_deposit(eth.contract_address, trove2) == expected_trove2_deposit, 'user deposit 2');
 
         //
         // rebase
@@ -272,7 +271,7 @@ mod TestGate {
         //
 
         // simulate entinel calling enter
-        set_contract_address(GateUtils::sentinel());
+        set_contract_address(GateUtils::mock_sentinel());
         let enter4_yang_amt = gate.enter(user2, trove2, enter4_amt);
 
         // simulate depositing
