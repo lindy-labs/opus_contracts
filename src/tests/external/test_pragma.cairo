@@ -3,8 +3,8 @@ mod TestPragma {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress,
-        contract_address_const, contract_address_to_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
+        contract_address_to_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -42,13 +42,13 @@ mod TestPragma {
 
     const DEFAULT_NUM_SOURCES: u256 = 5;
 
-    const ETH_USD_PAIR_ID: u256 = 19514442401534788;  // str_to_felt("ETH/USD")
+    const ETH_USD_PAIR_ID: u256 = 19514442401534788; // str_to_felt("ETH/USD")
     const ETH_INIT_PRICE: u128 = 1888;
-    
-    const BTC_USD_PAIR_ID: u256 = 18669995996566340;  // str_to_felt("BTC/USD")
+
+    const BTC_USD_PAIR_ID: u256 = 18669995996566340; // str_to_felt("BTC/USD")
     const BTC_INIT_PRICE: u128 = 20000;
 
-    const PEPE_USD_PAIR_ID: u256 = 5784117554504356676;  // str_to_felt("PEPE/USD")
+    const PEPE_USD_PAIR_ID: u256 = 5784117554504356676; // str_to_felt("PEPE/USD")
 
     const PRAGMA_DECIMALS: u8 = 8;
 
@@ -77,7 +77,9 @@ mod TestPragma {
             .unwrap_syscall();
 
         // Add ETH/USD and BTC/USD to mock Pragma oracle
-        let mock_pragma: IMockPragmaDispatcher = IMockPragmaDispatcher { contract_address: mock_pragma_addr };
+        let mock_pragma: IMockPragmaDispatcher = IMockPragmaDispatcher {
+            contract_address: mock_pragma_addr
+        };
 
         let price_ts: u256 = (get_block_timestamp() - 1000).into();
         let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
@@ -368,11 +370,10 @@ mod TestPragma {
     fn test_add_yang_too_many_decimals_fail() {
         let (_, pragma, _, mock_pragma) = pragma_deploy();
 
-
         let price_ts: u256 = (get_block_timestamp() - 1000).into();
         let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
 
-        let pepe_price: u128 = 1000000 * pragma_price_scale;  // random price
+        let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
         let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
         let pepe_response = PricesResponse {
             price: pepe_price.into(),
