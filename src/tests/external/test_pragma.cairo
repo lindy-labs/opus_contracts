@@ -435,6 +435,18 @@ mod TestPragma {
 
     #[test]
     #[available_gas(20000000000)]
+    fn test_update_prices_too_soon_fail() {}
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_update_prices_invalid_price_updates_fail() {}
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_update_prices_invalid_gate_fail() {}
+
+    #[test]
+    #[available_gas(20000000000)]
     fn test_probe_task() {
         let (_, pragma, _, mock_pragma) = pragma_deploy();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
