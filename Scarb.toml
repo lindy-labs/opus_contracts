@@ -4,6 +4,7 @@ version = "0.1.0"
 
 # Build each contract as a standalone JSON file
 [[target.starknet-contract]]
+sierra = true
 
 [scripts]
 fmt = "cairo-format --recursive src/"
@@ -12,3 +13,4 @@ check_fmt = "cairo-format --recursive --check --print-parsing-errors src/"
 test = "cairo-test --starknet ."
 
 [dependencies]
+starknet = ">=1.1.0"
