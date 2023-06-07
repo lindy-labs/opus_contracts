@@ -49,7 +49,7 @@ mod Pragma {
         // the minimal time difference in seconds of how often we
         // want to fetch from the oracle
         update_frequency: u64,
-        // block timestamp of when the prices were udpated last time
+        // block timestamp of when the prices were last updated
         last_price_update_timestamp: u64,
         // values used to determine if we consider a price update fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
