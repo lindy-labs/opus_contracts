@@ -178,15 +178,15 @@ mod Pragma {
     #[external]
     fn add_yang(pair_id: u256, yang: ContractAddress) {
         AccessControl::assert_has_role(PragmaRoles::ADD_YANG);
-        assert(pair_id != 0, 'PGM: Invalid pair_id');
+        assert(pair_id != 0, 'PGM: Invalid pair ID');
         assert(yang.is_non_zero(), 'PGM: Invalid yang address');
         assert_new_yang(yang);
 
         // doing a sanity check if Pragma actually offers a price feed
         // of the requested asset and if it's suitable for our needs
         let response: PricesResponse = oracle::read().get_data_median(DataType::Spot(pair_id));
-        // Pragma returns 0 decimals for an unknown ID
-        assert(response.decimals != 0, 'PGM: Unknown ID');
+        // Pragma returns 0 decimals for an unknown pair ID
+        assert(response.decimals != 0, 'PGM: Unknown pair ID');
         assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
 
         let index: u32 = yangs_count::read();
