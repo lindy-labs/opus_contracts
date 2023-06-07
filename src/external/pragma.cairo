@@ -2,7 +2,7 @@
 //       asset as the synthetic in Shrine; typically, feeds are in USD, but if the
 //       synth is denominated in something else than USD and there's no feed for it,
 //       this module cannot be used as-is, since the price coming from the oracle
-//       would need to be divided by teh synthetic's USD denominated peg price in
+//       would need to be divided by the synthetic's USD denominated peg price in
 //       order to get ASSET/SYN
 
 #[contract]
@@ -223,6 +223,7 @@ mod Pragma {
                 .get_data_median(DataType::Spot(settings.pair_id));
 
             // convert price value to Wad
+            // this will revert if the decimals is greater than 18 (wad)
             let price: Wad = fixed_point_to_wad(
                 response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
             );
