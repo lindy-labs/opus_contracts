@@ -7,10 +7,11 @@ mod TestPragma {
         contract_address_to_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
 
     use aura::core::roles::{PragmaRoles, ShrineRoles};
+    use aura::core::shrine::Shrine;
     use aura::external::pragma::Pragma;
 
     use aura::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
@@ -43,10 +44,10 @@ mod TestPragma {
     const DEFAULT_NUM_SOURCES: u256 = 5;
 
     const ETH_USD_PAIR_ID: u256 = 19514442401534788; // str_to_felt("ETH/USD")
-    const ETH_INIT_PRICE: u128 = 1888;
+    const ETH_INIT_PRICE: u128 = 1888; // raw integer value without fixed point decimals
 
     const BTC_USD_PAIR_ID: u256 = 18669995996566340; // str_to_felt("BTC/USD")
-    const BTC_INIT_PRICE: u128 = 20000;
+    const BTC_INIT_PRICE: u128 = 20000; // raw integer value without fixed point decimals
 
     const PEPE_USD_PAIR_ID: u256 = 5784117554504356676; // str_to_felt("PEPE/USD")
 
@@ -59,6 +60,28 @@ mod TestPragma {
     // TODO: delete once sentinel is up
     fn mock_sentinel() -> ContractAddress {
         contract_address_const::<0xeeee>()
+    }
+
+    //
+    // Helpers
+    //
+
+    // Helper function to add a valid price update to the mock Pragma oracle
+    // using default values for decimals and number of sources.
+    // Note that `price` is the raw integer value without fixed point decimals.
+    fn mock_valid_price_update(
+        mock_pragma: IMockPragmaDispatcher, pair_id: u256, price: u128, timestamp: u64
+    ) {
+        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+
+        let price: u128 = price * pragma_price_scale;
+        let response = PricesResponse {
+            price: price.into(),
+            decimals: PRAGMA_DECIMALS.into(),
+            last_updated_timestamp: timestamp.into(),
+            num_sources_aggregated: DEFAULT_NUM_SOURCES,
+        };
+        mock_pragma.next_get_data_median(pair_id, response);
     }
 
     //
@@ -81,26 +104,12 @@ mod TestPragma {
             contract_address: mock_pragma_addr
         };
 
-        let price_ts: u256 = (get_block_timestamp() - 1000).into();
+        let price_ts: u64 = get_block_timestamp() - 1000;
         let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
-
-        let eth_price: u128 = ETH_INIT_PRICE * pragma_price_scale;
-        let eth_response = PricesResponse {
-            price: eth_price.into(),
-            decimals: PRAGMA_DECIMALS.into(),
-            last_updated_timestamp: price_ts,
-            num_sources_aggregated: DEFAULT_NUM_SOURCES,
-        };
-        mock_pragma.next_get_data_median(ETH_USD_PAIR_ID, eth_response);
+        mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, ETH_INIT_PRICE, price_ts);
 
         let btc_price: u128 = BTC_INIT_PRICE * pragma_price_scale;
-        let btc_response = PricesResponse {
-            price: btc_price.into(),
-            decimals: PRAGMA_DECIMALS.into(),
-            last_updated_timestamp: price_ts,
-            num_sources_aggregated: DEFAULT_NUM_SOURCES,
-        };
-        mock_pragma.next_get_data_median(BTC_USD_PAIR_ID, btc_response);
+        mock_valid_price_update(mock_pragma, BTC_USD_PAIR_ID, BTC_INIT_PRICE, price_ts);
 
         mock_pragma
     }
@@ -136,6 +145,24 @@ mod TestPragma {
 
         let sentinel = ISentinelDispatcher { contract_address: sentinel };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
+
+        (shrine, pragma, sentinel, mock_pragma)
+    }
+
+    fn pragma_with_yangs() -> (
+        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher
+    ) {
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
+
+        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
+        let wbtc_token_addr: ContractAddress = GateUtils::wbtc_token_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+
+        pragma.add_yang(ETH_USD_PAIR_ID, eth_token_addr);
+        pragma.add_yang(BTC_USD_PAIR_ID, wbtc_token_addr);
+
+        set_contract_address(ContractAddressZeroable::zero());
 
         (shrine, pragma, sentinel, mock_pragma)
     }
@@ -395,4 +422,39 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_pass() {}
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_update_prices_pass_without_yangs() {
+        // just to test the module works well even if no yangs were added yet
+        let (_, pragma, _, _) = pragma_deploy();
+
+        let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
+        pragma_oracle.update_prices();
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_probe_task() {
+        let (_, pragma, _, mock_pragma) = pragma_deploy();
+        let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
+
+        // last price update should be 0 initially
+        assert(pragma.probe_task(), 'should be ready');
+
+        let new_ts: u64 = get_block_timestamp() + 1;
+        set_block_timestamp(new_ts);
+        mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, ETH_INIT_PRICE + 10, new_ts);
+        pragma_oracle.update_prices();
+
+        // after update_prices, the last update ts is moved to current block ts
+        // as well, so calling probe_task in the same block afterwards should
+        // return false
+        assert(!pragma.probe_task(), 'should not be ready');
+
+        // moving the block time forward to the next time interval, probeTask
+        // should again return true
+        set_block_timestamp(new_ts + Shrine::TIME_INTERVAL);
+        assert(pragma.probe_task(), 'should be ready');
+    }
 }
