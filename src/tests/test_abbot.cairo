@@ -61,13 +61,6 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
-    fn test_open_trove_input_args_mismatch_fail() {
-
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
         let (_, abbot) = abbot_deploy();
@@ -77,7 +70,22 @@ mod TestAbbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
-        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);        
+        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);   
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABB: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
+    fn test_open_trove_input_args_mismatch_fail() {
+        let (_, abbot) = abbot_deploy();
+
+        let mut yangs: Array<ContractAddress> = Default::default();
+        yangs.append(ShrineUtils::yang1_addr());
+        let yang_amts: Array<u128> = Default::default();
+        let forge_amt: Wad = 1_u128.into();
+        let max_forge_fee_pct: Wad = WadZeroable::zero();
+
+        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);   
     }
 
     #[test]
