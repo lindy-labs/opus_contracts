@@ -3,6 +3,7 @@ mod TestAbbot {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use starknet::{ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const, contract_address_to_felt252, deploy_syscall, SyscallResultTrait};
+    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
 
@@ -91,7 +92,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     // TODO: Error msg from Sentinel
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
 
     }
@@ -119,20 +120,32 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_address_yang_fail() {
+        let (_, abbot) = abbot_deploy();
 
+        let invalid_yang_addr = ContractAddressZeroable::zero();
+        let trove_id: u64 = ShrineUtils::TROVE_1;
+        let amount: u128 = 1;
+
+        abbot.deposit(invalid_yang_addr, trove_id, amount);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
+        let (_, abbot) = abbot_deploy();
 
+        let yang_addr = ShrineUtils::yang1_addr();
+        let invalid_trove_id: u64 = 0;
+        let amount: u128 = 1;
+
+        abbot.deposit(yang_addr, invalid_trove_id, amount);
     }
 
     #[test]
     #[available_gas(20000000000)]
     // TODO: error msg from Sentinel
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_invalid_yang_fail() {
 
     }
@@ -147,7 +160,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     // Error message from Sentinel
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_exceeds_asset_cap_fail() {
 
     }
@@ -162,13 +175,19 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
+        let (_, abbot) = abbot_deploy();
 
+        let invalid_yang_addr = ContractAddressZeroable::zero();
+        let trove_id: u64 = ShrineUtils::TROVE_1;
+        let amount: u128 = 1;
+
+        abbot.deposit(invalid_yang_addr, trove_id, amount);
     }
 
     #[test]
     #[available_gas(20000000000)]
     // TODO: error msg from Sentinel
-    #[should_panic(expected: ('SH: Yang already exists', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_invalid_yang_fail() {
 
     }
