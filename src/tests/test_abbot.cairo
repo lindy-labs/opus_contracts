@@ -2,7 +2,10 @@
 mod TestAbbot {
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
-    use starknet::{ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const, contract_address_to_felt252, deploy_syscall, SyscallResultTrait};
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
+        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
@@ -39,7 +42,7 @@ mod TestAbbot {
             .unwrap_syscall();
 
         let abbot = IAbbotDispatcher { contract_address: abbot_addr };
-        
+
         // Grant Shrine roles to Abbot
         set_contract_address(ShrineUtils::admin());
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
@@ -56,9 +59,7 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_open_trove_pass() {
-
-    }
+    fn test_open_trove_pass() {}
 
     #[test]
     #[available_gas(20000000000)]
@@ -71,7 +72,7 @@ mod TestAbbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
-        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);   
+        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);
     }
 
     #[test]
@@ -86,35 +87,27 @@ mod TestAbbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
-        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);   
+        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);
     }
 
     #[test]
     #[available_gas(20000000000)]
     // TODO: Error msg from Sentinel
     #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
-    fn test_open_trove_invalid_yang_fail() {
-
-    }
+    fn test_open_trove_invalid_yang_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_close_trove_pass() {
-
-    }
+    fn test_close_trove_pass() {}
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
-    fn test_close_non_owner_fail() {
-
-    }
+    fn test_close_non_owner_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_deposit_pass() {
-
-    }
+    fn test_deposit_pass() {}
 
     #[test]
     #[available_gas(20000000000)]
@@ -146,30 +139,22 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     // TODO: error msg from Sentinel
     #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_invalid_yang_fail() {
-
-    }
+    fn test_deposit_invalid_yang_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_non_existent_trove_fail() {
-
-    }
+    fn test_deposit_non_existent_trove_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
     // Error message from Sentinel
     #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_exceeds_asset_cap_fail() {
-
-    }
+    fn test_deposit_exceeds_asset_cap_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_withdraw_pass() {
-
-    }
+    fn test_withdraw_pass() {}
 
     #[test]
     #[available_gas(20000000000)]
@@ -188,52 +173,36 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     // TODO: error msg from Sentinel
     #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
-    fn test_withdraw_invalid_yang_fail() {
-
-    }
+    fn test_withdraw_invalid_yang_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
-    fn test_withdraw_non_owner_fail() {
-
-    }
+    fn test_withdraw_non_owner_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_forge_pass() {
-
-    }
+    fn test_forge_pass() {}
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED'))]
-    fn test_forge_ltv_unsafe_fail() {
-
-    }
+    fn test_forge_ltv_unsafe_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
-    fn test_forge_non_owner_fail() {
-
-    }
+    fn test_forge_non_owner_fail() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_melt_pass() {
-
-    }
+    fn test_melt_pass() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_get_trove_owner() {
-
-    }
+    fn test_get_trove_owner() {}
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_get_user_trove_ids() {
-
-    }
+    fn test_get_user_trove_ids() {}
 }
