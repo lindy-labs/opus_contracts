@@ -74,6 +74,11 @@ mod ShrineRoles {
     }
 
     #[inline(always)]
+    fn abbot() -> u128 {
+        DEPOSIT + WITHDRAW + FORGE + MELT
+    }
+
+    #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
     }
