@@ -1,4 +1,5 @@
-#[cfg(test)]
-mod test_shrine;
-#[cfg(test)]
+mod equalizer;
+mod shrine;
 mod test_flashmint;
+mod test_utils;
+mod utils;
