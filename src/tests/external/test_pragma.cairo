@@ -23,7 +23,8 @@ mod TestPragma {
     use aura::utils::pow::pow10;
     use aura::utils::types::Pragma::{DataType, PricesResponse};
     use aura::utils::u256_conversions;
-    use aura::utils::wadray::WAD_DECIMALS;
+    use aura::utils::wadray;
+    use aura::utils::wadray::{WadZeroable, WAD_DECIMALS};
 
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
@@ -150,7 +151,11 @@ mod TestPragma {
     }
 
     fn pragma_with_yangs() -> (
-        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher
+        IShrineDispatcher,
+        IPragmaDispatcher,
+        ISentinelDispatcher,
+        IMockPragmaDispatcher,
+        Span<ContractAddress>
     ) {
         let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
@@ -159,12 +164,37 @@ mod TestPragma {
 
         set_contract_address(ShrineUtils::admin());
 
+        // Add yangs to Pragma
         pragma.add_yang(ETH_USD_PAIR_ID, eth_token_addr);
         pragma.add_yang(BTC_USD_PAIR_ID, wbtc_token_addr);
 
+        // TODO: replace with Sentinel
+        // Add yangs to Shrine
+        shrine
+            .add_yang(
+                eth_token_addr,
+                ShrineUtils::YANG1_THRESHOLD.into(),
+                ShrineUtils::YANG1_START_PRICE.into(),
+                ShrineUtils::YANG1_BASE_RATE.into(),
+                WadZeroable::zero(),
+            );
+        shrine
+            .add_yang(
+                wbtc_token_addr,
+                ShrineUtils::YANG2_THRESHOLD.into(),
+                ShrineUtils::YANG2_START_PRICE.into(),
+                ShrineUtils::YANG2_BASE_RATE.into(),
+                WadZeroable::zero(),
+            );
+
+        // Return yang addresses
+        let mut yang_addrs: Array<ContractAddress> = Default::default();
+        yang_addrs.append(eth_token_addr);
+        yang_addrs.append(wbtc_token_addr);
+
         set_contract_address(ContractAddressZeroable::zero());
 
-        (shrine, pragma, sentinel, mock_pragma)
+        (shrine, pragma, sentinel, mock_pragma, yang_addrs.span())
     }
 
     //
@@ -433,13 +463,56 @@ mod TestPragma {
         pragma_oracle.update_prices();
     }
 
+    // TODO: requires deployed Sentinel
     #[test]
     #[available_gas(20000000000)]
-    fn test_update_prices_too_soon_fail() {}
+    #[should_panic(expected: ('PGM: Too soon to update prices', 'ENTRYPOINT_FAILED'))]
+    fn test_update_prices_too_soon_fail() {
+        let (_, pragma, _, mock_pragma, _) = pragma_with_yangs();
+        let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
+        pragma.contract_address.print();
+        let mut new_ts: u64 = get_block_timestamp() + 1;
+        let mut price: u128 = ETH_INIT_PRICE + 10;
+        set_block_timestamp(new_ts);
+        mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, price, new_ts);
+        pragma_oracle.update_prices();
+
+        price += 10;
+        new_ts += 1;
+        set_block_timestamp(new_ts);
+        mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, price, new_ts);
+        pragma_oracle.update_prices();
+    }
+
+    // TODO: requires deployed Sentinel
     #[test]
     #[available_gas(20000000000)]
-    fn test_update_prices_invalid_price_updates_fail() {}
+    fn test_update_prices_insufficient_sources_fail() {
+        let (shrine, pragma, _, mock_pragma, yang_addrs) = pragma_with_yangs();
+        let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
+
+        let eth_token_addr = *yang_addrs.at(0);
+
+        let (before_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
+
+        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+
+        let price: u128 = ETH_INIT_PRICE * pragma_price_scale;
+        let invalid_num_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;
+        let response = PricesResponse {
+            price: price.into(),
+            decimals: PRAGMA_DECIMALS.into(),
+            last_updated_timestamp: get_block_timestamp().into(),
+            num_sources_aggregated: invalid_num_sources.into(),
+        };
+        mock_pragma.next_get_data_median(ETH_USD_PAIR_ID, response);
+
+        pragma_oracle.update_prices();
+
+        let (after_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
+        assert(before_eth_price == after_eth_price, 'price should not update');
+    }
 
     #[test]
     #[available_gas(20000000000)]
