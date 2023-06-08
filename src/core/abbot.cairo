@@ -93,7 +93,12 @@ mod Abbot {
     // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
     // `amounts` are denominated in asset's decimals
     #[external]
-    fn open_trove(forge_amount: Wad, mut yangs: Span<ContractAddress>, mut amounts: Span<u128>) {
+    fn open_trove(
+        forge_amount: Wad,
+        mut yangs: Span<ContractAddress>,
+        mut amounts: Span<u128>,
+        max_forge_fee_pct: Wad
+    ) {
         assert(yangs.len() != 0_usize, 'ABB: No yangs');
         assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
 
