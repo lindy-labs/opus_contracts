@@ -3,6 +3,7 @@
 
 #[cfg(test)]
 mod TestGate {
+    use debug::PrintTrait;
     use integer::BoundedInt;
     use starknet::{ContractAddress, contract_address_const};
     use starknet::testing::set_contract_address;
@@ -301,6 +302,10 @@ mod TestGate {
         set_contract_address(GateUtils::mock_sentinel());
         let exit_amt = gate.exit(eth.contract_address, trove2, enter4_yang_amt);
 
+        // simulate withdrawing
+        set_contract_address(ShrineUtils::admin());
+        shrine.withdraw(eth.contract_address, trove2, enter4_yang_amt);
+
         //
         // checks
         //
@@ -308,10 +313,9 @@ mod TestGate {
         let expected_total_assets = expected_total_assets - exit_amt;
 
         assert_equalish(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
-        assert(gate.get_total_assets() == expected_total_assets, 'exit total assets');
+        assert(gate.get_total_assets() == expected_total_assets, 'exit get_total_assets');
+        assert(gate.get_asset_amt_per_yang() == before_asset_amt_per_yang, 'exit get_asset_amt_per_yang');
     }
-
-    use debug::PrintTrait;
 
     #[test]
     #[available_gas(10000000000)]
