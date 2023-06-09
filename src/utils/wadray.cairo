@@ -1,3 +1,4 @@
+use debug::PrintTrait;
 use integer::{Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
@@ -389,6 +390,23 @@ impl RayZeroable of Zeroable<Ray> {
         self.val != 0
     }
 }
+
+// Debug print
+impl WadPrintImpl of PrintTrait<Wad> {
+    fn print(self: Wad) {
+        self.val.print();
+    }
+}
+
+impl RayPrintImpl of PrintTrait<Ray> {
+    fn print(self: Ray) {
+        self.val.print();
+    }
+}
+
+//
+// Other functions
+//
 
 fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');

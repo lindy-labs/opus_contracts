@@ -239,7 +239,13 @@ mod Shrine {
 
         // Catch troves with no value
         if value.is_zero() {
-            // Handles corner case: forging non-zero debt for a trove with zero value
+            // This `if` branch handles a corner case where a trove without any yangs deposited (i.e. zero value)
+            // attempts to forge a non-zero debt. It ensures that the `assert_healthy` check in `forge` would
+            // fail and revert. 
+            // - Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of 
+            //   of debt / value will run into a zero division error.
+            // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be 
+            //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
             if trove.debt.is_non_zero() {
                 return (threshold, BoundedU128::max().into(), value, trove.debt);
             } else {
@@ -1092,10 +1098,18 @@ mod Shrine {
             // containing this yang
             deposits::write((current_yang_id, trove_id), 0_u128.into());
 
-            // Decrementing the system's yang balance by the amount deposited in the trove has the effect of
-            // rebasing (i.e. appreciating) the ratio of asset to yang for the remaining troves.
-            // By removing the distributed yangs from the system, it distributes the assets between
-            // the remaining yangs.
+            // Since the amount of assets in the Gate remains constant, decrementing the system's yang 
+            // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating) 
+            // the ratio of asset to yang for the remaining amount of that yang.
+            // 
+            // Example:
+            // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
+            //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
+            // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
+            //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
+            //   in the Gate remains at 100 units.
+            //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
+            //
             let new_yang_total: Wad = yang_total::read(current_yang_id) - deposited;
             yang_total::write(current_yang_id, new_yang_total);
 
