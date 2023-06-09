@@ -118,6 +118,7 @@ mod TestAbsorber {
         asset: IERC20Dispatcher, absorber: IAbsorberDispatcher
     ) -> IBlesserDispatcher {
         let mut calldata = Default::default();
+        calldata.append(contract_address_to_felt252(ShrineUtils::admin()));
         calldata.append(contract_address_to_felt252(asset.contract_address));
         calldata.append(contract_address_to_felt252(absorber.contract_address));
 

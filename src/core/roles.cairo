@@ -19,6 +19,15 @@ mod AllocatorRoles {
     }
 }
 
+mod BlesserRoles {
+    const BLESS: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        BLESS
+    }
+}
+
 mod CaretakerRoles {
     const SHUT: u128 = 1;
 
