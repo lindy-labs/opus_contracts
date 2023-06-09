@@ -103,7 +103,7 @@ mod ShrineUtils {
 
     //
     // Convenience helpers
-    // 
+    //
 
     // Wrapper function for Shrine
     #[inline(always)]
@@ -142,7 +142,7 @@ mod ShrineUtils {
         set_block_timestamp(get_block_timestamp() + Shrine::TIME_INTERVAL);
     }
 
-    // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID 
+    // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID
     // and terminates at yang ID 0. This affects which yang receives any rounding of
     // debt that falls below the rounding threshold.
     fn yang_addrs() -> Span<ContractAddress> {
@@ -168,16 +168,16 @@ mod ShrineUtils {
         shrine_addr
     }
 
-    fn shrine_setup(shrine_addr: ContractAddress) {
-        // Grant admin role
-        let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: shrine_addr
-        };
-        let admin: ContractAddress = admin();
-        set_contract_address(admin);
-        shrine_accesscontrol.grant_role(ShrineRoles::all_roles(), admin);
+    fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
+        set_contract_address(admin());
+        IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(ShrineRoles::all_roles(), user);
+        set_contract_address(ContractAddressZeroable::zero());
+    }
 
+    fn shrine_setup(shrine_addr: ContractAddress) {
+        make_root(shrine_addr, admin());
         // Set debt ceiling
+        set_contract_address(admin());
         let shrine = shrine(shrine_addr);
         shrine.set_debt_ceiling(DEBT_CEILING.into());
 
@@ -405,9 +405,9 @@ mod ShrineUtils {
     ///    The first average multiplier should be from `start_interval` to `yang_rate_update_intervals[1]`,
     ///    and from `yang_rate_update_intervals[i]` to `[i+1]` for the rest
     ///
-    /// * `start_interval` - Start interval for the compounding period. This should be greater than or equal to the first interval 
+    /// * `start_interval` - Start interval for the compounding period. This should be greater than or equal to the first interval
     ///    in `yang_rate_update_intervals`.
-    ///    
+    ///
     /// * `end_interval` - End interval for the compounding period. This should be greater than or equal to the last interval
     ///    in  `yang_rate_update_intervals`.
     ///
@@ -480,9 +480,9 @@ mod ShrineUtils {
                 era_start_interval = start_interval;
             }
 
-            // For any era other than the latest era, the length for a given era to compound for is the 
+            // For any era other than the latest era, the length for a given era to compound for is the
             // difference between the start interval of the next era and the start interval of the current era.
-            // For the latest era, then it is the difference between the end interval and the start interval 
+            // For the latest era, then it is the difference between the end interval and the start interval
             // of the current era.
             let mut intervals_in_era: u64 = 0;
             if i == eras_count - 1 {
