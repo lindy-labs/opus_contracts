@@ -282,4 +282,41 @@ mod TestAbsorber {
         set_contract_address(ShrineUtils::admin());
         absorber.set_reward(invalid_address, valid_address, true);
     }
+
+    //
+    // Tests - Kill
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_kill_pass() {
+        let (_, absorber) = absorber_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+        absorber.kill();
+
+        assert(!absorber.get_live(), 'should be killed');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_kill_unauthorized_fail() {
+        let (_, absorber) = absorber_deploy();
+
+        set_contract_address(ShrineUtils::badguy());
+        absorber.kill();
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Not live', 'ENTRYPOINT_FAILED'))]
+    fn test_provide_after_kill_fail() {
+        let (_, absorber) = absorber_deploy();
+
+        set_contract_address(ShrineUtils::admin());
+        absorber.kill();
+
+        // TODO: provide to absorber
+    }
 }
