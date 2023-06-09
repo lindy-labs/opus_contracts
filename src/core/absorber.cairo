@@ -8,7 +8,7 @@
 mod Absorber {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
-    use integer::{u128_safe_divmod, U128TryIntoNonZero};
+    use integer::{u256_safe_divmod, U256TryIntoNonZero};
     use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
     use traits::{Default, Into, TryInto};
@@ -681,12 +681,12 @@ mod Absorber {
         }
 
         let absorber: ContractAddress = get_contract_address();
-        let yin_balance: Wad = yin_erc20().balance_of(absorber).try_into().unwrap();
+        let yin_balance: u256 = yin_erc20().balance_of(absorber);
 
-        // TODO: This could easily overflow, should be done with u256
-        let (computed_shares, r) = u128_safe_divmod(
-            yin_amt.val * total_shares.val, yin_balance.val.try_into().expect('Division by zero')
+        let (computed_shares, r) = u256_safe_divmod(
+            yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
         );
+        let computed_shares: u128 = computed_shares.try_into().unwrap();
         if round_up & r != 0 {
             return ((computed_shares + 1).into(), (computed_shares + 1).into());
         }
