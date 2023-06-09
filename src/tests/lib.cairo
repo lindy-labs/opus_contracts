@@ -1,3 +1,4 @@
+mod absorber;
 mod equalizer;
 mod shrine;
 mod test_flashmint;
