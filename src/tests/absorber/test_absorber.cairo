@@ -7,6 +7,7 @@ mod TestAbsorber {
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
         SyscallResultTrait
     };
+    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
 
@@ -253,5 +254,31 @@ mod TestAbsorber {
         expected_rewards.append(veaura_reward);
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
+    fn test_set_reward_token_zero_address_fail() {
+        let (_, absorber) = absorber_deploy();
+
+        let valid_address = contract_address_const::<0xffff>();
+        let invalid_address = ContractAddressZeroable::zero();
+
+        set_contract_address(ShrineUtils::admin());
+        absorber.set_reward(valid_address, invalid_address, true);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
+    fn test_set_reward_blesser_zero_address_fail() {
+        let (_, absorber) = absorber_deploy();
+
+        let valid_address = contract_address_const::<0xffff>();
+        let invalid_address = ContractAddressZeroable::zero();
+
+        set_contract_address(ShrineUtils::admin());
+        absorber.set_reward(invalid_address, valid_address, true);
     }
 }
