@@ -243,9 +243,9 @@ mod Shrine {
             // attempts to forge a non-zero debt. It ensures that the `assert_healthy` check in `forge` would
             // fail and revert. 
             // - Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of 
-            // of debt / value will run into a zero division error.
+            //   of debt / value will run into a zero division error.
             // - With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be 
-            // set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
+            //   incorrectly set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
             if trove.debt.is_non_zero() {
                 return (threshold, BoundedU128::max().into(), value, trove.debt);
             } else {
