@@ -4,7 +4,7 @@
 #[cfg(test)]
 mod TestGate {
     use integer::BoundedInt;
-    use starknet::contract_address_const;
+    use starknet::{ContractAddress, contract_address_const};
     use starknet::testing::set_contract_address;
     use traits::Into;
 
@@ -17,6 +17,7 @@ mod TestGate {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::gate::utils::GateUtils::WBTC_SCALE;
     use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::utils::assert_equalish;
 
     #[test]
     #[available_gas(10000000000)]
@@ -69,12 +70,12 @@ mod TestGate {
         set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        let enter_amt: Wad = gate.enter(user, trove_id, asset_amt);
+        let enter_yang_amt: Wad = gate.enter(user, trove_id, asset_amt);
 
         let eth = IERC20Dispatcher { contract_address: eth };
 
         // check exchange rate and gate asset balance
-        assert(enter_amt.val == asset_amt, 'enter amount');
+        assert(enter_yang_amt.val == asset_amt, 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(eth.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
     }
@@ -95,12 +96,12 @@ mod TestGate {
         set_contract_address(GateUtils::mock_sentinel());
 
         let gate = IGateDispatcher { contract_address: gate };
-        let enter_amt: Wad = gate.enter(user, trove_id, asset_amt);
+        let enter_yang_amt: Wad = gate.enter(user, trove_id, asset_amt);
 
         let wbtc = IERC20Dispatcher { contract_address: wbtc };
 
         // check exchange rate and gate asset balance
-        assert(enter_amt.val == asset_amt * (WAD_SCALE / WBTC_SCALE), 'enter amount');
+        assert(enter_yang_amt.val == asset_amt * (WAD_SCALE / WBTC_SCALE), 'enter amount');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
         assert(wbtc.balance_of(gate.contract_address) == asset_amt.into(), 'gate balance');
     }
@@ -153,7 +154,7 @@ mod TestGate {
 
     #[test]
     #[available_gas(10000000000)]
-    fn test_gate_multi_user_enter_with_rebasing() {
+    fn test_gate_multi_user_enter_exit_with_rebasing() {
         let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
         GateUtils::add_eth_as_yang(shrine, eth);
 
@@ -161,8 +162,8 @@ mod TestGate {
         let eth = IERC20Dispatcher { contract_address: eth };
         let gate = IGateDispatcher { contract_address: gate };
 
-        let user1 = contract_address_const::<0xaa1>();
-        let trove1 = 1_u64;
+        let user1: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove1: u64 = ShrineUtils::TROVE_1;
         let enter1_amt = 50_u128 * WAD_SCALE;
         let enter2_amt = 30_u128 * WAD_SCALE;
 
@@ -227,8 +228,8 @@ mod TestGate {
         // deposit to trove 2 by user 2 after the previous deposits to trove 1 and rebase
         //
 
-        let user2 = contract_address_const::<0xbbb>();
-        let trove2 = 2_u64;
+        let user2: ContractAddress = ShrineUtils::trove2_owner_addr();
+        let trove2: u64 = ShrineUtils::TROVE_2;
         let enter3_amt = 10_u128 * WAD_SCALE;
         let enter4_amt = 8_u128 * WAD_SCALE;
 
@@ -238,6 +239,7 @@ mod TestGate {
 
         let before_total_yang: Wad = gate.get_total_yang();
         let before_total_assets: u128 = gate.get_total_assets();
+        let before_asset_amt_per_yang: Wad = gate.get_asset_amt_per_yang();
 
         // simulate sentinel calling enter
         set_contract_address(GateUtils::mock_sentinel());
@@ -258,6 +260,7 @@ mod TestGate {
         assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 2');
         assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 2');
         assert(shrine.get_deposit(eth.contract_address, trove2) == expected_trove2_deposit, 'user deposit 2');
+        assert(gate.get_asset_amt_per_yang() == before_asset_amt_per_yang, 'asset_amt_per_yang deposit 2');
 
         //
         // rebase
@@ -270,7 +273,9 @@ mod TestGate {
         // second deposit to trove 2 by user 2
         //
 
-        // simulate entinel calling enter
+        let before_asset_amt_per_yang = gate.get_asset_amt_per_yang();
+
+        // simulate sentinel calling enter
         set_contract_address(GateUtils::mock_sentinel());
         let enter4_yang_amt = gate.enter(user2, trove2, enter4_amt);
 
@@ -287,7 +292,26 @@ mod TestGate {
 
         assert(gate.get_total_assets() == expected_total_assets, 'get_total_assets 3');
         assert(gate.get_total_yang() == expected_total_yang, 'get_total_yang 3');
+
+        //
+        // exit
+        //
+
+        // simulate sentinel calling exit
+        set_contract_address(GateUtils::mock_sentinel());
+        let exit_amt = gate.exit(eth.contract_address, trove2, enter4_yang_amt);
+
+        //
+        // checks
+        //
+
+        let expected_total_assets = expected_total_assets - exit_amt;
+
+        assert_equalish(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
+        assert(gate.get_total_assets() == expected_total_assets, 'exit total assets');
     }
+
+    use debug::PrintTrait;
 
     #[test]
     #[available_gas(10000000000)]
