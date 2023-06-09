@@ -1008,7 +1008,7 @@ mod Absorber {
     ) -> (Span<ContractAddress>, Span<u128>) {
         let mut rewards: Array<ContractAddress> = Default::default();
         let mut reward_amts: Array<u128> = Default::default();
-        let mut current_rewards_id: u8 = 0;
+        let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
         // Return empty arrays if the provider has no shares
         if provision.shares.is_zero() {
