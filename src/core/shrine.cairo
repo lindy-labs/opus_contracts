@@ -239,10 +239,13 @@ mod Shrine {
 
         // Catch troves with no value
         if value.is_zero() {
-            // Handles corner case: forging non-zero debt for a trove with zero value
-            // Otherwise, the subsequent `else` branch will wrongly return 0 LTV when it should 
-            // be infinite, or if the preceding zero value branch is removed, the LTV calculation 
+            // This `if` branch handles a corner case where a trove without any yangs deposited (i.e. zero value)
+            // attempts to forge a non-zero debt. In this situation, the `assert_healthy` check in `forge` should
+            // fail and revert. 
+            // Without the check for `value.is_zero()` and `trove.debt.is_non_zero()`, the LTV calculation of 
             // of debt / value will run into a zero division error.
+            // With the check for `value.is_zero()` but without `trove.debt.is_non_zero()`, the LTV will be 
+            // set to 0 and the `assert_healthy` check will fail to catch this illegal operation.
             if trove.debt.is_non_zero() {
                 return (threshold, BoundedU128::max().into(), value, trove.debt);
             } else {
