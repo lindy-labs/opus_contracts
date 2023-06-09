@@ -8,7 +8,7 @@ mod tests {
     use aura::utils::wadray;
     use aura::utils::wadray::{
         DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,
-        WAD_ONE, WAD_DECIMALS, WAD_SCALE, wdiv_rw, wmul_rw, wmul_wr
+        WAD_ONE, WAD_DECIMALS, WAD_SCALE, wdiv_rw, rdiv_ww, wmul_rw, wmul_wr
     };
 
 
@@ -239,6 +239,19 @@ mod tests {
         assert(a1 == a2 / b, 'Incorrect DivEq #1');
     }
 
+    #[test]
+    fn test_div_of_0() {
+        let w = Wad { val: 42 };
+        let r = Ray { val: 42 };
+        let w0 = Wad { val: 0 };
+        let r0 = Ray { val: 0 };
+
+        assert(w0 / w == w0, 'w0 / w');
+        assert(r0 / r == r0, 'r0 / r');
+        assert(wdiv_rw(r0, w) == r0, 'wdiv_rw');
+        assert(rdiv_wr(w0, r) == w0, 'rdiv_wr');
+        assert(rdiv_ww(w0, w) == r0, 'rdiv_ww');
+    }
 
     #[test]
     #[should_panic(expected: ('u256 is 0', ))]
