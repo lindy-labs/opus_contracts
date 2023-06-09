@@ -1,9 +1,10 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
 use starknet::ContractAddress;
-use traits::{Default, TryInto};
+use traits::{Default, PartialEq, TryInto};
 
 use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+use aura::utils::types::Reward;
 use aura::utils::wadray;
 
 
@@ -28,6 +29,15 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
     }
 }
 
+impl RewardPartialEq of PartialEq<Reward> {
+    fn eq(mut lhs: Reward, mut rhs: Reward) -> bool {
+        lhs.asset == rhs.asset & lhs.blesser.contract_address == rhs.blesser.contract_address & lhs.is_active == rhs.is_active
+    }
+
+    fn ne(lhs: Reward, rhs: Reward) -> bool {
+        !(lhs == rhs)
+    }
+}
 
 // Helper function to return a nested array of token balances given a list of 
 // token addresses and user addresses.
