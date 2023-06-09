@@ -1,20 +1,15 @@
 #[cfg(test)]
 mod tests {
+    use traits::Into;
+
     use aura::utils::exp::exp;
-    use aura::utils::wadray::Wad;
-    use aura::utils::wadray::{WAD_ONE, WAD_PERCENT};
+    use aura::utils::wadray;
+    use aura::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};
+
+    use aura::tests::utils::assert_equalish;
 
     // Acceptable error for e^x where x <= 20. Corresponds to 0.000000000001 (10^-12) precision
     const ACCEPTABLE_ERROR: u128 = 1000000;
-
-    #[inline(always)]
-    fn assert_equalish(a: Wad, b: Wad) {
-        if (a > b) {
-            assert((a - b).val <= ACCEPTABLE_ERROR, 'exp-test: error exceeds bounds');
-        } else {
-            assert((b - a).val <= ACCEPTABLE_ERROR, 'exp-test: error exceeds bounds');
-        }
-    }
 
     #[test]
     #[available_gas(9999999)]
@@ -26,13 +21,13 @@ mod tests {
         );
 
         let res = exp(Wad { val: WAD_PERCENT * 2 });
-        assert_equalish(res, Wad { val: 1020201340026755810 });
+        assert_equalish(res, Wad { val: 1020201340026755810 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
 
         let res = exp(Wad { val: WAD_ONE * 10 });
-        assert_equalish(res, Wad { val: 22026465794806716516957 });
+        assert_equalish(res, Wad { val: 22026465794806716516957 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
 
         let res = exp(Wad { val: WAD_ONE * 20 });
-        assert_equalish(res, Wad { val: 485165195409790277969106830 });
+        assert_equalish(res, Wad { val: 485165195409790277969106830 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
 
         // Highest possible value the function will accept
         exp(Wad { val: 42600000000000000000 });
@@ -48,7 +43,7 @@ mod tests {
         let b: Wad = exp(Wad { val: 2 * WAD_ONE });
 
         //e^1 * e^1 = e^2
-        assert_equalish(a, b);
+        assert_equalish(a, b, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
     }
 
     #[test]
@@ -59,7 +54,7 @@ mod tests {
         let b: Wad = exp(Wad { val: 3 * WAD_ONE });
         let c: Wad = exp(Wad { val: 5 * WAD_ONE });
 
-        assert_equalish(a / b, c);
+        assert_equalish(a / b, c, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
     }
 
 
