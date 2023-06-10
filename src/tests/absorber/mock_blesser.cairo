@@ -12,18 +12,18 @@ mod MockBlesser {
 
     struct Storage {
         asset: IERC20Dispatcher,
-        absorber: ContractAddress
+        absorber: ContractAddress,
+        bless_amt: u128,
     }
 
-    const BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
-
     #[constructor]
-    fn constructor(admin: ContractAddress, asset: ContractAddress, absorber: ContractAddress) {
+    fn constructor(admin: ContractAddress, asset: ContractAddress, absorber: ContractAddress, bless_amt: u128) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(BlesserRoles::default_admin_role(), absorber);
 
         asset::write(IERC20Dispatcher { contract_address: asset });
         absorber::write(absorber);
+        bless_amt::write(bless_amt);
     }
 
     #[view]
@@ -43,10 +43,11 @@ mod MockBlesser {
 
     fn preview_bless_internal(asset: IERC20Dispatcher) -> u128 {
         let balance: u128 = asset.balance_of(get_contract_address()).try_into().unwrap();
-        if balance < BLESS_AMT {
+        let bless_amt: u128 = bless_amt::read();
+        if balance < bless_amt {
             0
         } else {
-            BLESS_AMT
+            bless_amt
         }
     }
 

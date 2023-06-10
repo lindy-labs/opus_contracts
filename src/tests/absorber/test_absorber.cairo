@@ -40,6 +40,9 @@ mod TestAbsorber {
 
     const BLESSER_REWARD_TOKEN_BALANCE: u128 = 100000000000000000000000; // 100_000 (Wad)
 
+    const AURA_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
+    const VEAURA_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
+
     const REMOVAL_LIMIT: u128 = 900000000000000000000000000; // 90% (Ray)
 
     //
@@ -62,7 +65,12 @@ mod TestAbsorber {
 
     // Helper function to mint the given amount of yin to a address simulating a provider, 
     // and then provide the same amount to the Absorber
-    fn provide_to_absorber(shrine: IShrineDispatcher, absorber: IAbsorberDispatcher, provider: ContractAddress, amt: Wad) {
+    fn provide_to_absorber(
+        shrine: IShrineDispatcher,
+        absorber: IAbsorberDispatcher,
+        provider: ContractAddress,
+        amt: Wad
+    ) {
         set_contract_address(ShrineUtils::admin());
         shrine.inject(provider, amt);
 
@@ -125,21 +133,29 @@ mod TestAbsorber {
         token
     }
 
-    fn reward_tokens_deploy() -> Span<ContractAddress> {        
+    fn reward_tokens_deploy() -> Span<ContractAddress> {
         let mut reward_tokens: Array<ContractAddress> = Default::default();
         reward_tokens.append(aura_token_deploy());
         reward_tokens.append(veaura_token_deploy());
         reward_tokens.span()
     }
 
+    fn reward_amts_per_blessing() -> Span<u128> {
+        let mut bless_amts: Array<u128> = Default::default();
+        bless_amts.append(AURA_BLESS_AMT);
+        bless_amts.append(VEAURA_BLESS_AMT);
+        bless_amts.span()
+    }
+
     // Helper function to deploy a blesser for a token, and mint tokens to the deployed blesser.
     fn deploy_blesser_for_reward(
-        absorber: IAbsorberDispatcher, asset: ContractAddress, 
+        absorber: IAbsorberDispatcher, asset: ContractAddress, bless_amt: u128
     ) -> ContractAddress {
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(ShrineUtils::admin()));
         calldata.append(contract_address_to_felt252(asset));
         calldata.append(contract_address_to_felt252(absorber.contract_address));
+        calldata.append(bless_amt.into());
 
         let mock_blesser_class_hash: ClassHash = class_hash_try_from_felt252(
             MockBlesser::TEST_CLASS_HASH
@@ -156,13 +172,17 @@ mod TestAbsorber {
         mock_blesser_addr
     }
 
-    fn deploy_blesser_for_rewards(absorber: IAbsorberDispatcher, mut assets: Span<ContractAddress>) -> Span<ContractAddress> {
+    fn deploy_blesser_for_rewards(
+        absorber: IAbsorberDispatcher, mut assets: Span<ContractAddress>, mut bless_amts: Span<u128>
+    ) -> Span<ContractAddress> {
         let mut blessers: Array<ContractAddress> = Default::default();
-        
+
         loop {
             match assets.pop_front() {
                 Option::Some(asset) => {
-                    let blesser: ContractAddress = deploy_blesser_for_reward(absorber, *asset);
+                    let blesser: ContractAddress = deploy_blesser_for_reward(
+                        absorber, *asset, *bless_amts.pop_front().unwrap()
+                    );
                     blessers.append(blesser);
                 },
                 Option::None(_) => {
@@ -174,9 +194,13 @@ mod TestAbsorber {
         blessers.span()
     }
 
-    fn add_rewards_to_absorber(absorber: IAbsorberDispatcher, mut tokens: Span<ContractAddress>, mut blessers: Span<ContractAddress>) {
+    fn add_rewards_to_absorber(
+        absorber: IAbsorberDispatcher,
+        mut tokens: Span<ContractAddress>,
+        mut blessers: Span<ContractAddress>
+    ) {
         set_contract_address(ShrineUtils::admin());
-        
+
         loop {
             match tokens.pop_front() {
                 Option::Some(token) => {
@@ -206,58 +230,119 @@ mod TestAbsorber {
     //
     // - `provider` - Address of the provider.
     // 
-    // - `epoch` - The latest epoch.
+    // - `epoch` - The epoch to check for
     // 
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
+    // - `reward_amts_per_blessing` - Ordered list of the reward token amount transferred to the absorber per blessing
+    // 
     // - `before_balances` - Ordered list of the provider's reward token balances before receiving the rewards
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
-    // 
-    // - `base_blessing_amts` - Ordered list of the amount of reward token transferred to the absorber per 
-    //    blessing in Decimal.
-    // 
-    // - `blessings_multiplier` - The multiplier to apply to `base_blessing_amts` when calculating the total 
-    //    amount the provider should receive.
     // 
     // - `preview_amts` - Ordered list of the expected amount of reward tokens the provider is entitled to 
     //    withdraw based on `preview_reap`, in the token's decimal precision.
     //
-    // - `error_margin`: The error margin to use, if provided.
+    // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
+    //    amount the provider should receive.
+    // 
     fn assert_provider_received_rewards(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
         epoch: u32,
         mut asset_addresses: Span<ContractAddress>,
+        mut reward_amts_per_blessing: Span<u128>,
         mut before_balances: Span<Span<u128>>,
         mut preview_amts: Span<u128>,
         blessings_multiplier: Wad,
     ) {
-       loop {
+        loop {
             match asset_addresses.pop_front() {
                 Option::Some(asset) => {
                     // Check provider has received correct amount of reward tokens
-                    let blessed_amt: Wad = MockBlesser::BLESS_AMT.into() * blessings_multiplier;
-                    let after_provider_bal: u256 = IERC20Dispatcher { contract_address: *asset }.balance_of(provider);
+                    // Convert to Wad for fixed point operations
+                    let blessed_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into()
+                        * blessings_multiplier;
+                    let after_provider_bal: u256 = IERC20Dispatcher {
+                        contract_address: *asset
+                    }.balance_of(provider);
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into() + blessed_amt.into();
+                    let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
+                        + blessed_amt.into();
                     let error_margin: Wad = 100_u128.into();
-                    ShrineUtils::assert_equalish(after_provider_bal.try_into().unwrap(), expected_bal, error_margin, 'wrong rewards balance');
+                    ShrineUtils::assert_equalish(
+                        after_provider_bal.try_into().unwrap(),
+                        expected_bal,
+                        error_margin,
+                        'wrong rewards balance'
+                    );
 
                     // Check preview amounts are equal
                     let preview_amt = *preview_amts.pop_front().unwrap();
-                    let error_margin: Wad = 100_u128.into();  // slight offset due to initial shares
-                    ShrineUtils::assert_equalish(blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount');
+                    let error_margin: Wad = 100_u128.into(); // slight offset due to initial shares
+                    ShrineUtils::assert_equalish(
+                        blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
+                    );
 
                     // Check provider's last cumulative is updated
-                    let reward_info: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*asset, epoch);
-                    let provider_cumulative: u128 = absorber.get_provider_last_reward_cumulative(provider, *asset);
-                    assert(provider_cumulative == reward_info.asset_amt_per_share, 'wrong provider cumulative');
+                    let reward_info: DistributionInfo = absorber
+                        .get_cumulative_reward_amt_by_epoch(*asset, epoch);
+                    let provider_cumulative: u128 = absorber
+                        .get_provider_last_reward_cumulative(provider, *asset);
+                    assert(
+                        provider_cumulative == reward_info.asset_amt_per_share,
+                        'wrong provider cumulative'
+                    );
                 },
                 Option::None(_) => {
                     break;
                 },
             };
-       }; 
+        };
+    }
+
+    // Helper function to assert that the cumulative reward token amount per share 
+    // 
+    // Arguments
+    // 
+    // - `absorber` - Deployed Absorber instance.
+    // 
+    // - `epoch` - The epoch to check for
+    // 
+    // - `asset_addresses` = Ordered list of the reward tokens contracts.
+    //
+    // - `reward_amts_per_blessing` - Ordered list of the reward token amount transferred to the absorber per blessing
+    // 
+    // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
+    //    amount the provider should receive.
+    // 
+    fn assert_reward_cumulative_updated(
+        absorber: IAbsorberDispatcher,
+        total_shares: Wad,
+        epoch: u32,
+        mut asset_addresses: Span<ContractAddress>,
+        mut reward_amts_per_blessing: Span<u128>,
+        blessings_multiplier: Wad
+    ) {
+        loop {
+            match asset_addresses.pop_front() {
+                Option::Some(asset) => {
+                    let reward_distribution_info: DistributionInfo = absorber
+                        .get_cumulative_reward_amt_by_epoch(*asset, epoch);
+                    // Convert to Wad for fixed point operations
+                    let expected_blessed_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap())
+                        .into()
+                        * blessings_multiplier;
+                    let expected_amt_per_share: Wad = expected_blessed_amt / total_shares;
+                    assert(
+                        reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
+                        'wrong reward cumulative'
+                    );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
     }
 
     //
@@ -333,10 +418,14 @@ mod TestAbsorber {
         let (_, absorber) = absorber_deploy();
 
         let aura_token: ContractAddress = aura_token_deploy();
-        let aura_blesser: ContractAddress = deploy_blesser_for_reward(absorber, aura_token);
+        let aura_blesser: ContractAddress = deploy_blesser_for_reward(
+            absorber, aura_token, AURA_BLESS_AMT
+        );
 
         let veaura_token: ContractAddress = veaura_token_deploy();
-        let veaura_blesser: ContractAddress = deploy_blesser_for_reward(absorber, veaura_token);
+        let veaura_blesser: ContractAddress = deploy_blesser_for_reward(
+            absorber, veaura_token, VEAURA_BLESS_AMT
+        );
 
         set_contract_address(ShrineUtils::admin());
         absorber.set_reward(aura_token, aura_blesser, true);
@@ -344,7 +433,9 @@ mod TestAbsorber {
         assert(absorber.get_rewards_count() == 1, 'rewards count not updated');
 
         let mut aura_reward = Reward {
-            asset: aura_token, blesser: IBlesserDispatcher { contract_address: aura_blesser }, is_active: true
+            asset: aura_token, blesser: IBlesserDispatcher {
+                contract_address: aura_blesser
+            }, is_active: true
         };
         let mut expected_rewards: Array<Reward> = Default::default();
         expected_rewards.append(aura_reward);
@@ -358,7 +449,9 @@ mod TestAbsorber {
         assert(absorber.get_rewards_count() == 2, 'rewards count not updated');
 
         let veaura_reward = Reward {
-            asset: veaura_token, blesser: IBlesserDispatcher { contract_address: veaura_blesser }, is_active: true
+            asset: veaura_token, blesser: IBlesserDispatcher {
+                contract_address: veaura_blesser
+            }, is_active: true
         };
         let mut expected_rewards: Array<Reward> = Default::default();
         expected_rewards.append(aura_reward);
@@ -437,14 +530,12 @@ mod TestAbsorber {
 
         set_contract_address(ShrineUtils::admin());
         absorber.kill();
-
-        // TODO: provide to absorber
+    // TODO: provide to absorber
     }
 
     //
     // Tests - Provider functions (provide, request, remove, reap)
     //
-
 
     #[test]
     #[available_gas(20000000000)]
@@ -452,12 +543,15 @@ mod TestAbsorber {
         let (shrine, absorber) = absorber_deploy();
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
-        let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(absorber, reward_tokens);
+        let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
+        let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing
+        );
         add_rewards_to_absorber(absorber, reward_tokens, blessers);
 
         let provider: ContractAddress = provider_1();
 
-        let first_provided_amt: Wad = 10000000000000000000000_u128.into();  // 10_000 (Wad)
+        let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, absorber, provider, first_provided_amt);
 
         let before_provider_info: Provision = absorber.get_provision(provider);
@@ -467,9 +561,14 @@ mod TestAbsorber {
 
         let mut token_holders: Array<ContractAddress> = Default::default();
         token_holders.append(provider);
-        let before_reward_bals: Span<Span<u128>> = test_utils::get_token_balances(reward_tokens, token_holders.span());
+        let before_reward_bals: Span<Span<u128>> = test_utils::get_token_balances(
+            reward_tokens, token_holders.span()
+        );
 
-        assert(before_provider_info.shares + Absorber::INITIAL_SHARES.into() == before_total_shares, 'wrong total shares #1');
+        assert(
+            before_provider_info.shares + Absorber::INITIAL_SHARES.into() == before_total_shares,
+            'wrong total shares #1'
+        );
         assert(before_total_shares == first_provided_amt, 'wrong total shares #2');
         assert(before_absorber_yin_bal == first_provided_amt.into(), 'wrong yin balance');
 
@@ -477,7 +576,7 @@ mod TestAbsorber {
         let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
 
         // Test subsequent deposit
-        let second_provided_amt: Wad = 4000000000000000000000_u128.into();  // 4_000 (Wad)
+        let second_provided_amt: Wad = 4000000000000000000000_u128.into(); // 4_000 (Wad)
         provide_to_absorber(shrine, absorber, provider, second_provided_amt);
 
         let after_provider_info: Provision = absorber.get_provision(provider);
@@ -486,18 +585,45 @@ mod TestAbsorber {
         let after_absorber_yin_bal: u256 = yin.balance_of(absorber.contract_address);
 
         // amount of new shares should be equal to amount of yin provided because amount of yin per share is 1 : 1
-        assert(before_provider_info.shares + Absorber::INITIAL_SHARES.into() + second_provided_amt == after_total_shares, 'wrong total shares #1');
-        assert(after_total_shares == before_total_shares + second_provided_amt, 'wrong total shares #2');
-        assert(after_absorber_yin_bal == (first_provided_amt + second_provided_amt).into(), 'wrong yin balance');        
-        assert(before_last_absorption_id == after_last_absorption_id, 'absorption id should not change');
-
-        // Check rewards
-        let expected_blessings_multiplier: Wad = WAD_SCALE.into();
-        let expected_epoch: u32 = 0;
-        assert_provider_received_rewards(
-            absorber, provider, expected_epoch, reward_tokens, before_reward_bals, preview_reward_amts, expected_blessings_multiplier,
+        assert(
+            before_provider_info.shares
+                + Absorber::INITIAL_SHARES.into()
+                + second_provided_amt == after_total_shares,
+            'wrong total shares #1'
+        );
+        assert(
+            after_total_shares == before_total_shares + second_provided_amt, 'wrong total shares #2'
+        );
+        assert(
+            after_absorber_yin_bal == (first_provided_amt + second_provided_amt).into(),
+            'wrong yin balance'
+        );
+        assert(
+            before_last_absorption_id == after_last_absorption_id, 'absorption id should not change'
         );
 
-        // TODO: check reward cumulative updated
+        let expected_blessings_multiplier: Wad = WAD_SCALE.into();
+        let expected_epoch: u32 = 0;
+        assert_reward_cumulative_updated(
+            absorber,
+            before_total_shares,
+            expected_epoch,
+            reward_tokens,
+            reward_amts_per_blessing,
+            expected_blessings_multiplier
+        );
+
+        // Check rewards
+        assert_provider_received_rewards(
+            absorber,
+            provider,
+            expected_epoch,
+            reward_tokens,
+            reward_amts_per_blessing,
+            before_reward_bals,
+            preview_reward_amts,
+            expected_blessings_multiplier,
+        );
+    // TODO: check reward cumulative updated
     }
 }
