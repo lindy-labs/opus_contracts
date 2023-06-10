@@ -29,6 +29,7 @@ mod TestAbsorber {
 
     use aura::tests::absorber::mock_blesser::MockBlesser;
     use aura::tests::erc20::ERC20;
+    use aura::tests::gate::utils::GateUtils;
     use aura::tests::shrine::utils::ShrineUtils;
     use aura::tests::test_utils;
 
@@ -45,6 +46,14 @@ mod TestAbsorber {
 
     const REMOVAL_LIMIT: u128 = 900000000000000000000000000; // 90% (Ray)
 
+    #[inline(always)]
+    fn first_update_assets() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(123000000000000000000);  // 123 (Wad) - ETH
+        asset_amts.append(237000000);  // 2.37 (19 ** 8) - BTC
+        asset_amts.span()
+    }
+
     //
     // Address constants
     //
@@ -57,6 +66,10 @@ mod TestAbsorber {
     // TODO: delete once sentinel is up
     fn mock_sentinel() -> ContractAddress {
         contract_address_const::<0xeeee>()
+    }
+
+    fn mock_purger() -> ContractAddress {
+        contract_address_const::<0xabcdabcd>()
     }
 
     //
@@ -85,9 +98,10 @@ mod TestAbsorber {
         // TODO: update to Shrine with real yangs
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         let sentinel: ContractAddress = mock_sentinel();
+        let admin: ContractAddress = ShrineUtils::admin();
 
         let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(ShrineUtils::admin()));
+        calldata.append(contract_address_to_felt252(admin));
         calldata.append(contract_address_to_felt252(shrine.contract_address));
         calldata.append(contract_address_to_felt252(sentinel));
         calldata.append(REMOVAL_LIMIT.into());
@@ -96,6 +110,11 @@ mod TestAbsorber {
             .unwrap();
         let (absorber_addr, _) = deploy_syscall(absorber_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
+
+        set_contract_address(admin);
+        let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
+        absorber_ac.grant_role(AbsorberRoles::UPDATE, mock_purger());
+        set_contract_address(ContractAddressZeroable::zero());
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
         (shrine, absorber)
@@ -211,6 +230,63 @@ mod TestAbsorber {
                 },
             };
         };
+
+        set_contract_address(ContractAddressZeroable::zero());
+    }
+
+    fn yang_assets_deploy() -> Span<ContractAddress> {
+        let mut yang_assets: Array<ContractAddress> = Default::default();
+        yang_assets.append(GateUtils::eth_token_deploy());
+        yang_assets.append(GateUtils::wbtc_token_deploy());
+        yang_assets.span()
+    }
+
+    // Helper function to simulate an update by:
+    // 1. Burning yin from the absorber
+    // 2. Transferring yang assets to the Absorber 
+    //
+    // Arguments
+    //
+    // - `shrine` - Deployed Shrine instance
+    //
+    // - `absorber` - Deployed Absorber instance
+    //
+    // - `yangs` - Ordered list of the addresses of the yangs to be transferred
+    //
+    // - `yang_asset_amts` - Ordered list of the asset amount to be transferred for each yang
+    //
+    // - `percentage_to_drain` - Percentage of the Absorber's yin balance to be burnt
+    //
+    fn simulate_update(
+        shrine: IShrineDispatcher,
+        absorber: IAbsorberDispatcher,
+        mut yangs: Span<ContractAddress>,
+        mut yang_asset_amts: Span<u128>,
+        percentage_to_drain: Ray,
+    ) {
+        let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
+        let burn_amt: Wad = wadray::rmul_wr(absorber_yin_bal, percentage_to_drain);
+
+        // Simulate burning a percentage of absorber's yin
+        set_contract_address(ShrineUtils::admin());
+        shrine.eject(absorber.contract_address, burn_amt);
+
+        // Simulate transfer of "freed" assets to absorber
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let yang_asset_amt: u256 = (*yang_asset_amts.pop_front().unwrap()).into();
+                    let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
+                    yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        set_contract_address(mock_purger());
+        absorber.update(yangs, yang_asset_amts);
 
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -536,6 +612,29 @@ mod TestAbsorber {
     //
     // Tests - Update
     //
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_update() {
+        let (shrine, absorber) = absorber_deploy();
+        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
+        let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
+        let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing
+        );
+        add_rewards_to_absorber(absorber, reward_tokens, blessers);
+
+        let yangs: Span<ContractAddress> = yang_assets_deploy();
+        
+        let provider = provider_1();
+        let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(shrine, absorber, provider, first_provided_amt);
+
+        let first_update_assets: Span<u128> = first_update_assets();
+        let percentage_to_drain: Ray = 750000000000000000000000000_u128.into();  // 75% (Ray)
+        simulate_update(shrine, absorber, yangs, first_update_assets, percentage_to_drain);
+
+    }
 
     //
     // Tests - Provider functions (provide, request, remove, reap)
