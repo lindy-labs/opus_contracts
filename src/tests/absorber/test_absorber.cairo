@@ -526,12 +526,16 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not live', 'ENTRYPOINT_FAILED'))]
     fn test_provide_after_kill_fail() {
-        let (_, absorber) = absorber_deploy();
+        let (shrine, absorber) = absorber_deploy();
 
         set_contract_address(ShrineUtils::admin());
         absorber.kill();
-    // TODO: provide to absorber
+        provide_to_absorber(shrine, absorber, provider_1(), 1_u128.into());
     }
+
+    //
+    // Tests - Update
+    //
 
     //
     // Tests - Provider functions (provide, request, remove, reap)
