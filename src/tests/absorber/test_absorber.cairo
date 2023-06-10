@@ -49,8 +49,8 @@ mod TestAbsorber {
     #[inline(always)]
     fn first_update_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(123000000000000000000);  // 123 (Wad) - ETH
-        asset_amts.append(237000000);  // 2.37 (19 ** 8) - BTC
+        asset_amts.append(123000000000000000000); // 123 (Wad) - ETH
+        asset_amts.append(237000000); // 2.37 (19 ** 8) - BTC
         asset_amts.span()
     }
 
@@ -272,6 +272,10 @@ mod TestAbsorber {
         shrine.eject(absorber.contract_address, burn_amt);
 
         // Simulate transfer of "freed" assets to absorber
+        set_contract_address(mock_purger());
+        absorber.update(yangs, yang_asset_amts);
+
+        set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -284,9 +288,6 @@ mod TestAbsorber {
                 },
             };
         };
-
-        set_contract_address(mock_purger());
-        absorber.update(yangs, yang_asset_amts);
 
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -612,6 +613,44 @@ mod TestAbsorber {
     //
     // Tests - Update
     //
+
+    fn assert_update_is_correct(
+        absorber: IAbsorberDispatcher,
+        absorption_id: u32,
+        total_shares: Wad,
+        mut yangs: Span<ContractAddress>,
+        mut yang_asset_amts: Span<u128>,
+    ) {
+        // TODO: account for prev error
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let actual_distribution: DistributionInfo = absorber
+                        .get_asset_absorption(*yang, absorption_id);
+                    // Convert to Wad for fixed point operations
+                    let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
+                    let expected_asset_amt_per_share: u128 = (asset_amt / total_shares).val;
+
+                    // Check asset amt per share is correct
+                    assert(
+                        actual_distribution.asset_amt_per_share == expected_asset_amt_per_share,
+                        'wrong absorbed amount per share'
+                    );
+
+                    // Check update amount = (total_shares * asset_amt per share) - prev_error + error
+                    // Convert to Wad for fixed point operations
+                    let distributed_amt: Wad = (total_shares
+                        * actual_distribution.asset_amt_per_share.into())
+                        + actual_distribution.error.into();
+                    assert(asset_amt == distributed_amt, 'update amount mismatch');
+                },
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
+    }
+
     #[test]
     #[available_gas(20000000000)]
     fn test_update() {
@@ -625,15 +664,33 @@ mod TestAbsorber {
         add_rewards_to_absorber(absorber, reward_tokens, blessers);
 
         let yangs: Span<ContractAddress> = yang_assets_deploy();
-        
+
         let provider = provider_1();
         let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, absorber, provider, first_provided_amt);
 
         let first_update_assets: Span<u128> = first_update_assets();
-        let percentage_to_drain: Ray = 750000000000000000000000000_u128.into();  // 75% (Ray)
+        let percentage_to_drain: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
         simulate_update(shrine, absorber, yangs, first_update_assets, percentage_to_drain);
 
+        let expected_epoch = 0;
+        let expected_absorption_id = 1;
+        assert(absorber.get_absorptions_count() == expected_absorption_id, 'wrong absorption id');
+
+        let total_shares: Wad = first_provided_amt; // total shares is equal to amount provided  
+        assert_update_is_correct(
+            absorber, expected_absorption_id, total_shares, yangs, first_update_assets, 
+        );
+
+        let expected_blessings_multiplier: Wad = WAD_SCALE.into();
+        assert_reward_cumulative_updated(
+            absorber,
+            total_shares,
+            expected_epoch,
+            reward_tokens,
+            reward_amts_per_blessing,
+            expected_blessings_multiplier,
+        );
     }
 
     //
