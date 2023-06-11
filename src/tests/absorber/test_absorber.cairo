@@ -11,6 +11,7 @@ mod TestAbsorber {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into, TryInto};
+    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -625,11 +626,18 @@ mod TestAbsorber {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
+                    let prev_error: Wad = if absorption_id.is_zero() {
+                        WadZeroable::zero()
+                    } else {
+                        absorber.get_asset_absorption(*yang, absorption_id - 1).error.into()
+                    };
                     let actual_distribution: DistributionInfo = absorber
                         .get_asset_absorption(*yang, absorption_id);
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
-                    let expected_asset_amt_per_share: u128 = (asset_amt / total_shares).val;
+                    let expected_asset_amt_per_share: u128 = ((asset_amt + prev_error)
+                        / total_shares)
+                        .val;
 
                     // Check asset amt per share is correct
                     assert(
@@ -844,6 +852,5 @@ mod TestAbsorber {
             preview_reward_amts,
             expected_blessings_multiplier,
         );
-    // TODO: check reward cumulative updated
     }
 }
