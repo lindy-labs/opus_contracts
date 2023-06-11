@@ -25,7 +25,7 @@ mod TestAbsorber {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Provision, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE, Ray};
+    use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE, Ray, RAY_SCALE};
 
     use aura::tests::absorber::mock_blesser::MockBlesser;
     use aura::tests::erc20::ERC20;
@@ -654,43 +654,89 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_update() {
-        let (shrine, absorber) = absorber_deploy();
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
-        let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
-        let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
-            absorber, reward_tokens, reward_amts_per_blessing
-        );
-        add_rewards_to_absorber(absorber, reward_tokens, blessers);
+        let mut percentages_to_drain: Array<Ray> = Default::default();
+        percentages_to_drain.append(750000000000000000000000000_u128.into()); // 75% (Ray)
+        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 75% (Ray)
+        let mut percentages_to_drain = percentages_to_drain.span();
 
-        let yangs: Span<ContractAddress> = yang_assets_deploy();
+        loop {
+            match percentages_to_drain.pop_front() {
+                Option::Some(percentage_to_drain) => {
+                    let (shrine, absorber) = absorber_deploy();
+                    let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+                    let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
+                    let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
+                    let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
+                        absorber, reward_tokens, reward_amts_per_blessing
+                    );
+                    add_rewards_to_absorber(absorber, reward_tokens, blessers);
 
-        let provider = provider_1();
-        let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
-        provide_to_absorber(shrine, absorber, provider, first_provided_amt);
+                    let yangs: Span<ContractAddress> = yang_assets_deploy();
 
-        let first_update_assets: Span<u128> = first_update_assets();
-        let percentage_to_drain: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
-        simulate_update(shrine, absorber, yangs, first_update_assets, percentage_to_drain);
+                    let provider = provider_1();
+                    let first_provided_amt: Wad = 10000000000000000000000_u128
+                        .into(); // 10_000 (Wad)
+                    provide_to_absorber(shrine, absorber, provider, first_provided_amt);
 
-        let expected_epoch = 0;
-        let expected_absorption_id = 1;
-        assert(absorber.get_absorptions_count() == expected_absorption_id, 'wrong absorption id');
+                    let first_update_assets: Span<u128> = first_update_assets();
+                    simulate_update(
+                        shrine, absorber, yangs, first_update_assets, *percentage_to_drain
+                    );
 
-        let total_shares: Wad = first_provided_amt; // total shares is equal to amount provided  
-        assert_update_is_correct(
-            absorber, expected_absorption_id, total_shares, yangs, first_update_assets, 
-        );
+                    let is_fully_absorbed: bool = if *percentage_to_drain == RAY_SCALE.into() {
+                        true
+                    } else {
+                        false
+                    };
 
-        let expected_blessings_multiplier: Wad = WAD_SCALE.into();
-        assert_reward_cumulative_updated(
-            absorber,
-            total_shares,
-            expected_epoch,
-            reward_tokens,
-            reward_amts_per_blessing,
-            expected_blessings_multiplier,
-        );
+                    let expected_epoch = if is_fully_absorbed {
+                        1
+                    } else {
+                        0
+                    };
+                    let expected_total_shares: Wad = if is_fully_absorbed {
+                        WadZeroable::zero()
+                    } else {
+                        first_provided_amt // total shares is equal to amount provided  
+                    };
+                    let expected_absorption_id = 1;
+                    assert(
+                        absorber.get_absorptions_count() == expected_absorption_id,
+                        'wrong absorption id'
+                    );
+
+                    let before_total_shares: Wad =
+                        first_provided_amt; // total shares is equal to amount provided  
+                    assert_update_is_correct(
+                        absorber,
+                        expected_absorption_id,
+                        before_total_shares,
+                        yangs,
+                        first_update_assets,
+                    );
+
+                    let expected_blessings_multiplier: Wad = WAD_SCALE.into();
+                    let absorption_epoch = 0;
+                    assert_reward_cumulative_updated(
+                        absorber,
+                        before_total_shares,
+                        absorption_epoch,
+                        reward_tokens,
+                        reward_amts_per_blessing,
+                        expected_blessings_multiplier,
+                    );
+
+                    assert(
+                        absorber.get_total_shares_for_current_epoch() == expected_total_shares,
+                        'wrong total shares'
+                    );
+                    assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
     }
 
     //
