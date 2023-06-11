@@ -663,7 +663,6 @@ mod TestAbsorber {
             match percentages_to_drain.pop_front() {
                 Option::Some(percentage_to_drain) => {
                     let (shrine, absorber) = absorber_deploy();
-                    let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
                     let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
                     let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
                     let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
@@ -737,6 +736,21 @@ mod TestAbsorber {
                 },
             };
         };
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_update_unauthorized_fail() {
+        let (shrine, absorber) = absorber_deploy();
+        let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(shrine, absorber, provider_1(), first_provided_amt);
+
+        let yangs: Span<ContractAddress> = yang_assets_deploy();
+        let first_update_assets: Span<u128> = first_update_assets();
+
+        set_contract_address(ShrineUtils::badguy());
+        absorber.update(yangs, first_update_assets);
     }
 
     //
