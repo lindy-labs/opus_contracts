@@ -7,6 +7,16 @@ use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use aura::utils::wadray;
 
 
+//
+// Constants
+//
+
+const WBTC_DECIMALS: u8 = 8;
+
+//
+// Trait implementations
+//
+
 impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>> of PartialEq<Span<T>> {
     fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
         loop {
@@ -28,6 +38,9 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
     }
 }
 
+//
+// Helpers
+//
 
 // Helper function to return a nested array of token balances given a list of 
 // token addresses and user addresses.
