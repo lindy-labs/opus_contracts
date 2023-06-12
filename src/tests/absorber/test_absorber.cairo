@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod TestAbsorber {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU256;
+    use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        SyscallResultTrait
+        get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
@@ -662,14 +662,18 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_update() {
+        // Parametrization
         let mut percentages_to_drain: Array<Ray> = Default::default();
-        percentages_to_drain.append(750000000000000000000000000_u128.into()); // 75% (Ray)
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 75% (Ray)
+        percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
+        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
         let mut percentages_to_drain = percentages_to_drain.span();
+
+        let mut idx: u32 = 0;
 
         loop {
             match percentages_to_drain.pop_front() {
                 Option::Some(percentage_to_drain) => {
+                    // Setup
                     let (shrine, absorber) = absorber_deploy();
                     let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
                     let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
@@ -685,6 +689,7 @@ mod TestAbsorber {
                         .into(); // 10_000 (Wad)
                     provide_to_absorber(shrine, absorber, provider, first_provided_amt);
 
+                    // Simulate absorption
                     let first_update_assets: Span<u128> = first_update_assets();
                     simulate_update(
                         shrine, absorber, yangs, first_update_assets, *percentage_to_drain
@@ -712,8 +717,8 @@ mod TestAbsorber {
                         'wrong absorption id'
                     );
 
-                    let before_total_shares: Wad =
-                        first_provided_amt; // total shares is equal to amount provided  
+                    // total shares is equal to amount provided  
+                    let before_total_shares: Wad = first_provided_amt; 
                     assert_update_is_correct(
                         absorber,
                         expected_absorption_id,
@@ -738,6 +743,47 @@ mod TestAbsorber {
                         'wrong total shares'
                     );
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
+
+                    let mut token_holders: Array<ContractAddress> = Default::default();
+                    token_holders.append(provider);
+
+                    let before_absorbed_bals = test_utils::get_token_balances(yangs, token_holders.span());
+                    let before_reward_bals = test_utils::get_token_balances(reward_tokens, token_holders.span());
+                    let before_last_absorption = absorber.get_provider_last_absorption(provider);
+
+                    // Perform three different actions:
+                    // 1. `reap`
+                    // 2. `request` and `remove`
+                    // 3. `provide`
+                    // and check that the provider receives rewards and absorbed assets
+
+                    // TODO: reap depends on Sentinel
+                    set_contract_address(provider);
+                    if idx % 3 == 0 {
+                        absorber.reap();   
+                    } else if idx % 3 == 1 {
+                        absorber.request();
+                        set_block_timestamp(get_block_timestamp() + 60);
+                        absorber.remove(BoundedU128::max().into());
+                    } else {
+                        provide_to_absorber(shrine, absorber, provider, first_provided_amt);
+                    }
+
+                    // 1 distribution from `update` and ` distribution from `reap`/`remove`/`provide`
+                    let expected_blessings_multiplier = (WAD_SCALE * 2).into();
+                    let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
+
+                    // Check rewards
+                    assert_provider_received_rewards(
+                        absorber,
+                        provider,
+                        expected_epoch,
+                        reward_tokens,
+                        reward_amts_per_blessing,
+                        before_reward_bals,
+                        preview_reward_amts,
+                        expected_blessings_multiplier,
+                    );
                 },
                 Option::None(_) => {
                     break;
