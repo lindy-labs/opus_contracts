@@ -85,8 +85,8 @@ mod TestAbbot {
         let wbtc_gate: IGateDispatcher = *gates.at(1);
 
         // Mint yang assets to trove owner
-        IMintableDispatcher { contract_address: eth_addr }.mint(user, ETH_DEPOSIT_AMT.into());
-        IMintableDispatcher { contract_address: wbtc_addr }.mint(user, WBTC_DEPOSIT_AMT.into());
+        IMintableDispatcher { contract_address: eth_addr }.mint(user, (ETH_DEPOSIT_AMT * 10).into());
+        IMintableDispatcher { contract_address: wbtc_addr }.mint(user, (WBTC_DEPOSIT_AMT * 10).into());
 
         set_contract_address(user);
         IERC20Dispatcher {
@@ -265,7 +265,35 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_deposit_pass() {}
+    fn test_deposit_pass() {
+        let (shrine, abbot, yangs, gates) = abbot_deploy();
+        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let wbtc_addr: ContractAddress = *yangs.at(1);
+
+        let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
+        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+
+        let before_eth_yang: Wad = shrine.get_deposit(eth_addr, trove_id);
+        let before_wbtc_yang: Wad = shrine.get_deposit(wbtc_addr, trove_id);
+
+        set_contract_address(trove_owner);
+        abbot.deposit(eth_addr, trove_id, ETH_DEPOSIT_AMT);
+        abbot.deposit(wbtc_addr, trove_id, WBTC_DEPOSIT_AMT);
+
+        let expected_eth_yang: Wad = before_eth_yang + ETH_DEPOSIT_AMT.into();
+        assert(shrine.get_deposit(eth_addr, trove_id) == expected_eth_yang, 'wrong ETH yang amount');
+
+        let expected_wbtc_yang: Wad = before_wbtc_yang + wadray::fixed_point_to_wad(WBTC_DEPOSIT_AMT, test_utils::WBTC_DECIMALS);  
+        assert(shrine.get_deposit(wbtc_addr, trove_id) == expected_wbtc_yang, 'wrong WBTC yang amount');
+
+        // Depositing 0 should pass
+        abbot.deposit(eth_addr, trove_id, 0_u128);
+        abbot.deposit(wbtc_addr, trove_id, 0_u128);
+        assert(shrine.get_deposit(eth_addr, trove_id) == expected_eth_yang, 'wrong ETH yang amount');
+        assert(shrine.get_deposit(wbtc_addr, trove_id) == expected_wbtc_yang, 'wrong WBTC yang amount');
+    }
 
     #[test]
     #[available_gas(20000000000)]
