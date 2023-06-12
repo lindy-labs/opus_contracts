@@ -98,7 +98,7 @@ mod Abbot {
         mut yangs: Span<ContractAddress>,
         mut amounts: Span<u128>,
         max_forge_fee_pct: Wad
-    ) {
+    ) -> u64 {
         assert(yangs.len() != 0_usize, 'ABB: No yangs');
         assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
 
@@ -130,6 +130,8 @@ mod Abbot {
         shrine::read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
 
         TroveOpened(user, new_trove_id);
+
+        new_trove_id
     }
 
     // close a trove, repaying its debt in full and withdrawing all the Yangs
