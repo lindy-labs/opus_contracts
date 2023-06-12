@@ -1,3 +1,3 @@
 mod utils;
-//mod test_allocator;
-//mod test_equalizer;
+mod test_allocator;
+mod test_equalizer;

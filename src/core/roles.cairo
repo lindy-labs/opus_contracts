@@ -57,6 +57,11 @@ mod SentinelRoles {
     const KILL_GATE: u128 = 8;
     const SET_YANG_ASSET_MAX: u128 = 16;
 
+    #[inlinee(always)]
+    fn abbot() -> u128 {
+        ENTER + EXIT
+    }
+
     #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX
@@ -89,6 +94,12 @@ mod ShrineRoles {
     #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
+    }
+
+    #[cfg(test)]
+    #[inline(always)]
+    fn sentinel() -> u128 {
+        ADD_YANG + SET_THRESHOLD
     }
 
     #[cfg(test)]

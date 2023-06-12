@@ -3,6 +3,8 @@ mod TestSentinel {
     use array::SpanTrait;
     use debug::PrintTrait; 
     use option::OptionTrait;
+    use starknet::{contract_address_const, ContractAddress};
+    use starknet::testing::set_contract_address;
     use traits::Into;
 
     use aura::core::sentinel::Sentinel;
@@ -10,6 +12,7 @@ mod TestSentinel {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
     use aura::utils::wadray;
@@ -67,4 +70,55 @@ mod TestSentinel {
         assert(shrine.get_yang_total(eth) == Sentinel::INITIAL_DEPOSIT_AMT.into(), 'Wrong yang total #1');
         assert(shrine.get_yang_total(wbtc) == wadray::fixed_point_to_wad(Sentinel::INITIAL_DEPOSIT_AMT, 8), 'Wrong yang total #2');
     }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_unauthorized() {
+        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+
+        sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Yang cannot be zero address', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_yang_zero_addr() {
+        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        set_contract_address(SentinelUtils::admin());
+        sentinel.add_yang(contract_address_const::<0x0>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Gate cannot be zero address', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_gate_zero_addr() {
+        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        set_contract_address(SentinelUtils::admin());
+        sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0x0>());
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Yang already added', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_yang_already_added() {
+        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (eth, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine);
+
+        set_contract_address(SentinelUtils::admin());
+        sentinel.add_yang(eth, SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), eth_gate.contract_address);
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Asset of gate is not yang', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_gate_yang_mismatch() {
+        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (eth, eth_gate) = GateUtils::eth_gate_deploy_internal(shrine, sentinel.contract_address);
+        let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
+
+        set_contract_address(SentinelUtils::admin());
+        sentinel.add_yang(wbtc, SentinelUtils::WBTC_ASSET_MAX, ShrineUtils::YANG2_THRESHOLD.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG2_BASE_RATE.into(), eth_gate);
+    }
+
 }

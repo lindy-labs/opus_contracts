@@ -50,49 +50,68 @@ mod SentinelUtils {
         let (sentinel_addr, _) = deploy_syscall(sentinel_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
+        // Grant `abbot` role to `mock_abbot`
+        set_contract_address(admin());
+        IAccessControlDispatcher{contract_address: sentinel_addr}.grant_role(SentinelRoles::abbot(), mock_abbot());
+
+        // Grant `add_yang` and `set_threshold` roles to `shrine`
+        set_contract_address(ShrineUtils::admin());
+        IAccessControlDispatcher{contract_address: shrine}.grant_role(ShrineRoles::sentinel(), sentinel_addr);
+
+        set_contract_address(contract_address_const::<0>());
+
         (ISentinelDispatcher{ contract_address: sentinel_addr }, shrine)
     }
 
     fn deploy_sentinel_with_gates() -> (ISentinelDispatcher, IShrineDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
         let (sentinel, shrine) = deploy_sentinel();
 
-        let (eth, eth_gate) = GateUtils::eth_gate_deploy_internal(shrine, sentinel.contract_address);
-        let (wbtc, wbtc_gate) = GateUtils::wbtc_gate_deploy_internal(shrine, sentinel.contract_address);
+        let (eth, eth_gate) = add_eth_yang(sentinel, shrine);
+        let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine);
 
-        let eth_erc20 = IERC20Dispatcher{contract_address: eth};
-        let wbtc_erc20 = IERC20Dispatcher{contract_address: wbtc};
-        
-        // Tranasferring the initial deposit amounts to `admin()`
-        set_contract_address(GateUtils::eth_hoarder());
-        eth_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
-
-        set_contract_address(GateUtils::wbtc_hoarder());
-        wbtc_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
-
-        // Approving sentinel for `add_yang`
-        let shrine_ac = IAccessControlDispatcher{contract_address: shrine};
-        set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::ADD_YANG + ShrineRoles::SET_THRESHOLD, sentinel.contract_address);
-
-        set_contract_address(admin());
-
-        eth_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
-        wbtc_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
-
-        sentinel.add_yang(eth, ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), eth_gate);
-        sentinel.add_yang(wbtc, WBTC_ASSET_MAX, ShrineUtils::YANG2_THRESHOLD.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG2_BASE_RATE.into(), wbtc_gate);
-
-        set_contract_address(contract_address_const::<0>());
-    
         let mut assets: Array<ContractAddress> = Default::default();
         assets.append(eth);
         assets.append(wbtc);
 
         let mut gates: Array<IGateDispatcher> = Default::default();
-        gates.append(IGateDispatcher{contract_address: eth_gate});
-        gates.append(IGateDispatcher{contract_address: wbtc_gate});
+        gates.append(eth_gate);
+        gates.append(wbtc_gate);
 
         (sentinel, IShrineDispatcher{contract_address: shrine}, assets.span(), gates.span())
     }
 
+    fn add_eth_yang(sentinel: ISentinelDispatcher, shrine: ContractAddress) -> (ContractAddress, IGateDispatcher) {
+
+        let (eth, eth_gate) = GateUtils::eth_gate_deploy_internal(shrine, sentinel.contract_address);
+
+        let eth_erc20 = IERC20Dispatcher{contract_address: eth};
+        
+        // Tranasferring the initial deposit amounts to `admin()`
+        set_contract_address(GateUtils::eth_hoarder());
+        eth_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
+
+        set_contract_address(admin());
+        eth_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
+        sentinel.add_yang(eth, ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), eth_gate);
+        set_contract_address(contract_address_const::<0>());
+
+        (eth, IGateDispatcher{contract_address: eth_gate})
+    }
+
+    fn add_wbtc_yang(sentinel: ISentinelDispatcher, shrine: ContractAddress) -> (ContractAddress, IGateDispatcher) {
+            let (wbtc, wbtc_gate) = GateUtils::wbtc_gate_deploy_internal(shrine, sentinel.contract_address);
+    
+            let wbtc_erc20 = IERC20Dispatcher{contract_address: wbtc};
+            
+            // Tranasferring the initial deposit amounts to `admin()`
+            set_contract_address(GateUtils::wbtc_hoarder());
+            wbtc_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
+    
+            set_contract_address(admin());
+            wbtc_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
+            sentinel.add_yang(wbtc, WBTC_ASSET_MAX, ShrineUtils::YANG2_THRESHOLD.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG2_BASE_RATE.into(), wbtc_gate);
+            set_contract_address(contract_address_const::<0>());
+    
+            (wbtc, IGateDispatcher{contract_address: wbtc_gate})
+    }
 }
