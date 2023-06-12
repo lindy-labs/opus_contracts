@@ -10,7 +10,7 @@ mod TestAbbot {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
+    use traits::{Default, Into, TryInto};
 
     use aura::core::abbot::Abbot;
     use aura::core::roles::SentinelRoles;
@@ -44,7 +44,7 @@ mod TestAbbot {
     //
 
     fn abbot_deploy() -> (
-        IShrineDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>
+        IShrineDispatcher, ISentinelDispatcher, IAbbotDispatcher, Span<ContractAddress>, Span<IGateDispatcher>
     ) {
         let (sentinel, shrine, yangs, gates) = SentinelUtils::deploy_sentinel_with_gates();
         ShrineUtils::shrine_setup(shrine.contract_address);
@@ -69,7 +69,7 @@ mod TestAbbot {
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(SentinelRoles::ENTER + SentinelRoles::EXIT, abbot_addr);
 
-        (shrine, abbot, yangs, gates)
+        (shrine, sentinel, abbot, yangs, gates)
     }
 
     fn fund_user_and_open_trove(
@@ -116,7 +116,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_open_trove_pass() {
-        let (shrine, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_deploy();
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
@@ -170,7 +170,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_no_yangs_fail() {
-        let (_, abbot, _, _) = abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_deploy();
 
         let yangs: Array<ContractAddress> = Default::default();
         let yang_amts: Array<u128> = Default::default();
@@ -184,7 +184,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_input_args_mismatch_fail() {
-        let (_, abbot, _, _) = abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_deploy();
 
         let mut yangs: Array<ContractAddress> = Default::default();
         yangs.append(ShrineUtils::yang1_addr());
@@ -201,7 +201,7 @@ mod TestAbbot {
         expected: ('SE: Yang is not approved', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_open_trove_invalid_yang_fail() {
-        let (shrine, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_deploy();
 
         let invalid_yang: ContractAddress = contract_address_const::<0xdead>();
         let mut yangs: Array<ContractAddress> = Default::default();
@@ -217,7 +217,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_close_trove_pass() {
-        let (shrine, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_deploy();
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
@@ -247,7 +247,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_close_non_owner_fail() {
-        let (shrine, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_deploy();
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
@@ -266,7 +266,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_deposit_pass() {
-        let (shrine, abbot, yangs, gates) = abbot_deploy();
+        let (shrine, _, abbot, yangs, gates) = abbot_deploy();
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
@@ -299,7 +299,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_address_yang_fail() {
-        let (_, abbot, _, _) = abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_deploy();
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = ShrineUtils::TROVE_1;
@@ -312,7 +312,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_trove_id_fail() {
-        let (_, abbot, _, _) = abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_deploy();
 
         let yang_addr = ShrineUtils::yang1_addr();
         let invalid_trove_id: u64 = 0;
@@ -323,20 +323,54 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    // TODO: error msg from Sentinel
-    #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_invalid_yang_fail() {}
+    #[should_panic(
+        expected: ('SE: Yang is not approved', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
+    fn test_deposit_invalid_yang_fail() {
+        let (_, _, abbot, yangs, gates) = abbot_deploy();
+        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+
+        let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
+        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+
+        let invalid_yang_addr = contract_address_const::<0x0101>();
+        abbot.deposit(invalid_yang_addr, trove_id, 1_u128);
+    }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_non_existent_trove_fail() {}
+    fn test_deposit_non_existent_trove_fail() {
+        let (_, _, abbot, yangs, gates) = abbot_deploy();
+        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+
+        let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
+        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        
+        let eth_addr: ContractAddress = *yangs.at(0);
+        abbot.deposit(eth_addr, trove_id + 1, 1_u128);
+    }
 
     #[test]
     #[available_gas(20000000000)]
-    // Error message from Sentinel
-    #[should_panic(expected: ('', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_exceeds_asset_cap_fail() {}
+    #[should_panic(
+        expected: ('SE: Exceeds max amount allowed', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+    )]
+    fn test_deposit_exceeds_asset_cap_fail() {
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy();
+        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+
+        let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
+        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let eth_gate: IGateDispatcher = *gates.at(0);
+        let eth_gate_bal = IERC20Dispatcher { contract_address: eth_addr }.balance_of(eth_gate.contract_address);
+
+        set_contract_address(SentinelUtils::admin());
+        let new_eth_asset_max: u128 = eth_gate_bal.try_into().unwrap() - 1;
+        sentinel.set_yang_asset_max(eth_addr, new_eth_asset_max);
+    }
 
     #[test]
     #[available_gas(20000000000)]
@@ -346,7 +380,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
-        let (_, abbot, _, _) = abbot_deploy();
+        let (_, _, abbot, _, _) = abbot_deploy();
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = ShrineUtils::TROVE_1;
