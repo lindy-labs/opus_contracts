@@ -1,4 +1,5 @@
 mod abbot;
+mod caretaker;
 mod equalizer;
 mod shrine;
 mod test_flashmint;

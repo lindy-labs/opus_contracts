@@ -1,0 +1,32 @@
+mod CaretakerUtils {
+    use array::{ArrayTrait, SpanTrait};
+    use option::OptionTrait;
+    use starknet::{ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, deploy_syscall, SyscallResultTrait};
+    use starknet::testing::set_block_timestamp;
+    use traits::Default;
+
+    use aura::core::caretaker::Caretaker;
+
+    use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::equalizer::utils::EqualizerUtils;
+
+    fn caretaker_deploy() -> ContractAddress {
+        set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
+
+        // let shrine: ContractAddress = ShrineUtils::shrine_deploy();
+
+        let (shrine, equalizer, _) = EqualizerUtils::equalizer_deploy();
+
+        let mut calldata: Array<felt252> = Default::default();
+        calldata.append(contract_address_to_felt252(ShrineUtils::admin()));
+        calldata.append(contract_address_to_felt252(shrine.contract_address));
+        calldata.append(0xab0); // abbot
+        calldata.append(0xe771); // sentinel
+        calldata.append(contract_address_to_felt252(equalizer.contract_address));
+
+        let caretaker_class_hash: ClassHash = class_hash_try_from_felt252(Caretaker::TEST_CLASS_HASH).unwrap();
+        let (caretaker, _) = deploy_syscall(caretaker_class_hash, 0, calldata.span(), false).unwrap_syscall();
+
+        caretaker
+    }
+}
