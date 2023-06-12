@@ -179,14 +179,9 @@ mod Gate {
 
         if total_yang.is_zero() {
             let decimals: u8 = asset.decimals();
-
-            // If asset is of `Wad` precision, then `yang_amt` is equivalent to asset amount
-            if decimals == WAD_DECIMALS {
-                return yang_amt.val;
-            }
-
-            // Otherwise, scale `yang_amt` down by the difference to match the decimal 
-            // precision of the asset
+            // Scale `yang_amt` down by the difference to match the decimal 
+            // precision of the asset. If asset is of `Wad` precision, then 
+            // the same value is returned
             yang_amt.val / pow10(WAD_DECIMALS - decimals)
         } else {
             ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
@@ -202,14 +197,9 @@ mod Gate {
 
         if total_yang.is_zero() {
             let decimals: u8 = asset.decimals();
-
-            // If asset is of `Wad` precision, then `asset_amt` is equivalent to yang amount
-            if decimals == WAD_DECIMALS {
-                return asset_amt.into();
-            }
-
-            // Otherwise, scale `asset_amt` up by the difference to match `Wad` precision
-            // of yang
+            // Otherwise, scale `asset_amt` up by the difference to match `Wad` 
+            // precision of yang. If asset is of `Wad` precision, then the same 
+            // value is returned
             wadray::fixed_point_to_wad(asset_amt, decimals)
         } else {
             (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
