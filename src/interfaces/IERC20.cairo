@@ -12,3 +12,8 @@ trait IERC20 {
     fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
     fn approve(spender: ContractAddress, amount: u256) -> bool;
 }
+
+#[abi]
+trait IMintable {
+    fn mint(recipient: ContractAddress, amount: u256) -> bool;
+}

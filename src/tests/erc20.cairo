@@ -31,10 +31,7 @@ mod ERC20 {
         token_name::write(name);
         token_symbol::write(symbol);
         token_decimals::write(decimals);
-        assert(!recipient.is_zero(), 'ERC20: mint to the 0 address');
-        supply::write(initial_supply);
-        balances::write(recipient, initial_supply);
-        Transfer(contract_address_const::<0>(), recipient, initial_supply);
+        mint(recipient, initial_supply);
     }
 
     #[view]
@@ -86,6 +83,15 @@ mod ERC20 {
     fn approve(spender: ContractAddress, amount: u256) -> bool {
         let caller = get_caller_address();
         approve_helper(caller, spender, amount);
+        true
+    }
+
+    #[external]
+    fn mint(recipient: ContractAddress, amount: u256) -> bool {
+        supply::write(supply::read() + amount);
+        let balance = balances::read(recipient);
+        balances::write(recipient, balance + amount);
+        Transfer(contract_address_const::<0>(), recipient, amount);
         true
     }
 
