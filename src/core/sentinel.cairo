@@ -45,15 +45,19 @@ mod Sentinel {
     #[event]
     fn YangAssetMaxUpdated(yang: ContractAddress, old_max: u128, new_max: u128) {}
 
+    #[event]
+    fn GateKilled(yang: ContractAddress, gate: ContractAddress) {}
+
+    //
+    // Constructor
+    //
+
     #[constructor]
     fn constructor(admin: ContractAddress, shrine: ContractAddress) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(SentinelRoles::default_admin_role(), admin);
         shrine::write(IShrineDispatcher { contract_address: shrine });
     }
-
-    #[event]
-    fn GateKilled(yang: ContractAddress, gate: ContractAddress) {}
 
     //
     // View Functions
@@ -154,13 +158,15 @@ mod Sentinel {
         yang_asset_max::write(yang, yang_asset_max);
 
         // Require an initial deposit when adding a yang to prevent first depositor from front-running
-        let caller: ContractAddress = get_caller_address();
-        let initial_yang_amt: Wad = gate.preview_enter(INITIAL_DEPOSIT_AMT);
+        let yang_erc20 = IERC20Dispatcher { contract_address: yang };
+        let initial_yang_amt: Wad = wadray::fixed_point_to_wad(
+            INITIAL_DEPOSIT_AMT, yang_erc20.decimals()
+        );
         let initial_deposit_amt: u256 = INITIAL_DEPOSIT_AMT.into();
 
-        let success: bool = IERC20Dispatcher {
-            contract_address: yang
-        }.transfer_from(caller, gate.contract_address, initial_deposit_amt);
+        let caller: ContractAddress = get_caller_address();
+        let success: bool = yang_erc20
+            .transfer_from(caller, gate.contract_address, initial_deposit_amt);
         assert(success, 'SE: Yang transfer failed');
 
         let shrine: IShrineDispatcher = shrine::read();

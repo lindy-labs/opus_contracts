@@ -6,6 +6,7 @@ use aura::utils::wadray::Wad;
 trait IGate {
     // getter
     fn get_shrine() -> ContractAddress;
+    fn get_sentinel() -> ContractAddress;
     fn get_asset() -> ContractAddress;
     fn get_total_assets() -> u128;
     fn get_total_yang() -> Wad;
