@@ -15,6 +15,7 @@ mod TestShrineRedistribution {
     use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::utils::assert_equalish;
 
     //
     // Setup
@@ -175,7 +176,7 @@ mod TestShrineRedistribution {
                     let recipient_trove_yang_deposit = *recipient_trove_yangs.pop_front().unwrap();
                     let remaining_yang = *expected_remaining_yangs.pop_front().unwrap();
 
-                    // Calculate the amount of debt redistributed for the yang, checking for 
+                    // Calculate the amount of debt redistributed for the yang, checking for
                     // rounding threshold,
                     let mut expected_yang_debt = (*redistributed_trove_yang_values
                         .pop_front()
@@ -190,7 +191,7 @@ mod TestShrineRedistribution {
                         expected_yang_debt += remainder;
                     }
 
-                    // If provided, include the error from previous redistribution to calculate 
+                    // If provided, include the error from previous redistribution to calculate
                     // unit debt
                     let mut prev_error = WadZeroable::zero();
                     if has_errors {
@@ -201,7 +202,7 @@ mod TestShrineRedistribution {
                     let expected_unit_debt = expected_yang_debt / remaining_yang;
                     let unit_debt = shrine
                         .get_redistributed_unit_debt_for_yang(*yang, expected_redistribution_id);
-                    ShrineUtils::assert_equalish(
+                    assert_equalish(
                         expected_unit_debt, unit_debt, 1_u128.into(), 'wrong unit debt'
                     );
 
@@ -214,7 +215,7 @@ mod TestShrineRedistribution {
                     let expected_error = expected_yang_debt - expected_cumulative_increment;
                     cumulative_redistributed_debt += expected_error;
 
-                    // If provided, exclude the error from previous redistribution to calculate 
+                    // If provided, exclude the error from previous redistribution to calculate
                     // the redistributed trove's debt
                     if has_errors {
                         cumulative_redistributed_debt -= prev_error;

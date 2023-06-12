@@ -7,8 +7,8 @@ mod TestShrine {
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use zeroable::Zeroable; 
-    
+    use zeroable::Zeroable;
+
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
 
@@ -23,6 +23,7 @@ mod TestShrine {
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::utils::assert_equalish;
 
     //
     // Tests - Deployment and initial setup of Shrine
@@ -761,7 +762,7 @@ mod TestShrine {
         let fee_pct: Wad = shrine.get_forge_fee_pct();
 
         assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee_pct), 'incorrect max forge amt');
-        
+
         shrine.forge(trove1_owner, ShrineUtils::TROVE_1, forge_amt, fee_pct);
 
         let (_, _, _, debt) = shrine.get_trove_info(ShrineUtils::TROVE_1);
@@ -1124,7 +1125,7 @@ mod TestShrine {
         set_contract_address(admin);
         shrine_accesscontrol.grant_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
         shrine_accesscontrol.revoke_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
-        
+
         set_contract_address(new_admin);
         let new_ceiling: Wad = (WAD_SCALE + 1).into();
         shrine.set_debt_ceiling(new_ceiling);
@@ -1366,7 +1367,7 @@ mod TestShrine {
         let mut yangs_copy: Span<ContractAddress> = yangs.span();
         let mut yang_prices_copy: Span<Wad> = yang_prices.span();
 
-        // Deposit into troves 1 and 2, with trove 2 getting twice 
+        // Deposit into troves 1 and 2, with trove 2 getting twice
         // the amount of trove 1
         set_contract_address(ShrineUtils::admin());
         loop {
@@ -1416,18 +1417,18 @@ mod TestShrine {
         let third_forge_fee: Wad = 39810717055349725_u128.into(); // 0.039810717055349725 (wad)
 
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        
+
         set_contract_address(ShrineUtils::admin());
 
-        shrine.update_yin_spot_price(first_yin_price); 
+        shrine.update_yin_spot_price(first_yin_price);
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
         shrine.update_yin_spot_price(second_yin_price);
-        ShrineUtils::assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
+        assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
-        ShrineUtils::assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
+        assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
 
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_spot_price(fourth_yin_price);
