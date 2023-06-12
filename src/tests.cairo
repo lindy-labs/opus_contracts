@@ -1,12 +1,10 @@
 mod erc20;
 mod equalizer;
-mod sentinel;
-mod shrine;
-mod test_abbot;
-mod test_flashmint;
 mod gate;
 mod sentinel;
+mod test_abbot;
+mod test_flashmint;
 mod shrine;
-//mod test_flashmint;
-mod test_utils;
 mod utils;
+
+mod test_utils;
