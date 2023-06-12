@@ -22,6 +22,8 @@ mod ShrineUtils {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
+    use aura::tests::utils::assert_equalish;
+
     //
     // Constants
     //
@@ -536,13 +538,5 @@ mod ShrineUtils {
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
-    }
-
-    fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
-        if a >= b {
-            assert(a - b <= error, message);
-        } else {
-            assert(b - a <= error, message);
-        }
     }
 }
