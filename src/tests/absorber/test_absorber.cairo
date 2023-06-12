@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod TestAbsorber {
     use array::{ArrayTrait, SpanTrait};
+    use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
     use starknet::{
@@ -24,7 +25,7 @@ mod TestAbsorber {
     };
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{DistributionInfo, Provision, Reward};
+    use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE, Ray, RAY_SCALE};
 
@@ -77,8 +78,26 @@ mod TestAbsorber {
     // Test setup helpers
     // 
 
+    // Helper function to create some debt in Shrine by opening a trove with a single yang of 18 decimals
+    fn create_debt(shrine: IShrineDispatcher, yang: ContractAddress, pct_max_forge: Ray) {
+        let user: ContractAddress = contract_address_const::<0xabcdef>();
+        let trove_id: u64 = 99;
+        let yang_token = IMintableDispatcher { contract_address: yang };
+        let mint_amt: Wad = (10 * WAD_SCALE).into();
+        yang_token.mint(user, mint_amt.into());
+
+        let admin: ContractAddress = ShrineUtils::admin();
+        set_contract_address(admin);
+        shrine.deposit(yang, trove_id, mint_amt);
+
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
+        let forge_amt: Wad = wadray::rmul_wr(max_forge_amt, pct_max_forge);
+        shrine.forge(user, trove_id, forge_amt);
+    }
+
     // Helper function to mint the given amount of yin to a address simulating a provider, 
     // and then provide the same amount to the Absorber
+    // TODO: to replace inject with opening a trove
     fn provide_to_absorber(
         shrine: IShrineDispatcher,
         absorber: IAbsorberDispatcher,
@@ -241,6 +260,8 @@ mod TestAbsorber {
         yang_assets.append(GateUtils::wbtc_token_deploy());
         yang_assets.span()
     }
+
+    // TODO: add helper to call Sentinel.add_yang
 
     // Helper function to simulate an update by:
     // 1. Burning yin from the absorber
@@ -899,4 +920,43 @@ mod TestAbsorber {
             expected_blessings_multiplier,
         );
     }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_request_pass() {
+        let (shrine, absorber) = absorber_deploy();
+
+        let provider: ContractAddress = provider_1();
+
+        let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(shrine, absorber, provider, first_provided_amt);
+
+        create_debt(shrine, 
+
+        set_contract_address(provider);
+        let mut idx = 0;
+        let mut expected_timelock = Absorber::REQUEST_BASE_TIMELOCK;
+        loop {
+            if idx == 6 {
+                break;
+            }
+
+            let current_ts = get_block_timestamp();
+            absorber.request();
+
+            expected_timelock = min(expected_timelock, Absorber::REQUEST_MAX_TIMELOCK);
+
+            let request: Request = absorber.get_provider_request(provider);
+            assert(request.timestamp == current_ts, 'wrong timestamp');
+            assert(request.timelock == expected_timelock, 'wrong timelock');
+
+            let removal_ts = current_ts + expected_timelock;
+            set_block_timestamp(removal_ts);
+            // TODO: requires sentinel
+            //absorber.remove(1_u128.into());
+
+            expected_timelock *= Absorber::REQUEST_TIMELOCK_MULTIPLIER;
+        };
+    }
+
 }
