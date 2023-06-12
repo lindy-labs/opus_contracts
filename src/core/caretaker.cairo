@@ -38,8 +38,6 @@ mod Caretaker {
         sentinel: ISentinelDispatcher,
         // Shrine associated with this Caretaker
         shrine: IShrineDispatcher,
-        // Keeps track of whether Caretaker is live or killed
-        is_live: bool,
     }
 
     //
@@ -78,28 +76,22 @@ mod Caretaker {
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         equalizer::write(IEqualizerDispatcher { contract_address: equalizer });
-
-        is_live::write(true);
     }
 
     //
     // View functions
     //
 
-    #[view]
-    fn get_live() -> bool {
-        is_live::read()
-    }
-
     // Simulates the effects of `release` at the current on-chain conditions.
     #[view]
     fn preview_release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'CA: System is live');
+        let shrine: IShrineDispatcher = shrine::read();
+
+        assert(shrine.get_live() == false, 'CA: System is live');
 
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-        let shrine: IShrineDispatcher = shrine::read();
         let mut asset_amts: Array<u128> = Default::default();
         let mut yangs_copy = yangs;
 
@@ -126,9 +118,9 @@ mod Caretaker {
     // Simulates the effects of `reclaim` at the current on-chain conditions.
     #[view]
     fn preview_reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'CA: System is live');
-
         let shrine: IShrineDispatcher = shrine::read();
+
+        assert(shrine.get_live() == false, 'CA: System is live');
 
         // Cap percentage of amount to be reclaimed to 100% to catch
         // invalid values beyond total yin
@@ -164,19 +156,19 @@ mod Caretaker {
     fn shut() {
         AccessControl::assert_has_role(CaretakerRoles::SHUT);
 
+        let shrine: IShrineDispatcher = shrine::read();
+
         // Prevent repeated `shut`
-        assert(is_live::read(), 'CA: Caretaker is not live');
+        assert(shrine.get_live(), 'CA: System is not live');
 
         // Mint surplus debt
-        // Note that the total system debt may stil be higher than total yin after this 
-        // final minting of surplus debt due to loss of precision. However, any such 
-        // excess system debt is inconsequential because only the total yin supply will 
-        // be backed by collateral, and it would not be possible to mint this excess 
+        // Note that the total system debt may stil be higher than total yin after this
+        // final minting of surplus debt due to loss of precision. However, any such
+        // excess system debt is inconsequential because only the total yin supply will
+        // be backed by collateral, and it would not be possible to mint this excess
         // system debt from this point onwards. Therefore, this excess system debt would
         // not affect the accounting for `release` and `reclaim` in this contract.
         equalizer::read().equalize();
-
-        let shrine: IShrineDispatcher = shrine::read();
 
         // Calculate the percentage of collateral needed to back yin 1 : 1
         // based on the last value of all collateral in Shrine
@@ -186,11 +178,11 @@ mod Caretaker {
         // Cap the percentage to 100%
         let capped_backing_pct: Ray = min(backing_pct, RAY_ONE.into());
 
-        // Loop through yangs and transfer the amount of each yang asset needed to back 
-        // yin to this contract. This is equivalent to a final redistribution enforced 
+        // Loop through yangs and transfer the amount of each yang asset needed to back
+        // yin to this contract. This is equivalent to a final redistribution enforced
         // on all trove owners.
-        // Since yang assets are transferred out of the Gate and the total number of yang 
-        // is not updated in Shrine, the asset amount per yang in Gate will decrease. 
+        // Since yang assets are transferred out of the Gate and the total number of yang
+        // is not updated in Shrine, the asset amount per yang in Gate will decrease.
         let sentinel: ISentinelDispatcher = sentinel::read();
         let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
         let caretaker = get_contract_address();
@@ -210,7 +202,6 @@ mod Caretaker {
         };
 
         // Kill modules
-        is_live::write(false);
         shrine.kill();
 
         // Note that Absorber is not killed. When the final debt surplus is minted, the
@@ -225,14 +216,16 @@ mod Caretaker {
     }
 
     // Releases all remaining collateral in a trove to the trove owner directly.
-    // - Note that after `shut` is triggered, the amount of yang in a trove will be fixed, 
-    //   but the asset amount per yang may have decreased because the assets needed to back 
+    // - Note that after `shut` is triggered, the amount of yang in a trove will be fixed,
+    //   but the asset amount per yang may have decreased because the assets needed to back
     //   yin 1 : 1 have been transferred from the Gates to the Caretaker.
     // Returns a tuple of arrays of the released asset addresses and released asset amounts
     // denominated in each respective asset's decimals.
     #[external]
     fn release(trove_id: u64) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'CA: System is live');
+        let shrine: IShrineDispatcher = shrine::read();
+
+        assert(shrine.get_live() == false, 'CA: System is live');
 
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
@@ -244,7 +237,6 @@ mod Caretaker {
         let sentinel: ISentinelDispatcher = sentinel::read();
         let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-        let shrine: IShrineDispatcher = shrine::read();
         let mut asset_amts: Array<u128> = Default::default();
         let mut yangs_copy = yangs;
 
@@ -259,8 +251,8 @@ mod Caretaker {
                     } else {
                         let asset_amt: u128 = sentinel
                             .exit(*yang, trove_owner, trove_id, deposited_yang);
-                        // Seize the collateral only after assets have been 
-                        // transferred so that the asset amount per yang in Gate 
+                        // Seize the collateral only after assets have been
+                        // transferred so that the asset amount per yang in Gate
                         // does not change and user receives the correct amount
                         shrine.seize(*yang, trove_id, deposited_yang);
 
@@ -282,28 +274,29 @@ mod Caretaker {
     // Allow yin holders to burn their yin and receive their proportionate share of collateral assets
     // in the Caretaker contract based on the amount of yin as a proportion of total supply.
     // Example: assuming total system yin of 1_000, and Caretaker has a yang A asset balance of 4_000.
-    //          User A and User B each wants to reclaim 100 yin, and expects to receive the same amount 
+    //          User A and User B each wants to reclaim 100 yin, and expects to receive the same amount
     //          of yang assets from the Caretaker regardless of who does so first.
-    //          1. User A reclaims 100 yin, amounting to 100 / 1_000 = 10%, which entitles him to receive 
+    //          1. User A reclaims 100 yin, amounting to 100 / 1_000 = 10%, which entitles him to receive
     //             10% * 4_000 = 400 yang A assets from the Caretaker.
-    //          
+    //
     //             After User A reclaims, total system yin decreaes to 900, and the Caretaker's balance of
     //             yang A assets decreases to 3_600.
     //
-    //          2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which entitles him to receive 
+    //          2. User B reclaims 100 yin, amounting to 100 / 900 = 11.11%, which entitles him to receive
     //             11.1% * 3_600 = 400 yang A assets approximately.
-    //              
-    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts denominated 
+    //
+    // Returns a tuple of arrays of the reclaimed asset addresses and reclaimed asset amounts denominated
     // in each respective asset's decimals.
     #[external]
     fn reclaim(yin: Wad) -> (Span<ContractAddress>, Span<u128>) {
-        assert(is_live::read() == false, 'CA: System is live');
+        let shrine: IShrineDispatcher = shrine::read();
+
+        assert(shrine.get_live() == false, 'CA: System is live');
 
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
         let caller = get_caller_address();
-        let shrine: IShrineDispatcher = shrine::read();
 
         // Calculate amount of collateral corresponding to amount of yin reclaimed.
         // This needs to be done before burning the reclaimed yin amount from the caller
@@ -313,7 +306,7 @@ mod Caretaker {
         // This call will revert if `yin` is greater than the caller's balance.
         shrine.eject(caller, yin);
 
-        // Loop through yangs and transfer a proportionate share of each yang asset in 
+        // Loop through yangs and transfer a proportionate share of each yang asset in
         // the Caretaker to caller
         let mut yangs_copy = yangs;
         let mut asset_amts_copy = asset_amts;
