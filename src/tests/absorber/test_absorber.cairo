@@ -289,9 +289,7 @@ mod TestAbsorber {
     ) {
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
         let burn_amt: Wad = wadray::rmul_wr(absorber_yin_bal, percentage_to_drain);
-        simulate_update_with_amt_to_drain(
-            shrine, absorber, yangs, yang_asset_amts, burn_amt
-        );
+        simulate_update_with_amt_to_drain(shrine, absorber, yangs, yang_asset_amts, burn_amt);
     }
 
     // Helper function to simulate an update by:
@@ -1202,7 +1200,9 @@ mod TestAbsorber {
 
         // Step 2
         let first_update_assets: Span<u128> = first_update_assets();
-        simulate_update_with_pct_to_drain(shrine, absorber, yangs, first_update_assets, RAY_SCALE.into());
+        simulate_update_with_pct_to_drain(
+            shrine, absorber, yangs, first_update_assets, RAY_SCALE.into()
+        );
 
         // Second epoch starts here
         // Step 3
@@ -1237,7 +1237,9 @@ mod TestAbsorber {
 
         // Step 4
         let second_update_assets: Span<u128> = second_update_assets();
-        simulate_update_with_pct_to_drain(shrine, absorber, yangs, second_update_assets, RAY_SCALE.into());
+        simulate_update_with_pct_to_drain(
+            shrine, absorber, yangs, second_update_assets, RAY_SCALE.into()
+        );
 
         // Step 5
         let mut user_addresses: Array<ContractAddress> = Default::default();
@@ -1309,7 +1311,9 @@ mod TestAbsorber {
 
         absorber.reap();
 
-        assert(absorber.get_provider_last_absorption(second_provider) == 2, 'wrong last absorption');
+        assert(
+            absorber.get_provider_last_absorption(second_provider) == 2, 'wrong last absorption'
+        );
 
         let error_margin: Wad = 1000_u128.into();
         assert_provider_received_absorbed_assets(
@@ -1385,13 +1389,15 @@ mod TestAbsorber {
         let first_update_assets: Span<u128> = first_update_assets();
         // Amount of yin remaining needs to be sufficiently significant to account for loss of precision
         // pf conversion of shares across epochs, after discounting initial shares.
-        let above_min_shares: Wad = (1000000000_u128).into();  // half-Wad scale
+        let above_min_shares: Wad = (1000000000_u128).into(); // half-Wad scale
         let burn_amt: Wad = first_provided_amt - above_min_shares;
         simulate_update_with_amt_to_drain(shrine, absorber, yangs, first_update_assets, burn_amt);
 
         // Check epoch and total shares after threshold absorption
         assert(absorber.get_current_epoch() == 1, 'wrong epoch');
-        assert(absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares');
+        assert(
+            absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
+        );
 
         // Second epoch starts here
         // Step 3
@@ -1413,7 +1419,12 @@ mod TestAbsorber {
         assert(second_provider_info.epoch == 1, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into();
-        ShrineUtils::assert_equalish(absorber.preview_remove(second_provider), second_provided_amt, error_margin, 'wrong preview remove amount');
+        ShrineUtils::assert_equalish(
+            absorber.preview_remove(second_provider),
+            second_provided_amt,
+            error_margin,
+            'wrong preview remove amount'
+        );
 
         // Step 4
         let mut user_addresses: Array<ContractAddress> = Default::default();
@@ -1437,8 +1448,11 @@ mod TestAbsorber {
 
         // Check that first provider receives some amount of yin from the converted 
         // epoch shares.
-        assert(shrine.get_yin(first_provider) > first_provider_before_yin_bal, 'yin balance should be higher');
-        
+        assert(
+            shrine.get_yin(first_provider) > first_provider_before_yin_bal,
+            'yin balance should be higher'
+        );
+
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == 1, 'wrong provider epoch');
@@ -1470,7 +1484,8 @@ mod TestAbsorber {
             expected_first_epoch_blessings_multiplier
         );
 
-        let expected_first_provider_blessings_multiplier = expected_first_epoch_blessings_multiplier;
+        let expected_first_provider_blessings_multiplier =
+            expected_first_epoch_blessings_multiplier;
         assert_provider_received_rewards(
             absorber,
             first_provider,
@@ -1526,7 +1541,10 @@ mod TestAbsorber {
 
         // Check epoch and total shares after threshold absorption
         assert(absorber.get_current_epoch() == 1, 'wrong epoch');
-        assert(absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(), 'wrong total shares');
+        assert(
+            absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
+            'wrong total shares'
+        );
 
         // Second epoch starts here
         // Step 3
@@ -1544,12 +1562,23 @@ mod TestAbsorber {
         );
 
         let second_provider_info: Provision = absorber.get_provision(second_provider);
-        assert(absorber.get_total_shares_for_current_epoch() == second_provided_amt, 'wrong total shares');
-        assert(second_provider_info.shares == second_provided_amt - Absorber::INITIAL_SHARES.into(), 'wrong provider shares');
+        assert(
+            absorber.get_total_shares_for_current_epoch() == second_provided_amt,
+            'wrong total shares'
+        );
+        assert(
+            second_provider_info.shares == second_provided_amt - Absorber::INITIAL_SHARES.into(),
+            'wrong provider shares'
+        );
         assert(second_provider_info.epoch == 1, 'wrong provider epoch');
 
-        let error_margin: Wad = 1000_u128.into();  // equal to initial minimum shares
-        ShrineUtils::assert_equalish(absorber.preview_remove(second_provider), second_provided_amt, error_margin, 'wrong preview remove amount');
+        let error_margin: Wad = 1000_u128.into(); // equal to initial minimum shares
+        ShrineUtils::assert_equalish(
+            absorber.preview_remove(second_provider),
+            second_provided_amt,
+            error_margin,
+            'wrong preview remove amount'
+        );
 
         // Step 4
         let mut user_addresses: Array<ContractAddress> = Default::default();
@@ -1572,7 +1601,10 @@ mod TestAbsorber {
         absorber.remove(BoundedU128::max().into());
 
         // First provider should not receive any yin
-        assert(shrine.get_yin(first_provider) == first_provider_before_yin_bal, 'yin balance should not change');
+        assert(
+            shrine.get_yin(first_provider) == first_provider_before_yin_bal,
+            'yin balance should not change'
+        );
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
@@ -1605,7 +1637,8 @@ mod TestAbsorber {
             expected_first_epoch_blessings_multiplier
         );
 
-        let expected_first_provider_blessings_multiplier = expected_first_epoch_blessings_multiplier;
+        let expected_first_provider_blessings_multiplier =
+            expected_first_epoch_blessings_multiplier;
         assert_provider_received_rewards(
             absorber,
             first_provider,
@@ -1620,9 +1653,7 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_multi_user_reap_same_epoch_multi_absorptions() {
-
-    }
+    fn test_multi_user_reap_same_epoch_multi_absorptions() {}
 
     #[test]
     #[available_gas(20000000000)]
