@@ -295,5 +295,39 @@ mod TestSentinel {
     }
 
 
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_kill_gate_and_enter() {
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let user: ContractAddress = GateUtils::eth_hoarder();
+        let deposit_amt: Wad = (2 * WAD_ONE).into();
+        
+        // Kill the gate
+        set_contract_address(SentinelUtils::admin());
+        sentinel.kill_gate(eth);
 
+        assert(!sentinel.get_gate_live(eth), 'Gate should be killed');
+
+        // Attempt to enter a killed gate should fail
+        set_contract_address(SentinelUtils::mock_abbot());
+        sentinel.enter(eth, user, 0, deposit_amt.val);
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_kill_gate_and_preview_enter() {
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let user: ContractAddress = GateUtils::eth_hoarder();
+        let deposit_amt: Wad = (2 * WAD_ONE).into();
+        
+        // Kill the gate
+        set_contract_address(SentinelUtils::admin());
+        sentinel.kill_gate(eth);
+
+        // Attempt to enter a killed gate should fail
+        set_contract_address(SentinelUtils::mock_abbot());
+        sentinel.preview_enter(eth, deposit_amt.val);
+    }
 }
