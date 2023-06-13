@@ -634,7 +634,7 @@ mod TestAbsorber {
     fn test_set_removal_limit_unauthorized_fail() {
         let (_, _, absorber, _, _) = absorber_deploy();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
 
         let new_limit: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
         absorber.set_removal_limit(new_limit);
@@ -746,7 +746,7 @@ mod TestAbsorber {
     fn test_kill_unauthorized_fail() {
         let (_, _, absorber, _, _) = absorber_deploy();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         absorber.kill();
     }
 
@@ -1047,7 +1047,7 @@ mod TestAbsorber {
 
         let first_update_assets: Span<u128> = first_update_assets();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         absorber.update(yangs, first_update_assets);
     }
 

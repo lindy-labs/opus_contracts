@@ -204,7 +204,7 @@ mod TestAbbot {
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         abbot.close_trove(trove_id);
     }
 
@@ -412,7 +412,7 @@ mod TestAbbot {
         );
 
         let eth_addr: ContractAddress = *yangs.at(0);
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         abbot.withdraw(eth_addr, trove_id, 0_u128.into());
     }
 
@@ -475,7 +475,7 @@ mod TestAbbot {
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         abbot.forge(trove_id, 0_u128.into(), WadZeroable::zero());
     }
 

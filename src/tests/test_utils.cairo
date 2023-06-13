@@ -1,6 +1,6 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
-use starknet::ContractAddress;
+use starknet::{ContractAddress, contract_address_const};
 use traits::{Default, TryInto};
 
 use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -13,6 +13,15 @@ use aura::utils::wadray::Wad;
 //
 
 const WBTC_DECIMALS: u8 = 8;
+
+//
+// Constant addresses
+//
+
+#[inline(always)]
+fn badguy() -> ContractAddress {
+    contract_address_const::<0x42069>()
+}
 
 //
 // Trait implementations

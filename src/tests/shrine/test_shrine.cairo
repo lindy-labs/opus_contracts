@@ -23,7 +23,7 @@ mod TestShrine {
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils::assert_equalish;
+    use aura::tests::test_utils::{assert_equalish, badguy};
 
     //
     // Tests - Deployment and initial setup of Shrine
@@ -251,7 +251,7 @@ mod TestShrine {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
         shrine
             .add_yang(
                 ShrineUtils::yang1_addr(),
@@ -292,7 +292,7 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         let new_threshold: Ray = 900000000000000000000000000_u128.into();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
         shrine.set_threshold(ShrineUtils::yang1_addr(), new_threshold);
     }
 
@@ -410,7 +410,7 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         assert(shrine.get_live(), 'should be live');
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
         shrine.kill();
     }
 
@@ -474,7 +474,7 @@ mod TestShrine {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_shrine_deposit_unauthorized() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
 
         shrine
             .deposit(
@@ -578,7 +578,7 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
 
         shrine
             .withdraw(
@@ -730,7 +730,7 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
 
         shrine
             .forge(
@@ -854,7 +854,7 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
         shrine.melt(ShrineUtils::trove1_owner_addr(), ShrineUtils::TROVE_1, 1_u128.into());
     }
 
@@ -1142,7 +1142,7 @@ mod TestShrine {
     fn test_advance_unauthorized() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
         shrine.advance(ShrineUtils::yang1_addr(), ShrineUtils::YANG1_START_PRICE.into());
     }
 
@@ -1162,7 +1162,7 @@ mod TestShrine {
     fn test_set_multiplier_unauthorized() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(badguy());
         shrine.set_multiplier(RAY_SCALE.into());
     }
 

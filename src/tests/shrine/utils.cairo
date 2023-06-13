@@ -71,10 +71,6 @@ mod ShrineUtils {
         contract_address_const::<0x1337>()
     }
 
-    fn badguy() -> ContractAddress {
-        contract_address_const::<0x42069>()
-    }
-
     fn trove1_owner_addr() -> ContractAddress {
         contract_address_const::<0x0001>()
     }
