@@ -246,8 +246,6 @@ mod TestAbsorber {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    // TODO: add helper to call Sentinel.add_yang
-
     // Helper function to simulate an update by:
     // 1. Burning yin from the absorber
     // 2. Transferring yang assets to the Absorber 
@@ -425,6 +423,38 @@ mod TestAbsorber {
                 Option::None(_) => {
                     break;
                 },
+            };
+        };
+    }
+
+    // Helper function to assert that the errors of reward tokens in the given epoch has been
+    // propagated to the next epoch, and the cumulative asset amount per share wad is 0.
+    // 
+    // Arguments
+    // 
+    // - `absorber` - Deployed Absorber instance.
+    // 
+    // - `before_epoch` - The epoch to check for
+    // 
+    // - `asset_addresses` = Ordered list of the reward tokens contracts.
+    //
+    fn assert_reward_errors_propagated_to_next_epoch(
+        absorber: IAbsorberDispatcher,
+        before_epoch: u32,
+        mut asset_addresses: Span<ContractAddress>,
+    ) {
+        loop {
+            match asset_addresses.pop_front() {
+                Option::Some(asset) => {
+                    let before_epoch_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*asset, before_epoch);
+                    let after_epoch_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*asset, before_epoch + 1);
+
+                    assert(before_epoch_distribution.error == after_epoch_distribution.error, 'error not propagated');
+                    assert(after_epoch_distribution.asset_amt_per_share == 0, 'wrong reward cumulative');
+                },
+                Option::None(_) => {
+                    break;
+                }
             };
         };
     }
@@ -628,7 +658,6 @@ mod TestAbsorber {
         mut yangs: Span<ContractAddress>,
         mut yang_asset_amts: Span<u128>,
     ) {
-        // TODO: account for prev error
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -764,7 +793,6 @@ mod TestAbsorber {
 
                     let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
 
-                    // TODO: reap depends on Sentinel
                     set_contract_address(provider);
                     if idx % 3 == 0 {
                         absorber.reap();   
@@ -799,9 +827,12 @@ mod TestAbsorber {
                         error_margin,
                     );
 
-                    // Sanity check that updated preview reward amount is lower than before
                     let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
-                    if after_preview_reward_amts.len().is_non_zero() {
+                    if is_fully_absorbed {
+                        assert(after_preview_reward_amts.len().is_zero(), 'should not have rewards');
+                        assert_reward_errors_propagated_to_next_epoch(absorber, expected_epoch - 1, reward_tokens);
+                    } else {
+                        // Sanity check that updated preview reward amount is lower than before
                         assert(*after_preview_reward_amts.at(0) < *preview_reward_amts.at(0), 'preview amount should decrease');
                     }
 
