@@ -320,6 +320,67 @@ mod TestAbsorber {
     //
 
     // Helper function to assert that:
+    // 1. a provider has received the correct amount of absorbed assets;
+    // 2. the previewed amount returned by `preview_reap` is correct; and
+    // 
+    // Arguments
+    // 
+    // - `absorber` - Deployed Absorber instance.
+    //
+    // - `provider` - Address of the provider.
+    //  
+    // - `asset_addresses` = Ordered list of the absorbed asset token addresses.
+    //
+    // - `absorbed_amts` - Ordered list of the amount of assets absorbed.
+    // 
+    // - `before_balances` - Ordered list of the provider's absorbed asset token balances before 
+    //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
+    // 
+    // - `preview_amts` - Ordered list of the expected amount of absorbed assets the provider is entitled to 
+    //    withdraw based on `preview_reap`, in the token's decimal precision.
+    //
+    // - `error_margin` - Acceptable error margin
+    // 
+    fn assert_provider_received_absorbed_assets(
+        absorber: IAbsorberDispatcher,
+        provider: ContractAddress,
+        mut asset_addresses: Span<ContractAddress>,
+        mut absorbed_amts: Span<u128>,
+        mut before_balances: Span<Span<u128>>,
+        mut preview_amts: Span<u128>,
+        error_margin: Wad,
+    ) {
+        loop {
+            match asset_addresses.pop_front() {
+                Option::Some(asset) => {
+                    // Check provider has received correct amount of reward tokens
+                    // Convert to Wad for fixed point operations
+                    let absorbed_amt: Wad = (*absorbed_amts.pop_front().unwrap()).into();
+                    let after_provider_bal: Wad = IERC20Dispatcher {
+                        contract_address: *asset
+                    }.balance_of(provider).try_into().unwrap();
+                    let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
+                    let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
+                        + absorbed_amt;
+
+                    ShrineUtils::assert_equalish(
+                        after_provider_bal, expected_bal, error_margin, 'wrong rewards balance'
+                    );
+
+                    // Check preview amounts are equal
+                    let preview_amt = *preview_amts.pop_front().unwrap();
+                    ShrineUtils::assert_equalish(
+                        absorbed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
+                    );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+    }
+
+    // Helper function to assert that:
     // 1. a provider has received the correct amount of reward tokens;
     // 2. the previewed amount returned by `preview_reap` is correct; and
     // 3. a provider's last cumulative asset amount per share wad value is updated for all reward tokens.
@@ -345,6 +406,8 @@ mod TestAbsorber {
     // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
     //    amount the provider should receive.
     // 
+    // - `error_margin` - Acceptable error margin
+    //
     fn assert_provider_received_rewards(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
@@ -825,7 +888,7 @@ mod TestAbsorber {
                     // 3. `provide`
                     // and check that the provider receives rewards and absorbed assets
 
-                    let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
+                    let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber.preview_reap(provider);
 
                     let mut remove_as_second_action: bool = false;
                     set_contract_address(provider);
@@ -860,6 +923,17 @@ mod TestAbsorber {
                     // Check rewards
                     // Custom error margin is used due to loss of precision and initial minimum shares
                     let error_margin: Wad = 500_u128.into();
+                    
+                    assert_provider_received_absorbed_assets(
+                        absorber,
+                        provider,
+                        yangs,
+                        first_update_assets,
+                        before_absorbed_bals,
+                        preview_absorbed_amts,
+                        error_margin,
+                    );
+
                     assert_provider_received_rewards(
                         absorber,
                         provider,
