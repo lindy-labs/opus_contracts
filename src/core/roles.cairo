@@ -50,6 +50,24 @@ mod PragmaRoles {
     }
 }
 
+mod SentinelRoles {
+    const ADD_YANG: u128 = 1;
+    const ENTER: u128 = 2;
+    const EXIT: u128 = 4;
+    const KILL_GATE: u128 = 8;
+    const SET_YANG_ASSET_MAX: u128 = 16;
+
+    #[inline(always)]
+    fn abbot() -> u128 {
+        ENTER + EXIT
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;
@@ -69,6 +87,10 @@ mod ShrineRoles {
     const WITHDRAW: u128 = 32768;
 
     #[inline(always)]
+    fn abbot() -> u128 {
+        DEPOSIT + FORGE + MELT + WITHDRAW
+    }
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
     }
@@ -76,6 +98,11 @@ mod ShrineRoles {
     #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
+    }
+
+    #[inline(always)]
+    fn sentinel() -> u128 {
+        ADD_YANG + SET_THRESHOLD
     }
 
     #[cfg(test)]
@@ -97,19 +124,5 @@ mod ShrineRoles {
             + UPDATE_RATES
             + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
-    }
-}
-
-
-mod SentinelRoles {
-    const ADD_YANG: u128 = 1;
-    const ENTER: u128 = 2;
-    const EXIT: u128 = 4;
-    const KILL_GATE: u128 = 8;
-    const SET_YANG_ASSET_MAX: u128 = 16;
-
-    #[inline(always)]
-    fn default_admin_role() -> u128 {
-        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX
     }
 }
