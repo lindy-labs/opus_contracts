@@ -430,7 +430,7 @@ mod Shrine {
         // Setting the base rate for the new yang
 
         // NOTE: Eras are not incremented when a new yang is added, and the era that is being set
-        // for this base rate will have an interval that, in practice, is < now(). This would be a problem
+        // for this base rate will have an interval that is <= now(). This would be a problem
         // if there could be a trove containing the newly-added with `trove.last_rate_era < latest_era`.
         // Luckily, this isn't possible because `charge` is called in `deposit`, so a trove's `last_rate_era`
         // will always be updated to `latest_era` immediately before the newly-added yang is deposited.

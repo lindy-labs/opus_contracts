@@ -60,6 +60,11 @@ mod Gate {
     }
 
     #[view]
+    fn get_sentinel() -> ContractAddress {
+        sentinel::read()
+    }
+
+    #[view]
     fn get_asset() -> ContractAddress {
         asset::read().contract_address
     }
