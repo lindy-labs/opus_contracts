@@ -1,13 +1,15 @@
-// TODO: shut working; shut working only once; badguy calling shut
-//       release; release when system is live
-//       reclaim; reclaim when system is live
+// TODO: shut working; shut working only once
+//       various shut scenarios (?) - enough collateral, not enough collateral
+//       release; release when system is live; release when not trove owner
+//       reclaim; reclaim when system is live; reclaim not enough yin
 #[cft(test)]
 mod TestCaretaker {
     use array::SpanTrait;
     use starknet::{ContractAddress};
+    use starknet::testing::set_contract_address;
     use traits::Into;
 
-    {CaretakerRoles, ShrineRoles};
+    use aura::core::roles::{CaretakerRoles, ShrineRoles};
 
     use aura::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -20,7 +22,7 @@ mod TestCaretaker {
     #[test]
     #[available_gas(100000000)]
     fn test_caretaker_setup() {
-        let (caretaker, shrine) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, shrine, _, _) = CaretakerUtils::caretaker_deploy();
 
         let caretaker_ac = IAccessControlDispatcher { contract_address: caretaker };
 
@@ -37,7 +39,7 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
     fn test_caretaker_setup_preview_release_throws() {
-        let (caretaker, _) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, _, _, _) = CaretakerUtils::caretaker_deploy();
         ICaretakerDispatcher { contract_address: caretaker }.preview_release(1);
     }
 
@@ -45,7 +47,36 @@ mod TestCaretaker {
     #[available_gas(100000000)]
     #[should_panic(expected: ('CA: System is live', 'ENTRYPOINT_FAILED'))]
     fn test_caretaker_setup_preview_reclaim_throws() {
-        let (caretaker, _) = CaretakerUtils::caretaker_deploy();
+        let (caretaker, _, _, _) = CaretakerUtils::caretaker_deploy();
         ICaretakerDispatcher { contract_address: caretaker }.preview_reclaim(WAD_ONE.into());
     }
+
+    #[test]
+    #[available_gas(100000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_shut_by_badguy_throws() {
+        let (caretaker, _, _, _) = CaretakerUtils::caretaker_deploy();
+        set_contract_address(CaretakerUtils::badguy());
+        ICaretakerDispatcher { contract_address: caretaker }.shut();
+    }
+
+    #[test]
+    #[available_gas(100000000)]
+    fn test_shut() {
+        let (caretaker, _, _, _) = CaretakerUtils::caretaker_deploy();
+
+            // add collateral to shrine, mint some yin
+
+
+        set_contract_address(CaretakerUtils::admin());
+        let caretaker = ICaretakerDispatcher { contract_address: caretaker };
+        caretaker.shut();
+
+        // assert Shrine killed
+
+    }
+        // equalizer is already available
+        // need a sentinel w/ added yangs - hence gates for each
+        // need multiple troves w/ multiple tokens and owners
+
 }
