@@ -57,7 +57,7 @@ mod SentinelRoles {
     const KILL_GATE: u128 = 8;
     const SET_YANG_ASSET_MAX: u128 = 16;
 
-    #[inlinee(always)]
+    #[inline(always)]
     fn abbot() -> u128 {
         ENTER + EXIT
     }

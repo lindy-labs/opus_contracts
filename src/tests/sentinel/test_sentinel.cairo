@@ -9,11 +9,13 @@ mod TestSentinel {
     use traits::Into;
 
     use aura::core::sentinel::Sentinel;
+    use aura::core::roles::SentinelRoles;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WAD_ONE};
 
@@ -51,10 +53,14 @@ mod TestSentinel {
 
         assert(sentinel.get_yang_addresses_count() == 2, 'Wrong yang addresses count');
 
+        let sentinel_ac = IAccessControlDispatcher{contract_address: sentinel.contract_address};
+        assert(sentinel_ac.get_admin() == SentinelUtils::admin(), 'Wrong admin');
+        assert(sentinel_ac.get_roles(SentinelUtils::admin()) == SentinelRoles::default_admin_role(), 'Wrong roles for admin');
+
         // Checking that the gates were set up correctly 
 
-        assert((eth_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel');
-        assert((wbtc_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel');
+        assert((eth_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #1');
+        assert((wbtc_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #2');
 
         // Checking that shrine was set up correctly
 
@@ -315,6 +321,34 @@ mod TestSentinel {
         // Attempt to enter a killed gate should fail
         set_contract_address(SentinelUtils::mock_abbot());
         sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    fn test_kill_gate_and_exit() {
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
+
+        // Making a regular deposit 
+        let eth_erc20 = IERC20Dispatcher{contract_address: eth};
+        let user: ContractAddress = GateUtils::eth_hoarder();
+
+        SentinelUtils::approve_max(eth_gate, eth, user); 
+
+        let deposit_amt: Wad = (2* WAD_ONE).into();
+
+        set_contract_address(SentinelUtils::mock_abbot());
+        
+        let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+        shrine.deposit(eth, ShrineUtils::TROVE_1, yang_amt);
+
+        // Killing the gate 
+        set_contract_address(SentinelUtils::admin());
+        sentinel.kill_gate(eth);
+
+
+        // Exiting
+        set_contract_address(SentinelUtils::mock_abbot());
+        sentinel.exit(eth, user, ShrineUtils::TROVE_1, yang_amt);
     }
 
     #[test]

@@ -100,8 +100,9 @@ mod SentinelUtils {
     }
 
     fn add_eth_yang(sentinel: ISentinelDispatcher, shrine_addr: ContractAddress) -> (ContractAddress, IGateDispatcher) {
-
-        let (eth, eth_gate) = GateUtils::eth_gate_deploy_internal(shrine_addr, sentinel.contract_address);
+        
+        let eth: ContractAddress = GateUtils::eth_token_deploy();
+        let eth_gate: ContractAddress = GateUtils::gate_deploy(eth, shrine_addr, sentinel.contract_address);
 
         let eth_erc20 = IERC20Dispatcher{contract_address: eth};
         
@@ -118,7 +119,8 @@ mod SentinelUtils {
     }
 
     fn add_wbtc_yang(sentinel: ISentinelDispatcher, shrine_addr: ContractAddress) -> (ContractAddress, IGateDispatcher) {
-            let (wbtc, wbtc_gate) = GateUtils::wbtc_gate_deploy_internal(shrine_addr, sentinel.contract_address);
+            let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
+            let wbtc_gate: ContractAddress = GateUtils::gate_deploy(wbtc, shrine_addr, sentinel.contract_address);
     
             let wbtc_erc20 = IERC20Dispatcher{contract_address: wbtc};
             
