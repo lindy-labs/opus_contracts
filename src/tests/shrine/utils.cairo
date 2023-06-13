@@ -22,7 +22,7 @@ mod ShrineUtils {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
-    use aura::tests::utils::assert_equalish;
+    use aura::tests::test_utils::assert_equalish;
 
     //
     // Constants

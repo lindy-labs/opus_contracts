@@ -15,7 +15,7 @@ mod TestShrineRedistribution {
     use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::utils::assert_equalish;
+    use aura::tests::test_utils::assert_equalish;
 
     //
     // Setup

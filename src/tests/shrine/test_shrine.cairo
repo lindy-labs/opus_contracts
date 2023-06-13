@@ -23,7 +23,7 @@ mod TestShrine {
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::utils::assert_equalish;
+    use aura::tests::test_utils::assert_equalish;
 
     //
     // Tests - Deployment and initial setup of Shrine

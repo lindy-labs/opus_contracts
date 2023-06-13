@@ -5,6 +5,7 @@ use traits::{Default, TryInto};
 
 use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use aura::utils::wadray;
+use aura::utils::wadray::Wad;
 
 
 //
@@ -41,6 +42,16 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
 //
 // Helpers
 //
+
+#[inline(always)]
+fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+    if a >= b {
+        assert(a - b <= error, message);
+    } else {
+        assert(b - a <= error, message);
+    }
+}
+
 
 // Helper function to return a nested array of token balances given a list of 
 // token addresses and user addresses.
