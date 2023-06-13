@@ -100,9 +100,8 @@ mod AbbotUtils {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     // Approve Gate to transfer from user
-                    IERC20Dispatcher {
-                        contract_address: *yang
-                    }.approve((*gates.pop_front().unwrap()).contract_address, BoundedU256::max());
+                    let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                    SentinelUtils::approve_max(gate, *yang, user);
                 },
                 Option::None(_) => {
                     break;
@@ -110,6 +109,7 @@ mod AbbotUtils {
             };
         };
 
+        set_contract_address(user);
         let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
 
         set_contract_address(ContractAddressZeroable::zero());
