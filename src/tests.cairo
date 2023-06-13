@@ -1,8 +1,8 @@
+mod abbot;
 mod erc20;
 mod equalizer;
 mod gate;
 mod sentinel;
-mod test_abbot;
 mod test_flashmint;
 mod shrine;
 mod utils;

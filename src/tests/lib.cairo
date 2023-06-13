@@ -1,3 +1,4 @@
+mod abbot;
 mod equalizer;
 mod shrine;
 mod test_abbot;
