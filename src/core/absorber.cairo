@@ -1040,11 +1040,12 @@ mod Absorber {
                 // Calculate the difference with the provider's cumulative value if it is the
                 // same epoch as the provider's Provision epoch.
                 // This is because the provider's cumulative value may not have been fully updated for that epoch. 
-                let mut rate: u128 = epoch_reward_info.asset_amt_per_share;
-                if epoch == provision.epoch {
-                    let rate = epoch_reward_info.asset_amt_per_share
-                        - provider_last_reward_cumulative::read((provider, reward.asset));
-                }
+                let rate: u128 = if epoch == provision.epoch {
+                    epoch_reward_info.asset_amt_per_share
+                        - provider_last_reward_cumulative::read((provider, reward.asset))
+                } else {
+                    epoch_reward_info.asset_amt_per_share
+                };
                 reward_amt += wadray::wmul_internal(rate, epoch_shares.val);
 
                 epoch_shares = convert_epoch_shares(epoch, epoch + 1, epoch_shares);
