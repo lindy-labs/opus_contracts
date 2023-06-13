@@ -275,7 +275,7 @@ mod TestAbsorber {
         let burn_amt: Wad = wadray::rmul_wr(absorber_yin_bal, percentage_to_drain);
 
         // Simulate burning a percentage of absorber's yin
-        set_contract_address(admin());
+        set_contract_address(ShrineUtils::admin());
         shrine.eject(absorber.contract_address, burn_amt);
 
         // Simulate transfer of "freed" assets to absorber
@@ -338,6 +338,7 @@ mod TestAbsorber {
         mut before_balances: Span<Span<u128>>,
         mut preview_amts: Span<u128>,
         blessings_multiplier: Wad,
+        error_margin: Wad,
     ) {
         loop {
             match asset_addresses.pop_front() {
@@ -346,15 +347,15 @@ mod TestAbsorber {
                     // Convert to Wad for fixed point operations
                     let blessed_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into()
                         * blessings_multiplier;
-                    let after_provider_bal: u256 = IERC20Dispatcher {
+                    let after_provider_bal: Wad = IERC20Dispatcher {
                         contract_address: *asset
-                    }.balance_of(provider);
+                    }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
                         + blessed_amt.into();
-                    let error_margin: Wad = 100_u128.into();
+
                     ShrineUtils::assert_equalish(
-                        after_provider_bal.try_into().unwrap(),
+                        after_provider_bal,
                         expected_bal,
                         error_margin,
                         'wrong rewards balance'
@@ -362,7 +363,6 @@ mod TestAbsorber {
 
                     // Check preview amounts are equal
                     let preview_amt = *preview_amts.pop_front().unwrap();
-                    let error_margin: Wad = 100_u128.into(); // slight offset due to initial shares
                     ShrineUtils::assert_equalish(
                         blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
                     );
@@ -672,6 +672,7 @@ mod TestAbsorber {
         let mut percentages_to_drain: Array<Ray> = Default::default();
         percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
         percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into());  // 43.291% (Ray)
         let mut percentages_to_drain = percentages_to_drain.span();
 
         let mut idx: u32 = 0;
@@ -761,6 +762,8 @@ mod TestAbsorber {
                     // 3. `provide`
                     // and check that the provider receives rewards and absorbed assets
 
+                    let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
+
                     // TODO: reap depends on Sentinel
                     set_contract_address(provider);
                     if idx % 3 == 0 {
@@ -773,11 +776,17 @@ mod TestAbsorber {
                         provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, 1_u128.into());
                     }
 
-                    // 1 distribution from `update` and ` distribution from `reap`/`remove`/`provide`
-                    let expected_blessings_multiplier = (WAD_SCALE * 2).into();
-                    let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
+                    // One distribution from `update` and another distribution from 
+                    // `reap`/`remove`/`provide` if not fully absorbed
+                    let expected_blessings_multiplier = if is_fully_absorbed {
+                        WAD_SCALE.into()
+                    } else {
+                        (WAD_SCALE * 2).into()
+                    };   
 
                     // Check rewards
+                    // Custom error margin is used due to loss of precision and initial minimum shares
+                    let error_margin: Wad = 500_u128.into();
                     assert_provider_received_rewards(
                         absorber,
                         provider,
@@ -787,7 +796,16 @@ mod TestAbsorber {
                         before_reward_bals,
                         preview_reward_amts,
                         expected_blessings_multiplier,
+                        error_margin,
                     );
+
+                    // Sanity check that updated preview reward amount is lower than before
+                    let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
+                    if after_preview_reward_amts.len().is_non_zero() {
+                        assert(*after_preview_reward_amts.at(0) < *preview_reward_amts.at(0), 'preview amount should decrease');
+                    }
+
+                    idx += 1;
                 },
                 Option::None(_) => {
                     break;
@@ -891,6 +909,7 @@ mod TestAbsorber {
         );
 
         // Check rewards
+        let error_margin: Wad = 1000_u128.into();
         assert_provider_received_rewards(
             absorber,
             provider,
@@ -900,6 +919,7 @@ mod TestAbsorber {
             before_reward_bals,
             preview_reward_amts,
             expected_blessings_multiplier,
+            error_margin,
         );
     }
 
