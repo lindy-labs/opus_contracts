@@ -119,21 +119,21 @@ mod SentinelUtils {
     }
 
     fn add_wbtc_yang(sentinel: ISentinelDispatcher, shrine_addr: ContractAddress) -> (ContractAddress, IGateDispatcher) {
-            let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
-            let wbtc_gate: ContractAddress = GateUtils::gate_deploy(wbtc, shrine_addr, sentinel.contract_address);
-    
-            let wbtc_erc20 = IERC20Dispatcher{contract_address: wbtc};
-            
-            // Transferring the initial deposit amounts to `admin()`
-            set_contract_address(GateUtils::wbtc_hoarder());
-            wbtc_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
-    
-            set_contract_address(admin());
-            wbtc_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
-            sentinel.add_yang(wbtc, WBTC_ASSET_MAX, ShrineUtils::YANG2_THRESHOLD.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG2_BASE_RATE.into(), wbtc_gate);
-            set_contract_address(ContractAddressZeroable::zero());
-    
-            (wbtc, IGateDispatcher{contract_address: wbtc_gate})
+        let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
+        let wbtc_gate: ContractAddress = GateUtils::gate_deploy(wbtc, shrine_addr, sentinel.contract_address);
+
+        let wbtc_erc20 = IERC20Dispatcher{contract_address: wbtc};
+        
+        // Transferring the initial deposit amounts to `admin()`
+        set_contract_address(GateUtils::wbtc_hoarder());
+        wbtc_erc20.transfer(admin(), Sentinel::INITIAL_DEPOSIT_AMT.into());
+
+        set_contract_address(admin());
+        wbtc_erc20.approve(sentinel.contract_address, Sentinel::INITIAL_DEPOSIT_AMT.into());
+        sentinel.add_yang(wbtc, WBTC_ASSET_MAX, ShrineUtils::YANG2_THRESHOLD.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG2_BASE_RATE.into(), wbtc_gate);
+        set_contract_address(ContractAddressZeroable::zero());
+
+        (wbtc, IGateDispatcher{contract_address: wbtc_gate})
     }
 
     fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
