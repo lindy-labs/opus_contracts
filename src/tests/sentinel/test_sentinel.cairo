@@ -22,6 +22,7 @@ mod TestSentinel {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::test_utils;
 
     #[test]
     #[available_gas(10000000000)]
@@ -246,7 +247,7 @@ mod TestSentinel {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_unauthed() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         sentinel.set_yang_asset_max(eth, SentinelUtils::ETH_ASSET_MAX);
     }
 
@@ -404,7 +405,7 @@ mod TestSentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
@@ -416,7 +417,7 @@ mod TestSentinel {
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
     }
 
