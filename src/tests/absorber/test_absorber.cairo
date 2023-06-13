@@ -706,15 +706,13 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_update() {
+    fn test_update_and_subsequent_provider_action() {
         // Parametrization
         let mut percentages_to_drain: Array<Ray> = Default::default();
         percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
         percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
         let mut percentages_to_drain = percentages_to_drain.span();
-
-        let mut idx: u32 = 0;
 
         loop {
             match percentages_to_drain.pop_front() {
@@ -817,9 +815,9 @@ mod TestAbsorber {
                     let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
 
                     set_contract_address(provider);
-                    if idx % 3 == 0 {
+                    if percentages_to_drain.len() % 3 == 0 {
                         absorber.reap();
-                    } else if idx % 3 == 1 {
+                    } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         set_block_timestamp(get_block_timestamp() + 60);
                         absorber.remove(BoundedU128::max().into());
@@ -874,8 +872,6 @@ mod TestAbsorber {
                             'preview amount should decrease'
                         );
                     }
-
-                    idx += 1;
                 },
                 Option::None(_) => {
                     break;
