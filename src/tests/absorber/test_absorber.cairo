@@ -710,8 +710,8 @@ mod TestAbsorber {
         // Parametrization
         let mut percentages_to_drain: Array<Ray> = Default::default();
         percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
+        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
         let mut percentages_to_drain = percentages_to_drain.span();
 
         loop {
@@ -814,6 +814,7 @@ mod TestAbsorber {
 
                     let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
 
+                    let mut remove_as_second_action: bool = false;
                     set_contract_address(provider);
                     if percentages_to_drain.len() % 3 == 0 {
                         absorber.reap();
@@ -821,6 +822,7 @@ mod TestAbsorber {
                         absorber.request();
                         set_block_timestamp(get_block_timestamp() + 60);
                         absorber.remove(BoundedU128::max().into());
+                        remove_as_second_action = true;
                     } else {
                         provide_to_absorber(
                             shrine,
@@ -865,12 +867,26 @@ mod TestAbsorber {
                         assert_reward_errors_propagated_to_next_epoch(
                             absorber, expected_epoch - 1, reward_tokens
                         );
-                    } else {
+                    } else if after_preview_reward_amts.len().is_non_zero() {
                         // Sanity check that updated preview reward amount is lower than before
                         assert(
                             *after_preview_reward_amts.at(0) < *preview_reward_amts.at(0),
                             'preview amount should decrease'
                         );
+                    }
+
+                    // If the second action was `remove`, check that the yin balances of absorber 
+                    // and provider are updated.
+                    if remove_as_second_action {
+                        assert(*percentage_to_drain != RAY_SCALE.into(), 'use a different value');  // sanity check
+
+                        let expected_removed_amt: Wad = wadray::rmul_wr(first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain));
+                        let error_margin: Wad = 1000_u128.into();
+                        ShrineUtils::assert_equalish(shrine.get_yin(provider), expected_removed_amt, error_margin, 'wrong provider yin balance');
+                        ShrineUtils::assert_equalish(shrine.get_yin(absorber.contract_address), WadZeroable::zero(), error_margin, 'wrong absorber yin balance');
+
+                        // Check `request` is used
+                        assert(absorber.get_provider_request(provider).has_removed, 'request should be fulfilled');
                     }
                 },
                 Option::None(_) => {
