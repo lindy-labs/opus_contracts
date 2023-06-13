@@ -14,6 +14,11 @@ use aura::utils::wadray::Wad;
 
 const WBTC_DECIMALS: u8 = 8;
 
+// Trove constants
+const TROVE_1: u64 = 1;
+const TROVE_2: u64 = 2;
+const TROVE_3: u64 = 3;
+
 //
 // Constant addresses
 //
@@ -21,6 +26,21 @@ const WBTC_DECIMALS: u8 = 8;
 #[inline(always)]
 fn badguy() -> ContractAddress {
     contract_address_const::<0x42069>()
+}
+
+#[inline(always)]
+fn trove1_owner_addr() -> ContractAddress {
+    contract_address_const::<0x0001>()
+}
+
+#[inline(always)]
+fn trove2_owner_addr() -> ContractAddress {
+    contract_address_const::<0x0002>()
+}
+
+#[inline(always)]
+fn trove3_owner_addr() -> ContractAddress {
+    contract_address_const::<0x0003>()
 }
 
 //

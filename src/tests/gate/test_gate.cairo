@@ -18,7 +18,7 @@ mod TestGate {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::gate::utils::GateUtils::WBTC_SCALE;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::utils::assert_equalish;
+    use aura::tests::test_utils;
 
     #[test]
     #[available_gas(10000000000)]
@@ -141,7 +141,7 @@ mod TestGate {
     fn test_gate_unauthorized_enter() {
         let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
         GateUtils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }.enter(ShrineUtils::badguy(), 1, WAD_SCALE);
+        IGateDispatcher { contract_address: gate }.enter(test_utils::badguy(), 1, WAD_SCALE);
     }
 
     #[test]
@@ -150,7 +150,7 @@ mod TestGate {
     fn test_gate_unauthorized_exit() {
         let (shrine, eth, gate) = GateUtils::eth_gate_deploy();
         GateUtils::add_eth_as_yang(shrine, eth);
-        IGateDispatcher { contract_address: gate }.exit(ShrineUtils::badguy(), 1, WAD_SCALE.into());
+        IGateDispatcher { contract_address: gate }.exit(test_utils::badguy(), 1, WAD_SCALE.into());
     }
 
     #[test]
@@ -163,8 +163,8 @@ mod TestGate {
         let eth = IERC20Dispatcher { contract_address: eth };
         let gate = IGateDispatcher { contract_address: gate };
 
-        let user1: ContractAddress = ShrineUtils::trove1_owner_addr();
-        let trove1: u64 = ShrineUtils::TROVE_1;
+        let user1: ContractAddress = test_utils::trove1_owner_addr();
+        let trove1: u64 = test_utils::TROVE_1;
         let enter1_amt = 50_u128 * WAD_SCALE;
         let enter2_amt = 30_u128 * WAD_SCALE;
 
@@ -229,8 +229,8 @@ mod TestGate {
         // deposit to trove 2 by user 2 after the previous deposits to trove 1 and rebase
         //
 
-        let user2: ContractAddress = ShrineUtils::trove2_owner_addr();
-        let trove2: u64 = ShrineUtils::TROVE_2;
+        let user2: ContractAddress = test_utils::trove2_owner_addr();
+        let trove2: u64 = test_utils::TROVE_2;
         let enter3_amt = 10_u128 * WAD_SCALE;
         let enter4_amt = 8_u128 * WAD_SCALE;
 
@@ -312,7 +312,7 @@ mod TestGate {
 
         let expected_total_assets = expected_total_assets - exit_amt;
 
-        assert_equalish(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
+        test_utils::assert_equalish(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
         assert(gate.get_total_assets() == expected_total_assets, 'exit get_total_assets');
         assert(gate.get_asset_amt_per_yang() == before_asset_amt_per_yang, 'exit get_asset_amt_per_yang');
     }

@@ -53,7 +53,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_open_trove_pass() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
@@ -157,7 +157,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_close_trove_pass() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
@@ -190,7 +190,7 @@ mod TestAbbot {
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_close_non_owner_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
@@ -212,7 +212,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_deposit_pass() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
@@ -259,7 +259,7 @@ mod TestAbbot {
         let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = ShrineUtils::TROVE_1;
+        let trove_id: u64 = test_utils::TROVE_1;
         let amount: u128 = 1;
 
         abbot.deposit(invalid_yang_addr, trove_id, amount);
@@ -285,7 +285,7 @@ mod TestAbbot {
     )]
     fn test_deposit_invalid_yang_fail() {
         let (_, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -302,7 +302,7 @@ mod TestAbbot {
     #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_non_existent_trove_fail() {
         let (_, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -321,7 +321,7 @@ mod TestAbbot {
     )]
     fn test_deposit_exceeds_asset_cap_fail() {
         let (shrine, sentinel, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -346,7 +346,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_withdraw_pass() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -372,7 +372,7 @@ mod TestAbbot {
         let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = ShrineUtils::TROVE_1;
+        let trove_id: u64 = test_utils::TROVE_1;
         let amount: u128 = 1;
 
         abbot.deposit(invalid_yang_addr, trove_id, amount);
@@ -385,7 +385,7 @@ mod TestAbbot {
     )]
     fn test_withdraw_invalid_yang_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -403,7 +403,7 @@ mod TestAbbot {
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_non_owner_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -420,7 +420,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_forge_pass() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -449,7 +449,7 @@ mod TestAbbot {
     )]
     fn test_forge_ltv_unsafe_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -467,7 +467,7 @@ mod TestAbbot {
     #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
     fn test_forge_non_owner_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -483,7 +483,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_melt_pass() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
@@ -507,7 +507,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     fn test_get_user_trove_ids() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
+        let trove_owner: ContractAddress = test_utils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
