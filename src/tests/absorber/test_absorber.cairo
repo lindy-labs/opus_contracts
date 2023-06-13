@@ -32,6 +32,7 @@ mod TestAbsorber {
     use aura::tests::absorber::mock_blesser::MockBlesser;
     use aura::tests::erc20::ERC20;
     use aura::tests::gate::utils::GateUtils;
+    use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
     use aura::tests::test_utils;
 
@@ -60,40 +61,21 @@ mod TestAbsorber {
     // Address constants
     //
 
-    #[inline(always)]
-    fn provider_1() -> ContractAddress {
-        contract_address_const::<0xabcd>()
+    fn admin() -> ContractAddress {
+        contract_address_try_from_felt252('absorber owner').unwrap()
     }
 
-    // TODO: delete once sentinel is up
-    fn mock_sentinel() -> ContractAddress {
-        contract_address_const::<0xeeee>()
+    fn provider_1() -> ContractAddress {
+        contract_address_try_from_felt252('provider 1').unwrap()
     }
 
     fn mock_purger() -> ContractAddress {
-        contract_address_const::<0xabcdabcd>()
+        contract_address_try_from_felt252('mock purger').unwrap()
     }
 
     //
     // Test setup helpers
     // 
-
-    // Helper function to create some debt in Shrine by opening a trove with a single yang of 18 decimals
-    fn create_debt(shrine: IShrineDispatcher, yang: ContractAddress, pct_max_forge: Ray) {
-        let user: ContractAddress = contract_address_const::<0xabcdef>();
-        let trove_id: u64 = 99;
-        let yang_token = IMintableDispatcher { contract_address: yang };
-        let mint_amt: Wad = (10 * WAD_SCALE).into();
-        yang_token.mint(user, mint_amt.into());
-
-        let admin: ContractAddress = ShrineUtils::admin();
-        set_contract_address(admin);
-        shrine.deposit(yang, trove_id, mint_amt);
-
-        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
-        let forge_amt: Wad = wadray::rmul_wr(max_forge_amt, pct_max_forge);
-        shrine.forge(user, trove_id, forge_amt);
-    }
 
     // Helper function to mint the given amount of yin to a address simulating a provider, 
     // and then provide the same amount to the Absorber
@@ -114,16 +96,16 @@ mod TestAbsorber {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn absorber_deploy() -> (IShrineDispatcher, IAbsorberDispatcher) {
-        // TODO: update to Shrine with real yangs
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        let sentinel: ContractAddress = mock_sentinel();
-        let admin: ContractAddress = ShrineUtils::admin();
+    fn absorber_deploy() -> (IShrineDispatcher, IAbsorberDispatcher, Span<ContractAddress>) {
+        let (sentinel, shrine, yangs, gates) = SentinelUtils::deploy_sentinel_with_gates();
+        ShrineUtils::shrine_setup(shrine.contract_address);
+
+        let admin: ContractAddress = admin();
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin));
         calldata.append(contract_address_to_felt252(shrine.contract_address));
-        calldata.append(contract_address_to_felt252(sentinel));
+        calldata.append(contract_address_to_felt252(sentinel.contract_address));
         calldata.append(REMOVAL_LIMIT.into());
 
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(Absorber::TEST_CLASS_HASH)
@@ -137,7 +119,7 @@ mod TestAbsorber {
         set_contract_address(ContractAddressZeroable::zero());
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
-        (shrine, absorber)
+        (shrine, absorber, yangs)
     }
 
     // TODO: create a helper that deploys an ERC20 based on input args
@@ -252,13 +234,6 @@ mod TestAbsorber {
         };
 
         set_contract_address(ContractAddressZeroable::zero());
-    }
-
-    fn yang_assets_deploy() -> Span<ContractAddress> {
-        let mut yang_assets: Array<ContractAddress> = Default::default();
-        yang_assets.append(GateUtils::eth_token_deploy());
-        yang_assets.append(GateUtils::wbtc_token_deploy());
-        yang_assets.span()
     }
 
     // TODO: add helper to call Sentinel.add_yang
@@ -451,7 +426,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorber_setup() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         assert(
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
@@ -477,7 +452,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_removal_limit_pass() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         set_contract_address(ShrineUtils::admin());
 
@@ -491,7 +466,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Limit is too low', 'ENTRYPOINT_FAILED'))]
     fn test_set_removal_limit_too_low_fail() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         set_contract_address(ShrineUtils::admin());
 
@@ -503,7 +478,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_removal_limit_unauthorized_fail() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         set_contract_address(ShrineUtils::badguy());
 
@@ -514,7 +489,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_reward_pass() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         let aura_token: ContractAddress = aura_token_deploy();
         let aura_blesser: ContractAddress = deploy_blesser_for_reward(
@@ -574,7 +549,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_token_zero_address_fail() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         let valid_address = contract_address_const::<0xffff>();
         let invalid_address = ContractAddressZeroable::zero();
@@ -587,7 +562,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_blesser_zero_address_fail() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         let valid_address = contract_address_const::<0xffff>();
         let invalid_address = ContractAddressZeroable::zero();
@@ -603,7 +578,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_kill_pass() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         set_contract_address(ShrineUtils::admin());
         absorber.kill();
@@ -615,7 +590,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_kill_unauthorized_fail() {
-        let (_, absorber) = absorber_deploy();
+        let (_, absorber, _) = absorber_deploy();
 
         set_contract_address(ShrineUtils::badguy());
         absorber.kill();
@@ -625,7 +600,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not live', 'ENTRYPOINT_FAILED'))]
     fn test_provide_after_kill_fail() {
-        let (shrine, absorber) = absorber_deploy();
+        let (shrine, absorber, _) = absorber_deploy();
 
         set_contract_address(ShrineUtils::admin());
         absorber.kill();
@@ -695,15 +670,13 @@ mod TestAbsorber {
             match percentages_to_drain.pop_front() {
                 Option::Some(percentage_to_drain) => {
                     // Setup
-                    let (shrine, absorber) = absorber_deploy();
+                    let (shrine, absorber, yangs) = absorber_deploy();
                     let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
                     let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
                     let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
                         absorber, reward_tokens, reward_amts_per_blessing
                     );
                     add_rewards_to_absorber(absorber, reward_tokens, blessers);
-
-                    let yangs: Span<ContractAddress> = yang_assets_deploy();
 
                     let provider = provider_1();
                     let first_provided_amt: Wad = 10000000000000000000000_u128
@@ -817,11 +790,10 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_update_unauthorized_fail() {
-        let (shrine, absorber) = absorber_deploy();
+        let (shrine, absorber, yangs) = absorber_deploy();
         let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, absorber, provider_1(), first_provided_amt);
 
-        let yangs: Span<ContractAddress> = yang_assets_deploy();
         let first_update_assets: Span<u128> = first_update_assets();
 
         set_contract_address(ShrineUtils::badguy());
@@ -835,7 +807,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_provide_first_epoch() {
-        let (shrine, absorber) = absorber_deploy();
+        let (shrine, absorber, _) = absorber_deploy();
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
@@ -924,14 +896,12 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_request_pass() {
-        let (shrine, absorber) = absorber_deploy();
+        let (shrine, absorber, _) = absorber_deploy();
 
         let provider: ContractAddress = provider_1();
 
         let first_provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(shrine, absorber, provider, first_provided_amt);
-
-        create_debt(shrine, 
 
         set_contract_address(provider);
         let mut idx = 0;
