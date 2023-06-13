@@ -59,8 +59,9 @@ mod AbbotUtils {
         shrine_ac.grant_role(ShrineRoles::abbot(), abbot_addr);
 
         // Grant Sentinel roles to Abbot
+        set_contract_address(SentinelUtils::admin());
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        sentinel_ac.grant_role(SentinelRoles::ENTER + SentinelRoles::EXIT, abbot_addr);
+        sentinel_ac.grant_role(SentinelRoles::abbot(), abbot_addr);
 
         (shrine, sentinel, abbot, yangs, gates)
     }

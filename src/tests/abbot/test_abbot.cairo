@@ -137,7 +137,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(
-        expected: ('SE: Yang is not approved', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+        expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_open_trove_invalid_yang_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
@@ -281,7 +281,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(
-        expected: ('SE: Yang is not approved', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+        expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_deposit_invalid_yang_fail() {
         let (_, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
@@ -381,7 +381,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(
-        expected: ('SE: Yang is not approved', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
+        expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
     )]
     fn test_withdraw_invalid_yang_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
