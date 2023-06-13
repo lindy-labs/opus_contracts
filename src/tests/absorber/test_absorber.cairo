@@ -888,7 +888,8 @@ mod TestAbsorber {
                     // 3. `provide`
                     // and check that the provider receives rewards and absorbed assets
 
-                    let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber.preview_reap(provider);
+                    let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+                        .preview_reap(provider);
 
                     let mut remove_as_second_action: bool = false;
                     set_contract_address(provider);
@@ -923,7 +924,7 @@ mod TestAbsorber {
                     // Check rewards
                     // Custom error margin is used due to loss of precision and initial minimum shares
                     let error_margin: Wad = 500_u128.into();
-                    
+
                     assert_provider_received_absorbed_assets(
                         absorber,
                         provider,
@@ -964,15 +965,32 @@ mod TestAbsorber {
                     // If the second action was `remove`, check that the yin balances of absorber 
                     // and provider are updated.
                     if remove_as_second_action {
-                        assert(*percentage_to_drain != RAY_SCALE.into(), 'use a different value');  // sanity check
+                        assert(
+                            *percentage_to_drain != RAY_SCALE.into(), 'use a different value'
+                        ); // sanity check
 
-                        let expected_removed_amt: Wad = wadray::rmul_wr(first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain));
+                        let expected_removed_amt: Wad = wadray::rmul_wr(
+                            first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain)
+                        );
                         let error_margin: Wad = 1000_u128.into();
-                        ShrineUtils::assert_equalish(shrine.get_yin(provider), expected_removed_amt, error_margin, 'wrong provider yin balance');
-                        ShrineUtils::assert_equalish(shrine.get_yin(absorber.contract_address), WadZeroable::zero(), error_margin, 'wrong absorber yin balance');
+                        ShrineUtils::assert_equalish(
+                            shrine.get_yin(provider),
+                            expected_removed_amt,
+                            error_margin,
+                            'wrong provider yin balance'
+                        );
+                        ShrineUtils::assert_equalish(
+                            shrine.get_yin(absorber.contract_address),
+                            WadZeroable::zero(),
+                            error_margin,
+                            'wrong absorber yin balance'
+                        );
 
                         // Check `request` is used
-                        assert(absorber.get_provider_request(provider).has_removed, 'request should be fulfilled');
+                        assert(
+                            absorber.get_provider_request(provider).has_removed,
+                            'request should be fulfilled'
+                        );
                     }
                 },
                 Option::None(_) => {
@@ -1173,8 +1191,14 @@ mod TestAbsorber {
 
         // Check provision in new epoch
         let second_provider_info: Provision = absorber.get_provision(second_provider);
-        assert(absorber.get_total_shares_for_current_epoch() == second_provided_amt, 'wrong total shares');
-        assert(second_provider_info.shares + Absorber::INITIAL_SHARES.into() == second_provided_amt, 'wrong provider shares');
+        assert(
+            absorber.get_total_shares_for_current_epoch() == second_provided_amt,
+            'wrong total shares'
+        );
+        assert(
+            second_provider_info.shares + Absorber::INITIAL_SHARES.into() == second_provided_amt,
+            'wrong provider shares'
+        );
 
         let expected_epoch: u32 = 1;
         assert(second_provider_info.epoch == expected_epoch, 'wrong provider epoch');
@@ -1189,11 +1213,16 @@ mod TestAbsorber {
         let mut user_addresses: Array<ContractAddress> = Default::default();
         user_addresses.append(first_provider);
 
-        let first_provider_before_reward_bals = test_utils::get_token_balances(reward_tokens, user_addresses.span());
-        let first_provider_before_absorbed_bals = test_utils::get_token_balances(yangs, user_addresses.span());
+        let first_provider_before_reward_bals = test_utils::get_token_balances(
+            reward_tokens, user_addresses.span()
+        );
+        let first_provider_before_absorbed_bals = test_utils::get_token_balances(
+            yangs, user_addresses.span()
+        );
 
         set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber.preview_reap(first_provider);
+        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+            .preview_reap(first_provider);
 
         absorber.reap();
 
@@ -1235,11 +1264,16 @@ mod TestAbsorber {
         let mut user_addresses: Array<ContractAddress> = Default::default();
         user_addresses.append(second_provider);
 
-        let second_provider_before_reward_bals = test_utils::get_token_balances(reward_tokens, user_addresses.span());
-        let second_provider_before_absorbed_bals = test_utils::get_token_balances(yangs, user_addresses.span());
+        let second_provider_before_reward_bals = test_utils::get_token_balances(
+            reward_tokens, user_addresses.span()
+        );
+        let second_provider_before_absorbed_bals = test_utils::get_token_balances(
+            yangs, user_addresses.span()
+        );
 
         set_contract_address(second_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber.preview_reap(second_provider);
+        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+            .preview_reap(second_provider);
 
         absorber.reap();
 
@@ -1276,13 +1310,11 @@ mod TestAbsorber {
             expected_blessings_multiplier,
             error_margin,
         );
-        
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_provide_after_threshold_absorption() {
-    }
+    fn test_provide_after_threshold_absorption() {}
 
     #[test]
     #[available_gas(20000000000)]
