@@ -17,7 +17,9 @@ mod MockBlesser {
     }
 
     #[constructor]
-    fn constructor(admin: ContractAddress, asset: ContractAddress, absorber: ContractAddress, bless_amt: u128) {
+    fn constructor(
+        admin: ContractAddress, asset: ContractAddress, absorber: ContractAddress, bless_amt: u128
+    ) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(BlesserRoles::default_admin_role(), absorber);
 

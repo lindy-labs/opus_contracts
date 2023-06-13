@@ -107,7 +107,13 @@ mod TestAbsorber {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn absorber_deploy() -> (IShrineDispatcher, IAbbotDispatcher, IAbsorberDispatcher, Span<ContractAddress>, Span<IGateDispatcher>) {
+    fn absorber_deploy() -> (
+        IShrineDispatcher,
+        IAbbotDispatcher,
+        IAbsorberDispatcher,
+        Span<ContractAddress>,
+        Span<IGateDispatcher>
+    ) {
         let (shrine, sentinel, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
 
         let admin: ContractAddress = admin();
@@ -353,10 +359,7 @@ mod TestAbsorber {
                         + blessed_amt.into();
 
                     ShrineUtils::assert_equalish(
-                        after_provider_bal,
-                        expected_bal,
-                        error_margin,
-                        'wrong rewards balance'
+                        after_provider_bal, expected_bal, error_margin, 'wrong rewards balance'
                     );
 
                     // Check preview amounts are equal
@@ -446,11 +449,18 @@ mod TestAbsorber {
         loop {
             match asset_addresses.pop_front() {
                 Option::Some(asset) => {
-                    let before_epoch_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*asset, before_epoch);
-                    let after_epoch_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*asset, before_epoch + 1);
+                    let before_epoch_distribution: DistributionInfo = absorber
+                        .get_cumulative_reward_amt_by_epoch(*asset, before_epoch);
+                    let after_epoch_distribution: DistributionInfo = absorber
+                        .get_cumulative_reward_amt_by_epoch(*asset, before_epoch + 1);
 
-                    assert(before_epoch_distribution.error == after_epoch_distribution.error, 'error not propagated');
-                    assert(after_epoch_distribution.asset_amt_per_share == 0, 'wrong reward cumulative');
+                    assert(
+                        before_epoch_distribution.error == after_epoch_distribution.error,
+                        'error not propagated'
+                    );
+                    assert(
+                        after_epoch_distribution.asset_amt_per_share == 0, 'wrong reward cumulative'
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -701,7 +711,7 @@ mod TestAbsorber {
         let mut percentages_to_drain: Array<Ray> = Default::default();
         percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
         percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
-        percentages_to_drain.append(439210000000000000000000000_u128.into());  // 43.291% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
         let mut percentages_to_drain = percentages_to_drain.span();
 
         let mut idx: u32 = 0;
@@ -721,7 +731,16 @@ mod TestAbsorber {
                     let provider = provider_1();
                     let first_provided_amt: Wad = 10000000000000000000000_u128
                         .into(); // 10_000 (Wad)
-                    provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, first_provided_amt);
+                    provide_to_absorber(
+                        shrine,
+                        abbot,
+                        absorber,
+                        provider,
+                        yangs,
+                        provider_asset_amts(),
+                        gates,
+                        first_provided_amt
+                    );
 
                     // Simulate absorption
                     let first_update_assets: Span<u128> = first_update_assets();
@@ -752,7 +771,7 @@ mod TestAbsorber {
                     );
 
                     // total shares is equal to amount provided  
-                    let before_total_shares: Wad = first_provided_amt; 
+                    let before_total_shares: Wad = first_provided_amt;
                     assert_update_is_correct(
                         absorber,
                         expected_absorption_id,
@@ -781,8 +800,12 @@ mod TestAbsorber {
                     let mut token_holders: Array<ContractAddress> = Default::default();
                     token_holders.append(provider);
 
-                    let before_absorbed_bals = test_utils::get_token_balances(yangs, token_holders.span());
-                    let before_reward_bals = test_utils::get_token_balances(reward_tokens, token_holders.span());
+                    let before_absorbed_bals = test_utils::get_token_balances(
+                        yangs, token_holders.span()
+                    );
+                    let before_reward_bals = test_utils::get_token_balances(
+                        reward_tokens, token_holders.span()
+                    );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
 
                     // Perform three different actions:
@@ -795,13 +818,22 @@ mod TestAbsorber {
 
                     set_contract_address(provider);
                     if idx % 3 == 0 {
-                        absorber.reap();   
+                        absorber.reap();
                     } else if idx % 3 == 1 {
                         absorber.request();
                         set_block_timestamp(get_block_timestamp() + 60);
                         absorber.remove(BoundedU128::max().into());
                     } else {
-                        provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, 1_u128.into());
+                        provide_to_absorber(
+                            shrine,
+                            abbot,
+                            absorber,
+                            provider,
+                            yangs,
+                            provider_asset_amts(),
+                            gates,
+                            1_u128.into()
+                        );
                     }
 
                     // One distribution from `update` and another distribution from 
@@ -810,7 +842,7 @@ mod TestAbsorber {
                         WAD_SCALE.into()
                     } else {
                         (WAD_SCALE * 2).into()
-                    };   
+                    };
 
                     // Check rewards
                     // Custom error margin is used due to loss of precision and initial minimum shares
@@ -829,11 +861,18 @@ mod TestAbsorber {
 
                     let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
                     if is_fully_absorbed {
-                        assert(after_preview_reward_amts.len().is_zero(), 'should not have rewards');
-                        assert_reward_errors_propagated_to_next_epoch(absorber, expected_epoch - 1, reward_tokens);
+                        assert(
+                            after_preview_reward_amts.len().is_zero(), 'should not have rewards'
+                        );
+                        assert_reward_errors_propagated_to_next_epoch(
+                            absorber, expected_epoch - 1, reward_tokens
+                        );
                     } else {
                         // Sanity check that updated preview reward amount is lower than before
-                        assert(*after_preview_reward_amts.at(0) < *preview_reward_amts.at(0), 'preview amount should decrease');
+                        assert(
+                            *after_preview_reward_amts.at(0) < *preview_reward_amts.at(0),
+                            'preview amount should decrease'
+                        );
                     }
 
                     idx += 1;
@@ -851,7 +890,16 @@ mod TestAbsorber {
     fn test_update_unauthorized_fail() {
         let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
         let first_provided_amt: Wad = 1000000000000000000000_u128.into(); // 1_000 (Wad)
-        provide_to_absorber(shrine, abbot, absorber, provider_1(), yangs, provider_asset_amts(), gates, first_provided_amt);
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider_1(),
+            yangs,
+            provider_asset_amts(),
+            gates,
+            first_provided_amt
+        );
 
         let first_update_assets: Span<u128> = first_update_assets();
 
@@ -878,7 +926,16 @@ mod TestAbsorber {
         let provider: ContractAddress = provider_1();
 
         let first_provided_amt: Wad = 1000000000000000000000_u128.into(); // 1_000 (Wad)
-        provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, first_provided_amt);
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            first_provided_amt
+        );
 
         let before_provider_info: Provision = absorber.get_provision(provider);
         let before_last_absorption_id: u32 = absorber.get_provider_last_absorption(provider);
@@ -903,7 +960,16 @@ mod TestAbsorber {
 
         // Test subsequent deposit
         let second_provided_amt: Wad = 400000000000000000000_u128.into(); // 400 (Wad)
-        provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, second_provided_amt);
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            second_provided_amt
+        );
 
         let after_provider_info: Provision = absorber.get_provision(provider);
         let after_last_absorption_id: u32 = absorber.get_provider_last_absorption(provider);
@@ -960,7 +1026,16 @@ mod TestAbsorber {
         let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
         let provider: ContractAddress = provider_1();
         let first_provided_amt: Wad = 1000000000000000000000_u128.into(); // 1_000 (Wad)
-        provide_to_absorber(shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, first_provided_amt);
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            first_provided_amt
+        );
         set_contract_address(provider);
         let mut idx = 0;
         let mut expected_timelock = Absorber::REQUEST_BASE_TIMELOCK;
@@ -980,7 +1055,7 @@ mod TestAbsorber {
 
             let removal_ts = current_ts + expected_timelock;
             set_block_timestamp(removal_ts);
-            
+
             // This should not revert
             absorber.remove(1_u128.into());
 
@@ -988,5 +1063,4 @@ mod TestAbsorber {
             idx += 1;
         };
     }
-
 }
