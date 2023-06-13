@@ -100,7 +100,6 @@ mod ShrineRoles {
         INJECT + EJECT
     }
 
-    #[cfg(test)]
     #[inline(always)]
     fn sentinel() -> u128 {
         ADD_YANG + SET_THRESHOLD

@@ -159,6 +159,7 @@ mod Sentinel {
 
         // Require an initial deposit when adding a yang to prevent first depositor from front-running
         let yang_erc20 = IERC20Dispatcher { contract_address: yang };
+        // scale `asset_amt` up by the difference to match `Wad` precision of yang
         let initial_yang_amt: Wad = wadray::fixed_point_to_wad(
             INITIAL_DEPOSIT_AMT, yang_erc20.decimals()
         );

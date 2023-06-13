@@ -4,6 +4,7 @@ mod TestSentinel {
     use debug::PrintTrait; 
     use option::OptionTrait;
     use starknet::{contract_address_const, ContractAddress};
+    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::Into;
 
@@ -13,11 +14,12 @@ mod TestSentinel {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
+
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
     
     #[test]
     #[available_gas(10000000000)]
@@ -76,7 +78,7 @@ mod TestSentinel {
     #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized() {
-        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
 
         sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
     }
@@ -85,25 +87,25 @@ mod TestSentinel {
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang cannot be zero address', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_yang_zero_addr() {
-        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         set_contract_address(SentinelUtils::admin());
-        sentinel.add_yang(contract_address_const::<0x0>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
+        sentinel.add_yang(ContractAddressZeroable::zero(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Gate cannot be zero address', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_gate_zero_addr() {
-        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         set_contract_address(SentinelUtils::admin());
-        sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0x0>());
+        sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), ContractAddressZeroable::zero());
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang already added', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_yang_already_added() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         set_contract_address(SentinelUtils::admin());
         sentinel.add_yang(eth, SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), eth_gate.contract_address);
@@ -113,7 +115,7 @@ mod TestSentinel {
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Asset of gate is not yang', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_gate_yang_mismatch() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
         let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
 
         set_contract_address(SentinelUtils::admin());
@@ -123,7 +125,7 @@ mod TestSentinel {
     #[test]
     #[available_gas(10000000000)]
     fn test_set_yang_asset_max() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let new_asset_max = SentinelUtils::ETH_ASSET_MAX * 2;
 
@@ -146,25 +148,25 @@ mod TestSentinel {
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_non_existent_yang() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         set_contract_address(SentinelUtils::admin());
-        sentinel.set_yang_asset_max(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX);
+        sentinel.set_yang_asset_max(SentinelUtils::invalid_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_unauthed() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
-
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
+        set_contract_address(ShrineUtils::badguy());
         sentinel.set_yang_asset_max(eth, SentinelUtils::ETH_ASSET_MAX);
     }
 
     #[test]
     #[available_gas(10000000000)]
     fn test_enter_exit() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let eth_erc20 = IERC20Dispatcher{contract_address: eth};
         let user: ContractAddress = GateUtils::eth_hoarder();
@@ -176,29 +178,29 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::mock_abbot());
         
         let preview_yang_amt: Wad = sentinel.preview_enter(eth, deposit_amt.val);
-        let yang_amt: Wad = sentinel.enter(eth, user, 0, deposit_amt.val);
-        shrine.deposit(eth, 0, yang_amt);
+        let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+        shrine.deposit(eth, ShrineUtils::TROVE_1, yang_amt);
 
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == deposit_amt, 'Wrong yang bal after enter');
         assert(eth_erc20.balance_of(eth_gate.contract_address) == (Sentinel::INITIAL_DEPOSIT_AMT + deposit_amt.val).into(), 'Wrong eth bal after enter');
-        assert(shrine.get_deposit(eth, 0) == yang_amt, 'Wrong yang bal in shrine');
+        assert(shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt, 'Wrong yang bal in shrine');
 
         let preview_eth_amt: u128 = sentinel.preview_exit(eth, WAD_ONE.into());
-        let eth_amt: u128 = sentinel.exit(eth, user, 0, WAD_ONE.into());
-        shrine.withdraw(eth, 0, WAD_ONE.into());
+        let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
+        shrine.withdraw(eth, ShrineUtils::TROVE_1, WAD_ONE.into());
 
         assert(preview_eth_amt == eth_amt, 'Wrong preview exit eth amt');
         assert(eth_amt == WAD_ONE, 'Wrong yang bal after exit');
         assert(eth_erc20.balance_of(eth_gate.contract_address) == (Sentinel::INITIAL_DEPOSIT_AMT + deposit_amt.val - WAD_ONE).into(), 'Wrong eth bal after exit');
-        assert(shrine.get_deposit(eth, 0) == yang_amt - WAD_ONE.into(), 'Wrong yang bal in shrine');
+        assert(shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt - WAD_ONE.into(), 'Wrong yang bal in shrine');
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_enter_insufficient_balance() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let eth_erc20 = IERC20Dispatcher{contract_address: eth};
         let user: ContractAddress = GateUtils::eth_hoarder();
@@ -211,87 +213,88 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(eth, user, 0, deposit_amt.val);
+        sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED'))]
     fn test_enter_yang_not_added() {
-        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(contract_address_const::<0xf00>(), user, 0, deposit_amt.val);
+        sentinel.enter(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Exceeds max amount allowed', 'ENTRYPOINT_FAILED'))]
     fn test_enter_exceeds_max_deposit() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (SentinelUtils::ETH_ASSET_MAX + 1).into();  // Deposit amount exceeds max deposit
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(eth, user, 0, deposit_amt.val);
+        sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED'))]
     fn test_exit_yang_not_added() {
-        let (sentinel, shrine) = SentinelUtils::deploy_sentinel();
+        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(contract_address_const::<0xf00>(), user, 0, WAD_ONE.into());
+        sentinel.exit(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, WAD_ONE.into());
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_exit_insufficient_balance() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(eth, user, 0, WAD_ONE.into());  // User does not have any yang to exit
+        sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());  // User does not have any yang to exit
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_enter_unauthorized() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
         let deposit_amt: Wad = (2* WAD_ONE).into();
 
-        // Do not set the contract address to a caller with the ENTER role.
-        let yang_amt: Wad = sentinel.enter(eth, user, 0, deposit_amt.val);
+        
+        set_contract_address(ShrineUtils::badguy());
+        let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_exit_unauthorized() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        // Do not set the contract address to a caller with the EXIT role.
-        let eth_amt: u128 = sentinel.exit(eth, user, 0, WAD_ONE.into());
+        set_contract_address(ShrineUtils::badguy());
+        let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
     }
 
 
@@ -299,7 +302,7 @@ mod TestSentinel {
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
     fn test_kill_gate_and_enter() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
         
@@ -311,14 +314,14 @@ mod TestSentinel {
 
         // Attempt to enter a killed gate should fail
         set_contract_address(SentinelUtils::mock_abbot());
-        sentinel.enter(eth, user, 0, deposit_amt.val);
+        sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
     fn test_kill_gate_and_preview_enter() {
-        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_one_gate();
+        let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
         
