@@ -1,8 +1,10 @@
 mod SentinelUtils {
     use array::{ArrayTrait, SpanTrait};
     use debug::PrintTrait;
+    use integer::BoundedU256;
     use option::OptionTrait;
     use starknet::{ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const, contract_address_to_felt252, deploy_syscall, SyscallResultTrait};
+    use starknet::info::get_caller_address;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
 
@@ -24,7 +26,7 @@ mod SentinelUtils {
 
     #[inline(always)]
     fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
+        contract_address_const::<0x80085>()
     }
 
     #[inline(always)]
@@ -54,9 +56,12 @@ mod SentinelUtils {
         set_contract_address(admin());
         IAccessControlDispatcher{contract_address: sentinel_addr}.grant_role(SentinelRoles::abbot(), mock_abbot());
 
-        // Grant `add_yang` and `set_threshold` roles to `shrine`
+        
+        let shrine_ac = IAccessControlDispatcher{contract_address: shrine};
         set_contract_address(ShrineUtils::admin());
-        IAccessControlDispatcher{contract_address: shrine}.grant_role(ShrineRoles::sentinel(), sentinel_addr);
+
+        shrine_ac.grant_role(ShrineRoles::sentinel(), sentinel_addr);
+        shrine_ac.grant_role(ShrineRoles::abbot(), mock_abbot());
 
         set_contract_address(contract_address_const::<0>());
 
@@ -78,6 +83,13 @@ mod SentinelUtils {
         gates.append(wbtc_gate);
 
         (sentinel, IShrineDispatcher{contract_address: shrine}, assets.span(), gates.span())
+    }
+
+    fn deploy_sentinel_with_one_gate() -> (ISentinelDispatcher, IShrineDispatcher, ContractAddress, IGateDispatcher) {
+        let (sentinel, shrine) = deploy_sentinel();
+        let (eth, eth_gate) = add_eth_yang(sentinel, shrine);
+
+        (sentinel, IShrineDispatcher{contract_address: shrine}, eth, eth_gate)
     }
 
     fn add_eth_yang(sentinel: ISentinelDispatcher, shrine: ContractAddress) -> (ContractAddress, IGateDispatcher) {
@@ -113,5 +125,13 @@ mod SentinelUtils {
             set_contract_address(contract_address_const::<0>());
     
             (wbtc, IGateDispatcher{contract_address: wbtc_gate})
+    }
+
+    fn approve_max(gate: IGateDispatcher, token: ContractAddress, user: ContractAddress) {
+        let token_erc20 = IERC20Dispatcher{contract_address: token};
+        let prev_address: ContractAddress = get_caller_address();
+        set_contract_address(user);
+        token_erc20.approve(gate.contract_address, BoundedU256::max());
+        set_contract_address(prev_address);
     }
 }

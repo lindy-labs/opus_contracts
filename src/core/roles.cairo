@@ -87,6 +87,10 @@ mod ShrineRoles {
     const WITHDRAW: u128 = 32768;
 
     #[inline(always)]
+    fn abbot() -> u128 {
+        DEPOSIT + FORGE + MELT + WITHDRAW
+    }
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
     }
