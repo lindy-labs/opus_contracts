@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod TestSentinel {
     use array::SpanTrait;
-    use debug::PrintTrait; 
+    use debug::PrintTrait;
     use option::OptionTrait;
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
@@ -22,8 +22,7 @@ mod TestSentinel {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils::badguy;
-    
+
     #[test]
     #[available_gas(10000000000)]
     fn test_deploy_sentinel_and_add_yang() {
@@ -37,26 +36,43 @@ mod TestSentinel {
         let eth = *assets.at(0);
         let wbtc = *assets.at(1);
 
-        assert(sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address, 'Wrong gate address #1');
-        assert(sentinel.get_gate_address(*assets.at(1)) == wbtc_gate.contract_address, 'Wrong gate address #2');
+        assert(
+            sentinel.get_gate_address(*assets.at(0)) == eth_gate.contract_address,
+            'Wrong gate address #1'
+        );
+        assert(
+            sentinel.get_gate_address(*assets.at(1)) == wbtc_gate.contract_address,
+            'Wrong gate address #2'
+        );
 
         assert(sentinel.get_gate_live(*assets.at(0)), 'Gate not live #1');
         assert(sentinel.get_gate_live(*assets.at(1)), 'Gate not live #2');
 
         let given_yang_addresses = sentinel.get_yang_addresses();
-        assert(*given_yang_addresses.at(0) == *assets.at(0) & *given_yang_addresses.at(1) == *assets.at(1), 'Wrong yang addresses');
+        assert(
+            *given_yang_addresses.at(0) == *assets.at(0)
+                & *given_yang_addresses.at(1) == *assets.at(1),
+            'Wrong yang addresses'
+        );
 
         assert(sentinel.get_yang(0) == *assets.at(0), 'Wrong yang #1');
         assert(sentinel.get_yang(1) == *assets.at(1), 'Wrong yang #2');
 
-        assert(sentinel.get_yang_asset_max(eth) == SentinelUtils::ETH_ASSET_MAX, 'Wrong asset max #1');
-        assert(sentinel.get_yang_asset_max(wbtc) == SentinelUtils::WBTC_ASSET_MAX, 'Wrong asset max #2');
+        assert(
+            sentinel.get_yang_asset_max(eth) == SentinelUtils::ETH_ASSET_MAX, 'Wrong asset max #1'
+        );
+        assert(
+            sentinel.get_yang_asset_max(wbtc) == SentinelUtils::WBTC_ASSET_MAX, 'Wrong asset max #2'
+        );
 
         assert(sentinel.get_yang_addresses_count() == 2, 'Wrong yang addresses count');
 
-        let sentinel_ac = IAccessControlDispatcher{contract_address: sentinel.contract_address};
+        let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         assert(sentinel_ac.get_admin() == SentinelUtils::admin(), 'Wrong admin');
-        assert(sentinel_ac.get_roles(SentinelUtils::admin()) == SentinelRoles::default_admin_role(), 'Wrong roles for admin');
+        assert(
+            sentinel_ac.get_roles(SentinelUtils::admin()) == SentinelRoles::default_admin_role(),
+            'Wrong roles for admin'
+        );
 
         // Checking that the gates were set up correctly 
 
@@ -71,14 +87,35 @@ mod TestSentinel {
         assert(eth_price == ShrineUtils::YANG1_START_PRICE.into(), 'Wrong yang price #1');
         assert(wbtc_price == ShrineUtils::YANG2_START_PRICE.into(), 'Wrong yang price #2');
 
-        assert(shrine.get_yang_threshold(eth) == ShrineUtils::YANG1_THRESHOLD.into(), 'Wrong yang threshold #1');
-        assert(shrine.get_yang_threshold(wbtc) == ShrineUtils::YANG2_THRESHOLD.into(), 'Wrong yang threshold #2');
+        assert(
+            shrine.get_yang_threshold(eth) == ShrineUtils::YANG1_THRESHOLD.into(),
+            'Wrong yang threshold #1'
+        );
+        assert(
+            shrine.get_yang_threshold(wbtc) == ShrineUtils::YANG2_THRESHOLD.into(),
+            'Wrong yang threshold #2'
+        );
 
-        assert(shrine.get_yang_rate(eth, 0) == ShrineUtils::YANG1_BASE_RATE.into(), 'Wrong yang rate #1');
-        assert(shrine.get_yang_rate(wbtc, 0) == ShrineUtils::YANG2_BASE_RATE.into(), 'Wrong yang rate #2');
+        assert(
+            shrine.get_yang_rate(eth, 0) == ShrineUtils::YANG1_BASE_RATE.into(),
+            'Wrong yang rate #1'
+        );
+        assert(
+            shrine.get_yang_rate(wbtc, 0) == ShrineUtils::YANG2_BASE_RATE.into(),
+            'Wrong yang rate #2'
+        );
 
-        assert(shrine.get_yang_total(eth) == Sentinel::INITIAL_DEPOSIT_AMT.into(), 'Wrong yang total #1');
-        assert(shrine.get_yang_total(wbtc) == wadray::fixed_point_to_wad(Sentinel::INITIAL_DEPOSIT_AMT, 8), 'Wrong yang total #2');
+        assert(
+            shrine.get_yang_total(eth) == Sentinel::INITIAL_DEPOSIT_AMT.into(),
+            'Wrong yang total #1'
+        );
+        assert(
+            shrine
+                .get_yang_total(
+                    wbtc
+                ) == wadray::fixed_point_to_wad(Sentinel::INITIAL_DEPOSIT_AMT, 8),
+            'Wrong yang total #2'
+        );
     }
 
     #[test]
@@ -87,7 +124,15 @@ mod TestSentinel {
     fn test_add_yang_unauthorized() {
         let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
 
-        sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
+        sentinel
+            .add_yang(
+                contract_address_const::<0xf00>(),
+                SentinelUtils::ETH_ASSET_MAX,
+                ShrineUtils::YANG1_THRESHOLD.into(),
+                ShrineUtils::YANG1_START_PRICE.into(),
+                ShrineUtils::YANG1_BASE_RATE.into(),
+                contract_address_const::<0xf00d>()
+            );
     }
 
     #[test]
@@ -96,7 +141,15 @@ mod TestSentinel {
     fn test_add_yang_yang_zero_addr() {
         let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         set_contract_address(SentinelUtils::admin());
-        sentinel.add_yang(ContractAddressZeroable::zero(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), contract_address_const::<0xf00d>());
+        sentinel
+            .add_yang(
+                ContractAddressZeroable::zero(),
+                SentinelUtils::ETH_ASSET_MAX,
+                ShrineUtils::YANG1_THRESHOLD.into(),
+                ShrineUtils::YANG1_START_PRICE.into(),
+                ShrineUtils::YANG1_BASE_RATE.into(),
+                contract_address_const::<0xf00d>()
+            );
     }
 
     #[test]
@@ -105,7 +158,15 @@ mod TestSentinel {
     fn test_add_yang_gate_zero_addr() {
         let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         set_contract_address(SentinelUtils::admin());
-        sentinel.add_yang(contract_address_const::<0xf00>(), SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), ContractAddressZeroable::zero());
+        sentinel
+            .add_yang(
+                contract_address_const::<0xf00>(),
+                SentinelUtils::ETH_ASSET_MAX,
+                ShrineUtils::YANG1_THRESHOLD.into(),
+                ShrineUtils::YANG1_START_PRICE.into(),
+                ShrineUtils::YANG1_BASE_RATE.into(),
+                ContractAddressZeroable::zero()
+            );
     }
 
     #[test]
@@ -115,7 +176,15 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         set_contract_address(SentinelUtils::admin());
-        sentinel.add_yang(eth, SentinelUtils::ETH_ASSET_MAX, ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG1_BASE_RATE.into(), eth_gate.contract_address);
+        sentinel
+            .add_yang(
+                eth,
+                SentinelUtils::ETH_ASSET_MAX,
+                ShrineUtils::YANG1_THRESHOLD.into(),
+                ShrineUtils::YANG1_START_PRICE.into(),
+                ShrineUtils::YANG1_BASE_RATE.into(),
+                eth_gate.contract_address
+            );
     }
 
     #[test]
@@ -126,7 +195,15 @@ mod TestSentinel {
         let wbtc: ContractAddress = GateUtils::wbtc_token_deploy();
 
         set_contract_address(SentinelUtils::admin());
-        sentinel.add_yang(wbtc, SentinelUtils::WBTC_ASSET_MAX, ShrineUtils::YANG2_THRESHOLD.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG2_BASE_RATE.into(), eth_gate.contract_address);
+        sentinel
+            .add_yang(
+                wbtc,
+                SentinelUtils::WBTC_ASSET_MAX,
+                ShrineUtils::YANG2_THRESHOLD.into(),
+                ShrineUtils::YANG2_START_PRICE.into(),
+                ShrineUtils::YANG2_BASE_RATE.into(),
+                eth_gate.contract_address
+            );
     }
 
     #[test]
@@ -148,7 +225,9 @@ mod TestSentinel {
 
         // Test decreasing the max to below the current yang total
         sentinel.set_yang_asset_max(eth, Sentinel::INITIAL_DEPOSIT_AMT - 1);
-        assert(sentinel.get_yang_asset_max(eth) == Sentinel::INITIAL_DEPOSIT_AMT - 1, 'Wrong asset max');
+        assert(
+            sentinel.get_yang_asset_max(eth) == Sentinel::INITIAL_DEPOSIT_AMT - 1, 'Wrong asset max'
+        );
     }
 
     #[test]
@@ -158,7 +237,8 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         set_contract_address(SentinelUtils::admin());
-        sentinel.set_yang_asset_max(SentinelUtils::invalid_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
+        sentinel
+            .set_yang_asset_max(SentinelUtils::invalid_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
     }
 
     #[test]
@@ -166,7 +246,7 @@ mod TestSentinel {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_unauthed() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
-        set_contract_address(badguy());
+        set_contract_address(ShrineUtils::badguy());
         sentinel.set_yang_asset_max(eth, SentinelUtils::ETH_ASSET_MAX);
     }
 
@@ -175,23 +255,32 @@ mod TestSentinel {
     fn test_enter_exit() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
-        let eth_erc20 = IERC20Dispatcher{contract_address: eth};
+        let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        SentinelUtils::approve_max(eth_gate, eth, user); 
+        SentinelUtils::approve_max(eth_gate, eth, user);
 
-        let deposit_amt: Wad = (2* WAD_ONE).into();
+        let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         set_contract_address(SentinelUtils::mock_abbot());
-        
+
         let preview_yang_amt: Wad = sentinel.preview_enter(eth, deposit_amt.val);
         let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, ShrineUtils::TROVE_1, yang_amt);
 
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == deposit_amt, 'Wrong yang bal after enter');
-        assert(eth_erc20.balance_of(eth_gate.contract_address) == (Sentinel::INITIAL_DEPOSIT_AMT + deposit_amt.val).into(), 'Wrong eth bal after enter');
-        assert(shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt, 'Wrong yang bal in shrine');
+        assert(
+            eth_erc20
+                .balance_of(
+                    eth_gate.contract_address
+                ) == (Sentinel::INITIAL_DEPOSIT_AMT + deposit_amt.val)
+                .into(),
+            'Wrong eth bal after enter'
+        );
+        assert(
+            shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt, 'Wrong yang bal in shrine'
+        );
 
         let preview_eth_amt: u128 = sentinel.preview_exit(eth, WAD_ONE.into());
         let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
@@ -199,24 +288,42 @@ mod TestSentinel {
 
         assert(preview_eth_amt == eth_amt, 'Wrong preview exit eth amt');
         assert(eth_amt == WAD_ONE, 'Wrong yang bal after exit');
-        assert(eth_erc20.balance_of(eth_gate.contract_address) == (Sentinel::INITIAL_DEPOSIT_AMT + deposit_amt.val - WAD_ONE).into(), 'Wrong eth bal after exit');
-        assert(shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt - WAD_ONE.into(), 'Wrong yang bal in shrine');
+        assert(
+            eth_erc20
+                .balance_of(
+                    eth_gate.contract_address
+                ) == (Sentinel::INITIAL_DEPOSIT_AMT + deposit_amt.val - WAD_ONE)
+                .into(),
+            'Wrong eth bal after exit'
+        );
+        assert(
+            shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt - WAD_ONE.into(),
+            'Wrong yang bal in shrine'
+        );
     }
 
     #[test]
     #[available_gas(10000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: (
+            'u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
+        )
+    )]
     fn test_enter_insufficient_balance() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
-        let eth_erc20 = IERC20Dispatcher{contract_address: eth};
+        let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let user: ContractAddress = GateUtils::eth_hoarder();
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         // Reduce user's balance to below the deposit amount
         set_contract_address(user);
-        eth_erc20.transfer(contract_address_const::<0xf00>(), eth_erc20.balance_of(user) - (deposit_amt.val - 1).into());
+        eth_erc20
+            .transfer(
+                contract_address_const::<0xf00>(),
+                eth_erc20.balance_of(user) - (deposit_amt.val - 1).into()
+            );
 
         set_contract_address(SentinelUtils::mock_abbot());
 
@@ -234,7 +341,8 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, deposit_amt.val);
+        sentinel
+            .enter(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -244,7 +352,8 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         let user: ContractAddress = GateUtils::eth_hoarder();
-        let deposit_amt: Wad = (SentinelUtils::ETH_ASSET_MAX + 1).into();  // Deposit amount exceeds max deposit
+        let deposit_amt: Wad = (SentinelUtils::ETH_ASSET_MAX + 1)
+            .into(); // Deposit amount exceeds max deposit
 
         set_contract_address(SentinelUtils::mock_abbot());
 
@@ -261,12 +370,17 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, WAD_ONE.into());
+        sentinel
+            .exit(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, WAD_ONE.into());
     }
 
     #[test]
     #[available_gas(10000000000)]
-    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: (
+            'u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
+        )
+    )]
     fn test_exit_insufficient_balance() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
@@ -274,7 +388,10 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());  // User does not have any yang to exit
+        sentinel
+            .exit(
+                eth, user, ShrineUtils::TROVE_1, WAD_ONE.into()
+            ); // User does not have any yang to exit
     }
 
     #[test]
@@ -285,10 +402,9 @@ mod TestSentinel {
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        let deposit_amt: Wad = (2* WAD_ONE).into();
+        let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        
-        set_contract_address(badguy());
+        set_contract_address(ShrineUtils::badguy());
         let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
     }
 
@@ -300,7 +416,7 @@ mod TestSentinel {
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        set_contract_address(badguy());
+        set_contract_address(ShrineUtils::badguy());
         let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
     }
 
@@ -312,7 +428,7 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
-        
+
         // Kill the gate
         set_contract_address(SentinelUtils::admin());
         sentinel.kill_gate(eth);
@@ -330,22 +446,21 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         // Making a regular deposit 
-        let eth_erc20 = IERC20Dispatcher{contract_address: eth};
+        let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        SentinelUtils::approve_max(eth_gate, eth, user); 
+        SentinelUtils::approve_max(eth_gate, eth, user);
 
-        let deposit_amt: Wad = (2* WAD_ONE).into();
+        let deposit_amt: Wad = (2 * WAD_ONE).into();
 
         set_contract_address(SentinelUtils::mock_abbot());
-        
+
         let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, ShrineUtils::TROVE_1, yang_amt);
 
         // Killing the gate 
         set_contract_address(SentinelUtils::admin());
         sentinel.kill_gate(eth);
-
 
         // Exiting
         set_contract_address(SentinelUtils::mock_abbot());
@@ -359,7 +474,7 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
-        
+
         // Kill the gate
         set_contract_address(SentinelUtils::admin());
         sentinel.kill_gate(eth);
