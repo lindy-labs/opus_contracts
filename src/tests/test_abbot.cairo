@@ -5,8 +5,7 @@ mod TestAbbot {
     use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
-        SyscallResultTrait
+        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -76,41 +75,61 @@ mod TestAbbot {
         (shrine, sentinel, abbot, yangs, gates)
     }
 
-    fn fund_user_and_open_trove(
+    fn initial_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT * 10);
+        asset_amts.append(WBTC_DEPOSIT_AMT * 10);
+        asset_amts.span()
+    }
+
+    fn open_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT);
+        asset_amts.append(WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
+
+    fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    IMintableDispatcher {
+                        contract_address: *yang
+                    }.mint(user, (*asset_amts.pop_front().unwrap()).into());
+                },
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
+    }
+
+    fn open_trove_helper(
         abbot: IAbbotDispatcher,
         user: ContractAddress,
-        yangs: Span<ContractAddress>,
-        gates: Span<IGateDispatcher>,
+        mut yangs: Span<ContractAddress>,
+        yang_asset_amts: Span<u128>,
+        mut gates: Span<IGateDispatcher>,
         forge_amt: Wad
     ) -> u64 {
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let eth_gate: IGateDispatcher = *gates.at(0);
-        let wbtc_addr: ContractAddress = *yangs.at(1);
-        let wbtc_gate: IGateDispatcher = *gates.at(1);
-
-        // Mint yang assets to trove owner
-        IMintableDispatcher {
-            contract_address: eth_addr
-        }.mint(user, (ETH_DEPOSIT_AMT * 10).into());
-        IMintableDispatcher {
-            contract_address: wbtc_addr
-        }.mint(user, (WBTC_DEPOSIT_AMT * 10).into());
-
         set_contract_address(user);
-        IERC20Dispatcher {
-            contract_address: eth_addr
-        }.approve(eth_gate.contract_address, BoundedU256::max());
-        IERC20Dispatcher {
-            contract_address: wbtc_addr
-        }.approve(wbtc_gate.contract_address, BoundedU256::max());
-
-        // Open trove
-        let mut yang_asset_amts: Array<u128> = Default::default();
-        yang_asset_amts.append(ETH_DEPOSIT_AMT);
-        yang_asset_amts.append(WBTC_DEPOSIT_AMT);
+        let mut yangs_copy = yangs;
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    // Approve Gate to transfer from user
+                    IERC20Dispatcher {
+                        contract_address: *yang
+                    }.approve((*gates.pop_front().unwrap()).contract_address, BoundedU256::max());
+                },
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
 
         let trove_id: u64 = abbot
-            .open_trove(forge_amt, yangs, yang_asset_amts.span(), 0_u128.into());
+            .open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
 
         set_contract_address(ContractAddressZeroable::zero());
 
@@ -134,7 +153,8 @@ mod TestAbbot {
         let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         // Check trove ID
         let expected_trove_id: u64 = 1;
@@ -235,7 +255,8 @@ mod TestAbbot {
         let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         set_contract_address(trove_owner);
         abbot.close_trove(trove_id);
@@ -265,7 +286,8 @@ mod TestAbbot {
         let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         set_contract_address(ShrineUtils::badguy());
         abbot.close_trove(trove_id);
@@ -281,7 +303,8 @@ mod TestAbbot {
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let before_eth_yang: Wad = shrine.get_deposit(eth_addr, trove_id);
         let before_wbtc_yang: Wad = shrine.get_deposit(wbtc_addr, trove_id);
@@ -348,7 +371,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let invalid_yang_addr = contract_address_const::<0x0101>();
         abbot.deposit(invalid_yang_addr, trove_id, 0_u128);
@@ -362,7 +386,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let eth_addr: ContractAddress = *yangs.at(0);
         abbot.deposit(eth_addr, trove_id + 1, 1_u128);
@@ -378,7 +403,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let eth_gate: IGateDispatcher = *gates.at(0);
@@ -400,7 +426,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let eth_withdraw_amt: Wad = WAD_SCALE.into();
@@ -436,7 +463,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let invalid_yang_addr = contract_address_const::<0x0101>();
         set_contract_address(trove_owner);
@@ -451,7 +479,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let eth_addr: ContractAddress = *yangs.at(0);
         set_contract_address(ShrineUtils::badguy());
@@ -465,7 +494,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
         let before_yin: Wad = shrine.get_yin(trove_owner);
@@ -491,7 +521,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
         set_contract_address(trove_owner);
@@ -506,7 +537,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         set_contract_address(ShrineUtils::badguy());
         abbot.forge(trove_id, 0_u128.into(), WadZeroable::zero());
@@ -519,7 +551,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let trove_id: u64 = fund_user_and_open_trove(abbot, trove_owner, yangs, gates, forge_amt);
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
         let before_yin: Wad = shrine.get_yin(trove_owner);
@@ -540,12 +573,9 @@ mod TestAbbot {
         let trove_owner: ContractAddress = ShrineUtils::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        let first_trove_id: u64 = fund_user_and_open_trove(
-            abbot, trove_owner, yangs, gates, forge_amt
-        );
-        let second_trove_id: u64 = fund_user_and_open_trove(
-            abbot, trove_owner, yangs, gates, forge_amt
-        );
+        fund_user(trove_owner, yangs, initial_asset_amts());
+        let first_trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
+        let second_trove_id: u64 = open_trove_helper(abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt);
 
         let mut expected_user_trove_ids: Array<u64> = Default::default();
         let empty_user_trove_ids: Span<u64> = expected_user_trove_ids.span();
