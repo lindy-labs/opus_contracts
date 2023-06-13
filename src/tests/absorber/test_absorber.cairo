@@ -360,11 +360,11 @@ mod TestAbsorber {
                         contract_address: *asset
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
-                        + absorbed_amt;
+                    let before_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into();
+                    let expected_bal: Wad = before_bal + absorbed_amt;
 
                     ShrineUtils::assert_equalish(
-                        after_provider_bal, expected_bal, error_margin, 'wrong rewards balance'
+                        after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
                     );
 
                     // Check preview amounts are equal
@@ -1158,7 +1158,7 @@ mod TestAbsorber {
 
         // Second epoch starts here
         // Step 3
-        let second_provider = provider_1();
+        let second_provider = provider_2();
         let second_provided_amt: Wad = 5000000000000000000000_u128.into(); // 5_000 (Wad)
         provide_to_absorber(
             shrine,
@@ -1179,6 +1179,8 @@ mod TestAbsorber {
         let expected_epoch: u32 = 1;
         assert(second_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
+        let second_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+
         // Step 4
         let second_update_assets: Span<u128> = second_update_assets();
         simulate_update(shrine, absorber, yangs, second_update_assets, RAY_SCALE.into());
@@ -1188,10 +1190,23 @@ mod TestAbsorber {
         user_addresses.append(first_provider);
 
         let first_provider_before_reward_bals = test_utils::get_token_balances(reward_tokens, user_addresses.span());
-        let (_, _, _, preview_reward_amts) = absorber.preview_reap(first_provider);
+        let first_provider_before_absorbed_bals = test_utils::get_token_balances(yangs, user_addresses.span());
 
         set_contract_address(first_provider);
+        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber.preview_reap(first_provider);
+
         absorber.reap();
+
+        let error_margin: Wad = 1000_u128.into();
+        assert_provider_received_absorbed_assets(
+            absorber,
+            first_provider,
+            yangs,
+            first_update_assets,
+            first_provider_before_absorbed_bals,
+            preview_absorbed_amts,
+            error_margin,
+        );
 
         let expected_blessings_multiplier: Wad = WAD_SCALE.into();
         let expected_epoch: u32 = 0;
@@ -1205,8 +1220,6 @@ mod TestAbsorber {
         );
 
         // Check rewards
-        
-        let error_margin: Wad = 1000_u128.into();
         assert_provider_received_rewards(
             absorber,
             first_provider,
@@ -1219,6 +1232,50 @@ mod TestAbsorber {
         );
 
         // Step 6
+        let mut user_addresses: Array<ContractAddress> = Default::default();
+        user_addresses.append(second_provider);
+
+        let second_provider_before_reward_bals = test_utils::get_token_balances(reward_tokens, user_addresses.span());
+        let second_provider_before_absorbed_bals = test_utils::get_token_balances(yangs, user_addresses.span());
+
+        set_contract_address(second_provider);
+        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber.preview_reap(second_provider);
+
+        absorber.reap();
+
+        let error_margin: Wad = 1000_u128.into();
+        assert_provider_received_absorbed_assets(
+            absorber,
+            second_provider,
+            yangs,
+            second_update_assets,
+            second_provider_before_absorbed_bals,
+            preview_absorbed_amts,
+            error_margin,
+        );
+
+        let expected_blessings_multiplier: Wad = WAD_SCALE.into();
+        let expected_epoch: u32 = 1;
+        assert_reward_cumulative_updated(
+            absorber,
+            second_epoch_total_shares,
+            expected_epoch,
+            reward_tokens,
+            reward_amts_per_blessing,
+            expected_blessings_multiplier
+        );
+
+        // Check rewards
+        assert_provider_received_rewards(
+            absorber,
+            second_provider,
+            reward_tokens,
+            reward_amts_per_blessing,
+            second_provider_before_reward_bals,
+            preview_reward_amts,
+            expected_blessings_multiplier,
+            error_margin,
+        );
         
     }
 
