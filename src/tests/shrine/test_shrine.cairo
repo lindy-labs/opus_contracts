@@ -60,9 +60,9 @@ mod TestShrine {
     // - initial threshold and value of Shrine
     #[test]
     #[available_gas(20000000000)]
-    fn test_shrine_setup() {
+    fn test_shrine_setup_with_mock_yangs() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
-        ShrineUtils::shrine_setup(shrine_addr);
+        ShrineUtils::shrine_setup_with_mock_yangs(shrine_addr);
 
         // Check debt ceiling
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -108,7 +108,7 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_shrine_setup_with_feed() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
-        ShrineUtils::shrine_setup(shrine_addr);
+        ShrineUtils::shrine_setup_with_mock_yangs(shrine_addr);
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         let (yang_addrs, yang_feeds) = ShrineUtils::advance_prices_and_set_multiplier(
             shrine,

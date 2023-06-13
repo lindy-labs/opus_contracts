@@ -182,7 +182,14 @@ mod ShrineUtils {
         set_contract_address(admin());
         let shrine = shrine(shrine_addr);
         shrine.set_debt_ceiling(DEBT_CEILING.into());
+        set_contract_address(ContractAddressZeroable::zero());
+    }
 
+    fn shrine_setup_with_mock_yangs(shrine_addr: ContractAddress) {
+        shrine_setup(shrine_addr);
+
+        set_contract_address(admin());
+        let shrine = shrine(shrine_addr);
         // Add yangs
         shrine
             .add_yang(
@@ -254,7 +261,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn shrine_setup_with_feed() -> IShrineDispatcher {
         let shrine_addr: ContractAddress = shrine_deploy();
-        shrine_setup(shrine_addr);
+        shrine_setup_with_mock_yangs(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
