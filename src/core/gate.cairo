@@ -130,7 +130,6 @@ mod Gate {
         let success: bool = asset::read()
             .transfer_from(user, get_contract_address(), asset_amt.into());
         assert(success, 'GA: Asset transfer failed');
-
         Enter(user, trove_id, asset_amt, yang_amt);
 
         yang_amt
