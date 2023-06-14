@@ -74,9 +74,27 @@ mod TestCaretaker {
 
         // assert Shrine killed
 
+        // assert gates have 0 balance and all assets are owned by caretaker
+
+        // assert some yang & asset ratios (which ones?)
+
     }
         // equalizer is already available
         // need a sentinel w/ added yangs - hence gates for each
         // need multiple troves w/ multiple tokens and owners
+
+    // test cases
+    // do shut then release for own trove
+    //              release for other trove, should fail
+    // do shut then reclaim partial of forged yin
+    //              reclaim full yin
+    //              reclaim more than has yin, should fail
+    //
+    // is there some combo of reclaim + release that can break shit?
+
+    // need:
+    //   a trove owner with 1 trove w/ multiple assets
+    //   a trove owner with 1 trove w/ single asset
+    //   an owner with forged yin to reclaim
 
 }
