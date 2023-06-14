@@ -292,13 +292,18 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_pass() {
-        let (shrine, pragma, sentinel, mock_pragma, yangs, gates) = PragmaUtils::pragma_with_yangs();
+        let (shrine, pragma, sentinel, mock_pragma, yangs, gates) =
+            PragmaUtils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
         // Perform a price update with starting exchange rate of 1 yang to 1 asset
         let first_ts = get_block_timestamp() + 1;
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE, first_ts);
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::WBTC_INIT_PRICE, first_ts);
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE, first_ts
+        );
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::WBTC_INIT_PRICE, first_ts
+        );
 
         pragma_oracle.update_prices();
 
@@ -329,9 +334,13 @@ mod TestPragma {
         let next_ts = first_ts + Shrine::TIME_INTERVAL;
         set_block_timestamp(next_ts);
         let new_eth_price = PragmaUtils::ETH_INIT_PRICE + 10;
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, new_eth_price, next_ts);
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, new_eth_price, next_ts
+        );
         let new_wbtc_price = PragmaUtils::WBTC_INIT_PRICE + 10;
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, new_wbtc_price, next_ts);
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, new_wbtc_price, next_ts
+        );
         pragma_oracle.update_prices();
 
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
@@ -361,13 +370,17 @@ mod TestPragma {
         let mut new_ts: u64 = get_block_timestamp() + 1;
         let mut price: u128 = PragmaUtils::ETH_INIT_PRICE + 10;
         set_block_timestamp(new_ts);
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts);
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts
+        );
         pragma_oracle.update_prices();
 
         price += 10;
         new_ts += 1;
         set_block_timestamp(new_ts);
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts);
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts
+        );
         pragma_oracle.update_prices();
     }
 
@@ -414,7 +427,9 @@ mod TestPragma {
 
         let new_ts: u64 = get_block_timestamp() + 1;
         set_block_timestamp(new_ts);
-        PragmaUtils::mock_valid_price_update(mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE + 10, new_ts);
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE + 10, new_ts
+        );
         pragma_oracle.update_prices();
 
         // after update_prices, the last update ts is moved to current block ts

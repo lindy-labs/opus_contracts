@@ -3,7 +3,8 @@ mod PragmaUtils {
     use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
+        contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
+        get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
