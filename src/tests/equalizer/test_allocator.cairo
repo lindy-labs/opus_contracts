@@ -13,7 +13,7 @@ mod TestAllocator {
 
     use aura::tests::equalizer::utils::EqualizerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils;
+    use aura::tests::common;
 
     #[test]
     #[available_gas(20000000000)]
@@ -144,7 +144,7 @@ mod TestAllocator {
             EqualizerUtils::initial_recipients(), EqualizerUtils::initial_percentages()
         );
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         allocator
             .set_allocation(EqualizerUtils::new_recipients(), EqualizerUtils::new_percentages());
     }

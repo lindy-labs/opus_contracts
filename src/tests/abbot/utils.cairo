@@ -1,6 +1,5 @@
 mod AbbotUtils {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU256;
     use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
@@ -15,9 +14,6 @@ mod AbbotUtils {
     use aura::core::roles::ShrineRoles;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IERC20::{
-        IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
-    };
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -25,8 +21,45 @@ mod AbbotUtils {
     use aura::utils::wadray;
     use aura::utils::wadray::Wad;
 
+    use aura::tests::common;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
+
+    //
+    // Constants
+    //
+
+    const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
+    const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
+    const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
+
+    const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
+    const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
+
+    //
+    // Constant helpers
+    //
+
+    fn initial_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT * 10);
+        asset_amts.append(WBTC_DEPOSIT_AMT * 10);
+        asset_amts.span()
+    }
+
+    fn open_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT);
+        asset_amts.append(WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
+
+    fn subsequent_deposit_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(SUBSEQUENT_ETH_DEPOSIT_AMT);
+        asset_amts.append(SUBSEQUENT_WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
 
     //
     // Test setup helpers
@@ -63,57 +96,32 @@ mod AbbotUtils {
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(SentinelRoles::abbot(), abbot_addr);
 
+        set_contract_address(ContractAddressZeroable::zero());
+
         (shrine, sentinel, abbot, yangs, gates)
     }
 
-
-    // Helper function to fund a user account with yang assets
-    fn fund_user(
-        user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>
+    fn deploy_abbot_and_open_trove() -> (
+        IShrineDispatcher,
+        ISentinelDispatcher,
+        IAbbotDispatcher,
+        Span<ContractAddress>,
+        Span<IGateDispatcher>,
+        ContractAddress, // trove owner
+        u64, // trove ID
+        Span<u128>, // deposited yang asset amounts
+        Wad, // forge amount
     ) {
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    IMintableDispatcher {
-                        contract_address: *yang
-                    }.mint(user, (*asset_amts.pop_front().unwrap()).into());
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
-    }
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy();
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
 
-    // Helper function to approve Gates to transfer tokens from user, and to open a trove
-    fn open_trove_helper(
-        abbot: IAbbotDispatcher,
-        user: ContractAddress,
-        mut yangs: Span<ContractAddress>,
-        yang_asset_amts: Span<u128>,
-        mut gates: Span<IGateDispatcher>,
-        forge_amt: Wad
-    ) -> u64 {
-        set_contract_address(user);
-        let mut yangs_copy = yangs;
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    // Approve Gate to transfer from user
-                    let gate: IGateDispatcher = *gates.pop_front().unwrap();
-                    SentinelUtils::approve_max(gate, *yang, user);
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
+        let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let deposited_amts: Span<u128> = open_trove_yang_asset_amts();
+        let trove_id: u64 = common::open_trove_helper(
+            abbot, trove_owner, yangs, deposited_amts, gates, forge_amt
+        );
 
-        set_contract_address(user);
-        let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
-
-        set_contract_address(ContractAddressZeroable::zero());
-
-        trove_id
+        (shrine, sentinel, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt)
     }
 }
