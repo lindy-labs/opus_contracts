@@ -338,6 +338,9 @@ mod Absorber {
     // Setters
     //
 
+    // Note: rewards ID start from index 1. This allows `set_reward` to be used for both 
+    // adding a new reward and updating an existing reward based on whether the initial 
+    // reward ID is zero (new reward) or not (existing reward).
     #[external]
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool) {
         AccessControl::assert_has_role(AbsorberRoles::SET_REWARD);
