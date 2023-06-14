@@ -59,8 +59,9 @@ mod AbbotUtils {
         shrine_ac.grant_role(ShrineRoles::abbot(), abbot_addr);
 
         // Grant Sentinel roles to Abbot
+        set_contract_address(SentinelUtils::admin());
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
-        sentinel_ac.grant_role(SentinelRoles::ENTER + SentinelRoles::EXIT, abbot_addr);
+        sentinel_ac.grant_role(SentinelRoles::abbot(), abbot_addr);
 
         (shrine, sentinel, abbot, yangs, gates)
     }
@@ -99,9 +100,8 @@ mod AbbotUtils {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     // Approve Gate to transfer from user
-                    IERC20Dispatcher {
-                        contract_address: *yang
-                    }.approve((*gates.pop_front().unwrap()).contract_address, BoundedU256::max());
+                    let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                    SentinelUtils::approve_max(gate, *yang, user);
                 },
                 Option::None(_) => {
                     break;
@@ -109,6 +109,7 @@ mod AbbotUtils {
             };
         };
 
+        set_contract_address(user);
         let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
 
         set_contract_address(ContractAddressZeroable::zero());

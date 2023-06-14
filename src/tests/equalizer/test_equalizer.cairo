@@ -134,7 +134,7 @@ mod TestEqualizer {
             EqualizerUtils::new_recipients(), EqualizerUtils::new_percentages()
         );
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         equalizer.set_allocator(new_allocator.contract_address);
     }
 }

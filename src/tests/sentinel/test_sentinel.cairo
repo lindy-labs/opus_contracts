@@ -22,6 +22,7 @@ mod TestSentinel {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::test_utils;
 
     #[test]
     #[available_gas(10000000000)]
@@ -246,7 +247,7 @@ mod TestSentinel {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_yang_asset_max_unauthed() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         sentinel.set_yang_asset_max(eth, SentinelUtils::ETH_ASSET_MAX);
     }
 
@@ -265,8 +266,8 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::mock_abbot());
 
         let preview_yang_amt: Wad = sentinel.preview_enter(eth, deposit_amt.val);
-        let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
-        shrine.deposit(eth, ShrineUtils::TROVE_1, yang_amt);
+        let yang_amt: Wad = sentinel.enter(eth, user, test_utils::TROVE_1, deposit_amt.val);
+        shrine.deposit(eth, test_utils::TROVE_1, yang_amt);
 
         assert(preview_yang_amt == yang_amt, 'Wrong preview enter yang amt');
         assert(yang_amt == deposit_amt, 'Wrong yang bal after enter');
@@ -279,12 +280,12 @@ mod TestSentinel {
             'Wrong eth bal after enter'
         );
         assert(
-            shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt, 'Wrong yang bal in shrine'
+            shrine.get_deposit(eth, test_utils::TROVE_1) == yang_amt, 'Wrong yang bal in shrine'
         );
 
         let preview_eth_amt: u128 = sentinel.preview_exit(eth, WAD_ONE.into());
-        let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
-        shrine.withdraw(eth, ShrineUtils::TROVE_1, WAD_ONE.into());
+        let eth_amt: u128 = sentinel.exit(eth, user, test_utils::TROVE_1, WAD_ONE.into());
+        shrine.withdraw(eth, test_utils::TROVE_1, WAD_ONE.into());
 
         assert(preview_eth_amt == eth_amt, 'Wrong preview exit eth amt');
         assert(eth_amt == WAD_ONE, 'Wrong yang bal after exit');
@@ -297,7 +298,7 @@ mod TestSentinel {
             'Wrong eth bal after exit'
         );
         assert(
-            shrine.get_deposit(eth, ShrineUtils::TROVE_1) == yang_amt - WAD_ONE.into(),
+            shrine.get_deposit(eth, test_utils::TROVE_1) == yang_amt - WAD_ONE.into(),
             'Wrong yang bal in shrine'
         );
     }
@@ -327,7 +328,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+        sentinel.enter(eth, user, test_utils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -342,7 +343,7 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::mock_abbot());
 
         sentinel
-            .enter(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, deposit_amt.val);
+            .enter(contract_address_const::<0xf00>(), user, test_utils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -357,7 +358,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+        sentinel.enter(eth, user, test_utils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -371,7 +372,7 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::mock_abbot());
 
         sentinel
-            .exit(contract_address_const::<0xf00>(), user, ShrineUtils::TROVE_1, WAD_ONE.into());
+            .exit(contract_address_const::<0xf00>(), user, test_utils::TROVE_1, WAD_ONE.into());
     }
 
     #[test]
@@ -390,7 +391,7 @@ mod TestSentinel {
 
         sentinel
             .exit(
-                eth, user, ShrineUtils::TROVE_1, WAD_ONE.into()
+                eth, user, test_utils::TROVE_1, WAD_ONE.into()
             ); // User does not have any yang to exit
     }
 
@@ -404,8 +405,8 @@ mod TestSentinel {
 
         let deposit_amt: Wad = (2 * WAD_ONE).into();
 
-        set_contract_address(ShrineUtils::badguy());
-        let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+        set_contract_address(test_utils::badguy());
+        let yang_amt: Wad = sentinel.enter(eth, user, test_utils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -416,8 +417,8 @@ mod TestSentinel {
 
         let user: ContractAddress = GateUtils::eth_hoarder();
 
-        set_contract_address(ShrineUtils::badguy());
-        let eth_amt: u128 = sentinel.exit(eth, user, ShrineUtils::TROVE_1, WAD_ONE.into());
+        set_contract_address(test_utils::badguy());
+        let eth_amt: u128 = sentinel.exit(eth, user, test_utils::TROVE_1, WAD_ONE.into());
     }
 
 
@@ -437,7 +438,7 @@ mod TestSentinel {
 
         // Attempt to enter a killed gate should fail
         set_contract_address(SentinelUtils::mock_abbot());
-        sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
+        sentinel.enter(eth, user, test_utils::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -455,8 +456,8 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        let yang_amt: Wad = sentinel.enter(eth, user, ShrineUtils::TROVE_1, deposit_amt.val);
-        shrine.deposit(eth, ShrineUtils::TROVE_1, yang_amt);
+        let yang_amt: Wad = sentinel.enter(eth, user, test_utils::TROVE_1, deposit_amt.val);
+        shrine.deposit(eth, test_utils::TROVE_1, yang_amt);
 
         // Killing the gate 
         set_contract_address(SentinelUtils::admin());
@@ -464,7 +465,7 @@ mod TestSentinel {
 
         // Exiting
         set_contract_address(SentinelUtils::mock_abbot());
-        sentinel.exit(eth, user, ShrineUtils::TROVE_1, yang_amt);
+        sentinel.exit(eth, user, test_utils::TROVE_1, yang_amt);
     }
 
     #[test]

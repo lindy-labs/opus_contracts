@@ -1,11 +1,12 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
-use starknet::ContractAddress;
+use starknet::{ContractAddress, contract_address_const};
 use traits::{Default, PartialEq, TryInto};
 
 use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use aura::utils::types::Reward;
 use aura::utils::wadray;
+use aura::utils::wadray::Wad;
 
 
 //
@@ -13,6 +14,35 @@ use aura::utils::wadray;
 //
 
 const WBTC_DECIMALS: u8 = 8;
+
+// Trove constants
+const TROVE_1: u64 = 1;
+const TROVE_2: u64 = 2;
+const TROVE_3: u64 = 3;
+
+//
+// Constant addresses
+//
+
+#[inline(always)]
+fn badguy() -> ContractAddress {
+    contract_address_const::<0x42069>()
+}
+
+#[inline(always)]
+fn trove1_owner_addr() -> ContractAddress {
+    contract_address_const::<0x0001>()
+}
+
+#[inline(always)]
+fn trove2_owner_addr() -> ContractAddress {
+    contract_address_const::<0x0002>()
+}
+
+#[inline(always)]
+fn trove3_owner_addr() -> ContractAddress {
+    contract_address_const::<0x0003>()
+}
 
 //
 // Trait implementations
@@ -52,6 +82,16 @@ impl RewardPartialEq of PartialEq<Reward> {
 //
 // Helpers
 //
+
+#[inline(always)]
+fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+    if a >= b {
+        assert(a - b <= error, message);
+    } else {
+        assert(b - a <= error, message);
+    }
+}
+
 
 // Helper function to return a nested array of token balances given a list of 
 // token addresses and user addresses.
