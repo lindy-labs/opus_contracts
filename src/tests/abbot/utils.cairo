@@ -57,8 +57,8 @@ mod AbbotUtils {
 
     fn subsequent_deposit_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(ETH_DEPOSIT_AMT);
-        asset_amts.append(WBTC_DEPOSIT_AMT);
+        asset_amts.append(SUBSEQUENT_ETH_DEPOSIT_AMT);
+        asset_amts.append(SUBSEQUENT_WBTC_DEPOSIT_AMT);
         asset_amts.span()
     }
 

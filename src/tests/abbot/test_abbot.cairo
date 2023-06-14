@@ -459,7 +459,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_melt_pass() {
-        let (shrine, _, abbot, _, _, trove_owner, trove_id, _, _) =
+        let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, start_forge_amt) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
         let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
@@ -472,35 +472,66 @@ mod TestAbbot {
         let (_, _, _, after_trove_debt) = shrine.get_trove_info(trove_id);
         assert(after_trove_debt == before_trove_debt - melt_amt, 'wrong trove debt');
         assert(shrine.get_yin(trove_owner) == before_yin - melt_amt, 'wrong yin balance');
+
+        // Test non-owner melting
+        let non_owner: ContractAddress = common::trove2_owner_addr();
+        common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
+        let non_owner_forge_amt = start_forge_amt;
+        common::open_trove_helper(abbot, non_owner, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, non_owner_forge_amt);
+
+        set_contract_address(non_owner);
+        abbot.melt(trove_id, after_trove_debt);
+
+        let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
+        assert(final_trove_debt == WadZeroable::zero(), 'wrong trove debt');
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_get_user_trove_ids() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let trove_owner1: ContractAddress = common::trove1_owner_addr();
+        let trove_owner2: ContractAddress = common::trove2_owner_addr();
 
         let forge_amt: Wad = AbbotUtils::OPEN_TROVE_FORGE_AMT.into();
-        common::fund_user(trove_owner, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(trove_owner1, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(trove_owner2, yangs, AbbotUtils::initial_asset_amts());
+
         let first_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+            abbot, trove_owner1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
         );
         let second_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+            abbot, trove_owner2, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+        );
+        let third_trove_id: u64 = common::open_trove_helper(
+            abbot, trove_owner1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
+        );
+        let fourth_trove_id: u64 = common::open_trove_helper(
+            abbot, trove_owner2, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
         );
 
-        let mut expected_user_trove_ids: Array<u64> = Default::default();
-        let empty_user_trove_ids: Span<u64> = expected_user_trove_ids.span();
-        expected_user_trove_ids.append(first_trove_id);
-        expected_user_trove_ids.append(second_trove_id);
+        let mut expected_owner1_trove_ids: Array<u64> = Default::default();
+        let mut expected_owner2_trove_ids: Array<u64> = Default::default();
+
+        let empty_user_trove_ids: Span<u64> = expected_owner1_trove_ids.span();
+
+        expected_owner1_trove_ids.append(first_trove_id);
+        expected_owner1_trove_ids.append(third_trove_id);
+
+        expected_owner2_trove_ids.append(second_trove_id);
+        expected_owner2_trove_ids.append(fourth_trove_id);
 
         assert(
-            abbot.get_user_trove_ids(trove_owner) == expected_user_trove_ids.span(),
+            abbot.get_user_trove_ids(trove_owner1) == expected_owner1_trove_ids.span(),
             'wrong user trove IDs'
         );
-        assert(abbot.get_troves_count() == 2, 'wrong troves count');
+        assert(
+            abbot.get_user_trove_ids(trove_owner2) == expected_owner2_trove_ids.span(),
+            'wrong user trove IDs'
+        );
+        assert(abbot.get_troves_count() == 4, 'wrong troves count');
 
-        let non_user: ContractAddress = contract_address_const::<0x0b0b>();
+        let non_user: ContractAddress = common::trove3_owner_addr();
         assert(
             abbot.get_user_trove_ids(non_user) == empty_user_trove_ids, 'wrong non user trove IDs'
         );
