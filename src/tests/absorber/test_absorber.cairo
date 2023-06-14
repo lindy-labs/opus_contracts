@@ -987,7 +987,7 @@ mod TestAbsorber {
                         absorber.reap();
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
-                        set_block_timestamp(get_block_timestamp() + 60);
+                        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
                         absorber.remove(BoundedU128::max().into());
                         remove_as_second_action = true;
                     } else {
@@ -1512,7 +1512,7 @@ mod TestAbsorber {
             .preview_reap(first_provider);
 
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + 60);
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
         absorber.remove(BoundedU128::max().into());
 
         // Check that first provider receives some amount of yin from the converted 
@@ -1669,7 +1669,7 @@ mod TestAbsorber {
             .preview_reap(first_provider);
 
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + 60);
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
         absorber.remove(BoundedU128::max().into());
 
         // First provider should not receive any yin
@@ -2046,7 +2046,140 @@ mod TestAbsorber {
 
         set_contract_address(provider);
         absorber.request();
-        set_block_timestamp(get_block_timestamp() + 60);
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
         absorber.remove(BoundedU128::max().into());
     }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: No request found', 'ENTRYPOINT_FAILED'))]
+    fn test_remove_no_request_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        set_contract_address(provider);
+        absorber.remove(BoundedU128::max().into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Only 1 removal per request', 'ENTRYPOINT_FAILED'))]
+    fn test_remove_fulfiilled_request_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        set_contract_address(provider);
+        absorber.request();
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
+        absorber.remove(1_u128.into());
+
+        absorber.remove(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Request is not valid yet', 'ENTRYPOINT_FAILED'))]
+    fn test_remove_request_not_valid_yet_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        set_contract_address(provider);
+        absorber.request();
+        // Early by 1 second
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK - 1);
+        absorber.remove(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Request has expired', 'ENTRYPOINT_FAILED'))]
+    fn test_remove_request_expired_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        set_contract_address(provider);
+        absorber.request();
+        // 1 second after validity period
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK + Absorber::REQUEST_VALIDITY_PERIOD + 1);
+        absorber.remove(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
+    fn test_non_provider_request_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        set_contract_address(test_utils::badguy());
+        absorber.request();
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
+    fn test_non_provider_remove_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        set_contract_address(test_utils::badguy());
+        absorber.remove(0_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
+    fn test_non_provider_reap_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        set_contract_address(test_utils::badguy());
+        absorber.reap();
+    }
+    
 }
