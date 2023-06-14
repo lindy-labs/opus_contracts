@@ -19,7 +19,7 @@ mod TestEqualizer {
 
     use aura::tests::equalizer::utils::EqualizerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils;
+    use aura::tests::common;
 
     #[test]
     #[available_gas(20000000000)]
@@ -69,13 +69,13 @@ mod TestEqualizer {
 
         let mut tokens: Array<ContractAddress> = Default::default();
         tokens.append(shrine.contract_address);
-        let mut before_balances = test_utils::get_token_balances(tokens.span(), recipients);
+        let mut before_balances = common::get_token_balances(tokens.span(), recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
 
         set_contract_address(ShrineUtils::admin());
         equalizer.equalize();
 
-        let mut after_balances = test_utils::get_token_balances(tokens.span(), recipients);
+        let mut after_balances = common::get_token_balances(tokens.span(), recipients);
         let mut after_yin_balances = *after_balances.pop_front().unwrap();
 
         let mut minted_surplus = WadZeroable::zero();
@@ -134,7 +134,7 @@ mod TestEqualizer {
             EqualizerUtils::new_recipients(), EqualizerUtils::new_percentages()
         );
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         equalizer.set_allocator(new_allocator.contract_address);
     }
 }

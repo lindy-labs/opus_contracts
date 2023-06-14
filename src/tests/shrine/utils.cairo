@@ -22,7 +22,7 @@ mod ShrineUtils {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
-    use aura::tests::test_utils;
+    use aura::tests::common;
 
     //
     // Constants
@@ -245,7 +245,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_deposit(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.deposit(yang1_addr(), test_utils::TROVE_1, amt);
+        shrine.deposit(yang1_addr(), common::TROVE_1, amt);
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -253,7 +253,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_withdraw(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.withdraw(yang1_addr(), test_utils::TROVE_1, amt);
+        shrine.withdraw(yang1_addr(), common::TROVE_1, amt);
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -261,7 +261,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.forge(test_utils::trove1_owner_addr(), test_utils::TROVE_1, amt, 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, 0_u128.into());
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -269,7 +269,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_melt(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.melt(test_utils::trove1_owner_addr(), test_utils::TROVE_1, amt);
+        shrine.melt(common::trove1_owner_addr(), common::TROVE_1, amt);
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
