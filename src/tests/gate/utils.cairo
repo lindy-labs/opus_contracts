@@ -83,45 +83,32 @@ mod GateUtils {
         token
     }
 
-    fn eth_gate_deploy_internal(shrine: ContractAddress, sentinel: ContractAddress) -> (ContractAddress, ContractAddress) {
+
+    fn gate_deploy(token: ContractAddress, shrine: ContractAddress, sentinel: ContractAddress) -> ContractAddress {
         set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
-        let eth = eth_token_deploy();
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(shrine));
-        calldata.append(contract_address_to_felt252(eth));
+        calldata.append(contract_address_to_felt252(token));
         calldata.append(contract_address_to_felt252(sentinel));
 
         let gate_class_hash: ClassHash = class_hash_try_from_felt252(Gate::TEST_CLASS_HASH).unwrap();
         let (gate, _) = deploy_syscall(gate_class_hash, 0, calldata.span(), false).unwrap_syscall();
 
-        (eth, gate)
-    }
-
-    fn wbtc_gate_deploy_internal(shrine: ContractAddress, sentinel: ContractAddress) -> (ContractAddress, ContractAddress) {
-        set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
-        let wbtc = wbtc_token_deploy();
-
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(shrine));
-        calldata.append(contract_address_to_felt252(wbtc));
-        calldata.append(contract_address_to_felt252(sentinel));
-
-        let gate_class_hash: ClassHash = class_hash_try_from_felt252(Gate::TEST_CLASS_HASH).unwrap();
-        let (gate, _) = deploy_syscall(gate_class_hash, 0, calldata.span(), false).unwrap_syscall();
-
-        (wbtc, gate)
+        gate
     }
 
     fn eth_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = ShrineUtils::shrine_deploy();
-        let (eth, gate) = eth_gate_deploy_internal(shrine, mock_sentinel());
+        let eth: ContractAddress = eth_token_deploy();
+        let gate: ContractAddress = gate_deploy(eth, shrine, mock_sentinel());
         (shrine, eth, gate)
     }
 
     fn wbtc_gate_deploy() -> (ContractAddress, ContractAddress, ContractAddress) {
         let shrine = ShrineUtils::shrine_deploy();
-        let (wbtc, gate) = wbtc_gate_deploy_internal(shrine, mock_sentinel());
+        let wbtc: ContractAddress = wbtc_token_deploy();
+        let gate: ContractAddress = gate_deploy(wbtc, shrine, mock_sentinel());
         (shrine, wbtc, gate)
     }
 

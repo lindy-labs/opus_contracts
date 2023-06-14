@@ -125,7 +125,7 @@ mod Sentinel {
     #[view]
     fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128 {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
         gate.preview_exit(yang_amt)
     }
 
@@ -159,6 +159,7 @@ mod Sentinel {
 
         // Require an initial deposit when adding a yang to prevent first depositor from front-running
         let yang_erc20 = IERC20Dispatcher { contract_address: yang };
+        // scale `asset_amt` up by the difference to match `Wad` precision of yang
         let initial_yang_amt: Wad = wadray::fixed_point_to_wad(
             INITIAL_DEPOSIT_AMT, yang_erc20.decimals()
         );
@@ -182,7 +183,7 @@ mod Sentinel {
         AccessControl::assert_has_role(SentinelRoles::SET_YANG_ASSET_MAX);
 
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
 
         let old_asset_max: u128 = yang_asset_max::read(yang);
         yang_asset_max::write(yang, new_asset_max);
@@ -195,6 +196,7 @@ mod Sentinel {
         AccessControl::assert_has_role(SentinelRoles::ENTER);
 
         let gate: IGateDispatcher = yang_to_gate::read(yang);
+
         assert_can_enter(yang, gate, asset_amt);
         gate.enter(user, trove_id, asset_amt)
     }
@@ -202,9 +204,8 @@ mod Sentinel {
     #[external]
     fn exit(yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
         AccessControl::assert_has_role(SentinelRoles::EXIT);
-
         let gate: IGateDispatcher = yang_to_gate::read(yang);
-        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
 
         gate.exit(user, trove_id, yang_amt)
     }
@@ -226,7 +227,7 @@ mod Sentinel {
     // on-chain conditions
     #[inline(always)]
     fn assert_can_enter(yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
-        assert(gate.contract_address.is_non_zero(), 'SE: Yang is not approved');
+        assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
         assert(yang_is_live::read(yang), 'SE: Gate is not live');
         let current_total: u128 = gate.get_total_assets();
         let max_amt: u128 = yang_asset_max::read(yang);
