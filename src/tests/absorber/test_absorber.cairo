@@ -408,15 +408,12 @@ mod TestAbsorber {
     // Helper function to assert that:
     // 1. a provider has received the correct amount of reward tokens;
     // 2. the previewed amount returned by `preview_reap` is correct; and
-    // 3. a provider's last cumulative asset amount per share wad value is updated for all reward tokens.
     // 
     // Arguments
     // 
     // - `absorber` - Deployed Absorber instance.
     //
     // - `provider` - Address of the provider.
-    // 
-    // - `epoch` - The epoch to check for
     // 
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
@@ -466,7 +463,33 @@ mod TestAbsorber {
                     test_utils::assert_equalish(
                         blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
                     );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+    }
 
+    // Helper function to assert that a provider's last cumulative asset amount per share wad value 
+    // is updated for all reward tokens.
+    // 
+    // Arguments
+    // 
+    // - `absorber` - Deployed Absorber instance.
+    //
+    // - `provider` - Address of the provider.
+    // 
+    // - `asset_addresses` = Ordered list of the reward tokens contracts.
+    //
+    fn assert_provider_reward_cumulatives_updated(
+        absorber: IAbsorberDispatcher,
+        provider: ContractAddress,
+        mut asset_addresses: Span<ContractAddress>,
+    ) {
+        loop {
+            match asset_addresses.pop_front() {
+                Option::Some(asset) => {
                     // Check provider's last cumulative is updated to the latest epoch's
                     let current_epoch: u32 = absorber.get_current_epoch();
                     let reward_info: DistributionInfo = absorber
@@ -1010,6 +1033,7 @@ mod TestAbsorber {
                         expected_blessings_multiplier,
                         error_margin,
                     );
+                    assert_provider_reward_cumulatives_updated(absorber, provider, reward_tokens);
 
                     let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
                     if is_fully_absorbed {
@@ -1198,6 +1222,7 @@ mod TestAbsorber {
             expected_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, provider, reward_tokens);
     }
 
     // Sequence of events
@@ -1330,6 +1355,7 @@ mod TestAbsorber {
             expected_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, first_provider, reward_tokens);
 
         // Step 6
         let mut user_addresses: Array<ContractAddress> = Default::default();
@@ -1385,6 +1411,7 @@ mod TestAbsorber {
             expected_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, second_provider, reward_tokens);
     }
 
 
@@ -1535,6 +1562,7 @@ mod TestAbsorber {
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, first_provider, reward_tokens);
     }
 
     // Sequence of events:
@@ -1691,6 +1719,7 @@ mod TestAbsorber {
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, first_provider, reward_tokens);
     }
 
     // Sequence of events:
@@ -1769,19 +1798,7 @@ mod TestAbsorber {
         );
 
         // Check that second provider's reward cumulatives are updated
-        let mut reward_tokens_copy = reward_tokens;
-        loop {
-            match reward_tokens_copy.pop_front() {
-                Option::Some(reward_token) => {
-                    let reward_cumulative: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*reward_token, expected_epoch);
-                    let second_provider_reward_cumulative: u128 = absorber.get_provider_last_reward_cumulative(second_provider, *reward_token);
-                    assert(second_provider_reward_cumulative == reward_cumulative.asset_amt_per_share, 'wrong prov reward cumulative');
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
-        };
+        assert_provider_reward_cumulatives_updated(absorber, second_provider, reward_tokens);
 
         let aura_reward_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
 
@@ -1851,6 +1868,7 @@ mod TestAbsorber {
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, first_provider, reward_tokens);
 
         let expected_absorption_id: u32 = 2;
         assert(absorber.get_provider_last_absorption(first_provider) == expected_absorption_id, 'wrong last absorption');
@@ -1909,6 +1927,7 @@ mod TestAbsorber {
             expected_second_provider_blessings_multiplier,
             error_margin,
         );
+        assert_provider_reward_cumulatives_updated(absorber, second_provider, reward_tokens);
 
         let expected_absorption_id: u32 = 2;
         assert(absorber.get_provider_last_absorption(second_provider) == expected_absorption_id, 'wrong last absorption');
