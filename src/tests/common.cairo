@@ -1,6 +1,6 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
-use starknet::{ContractAddress, contract_address_const};
+use starknet::{ContractAddress, contract_address_const, contract_address_try_from_felt252};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::set_contract_address;
 use traits::{Default, Into, TryInto};
@@ -30,24 +30,20 @@ const TROVE_3: u64 = 3;
 // Constant addresses
 //
 
-#[inline(always)]
 fn badguy() -> ContractAddress {
-    contract_address_const::<0x42069>()
+    contract_address_try_from_felt252('bad guy').unwrap()
 }
 
-#[inline(always)]
 fn trove1_owner_addr() -> ContractAddress {
-    contract_address_const::<0x0001>()
+    contract_address_try_from_felt252('trove1 owner').unwrap()
 }
 
-#[inline(always)]
 fn trove2_owner_addr() -> ContractAddress {
-    contract_address_const::<0x0002>()
+    contract_address_try_from_felt252('trove2 owner').unwrap()
 }
 
-#[inline(always)]
 fn trove3_owner_addr() -> ContractAddress {
-    contract_address_const::<0x0003>()
+    contract_address_try_from_felt252('trove3 owner').unwrap()
 }
 
 //
