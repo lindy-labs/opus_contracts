@@ -209,7 +209,9 @@ mod TestPragma {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized_fail() {
         let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();
-        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(
+            sentinel, shrine.contract_address
+        );
 
         set_contract_address(ShrineUtils::badguy());
 
@@ -221,7 +223,9 @@ mod TestPragma {
     #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_pair_id_fail() {
         let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();
-        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(
+            sentinel, shrine.contract_address
+        );
 
         set_contract_address(PragmaUtils::admin());
 
@@ -283,8 +287,18 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_pass() {
-        let (shrine, pragma, sentinel, mock_pragma, yangs, gates) =
-            PragmaUtils::pragma_with_yangs();
+        let (shrine, pragma, sentinel, mock_pragma) = PragmaUtils::pragma_deploy();
+
+        let (eth_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
+        let (wbtc_addr, wbtc_gate) = SentinelUtils::add_wbtc_yang(
+            sentinel, shrine.contract_address
+        );
+
+        // Add yangs to Pragma
+        set_contract_address(PragmaUtils::admin());
+        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, eth_addr);
+        pragma.add_yang(PragmaUtils::WBTC_USD_PAIR_ID, wbtc_addr);
+
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
         // Perform a price update with starting exchange rate of 1 yang to 1 asset
@@ -298,18 +312,11 @@ mod TestPragma {
 
         pragma_oracle.update_prices();
 
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let wbtc_addr: ContractAddress = *yangs.at(1);
-
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
         assert(eth_price == (PragmaUtils::ETH_INIT_PRICE * WAD_SCALE).into(), 'wrong ETH price');
 
         let (wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
         assert(wbtc_price == (PragmaUtils::WBTC_INIT_PRICE * WAD_SCALE).into(), 'wrong WBTC price');
-
-        // Perform another price update after rebasing exchange rate to 1 yang to 2 asset
-        let eth_gate: IGateDispatcher = *gates.at(0);
-        let wbtc_gate: IGateDispatcher = *gates.at(1);
 
         let gate_eth_bal: u128 = eth_gate.get_total_assets();
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
@@ -400,15 +407,13 @@ mod TestPragma {
         pragma_oracle.update_prices();
 
         let (after_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
-        assert(before_eth_price == after_eth_price, 'price should not update');
+        assert(before_eth_price == after_eth_price, 'price should not be updated');
     }
 
     // TODO: This can only be completed when we are able to test if an event is emitted
     #[test]
     #[available_gas(20000000000)]
-    fn test_update_prices_invalid_gate_fail() {
-
-    }
+    fn test_update_prices_invalid_gate_fail() {}
 
     #[test]
     #[available_gas(20000000000)]

@@ -90,10 +90,7 @@ mod PragmaUtils {
     }
 
     fn pragma_deploy() -> (
-        IShrineDispatcher,
-        IPragmaDispatcher,
-        ISentinelDispatcher,
-        IMockPragmaDispatcher,
+        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, 
     ) {
         let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
@@ -138,8 +135,12 @@ mod PragmaUtils {
     ) {
         let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
 
-        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
-        let (wbtc_token_addr, wbtc_gate) = SentinelUtils::add_wbtc_yang(sentinel, shrine.contract_address);
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(
+            sentinel, shrine.contract_address
+        );
+        let (wbtc_token_addr, wbtc_gate) = SentinelUtils::add_wbtc_yang(
+            sentinel, shrine.contract_address
+        );
 
         let mut yangs: Array<ContractAddress> = Default::default();
         yangs.append(eth_token_addr);
