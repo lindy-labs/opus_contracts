@@ -162,9 +162,6 @@ mod TestAbbot {
         let eth_addr: ContractAddress = *yangs.at(0);
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
-        let before_eth_yang_total: Wad = shrine.get_yang_total(eth_addr);
-        let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
-
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, yangs, initial_asset_amts());
         let trove_id: u64 = common::open_trove_helper(
@@ -191,12 +188,6 @@ mod TestAbbot {
     fn test_close_non_owner_fail() {
         let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
-
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let wbtc_addr: ContractAddress = *yangs.at(1);
-
-        let before_eth_yang_total: Wad = shrine.get_yang_total(eth_addr);
-        let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         common::fund_user(trove_owner, yangs, initial_asset_amts());
