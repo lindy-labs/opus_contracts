@@ -925,7 +925,7 @@ mod Absorber {
         let ltv_to_threshold: Ray = get_shrine_ltv_to_threshold();
         let limit: Ray = removal_limit::read();
 
-        assert(ltv_to_threshold <= limit, 'ABS: relative LTV above limit');
+        assert(ltv_to_threshold <= limit, 'ABS: Relative LTV above limit');
 
         assert(request.timestamp != 0, 'ABS: No request found');
         assert(!request.has_removed, 'ABS: Only 1 removal per request');

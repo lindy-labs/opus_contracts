@@ -2010,4 +2010,43 @@ mod TestAbsorber {
             idx += 1;
         };
     }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('ABS: Relative LTV above limit', 'ENTRYPOINT_FAILED'))]
+    fn test_remove_exceeds_limit_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        // Change ETH price to make Shrine's LTV to threshold above the limit
+        let eth_addr: ContractAddress = *yangs.at(0);
+        let (eth_yang_price, _, _) = shrine.get_current_yang_price(eth_addr);
+        let new_eth_yang_price: Wad = (eth_yang_price.val / 5).into();  // 80% drop in price
+        set_contract_address(ShrineUtils::admin());
+        shrine.advance(eth_addr, new_eth_yang_price);
+
+        let (threshold, value) = shrine.get_shrine_threshold_and_value();
+        let debt: Wad = shrine.get_total_debt();
+        let ltv: Ray = wadray::rdiv_ww(debt, value);
+        let ltv_to_threshold: Ray = wadray::rdiv(ltv, threshold);
+        let limit: Ray = absorber.get_removal_limit();
+        assert(ltv_to_threshold > limit, 'sanity check for limit');
+
+        set_contract_address(provider);
+        absorber.request();
+        set_block_timestamp(get_block_timestamp() + 60);
+        absorber.remove(BoundedU128::max().into());
+    }
 }
