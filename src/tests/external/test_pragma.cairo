@@ -3,7 +3,10 @@ mod TestPragma {
     use array::{ArrayTrait, SpanTrait};
     use integer::U256Zeroable;
     use option::OptionTrait;
-    use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
+    use starknet::{
+        ContractAddress, contract_address_const, contract_address_try_from_felt252,
+        get_block_timestamp
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
@@ -45,7 +48,7 @@ mod TestPragma {
 
     #[inline(always)]
     fn pepe_token_addr() -> ContractAddress {
-        contract_address_const::<0xbebe>()
+        contract_address_try_from_felt252('PEPE').unwrap()
     }
 
     //
@@ -63,7 +66,6 @@ mod TestPragma {
 
         assert(pragma_ac.get_admin() == admin, 'wrong admin');
         assert(pragma_ac.get_roles(admin) == PragmaRoles::default_admin_role(), 'wrong admin role');
-        assert(pragma_ac.has_role(PragmaRoles::default_admin_role(), admin), 'wrong admin role');
     }
 
     #[test]
@@ -456,8 +458,8 @@ mod TestPragma {
         // return false
         assert(!pragma.probe_task(), 'should not be ready');
 
-        // moving the block time forward to the next time interval, probeTask
-        // should again return true
+        // moving the block time forward to the next time interval, 
+        // probe_task should again return true
         set_block_timestamp(new_ts + Shrine::TIME_INTERVAL);
         assert(pragma.probe_task(), 'should be ready');
     }

@@ -14,7 +14,8 @@ impl U8IntoU256 of Into<u8, u256> {
     }
 }
 
-// TODO: can be removed after audit
+// TODO: can be removed after audit because they are now in corelib
+// https://github.com/starkware-libs/cairo/pull/3293
 impl U64IntoU256 of Into<u64, u256> {
     #[inline(always)]
     fn into(self: u64) -> u256 {
