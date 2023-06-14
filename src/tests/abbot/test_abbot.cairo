@@ -168,7 +168,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
-        let (shrine, _, abbot, _, gates) = AbbotUtils::abbot_deploy();
+        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
 
         let invalid_yang: ContractAddress = contract_address_const::<0xdead>();
         let mut yangs: Array<ContractAddress> = Default::default();
@@ -502,7 +502,7 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_get_user_trove_ids() {
-        let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
+        let (_, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
         let trove_owner1: ContractAddress = common::trove1_owner_addr();
         let trove_owner2: ContractAddress = common::trove2_owner_addr();
 

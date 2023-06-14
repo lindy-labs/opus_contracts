@@ -36,7 +36,6 @@ mod AbbotUtils {
     const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
     const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
 
-
     //
     // Constant helpers
     //
