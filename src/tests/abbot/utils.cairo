@@ -15,9 +15,6 @@ mod AbbotUtils {
     use aura::core::roles::ShrineRoles;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IERC20::{
-        IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
-    };
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -63,57 +60,8 @@ mod AbbotUtils {
         let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
         sentinel_ac.grant_role(SentinelRoles::abbot(), abbot_addr);
 
-        (shrine, sentinel, abbot, yangs, gates)
-    }
-
-
-    // Helper function to fund a user account with yang assets
-    fn fund_user(
-        user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>
-    ) {
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    IMintableDispatcher {
-                        contract_address: *yang
-                    }.mint(user, (*asset_amts.pop_front().unwrap()).into());
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
-    }
-
-    // Helper function to approve Gates to transfer tokens from user, and to open a trove
-    fn open_trove_helper(
-        abbot: IAbbotDispatcher,
-        user: ContractAddress,
-        mut yangs: Span<ContractAddress>,
-        yang_asset_amts: Span<u128>,
-        mut gates: Span<IGateDispatcher>,
-        forge_amt: Wad
-    ) -> u64 {
-        set_contract_address(user);
-        let mut yangs_copy = yangs;
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    // Approve Gate to transfer from user
-                    let gate: IGateDispatcher = *gates.pop_front().unwrap();
-                    SentinelUtils::approve_max(gate, *yang, user);
-                },
-                Option::None(_) => {
-                    break;
-                }
-            };
-        };
-
-        set_contract_address(user);
-        let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
-
         set_contract_address(ContractAddressZeroable::zero());
 
-        trove_id
+        (shrine, sentinel, abbot, yangs, gates)
     }
 }

@@ -1,12 +1,19 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
 use starknet::{ContractAddress, contract_address_const};
-use traits::{Default, TryInto};
+use starknet::contract_address::ContractAddressZeroable;
+use starknet::testing::set_contract_address;
+use traits::{Default, Into, TryInto};
 
-use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+use aura::interfaces::IERC20::{
+    IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
+};
+use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::utils::wadray;
 use aura::utils::wadray::Wad;
 
+use aura::tests::sentinel::utils::SentinelUtils;
 
 //
 // Constants
@@ -69,18 +76,61 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
 }
 
 //
-// Helpers
+// Helpers - Test setup
 //
 
-#[inline(always)]
-fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
-    if a >= b {
-        assert(a - b <= error, message);
-    } else {
-        assert(b - a <= error, message);
-    }
+// Helper function to fund a user account with yang assets
+fn fund_user(
+    user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>
+) {
+    loop {
+        match yangs.pop_front() {
+            Option::Some(yang) => {
+                IMintableDispatcher {
+                    contract_address: *yang
+                }.mint(user, (*asset_amts.pop_front().unwrap()).into());
+            },
+            Option::None(_) => {
+                break;
+            }
+        };
+    };
 }
 
+// Helper function to approve Gates to transfer tokens from user, and to open a trove
+fn open_trove_helper(
+    abbot: IAbbotDispatcher,
+    user: ContractAddress,
+    mut yangs: Span<ContractAddress>,
+    yang_asset_amts: Span<u128>,
+    mut gates: Span<IGateDispatcher>,
+    forge_amt: Wad
+) -> u64 {
+    set_contract_address(user);
+    let mut yangs_copy = yangs;
+    loop {
+        match yangs_copy.pop_front() {
+            Option::Some(yang) => {
+                // Approve Gate to transfer from user
+                let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                SentinelUtils::approve_max(gate, *yang, user);
+            },
+            Option::None(_) => {
+                break;
+            }
+        };
+    };
+
+    set_contract_address(user);
+    let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
+
+    set_contract_address(ContractAddressZeroable::zero());
+
+    trove_id
+}
+
+//
+// Helpers - Convenience getters
 
 // Helper function to return a nested array of token balances given a list of 
 // token addresses and user addresses.
@@ -117,5 +167,18 @@ fn get_token_balances(
                 break balances.span();
             }
         };
+    }
+}
+
+//
+// Helpers - Assertions
+//
+
+#[inline(always)]
+fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+    if a >= b {
+        assert(a - b <= error, message);
+    } else {
+        assert(b - a <= error, message);
     }
 }

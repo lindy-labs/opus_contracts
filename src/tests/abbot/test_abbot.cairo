@@ -62,8 +62,8 @@ mod TestAbbot {
         let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -166,8 +166,8 @@ mod TestAbbot {
         let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -199,8 +199,8 @@ mod TestAbbot {
         let before_wbtc_yang_total: Wad = shrine.get_yang_total(wbtc_addr);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -218,8 +218,8 @@ mod TestAbbot {
         let wbtc_addr: ContractAddress = *yangs.at(1);
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -290,8 +290,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -308,8 +308,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -328,8 +328,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -354,8 +354,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -393,8 +393,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -411,8 +411,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -428,8 +428,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -457,8 +457,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -475,8 +475,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -491,8 +491,8 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
@@ -515,11 +515,11 @@ mod TestAbbot {
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
-        AbbotUtils::fund_user(trove_owner, yangs, initial_asset_amts());
-        let first_trove_id: u64 = AbbotUtils::open_trove_helper(
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let first_trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
-        let second_trove_id: u64 = AbbotUtils::open_trove_helper(
+        let second_trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
