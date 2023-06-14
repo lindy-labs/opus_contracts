@@ -84,7 +84,7 @@ mod TestAbbot {
 
         // User opens another trove
         let second_forge_amt: Wad = 1666000000000000000000_u128.into();
-        let mut second_deposit_amts = AbbotUtils::open_trove_yang_asset_amts();
+        let mut second_deposit_amts = AbbotUtils::subsequent_deposit_amts();
         let second_trove_id: u64 = common::open_trove_helper(
             abbot, trove_owner, yangs, second_deposit_amts, gates, second_forge_amt
         );
@@ -124,8 +124,6 @@ mod TestAbbot {
             };
         };
 
-        shrine.get_total_debt().print();
-        (forge_amt + second_forge_amt).print();
         assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
     }
 
@@ -217,18 +215,24 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_deposit_pass() {
-        let (shrine, _, abbot, mut yangs, _, trove_owner, trove_id, mut deposited_amts, _) =
+        let (shrine, _, abbot, mut yangs, mut gates, trove_owner, trove_id, mut deposited_amts, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
         set_contract_address(trove_owner);
+        let mut yangs_copy = yangs;
         loop {
-            match yangs.pop_front() {
+            match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    abbot.deposit(*yang, trove_id, *deposited_amts.pop_front().unwrap());
+                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
+                    let deposit_amt: u128 = *deposited_amts.pop_front().unwrap();
+                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
+                        deposit_amt, decimals
+                    );
+                    abbot.deposit(*yang, trove_id, deposit_amt);
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(
-                        after_trove_yang == (before_trove_yang.val * 2).into(),
+                        after_trove_yang == before_trove_yang + expected_deposited_yang,
                         'wrong yang amount #1'
                     );
 
@@ -237,6 +241,37 @@ mod TestAbbot {
                     assert(
                         shrine.get_deposit(*yang, trove_id) == after_trove_yang,
                         'wrong yang amount #2'
+                    );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        // Check that non-owner can deposit to trove
+        let non_owner: ContractAddress = common::trove2_owner_addr();
+        let mut non_owner_deposit_amts: Span<u128> = AbbotUtils::subsequent_deposit_amts();
+        common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
+
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    SentinelUtils::approve_max(*gates.pop_front().unwrap(), *yang, non_owner);
+
+                    let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
+                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
+                    let deposit_amt: u128 = *non_owner_deposit_amts.pop_front().unwrap();
+                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
+                        deposit_amt, decimals
+                    );
+
+                    set_contract_address(non_owner);
+                    abbot.deposit(*yang, trove_id, deposit_amt);
+                    let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
+                    assert(
+                        after_trove_yang == before_trove_yang + expected_deposited_yang,
+                        'wrong yang amount #3'
                     );
                 },
                 Option::None(_) => {

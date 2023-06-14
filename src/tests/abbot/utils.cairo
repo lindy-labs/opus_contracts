@@ -33,6 +33,10 @@ mod AbbotUtils {
     const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
     const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
 
+    const SUBSEQUENT_ETH_DEPOSIT_AMT: u128 = 2345000000000000000; // 2.345 (Wad);
+    const SUBSEQUENT_WBTC_DEPOSIT_AMT: u128 = 44300000; // 0.443 (WBTC decimals);
+
+
     //
     // Constant helpers
     //
@@ -45,6 +49,13 @@ mod AbbotUtils {
     }
 
     fn open_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT);
+        asset_amts.append(WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
+
+    fn subsequent_deposit_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(ETH_DEPOSIT_AMT);
         asset_amts.append(WBTC_DEPOSIT_AMT);
