@@ -8,7 +8,7 @@ mod TestPragma {
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
 
-    use aura::core::roles::{PragmaRoles, ShrineRoles};
+    use aura::core::roles::PragmaRoles;
     use aura::core::shrine::Shrine;
     use aura::external::pragma::Pragma;
 
@@ -20,7 +20,7 @@ mod TestPragma {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::pow::pow10;
-    use aura::utils::types::Pragma::{DataType, PricesResponse};
+    use aura::utils::types::Pragma::PricesResponse;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
@@ -38,6 +38,15 @@ mod TestPragma {
     //
 
     const PEPE_USD_PAIR_ID: u256 = 5784117554504356676; // str_to_felt("PEPE/USD")     
+
+    //
+    // Address constants
+    //
+
+    #[inline(always)]
+    fn pepe_token_addr() -> ContractAddress {
+        contract_address_const::<0xbebe>()
+    }
 
     //
     // Tests - Deployment and setters
@@ -143,6 +152,16 @@ mod TestPragma {
 
         set_contract_address(PragmaUtils::admin());
         pragma.set_oracle(new_address);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Address cannot be zero', 'ENTRYPOINT_FAILED'))]
+    fn test_set_oracle_zero_address_fail() {
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
+
+        set_contract_address(PragmaUtils::admin());
+        pragma.set_oracle(ContractAddressZeroable::zero());
     }
 
     #[test]
@@ -253,7 +272,7 @@ mod TestPragma {
 
         set_contract_address(PragmaUtils::admin());
 
-        pragma.add_yang(PEPE_USD_PAIR_ID, contract_address_const::<0xbebe>());
+        pragma.add_yang(PEPE_USD_PAIR_ID, pepe_token_addr());
     }
 
     #[test]
@@ -277,7 +296,7 @@ mod TestPragma {
 
         set_contract_address(PragmaUtils::admin());
 
-        pragma.add_yang(PEPE_USD_PAIR_ID, contract_address_const::<0xbebe>());
+        pragma.add_yang(PEPE_USD_PAIR_ID, pepe_token_addr());
     }
 
     //
