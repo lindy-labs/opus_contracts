@@ -7,7 +7,7 @@ mod AbbotUtils {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::Default;
+    use traits::{Default, Into};
 
     use aura::core::abbot::Abbot;
     use aura::core::roles::SentinelRoles;
@@ -21,8 +21,35 @@ mod AbbotUtils {
     use aura::utils::wadray;
     use aura::utils::wadray::Wad;
 
+    use aura::tests::common;
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
+
+    //
+    // Constants
+    //
+
+    const OPEN_TROVE_FORGE_AMT: u128 = 2000000000000000000000; // 2_000 (Wad)
+    const ETH_DEPOSIT_AMT: u128 = 10000000000000000000; // 10 (Wad);
+    const WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (WBTC decimals);
+
+    //
+    // Constant helpers
+    //
+
+    fn initial_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT * 10);
+        asset_amts.append(WBTC_DEPOSIT_AMT * 10);
+        asset_amts.span()
+    }
+
+    fn open_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(ETH_DEPOSIT_AMT);
+        asset_amts.append(WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
 
     //
     // Test setup helpers
@@ -62,5 +89,29 @@ mod AbbotUtils {
         set_contract_address(ContractAddressZeroable::zero());
 
         (shrine, sentinel, abbot, yangs, gates)
+    }
+
+    fn deploy_abbot_and_open_trove() -> (
+        IShrineDispatcher,
+        ISentinelDispatcher,
+        IAbbotDispatcher,
+        Span<ContractAddress>,
+        Span<IGateDispatcher>,
+        ContractAddress, // trove owner
+        u64, // trove ID
+        Span<u128>, // deposited yang asset amounts
+        Wad, // forge amount
+    ) {
+        let (shrine, sentinel, abbot, yangs, gates) = abbot_deploy();
+        let trove_owner: ContractAddress = common::trove1_owner_addr();
+
+        let forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
+        common::fund_user(trove_owner, yangs, initial_asset_amts());
+        let deposited_amts: Span<u128> = open_trove_yang_asset_amts();
+        let trove_id: u64 = common::open_trove_helper(
+            abbot, trove_owner, yangs, deposited_amts, gates, forge_amt
+        );
+
+        (shrine, sentinel, abbot, yangs, gates, trove_owner, trove_id, deposited_amts, forge_amt)
     }
 }
