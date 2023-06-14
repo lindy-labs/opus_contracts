@@ -30,7 +30,9 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_open_trove_pass() {
-        let (shrine, _, abbot, mut yangs, gates, trove_owner, trove_id, mut deposited_amts, forge_amt) =
+        let (
+            shrine, _, abbot, mut yangs, gates, trove_owner, trove_id, mut deposited_amts, forge_amt
+        ) =
             AbbotUtils::deploy_abbot_and_open_trove();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
@@ -61,7 +63,9 @@ mod TestAbbot {
                         *deposited_amts.pop_front().unwrap(), decimals
                     );
                     let expected_yang_total: Wad = expected_initial_yang + expected_deposited_yang;
-                    assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #1');
+                    assert(
+                        shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #1'
+                    );
                     yangs_total.append(expected_yang_total);
 
                     assert(
@@ -111,7 +115,9 @@ mod TestAbbot {
                         *second_deposit_amts.pop_front().unwrap(), decimals
                     );
                     let expected_yang_total: Wad = before_yang_total + expected_deposited_yang;
-                    assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #2');
+                    assert(
+                        shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #2'
+                    );
 
                     assert(
                         shrine.get_deposit(*yang, second_trove_id) == expected_deposited_yang,
@@ -477,7 +483,14 @@ mod TestAbbot {
         let non_owner: ContractAddress = common::trove2_owner_addr();
         common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
         let non_owner_forge_amt = start_forge_amt;
-        common::open_trove_helper(abbot, non_owner, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, non_owner_forge_amt);
+        common::open_trove_helper(
+            abbot,
+            non_owner,
+            yangs,
+            AbbotUtils::open_trove_yang_asset_amts(),
+            gates,
+            non_owner_forge_amt
+        );
 
         set_contract_address(non_owner);
         abbot.melt(trove_id, after_trove_debt);
