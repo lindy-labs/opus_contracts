@@ -200,7 +200,10 @@ mod TestAbsorber {
     // Helper function to deploy a blesser for a token, 
     // and mint tokens to the deployed blesser if `mint_to_blesser` is `true`.
     fn deploy_blesser_for_reward(
-        absorber: IAbsorberDispatcher, asset: ContractAddress, bless_amt: u128, mint_to_blesser: bool
+        absorber: IAbsorberDispatcher,
+        asset: ContractAddress,
+        bless_amt: u128,
+        mint_to_blesser: bool
     ) -> ContractAddress {
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin()));
@@ -990,7 +993,9 @@ mod TestAbsorber {
                         absorber.reap();
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
-                        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
+                        set_block_timestamp(
+                            get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK
+                        );
                         absorber.remove(BoundedU128::max().into());
                         remove_as_second_action = true;
                     } else {
@@ -2023,20 +2028,13 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         // Change ETH price to make Shrine's LTV to threshold above the limit
         let eth_addr: ContractAddress = *yangs.at(0);
         let (eth_yang_price, _, _) = shrine.get_current_yang_price(eth_addr);
-        let new_eth_yang_price: Wad = (eth_yang_price.val / 5).into();  // 80% drop in price
+        let new_eth_yang_price: Wad = (eth_yang_price.val / 5).into(); // 80% drop in price
         set_contract_address(ShrineUtils::admin());
         shrine.advance(eth_addr, new_eth_yang_price);
 
@@ -2062,14 +2060,7 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         set_contract_address(provider);
@@ -2085,14 +2076,7 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         set_contract_address(provider);
@@ -2112,14 +2096,7 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         set_contract_address(provider);
@@ -2138,20 +2115,18 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         set_contract_address(provider);
         absorber.request();
         // 1 second after validity period
-        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK + Absorber::REQUEST_VALIDITY_PERIOD + 1);
+        set_block_timestamp(
+            get_block_timestamp()
+                + Absorber::REQUEST_BASE_TIMELOCK
+                + Absorber::REQUEST_VALIDITY_PERIOD
+                + 1
+        );
         absorber.remove(1_u128.into());
     }
 
@@ -2184,7 +2159,7 @@ mod TestAbsorber {
         set_contract_address(test_utils::badguy());
         absorber.reap();
     }
-    
+
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
@@ -2192,7 +2167,7 @@ mod TestAbsorber {
         let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
 
         let provider = provider_1();
-        let less_than_initial_shares_amt: Wad = (Absorber::INITIAL_SHARES - 1).into(); 
+        let less_than_initial_shares_amt: Wad = (Absorber::INITIAL_SHARES - 1).into();
         provide_to_absorber(
             shrine,
             abbot,
@@ -2213,7 +2188,7 @@ mod TestAbsorber {
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
-        
+
         let yang_asset_amts: Span<u128> = provider_asset_amts();
         AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
         AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
@@ -2234,7 +2209,7 @@ mod TestAbsorber {
 
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
-        
+
         let yang_asset_amts: Span<u128> = provider_asset_amts();
         AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
         AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
@@ -2263,14 +2238,7 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         let expected_epoch: u32 = 0;
@@ -2279,8 +2247,10 @@ mod TestAbsorber {
         let veaura_addr: ContractAddress = *reward_tokens.at(1);
         let veaura_blesser_addr: ContractAddress = *blessers.at(1);
 
-        let before_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        let before_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let before_aura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let before_veaura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
 
         // Set veAURA to inactive
         set_contract_address(admin());
@@ -2290,11 +2260,23 @@ mod TestAbsorber {
         set_contract_address(provider);
         absorber.provide(0_u128.into());
 
-        let after_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        assert(after_aura_distribution.asset_amt_per_share > before_aura_distribution.asset_amt_per_share, 'cumulative should increase');
+        let after_aura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        assert(
+            after_aura_distribution
+                .asset_amt_per_share > before_aura_distribution
+                .asset_amt_per_share,
+            'cumulative should increase'
+        );
 
-        let after_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
-        assert(after_veaura_distribution.asset_amt_per_share == before_veaura_distribution.asset_amt_per_share, 'cumulative should not increase');
+        let after_veaura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        assert(
+            after_veaura_distribution
+                .asset_amt_per_share == before_veaura_distribution
+                .asset_amt_per_share,
+            'cumulative should not increase'
+        );
 
         // Set AURA to inactive
         set_contract_address(admin());
@@ -2304,11 +2286,23 @@ mod TestAbsorber {
         set_contract_address(provider);
         absorber.provide(0_u128.into());
 
-        let final_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        assert(final_aura_distribution.asset_amt_per_share == after_aura_distribution.asset_amt_per_share, 'cumulative should bit increase');
+        let final_aura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        assert(
+            final_aura_distribution
+                .asset_amt_per_share == after_aura_distribution
+                .asset_amt_per_share,
+            'cumulative should bit increase'
+        );
 
-        let final_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
-        assert(final_veaura_distribution.asset_amt_per_share == after_veaura_distribution.asset_amt_per_share, 'cumulative should not increase');
+        let final_veaura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        assert(
+            final_veaura_distribution
+                .asset_amt_per_share == after_veaura_distribution
+                .asset_amt_per_share,
+            'cumulative should not increase'
+        );
     }
 
     #[test]
@@ -2339,28 +2333,35 @@ mod TestAbsorber {
         let provider = provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         provide_to_absorber(
-            shrine,
-            abbot,
-            absorber,
-            provider,
-            yangs,
-            provider_asset_amts(),
-            gates,
-            provided_amt
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
 
         let expected_epoch: u32 = 0;
-        let before_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        let before_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        let before_aura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let before_veaura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
 
         // Trigger rewards
         set_contract_address(provider);
         absorber.provide(0_u128.into());
 
-        let after_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
-        assert(after_aura_distribution.asset_amt_per_share == before_aura_distribution.asset_amt_per_share, 'cumulative should not increase');
+        let after_aura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        assert(
+            after_aura_distribution
+                .asset_amt_per_share == before_aura_distribution
+                .asset_amt_per_share,
+            'cumulative should not increase'
+        );
 
-        let after_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
-        assert(after_veaura_distribution.asset_amt_per_share > before_veaura_distribution.asset_amt_per_share, 'cumulative should increase');
+        let after_veaura_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        assert(
+            after_veaura_distribution
+                .asset_amt_per_share > before_veaura_distribution
+                .asset_amt_per_share,
+            'cumulative should increase'
+        );
     }
 }
