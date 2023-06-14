@@ -28,13 +28,13 @@ mod TestPragma {
     use aura::utils::wadray;
     use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
 
+    use aura::tests::common;
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
     };
     use aura::tests::external::utils::PragmaUtils;
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
 
     //
     // Constants
@@ -141,7 +141,7 @@ mod TestPragma {
         let valid_freshness: u64 = PragmaUtils::FRESHNESS_THRESHOLD;
         let valid_sources: u64 = PragmaUtils::SOURCES_THRESHOLD;
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(common::badguy());
         pragma.set_price_validity_thresholds(valid_freshness, valid_sources);
     }
 
@@ -174,7 +174,7 @@ mod TestPragma {
 
         let new_address: ContractAddress = contract_address_const::<0x9999>();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(common::badguy());
         pragma.set_oracle(new_address);
     }
 
@@ -221,7 +221,7 @@ mod TestPragma {
 
         let new_frequency: u64 = PragmaUtils::UPDATE_FREQUENCY * 2;
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(common::badguy());
         pragma.set_update_frequency(new_frequency);
     }
 
@@ -234,7 +234,7 @@ mod TestPragma {
             sentinel, shrine.contract_address
         );
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(common::badguy());
 
         pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, eth_token_addr);
     }
