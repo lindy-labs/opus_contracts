@@ -197,9 +197,10 @@ mod TestAbsorber {
         bless_amts.span()
     }
 
-    // Helper function to deploy a blesser for a token, and mint tokens to the deployed blesser.
+    // Helper function to deploy a blesser for a token, 
+    // and mint tokens to the deployed blesser if `mint_to_blesser` is `true`.
     fn deploy_blesser_for_reward(
-        absorber: IAbsorberDispatcher, asset: ContractAddress, bless_amt: u128
+        absorber: IAbsorberDispatcher, asset: ContractAddress, bless_amt: u128, mint_to_blesser: bool
     ) -> ContractAddress {
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin()));
@@ -216,8 +217,10 @@ mod TestAbsorber {
         )
             .unwrap_syscall();
 
-        let token_minter = IMintableDispatcher { contract_address: asset };
-        token_minter.mint(mock_blesser_addr, BLESSER_REWARD_TOKEN_BALANCE.into());
+        if mint_to_blesser {
+            let token_minter = IMintableDispatcher { contract_address: asset };
+            token_minter.mint(mock_blesser_addr, BLESSER_REWARD_TOKEN_BALANCE.into());
+        }
 
         mock_blesser_addr
     }
@@ -231,7 +234,7 @@ mod TestAbsorber {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let blesser: ContractAddress = deploy_blesser_for_reward(
-                        absorber, *asset, *bless_amts.pop_front().unwrap()
+                        absorber, *asset, *bless_amts.pop_front().unwrap(), true
                     );
                     blessers.append(blesser);
                 },
@@ -709,12 +712,12 @@ mod TestAbsorber {
 
         let aura_token: ContractAddress = aura_token_deploy();
         let aura_blesser: ContractAddress = deploy_blesser_for_reward(
-            absorber, aura_token, AURA_BLESS_AMT
+            absorber, aura_token, AURA_BLESS_AMT, true
         );
 
         let veaura_token: ContractAddress = veaura_token_deploy();
         let veaura_blesser: ContractAddress = deploy_blesser_for_reward(
-            absorber, veaura_token, VEAURA_BLESS_AMT
+            absorber, veaura_token, VEAURA_BLESS_AMT, true
         );
 
         set_contract_address(admin());
@@ -2240,5 +2243,124 @@ mod TestAbsorber {
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
 
         absorber.provide(provided_amt);
+    }
+
+    //
+    // Tests - Bestow
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_bestow_inactive_reward() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
+        let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
+        let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing
+        );
+        add_rewards_to_absorber(absorber, reward_tokens, blessers);
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        let expected_epoch: u32 = 0;
+        let aura_addr: ContractAddress = *reward_tokens.at(0);
+        let aura_blesser_addr: ContractAddress = *blessers.at(0);
+        let veaura_addr: ContractAddress = *reward_tokens.at(1);
+        let veaura_blesser_addr: ContractAddress = *blessers.at(1);
+
+        let before_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let before_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+
+        // Set veAURA to inactive
+        set_contract_address(admin());
+        absorber.set_reward(veaura_addr, veaura_blesser_addr, false);
+
+        // Trigger rewards
+        set_contract_address(provider);
+        absorber.provide(0_u128.into());
+
+        let after_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        assert(after_aura_distribution.asset_amt_per_share > before_aura_distribution.asset_amt_per_share, 'cumulative should increase');
+
+        let after_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        assert(after_veaura_distribution.asset_amt_per_share == before_veaura_distribution.asset_amt_per_share, 'cumulative should not increase');
+
+        // Set AURA to inactive
+        set_contract_address(admin());
+        absorber.set_reward(aura_addr, aura_blesser_addr, false);
+
+        // Trigger rewards
+        set_contract_address(provider);
+        absorber.provide(0_u128.into());
+
+        let final_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        assert(final_aura_distribution.asset_amt_per_share == after_aura_distribution.asset_amt_per_share, 'cumulative should bit increase');
+
+        let final_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        assert(final_veaura_distribution.asset_amt_per_share == after_veaura_distribution.asset_amt_per_share, 'cumulative should not increase');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_bestow_depleted_active_reward() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
+        let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
+
+        let aura_addr: ContractAddress = *reward_tokens.at(0);
+        let veaura_addr: ContractAddress = *reward_tokens.at(1);
+
+        // Manually deploy blesser to control minting of reward tokens to blesser
+        // so that AURA blesser has no tokens
+        let aura_blesser_addr: ContractAddress = deploy_blesser_for_reward(
+            absorber, aura_addr, AURA_BLESS_AMT, false
+        );
+        let veaura_blesser_addr: ContractAddress = deploy_blesser_for_reward(
+            absorber, veaura_addr, AURA_BLESS_AMT, true
+        );
+
+        let mut blessers: Array<ContractAddress> = Default::default();
+        blessers.append(aura_blesser_addr);
+        blessers.append(veaura_blesser_addr);
+
+        add_rewards_to_absorber(absorber, reward_tokens, blessers.span());
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            provided_amt
+        );
+
+        let expected_epoch: u32 = 0;
+        let before_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        let before_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+
+        // Trigger rewards
+        set_contract_address(provider);
+        absorber.provide(0_u128.into());
+
+        let after_aura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
+        assert(after_aura_distribution.asset_amt_per_share == before_aura_distribution.asset_amt_per_share, 'cumulative should not increase');
+
+        let after_veaura_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(veaura_addr, expected_epoch);
+        assert(after_veaura_distribution.asset_amt_per_share > before_veaura_distribution.asset_amt_per_share, 'cumulative should increase');
     }
 }
