@@ -1,3 +1,4 @@
+mod abbot;
 mod equalizer;
 mod external;
 mod gate;
