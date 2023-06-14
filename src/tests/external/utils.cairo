@@ -111,17 +111,16 @@ mod PragmaUtils {
         let (pragma_addr, _) = deploy_syscall(pragma_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
-        // Grant access control
+        // Grant necessary roles
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
         shrine_ac.grant_role(ShrineRoles::ADVANCE, pragma_addr);
-        set_contract_address(ContractAddressZeroable::zero());
 
+        let shrine = IShrineDispatcher { contract_address: shrine_addr };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        let shrine = IShrineDispatcher { contract_address: shrine_addr };
         (shrine, pragma, sentinel, mock_pragma)
     }
 

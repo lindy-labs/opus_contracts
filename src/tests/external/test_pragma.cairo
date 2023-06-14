@@ -393,7 +393,7 @@ mod TestPragma {
         pragma_oracle.update_prices();
 
         price += 10;
-        new_ts += 1;
+        new_ts += Pragma::LOWER_UPDATE_FREQUENCY_BOUND - 1;
         set_block_timestamp(new_ts);
         PragmaUtils::mock_valid_price_update(
             mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts
