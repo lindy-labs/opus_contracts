@@ -541,9 +541,10 @@ mod TestAbsorber {
                     let reward_distribution_info: DistributionInfo = absorber
                         .get_cumulative_reward_amt_by_epoch(*asset, epoch);
                     // Convert to Wad for fixed point operations
-                    let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap())
-                        .into();
-                    let expected_blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
+                    let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
+                    let expected_blessed_amt: Wad = wadray::rmul_wr(
+                        reward_amt, blessings_multiplier
+                    );
                     let expected_amt_per_share: Wad = expected_blessed_amt / total_shares;
 
                     assert(
@@ -587,7 +588,8 @@ mod TestAbsorber {
                         'error not propagated'
                     );
                     assert(
-                        after_epoch_distribution.asset_amt_per_share == 0, 'wrong start reward cumulative'
+                        after_epoch_distribution.asset_amt_per_share == 0,
+                        'wrong start reward cumulative'
                     );
                 },
                 Option::None(_) => {
@@ -1759,11 +1761,13 @@ mod TestAbsorber {
 
         // Step 2
         let first_update_assets: Span<u128> = first_update_assets();
-        let burn_pct: Ray = 266700000000000000000000000_u128.into();  // 26.67% (Ray)
+        let burn_pct: Ray = 266700000000000000000000000_u128.into(); // 26.67% (Ray)
         simulate_update_with_pct_to_drain(shrine, absorber, yangs, first_update_assets, burn_pct);
 
         let remaining_absorber_yin: Wad = shrine.get_yin(absorber.contract_address);
-        let expected_yin_per_share: Ray = wadray::rdiv_ww(remaining_absorber_yin, first_provided_amt);
+        let expected_yin_per_share: Ray = wadray::rdiv_ww(
+            remaining_absorber_yin, first_provided_amt
+        );
 
         // Step 3
         let second_provider = provider_2();
@@ -1779,17 +1783,19 @@ mod TestAbsorber {
             second_provided_amt
         );
 
-        
-        let expected_second_provider_shares: Wad = wadray::rdiv_wr(second_provided_amt, expected_yin_per_share);
+        let expected_second_provider_shares: Wad = wadray::rdiv_wr(
+            second_provided_amt, expected_yin_per_share
+        );
         let second_provider_info: Provision = absorber.get_provision(second_provider);
-        assert(second_provider_info.shares == expected_second_provider_shares,
-            'wrong provider shares'
+        assert(
+            second_provider_info.shares == expected_second_provider_shares, 'wrong provider shares'
         );
 
         let expected_epoch: u32 = 0;
         assert(second_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
-        let error_margin: Wad = 1_u128.into();  // loss of precision from rounding favouring the protocol
+        let error_margin: Wad = 1_u128
+            .into(); // loss of precision from rounding favouring the protocol
         test_utils::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
@@ -1800,16 +1806,21 @@ mod TestAbsorber {
         // Check that second provider's reward cumulatives are updated
         assert_provider_reward_cumulatives_updated(absorber, second_provider, reward_tokens);
 
-        let aura_reward_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
+        let aura_reward_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
 
         let total_shares: Wad = absorber.get_total_shares_for_current_epoch();
         let first_provider_info: Provision = absorber.get_provision(first_provider);
-        let expected_first_provider_pct: Ray = wadray::rdiv_ww(first_provider_info.shares, total_shares);
-        let expected_second_provider_pct: Ray = wadray::rdiv_ww(second_provider_info.shares, total_shares);
+        let expected_first_provider_pct: Ray = wadray::rdiv_ww(
+            first_provider_info.shares, total_shares
+        );
+        let expected_second_provider_pct: Ray = wadray::rdiv_ww(
+            second_provider_info.shares, total_shares
+        );
 
         // Step 4
         let second_update_assets: Span<u128> = second_update_assets();
-        let burn_pct: Ray = 512390000000000000000000000_u128.into();  // 51.239% (Ray)
+        let burn_pct: Ray = 512390000000000000000000000_u128.into(); // 51.239% (Ray)
         simulate_update_with_pct_to_drain(shrine, absorber, yangs, second_update_assets, burn_pct);
 
         // Step 5
@@ -1836,7 +1847,7 @@ mod TestAbsorber {
             get_asset_amts_by_pct(second_update_assets, expected_first_provider_pct)
         );
 
-        let error_margin: Wad = 10000_u128.into();  // 10**6 (Wad)
+        let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
         assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -1850,14 +1861,22 @@ mod TestAbsorber {
         // Check reward cumulative is updated for AURA
         // Convert to Wad for fixed point operations
         let expected_aura_reward_increment: Wad = (2 * *reward_amts_per_blessing.at(0)).into();
-        let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment / total_shares;
-        let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share + expected_aura_reward_cumulative_increment.val;
-        let updated_aura_reward_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
-        assert(updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative, 'wrong AURA reward cumulative #1');
+        let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
+            / total_shares;
+        let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
+            + expected_aura_reward_cumulative_increment.val;
+        let updated_aura_reward_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
+        assert(
+            updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
+            'wrong AURA reward cumulative #1'
+        );
 
         // First provider receives 2 full rounds and 2 partial rounds of rewards.
-        let expected_first_provider_partial_multiplier: Ray = (expected_first_provider_pct.val * 2).into();
-        let expected_first_provider_blessings_multiplier: Ray = (RAY_SCALE * 2).into() + expected_first_provider_partial_multiplier;
+        let expected_first_provider_partial_multiplier: Ray = (expected_first_provider_pct.val * 2)
+            .into();
+        let expected_first_provider_blessings_multiplier: Ray = (RAY_SCALE * 2).into()
+            + expected_first_provider_partial_multiplier;
         assert_provider_received_rewards(
             absorber,
             first_provider,
@@ -1871,7 +1890,10 @@ mod TestAbsorber {
         assert_provider_reward_cumulatives_updated(absorber, first_provider, reward_tokens);
 
         let expected_absorption_id: u32 = 2;
-        assert(absorber.get_provider_last_absorption(first_provider) == expected_absorption_id, 'wrong last absorption');
+        assert(
+            absorber.get_provider_last_absorption(first_provider) == expected_absorption_id,
+            'wrong last absorption'
+        );
 
         // Step 6
         let mut user_addresses: Array<ContractAddress> = Default::default();
@@ -1892,10 +1914,11 @@ mod TestAbsorber {
         absorber.reap();
 
         // Derive the amount of absorbed assets the second provider is expected to receive
-        let expected_second_provider_absorbed_asset_amts = 
-            get_asset_amts_by_pct(second_update_assets, expected_second_provider_pct);
+        let expected_second_provider_absorbed_asset_amts = get_asset_amts_by_pct(
+            second_update_assets, expected_second_provider_pct
+        );
 
-        let error_margin: Wad = 10000_u128.into();  // 10**6 (Wad)
+        let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
         assert_provider_received_absorbed_assets(
             absorber,
             second_provider,
@@ -1910,13 +1933,21 @@ mod TestAbsorber {
         // Convert to Wad for fixed point operations
         let aura_reward_distribution = updated_aura_reward_distribution;
         let expected_aura_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into();
-        let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment / total_shares;
-        let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share + expected_aura_reward_cumulative_increment.val;
-        let updated_aura_reward_distribution: DistributionInfo = absorber.get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
-        assert(updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative, 'wrong AURA reward cumulative #2');
+        let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
+            / total_shares;
+        let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
+            + expected_aura_reward_cumulative_increment.val;
+        let updated_aura_reward_distribution: DistributionInfo = absorber
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
+        assert(
+            updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
+            'wrong AURA reward cumulative #2'
+        );
 
         // Second provider should receive 3 partial rounds of rewards.
-        let expected_second_provider_blessings_multiplier: Ray = (expected_second_provider_pct.val * 3).into();
+        let expected_second_provider_blessings_multiplier: Ray = (expected_second_provider_pct.val
+            * 3)
+            .into();
         assert_provider_received_rewards(
             absorber,
             second_provider,
@@ -1930,7 +1961,10 @@ mod TestAbsorber {
         assert_provider_reward_cumulatives_updated(absorber, second_provider, reward_tokens);
 
         let expected_absorption_id: u32 = 2;
-        assert(absorber.get_provider_last_absorption(second_provider) == expected_absorption_id, 'wrong last absorption');
+        assert(
+            absorber.get_provider_last_absorption(second_provider) == expected_absorption_id,
+            'wrong last absorption'
+        );
     }
 
     #[test]
