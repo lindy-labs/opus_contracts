@@ -1,6 +1,5 @@
 mod AbbotUtils {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU256;
     use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
@@ -8,7 +7,7 @@ mod AbbotUtils {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
+    use traits::Default;
 
     use aura::core::abbot::Abbot;
     use aura::core::roles::SentinelRoles;
