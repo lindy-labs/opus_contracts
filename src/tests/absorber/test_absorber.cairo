@@ -109,13 +109,14 @@ mod TestAbsorber {
         gates: Span<IGateDispatcher>,
         amt: Wad
     ) {
-        set_contract_address(provider);
         AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
         AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, amt);
+
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
         absorber.provide(amt);
+
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -323,7 +324,6 @@ mod TestAbsorber {
         set_contract_address(mock_purger());
         absorber.update(yangs, yang_asset_amts);
 
-        set_contract_address(admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
@@ -388,13 +388,13 @@ mod TestAbsorber {
                     let before_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into();
                     let expected_bal: Wad = before_bal + absorbed_amt;
 
-                    ShrineUtils::assert_equalish(
+                    test_utils::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
                     );
 
                     // Check preview amounts are equal
                     let preview_amt = *preview_amts.pop_front().unwrap();
-                    ShrineUtils::assert_equalish(
+                    test_utils::assert_equalish(
                         absorbed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
                     );
                 },
@@ -457,13 +457,13 @@ mod TestAbsorber {
                     let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
                         + blessed_amt.into();
 
-                    ShrineUtils::assert_equalish(
+                    test_utils::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong reward balance'
                     );
 
                     // Check preview amounts are equal
                     let preview_amt = *preview_amts.pop_front().unwrap();
-                    ShrineUtils::assert_equalish(
+                    test_utils::assert_equalish(
                         blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
                     );
 
@@ -634,7 +634,7 @@ mod TestAbsorber {
     fn test_set_removal_limit_unauthorized_fail() {
         let (_, _, absorber, _, _) = absorber_deploy();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
 
         let new_limit: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
         absorber.set_removal_limit(new_limit);
@@ -746,7 +746,7 @@ mod TestAbsorber {
     fn test_kill_unauthorized_fail() {
         let (_, _, absorber, _, _) = absorber_deploy();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         absorber.kill();
     }
 
@@ -1001,13 +1001,13 @@ mod TestAbsorber {
                             first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain)
                         );
                         let error_margin: Wad = 1000_u128.into();
-                        ShrineUtils::assert_equalish(
+                        test_utils::assert_equalish(
                             shrine.get_yin(provider),
                             expected_removed_amt,
                             error_margin,
                             'wrong provider yin balance'
                         );
-                        ShrineUtils::assert_equalish(
+                        test_utils::assert_equalish(
                             shrine.get_yin(absorber.contract_address),
                             WadZeroable::zero(),
                             error_margin,
@@ -1047,7 +1047,7 @@ mod TestAbsorber {
 
         let first_update_assets: Span<u128> = first_update_assets();
 
-        set_contract_address(ShrineUtils::badguy());
+        set_contract_address(test_utils::badguy());
         absorber.update(yangs, first_update_assets);
     }
 
@@ -1419,7 +1419,7 @@ mod TestAbsorber {
         assert(second_provider_info.epoch == 1, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into();
-        ShrineUtils::assert_equalish(
+        test_utils::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
             error_margin,
@@ -1484,8 +1484,7 @@ mod TestAbsorber {
             expected_first_epoch_blessings_multiplier
         );
 
-        let expected_first_provider_blessings_multiplier =
-            expected_first_epoch_blessings_multiplier;
+        let expected_first_provider_blessings_multiplier = (2 * WAD_SCALE).into();
         assert_provider_received_rewards(
             absorber,
             first_provider,
@@ -1573,7 +1572,7 @@ mod TestAbsorber {
         assert(second_provider_info.epoch == 1, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into(); // equal to initial minimum shares
-        ShrineUtils::assert_equalish(
+        test_utils::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
             error_margin,
@@ -1613,8 +1612,7 @@ mod TestAbsorber {
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
 
-        // Loosen error margin due to loss of precision from epoch share conversion
-        let error_margin: Wad = WAD_SCALE.into();
+        let error_margin: Wad = 1000_u128.into();
         assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -1637,6 +1635,7 @@ mod TestAbsorber {
             expected_first_epoch_blessings_multiplier
         );
 
+        // First provider receives only 1 round of rewards from the full absorption.
         let expected_first_provider_blessings_multiplier =
             expected_first_epoch_blessings_multiplier;
         assert_provider_received_rewards(
