@@ -26,10 +26,9 @@ mod TestAbsorber {
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE, Ray, RAY_SCALE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::utils::AbsorberUtils;
+    use aura::tests::common;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils;
 
     use debug::PrintTrait;
 
@@ -94,7 +93,7 @@ mod TestAbsorber {
     fn test_set_removal_limit_unauthorized_fail() {
         let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
 
         let new_limit: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
         absorber.set_removal_limit(new_limit);
@@ -206,7 +205,7 @@ mod TestAbsorber {
     fn test_kill_unauthorized_fail() {
         let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         absorber.kill();
     }
 
@@ -321,10 +320,10 @@ mod TestAbsorber {
                     let mut token_holders: Array<ContractAddress> = Default::default();
                     token_holders.append(provider);
 
-                    let before_absorbed_bals = test_utils::get_token_balances(
+                    let before_absorbed_bals = common::get_token_balances(
                         yangs, token_holders.span()
                     );
-                    let before_reward_bals = test_utils::get_token_balances(
+                    let before_reward_bals = common::get_token_balances(
                         reward_tokens, token_holders.span()
                     );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
@@ -425,13 +424,13 @@ mod TestAbsorber {
                             first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain)
                         );
                         let error_margin: Wad = 1000_u128.into();
-                        test_utils::assert_equalish(
+                        common::assert_equalish(
                             shrine.get_yin(provider),
                             expected_removed_amt,
                             error_margin,
                             'wrong provider yin balance'
                         );
-                        test_utils::assert_equalish(
+                        common::assert_equalish(
                             shrine.get_yin(absorber.contract_address),
                             WadZeroable::zero(),
                             error_margin,
@@ -471,7 +470,7 @@ mod TestAbsorber {
 
         let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         absorber.update(yangs, first_update_assets);
     }
 
@@ -512,7 +511,7 @@ mod TestAbsorber {
 
         let mut token_holders: Array<ContractAddress> = Default::default();
         token_holders.append(provider);
-        let before_reward_bals: Span<Span<u128>> = test_utils::get_token_balances(
+        let before_reward_bals: Span<Span<u128>> = common::get_token_balances(
             reward_tokens, token_holders.span()
         );
 
@@ -672,10 +671,10 @@ mod TestAbsorber {
         let mut user_addresses: Array<ContractAddress> = Default::default();
         user_addresses.append(first_provider);
 
-        let first_provider_before_reward_bals = test_utils::get_token_balances(
+        let first_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, user_addresses.span()
         );
-        let first_provider_before_absorbed_bals = test_utils::get_token_balances(
+        let first_provider_before_absorbed_bals = common::get_token_balances(
             yangs, user_addresses.span()
         );
 
@@ -728,10 +727,10 @@ mod TestAbsorber {
         let mut user_addresses: Array<ContractAddress> = Default::default();
         user_addresses.append(second_provider);
 
-        let second_provider_before_reward_bals = test_utils::get_token_balances(
+        let second_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, user_addresses.span()
         );
-        let second_provider_before_absorbed_bals = test_utils::get_token_balances(
+        let second_provider_before_absorbed_bals = common::get_token_balances(
             yangs, user_addresses.span()
         );
 
@@ -859,7 +858,7 @@ mod TestAbsorber {
         assert(second_provider_info.epoch == 1, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into();
-        test_utils::assert_equalish(
+        common::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
             error_margin,
@@ -871,10 +870,10 @@ mod TestAbsorber {
         user_addresses.append(first_provider);
 
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
-        let first_provider_before_reward_bals = test_utils::get_token_balances(
+        let first_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, user_addresses.span()
         );
-        let first_provider_before_absorbed_bals = test_utils::get_token_balances(
+        let first_provider_before_absorbed_bals = common::get_token_balances(
             yangs, user_addresses.span()
         );
 
@@ -1022,7 +1021,7 @@ mod TestAbsorber {
         assert(second_provider_info.epoch == 1, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into(); // equal to initial minimum shares
-        test_utils::assert_equalish(
+        common::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
             error_margin,
@@ -1034,10 +1033,10 @@ mod TestAbsorber {
         user_addresses.append(first_provider);
 
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
-        let first_provider_before_reward_bals = test_utils::get_token_balances(
+        let first_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, user_addresses.span()
         );
-        let first_provider_before_absorbed_bals = test_utils::get_token_balances(
+        let first_provider_before_absorbed_bals = common::get_token_balances(
             yangs, user_addresses.span()
         );
 
@@ -1177,7 +1176,7 @@ mod TestAbsorber {
 
         let error_margin: Wad = 1_u128
             .into(); // loss of precision from rounding favouring the protocol
-        test_utils::assert_equalish(
+        common::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
             error_margin,
@@ -1213,10 +1212,10 @@ mod TestAbsorber {
         user_addresses.append(first_provider);
 
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
-        let first_provider_before_reward_bals = test_utils::get_token_balances(
+        let first_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, user_addresses.span()
         );
-        let first_provider_before_absorbed_bals = test_utils::get_token_balances(
+        let first_provider_before_absorbed_bals = common::get_token_balances(
             yangs, user_addresses.span()
         );
 
@@ -1287,10 +1286,10 @@ mod TestAbsorber {
         user_addresses.append(second_provider);
 
         let second_provider_before_yin_bal: Wad = shrine.get_yin(second_provider);
-        let second_provider_before_reward_bals = test_utils::get_token_balances(
+        let second_provider_before_reward_bals = common::get_token_balances(
             reward_tokens, user_addresses.span()
         );
-        let second_provider_before_absorbed_bals = test_utils::get_token_balances(
+        let second_provider_before_absorbed_bals = common::get_token_balances(
             yangs, user_addresses.span()
         );
 
@@ -1552,7 +1551,7 @@ mod TestAbsorber {
     fn test_non_provider_request_fail() {
         let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         absorber.request();
     }
 
@@ -1562,7 +1561,7 @@ mod TestAbsorber {
     fn test_non_provider_remove_fail() {
         let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         absorber.remove(0_u128.into());
     }
 
@@ -1572,7 +1571,7 @@ mod TestAbsorber {
     fn test_non_provider_reap_fail() {
         let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
-        set_contract_address(test_utils::badguy());
+        set_contract_address(common::badguy());
         absorber.reap();
     }
 
@@ -1606,8 +1605,8 @@ mod TestAbsorber {
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
 
         let yang_asset_amts: Span<u128> = AbsorberUtils::provider_asset_amts();
-        AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
-        AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
+        common::fund_user(provider, yangs, yang_asset_amts);
+        common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
@@ -1627,8 +1626,8 @@ mod TestAbsorber {
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
 
         let yang_asset_amts: Span<u128> = AbsorberUtils::provider_asset_amts();
-        AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
-        AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
+        common::fund_user(provider, yangs, yang_asset_amts);
+        common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };

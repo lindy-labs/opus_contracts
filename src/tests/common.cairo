@@ -10,6 +10,7 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::utils::types::Reward;
 use aura::utils::wadray;
 use aura::utils::wadray::Wad;
 
@@ -67,6 +68,16 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
     }
 
     fn ne(lhs: Span<T>, rhs: Span<T>) -> bool {
+        !(lhs == rhs)
+    }
+}
+
+impl RewardPartialEq of PartialEq<Reward> {
+    fn eq(mut lhs: Reward, mut rhs: Reward) -> bool {
+        lhs.asset == rhs.asset & lhs.blesser.contract_address == rhs.blesser.contract_address & lhs.is_active == rhs.is_active
+    }
+
+    fn ne(lhs: Reward, rhs: Reward) -> bool {
         !(lhs == rhs)
     }
 }

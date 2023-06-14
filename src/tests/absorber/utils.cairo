@@ -32,9 +32,9 @@ mod AbsorberUtils {
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::mock_blesser::MockBlesser;
+    use aura::tests::common;
     use aura::tests::erc20::ERC20;
     use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::test_utils;
 
     use debug::PrintTrait;
 
@@ -259,8 +259,8 @@ mod AbsorberUtils {
         gates: Span<IGateDispatcher>,
         amt: Wad
     ) {
-        AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
-        AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, amt);
+        common::fund_user(provider, yangs, yang_asset_amts);
+        common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, amt);
 
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
@@ -393,13 +393,13 @@ mod AbsorberUtils {
                     let before_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into();
                     let expected_bal: Wad = before_bal + absorbed_amt;
 
-                    test_utils::assert_equalish(
+                    common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
                     );
 
                     // Check preview amounts are equal
                     let preview_amt = *preview_amts.pop_front().unwrap();
-                    test_utils::assert_equalish(
+                    common::assert_equalish(
                         absorbed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
                     );
                 },
@@ -459,13 +459,13 @@ mod AbsorberUtils {
                     let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
                         + blessed_amt.into();
 
-                    test_utils::assert_equalish(
+                    common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong reward balance'
                     );
 
                     // Check preview amounts are equal
                     let preview_amt = *preview_amts.pop_front().unwrap();
-                    test_utils::assert_equalish(
+                    common::assert_equalish(
                         blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
                     );
                 },
