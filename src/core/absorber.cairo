@@ -789,7 +789,7 @@ mod Absorber {
         let total_shares: Wad = total_shares::read();
 
         // NOTE: both `get_absorbed_assets_for_provider_internal` and `get_provider_accumulated_rewards` 
-        // contain early returns if `provision.shares` is zero.
+        // contain early returns of empty arrays if `provision.shares` is zero.
 
         // Loop over absorbed assets and transfer
         let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
@@ -809,9 +809,12 @@ mod Absorber {
         // will receive all of the cumulative rewards for the current epoch, when they
         // should only receive the rewards for the current epoch since the last time 
         // `reap_internal` was called.
-        update_provider_cumulative_rewards(
-            provider, current_epoch, REWARDS_LOOP_START, reward_assets
-        );
+        // 
+        // NOTE: We cannot rely on the array of reward addresses returned by
+        // `get_provider_accumulated_rewards` because it returns an empty array when 
+        // `provision.shares` is zero. This would result in a bug where the reward cumulatives
+        // for new providers are not updated to the latest epoch's values and start at 0.
+        update_provider_cumulative_rewards(provider, current_epoch, rewards_count);
 
         Reap(provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_asset_amts);
     }
@@ -1065,22 +1068,24 @@ mod Absorber {
     // receive a distribution, and set to inactive again. If a provider's cumulative is not updated
     // for this reward, the provider can repeatedly claim the difference and drain the absorber.
     fn update_provider_cumulative_rewards(
-        provider: ContractAddress, epoch: u32, rewards_count: u8, mut assets: Span<ContractAddress>, 
+        provider: ContractAddress, epoch: u32, rewards_count: u8, 
     ) {
+        let mut current_rewards_id: u8 = REWARDS_LOOP_START;
+
         loop {
-            match assets.pop_front() {
-                Option::Some(asset) => {
-                    let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
-                        (*asset, epoch)
-                    );
-                    provider_last_reward_cumulative::write(
-                        (provider, *asset), epoch_reward_info.asset_amt_per_share
-                    )
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
+            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+                break;
+            }
+
+            let reward: Reward = rewards::read(current_rewards_id);
+            let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
+                (reward.asset, epoch)
+            );
+            provider_last_reward_cumulative::write(
+                (provider, reward.asset), epoch_reward_info.asset_amt_per_share
+            );
+
+            current_rewards_id += 1;
         };
     }
 
