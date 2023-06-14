@@ -2182,4 +2182,63 @@ mod TestAbsorber {
         absorber.reap();
     }
     
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    fn test_provide_less_than_initial_shares_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let less_than_initial_shares_amt: Wad = (Absorber::INITIAL_SHARES - 1).into(); 
+        provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            provider,
+            yangs,
+            provider_asset_amts(),
+            gates,
+            less_than_initial_shares_amt
+        );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    fn test_provide_insufficient_yin_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        
+        let yang_asset_amts: Span<u128> = provider_asset_amts();
+        AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
+        AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
+
+        set_contract_address(provider);
+        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        yin.approve(absorber.contract_address, BoundedU256::max());
+
+        let insufficient_amt: Wad = (provided_amt.val + 1).into();
+        absorber.provide(insufficient_amt);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    fn test_provide_insufficient_allowance_fail() {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        
+        let yang_asset_amts: Span<u128> = provider_asset_amts();
+        AbbotUtils::fund_user(provider, yangs, yang_asset_amts);
+        AbbotUtils::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
+
+        set_contract_address(provider);
+        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+
+        absorber.provide(provided_amt);
+    }
 }
