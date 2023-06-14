@@ -1092,7 +1092,7 @@ mod Absorber {
     // Transfers the error for a reward from the given epoch to the next epoch
     // `current_rewards_id` should start at `1`.
     fn propagate_reward_errors(rewards_count: u8, epoch: u32) {
-        let mut current_rewards_id: u8 = 0;
+        let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
         loop {
             if current_rewards_id == rewards_count + REWARDS_LOOP_START {
