@@ -140,7 +140,7 @@ mod TestAbbot {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_open_trove_invalid_yang_fail() {
-        let (shrine, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
+        let (shrine, _, abbot, _, gates) = AbbotUtils::abbot_deploy();
 
         let invalid_yang: ContractAddress = contract_address_const::<0xdead>();
         let mut yangs: Array<ContractAddress> = Default::default();
@@ -340,7 +340,7 @@ mod TestAbbot {
         }.balance_of(eth_gate_addr);
 
         set_contract_address(SentinelUtils::admin());
-        let new_eth_asset_max: u128 = eth_gate_bal.try_into().unwrap() - 1;
+        let new_eth_asset_max: u128 = eth_gate_bal.try_into().unwrap();
         sentinel.set_yang_asset_max(eth_addr, new_eth_asset_max);
 
         set_contract_address(trove_owner);
@@ -433,17 +433,14 @@ mod TestAbbot {
             abbot, trove_owner, yangs, open_trove_yang_asset_amts(), gates, forge_amt
         );
 
-        let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
-        let before_yin: Wad = shrine.get_yin(trove_owner);
-
         let additional_forge_amt: Wad = OPEN_TROVE_FORGE_AMT.into();
         set_contract_address(trove_owner);
         abbot.forge(trove_id, additional_forge_amt, WadZeroable::zero());
 
         let (_, _, _, after_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(after_trove_debt == before_trove_debt + additional_forge_amt, 'wrong trove debt');
+        assert(after_trove_debt == forge_amt + additional_forge_amt, 'wrong trove debt');
         assert(
-            shrine.get_yin(trove_owner) == before_yin + additional_forge_amt, 'wrong yin balance'
+            shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
         );
     }
 
