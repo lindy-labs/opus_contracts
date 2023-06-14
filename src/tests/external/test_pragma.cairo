@@ -430,6 +430,7 @@ mod TestPragma {
     }
 
     // TODO: This can only be completed when we are able to test if an event is emitted
+    #[ignore]
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_invalid_gate_fail() {}
