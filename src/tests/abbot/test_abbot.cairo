@@ -30,13 +30,13 @@ mod TestAbbot {
     #[test]
     #[available_gas(20000000000)]
     fn test_open_trove_pass() {
-        let (shrine, _, abbot, mut yangs, _, trove_owner, trove_id, mut deposited_amts, forge_amt) =
+        let (shrine, _, abbot, mut yangs, gates, trove_owner, trove_id, mut deposited_amts, forge_amt) =
             AbbotUtils::deploy_abbot_and_open_trove();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
         // Check trove ID
         let expected_trove_id: u64 = 1;
-        assert(trove_id == expected_trove_id, 'wrong trove ID', );
+        assert(trove_id == expected_trove_id, 'wrong trove ID');
         assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
         assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
 
@@ -47,9 +47,11 @@ mod TestAbbot {
             'wrong user trove ids'
         );
 
+        let mut yangs_total: Array<Wad> = Default::default();
         // Check yangs
+        let mut yangs_copy = yangs;
         loop {
-            match yangs.pop_front() {
+            match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
                     let expected_initial_yang: Wad = wadray::fixed_point_to_wad(
@@ -59,11 +61,12 @@ mod TestAbbot {
                         *deposited_amts.pop_front().unwrap(), decimals
                     );
                     let expected_yang_total: Wad = expected_initial_yang + expected_deposited_yang;
-                    assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total');
+                    assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #1');
+                    yangs_total.append(expected_yang_total);
 
                     assert(
                         shrine.get_deposit(*yang, trove_id) == expected_deposited_yang,
-                        'wrong trove yang balance'
+                        'wrong trove yang balance #1'
                     );
                 },
                 Option::None(_) => {
@@ -78,6 +81,52 @@ mod TestAbbot {
         //assert(debt == forge_amt, 'wrong trove debt');
 
         assert(shrine.get_total_debt() == forge_amt, 'wrong total debt');
+
+        // User opens another trove
+        let second_forge_amt: Wad = 1666000000000000000000_u128.into();
+        let mut second_deposit_amts = AbbotUtils::open_trove_yang_asset_amts();
+        let second_trove_id: u64 = common::open_trove_helper(
+            abbot, trove_owner, yangs, second_deposit_amts, gates, second_forge_amt
+        );
+
+        let expected_trove_id: u64 = 2;
+        assert(second_trove_id == expected_trove_id, 'wrong trove ID');
+        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
+        assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
+
+        expected_user_trove_ids.append(expected_trove_id);
+        assert(
+            abbot.get_user_trove_ids(trove_owner) == expected_user_trove_ids.span(),
+            'wrong user trove ids'
+        );
+
+        // Check yangs
+        let mut yangs_total = yangs_total.span();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
+                    let before_yang_total: Wad = *yangs_total.pop_front().unwrap();
+                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
+                        *second_deposit_amts.pop_front().unwrap(), decimals
+                    );
+                    let expected_yang_total: Wad = before_yang_total + expected_deposited_yang;
+                    assert(shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #2');
+
+                    assert(
+                        shrine.get_deposit(*yang, second_trove_id) == expected_deposited_yang,
+                        'wrong trove yang balance #2'
+                    );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        shrine.get_total_debt().print();
+        (forge_amt + second_forge_amt).print();
+        assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
     }
 
     #[test]
