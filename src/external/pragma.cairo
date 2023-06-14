@@ -290,7 +290,7 @@ mod Pragma {
 
     fn is_valid_price_update(update: PricesResponse, asset_amt_per_yang: Wad) -> bool {
         if asset_amt_per_yang.is_zero() {
-            // can happen when e.g. the yang is invalid
+            // can happen when e.g. the yang is invalid or gate is not added to sentinel
             return false;
         }
 
