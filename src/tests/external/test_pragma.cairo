@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod TestPragma {
     use array::{ArrayTrait, SpanTrait};
+    use integer::U256Zeroable;
     use option::OptionTrait;
     use starknet::{ContractAddress, contract_address_const, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
@@ -29,6 +30,7 @@ mod TestPragma {
     };
     use aura::tests::external::utils::PragmaUtils;
     use aura::tests::gate::utils::GateUtils;
+    use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
     //
@@ -44,7 +46,7 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_setup() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         // Check permissions
         let pragma_ac = IAccessControlDispatcher { contract_address: pragma.contract_address };
@@ -58,7 +60,7 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_price_validity_thresholds_pass() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let new_freshness: u64 = 300; // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
@@ -71,7 +73,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_freshness_too_low_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let invalid_freshness: u64 = Pragma::LOWER_FRESHNESS_BOUND - 1;
         let valid_sources: u64 = PragmaUtils::SOURCES_THRESHOLD;
@@ -84,7 +86,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Freshness out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_freshness_too_high_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let invalid_freshness: u64 = Pragma::UPPER_FRESHNESS_BOUND + 1;
         let valid_sources: u64 = PragmaUtils::SOURCES_THRESHOLD;
@@ -97,7 +99,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_sources_too_low_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let valid_freshness: u64 = PragmaUtils::FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;
@@ -110,7 +112,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Sources out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_sources_too_high_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let valid_freshness: u64 = PragmaUtils::FRESHNESS_THRESHOLD;
         let invalid_sources: u64 = Pragma::UPPER_SOURCES_BOUND + 1;
@@ -123,7 +125,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_price_validity_threshold_unauthorized_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let valid_freshness: u64 = PragmaUtils::FRESHNESS_THRESHOLD;
         let valid_sources: u64 = PragmaUtils::SOURCES_THRESHOLD;
@@ -135,7 +137,7 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_oracle_address_pass() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let new_address: ContractAddress = contract_address_const::<0x9999>();
 
@@ -147,7 +149,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_oracle_address_unauthorized_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let new_address: ContractAddress = contract_address_const::<0x9999>();
 
@@ -158,7 +160,7 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_update_frequency_pass() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let new_frequency: u64 = PragmaUtils::UPDATE_FREQUENCY * 2;
 
@@ -170,7 +172,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Frequency out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_too_low_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let invalid_frequency: u64 = Pragma::LOWER_UPDATE_FREQUENCY_BOUND - 1;
 
@@ -182,7 +184,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Frequency out of bounds', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_too_high_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let invalid_frequency: u64 = Pragma::UPPER_UPDATE_FREQUENCY_BOUND + 1;
 
@@ -194,7 +196,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_update_frequency_unauthorized_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
         let new_frequency: u64 = PragmaUtils::UPDATE_FREQUENCY * 2;
 
@@ -204,23 +206,10 @@ mod TestPragma {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_add_yang_pass() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
-        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
-        let wbtc_token_addr: ContractAddress = GateUtils::wbtc_token_deploy();
-
-        set_contract_address(PragmaUtils::admin());
-
-        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, eth_token_addr);
-        pragma.add_yang(PragmaUtils::WBTC_USD_PAIR_ID, wbtc_token_addr);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_unauthorized_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
-        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
+        let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
 
         set_contract_address(ShrineUtils::badguy());
 
@@ -231,30 +220,32 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_pair_id_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
-        let eth_token_addr: ContractAddress = GateUtils::eth_token_deploy();
+        let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
 
         set_contract_address(PragmaUtils::admin());
 
-        pragma.add_yang(0, eth_token_addr);
+        let invalid_pair_id = U256Zeroable::zero();
+        pragma.add_yang(invalid_pair_id, eth_token_addr);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid yang address', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_yang_address_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _) = PragmaUtils::pragma_deploy();
 
         set_contract_address(PragmaUtils::admin());
 
-        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, ContractAddressZeroable::zero());
+        let invalid_yang_addr = ContractAddressZeroable::zero();
+        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, invalid_yang_addr);
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Unknown pair ID', 'ENTRYPOINT_FAILED'))]
-    fn test_add_yang_unknwon_pair_id_fail() {
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+    fn test_add_yang_unknown_pair_id_fail() {
+        let (_, pragma, _, _) = PragmaUtils::pragma_deploy();
 
         set_contract_address(PragmaUtils::admin());
 
@@ -265,7 +256,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Too many decimals', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_too_many_decimals_fail() {
-        let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_with_yangs();
 
         let price_ts: u256 = (get_block_timestamp() - 1000).into();
         let pragma_price_scale: u128 = pow10(PragmaUtils::PRAGMA_DECIMALS);
@@ -354,7 +345,7 @@ mod TestPragma {
     #[available_gas(20000000000)]
     fn test_update_prices_pass_without_yangs() {
         // just to test the module works well even if no yangs were added yet
-        let (_, pragma, _, _, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, _) = PragmaUtils::pragma_deploy();
 
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
         pragma_oracle.update_prices();
@@ -412,14 +403,17 @@ mod TestPragma {
         assert(before_eth_price == after_eth_price, 'price should not update');
     }
 
+    // TODO: This can only be completed when we are able to test if an event is emitted
     #[test]
     #[available_gas(20000000000)]
-    fn test_update_prices_invalid_gate_fail() {}
+    fn test_update_prices_invalid_gate_fail() {
+
+    }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_probe_task() {
-        let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_deploy();
+        let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
         // last price update should be 0 initially

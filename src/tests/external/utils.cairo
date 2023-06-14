@@ -94,10 +94,8 @@ mod PragmaUtils {
         IPragmaDispatcher,
         ISentinelDispatcher,
         IMockPragmaDispatcher,
-        Span<ContractAddress>, // yangs
-        Span<IGateDispatcher>,
     ) {
-        let (sentinel, shrine, yangs, gates) = SentinelUtils::deploy_sentinel_with_gates();
+        let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
 
         let admin: ContractAddress = admin();
@@ -105,7 +103,7 @@ mod PragmaUtils {
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin));
         calldata.append(contract_address_to_felt252(mock_pragma.contract_address));
-        calldata.append(contract_address_to_felt252(shrine.contract_address));
+        calldata.append(contract_address_to_felt252(shrine_addr));
         calldata.append(contract_address_to_felt252(sentinel.contract_address));
         calldata.append(UPDATE_FREQUENCY.into());
         calldata.append(FRESHNESS_THRESHOLD.into());
@@ -117,7 +115,7 @@ mod PragmaUtils {
             .unwrap_syscall();
 
         // Grant access control
-        let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
+        let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
         shrine_ac.grant_role(ShrineRoles::ADVANCE, pragma_addr);
         set_contract_address(ContractAddressZeroable::zero());
@@ -125,7 +123,9 @@ mod PragmaUtils {
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
 
         set_contract_address(ContractAddressZeroable::zero());
-        (shrine, pragma, sentinel, mock_pragma, yangs, gates)
+
+        let shrine = IShrineDispatcher { contract_address: shrine_addr };
+        (shrine, pragma, sentinel, mock_pragma)
     }
 
     fn pragma_with_yangs() -> (
@@ -136,7 +136,18 @@ mod PragmaUtils {
         Span<ContractAddress>, // yang addresses
         Span<IGateDispatcher>
     ) {
-        let (shrine, pragma, sentinel, mock_pragma, yangs, gates) = pragma_deploy();
+        let (shrine, pragma, sentinel, mock_pragma) = pragma_deploy();
+
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
+        let (wbtc_token_addr, wbtc_gate) = SentinelUtils::add_wbtc_yang(sentinel, shrine.contract_address);
+
+        let mut yangs: Array<ContractAddress> = Default::default();
+        yangs.append(eth_token_addr);
+        yangs.append(wbtc_token_addr);
+
+        let mut gates: Array<IGateDispatcher> = Default::default();
+        gates.append(eth_gate);
+        gates.append(wbtc_gate);
 
         set_contract_address(admin());
 
@@ -146,7 +157,7 @@ mod PragmaUtils {
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        (shrine, pragma, sentinel, mock_pragma, yangs, gates)
+        (shrine, pragma, sentinel, mock_pragma, yangs.span(), gates.span())
     }
 
     //
