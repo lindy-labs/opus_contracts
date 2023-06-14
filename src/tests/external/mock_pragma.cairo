@@ -1,4 +1,4 @@
-use aura::utils::types::Pragma::{DataType, PricesResponse};
+use aura::utils::types::Pragma::PricesResponse;
 
 #[abi]
 trait IMockPragma {
