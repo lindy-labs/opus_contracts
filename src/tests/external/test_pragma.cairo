@@ -33,7 +33,6 @@ mod TestPragma {
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
     };
     use aura::tests::external::utils::PragmaUtils;
-    use aura::tests::gate::utils::GateUtils;
     use aura::tests::sentinel::utils::SentinelUtils;
 
     //
@@ -308,17 +307,13 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_pass() {
-        let (shrine, pragma, sentinel, mock_pragma) = PragmaUtils::pragma_deploy();
+        let (shrine, pragma, _, mock_pragma, yangs, gates) = PragmaUtils::pragma_with_yangs();
 
-        let (eth_addr, eth_gate) = SentinelUtils::add_eth_yang(sentinel, shrine.contract_address);
-        let (wbtc_addr, wbtc_gate) = SentinelUtils::add_wbtc_yang(
-            sentinel, shrine.contract_address
-        );
+        let eth_addr = *yangs.at(0);
+        let wbtc_addr = *yangs.at(1);
 
-        // Add yangs to Pragma
-        set_contract_address(PragmaUtils::admin());
-        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, eth_addr);
-        pragma.add_yang(PragmaUtils::WBTC_USD_PAIR_ID, wbtc_addr);
+        let eth_gate = *gates.at(0);
+        let wbtc_gate = *gates.at(1);
 
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
@@ -406,10 +401,10 @@ mod TestPragma {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_prices_insufficient_sources_unchanged() {
-        let (shrine, pragma, _, mock_pragma, yang_addrs, _) = PragmaUtils::pragma_with_yangs();
+        let (shrine, pragma, _, mock_pragma, yangs, _) = PragmaUtils::pragma_with_yangs();
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
-        let eth_token_addr = *yang_addrs.at(0);
+        let eth_token_addr = *yangs.at(0);
 
         let (before_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
 
