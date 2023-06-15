@@ -371,8 +371,8 @@ mod AbsorberUtils {
     //
 
     // Helper function to assert that:
-    // 1. a provider has received the correct amount of absorbed assets;
-    // 2. the previewed amount returned by `preview_reap` is correct; and
+    // 1. a provider has received the correct amount of absorbed assets; and
+    // 2. the previewed amount returned by `preview_reap` is correct.
     // 
     // Arguments
     // 
@@ -432,8 +432,8 @@ mod AbsorberUtils {
     }
 
     // Helper function to assert that:
-    // 1. a provider has received the correct amount of reward tokens;
-    // 2. the previewed amount returned by `preview_reap` is correct; and
+    // 1. a provider has received the correct amount of reward tokens; and
+    // 2. the previewed amount returned by `preview_reap` is correct.
     // 
     // Arguments
     // 
@@ -625,42 +625,6 @@ mod AbsorberUtils {
         };
     }
 
-    fn get_asset_amts_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
-        let mut split_asset_amts: Array<u128> = Default::default();
-        loop {
-            match asset_amts.pop_front() {
-                Option::Some(asset_amt) => {
-                    // Convert to Wad for fixed point operations
-                    let asset_amt: Wad = (*asset_amt).into();
-                    split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
-        };
-
-        split_asset_amts.span()
-    }
-
-    fn combine_asset_amts(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
-        let mut combined_asset_amts: Array<u128> = Default::default();
-
-        loop {
-            match lhs.pop_front() {
-                Option::Some(asset_amt) => {
-                    // Convert to Wad for fixed point operations
-                    combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
-        };
-
-        combined_asset_amts.span()
-    }
-
     fn assert_update_is_correct(
         absorber: IAbsorberDispatcher,
         absorption_id: u32,
@@ -702,5 +666,50 @@ mod AbsorberUtils {
                 }
             };
         };
+    }
+
+    //
+    // Tests - Utility functions
+    //
+
+    // Helper function that takes in an array of asset amounts and returns an array of 
+    // the given percentage value for each asset amount.
+    fn get_asset_amts_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+        let mut split_asset_amts: Array<u128> = Default::default();
+        loop {
+            match asset_amts.pop_front() {
+                Option::Some(asset_amt) => {
+                    // Convert to Wad for fixed point operations
+                    let asset_amt: Wad = (*asset_amt).into();
+                    split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        split_asset_amts.span()
+    }
+
+    // Helper function to combine two arrays of asset amounts into a single array.
+    // Assumes the arrays are ordered identically.
+    fn combine_asset_amts(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
+        assert(lhs.len() == rhs.len(), 'combining diff array lengths');
+        let mut combined_asset_amts: Array<u128> = Default::default();
+
+        loop {
+            match lhs.pop_front() {
+                Option::Some(asset_amt) => {
+                    // Convert to Wad for fixed point operations
+                    combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        combined_asset_amts.span()
     }
 }
