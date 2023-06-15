@@ -115,7 +115,7 @@ mod Purger {
     // Returns the liquidation penalty based on the LTV (ray)
     // Returns 0 if trove is healthy
     #[view]
-    fn get_liquidation_penalty(trove_id: u64, is_absorption: bool) -> Ray {
+    fn get_penalty(trove_id: u64, is_absorption: bool) -> Ray {
         let (threshold, ltv, _, _) = shrine::read().get_trove_info(trove_id);
 
         match get_penalty_internal(threshold, ltv, is_absorption) {
