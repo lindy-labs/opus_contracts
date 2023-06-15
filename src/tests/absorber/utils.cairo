@@ -128,38 +128,15 @@ mod AbsorberUtils {
         (shrine, abbot, absorber, yangs, gates)
     }
 
-    // TODO: create a helper that deploys an ERC20 based on input args
     fn aura_token_deploy() -> ContractAddress {
-        let mut calldata = Default::default();
-        calldata.append('Aura');
-        calldata.append('AURA');
-        calldata.append(18);
-        calldata.append(0); // u256.low
-        calldata.append(0); // u256.high
-        calldata.append(contract_address_to_felt252(admin()));
-
-        let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-        let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
-
-        token
+        common::deploy_token('Aura', 'AURA', 18, 0_u256, admin())
     }
 
-    // TODO: create a helper that deploys an ERC20 based on input args
     fn veaura_token_deploy() -> ContractAddress {
-        let mut calldata = Default::default();
-        calldata.append('veAura');
-        calldata.append('veAURA');
-        calldata.append(18);
-        calldata.append(0); // u256.low
-        calldata.append(0); // u256.high
-        calldata.append(contract_address_to_felt252(admin()));
-
-        let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-        let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
-
-        token
+        common::deploy_token('veAura', 'veAURA', 18, 0_u256, admin())
     }
 
+    // Convenience fixture for reward token addresses constants
     fn reward_tokens_deploy() -> Span<ContractAddress> {
         let mut reward_tokens: Array<ContractAddress> = Default::default();
         reward_tokens.append(aura_token_deploy());
@@ -167,6 +144,7 @@ mod AbsorberUtils {
         reward_tokens.span()
     }
 
+    // Convenience fixture for reward amounts
     fn reward_amts_per_blessing() -> Span<u128> {
         let mut bless_amts: Array<u128> = Default::default();
         bless_amts.append(AURA_BLESS_AMT);
@@ -174,8 +152,8 @@ mod AbsorberUtils {
         bless_amts.span()
     }
 
-    // Helper function to deploy a blesser for a token, 
-    // and mint tokens to the deployed blesser if `mint_to_blesser` is `true`.
+    // Helper function to deploy a blesser for a token.
+    // Mints tokens to the deployed blesser if `mint_to_blesser` is `true`.
     fn deploy_blesser_for_reward(
         absorber: IAbsorberDispatcher,
         asset: ContractAddress,
@@ -205,6 +183,8 @@ mod AbsorberUtils {
         mock_blesser_addr
     }
 
+    // Wrapper function to deploy blessers for an array of reward tokens and return an array
+    // of the blesser contract addresses.
     fn deploy_blesser_for_rewards(
         absorber: IAbsorberDispatcher, mut assets: Span<ContractAddress>, mut bless_amts: Span<u128>
     ) -> Span<ContractAddress> {

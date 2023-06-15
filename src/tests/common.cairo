@@ -1,6 +1,9 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
-use starknet::{ContractAddress, contract_address_const, contract_address_try_from_felt252};
+use starknet::{
+    contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+    contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::set_contract_address;
 use traits::{Default, Into, TryInto};
@@ -10,6 +13,7 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::tests::erc20::ERC20;
 use aura::utils::types::Reward;
 use aura::utils::wadray;
 use aura::utils::wadray::Wad;
@@ -51,7 +55,9 @@ fn trove3_owner_addr() -> ContractAddress {
 // Trait implementations
 //
 
-impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>> of PartialEq<Span<T>> {
+impl SpanPartialEq<
+    T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
+> of PartialEq<Span<T>> {
     fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
         loop {
             match lhs.pop_front() {
@@ -74,7 +80,9 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
 
 impl RewardPartialEq of PartialEq<Reward> {
     fn eq(mut lhs: Reward, mut rhs: Reward) -> bool {
-        lhs.asset == rhs.asset & lhs.blesser.contract_address == rhs.blesser.contract_address & lhs.is_active == rhs.is_active
+        lhs.asset == rhs.asset
+            & lhs.blesser.contract_address == rhs.blesser.contract_address
+            & lhs.is_active == rhs.is_active
     }
 
     fn ne(lhs: Reward, rhs: Reward) -> bool {
@@ -86,10 +94,30 @@ impl RewardPartialEq of PartialEq<Reward> {
 // Helpers - Test setup
 //
 
+// Helper function to deploy a token
+fn deploy_token(
+    name: felt252,
+    symbol: felt252,
+    decimals: felt252,
+    initial_supply: u256,
+    recipient: ContractAddress,
+) -> ContractAddress {
+    let mut calldata = Default::default();
+    calldata.append(name);
+    calldata.append(symbol);
+    calldata.append(decimals);
+    calldata.append(initial_supply.low.into()); // u256.low
+    calldata.append(initial_supply.high.into()); // u256.high
+    calldata.append(contract_address_to_felt252(recipient));
+
+    let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
+    let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
+
+    token
+}
+
 // Helper function to fund a user account with yang assets
-fn fund_user(
-    user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>
-) {
+fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
@@ -144,8 +172,7 @@ fn open_trove_helper(
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
 fn get_token_balances(
-    mut tokens: Span<ContractAddress>,
-    addresses: Span<ContractAddress>,
+    mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>, 
 ) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = Default::default();
 
