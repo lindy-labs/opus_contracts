@@ -248,6 +248,47 @@ mod AbsorberUtils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
+    // Helper function to deploy Absorber, add rewards and create a trove.
+    fn absorber_with_rewards_and_first_provider() -> (
+        IShrineDispatcher,
+        IAbbotDispatcher,
+        IAbsorberDispatcher,
+        Span<ContractAddress>, // yangs
+        Span<IGateDispatcher>,
+        Span<ContractAddress>, // reward tokens
+        Span<ContractAddress>, // blessers
+        Span<u128>, // reward amts per blessing
+        ContractAddress, // provider
+        Wad, // provided amount
+    ) {
+        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+        let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
+        let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
+        let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing
+        );
+        add_rewards_to_absorber(absorber, reward_tokens, blessers);
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
+        );
+
+        (
+            shrine,
+            abbot,
+            absorber,
+            yangs,
+            gates,
+            reward_tokens,
+            blessers,
+            reward_amts_per_blessing,
+            provider,
+            provided_amt
+        )
+    }
+
     // Helper function to open a trove and provide to the Absorber
     fn provide_to_absorber(
         shrine: IShrineDispatcher,
