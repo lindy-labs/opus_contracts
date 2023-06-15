@@ -140,8 +140,6 @@ mod TestAbsorber {
                 contract_address: veaura_blesser
             }, is_active: true
         };
-        let mut expected_rewards: Array<Reward> = Default::default();
-        expected_rewards.append(aura_reward);
         expected_rewards.append(veaura_reward);
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
@@ -151,7 +149,6 @@ mod TestAbsorber {
         absorber.set_reward(aura_token, aura_blesser, false);
 
         let mut expected_rewards: Array<Reward> = Default::default();
-        aura_reward.is_active = false;
         expected_rewards.append(aura_reward);
         expected_rewards.append(veaura_reward);
 
