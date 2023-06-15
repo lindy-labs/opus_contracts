@@ -8,13 +8,14 @@ mod GateUtils {
     use traits::{Default, Into};
 
     use aura::core::gate::Gate;
+
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
-    use aura::tests::shrine::utils::ShrineUtils;
     use aura::tests::erc20::ERC20;
+    use aura::tests::shrine::utils::ShrineUtils;
 
     //
     // Constants

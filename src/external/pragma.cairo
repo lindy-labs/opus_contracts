@@ -2,7 +2,7 @@
 //       asset as the synthetic in Shrine; typically, feeds are in USD, but if the
 //       synth is denominated in something else than USD and there's no feed for it,
 //       this module cannot be used as-is, since the price coming from the oracle
-//       would need to be divided by teh synthetic's USD denominated peg price in
+//       would need to be divided by the synthetic's USD denominated peg price in
 //       order to get ASSET/SYN
 
 #[contract]
@@ -49,7 +49,7 @@ mod Pragma {
         // the minimal time difference in seconds of how often we
         // want to fetch from the oracle
         update_frequency: u64,
-        // block timestamp of when the prices were udpated last time
+        // block timestamp of when the prices were last updated
         last_price_update_timestamp: u64,
         // values used to determine if we consider a price update fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
@@ -178,15 +178,15 @@ mod Pragma {
     #[external]
     fn add_yang(pair_id: u256, yang: ContractAddress) {
         AccessControl::assert_has_role(PragmaRoles::ADD_YANG);
-        assert(pair_id != 0, 'PGM: Invalid pair_id');
+        assert(pair_id != 0, 'PGM: Invalid pair ID');
         assert(yang.is_non_zero(), 'PGM: Invalid yang address');
         assert_new_yang(yang);
 
         // doing a sanity check if Pragma actually offers a price feed
         // of the requested asset and if it's suitable for our needs
         let response: PricesResponse = oracle::read().get_data_median(DataType::Spot(pair_id));
-        // Pragma returns 0 decimals for an unknown ID
-        assert(response.decimals != 0, 'PGM: Unknown ID');
+        // Pragma returns 0 decimals for an unknown pair ID
+        assert(response.decimals != 0, 'PGM: Unknown pair ID');
         assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
 
         let index: u32 = yangs_count::read();
@@ -223,6 +223,7 @@ mod Pragma {
                 .get_data_median(DataType::Spot(settings.pair_id));
 
             // convert price value to Wad
+            // this will revert if the decimals is greater than 18 (wad)
             let price: Wad = fixed_point_to_wad(
                 response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
             );
@@ -289,7 +290,7 @@ mod Pragma {
 
     fn is_valid_price_update(update: PricesResponse, asset_amt_per_yang: Wad) -> bool {
         if asset_amt_per_yang.is_zero() {
-            // can happen when e.g. the yang is invalid
+            // can happen when e.g. the yang is invalid or gate is not added to sentinel
             return false;
         }
 
@@ -325,5 +326,54 @@ mod Pragma {
         let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
         has_enough_sources & is_fresh
+    }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[view]
+    fn get_pending_admin() -> ContractAddress {
+        AccessControl::get_pending_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn set_pending_admin(new_admin: ContractAddress) {
+        AccessControl::set_pending_admin(new_admin);
+    }
+
+    #[external]
+    fn accept_admin() {
+        AccessControl::accept_admin();
     }
 }
