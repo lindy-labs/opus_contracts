@@ -341,10 +341,10 @@ mod TestAbsorber {
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
 
                     let before_absorbed_bals = common::get_token_balances(
-                        yangs, AbsorberUtils::wrap_address_as_span(provider)
+                        yangs, common::wrap_address_as_span(provider)
                     );
                     let before_reward_bals = common::get_token_balances(
-                        reward_tokens, AbsorberUtils::wrap_address_as_span(provider)
+                        reward_tokens, common::wrap_address_as_span(provider)
                     );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
@@ -501,7 +501,7 @@ mod TestAbsorber {
         let before_absorber_yin_bal: u256 = yin.balance_of(absorber.contract_address);
 
         let before_reward_bals: Span<Span<u128>> = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(provider)
+            reward_tokens, common::wrap_address_as_span(provider)
         );
 
         assert(
@@ -650,10 +650,10 @@ mod TestAbsorber {
 
         // Step 5
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
+            reward_tokens, common::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
+            yangs, common::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -703,10 +703,10 @@ mod TestAbsorber {
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(second_provider)
+            reward_tokens, common::wrap_address_as_span(second_provider)
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, AbsorberUtils::wrap_address_as_span(second_provider)
+            yangs, common::wrap_address_as_span(second_provider)
         );
 
         set_contract_address(second_provider);
@@ -834,10 +834,10 @@ mod TestAbsorber {
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
+            reward_tokens, common::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
+            yangs, common::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -985,10 +985,10 @@ mod TestAbsorber {
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
+            reward_tokens, common::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
+            yangs, common::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -1152,10 +1152,10 @@ mod TestAbsorber {
         // Step 5
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
+            reward_tokens, common::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
+            yangs, common::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -1165,9 +1165,9 @@ mod TestAbsorber {
         absorber.reap();
 
         // Derive the amount of absorbed assets the first provider is expected to receive
-        let expected_first_provider_absorbed_asset_amts = AbsorberUtils::combine_asset_amts(
+        let expected_first_provider_absorbed_asset_amts = common::combine_spans(
             first_update_assets,
-            AbsorberUtils::get_asset_amts_by_pct(second_update_assets, expected_first_provider_pct)
+            common::transform_span_by_pct(second_update_assets, expected_first_provider_pct)
         );
 
         let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
@@ -1223,10 +1223,10 @@ mod TestAbsorber {
         // Step 6
         let second_provider_before_yin_bal: Wad = shrine.get_yin(second_provider);
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, AbsorberUtils::wrap_address_as_span(second_provider)
+            reward_tokens, common::wrap_address_as_span(second_provider)
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, AbsorberUtils::wrap_address_as_span(second_provider)
+            yangs, common::wrap_address_as_span(second_provider)
         );
 
         set_contract_address(second_provider);
@@ -1236,7 +1236,7 @@ mod TestAbsorber {
         absorber.reap();
 
         // Derive the amount of absorbed assets the second provider is expected to receive
-        let expected_second_provider_absorbed_asset_amts = AbsorberUtils::get_asset_amts_by_pct(
+        let expected_second_provider_absorbed_asset_amts = common::transform_span_by_pct(
             second_update_assets, expected_second_provider_pct
         );
 

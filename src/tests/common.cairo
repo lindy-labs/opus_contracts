@@ -16,7 +16,7 @@ use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::tests::erc20::ERC20;
 use aura::utils::types::Reward;
 use aura::utils::wadray;
-use aura::utils::wadray::Wad;
+use aura::utils::wadray::{Ray, Wad};
 
 use aura::tests::sentinel::utils::SentinelUtils;
 
@@ -215,4 +215,56 @@ fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
     } else {
         assert(b - a <= error, message);
     }
+}
+
+
+//
+// Helpers - Array functions
+//
+
+// Takes in an address and returns it as a span
+fn wrap_address_as_span(addr: ContractAddress) -> Span<ContractAddress> {
+    let mut addrs: Array<ContractAddress> = Default::default();
+    addrs.append(addr);
+    addrs.span()
+}
+
+// Helper function to multiply an array of values by a given percentage
+fn transform_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+    let mut split_asset_amts: Array<u128> = Default::default();
+    loop {
+        match asset_amts.pop_front() {
+            Option::Some(asset_amt) => {
+                // Convert to Wad for fixed point operations
+                let asset_amt: Wad = (*asset_amt).into();
+                split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
+            },
+            Option::None(_) => {
+                break;
+            },
+        };
+    };
+
+    split_asset_amts.span()
+}
+
+// Helper function to combine two arrays of equal lengths into a single array.
+// Assumes the arrays are ordered identically.
+fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
+    assert(lhs.len() == rhs.len(), 'combining diff array lengths');
+    let mut combined_asset_amts: Array<u128> = Default::default();
+
+    loop {
+        match lhs.pop_front() {
+            Option::Some(asset_amt) => {
+                // Convert to Wad for fixed point operations
+                combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
+            },
+            Option::None(_) => {
+                break;
+            },
+        };
+    };
+
+    combined_asset_amts.span()
 }
