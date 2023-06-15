@@ -7,10 +7,14 @@ mod Purger {
     use traits::{Default, Into};
     use zeroable::Zeroable;
 
+    use aura::core::roles::PurgerRoles;
+
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+
+    use aura::utils::access_control::AccessControl;
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray;
@@ -60,6 +64,9 @@ mod Purger {
     //
 
     #[event]
+    fn PenaltyScalarUpdated(new_scalar: Ray) {}
+
+    #[event]
     fn Purged(
         trove_id: u64,
         purge_amt: Wad,
@@ -86,10 +93,18 @@ mod Purger {
         absorber: ContractAddress,
         oracle: ContractAddress,
     ) {
+        AccessControl::initializer(admin);
+
+        // Grant admin permission
+        AccessControl::grant_role_internal(PurgerRoles::default_admin_role(), admin);
+
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         absorber::write(IAbsorberDispatcher { contract_address: absorber });
         oracle::write(IOracleDispatcher { contract_address: oracle });
+
+        penalty_scalar::write(RAY_ONE.into());
+        PenaltyScalarUpdated(RAY_ONE.into());
     }
 
     //
@@ -136,6 +151,18 @@ mod Purger {
     //
     // External
     //
+
+    #[external]
+    fn set_penalty_scalar(new_scalar: Ray) {
+        AccessControl::assert_has_role(PurgerRoles::SET_PENALTY_SCALAR);
+        assert(
+            MIN_PENALTY_SCALAR <= new_scalar & new_scalar <= MAX_PENALTY_SCALAR,
+            'PU: Invalid scalar'
+        );
+
+        penalty_scalar::write(new_scalar);
+        PenaltyScalarUpdated(new_scalar);
+    }
 
     // Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
     // and the recipient address to send the freed collateral to.
@@ -420,5 +447,55 @@ mod Purger {
         } else {
             wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value)
         }
+    }
+
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[view]
+    fn get_pending_admin() -> ContractAddress {
+        AccessControl::get_pending_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn set_pending_admin(new_admin: ContractAddress) {
+        AccessControl::set_pending_admin(new_admin);
+    }
+
+    #[external]
+    fn accept_admin() {
+        AccessControl::accept_admin();
     }
 }
