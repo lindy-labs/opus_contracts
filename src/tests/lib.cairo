@@ -2,6 +2,8 @@ mod abbot;
 mod absorber;
 mod common;
 mod equalizer;
+mod external;
+mod gate;
 mod sentinel;
 mod shrine;
 mod test_flashmint;

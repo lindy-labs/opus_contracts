@@ -65,7 +65,7 @@ mod Pragma {
         Generic: u256,
     }
 
-    #[derive(Copy, Drop, Serde)]
+    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
     struct PricesResponse {
         price: u256,
         decimals: u256,
