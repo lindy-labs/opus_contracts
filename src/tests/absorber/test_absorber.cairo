@@ -4,9 +4,7 @@ mod TestAbsorber {
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
-    use starknet::{
-        contract_address_const, ContractAddress, get_block_timestamp, SyscallResultTrait
-    };
+    use starknet::{ContractAddress, get_block_timestamp, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
@@ -161,7 +159,7 @@ mod TestAbsorber {
     fn test_set_reward_token_zero_address_fail() {
         let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
-        let valid_address = contract_address_const::<0xffff>();
+        let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
 
         set_contract_address(AbsorberUtils::admin());
@@ -174,7 +172,7 @@ mod TestAbsorber {
     fn test_set_reward_blesser_zero_address_fail() {
         let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
-        let valid_address = contract_address_const::<0xffff>();
+        let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
 
         set_contract_address(AbsorberUtils::admin());
@@ -187,13 +185,30 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_kill_pass() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+    fn test_kill_and_remove_pass() {
+        let (shrine, _, absorber, _, _, _, _, _, provider, provided_amt) =
+            AbsorberUtils::absorber_with_rewards_and_first_provider();
 
         set_contract_address(AbsorberUtils::admin());
         absorber.kill();
 
         assert(!absorber.get_live(), 'should be killed');
+
+        // Check provider can remove
+        let before_provider_yin_bal: Wad = shrine.get_yin(provider);
+        set_contract_address(provider);
+        absorber.request();
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
+        absorber.remove(BoundedU128::max().into());
+
+        // Loss of precision
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(
+            shrine.get_yin(provider),
+            before_provider_yin_bal + provided_amt,
+            error_margin,
+            'wrong yin amount'
+        );
     }
 
     #[test]
@@ -217,31 +232,6 @@ mod TestAbsorber {
         absorber.provide(1_u128.into());
     }
 
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_remove_after_kill_pass() {
-        let (shrine, _, absorber, _, _, _, _, _, provider, provided_amt) =
-            AbsorberUtils::absorber_with_rewards_and_first_provider();
-
-        set_contract_address(AbsorberUtils::admin());
-        absorber.kill();
-
-        let before_provider_yin_bal: Wad = shrine.get_yin(provider);
-        set_contract_address(provider);
-        absorber.request();
-        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedU128::max().into());
-
-        // Loss of precision
-        let error_margin: Wad = 1000_u128.into();
-        common::assert_equalish(
-            shrine.get_yin(provider),
-            before_provider_yin_bal + provided_amt,
-            error_margin,
-            'wrong yin amount'
-        );
-    }
-
     //
     // Tests - Update
     //
@@ -249,19 +239,20 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_update_and_subsequent_provider_action() {
-        // Parametrization
+        // Parametrization so that the second provider action is performed 
+        // for each percentage
         let mut percentages_to_drain: Array<Ray> = Default::default();
-        percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
         percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
 
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 20% (Ray)
-        percentages_to_drain.append(200000000000000000000000000_u128.into()); // 43.291% (Ray)
+        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 2.17452316% (Ray)
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 43.291% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 100% (Ray)
 
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 20% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 2.17452316% (Ray)
         percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(200000000000000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 100% (Ray)
 
         let mut percentages_to_drain = percentages_to_drain.span();
 

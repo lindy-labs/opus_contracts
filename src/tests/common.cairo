@@ -51,6 +51,10 @@ fn trove3_owner_addr() -> ContractAddress {
     contract_address_try_from_felt252('trove3 owner').unwrap()
 }
 
+fn non_zero_address() -> ContractAddress {
+    contract_address_try_from_felt252('nonzero address').unwrap()
+}
+
 //
 // Trait implementations
 //
