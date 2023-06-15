@@ -231,21 +231,6 @@ mod Purger {
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
 
-        let compensation_pct: Ray = get_compensation_pct(
-            trove_debt, trove_value, trove_ltv, trove_penalty
-        );
-
-        // Transfer a percentage of the penalty to the caller as compensation
-        //
-        // `compensation_pct` must be scaled by `trove_ltv` because 
-        // it is a percentage of the trove debt, and `free` requires 
-        // a percentage of the trove value.
-        let (yangs, compensations) = free(shrine, trove_id, compensation_pct * trove_ltv, caller);
-
-        // Penalty the absorber providers will actually earn after the caller's 
-        // compensation is deducted
-        let net_penalty = trove_penalty - compensation_pct;
-
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
         let max_purge_amount: Wad = get_max_close_amount_internal(
             trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty
@@ -254,6 +239,17 @@ mod Purger {
         // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
         // cap the amount to pay down to the absorber's balance (including if it is zero).
         let purge_amt = min(max_purge_amount, absorber_yin_bal);
+
+        let compensation_pct: Ray = get_compensation_pct(
+            trove_debt, trove_value, trove_ltv, trove_penalty
+        );
+
+        // Transfer a percentage of the penalty to the caller as compensation
+        let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
+
+        // Penalty the absorber providers will actually earn after the caller's 
+        // compensation is deducted
+        let net_penalty = trove_penalty - compensation_pct;
 
         let can_absorb_any: bool = purge_amt.is_non_zero();
         let is_fully_absorbed: bool = purge_amt == max_purge_amount;
@@ -383,21 +379,28 @@ mod Purger {
     //    - its threshold threshold is greater than `ABSORPTION_THRESHOLD` OR penalty == (1 - ltv)/ltv
     // If LTV exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`. 
     fn get_penalty_internal(threshold: Ray, ltv: Ray, is_absorption: bool) -> Option<Ray> {
-        if ltv <= threshold | (is_absorption & threshold <= ABSORPTION_THRESHOLD.into()) {
+        if ltv <= threshold {
             return Option::None(());
+        }
+
+        // If debt value exceeds collateral value, then there is nothing with which
+        // to pay a penalty
+        if ltv > RAY_ONE.into() {
+            return Option::Some(RayZeroable::zero());
         }
 
         if is_absorption {
             if threshold >= ABSORPTION_THRESHOLD.into() {
-                let scalar = penalty_scalar::read();
+                let s = penalty_scalar::read();
                 let penalty = min(
                     min(
-                        MIN_PENALTY.into() + scalar * ltv / threshold - RAY_ONE.into(),
+                        MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(),
                         MAX_PENALTY.into()
                     ),
                     (RAY_ONE.into() - ltv) / ltv
                 );
-                return Option::Some(penalty);
+
+                Option::Some(penalty)
             } else {
                 let max_possible_penalty = (RAY_ONE.into() - ltv) / ltv;
                 let penalty = min(
@@ -405,18 +408,19 @@ mod Purger {
                     max_possible_penalty
                 );
                 if penalty == max_possible_penalty {
-                    return Option::Some(penalty);
+                    Option::Some(penalty)
                 } else {
-                    return Option::None(());
+                    Option::None(())
                 }
             }
-        }
+        } else {
+            let penalty = min(
+                min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
+                (RAY_ONE.into() - ltv) / ltv
+            );
 
-        let penalty = min(
-            min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
-            (RAY_ONE.into() - ltv) / ltv
-        );
-        Option::Some(penalty)
+            Option::Some(penalty)
+        }
     }
 
     // Helper function to calculate percentage of collateral freed.
