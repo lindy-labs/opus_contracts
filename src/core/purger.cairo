@@ -31,8 +31,8 @@ mod Purger {
     // Minimum liquidation penalty (ray): 0.03 * RAY_ONE
     const MIN_PENALTY: u128 = 30000000000000000000000000;
 
-    // Bounds on the penalty scalar for absorber liquidations
-    const MIN_PENALTY_SCALAR: u128 = 1000000000000000000000000000; // 1.0 (ray)
+    // Bounds on the penalty scalar for absorber liquidations 
+    const MIN_PENALTY_SCALAR: u128 = 970000000000000000000000000; // 0.97 (ray) (1 - MIN_PENALTY)
     const MAX_PENALTY_SCALAR: u128 = 1060000000000000000000000000; // 1.06 (ray)
 
     // LTV past which `absorb` can be called regardless of whether the other 
@@ -372,19 +372,23 @@ mod Purger {
         )
     }
 
-    // Assumes ltv >= threshold
-    // If is_absorption == true, assumes threshold >= ABSORPTION_THRESHOLD
-    // 1. 
-    // 2. 
-    // 3. 
-    // 4. 
+    // Returns the liquidation penalty as a percentage of the debt
+    // Notes:
+    // - If a trove is not liquidatable and `is_absorption` is false, returns None
+    // - If a trove is not absorbable and `is_absorption` is true, returns None
+    // Definitions:
+    // 1. A trove is liquidatable if its LTV is greater than its threshold
+    // 2. A trove is absorbable if
+    //    - it is liquidatable AND
+    //    - its threshold threshold is greater than `ABSORPTION_THRESHOLD` OR penalty == (1 - ltv)/ltv
+    // If LTV exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`. 
     fn get_penalty_internal(threshold: Ray, ltv: Ray, is_absorption: bool) -> Option<Ray> {
         if ltv <= threshold | (is_absorption & threshold <= ABSORPTION_THRESHOLD.into()) {
             return Option::None(());
         }
 
         if is_absorption {
-            if ltv >= ABSORPTION_THRESHOLD.into() {
+            if threshold >= ABSORPTION_THRESHOLD.into() {
                 let scalar = penalty_scalar::read();
                 let penalty = min(
                     min(
