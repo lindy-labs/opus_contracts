@@ -340,7 +340,7 @@ mod Absorber {
 
     // Note: rewards ID start from index 1. This allows `set_reward` to be used for both 
     // adding a new reward and updating an existing reward based on whether the initial 
-    // reward ID is zero (new reward) or not (existing reward).
+    // reward ID is zero (new reward) or non-zero (existing reward).
     #[external]
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool) {
         AccessControl::assert_has_role(AbsorberRoles::SET_REWARD);
@@ -816,7 +816,10 @@ mod Absorber {
         // NOTE: We cannot rely on the array of reward addresses returned by
         // `get_provider_accumulated_rewards` because it returns an empty array when 
         // `provision.shares` is zero. This would result in a bug where the reward cumulatives
-        // for new providers are not updated to the latest epoch's values and start at 0.
+        // for new providers are not updated to the latest epoch's values and start at 0. This 
+        // wrongly entitles a new provider to receive rewards from epoch 0 up to the 
+        // latest epoch's values, which would eventually result in an underflow when 
+        // transferring rewards during a `reap_internal` call.
         update_provider_cumulative_rewards(provider, current_epoch, rewards_count);
 
         Reap(provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_asset_amts);
