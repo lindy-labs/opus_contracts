@@ -220,6 +220,31 @@ mod TestAbsorber {
         absorber.provide(1_u128.into());
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_remove_after_kill_pass() {
+        let (shrine, _, absorber, _, _, _, _, _, provider, provided_amt) =
+            AbsorberUtils::absorber_with_rewards_and_first_provider();
+
+        set_contract_address(AbsorberUtils::admin());
+        absorber.kill();
+
+        let before_provider_yin_bal: Wad = shrine.get_yin(provider);
+        set_contract_address(provider);
+        absorber.request();
+        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
+        absorber.remove(BoundedU128::max().into());
+
+        // Loss of precision
+        let error_margin: Wad = 1000_u128.into();
+        common::assert_equalish(
+            shrine.get_yin(provider),
+            before_provider_yin_bal + provided_amt,
+            error_margin,
+            'wrong yin amount'
+        );
+    }
+
     //
     // Tests - Update
     //
