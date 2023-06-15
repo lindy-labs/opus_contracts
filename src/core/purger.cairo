@@ -88,6 +88,7 @@ mod Purger {
 
     #[constructor]
     fn constructor(
+        admin: ContractAddress,
         shrine: ContractAddress,
         sentinel: ContractAddress,
         absorber: ContractAddress,
@@ -156,7 +157,7 @@ mod Purger {
     fn set_penalty_scalar(new_scalar: Ray) {
         AccessControl::assert_has_role(PurgerRoles::SET_PENALTY_SCALAR);
         assert(
-            MIN_PENALTY_SCALAR <= new_scalar & new_scalar <= MAX_PENALTY_SCALAR,
+            MIN_PENALTY_SCALAR.into() <= new_scalar & new_scalar <= MAX_PENALTY_SCALAR.into(),
             'PU: Invalid scalar'
         );
 
