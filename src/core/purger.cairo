@@ -123,6 +123,16 @@ mod Purger {
         }
     }
 
+    #[view]
+    fn is_absorbable(trove_id: u64) -> bool {
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+
+        match get_penalty_internal(threshold, ltv, true) {
+            Option::Some(_) => true,
+            Option::None(_) => false,
+        }
+    }
+
     //
     // External
     //
