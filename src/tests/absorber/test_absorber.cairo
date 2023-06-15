@@ -340,14 +340,11 @@ mod TestAbsorber {
                     );
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
 
-                    let mut token_holders: Array<ContractAddress> = Default::default();
-                    token_holders.append(provider);
-
                     let before_absorbed_bals = common::get_token_balances(
-                        yangs, token_holders.span()
+                        yangs, AbsorberUtils::wrap_address_as_span(provider)
                     );
                     let before_reward_bals = common::get_token_balances(
-                        reward_tokens, token_holders.span()
+                        reward_tokens, AbsorberUtils::wrap_address_as_span(provider)
                     );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
@@ -503,10 +500,8 @@ mod TestAbsorber {
         let before_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
         let before_absorber_yin_bal: u256 = yin.balance_of(absorber.contract_address);
 
-        let mut token_holders: Array<ContractAddress> = Default::default();
-        token_holders.append(provider);
         let before_reward_bals: Span<Span<u128>> = common::get_token_balances(
-            reward_tokens, token_holders.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(provider)
         );
 
         assert(
@@ -654,14 +649,11 @@ mod TestAbsorber {
         );
 
         // Step 5
-        let mut user_addresses: Array<ContractAddress> = Default::default();
-        user_addresses.append(first_provider);
-
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, user_addresses.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, user_addresses.span()
+            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -710,14 +702,11 @@ mod TestAbsorber {
         );
 
         // Step 6
-        let mut user_addresses: Array<ContractAddress> = Default::default();
-        user_addresses.append(second_provider);
-
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, user_addresses.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(second_provider)
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, user_addresses.span()
+            yangs, AbsorberUtils::wrap_address_as_span(second_provider)
         );
 
         set_contract_address(second_provider);
@@ -843,15 +832,12 @@ mod TestAbsorber {
         );
 
         // Step 4
-        let mut user_addresses: Array<ContractAddress> = Default::default();
-        user_addresses.append(first_provider);
-
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, user_addresses.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, user_addresses.span()
+            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -997,15 +983,12 @@ mod TestAbsorber {
         );
 
         // Step 4
-        let mut user_addresses: Array<ContractAddress> = Default::default();
-        user_addresses.append(first_provider);
-
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, user_addresses.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, user_addresses.span()
+            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -1167,15 +1150,12 @@ mod TestAbsorber {
         );
 
         // Step 5
-        let mut user_addresses: Array<ContractAddress> = Default::default();
-        user_addresses.append(first_provider);
-
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, user_addresses.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(first_provider)
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, user_addresses.span()
+            yangs, AbsorberUtils::wrap_address_as_span(first_provider)
         );
 
         set_contract_address(first_provider);
@@ -1241,15 +1221,12 @@ mod TestAbsorber {
         );
 
         // Step 6
-        let mut user_addresses: Array<ContractAddress> = Default::default();
-        user_addresses.append(second_provider);
-
         let second_provider_before_yin_bal: Wad = shrine.get_yin(second_provider);
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, user_addresses.span()
+            reward_tokens, AbsorberUtils::wrap_address_as_span(second_provider)
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, user_addresses.span()
+            yangs, AbsorberUtils::wrap_address_as_span(second_provider)
         );
 
         set_contract_address(second_provider);

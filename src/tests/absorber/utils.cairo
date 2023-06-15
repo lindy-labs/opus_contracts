@@ -675,6 +675,13 @@ mod AbsorberUtils {
     // Tests - Utility functions
     //
 
+    // Takes in an address and returns it as a span
+    fn wrap_address_as_span(addr: ContractAddress) -> Span<ContractAddress> {
+        let mut addrs: Array<ContractAddress> = Default::default();
+        addrs.append(addr);
+        addrs.span()
+    }
+
     // Helper function that takes in an array of asset amounts and returns an array of 
     // the given percentage value for each asset amount.
     fn get_asset_amts_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
