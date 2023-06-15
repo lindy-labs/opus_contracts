@@ -24,7 +24,7 @@ mod TestAbsorber {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE, Ray, RAY_SCALE};
+    use aura::utils::wadray::{Ray, RAY_SCALE, Wad, WadZeroable, WAD_SCALE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -232,6 +232,15 @@ mod TestAbsorber {
         percentages_to_drain.append(200000000000000000000000000_u128.into()); // 20% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
         percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
+
+        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 20% (Ray)
+        percentages_to_drain.append(200000000000000000000000000_u128.into()); // 43.291% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 100% (Ray)
+
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 20% (Ray)
+        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 43.291% (Ray)
+        percentages_to_drain.append(200000000000000000000000000_u128.into()); // 100% (Ray)
+
         let mut percentages_to_drain = percentages_to_drain.span();
 
         loop {
@@ -316,6 +325,7 @@ mod TestAbsorber {
                         reward_tokens, token_holders.span()
                     );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
+                    let before_provider_yin_bal: Wad = shrine.get_yin(provider);
 
                     // Perform three different actions:
                     // 1. `reap`
@@ -327,6 +337,7 @@ mod TestAbsorber {
                         .preview_reap(provider);
 
                     let mut remove_as_second_action: bool = false;
+                    let mut provide_as_second_action: bool = false;
                     set_contract_address(provider);
                     if percentages_to_drain.len() % 3 == 0 {
                         absorber.reap();
@@ -338,16 +349,8 @@ mod TestAbsorber {
                         absorber.remove(BoundedU128::max().into());
                         remove_as_second_action = true;
                     } else {
-                        AbsorberUtils::provide_to_absorber(
-                            shrine,
-                            abbot,
-                            absorber,
-                            provider,
-                            yangs,
-                            AbsorberUtils::provider_asset_amts(),
-                            gates,
-                            1_u128.into()
-                        );
+                        absorber.provide(WAD_SCALE.into());
+                        provide_as_second_action = true;
                     }
 
                     // One distribution from `update` and another distribution from 
@@ -387,7 +390,7 @@ mod TestAbsorber {
                     );
 
                     let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
-                    if is_fully_absorbed {
+                    if is_fully_absorbed & !provide_as_second_action {
                         assert(
                             after_preview_reward_amts.len().is_zero(), 'should not have rewards'
                         );
@@ -405,17 +408,13 @@ mod TestAbsorber {
                     // If the second action was `remove`, check that the yin balances of absorber 
                     // and provider are updated.
                     if remove_as_second_action {
-                        assert(
-                            *percentage_to_drain != RAY_SCALE.into(), 'use a different value'
-                        ); // sanity check
-
                         let expected_removed_amt: Wad = wadray::rmul_wr(
                             first_provided_amt, (RAY_SCALE.into() - *percentage_to_drain)
                         );
                         let error_margin: Wad = 1000_u128.into();
                         common::assert_equalish(
                             shrine.get_yin(provider),
-                            expected_removed_amt,
+                            before_provider_yin_bal + expected_removed_amt,
                             error_margin,
                             'wrong provider yin balance'
                         );

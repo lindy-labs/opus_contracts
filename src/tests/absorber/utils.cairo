@@ -28,7 +28,7 @@ mod AbsorberUtils {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, Ray};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_SCALE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::mock_blesser::MockBlesser;
@@ -281,7 +281,8 @@ mod AbsorberUtils {
         amt: Wad
     ) {
         common::fund_user(provider, yangs, yang_asset_amts);
-        common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, amt);
+        // Additional amount for testing subsequent provision
+        common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into());
 
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
