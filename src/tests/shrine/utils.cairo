@@ -164,7 +164,6 @@ mod ShrineUtils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-
     fn shrine_setup_with_mock_yangs(shrine_addr: ContractAddress) {
         shrine_setup(shrine_addr);
 
