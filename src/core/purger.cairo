@@ -172,6 +172,11 @@ mod Purger {
         }
     }
 
+    #[view]
+    fn get_penalty_scalar() -> Ray {
+        penalty_scalar::read()
+    }
+
     //
     // External
     //
