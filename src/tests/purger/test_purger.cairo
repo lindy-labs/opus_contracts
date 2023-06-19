@@ -201,6 +201,11 @@ mod TestPurger {
 
         // sanity check
         assert(shrine.get_yin(absorber.contract_address) > debt, 'not full absorption');
+
+        // TODO: 
+        // (1) check that yangs are transferred to absorber
+        // (2) trove's debt is reduced by close amount
+        // (3) trove is healthy, and LTV is at safety margin (?)
     }
 
     #[test]
@@ -232,6 +237,11 @@ mod TestPurger {
 
         // sanity check
         assert(shrine.get_yin(absorber.contract_address) < debt, 'not partial absorption');
+
+        // TODO: 
+        // (1) check that yangs are transferred to absorber
+        // (2) trove's debt is reduced by close amount
+        // (3) trove is healthy, and LTV is at safety margin (?)
     }
 
     #[test]
@@ -265,6 +275,8 @@ mod TestPurger {
         assert(ltv == RayZeroable::zero(), 'LTV should be 0');
         assert(value == WadZeroable::zero(), 'value should be 0');
         assert(debt == WadZeroable::zero(), 'debt should be 0');
+
+        assert(shrine.get_redistributions_count() == 1, 'wrong redistributions count');
     }
 
     #[test]
