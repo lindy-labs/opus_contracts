@@ -13,6 +13,7 @@ mod PurgerUtils {
     use zeroable::Zeroable;
 
     use aura::core::purger::Purger;
+    use aura::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
@@ -21,13 +22,16 @@ mod PurgerUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
     use aura::tests::external::utils::PragmaUtils;
+    use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
+
+    use debug::PrintTrait;
 
     //
     // Address constants
@@ -81,6 +85,26 @@ mod PurgerUtils {
             .unwrap_syscall();
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
+
+        // Approve Purger in Shrine
+        let shrine_ac = IAccessControlDispatcher { contract_address: shrine.contract_address };
+        set_contract_address(ShrineUtils::admin());
+        shrine_ac.grant_role(ShrineRoles::purger(), purger_addr);
+
+        // Approve Purger in Sentinel
+        let sentinel_ac = IAccessControlDispatcher { contract_address: sentinel.contract_address };
+        set_contract_address(SentinelUtils::admin());
+        sentinel_ac.grant_role(SentinelRoles::purger(), purger_addr);
+
+        // Approve Purger in Oracle
+        let oracle_ac = IAccessControlDispatcher { contract_address: oracle.contract_address };
+        set_contract_address(PragmaUtils::admin());
+        oracle_ac.grant_role(PragmaRoles::purger(), purger_addr);
+
+        // Approve Purger in Absorber
+        let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
+        set_contract_address(AbsorberUtils::admin());
+        absorber_ac.grant_role(AbsorberRoles::purger(), purger_addr);
 
         // Increase debt ceiling
         set_contract_address(ShrineUtils::admin());
@@ -140,6 +164,27 @@ mod PurgerUtils {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     shrine.set_threshold(*yang, threshold);
+                },
+                Option::None(_) => {
+                    break;
+                },
+            }; 
+        };
+        set_contract_address(ContractAddressZeroable::zero());
+    }
+
+    fn decrease_yang_prices_by_pct(
+        shrine: IShrineDispatcher,
+        mut yangs: Span<ContractAddress>,
+        pct_decrease: Ray,
+    ) {
+        set_contract_address(ShrineUtils::admin());
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - pct_decrease));
+                    shrine.advance(*yang, new_price);
                 },
                 Option::None(_) => {
                     break;
