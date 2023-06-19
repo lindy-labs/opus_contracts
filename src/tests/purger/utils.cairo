@@ -41,8 +41,8 @@ mod PurgerUtils {
         contract_address_try_from_felt252('searcher').unwrap()
     }
 
-    fn dangerous_chad() -> ContractAddress {
-        contract_address_try_from_felt252('dangerous chad').unwrap()
+    fn target_trove_owner() -> ContractAddress {
+        contract_address_try_from_felt252('target trove owner').unwrap()
     }
 
     //
@@ -124,7 +124,7 @@ mod PurgerUtils {
         gates: Span<IGateDispatcher>,
     ) -> u64 {
         let provided_amt: Wad = 1000000000000000000000_u128.into(); // 1000 (Wad)
-        let user: ContractAddress = common::trove1_owner_addr();
+        let user: ContractAddress = target_trove_owner();
         common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
         let deposit_amts: Span<u128> = common::transform_span_by_pct(
             AbsorberUtils::provider_asset_amts(), 

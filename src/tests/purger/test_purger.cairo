@@ -8,11 +8,12 @@ mod TestPurger {
     //use aura::core::roles::PurgerRoles;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::Wad;
+    use aura::utils::wadray::{Wad, WAD_ONE};
 
     use aura::tests::common;
     use aura::tests::purger::utils::PurgerUtils;
@@ -77,7 +78,7 @@ mod TestPurger {
         PurgerUtils::set_thresholds(shrine, yangs, HIGH_THRESHOLD.into());
         let max_forge_amt: Wad = shrine.get_max_forge(healthy_trove);
 
-        let healthy_trove_owner: ContractAddress = common::trove1_owner_addr();
+        let healthy_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
         set_contract_address(healthy_trove_owner);
         abbot.forge(healthy_trove, max_forge_amt, 0_u128.into());
 
@@ -94,8 +95,27 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_insufficient_yin_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
 
+        let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+        // Modify the thresholds to below the trove's LTV
+        PurgerUtils::set_thresholds(shrine, yangs, (ltv.val - 1).into());
+
+        assert(!shrine.is_healthy(target_trove), 'should not be healthy');
+        let max_close_amt: Wad = purger.get_max_close_amount(target_trove);
+
+        let searcher: ContractAddress = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
+        let searcher_yin_bal: Wad = shrine.get_yin(searcher);
+        // Transfer yin from the searcher so that its balance falls just below
+        // the maximum close amount
+        yin.transfer(PurgerUtils::target_trove_owner(), (searcher_yin_bal - (max_close_amt + WAD_ONE.into())).into());
+
+        purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
     }
 
     //
