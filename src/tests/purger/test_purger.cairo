@@ -154,19 +154,78 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_full_absorb_pass() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
+
+        let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
+        let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into()));
+        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+        PurgerUtils::decrease_yang_prices_by_pct(
+            shrine,
+            yangs,
+            decrease_pct + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
+        );
+
+        // Fund the absorber with twice the target trove's debt
+        let absorber_yin: Wad = (debt.val * 2).into();
+        PurgerUtils::funded_absorber(
+            shrine,
+            abbot,
+            absorber,
+            yangs,
+            gates,
+            absorber_yin
+        );
+
+        // sanity check
+        assert(shrine.get_yin(absorber.contract_address) > debt, 'not full absorption');
 
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_partial_absorb_with_redistribution_pass() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
+        let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
+        let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into()));
+        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+        PurgerUtils::decrease_yang_prices_by_pct(
+            shrine,
+            yangs,
+            decrease_pct + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
+        );
+
+        // Fund the absorber with half the target trove's debt
+        let absorber_yin: Wad = (debt.val / 2).into();
+        PurgerUtils::funded_absorber(
+            shrine,
+            abbot,
+            absorber,
+            yangs,
+            gates,
+            absorber_yin
+        );
+
+        // sanity check
+        assert(shrine.get_yin(absorber.contract_address) < debt, 'not partial absorption');
     }
 
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_full_redistribution_pass() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
+        let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
+        let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into()));
+        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+        PurgerUtils::decrease_yang_prices_by_pct(
+            shrine,
+            yangs,
+            decrease_pct + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
+        );
     }
 
     #[test]

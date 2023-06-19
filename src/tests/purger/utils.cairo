@@ -40,6 +40,9 @@ mod PurgerUtils {
     const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
     const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
 
+    const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
+    const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
+
     //
     // Address constants
     //
@@ -64,6 +67,13 @@ mod PurgerUtils {
     // Constants
     //
 
+    fn target_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(TARGET_TROVE_ETH_DEPOSIT_AMT);
+        asset_amts.append(TARGET_TROVE_WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
+
 
     //
     // Test setup helpers
@@ -77,7 +87,7 @@ mod PurgerUtils {
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt) = AbsorberUtils::absorber_with_first_provider();
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
         let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(sentinel, shrine.contract_address);
         PragmaUtils::add_yangs_to_pragma(oracle, yangs);
 
@@ -148,8 +158,28 @@ mod PurgerUtils {
         yin_amt: Wad,
     ) {
         let user: ContractAddress = searcher();
-        common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
+        common::fund_user(user, yangs, AbsorberUtils::provider_asset_amts());
         common::open_trove_helper(abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, yin_amt);
+    }
+
+    fn funded_absorber(
+        shrine: IShrineDispatcher,
+        abbot: IAbbotDispatcher,
+        absorber: IAbsorberDispatcher,
+        yangs: Span<ContractAddress>,
+        gates: Span<IGateDispatcher>,
+        amt: Wad,
+    ) {
+        AbsorberUtils::provide_to_absorber(
+            shrine,
+            abbot,
+            absorber,
+            AbsorberUtils::provider_1(),
+            yangs,
+            AbsorberUtils::provider_asset_amts(),
+            gates,
+            amt,
+        );
     }
 
     // Creates a healthy trove and returns the trove ID
@@ -160,11 +190,8 @@ mod PurgerUtils {
         yin_amt: Wad,
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
-        common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
-        let deposit_amts: Span<u128> = common::transform_span_by_pct(
-            AbsorberUtils::provider_asset_amts(), 
-            200000000000000000000000000_u128.into() // 20% (Ray)
-        );
+        let deposit_amts: Span<u128> = target_trove_yang_asset_amts();
+        common::fund_user(user, yangs, deposit_amts);
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
     }
 
