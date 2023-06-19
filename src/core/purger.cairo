@@ -152,11 +152,12 @@ mod Purger {
     #[view]
     fn get_max_absorption_amount(trove_id: u64) -> Wad {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (_, ltv_after_compensation) = get_compensation_pct(value, ltv);
+        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
 
+        let value_after_compensation = (RAY_ONE.into() - compensation_pct) * value;
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
             Option::Some(penalty) => get_max_close_amount_internal(
-                threshold, ltv_after_compensation, value, debt, penalty
+                threshold, ltv_after_compensation, value_after_compensation, debt, penalty
             ),
             Option::None(_) => WadZeroable::zero(),
         }
@@ -266,9 +267,14 @@ mod Purger {
         let absorber: IAbsorberDispatcher = absorber::read();
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
-        // LTV after compensation is used to calculate the max purge amount
+        // LTV and value after compensation are used to calculate the max purge amount
+        let value_after_compensation = (RAY_ONE.into() - compensation_pct) * trove_value;
         let max_purge_amt: Wad = get_max_close_amount_internal(
-            trove_threshold, ltv_after_compensation, trove_value, trove_debt, trove_penalty
+            trove_threshold,
+            ltv_after_compensation,
+            value_after_compensation,
+            trove_debt,
+            trove_penalty
         );
 
         // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
@@ -284,11 +290,12 @@ mod Purger {
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
         if can_absorb_any {
-            // Updating the trove info because the LTV will have changed due to compensation
-            let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine
-                .get_trove_info(trove_id);
             let percentage_freed: Ray = get_percentage_freed(
-                trove_ltv, trove_value, trove_debt, trove_penalty, purge_amt
+                ltv_after_compensation,
+                value_after_compensation,
+                trove_debt,
+                trove_penalty,
+                purge_amt
             );
 
             // Melt the trove's debt using the absorber's yin directly
