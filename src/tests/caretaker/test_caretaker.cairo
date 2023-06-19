@@ -144,13 +144,14 @@ mod TestCaretaker {
 
         // user 1 with 10000 yin and 2 different yangs
         let user1 = common::trove1_owner_addr();
+        let trove1_deposit_amts = AbbotUtils::open_trove_yang_asset_amts();
         let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
         common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
         let trove1_id = common::open_trove_helper(
             abbot,
             user1,
             yangs,
-            AbbotUtils::open_trove_yang_asset_amts(),
+            trove1_deposit_amts,
             gates,
             trove1_forge_amt
         );
@@ -169,11 +170,17 @@ mod TestCaretaker {
             trove2_forge_amt
         );
 
+        let total_yin: Wad = trove1_forge_amt + trove2_forge_amt;
+        let (_, total_value) = shrine.get_shrine_threshold_and_value();
+        let backing: Ray = wadray::rdiv_ww(total_yin, total_value);
+
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
         let user1_yang0_before_balance: u256 = y0.balance_of(user1);
         let user1_yang1_before_balance: u256 = y1.balance_of(user1);
+        let trove1_yang0_deposit: Wad = shrine.get_deposit(*yangs[0], trove1_id);
+        let trove1_yang1_deposit: Wad = shrine.get_deposit(*yangs[1], trove1_id);
 
         set_contract_address(CaretakerUtils::admin());
         caretaker.shut();
@@ -183,6 +190,19 @@ mod TestCaretaker {
 
         let user1_yang0_after_balance: u256 = y0.balance_of(user1);
         let user1_yang1_after_balance: u256 = y1.balance_of(user1);
+
+        // assert released amount for eth
+        let eth_tolerance: Wad = 10_u128.into(); // 10 wei
+        let expected_release_y0: Wad = trove1_yang0_deposit - wadray::rmul_rw(backing, trove1_yang0_deposit);
+        common::assert_equalish((*released_amounts[0]).into(), expected_release_y0, eth_tolerance, 'y0 release');
+
+        // assert released amount for wbtc (need to deal w/ different decimals)
+        let wbtc_tolerance: Wad = (2 * 10000000000_u128).into(); // 2 satoshi
+        let wbtc_decimals: u8 = 8;
+        let wbtc_deposit: Wad = wadray::fixed_point_to_wad(*trove1_deposit_amts[1], wbtc_decimals);
+        let expected_release_y1: Wad = wbtc_deposit - wadray::rmul_rw(backing, trove1_yang1_deposit);
+        let actual_release_y1: Wad = wadray::fixed_point_to_wad(*released_amounts[1], wbtc_decimals);
+        common::assert_equalish(actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release');
 
         // assert all deposits were released and assets are back in user's account
         assert(released_assets == yangs, 'not all yangs released 1');
