@@ -21,11 +21,13 @@ mod PurgerUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::Wad;
+    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
 
+    use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
     use aura::tests::external::utils::PragmaUtils;
+    use aura::tests::shrine::utils::ShrineUtils;
 
     //
     // Address constants
@@ -39,12 +41,22 @@ mod PurgerUtils {
         contract_address_try_from_felt252('searcher').unwrap()
     }
 
+    fn dangerous_chad() -> ContractAddress {
+        contract_address_try_from_felt252('dangerous chad').unwrap()
+    }
+
+    //
+    // Constants
+    //
+
+
     //
     // Test setup helpers
     //
 
     fn purger_deploy() -> (
         IShrineDispatcher,
+        IAbbotDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -70,16 +82,54 @@ mod PurgerUtils {
 
         let purger = IPurgerDispatcher { contract_address: purger_addr };
 
-        (shrine, absorber, purger, yangs, gates)
+        // Increase debt ceiling
+        set_contract_address(ShrineUtils::admin());
+        let debt_ceiling: Wad = (100000 * WAD_ONE).into();
+        shrine.set_debt_ceiling(debt_ceiling);
+
+        set_contract_address(ContractAddressZeroable::zero());
+
+        (shrine, abbot, absorber, purger, yangs, gates)
+    }
+
+    fn purger_deploy_with_searcher() -> (
+        IShrineDispatcher,
+        IAbbotDispatcher,
+        IAbsorberDispatcher,
+        IPurgerDispatcher,
+        Span<ContractAddress>,
+        Span<IGateDispatcher>,
+    ) {
+        let (shrine, abbot, absorber, purger, yangs, gates) = purger_deploy();
+        funded_searcher(abbot, yangs, gates);
+
+        (shrine, abbot, absorber, purger, yangs, gates)
     }
 
     fn funded_searcher(
         abbot: IAbbotDispatcher,
         yangs: Span<ContractAddress>,
         gates: Span<IGateDispatcher>,
-        user: ContractAddress,
-    ) -> u64 {
+    ) {
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
-        common::open_trove_helper(abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, provided_amt)
+        let user: ContractAddress = searcher();
+        common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
+        common::open_trove_helper(abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, provided_amt);
+    }
+
+    // Creates a healthy trove and returns the trove ID
+    fn funded_healthy_trove(
+        abbot: IAbbotDispatcher,
+        yangs: Span<ContractAddress>,
+        gates: Span<IGateDispatcher>,
+    ) -> u64 {
+        let provided_amt: Wad = 1000000000000000000000_u128.into(); // 1000 (Wad)
+        let user: ContractAddress = dangerous_chad();
+        common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
+        let deposit_amts: Span<u128> = common::transform_span_by_pct(
+            AbsorberUtils::provider_asset_amts(), 
+            200000000000000000000000000_u128.into() // 20% (Ray)
+        );
+        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, provided_amt)
     }
 }

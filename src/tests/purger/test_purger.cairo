@@ -1,10 +1,18 @@
 #[cfg(test)]
 mod TestPurger {
+    use integer::BoundedU128;
+    use starknet::ContractAddress;
+    use starknet::testing::set_contract_address;
+    use traits::Into;
+
     //use aura::core::roles::PurgerRoles;
 
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 
     use aura::tests::purger::utils::PurgerUtils;
+    use aura::utils::wadray;
 
     //
     // Tests - Setup
@@ -13,7 +21,7 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_purger_setup() {
-        let (shrine, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
 
         // TODO: pending #335
         //let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
@@ -35,8 +43,16 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
+    #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
 
+        assert(shrine.is_healthy(healthy_trove), 'should be healthy');
+        
+        let searcher: ContractAddress = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);
     }
 
     #[test]
