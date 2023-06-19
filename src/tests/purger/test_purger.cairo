@@ -5,6 +5,7 @@ mod TestPurger {
     use starknet::testing::set_contract_address;
     use traits::Into;
 
+
     use aura::core::purger::Purger;
     //use aura::core::roles::PurgerRoles;
 
@@ -14,7 +15,7 @@ mod TestPurger {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
 
     use aura::tests::common;
     use aura::tests::purger::utils::PurgerUtils;
@@ -255,6 +256,15 @@ mod TestPurger {
             decrease_pct
                 + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
         );
+
+        set_contract_address(PurgerUtils::random_user());
+        purger.absorb(target_trove);
+
+        let (_, ltv, value, debt) = shrine.get_trove_info(target_trove);
+        assert(shrine.is_healthy(target_trove), 'should be healthy');
+        assert(ltv == RayZeroable::zero(), 'LTV should be 0');
+        assert(value == WadZeroable::zero(), 'value should be 0');
+        assert(debt == WadZeroable::zero(), 'debt should be 0');
     }
 
     #[test]
