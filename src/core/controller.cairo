@@ -3,12 +3,21 @@ mod Controller {
     use aura::core::roles::ControllerRoles;
 
     use aura::utils::access_control::AccessControl;
+    use aura::utils::wadray_signed;
+    use aura::utils::wadray_signed::SignedRay;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, Ray};
+    use aura::utils::math;
+
+    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+    struct SignedRay {
+        value: Ray,
+        sign: bool,
+    }
 
     struct Storage {
         integral_sum: Wad,
-        current_yin_price: Wad,
+        current_yin_spot_price: Ray,
         yin_price_last_updated: u64,
         p_gain: Ray,
         i_gain: Ray,
@@ -48,6 +57,17 @@ mod Controller {
     #[view]
     fn get_current_multiplier() -> Ray {
         let p_gain = p_gain::read();
-        let current_yin_price = current_yin_price::read();
+        let current_yin_spot_price = current_yin_spot_price::read();
     }
+
+    // output of `nonlinear_part` should always be positive, since the multiplier cannot go below zero
+    #[inline(always)]
+    fn nonlinear_part(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
+        let error_ray: Ray = error.into();
+        let denominator: SignedRay = sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
+        math::pow(error, alpha) / denominator
+    }
+
+    #[inline(always)]
+    fn signed_add(lhs: SignedRay, rhs: SignedRay) -> SignedRay {}
 }
