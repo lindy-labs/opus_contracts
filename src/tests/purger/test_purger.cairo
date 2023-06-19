@@ -7,12 +7,24 @@ mod TestPurger {
 
     //use aura::core::roles::PurgerRoles;
 
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-
-    use aura::tests::purger::utils::PurgerUtils;
+    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
+    use aura::utils::wadray::Wad;
+
+    use aura::tests::common;
+    use aura::tests::purger::utils::PurgerUtils;
+    use aura::tests::shrine::utils::ShrineUtils;
+
+    use debug::PrintTrait;
+
+    // 
+    // Constants
+    // 
+
+    const HIGH_THRESHOLD: u128 = 950000000000000000000000000; // 95% (Ray)
 
     //
     // Tests - Setup
@@ -49,7 +61,32 @@ mod TestPurger {
         let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
 
         assert(shrine.is_healthy(healthy_trove), 'should be healthy');
-        
+
+        let searcher: ContractAddress = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
+    fn test_liquidate_trove_healthy_high_threshold_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+
+        PurgerUtils::set_thresholds(shrine, yangs, HIGH_THRESHOLD.into());
+        let max_forge_amt: Wad = shrine.get_max_forge(healthy_trove);
+
+        let healthy_trove_owner: ContractAddress = common::trove1_owner_addr();
+        set_contract_address(healthy_trove_owner);
+        abbot.forge(healthy_trove, max_forge_amt, 0_u128.into());
+
+        assert(shrine.is_healthy(healthy_trove), 'should be healthy');
+
+        let (threshold, ltv, _, _) = shrine.get_trove_info(healthy_trove);
+        // Sanity check
+        assert(ltv > 910000000000000000000000000_u128.into(), 'too low');
+
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
         purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);

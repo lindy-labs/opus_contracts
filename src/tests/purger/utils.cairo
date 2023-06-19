@@ -124,12 +124,28 @@ mod PurgerUtils {
         gates: Span<IGateDispatcher>,
     ) -> u64 {
         let provided_amt: Wad = 1000000000000000000000_u128.into(); // 1000 (Wad)
-        let user: ContractAddress = dangerous_chad();
+        let user: ContractAddress = common::trove1_owner_addr();
         common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
         let deposit_amts: Span<u128> = common::transform_span_by_pct(
             AbsorberUtils::provider_asset_amts(), 
             200000000000000000000000000_u128.into() // 20% (Ray)
         );
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, provided_amt)
+    }
+
+    // Update thresholds for all yangs to the given value
+    fn set_thresholds(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, threshold: Ray) {
+        set_contract_address(ShrineUtils::admin());
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    shrine.set_threshold(*yang, threshold);
+                },
+                Option::None(_) => {
+                    break;
+                },
+            }; 
+        };
+        set_contract_address(ContractAddressZeroable::zero());
     }
 }
