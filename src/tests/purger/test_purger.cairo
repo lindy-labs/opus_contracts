@@ -13,7 +13,7 @@ mod TestPurger {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
 
     use aura::tests::common;
     use aura::tests::purger::utils::PurgerUtils;
@@ -51,7 +51,35 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
 
+        let target_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
+        set_contract_address(target_trove_owner);
+
+        let max_forge_amt: Wad = shrine.get_max_forge(target_trove);
+        abbot.forge(target_trove, max_forge_amt, 0_u128.into());
+        PurgerUtils::decrease_yang_prices_by_pct(
+            shrine,
+            yangs,
+            200000000000000000000000000_u128.into() // 20% (Ray)
+        );
+
+        // Sanity check
+        assert(!shrine.is_healthy(target_trove), 'should not be healthy');
+
+        let (_, before_ltv, before_debt, before_value) = shrine.get_trove_info(target_trove);
+
+        let penalty: Ray = purger.get_penalty(target_trove);
+        let max_close_amt: Wad = purger.get_max_close_amount(target_trove);
+
+        let searcher: ContractAddress = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+
+        // Check that LTV is close to safety margin
+
+        // Check that searcher has received collateral
     }
 
     #[test]
