@@ -39,12 +39,12 @@ mod Purger {
     // the trove's penalty is not at the absolute maximum given the LTV.
     const ABSORPTION_THRESHOLD: u128 = 900000000000000000000000000; // 0.9 (ray)
 
-    // Percentage of the liquidation penalty in `absorb`
-    // that's transferred to the caller as compensation: 0.2 (Ray)
-    const COMPENSATION_PCT: u128 = 200000000000000000000000000;
+    // Maximum percentage of trove collateral that 
+    // is transferred to caller of `absorb` as compensation
+    const COMPENSATION_PCT: u128 = 30000000000000000000000000;
 
     // Cap on compensation value: 200 (Wad)
-    const COMPENSATION_CAP: u128 = 200000000000000000000;
+    const COMPENSATION_CAP: u128 = 50000000000000000000;
 
     struct Storage {
         // the Shrine associated with this Purger
