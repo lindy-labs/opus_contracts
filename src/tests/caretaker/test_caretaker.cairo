@@ -238,23 +238,40 @@ mod TestCaretaker {
             trove1_forge_amt
         );
 
+        // transfer some yin from user1 elsewhere
+        // => user1 got scammed, poor guy
+        let scammer = common::badguy();
+        let scam_amt: u256 = (5000 * WAD_ONE).into();
+        set_contract_address(user1);
+        IERC20Dispatcher { contract_address: shrine.contract_address }.transfer(scammer, scam_amt);
+
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
-
         let user1_yang0_before_balance: u256 = y0.balance_of(user1);
         let user1_yang1_before_balance: u256 = y1.balance_of(user1);
+        let scammer_yang0_before_balance: u256 = y0.balance_of(scammer);
+        let scammer_yang1_before_balance: u256 = y1.balance_of(scammer);
 
         set_contract_address(CaretakerUtils::admin());
         caretaker.shut();
+
+        //
+        // user1 reclaim
+        //
 
         // save Caretaker yang balance after shut but before reclaim
         let ct_yang0_before_balance: u256 = y0.balance_of(caretaker.contract_address);
         let ct_yang1_before_balance: u256 = y1.balance_of(caretaker.contract_address);
 
-        // reclaim all yin
+        // do the reclaiming
         set_contract_address(user1);
         let (reclaimed_assets, reclaimed_amounts) = caretaker.reclaim(shrine.get_yin(user1));
+
+        // assert none of user's yin is left
+        assert(shrine.get_yin(user1) == 0_u128.into(), 'user yin balance');
+        // assert scammer still has theirs
+        assert(shrine.get_yin(scammer) == scam_amt.try_into().unwrap(), 'scammer yin balance 1');
 
         let ct_yang0_after_balance: u256 = y0.balance_of(caretaker.contract_address);
         let ct_yang1_after_balance: u256 = y1.balance_of(caretaker.contract_address);
@@ -267,13 +284,42 @@ mod TestCaretaker {
         let user1_yang0_diff = user1_yang0_after_balance - user1_yang0_before_balance;
         let user1_yang1_diff = user1_yang1_after_balance - user1_yang1_before_balance;
 
-        assert(ct_yang0_diff == user1_yang0_diff, 'yang0 diff');
-        assert(ct_yang1_diff == user1_yang1_diff, 'yang1 diff');
-        assert(ct_yang0_diff == (*reclaimed_amounts[0]).into(), 'reclaimed yang0');
-        assert(ct_yang1_diff == (*reclaimed_amounts[1]).into(), 'reclaimed yang1');
+        assert(ct_yang0_diff == user1_yang0_diff, 'user1 yang0 diff');
+        assert(ct_yang1_diff == user1_yang1_diff, 'user1 yang1 diff');
+        assert(ct_yang0_diff == (*reclaimed_amounts[0]).into(), 'user1 reclaimed yang0');
+        assert(ct_yang1_diff == (*reclaimed_amounts[1]).into(), 'user1 reclaimed yang1');
 
-        // assert none of user's yin is left
-        assert(shrine.get_yin(user1) == 0_u128.into(), 'yin balance');
+        //
+        // scammer reclaim
+        //
+
+        let tolerance: Wad = 10_u128.into();
+
+        // save Caretaker yang balance after first reclaim but before the second
+        let ct_yang0_before_balance: u256 = y0.balance_of(caretaker.contract_address);
+        let ct_yang1_before_balance: u256 = y1.balance_of(caretaker.contract_address);
+
+        // do the reclaiming
+        set_contract_address(scammer);
+        let (reclaimed_assets, reclaimed_amounts) = caretaker.reclaim(shrine.get_yin(scammer));
+
+        // assert all yin has been reclaimed
+        assert(shrine.get_yin(scammer) == 0_u128.into(), 'scammer yin balance 2');
+
+        let ct_yang0_after_balance: u256 = y0.balance_of(caretaker.contract_address);
+        let ct_yang1_after_balance: u256 = y1.balance_of(caretaker.contract_address);
+        let scammer_yang0_after_balance: u256 = y0.balance_of(scammer);
+        let scammer_yang1_after_balance: u256 = y1.balance_of(scammer);
+
+        let ct_yang0_diff: Wad = (ct_yang0_before_balance - ct_yang0_after_balance).try_into().unwrap();
+        let ct_yang1_diff: Wad = (ct_yang1_before_balance - ct_yang1_after_balance).try_into().unwrap();
+        let scammer_yang0_diff: Wad = (user1_yang0_after_balance - user1_yang0_before_balance).try_into().unwrap();
+        let scammer_yang1_diff: Wad = (user1_yang1_after_balance - user1_yang1_before_balance).try_into().unwrap();
+
+        common::assert_equalish(ct_yang0_diff, scammer_yang0_diff, tolerance, 'scammer yang0 diff');
+        common::assert_equalish(ct_yang1_diff, scammer_yang1_diff, tolerance, 'scammer yang1 diff');
+        common::assert_equalish(ct_yang0_diff, (*reclaimed_amounts[0]).into(), tolerance, 'scammer reclaimed yang0');
+        common::assert_equalish(ct_yang1_diff, (*reclaimed_amounts[1]).into(), tolerance, 'scammer reclaimed yang1');
     }
 
     #[test]
