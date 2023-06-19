@@ -52,8 +52,8 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
-        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
         let target_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
         set_contract_address(target_trove_owner);
@@ -90,8 +90,8 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
-        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
         assert(shrine.is_healthy(healthy_trove), 'should be healthy');
 
@@ -104,8 +104,8 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
-        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
         PurgerUtils::set_thresholds(shrine, yangs, HIGH_THRESHOLD.into());
         let max_forge_amt: Wad = shrine.get_max_forge(healthy_trove);
@@ -129,23 +129,20 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_insufficient_yin_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
-        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+        let target_trove_yin: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+        let searcher_yin: Wad = (target_trove_yin.val / 4).into();
+
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(searcher_yin);
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, target_trove_yin);
 
         let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
         // Modify the thresholds to below the trove's LTV
         PurgerUtils::set_thresholds(shrine, yangs, (ltv.val - 1).into());
 
         assert(!shrine.is_healthy(target_trove), 'should not be healthy');
-        let max_close_amt: Wad = purger.get_max_close_amount(target_trove);
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-        let searcher_yin_bal: Wad = shrine.get_yin(searcher);
-        // Transfer yin from the searcher so that its balance falls just below
-        // the maximum close amount
-        yin.transfer(PurgerUtils::target_trove_owner(), (searcher_yin_bal - (max_close_amt + WAD_ONE.into())).into());
 
         purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
     }
@@ -176,8 +173,8 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
     fn test_absorb_trove_healthy_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
-        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
         assert(shrine.is_healthy(healthy_trove), 'should be healthy');
 
@@ -189,8 +186,8 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
     fn test_absorb_below_absorbable_ltv_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
-        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(PurgerUtils::SEARCHER_YIN.into());
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into());
 
         assert(shrine.is_healthy(target_trove), 'should be healthy');
 

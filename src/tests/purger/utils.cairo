@@ -34,6 +34,13 @@ mod PurgerUtils {
     use debug::PrintTrait;
 
     //
+    // Constants
+    //
+
+    const SEARCHER_YIN: u128 = 10000000000000000000000; // 10_000 (Wad)
+    const TARGET_TROVE_YIN: u128 = 1000000000000000000000; // 1000 (Wad)
+
+    //
     // Address constants
     //
 
@@ -120,7 +127,7 @@ mod PurgerUtils {
         (shrine, abbot, absorber, purger, yangs, gates)
     }
 
-    fn purger_deploy_with_searcher() -> (
+    fn purger_deploy_with_searcher(searcher_yin_amt: Wad) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
         IAbsorberDispatcher,
@@ -129,7 +136,7 @@ mod PurgerUtils {
         Span<IGateDispatcher>,
     ) {
         let (shrine, abbot, absorber, purger, yangs, gates) = purger_deploy();
-        funded_searcher(abbot, yangs, gates);
+        funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, absorber, purger, yangs, gates)
     }
@@ -138,11 +145,11 @@ mod PurgerUtils {
         abbot: IAbbotDispatcher,
         yangs: Span<ContractAddress>,
         gates: Span<IGateDispatcher>,
+        yin_amt: Wad,
     ) {
-        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
         let user: ContractAddress = searcher();
         common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
-        common::open_trove_helper(abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, provided_amt);
+        common::open_trove_helper(abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, yin_amt);
     }
 
     // Creates a healthy trove and returns the trove ID
@@ -150,15 +157,15 @@ mod PurgerUtils {
         abbot: IAbbotDispatcher,
         yangs: Span<ContractAddress>,
         gates: Span<IGateDispatcher>,
+        yin_amt: Wad,
     ) -> u64 {
-        let provided_amt: Wad = 1000000000000000000000_u128.into(); // 1000 (Wad)
         let user: ContractAddress = target_trove_owner();
         common::fund_user(user, yangs, AbbotUtils::initial_asset_amts());
         let deposit_amts: Span<u128> = common::transform_span_by_pct(
             AbsorberUtils::provider_asset_amts(), 
             200000000000000000000000000_u128.into() // 20% (Ray)
         );
-        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, provided_amt)
+        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
     }
 
     // Update thresholds for all yangs to the given value
