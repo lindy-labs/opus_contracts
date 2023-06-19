@@ -164,6 +164,16 @@ mod Purger {
     }
 
     #[view]
+    fn get_compensation(trove_id: u64) -> Wad {
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
+        match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
+            Option::Some(_) => compensation_pct * value,
+            Option::None(_) => WadZeroable::zero(),
+        }
+    }
+
+    #[view]
     fn is_absorbable(trove_id: u64) -> bool {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
         let (_, ltv_after_compensation) = get_compensation_pct(value, ltv);
