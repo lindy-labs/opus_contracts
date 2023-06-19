@@ -193,4 +193,13 @@ mod PurgerUtils {
         };
         set_contract_address(ContractAddressZeroable::zero());
     }
+
+    //
+    // Test assertion helpers
+    //
+
+    fn get_expected_freed_pct(trove_value: Wad, close_amt: Wad, penalty: Ray) -> Ray {
+        let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
+        wadray::rdiv_ww(freed_amt, trove_value)
+    }
 }

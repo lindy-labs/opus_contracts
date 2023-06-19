@@ -62,24 +62,27 @@ mod TestPurger {
         PurgerUtils::decrease_yang_prices_by_pct(
             shrine,
             yangs,
-            200000000000000000000000000_u128.into() // 20% (Ray)
+            100000000000000000000000000_u128.into() // 10% (Ray)
         );
 
         // Sanity check
         assert(!shrine.is_healthy(target_trove), 'should not be healthy');
 
-        let (_, before_ltv, before_debt, before_value) = shrine.get_trove_info(target_trove);
-
+        let (threshold, before_ltv, before_debt, before_value) = shrine.get_trove_info(target_trove);
+        // TODO: this currently underflows because it requires a signed operation
         let penalty: Ray = purger.get_penalty(target_trove);
         let max_close_amt: Wad = purger.get_max_close_amount(target_trove);
-
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
         purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
 
         // Check that LTV is close to safety margin
+        let (_, after_ltv, after_debt, after_value) = shrine.get_trove_info(target_trove);
+        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+        // TODO:
 
         // Check that searcher has received collateral
+        let expected_freed_pct = PurgerUtils::get_expected_freed_pct(before_value, max_close_amt, penalty);
     }
 
     #[test]
