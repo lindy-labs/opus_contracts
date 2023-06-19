@@ -198,10 +198,9 @@ mod TestCaretaker {
 
         // assert released amount for wbtc (need to deal w/ different decimals)
         let wbtc_tolerance: Wad = (2 * 10000000000_u128).into(); // 2 satoshi
-        let wbtc_decimals: u8 = 8;
-        let wbtc_deposit: Wad = wadray::fixed_point_to_wad(*trove1_deposit_amts[1], wbtc_decimals);
+        let wbtc_deposit: Wad = wadray::fixed_point_to_wad(*trove1_deposit_amts[1], common::WBTC_DECIMALS);
         let expected_release_y1: Wad = wbtc_deposit - wadray::rmul_rw(backing, trove1_yang1_deposit);
-        let actual_release_y1: Wad = wadray::fixed_point_to_wad(*released_amounts[1], wbtc_decimals);
+        let actual_release_y1: Wad = wadray::fixed_point_to_wad(*released_amounts[1], common::WBTC_DECIMALS);
         common::assert_equalish(actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release');
 
         // assert all deposits were released and assets are back in user's account
@@ -241,7 +240,7 @@ mod TestCaretaker {
         // transfer some yin from user1 elsewhere
         // => user1 got scammed, poor guy
         let scammer = common::badguy();
-        let scam_amt: u256 = (5000 * WAD_ONE).into();
+        let scam_amt: u256 = (4000 * WAD_ONE).into();
         set_contract_address(user1);
         IERC20Dispatcher { contract_address: shrine.contract_address }.transfer(scammer, scam_amt);
 
@@ -313,8 +312,8 @@ mod TestCaretaker {
 
         let ct_yang0_diff: Wad = (ct_yang0_before_balance - ct_yang0_after_balance).try_into().unwrap();
         let ct_yang1_diff: Wad = (ct_yang1_before_balance - ct_yang1_after_balance).try_into().unwrap();
-        let scammer_yang0_diff: Wad = (user1_yang0_after_balance - user1_yang0_before_balance).try_into().unwrap();
-        let scammer_yang1_diff: Wad = (user1_yang1_after_balance - user1_yang1_before_balance).try_into().unwrap();
+        let scammer_yang0_diff: Wad = (scammer_yang0_after_balance - scammer_yang0_before_balance).try_into().unwrap();
+        let scammer_yang1_diff: Wad = (scammer_yang1_after_balance - scammer_yang1_before_balance).try_into().unwrap();
 
         common::assert_equalish(ct_yang0_diff, scammer_yang0_diff, tolerance, 'scammer yang0 diff');
         common::assert_equalish(ct_yang1_diff, scammer_yang1_diff, tolerance, 'scammer yang1 diff');
