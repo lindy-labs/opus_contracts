@@ -63,6 +63,11 @@ mod SentinelRoles {
     }
 
     #[inline(always)]
+    fn caretaker() -> u128 {
+        EXIT
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX
     }
@@ -90,6 +95,12 @@ mod ShrineRoles {
     fn abbot() -> u128 {
         DEPOSIT + FORGE + MELT + WITHDRAW
     }
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        EJECT + KILL + SEIZE
+    }
+
     #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
