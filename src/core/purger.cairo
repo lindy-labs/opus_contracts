@@ -40,10 +40,10 @@ mod Purger {
     const ABSORPTION_THRESHOLD: u128 = 900000000000000000000000000; // 0.9 (ray)
 
     // Maximum percentage of trove collateral that 
-    // is transferred to caller of `absorb` as compensation
+    // is transferred to caller of `absorb` as compensation 3% = 0.03 (ray)
     const COMPENSATION_PCT: u128 = 30000000000000000000000000;
 
-    // Cap on compensation value: 200 (Wad)
+    // Cap on compensation value: 50 (Wad)
     const COMPENSATION_CAP: u128 = 50000000000000000000;
 
     struct Storage {
