@@ -303,6 +303,14 @@ mod TestCaretaker {
         common::assert_equalish(gate1_after_balance, 0_u128.into(), tolerance, 'gate1 after balance');
         common::assert_equalish(ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance');
         common::assert_equalish(ct_yang1_balance, gate1_before_balance, tolerance, 'caretaker yang1 after balance');
+
+        // calling release still works, but nothing gets released
+        set_contract_address(user1);
+        let (released_assets, released_amounts) = caretaker.release(trove1_id);
+
+        // 0 released amounts also mean no `sentinel.exit` and `shrine.seize`
+        assert(*released_amounts[0] == 0_u128, 'incorrect armageddon release 1');
+        assert(*released_amounts[1] == 0_u128, 'incorrect armageddon release 2')
     }
 
     #[test]
