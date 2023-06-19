@@ -88,7 +88,9 @@ mod PurgerUtils {
         Span<IGateDispatcher>,
     ) {
         let (shrine, sentinel, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
-        let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(sentinel, shrine.contract_address);
+        let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(
+            sentinel, shrine.contract_address
+        );
         PragmaUtils::add_yangs_to_pragma(oracle, yangs);
 
         let admin: ContractAddress = admin();
@@ -137,7 +139,9 @@ mod PurgerUtils {
         (shrine, abbot, absorber, purger, yangs, gates)
     }
 
-    fn purger_deploy_with_searcher(searcher_yin_amt: Wad) -> (
+    fn purger_deploy_with_searcher(
+        searcher_yin_amt: Wad
+    ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
         IAbsorberDispatcher,
@@ -159,7 +163,9 @@ mod PurgerUtils {
     ) {
         let user: ContractAddress = searcher();
         common::fund_user(user, yangs, AbsorberUtils::provider_asset_amts());
-        common::open_trove_helper(abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, yin_amt);
+        common::open_trove_helper(
+            abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, yin_amt
+        );
     }
 
     fn funded_absorber(
@@ -206,28 +212,28 @@ mod PurgerUtils {
                 Option::None(_) => {
                     break;
                 },
-            }; 
+            };
         };
         set_contract_address(ContractAddressZeroable::zero());
     }
 
     fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher,
-        mut yangs: Span<ContractAddress>,
-        pct_decrease: Ray,
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray, 
     ) {
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
-                    let new_price: Wad = wadray::rmul_wr(yang_price, (RAY_ONE.into() - pct_decrease));
+                    let new_price: Wad = wadray::rmul_wr(
+                        yang_price, (RAY_ONE.into() - pct_decrease)
+                    );
                     shrine.advance(*yang, new_price);
                 },
                 Option::None(_) => {
                     break;
                 },
-            }; 
+            };
         };
         set_contract_address(ContractAddressZeroable::zero());
     }
