@@ -41,6 +41,10 @@ mod PurgerUtils {
         contract_address_try_from_felt252('purger owner').unwrap()
     }
 
+    fn random_user() -> ContractAddress {
+        contract_address_try_from_felt252('random user').unwrap()
+    }
+
     fn searcher() -> ContractAddress {
         contract_address_try_from_felt252('searcher').unwrap()
     }

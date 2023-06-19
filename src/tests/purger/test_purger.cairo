@@ -5,6 +5,7 @@ mod TestPurger {
     use starknet::testing::set_contract_address;
     use traits::Into;
 
+    use aura::core::purger::Purger;
     //use aura::core::roles::PurgerRoles;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -13,7 +14,7 @@ mod TestPurger {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
     use aura::tests::common;
     use aura::tests::purger::utils::PurgerUtils;
@@ -68,7 +69,7 @@ mod TestPurger {
         // Sanity check
         assert(!shrine.is_healthy(target_trove), 'should not be healthy');
 
-        let (threshold, before_ltv, before_debt, before_value) = shrine.get_trove_info(target_trove);
+        let (threshold, before_ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
         // TODO: this currently underflows because it requires a signed operation
         let penalty: Ray = purger.get_penalty(target_trove);
         let max_close_amt: Wad = purger.get_max_close_amount(target_trove);
@@ -77,7 +78,7 @@ mod TestPurger {
         purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
 
         // Check that LTV is close to safety margin
-        let (_, after_ltv, after_debt, after_value) = shrine.get_trove_info(target_trove);
+        let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
         assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
         // TODO:
 
@@ -173,7 +174,42 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_absorb_ltv_too_low_fail() {
+    #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
+    fn test_absorb_trove_healthy_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
 
+        assert(shrine.is_healthy(healthy_trove), 'should be healthy');
+
+        set_contract_address(PurgerUtils::random_user());
+        purger.absorb(healthy_trove);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
+    fn test_absorb_below_absorbable_ltv_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher();
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates);
+
+        assert(shrine.is_healthy(target_trove), 'should be healthy');
+
+        let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
+        let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into()));
+        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+        PurgerUtils::decrease_yang_prices_by_pct(
+            shrine,
+            yangs,
+            decrease_pct - RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is below max penalty
+        );
+
+        let (_, new_ltv, _, _) = shrine.get_trove_info(target_trove);
+
+        // sanity check
+        assert(!shrine.is_healthy(target_trove), 'should not be healthy');
+        assert(new_ltv > threshold & Purger::MAX_PENALTY_LTV.into() > new_ltv, 'LTV not in expected range');
+
+        set_contract_address(PurgerUtils::random_user());
+        purger.absorb(target_trove);
     }
 }
