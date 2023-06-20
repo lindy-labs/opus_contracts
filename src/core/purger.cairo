@@ -113,7 +113,9 @@ mod Purger {
     //
 
     // Returns the liquidation penalty for the given trove
-    // Returns 0 if trove is healthy
+    // Returns 0 if trove is healthy, OR if the trove's LTV > 100% 
+    // NOTE: this function should not be used as a proxy 
+    // to determine if a trove is liquidatable or not
     #[view]
     fn get_liquidation_penalty(trove_id: u64) -> Ray {
         let (threshold, ltv, _, _) = shrine::read().get_trove_info(trove_id);
@@ -124,7 +126,10 @@ mod Purger {
     }
 
     // Returns the absorption penalty for the given trove
-    // Returns 0 if trove is healthy or not absorbable
+    // Returns 0 if trove is healthy or not absorbable, OR if the trove's 
+    // LTV after compensation is deducted exceeds 100%
+    // NOTE: this function should not be used as a proxy
+    // to determine if a trove is absorbable or not
     #[view]
     fn get_absorption_penalty(trove_id: u64) -> Ray {
         let (threshold, ltv, value, _) = shrine::read().get_trove_info(trove_id);
@@ -425,6 +430,11 @@ mod Purger {
             return Option::None(());
         }
 
+        // Handling the case where `ltv > 1` to avoid underflow
+        if ltv >= RAY_ONE.into() {
+            return Option::Some(RayZeroable::zero());
+        }
+
         let penalty = min(
             min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
             (RAY_ONE.into() - ltv) / ltv
@@ -443,6 +453,12 @@ mod Purger {
     ) -> Option<Ray> {
         if ltv <= threshold {
             return Option::None(());
+        }
+
+        // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case 
+        // to avoid underflow
+        if ltv_after_compensation > RAY_ONE.into() {
+            return Option::Some(RayZeroable::zero());
         }
 
         // The `ltv_after_compensation` is used to calculate the maximum penalty that can be charged
