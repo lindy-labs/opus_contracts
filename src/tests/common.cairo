@@ -212,8 +212,11 @@ fn get_token_balances(
 // Helpers - Assertions
 //
 
-#[inline(always)]
-fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+fn assert_equalish<
+    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
+>(
+    a: T, b: T, error: T, message: felt252
+) {
     if a >= b {
         assert(a - b <= error, message);
     } else {
