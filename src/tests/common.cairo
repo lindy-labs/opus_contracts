@@ -59,6 +59,14 @@ fn non_zero_address() -> ContractAddress {
 // Trait implementations
 //
 
+impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
+    fn into(self: ContractAddress) -> Span<ContractAddress> {
+        let mut tmp: Array<ContractAddress> = Default::default();
+        tmp.append(self);
+        tmp.span()
+    }
+}
+
 impl SpanPartialEq<
     T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
 > of PartialEq<Span<T>> {
@@ -225,13 +233,6 @@ fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
 //
 // Helpers - Array functions
 //
-
-// Takes in an address and returns it as a span
-fn wrap_address_as_span(addr: ContractAddress) -> Span<ContractAddress> {
-    let mut addrs: Array<ContractAddress> = Default::default();
-    addrs.append(addr);
-    addrs.span()
-}
 
 // Helper function to multiply an array of values by a given percentage
 fn transform_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {

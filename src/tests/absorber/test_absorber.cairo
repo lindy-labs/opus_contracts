@@ -328,11 +328,9 @@ mod TestAbsorber {
                     );
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
 
-                    let before_absorbed_bals = common::get_token_balances(
-                        yangs, common::wrap_address_as_span(provider)
-                    );
+                    let before_absorbed_bals = common::get_token_balances(yangs, provider.into());
                     let before_reward_bals = common::get_token_balances(
-                        reward_tokens, common::wrap_address_as_span(provider)
+                        reward_tokens, provider.into()
                     );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
@@ -489,7 +487,7 @@ mod TestAbsorber {
         let before_absorber_yin_bal: u256 = yin.balance_of(absorber.contract_address);
 
         let before_reward_bals: Span<Span<u128>> = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(provider)
+            reward_tokens, provider.into()
         );
 
         assert(
@@ -638,10 +636,10 @@ mod TestAbsorber {
 
         // Step 5
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -691,10 +689,10 @@ mod TestAbsorber {
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(second_provider)
+            reward_tokens, second_provider.into()
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(second_provider)
+            yangs, second_provider.into()
         );
 
         set_contract_address(second_provider);
@@ -822,10 +820,10 @@ mod TestAbsorber {
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -973,10 +971,10 @@ mod TestAbsorber {
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -1140,10 +1138,10 @@ mod TestAbsorber {
         // Step 5
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -1211,10 +1209,10 @@ mod TestAbsorber {
         // Step 6
         let second_provider_before_yin_bal: Wad = shrine.get_yin(second_provider);
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(second_provider)
+            reward_tokens, second_provider.into()
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(second_provider)
+            yangs, second_provider.into()
         );
 
         set_contract_address(second_provider);
