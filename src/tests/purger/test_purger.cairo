@@ -138,7 +138,7 @@ mod TestPurger {
                     let mut target_ltvs: Array<Ray> = Default::default();
                     target_ltvs.append((*threshold.val + 1).into()); // just above threshold
                     target_ltvs.append(*threshold + RAY_PERCENT.into()); // 1% above threshold
-                    // ha;fway between threshold and 100%
+                    // halfway between threshold and 100%
                     target_ltvs.append(*threshold + ((RAY_ONE.into() - *threshold).val / 2).into());
                     target_ltvs.append((RAY_ONE - RAY_PERCENT).into()); // 99%
                     target_ltvs.append((RAY_ONE + RAY_PERCENT).into()); // 101%
@@ -590,7 +590,6 @@ mod TestPurger {
 
                                 PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove);
       
-                                let penalty: Ray = purger.get_absorption_penalty(target_trove);
                                 let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
                                 max_close_amt.print();
                                 before_debt.print();
@@ -609,6 +608,96 @@ mod TestPurger {
                                 common::assert_equalish(
                                     after_ltv, expected_safe_ltv, error_margin, 'LTV not within safety margin'
                                 );
+
+                            },
+                            Option::None(_) => {
+                                break;
+                            },
+                        };
+                    };
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+    }
+
+    // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
+    // and the LTV at liquidation, and checks that the trove's debt is absorbed in full
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_absorb_trove_debt_parametrized() {
+        let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_absorption_trove_debt();
+
+        loop {
+            match thresholds.pop_front() {
+                Option::Some(threshold) => {
+                    let mut target_ltvs: Array<Ray> = Default::default();
+
+                    let above_max_possible_penalty_ltv: Ray = PurgerUtils::ABOVE_MAX_POSSIBLE_PENALTY_LTV.into();
+                    if *threshold < above_max_possible_penalty_ltv {
+                        target_ltvs.append(above_max_possible_penalty_ltv);
+                    } else {
+                        target_ltvs.append((*threshold.val + 1).into()); // just above threshold
+                        target_ltvs.append(*threshold + RAY_PERCENT.into()); // 1% above threshold
+                    }
+                    target_ltvs.append((RAY_ONE - RAY_PERCENT).into()); // 99%
+                    target_ltvs.append((RAY_ONE + RAY_PERCENT).into()); // 101%
+                    let mut target_ltvs: Span<Ray> = target_ltvs.span();
+    
+                    // Inner loop iterating over LTVs at liquidation
+                    loop {
+                        match target_ltvs.pop_front() {
+                            Option::Some(target_ltv) => {
+                                let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
+                                let (shrine, abbot, absorber, purger, yangs, gates) =
+                                    PurgerUtils::purger_deploy_with_searcher(
+                                    searcher_start_yin
+                                );
+
+                                // Set thresholds to provided value
+                                PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                                let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+                                let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                                    abbot, yangs, gates, trove_debt
+                                );
+
+                                let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+
+                                // Fund the absorber with twice the target trove's debt
+                                let absorber_start_yin: Wad = (before_debt.val * 2).into();
+                                PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
+
+                                // sanity check
+                                assert(shrine.get_yin(absorber.contract_address) > before_debt, 'not full absorption');
+
+                                // Make the target trove absorbable
+                                PurgerUtils::adjust_prices_for_trove_ltv(
+                                    shrine, yangs, start_value, before_debt, *target_ltv
+                                );
+
+                                let (_, after_ltv, _, _) = shrine.get_trove_info(target_trove);
+
+                                after_ltv.print();
+                                PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove);
+      
+                                let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
+                                max_close_amt.print();
+                                before_debt.print();
+                                assert(max_close_amt == before_debt, 'close amount != debt');
+
+                                set_contract_address(PurgerUtils::random_user());
+                                purger.absorb(target_trove);
+
+                                // Check that LTV is close to safety margin
+                                let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
+                                after_debt.print();
+                                (before_debt - max_close_amt).print();
+                                assert(after_ltv == RayZeroable::zero(), 'wrong debt after liquidation');
+                                assert(after_value == WadZeroable::zero(), 'wrong debt after liquidation');
+                                assert(after_debt == WadZeroable::zero(), 'wrong debt after liquidation');
 
                             },
                             Option::None(_) => {
