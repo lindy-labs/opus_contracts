@@ -154,7 +154,9 @@ mod Purger {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
         let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
 
-        let value_after_compensation = (RAY_ONE.into() - compensation_pct) * value;
+        let value_after_compensation: Wad = wadray::rmul_rw(
+            RAY_ONE.into() - compensation_pct, value
+        );
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
             Option::Some(penalty) => get_max_close_amount_internal(
                 threshold, ltv_after_compensation, value_after_compensation, debt, penalty
@@ -168,7 +170,7 @@ mod Purger {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
         let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
-            Option::Some(_) => compensation_pct * value,
+            Option::Some(_) => wadray::rmul_rw(compensation_pct, value),
             Option::None(_) => WadZeroable::zero(),
         }
     }
@@ -278,7 +280,9 @@ mod Purger {
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
         // LTV and value after compensation are used to calculate the max purge amount
-        let value_after_compensation = (RAY_ONE.into() - compensation_pct) * trove_value;
+        let value_after_compensation = wadray::rmul_rw(
+            RAY_ONE.into() - compensation_pct, trove_value
+        );
         let max_purge_amt: Wad = get_max_close_amount_internal(
             trove_threshold,
             ltv_after_compensation,
