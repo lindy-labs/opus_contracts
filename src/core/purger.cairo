@@ -455,18 +455,14 @@ mod Purger {
         if threshold >= ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
             let penalty = min(
-                MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(),
-                MAX_PENALTY.into(),
-                max_possible_penalty
+                MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty
             );
 
             return Option::Some(penalty);
         }
 
         let penalty = min(
-            MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(),
-            MAX_PENALTY.into(),
-            max_possible_penalty
+            MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), max_possible_penalty
         );
 
         if penalty == max_possible_penalty {
