@@ -449,15 +449,14 @@ mod Purger {
         // at the trove's current LTV after deducting compensation, while ensuring the LTV is not worse off
         // after absorption.
         let max_possible_penalty = min(
-            (RAY_ONE.into() - ltv_after_compensation)
-                / ltv_after_compensation,
-            MAX_PENALTY.into()
+            (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
         );
 
         if threshold >= ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
             let penalty = min(
-                min(MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
+                MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(),
+                MAX_PENALTY.into(),
                 max_possible_penalty
             );
 
@@ -465,7 +464,8 @@ mod Purger {
         }
 
         let penalty = min(
-            min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
+            MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(),
+            MAX_PENALTY.into(),
             max_possible_penalty
         );
 
