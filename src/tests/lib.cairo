@@ -1,6 +1,7 @@
 mod abbot;
 mod absorber;
 mod common;
+mod caretaker;
 mod equalizer;
 mod external;
 mod gate;

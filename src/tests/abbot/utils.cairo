@@ -73,7 +73,7 @@ mod AbbotUtils {
         Span<IGateDispatcher>
     ) {
         let (sentinel, shrine, yangs, gates) = SentinelUtils::deploy_sentinel_with_gates();
-        ShrineUtils::shrine_setup(shrine.contract_address);
+        ShrineUtils::setup_debt_ceiling(shrine.contract_address);
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(shrine.contract_address));
