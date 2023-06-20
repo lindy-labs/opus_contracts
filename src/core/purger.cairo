@@ -455,19 +455,18 @@ mod Purger {
             return Option::None(());
         }
 
+        // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case 
+        // to avoid underflow
+        if ltv_after_compensation > RAY_ONE.into() {
+            return Option::Some(RayZeroable::zero());
+        }
+
         // The `ltv_after_compensation` is used to calculate the maximum penalty that can be charged
         // at the trove's current LTV after deducting compensation, while ensuring the LTV is not worse off
         // after absorption.
-        // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case 
-        // to avoid underflow
-        let max_possible_penalty = if ltv_after_compensation > RAY_ONE.into() {
-            RayZeroable::zero()
-        } else {
-            min(
-                (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation,
-                MAX_PENALTY.into()
-            )
-        };
+        let max_possible_penalty = min(
+            (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
+        );
 
         if threshold >= ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
