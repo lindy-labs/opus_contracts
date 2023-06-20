@@ -441,9 +441,14 @@ mod Purger {
             return Option::None(());
         }
 
-        // The `ltv_after_compensation` is used to calculate the maximum possible penalty
-        let max_possible_penalty = (RAY_ONE.into() - ltv_after_compensation)
-            / ltv_after_compensation;
+        // The `ltv_after_compensation` is used to calculate the maximum penalty that can be charged
+        // at the trove's current LTV after deducting compensation, while ensuring the LTV is not worse off
+        // after absorption.
+        let max_possible_penalty = min(
+            (RAY_ONE.into() - ltv_after_compensation)
+                / ltv_after_compensation,
+            MAX_PENALTY.into()
+        );
 
         if threshold >= ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
