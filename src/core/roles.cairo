@@ -69,6 +69,15 @@ mod PragmaRoles {
     }
 }
 
+mod PurgerRoles {
+    const SET_PENALTY_SCALAR: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_PENALTY_SCALAR
+    }
+}
+
 mod SentinelRoles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
