@@ -276,7 +276,7 @@ mod PurgerUtils {
 
         assert(purger.get_liquidation_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0');
         assert(purger.get_max_liquidation_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
-        assert_trove_is_not_absorbable(shrine, purger, trove_id);
+        assert_trove_is_not_absorbable(purger, trove_id);
     }
 
     fn assert_trove_is_liquidatable(
@@ -290,8 +290,18 @@ mod PurgerUtils {
         assert(purger.get_max_liquidation_amount(trove_id).is_non_zero(), 'close amount should not be 0');
     }
 
-    fn assert_trove_is_not_absorbable(
+    fn assert_trove_is_absorbable(
         shrine: IShrineDispatcher,
+        purger: IPurgerDispatcher,
+        trove_id: u64,
+    ) {
+        assert(!shrine.is_healthy(trove_id), 'should not be healthy');
+
+        assert(purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
+        assert(purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0');
+    }
+
+    fn assert_trove_is_not_absorbable(
         purger: IPurgerDispatcher,
         trove_id: u64,
     ) {
@@ -299,12 +309,16 @@ mod PurgerUtils {
         assert(purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
     }
 
-    fn assert_liquidator_received_assets(
+    // Helper function to assert that an address received the expected amoutn of assets
+    // based on the before and after balances.
+    fn assert_received_assets(
         mut before_asset_bals: Span<Span<u128>>, // Asset balances of liquidator returned by `get_token_balances`
         mut after_asset_bals: Span<Span<u128>>, // Asset balances of liquidator returned by `get_Token_balances`
         mut expected_freed_asset_amts: Span<u128>,
         error_margin: u128,
     ) {
+        
+
         loop {
             match expected_freed_asset_amts.pop_front() {
                 Option::Some(expected_freed_asset_amt) => {
@@ -315,7 +329,6 @@ mod PurgerUtils {
                     let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
                     let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset_amt;
-                    let error_margin: u128 = 10;
                     common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, 'wrong liquidator asset balance');
                 },
                 Option::None(_) => {
