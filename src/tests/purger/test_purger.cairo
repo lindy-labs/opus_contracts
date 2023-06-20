@@ -146,11 +146,12 @@ mod TestPurger {
                     target_ltvs.append((RAY_ONE + RAY_PERCENT).into()); // 101%
                     let mut target_ltvs: Span<Ray> = target_ltvs.span();
 
-                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * *threshold;
+                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into()
+                        * *threshold;
 
                     // Assert that we hit the branch for safety margin check at least once per threshold
                     let mut safety_margin_achieved: bool = false;
-    
+
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -169,26 +170,37 @@ mod TestPurger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
-                                let (_, before_ltv, value, before_debt) = shrine.get_trove_info(target_trove);
-                                PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, before_debt, *target_ltv);
+                                let (_, before_ltv, value, before_debt) = shrine
+                                    .get_trove_info(target_trove);
+                                PurgerUtils::adjust_prices_for_trove_ltv(
+                                    shrine, yangs, value, before_debt, *target_ltv
+                                );
 
                                 let penalty: Ray = purger.get_liquidation_penalty(target_trove);
-                                let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
+                                let max_close_amt: Wad = purger
+                                    .get_max_liquidation_amount(target_trove);
 
                                 let searcher: ContractAddress = PurgerUtils::searcher();
                                 set_contract_address(searcher);
-                                purger.liquidate(target_trove, BoundedU128::max().into(), searcher);        
+                                purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
 
                                 // Check that LTV is close to safety margin
-                                let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
+                                let (_, after_ltv, _, after_debt) = shrine
+                                    .get_trove_info(target_trove);
 
                                 let is_fully_liquidated: bool = trove_debt == max_close_amt;
                                 if !is_fully_liquidated {
                                     let error_margin: Ray = (RAY_PERCENT / 10).into();
                                     common::assert_equalish(
-                                        after_ltv, expected_safe_ltv, error_margin, 'LTV not within safety margin'
+                                        after_ltv,
+                                        expected_safe_ltv,
+                                        error_margin,
+                                        'LTV not within safety margin'
                                     );
-                                    assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+                                    assert(
+                                        after_debt == before_debt - max_close_amt,
+                                        'wrong debt after liquidation'
+                                    );
 
                                     if !safety_margin_achieved {
                                         safe_ltv_count += 1;
@@ -429,7 +441,7 @@ mod TestPurger {
         PurgerUtils::adjust_prices_for_trove_ltv(
             shrine, yangs, start_value, before_debt, target_ltv
         );
-    
+
         let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
 
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
@@ -553,15 +565,18 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_less_than_trove_debt_parametrized() {
-        let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_absorption_below_trove_debt();
-        let mut target_ltvs_by_threshold: Span<Span<Ray>> = PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+        let mut thresholds: Span<Ray> =
+            PurgerUtils::interesting_thresholds_for_absorption_below_trove_debt();
+        let mut target_ltvs_by_threshold: Span<Span<Ray>> =
+            PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
 
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * *threshold;
-    
+                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into()
+                        * *threshold;
+
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -580,14 +595,20 @@ mod TestPurger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
-                                let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+                                let (_, _, start_value, before_debt) = shrine
+                                    .get_trove_info(target_trove);
 
                                 // Fund the absorber with twice the target trove's debt
                                 let absorber_start_yin: Wad = (before_debt.val * 2).into();
-                                PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
+                                PurgerUtils::funded_absorber(
+                                    shrine, abbot, absorber, yangs, gates, absorber_start_yin
+                                );
 
                                 // sanity check
-                                assert(shrine.get_yin(absorber.contract_address) > before_debt, 'not full absorption');
+                                assert(
+                                    shrine.get_yin(absorber.contract_address) > before_debt,
+                                    'not full absorption'
+                                );
 
                                 // Make the target trove absorbable
                                 PurgerUtils::adjust_prices_for_trove_ltv(
@@ -595,23 +616,32 @@ mod TestPurger {
                                 );
                                 let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
 
-                                PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
-      
-                                let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
+                                PurgerUtils::assert_trove_is_absorbable(
+                                    shrine, purger, target_trove, ltv
+                                );
+
+                                let max_close_amt: Wad = purger
+                                    .get_max_absorption_amount(target_trove);
                                 assert(max_close_amt < before_debt, 'close amount == debt');
 
                                 set_contract_address(PurgerUtils::random_user());
                                 purger.absorb(target_trove);
 
                                 // Check that LTV is close to safety margin
-                                let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
-                                assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+                                let (_, after_ltv, _, after_debt) = shrine
+                                    .get_trove_info(target_trove);
+                                assert(
+                                    after_debt == before_debt - max_close_amt,
+                                    'wrong debt after liquidation'
+                                );
 
                                 let error_margin: Ray = (RAY_PERCENT / 10).into();
                                 common::assert_equalish(
-                                    after_ltv, expected_safe_ltv, error_margin, 'LTV not within safety margin'
+                                    after_ltv,
+                                    expected_safe_ltv,
+                                    error_margin,
+                                    'LTV not within safety margin'
                                 );
-
                             },
                             Option::None(_) => {
                                 break;
@@ -631,14 +661,16 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_trove_debt_parametrized() {
-        let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_absorption_trove_debt();
-        let mut target_ltvs_by_threshold: Span<Span<Ray>> = PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_trove_debt();
+        let mut thresholds: Span<Ray> =
+            PurgerUtils::interesting_thresholds_for_absorption_trove_debt();
+        let mut target_ltvs_by_threshold: Span<Span<Ray>> =
+            PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_trove_debt();
 
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-    
+
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -657,14 +689,20 @@ mod TestPurger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
-                                let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+                                let (_, _, start_value, before_debt) = shrine
+                                    .get_trove_info(target_trove);
 
                                 // Fund the absorber with twice the target trove's debt
                                 let absorber_start_yin: Wad = (before_debt.val * 2).into();
-                                PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
+                                PurgerUtils::funded_absorber(
+                                    shrine, abbot, absorber, yangs, gates, absorber_start_yin
+                                );
 
                                 // sanity check
-                                assert(shrine.get_yin(absorber.contract_address) > before_debt, 'not full absorption');
+                                assert(
+                                    shrine.get_yin(absorber.contract_address) > before_debt,
+                                    'not full absorption'
+                                );
 
                                 // Make the target trove absorbable
                                 PurgerUtils::adjust_prices_for_trove_ltv(
@@ -672,19 +710,31 @@ mod TestPurger {
                                 );
 
                                 let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
-                                PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
-      
-                                let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
+                                PurgerUtils::assert_trove_is_absorbable(
+                                    shrine, purger, target_trove, ltv
+                                );
+
+                                let max_close_amt: Wad = purger
+                                    .get_max_absorption_amount(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
 
                                 set_contract_address(PurgerUtils::random_user());
                                 purger.absorb(target_trove);
 
                                 // Check that LTV is close to safety margin
-                                let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
-                                assert(after_ltv == RayZeroable::zero(), 'wrong debt after liquidation');
-                                assert(after_value == WadZeroable::zero(), 'wrong debt after liquidation');
-                                assert(after_debt == WadZeroable::zero(), 'wrong debt after liquidation');
+                                let (_, after_ltv, after_value, after_debt) = shrine
+                                    .get_trove_info(target_trove);
+                                assert(
+                                    after_ltv == RayZeroable::zero(), 'wrong debt after liquidation'
+                                );
+                                assert(
+                                    after_value == WadZeroable::zero(),
+                                    'wrong debt after liquidation'
+                                );
+                                assert(
+                                    after_debt == WadZeroable::zero(),
+                                    'wrong debt after liquidation'
+                                );
                             },
                             Option::None(_) => {
                                 break;
