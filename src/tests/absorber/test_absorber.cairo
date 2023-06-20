@@ -279,11 +279,7 @@ mod TestAbsorber {
                         shrine, absorber, yangs, first_update_assets, *percentage_to_drain
                     );
 
-                    let is_fully_absorbed: bool = if *percentage_to_drain == RAY_SCALE.into() {
-                        true
-                    } else {
-                        false
-                    };
+                    let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
 
                     let expected_epoch = if is_fully_absorbed {
                         1
@@ -1403,7 +1399,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_request_fail() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.request();
@@ -1413,7 +1409,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_remove_fail() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.remove(0_u128.into());
@@ -1423,7 +1419,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_reap_fail() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.reap();

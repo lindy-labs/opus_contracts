@@ -235,7 +235,7 @@ fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
 //
 
 // Helper function to multiply an array of values by a given percentage
-fn transform_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
     let mut split_asset_amts: Array<u128> = Default::default();
     loop {
         match asset_amts.pop_front() {
@@ -253,7 +253,7 @@ fn transform_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
     split_asset_amts.span()
 }
 
-// Helper function to combine two arrays of equal lengths into a single array.
+// Helper function to combine two arrays of equal lengths into a single array by doing element-wise addition.
 // Assumes the arrays are ordered identically.
 fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     assert(lhs.len() == rhs.len(), 'combining diff array lengths');
