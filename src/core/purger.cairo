@@ -155,7 +155,7 @@ mod Purger {
         let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
 
         let value_after_compensation: Wad = wadray::rmul_rw(
-            (RAY_ONE.into() - compensation_pct), value
+            RAY_ONE.into() - compensation_pct, value
         );
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
             Option::Some(penalty) => get_max_close_amount_internal(
@@ -280,8 +280,8 @@ mod Purger {
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
         // LTV and value after compensation are used to calculate the max purge amount
-        let value_after_compensation: Wad = wadray::rmul_rw(
-            (RAY_ONE.into() - compensation_pct), trove_value
+        let value_after_compensation = wadray::rmul_rw(
+            RAY_ONE.into() - compensation_pct, trove_value
         );
         let max_purge_amt: Wad = get_max_close_amount_internal(
             trove_threshold,
@@ -445,23 +445,24 @@ mod Purger {
             return Option::None(());
         }
 
-        // The `ltv_after_compensation` is used to calculate the maximum possible penalty
-        let max_possible_penalty = (RAY_ONE.into() - ltv_after_compensation)
-            / ltv_after_compensation;
+        // The `ltv_after_compensation` is used to calculate the maximum penalty that can be charged
+        // at the trove's current LTV after deducting compensation, while ensuring the LTV is not worse off
+        // after absorption.
+        let max_possible_penalty = min(
+            (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
+        );
 
         if threshold >= ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
             let penalty = min(
-                min(MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
-                max_possible_penalty
+                MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty
             );
 
             return Option::Some(penalty);
         }
 
         let penalty = min(
-            min(MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), MAX_PENALTY.into()),
-            max_possible_penalty
+            MIN_PENALTY.into() + ltv / threshold - RAY_ONE.into(), max_possible_penalty
         );
 
         if penalty == max_possible_penalty {
