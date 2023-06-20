@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod TestPurger {
+    use array::SpanTrait;
     use integer::BoundedU128;
+    use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
     use traits::Into;
@@ -51,9 +53,10 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
+        let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
         let (shrine, abbot, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
-            PurgerUtils::SEARCHER_YIN.into()
+            searcher_start_yin
         );
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
@@ -67,25 +70,50 @@ mod TestPurger {
         PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
 
         // Sanity check
-        assert(!shrine.is_healthy(target_trove), 'should not be healthy');
+        PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove);
 
         let (_, before_ltv, before_value, before_debt) = shrine
             .get_trove_info(target_trove);
-        // TODO: this currently underflows because it requires a signed operation
+
         let penalty: Ray = purger.get_liquidation_penalty(target_trove);
         let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
         let searcher: ContractAddress = PurgerUtils::searcher();
+
+        let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs,
+            common::wrap_address_as_span(searcher)
+        );
+
         set_contract_address(searcher);
         purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
 
         // Check that LTV is close to safety margin
         let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
         assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
-        // TODO:
+
+        let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
+        let error_margin: Ray = (RAY_PERCENT / 10).into();
+        common::assert_equalish(after_ltv, expected_ltv, error_margin, 'LTV not within safety margin');
+
+        // Check searcher yin balance
+        assert(shrine.get_yin(searcher) == searcher_start_yin - max_close_amt, 'wrong searcher yin balance');
 
         // Check that searcher has received collateral
-        let expected_freed_pct = PurgerUtils::get_expected_freed_pct(
+        let expected_freed_pct: Ray = PurgerUtils::get_expected_freed_pct(
             before_value, max_close_amt, penalty
+        );
+        let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
+        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(target_trove_yang_asset_amts, expected_freed_pct);
+        let after_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs,
+            common::wrap_address_as_span(searcher)
+        );
+
+        PurgerUtils::assert_liquidator_received_assets(
+            before_searcher_asset_bals,
+            after_searcher_asset_bals,
+            expected_freed_amts,
+            10_u128, // error margin
         );
     }
 

@@ -298,4 +298,30 @@ mod PurgerUtils {
         assert(purger.get_absorption_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0');
         assert(purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
     }
+
+    fn assert_liquidator_received_assets(
+        mut before_asset_bals: Span<Span<u128>>, // Asset balances of liquidator returned by `get_token_balances`
+        mut after_asset_bals: Span<Span<u128>>, // Asset balances of liquidator returned by `get_Token_balances`
+        mut expected_freed_asset_amts: Span<u128>,
+        error_margin: u128,
+    ) {
+        loop {
+            match expected_freed_asset_amts.pop_front() {
+                Option::Some(expected_freed_asset_amt) => {
+                    let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
+                    let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
+
+                    let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
+                    let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
+
+                    let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset_amt;
+                    let error_margin: u128 = 10;
+                    common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, 'wrong liquidator asset balance');
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+    }
 }
