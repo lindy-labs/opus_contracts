@@ -50,7 +50,7 @@ mod TestFlashmint {
         
         let shrine_dispatcher = IShrineDispatcher{contract_address: shrine};
 
-        ShrineUtils::shrine_setup_with_mock_yangs(shrine);
+        ShrineUtils::shrine_setup(shrine);
         ShrineUtils::advance_prices_and_set_multiplier(shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
 
         // Grant flashmint contract the FLASHMINT role 

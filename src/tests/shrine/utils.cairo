@@ -241,7 +241,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn shrine_setup_with_feed() -> IShrineDispatcher {
         let shrine_addr: ContractAddress = shrine_deploy();
-        shrine_setup_with_mock_yangs(shrine_addr);
+        shrine_setup(shrine_addr);
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
