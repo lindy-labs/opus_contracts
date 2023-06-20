@@ -54,7 +54,7 @@ mod AbsorberUtils {
     fn provider_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(10000000000000000000); // 10 (Wad) - ETH
-        asset_amts.append(100000000); // 1 (19 ** 8) - BTC
+        asset_amts.append(100000000); // 1 (10 ** 8) - BTC
         asset_amts.span()
     }
 
@@ -62,7 +62,7 @@ mod AbsorberUtils {
     fn first_update_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(1230000000000000000); // 1.23 (Wad) - ETH
-        asset_amts.append(23700000); // 0.237 (19 ** 8) - BTC
+        asset_amts.append(23700000); // 0.237 (10 ** 8) - BTC
         asset_amts.span()
     }
 
@@ -70,7 +70,7 @@ mod AbsorberUtils {
     fn second_update_assets() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(572000000000000000); // 0.572 (Wad) - ETH
-        asset_amts.append(65400000); // 0.654 (19 ** 8) - BTC
+        asset_amts.append(65400000); // 0.654 (10 ** 8) - BTC
         asset_amts.span()
     }
 
