@@ -22,7 +22,7 @@ mod PurgerUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::utils::AbsorberUtils;
@@ -111,38 +111,84 @@ mod PurgerUtils {
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/qoizltusle.
     fn ltvs_for_interesting_thresholds_for_absorption_below_trove_debt() -> Span<Span<Ray>> {
+        // The max possible penalty LTV is reached around this value for these thresholds
+        let max_possible_penalty_ltv: u128 = 862200000000000000000000000; // 86.22% (Ray)
+
         let mut trove_ltvs: Array<Span<Ray>> = Default::default();
 
         // First threshold of 65% (Ray)
         let mut ltvs_for_first_threshold: Array<Ray> = Default::default();
-        // 71.18% (Ray) - Threshold at which maximum penalty of 12.5% is first reached
+        // 71.18% (Ray) - LTV at which maximum penalty of 12.5% is first reached
         ltvs_for_first_threshold.append(711800000000000000000000000_u128.into()); 
-        // 86.22% (Ray) - Threshold at which maximum penalty of 12.5% is last reached
-        ltvs_for_first_threshold.append(MAX_POSSIBLE_PENALTY_LTV.into()); 
+        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
+        ltvs_for_first_threshold.append(max_possible_penalty_ltv.into()); 
         trove_ltvs.append(ltvs_for_first_threshold.span());
 
         // Second threshold of 70% (Ray)
         let mut ltvs_for_second_threshold: Array<Ray> = Default::default();
-        // 76.65% (Ray) - Threshold at which maximum penalty of 12.5% is first reached
+        // 76.65% (Ray) - LTV at which maximum penalty of 12.5% is first reached
         ltvs_for_second_threshold.append(766500000000000000000000000_u128.into()); 
-        // 86.22% (Ray) - Threshold at which maximum penalty of 12.5% is last reached
-        ltvs_for_second_threshold.append(MAX_POSSIBLE_PENALTY_LTV.into()); 
+        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
+        ltvs_for_second_threshold.append(max_possible_penalty_ltv.into()); 
         trove_ltvs.append(ltvs_for_second_threshold.span());
 
         // Third threshold of 75% (Ray)
         let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
-        // 82.13% (Ray) - Threshold at which maximum penalty of 12.5% is reached
+        // 82.13% (Ray) - LTV at which maximum penalty of 12.5% is reached
         ltvs_for_third_threshold.append(821300000000000000000000000_u128.into()); 
-        // 86.22% (Ray) - Threshold at which maximum penalty of 12.5% is last reached
-        ltvs_for_third_threshold.append(MAX_POSSIBLE_PENALTY_LTV.into()); 
+        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
+        ltvs_for_third_threshold.append(max_possible_penalty_ltv.into()); 
         trove_ltvs.append(ltvs_for_third_threshold.span());
 
         // Fourth threshold of 78.74% (Ray)
         let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
-        // 85.93% (Ray) - Threshold at which maximum penalty of 12.5% is reached
+        // 85.93% (Ray) - LTV at which maximum penalty of 12.5% is reached
         ltvs_for_first_threshold.append(859300000000000000000000000_u128.into());
-        // 86.22% (Ray) - Threshold at which maximum penalty of 12.5% is last reached
-        ltvs_for_third_threshold.append(MAX_POSSIBLE_PENALTY_LTV.into()); 
+        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
+        ltvs_for_third_threshold.append(max_possible_penalty_ltv.into()); 
+        trove_ltvs.append(ltvs_for_fourth_threshold.span());
+
+        trove_ltvs.span()
+    }
+
+    // These values are selected based on the thresholds.
+    // Refer to https://www.desmos.com/calculator/qoizltusle.
+    fn ltvs_for_interesting_thresholds_for_absorption_trove_debt() -> Span<Span<Ray>> {
+        let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
+        let exceed_hundred_pct: Ray = (RAY_ONE + RAY_PERCENT).into();
+
+        let mut trove_ltvs: Array<Span<Ray>> = Default::default();
+
+        // First threshold of 78.75% (Ray)
+        let mut ltvs_for_first_threshold: Array<Ray> = Default::default();
+        // 86.23% (Ray) - Greater than LTV at which maximum penalty of 12.5% is last reached
+        ltvs_for_first_threshold.append(862300000000000000000000000_u128.into()); 
+        ltvs_for_first_threshold.append(ninety_nine_pct); 
+        ltvs_for_first_threshold.append(exceed_hundred_pct); 
+        trove_ltvs.append(ltvs_for_first_threshold.span());
+
+        // Second threshold of 80% (Ray)
+        let mut ltvs_for_second_threshold: Array<Ray> = Default::default();
+        // 86.9% (Ray) - LTV at which maximum penalty is reached
+        ltvs_for_second_threshold.append(869000000000000000000000000_u128.into()); 
+        ltvs_for_second_threshold.append(ninety_nine_pct); 
+        ltvs_for_second_threshold.append(exceed_hundred_pct); 
+        trove_ltvs.append(ltvs_for_second_threshold.span());
+
+        // Third threshold of 90% (Ray)
+        let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
+        // 92.09% (Ray) - LTV at which maximum penalty is reached
+        ltvs_for_third_threshold.append(921000000000000000000000000_u128.into()); 
+        ltvs_for_third_threshold.append(ninety_nine_pct); 
+        ltvs_for_third_threshold.append(exceed_hundred_pct); 
+        trove_ltvs.append(ltvs_for_third_threshold.span());
+
+        // Fourth threshold of 96% (Ray)
+        let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
+        // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
+        ltvs_for_fourth_threshold.append(960000000000000000000000001_u128.into());
+        ltvs_for_fourth_threshold.append(ninety_nine_pct); 
+        ltvs_for_fourth_threshold.append(exceed_hundred_pct); 
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
 
         trove_ltvs.span()
@@ -351,27 +397,35 @@ mod PurgerUtils {
     }
 
     fn assert_trove_is_liquidatable(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
 
-        assert(purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
         assert(
             purger.get_max_liquidation_amount(trove_id).is_non_zero(),
             'close amount should not be 0'
         );
+        if ltv < RAY_ONE.into() {
+            assert(purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
+        } else {
+            assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
+        }    
     }
 
     fn assert_trove_is_absorbable(
-        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, 
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, ltv: Ray
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        assert(purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
         assert(
             purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0'
         );
+        if ltv < (RAY_ONE - Purger::COMPENSATION_PCT).into() {
+            assert(purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
+        } else {
+            assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
+        }
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
