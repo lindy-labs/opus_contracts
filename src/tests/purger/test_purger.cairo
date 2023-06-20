@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod TestPurger {
-    use array::SpanTrait;
+    use array::{ArrayTrait, SpanTrait};
     use integer::BoundedU128;
     use option::OptionTrait;
     use starknet::ContractAddress;
@@ -50,6 +50,111 @@ mod TestPurger {
     //
     // Tests - Liquidate
     //
+
+    // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
+    // and the LTV at liquidation, and checks for the following
+    // 1. LTV has decreased
+    // 2. trove's debt is reduced by the close amount
+    // 3. If it is not a full liquidation, then the post-liquidation LTV is at the target safety margin
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_liquidate_parametrized() {
+        let mut thresholds: Array<Ray> = Default::default();
+        thresholds.append(700000000000000000000000000_u128.into()); // 70% (Ray)
+        thresholds.append(800000000000000000000000000_u128.into()); // 80% (Ray)
+        thresholds.append(900000000000000000000000000_u128.into()); // 90% (Ray)
+        thresholds.append(960000000000000000000000000_u128.into()); // 96% (Ray)
+        let mut thresholds: Span<Ray> = thresholds.span();
+
+        let num_thresholds: usize = thresholds.len();
+        let mut safe_ltv_count: usize = 0;
+
+        loop {
+            match thresholds.pop_front() {
+                Option::Some(threshold) => {
+                    let mut target_ltvs: Array<Ray> = Default::default();
+                    target_ltvs.append((*threshold.val + 1).into()); // just above threshold
+                    target_ltvs.append(*threshold + RAY_PERCENT.into()); // 1% above threshold
+                    // 
+                    target_ltvs.append(*threshold + ((RAY_ONE.into() - *threshold).val / 2).into());
+                    target_ltvs.append((RAY_ONE - RAY_PERCENT).into()); // 99%
+                    let mut target_ltvs: Span<Ray> = target_ltvs.span();
+
+                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * *threshold;
+
+                    // Assert that we hit the branch for safety margin check at least once per threshold
+                    let mut safety_margin_achieved: bool = false;
+    
+                    // Inner loop iterating over LTVs at liquidation
+                    loop {
+                        'inner loop'.print();
+                        match target_ltvs.pop_front() {
+                            Option::Some(target_ltv) => {
+                                let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
+                                let (shrine, abbot, absorber, purger, yangs, gates) =
+                                    PurgerUtils::purger_deploy_with_searcher(
+                                    searcher_start_yin
+                                );
+
+                                // Set thresholds to provided value
+                                PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                                let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+                                let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                                    abbot, yangs, gates, trove_debt
+                                );
+
+                                let target_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
+                                set_contract_address(target_trove_owner);
+
+                                let (_, before_ltv, value, before_debt) = shrine.get_trove_info(target_trove);
+                                PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, before_debt, *target_ltv);
+
+                                let penalty: Ray = purger.get_liquidation_penalty(target_trove);
+                                let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
+
+                                let searcher: ContractAddress = PurgerUtils::searcher();
+                                set_contract_address(searcher);
+                                purger.liquidate(target_trove, BoundedU128::max().into(), searcher);        
+
+                                // Check that LTV is close to safety margin
+                                let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
+                                assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+                                assert(after_ltv < before_ltv, 'LTV should decrease');
+
+                                let is_fully_liquidated: bool = trove_debt == max_close_amt;
+
+                                if !is_fully_liquidated {
+                                    let error_margin: Ray = (RAY_PERCENT / 10).into();
+                                    common::assert_equalish(
+                                        after_ltv, expected_safe_ltv, error_margin, 'LTV not within safety margin'
+                                    );
+
+                                    if !safety_margin_achieved {
+                                        safe_ltv_count += 1;
+                                        safety_margin_achieved = true;
+                                    }
+                                }
+                            },
+                            Option::None(_) => {
+                                break;
+                            },
+                        };
+                    };
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        // We should hit the branch to check the post-liquidation LTV is at the expected safety margin
+        // at least once per threshold, based on the target LTV that is just above the threshold.
+        // This assertion provides this assurance.
+        assert(safe_ltv_count == num_thresholds, 'at least one per threshold');
+    }
+
+
 
     #[test]
     #[available_gas(20000000000)]
