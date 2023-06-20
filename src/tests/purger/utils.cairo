@@ -1,6 +1,5 @@
 mod PurgerUtils {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU256;
     use option::OptionTrait;
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
@@ -24,7 +23,6 @@ mod PurgerUtils {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
     use aura::tests::external::utils::PragmaUtils;
@@ -45,8 +43,6 @@ mod PurgerUtils {
 
     // The maximum possible penalty is reached at around this point
     const MAX_POSSIBLE_PENALTY_LTV: u128 = 862200000000000000000000000; // 86.22% (Ray)
-
-    const ABOVE_MAX_POSSIBLE_PENALTY_LTV: u128 = 862300000000000000000000000; // 86.23% (Ray)
 
     //
     // Address constants

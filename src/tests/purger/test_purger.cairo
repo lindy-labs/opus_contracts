@@ -13,24 +13,16 @@ mod TestPurger {
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
     use aura::tests::common;
     use aura::tests::purger::utils::PurgerUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
-
-    // 
-    // Constants
-    // 
-
-    const HIGH_THRESHOLD: u128 = 950000000000000000000000000; // 95% (Ray)
 
     //
     // Tests - Setup
@@ -259,7 +251,8 @@ mod TestPurger {
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
 
-        PurgerUtils::set_thresholds(shrine, yangs, HIGH_THRESHOLD.into());
+        let threshold: Ray = 950000000000000000000000000_u128.into(); // 95% (Ray)
+        PurgerUtils::set_thresholds(shrine, yangs, threshold);
         let max_forge_amt: Wad = shrine.get_max_forge(healthy_trove);
 
         let healthy_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
