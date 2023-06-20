@@ -7,7 +7,7 @@ mod TestPurger {
 
 
     use aura::core::purger::Purger;
-    //use aura::core::roles::PurgerRoles;
+    use aura::core::roles::PurgerRoles;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -37,12 +37,11 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_purger_setup() {
         let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
-    // TODO: pending #335
-    //let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
-    //assert(
-    //    purger_ac.get_roles(PurgerUtils::admin()) == PurgerRoles::default_admin_role(),
-    //    'wrong role for admin'
-    //);
+        let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
+        assert(
+            purger_ac.get_roles(PurgerUtils::admin()) == PurgerRoles::default_admin_role(),
+            'wrong role for admin'
+        );
     }
 
     //
@@ -75,8 +74,8 @@ mod TestPurger {
         let (threshold, before_ltv, before_value, before_debt) = shrine
             .get_trove_info(target_trove);
         // TODO: this currently underflows because it requires a signed operation
-        let penalty: Ray = purger.get_penalty(target_trove);
-        let max_close_amt: Wad = purger.get_max_close_amount(target_trove);
+        let penalty: Ray = purger.get_liquidation_penalty(target_trove);
+        let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
         purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
@@ -185,7 +184,7 @@ mod TestPurger {
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
         let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into())
+            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
         );
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
         PurgerUtils::decrease_yang_prices_by_pct(
@@ -221,7 +220,7 @@ mod TestPurger {
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
         let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into())
+            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
         );
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
         PurgerUtils::decrease_yang_prices_by_pct(
@@ -257,7 +256,7 @@ mod TestPurger {
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
         let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into())
+            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
         );
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
         PurgerUtils::decrease_yang_prices_by_pct(
@@ -313,7 +312,7 @@ mod TestPurger {
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
         let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::MAX_PENALTY_LTV.into())
+            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
         );
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
         PurgerUtils::decrease_yang_prices_by_pct(
@@ -328,7 +327,7 @@ mod TestPurger {
         // sanity check
         assert(!shrine.is_healthy(target_trove), 'should not be healthy');
         assert(
-            new_ltv > threshold & Purger::MAX_PENALTY_LTV.into() > new_ltv,
+            new_ltv > threshold & Purger::ABSORPTION_THRESHOLD.into() > new_ltv,
             'LTV not in expected range'
         );
 

@@ -96,7 +96,7 @@ mod PurgerUtils {
         let admin: ContractAddress = admin();
 
         let mut calldata = Default::default();
-        //calldata.append(contract_address_to_felt252(admin));
+        calldata.append(contract_address_to_felt252(admin));
         calldata.append(contract_address_to_felt252(shrine.contract_address));
         calldata.append(contract_address_to_felt252(sentinel.contract_address));
         calldata.append(contract_address_to_felt252(absorber.contract_address));
