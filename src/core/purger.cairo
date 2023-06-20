@@ -113,7 +113,9 @@ mod Purger {
     //
 
     // Returns the liquidation penalty for the given trove
-    // Returns 0 if trove is healthy
+    // Returns 0 if trove is healthy, OR if the trove's LTV > 100% 
+    // NOTE: this function should not be used as a proxy 
+    // to determine if a trove is liquidatable or not
     #[view]
     fn get_liquidation_penalty(trove_id: u64) -> Ray {
         let (threshold, ltv, _, _) = shrine::read().get_trove_info(trove_id);
@@ -124,7 +126,10 @@ mod Purger {
     }
 
     // Returns the absorption penalty for the given trove
-    // Returns 0 if trove is healthy or not absorbable
+    // Returns 0 if trove is healthy or not absorbable, OR if the trove's 
+    // LTV after compensation is deducted exceeds 100%
+    // NOTE: this function should not be used as a proxy
+    // to determine if a trove is absorbable or not
     #[view]
     fn get_absorption_penalty(trove_id: u64) -> Ray {
         let (threshold, ltv, value, _) = shrine::read().get_trove_info(trove_id);
