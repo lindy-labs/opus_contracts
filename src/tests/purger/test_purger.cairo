@@ -40,6 +40,35 @@ mod TestPurger {
     }
 
     //
+    // Tests - Setters
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_penalty_scalar_pass() {
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_penalty_scalar_parametrized() {
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_penalty_scalar_too_low_fail() {
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_penalty_scalar_too_high_fail() {
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_set_penalty_scalar_unauthorized_fail() {
+    }
+
+    //
     // Tests - Liquidate
     //
 
