@@ -22,7 +22,7 @@ mod PurgerUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::utils::AbsorberUtils;
@@ -238,6 +238,26 @@ mod PurgerUtils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
+    // Helper function to adjust a trove's LTV to the target by manipulating the 
+    // yang prices
+    fn adjust_prices_for_trove_ltv(
+        shrine: IShrineDispatcher,
+        yangs: Span<ContractAddress>,
+        value: Wad,
+        debt: Wad,
+        target_ltv: Ray,
+    ) {
+        let unhealthy_value: Wad = wadray::rmul_wr(
+            debt, (RAY_ONE.into() / target_ltv)
+        );
+        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
+        decrease_yang_prices_by_pct(
+            shrine,
+            yangs,
+            decrease_pct
+        );
+    }
+
     //
     // Test assertion helpers
     //
@@ -245,5 +265,37 @@ mod PurgerUtils {
     fn get_expected_freed_pct(trove_value: Wad, close_amt: Wad, penalty: Ray) -> Ray {
         let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
         wadray::rdiv_ww(freed_amt, trove_value)
+    }
+
+    fn assert_trove_is_healthy(
+        shrine: IShrineDispatcher,
+        purger: IPurgerDispatcher,
+        trove_id: u64
+    ) {
+        assert(shrine.is_healthy(trove_id), 'should be healthy');
+
+        assert(purger.get_liquidation_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0');
+        assert(purger.get_max_liquidation_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
+        assert_trove_is_not_absorbable(shrine, purger, trove_id);
+    }
+
+    fn assert_trove_is_liquidatable(
+        shrine: IShrineDispatcher,
+        purger: IPurgerDispatcher,
+        trove_id: u64
+    ) {
+        assert(!shrine.is_healthy(trove_id), 'should not be healthy');
+
+        assert(purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
+        assert(purger.get_max_liquidation_amount(trove_id).is_non_zero(), 'close amount should not be 0');
+    }
+
+    fn assert_trove_is_not_absorbable(
+        shrine: IShrineDispatcher,
+        purger: IPurgerDispatcher,
+        trove_id: u64,
+    ) {
+        assert(purger.get_absorption_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0');
+        assert(purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
     }
 }

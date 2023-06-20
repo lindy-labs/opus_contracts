@@ -62,16 +62,14 @@ mod TestPurger {
         let target_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
         set_contract_address(target_trove_owner);
 
-        let max_forge_amt: Wad = shrine.get_max_forge(target_trove);
-        abbot.forge(target_trove, max_forge_amt, 0_u128.into());
-        PurgerUtils::decrease_yang_prices_by_pct(
-            shrine, yangs, 100000000000000000000000000_u128.into() // 10% (Ray)
-        );
+        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_ltv: Ray = (threshold.val + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
 
         // Sanity check
         assert(!shrine.is_healthy(target_trove), 'should not be healthy');
 
-        let (threshold, before_ltv, before_value, before_debt) = shrine
+        let (_, before_ltv, before_value, before_debt) = shrine
             .get_trove_info(target_trove);
         // TODO: this currently underflows because it requires a signed operation
         let penalty: Ray = purger.get_liquidation_penalty(target_trove);
@@ -103,7 +101,7 @@ mod TestPurger {
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
 
-        assert(shrine.is_healthy(healthy_trove), 'should be healthy');
+        PurgerUtils::assert_trove_is_healthy(shrine, purger, healthy_trove);
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
@@ -129,11 +127,11 @@ mod TestPurger {
         set_contract_address(healthy_trove_owner);
         abbot.forge(healthy_trove, max_forge_amt, 0_u128.into());
 
-        assert(shrine.is_healthy(healthy_trove), 'should be healthy');
-
         let (threshold, ltv, _, _) = shrine.get_trove_info(healthy_trove);
         // Sanity check
-        assert(ltv > 910000000000000000000000000_u128.into(), 'too low');
+        assert(ltv > Purger::ABSORPTION_THRESHOLD.into(), 'too low');
+
+        PurgerUtils::assert_trove_is_healthy(shrine, purger, healthy_trove);
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
@@ -142,10 +140,10 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_insufficient_yin_fail() {
         let target_trove_yin: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
-        let searcher_yin: Wad = (target_trove_yin.val / 4).into();
+        let searcher_yin: Wad = (target_trove_yin.val / 10).into();
 
         let (shrine, abbot, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
@@ -155,11 +153,12 @@ mod TestPurger {
             abbot, yangs, gates, target_trove_yin
         );
 
-        let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
-        // Modify the thresholds to below the trove's LTV
-        PurgerUtils::set_thresholds(shrine, yangs, (ltv.val - 1).into());
+        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
 
-        assert(!shrine.is_healthy(target_trove), 'should not be healthy');
+        let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
+
+        PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove);
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
@@ -183,16 +182,9 @@ mod TestPurger {
         );
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
-        let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
-        );
-        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        PurgerUtils::decrease_yang_prices_by_pct(
-            shrine,
-            yangs,
-            decrease_pct
-                + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
-        );
+
+        let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
 
         // Fund the absorber with twice the target trove's debt
         let absorber_yin: Wad = (debt.val * 2).into();
@@ -219,16 +211,9 @@ mod TestPurger {
         );
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
-        let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
-        );
-        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        PurgerUtils::decrease_yang_prices_by_pct(
-            shrine,
-            yangs,
-            decrease_pct
-                + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
-        );
+
+        let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
 
         // Fund the absorber with half the target trove's debt
         let absorber_yin: Wad = (debt.val / 2).into();
@@ -255,16 +240,8 @@ mod TestPurger {
         );
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
-        let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
-        );
-        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        PurgerUtils::decrease_yang_prices_by_pct(
-            shrine,
-            yangs,
-            decrease_pct
-                + RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is above max penalty
-        );
+        let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
 
         set_contract_address(PurgerUtils::random_user());
         purger.absorb(target_trove);
@@ -290,7 +267,7 @@ mod TestPurger {
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
 
-        assert(shrine.is_healthy(healthy_trove), 'should be healthy');
+        PurgerUtils::assert_trove_is_healthy(shrine, purger, healthy_trove);
 
         set_contract_address(PurgerUtils::random_user());
         purger.absorb(healthy_trove);
@@ -311,26 +288,16 @@ mod TestPurger {
         assert(shrine.is_healthy(target_trove), 'should be healthy');
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
-        let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / Purger::ABSORPTION_THRESHOLD.into())
-        );
-        let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        PurgerUtils::decrease_yang_prices_by_pct(
-            shrine,
-            yangs,
-            decrease_pct
-                - RAY_PERCENT.into(), // Add 1% offset to guarantee LTV is below max penalty
-        );
+        // Calculate the target trove value for the LTV to be above the threshold by 1%
 
-        let (_, new_ltv, _, _) = shrine.get_trove_info(target_trove);
+        let target_ltv: Ray = threshold + RAY_PERCENT.into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
 
-        // sanity check
-        assert(!shrine.is_healthy(target_trove), 'should not be healthy');
-        assert(
-            new_ltv > threshold & Purger::ABSORPTION_THRESHOLD.into() > new_ltv,
-            'LTV not in expected range'
-        );
+        let (_, new_ltv, value, _) = shrine.get_trove_info(target_trove);
 
+        PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove);
+        PurgerUtils::assert_trove_is_not_absorbable(shrine, purger, target_trove);
+    
         set_contract_address(PurgerUtils::random_user());
         purger.absorb(target_trove);
     }
