@@ -1149,7 +1149,7 @@ mod TestAbsorber {
         // Derive the amount of absorbed assets the first provider is expected to receive
         let expected_first_provider_absorbed_asset_amts = common::combine_spans(
             first_update_assets,
-            common::transform_span_by_pct(second_update_assets, expected_first_provider_pct)
+            common::scale_span_by_pct(second_update_assets, expected_first_provider_pct)
         );
 
         let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
@@ -1218,7 +1218,7 @@ mod TestAbsorber {
         absorber.reap();
 
         // Derive the amount of absorbed assets the second provider is expected to receive
-        let expected_second_provider_absorbed_asset_amts = common::transform_span_by_pct(
+        let expected_second_provider_absorbed_asset_amts = common::scale_span_by_pct(
             second_update_assets, expected_second_provider_pct
         );
 
