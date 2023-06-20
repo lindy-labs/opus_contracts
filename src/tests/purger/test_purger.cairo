@@ -68,21 +68,19 @@ mod TestPurger {
 
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (threshold.val + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
         // Sanity check
         PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove);
 
-        let (_, before_ltv, before_value, before_debt) = shrine
-            .get_trove_info(target_trove);
+        let (_, before_ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
 
         let penalty: Ray = purger.get_liquidation_penalty(target_trove);
         let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
         let searcher: ContractAddress = PurgerUtils::searcher();
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(searcher)
+            yangs, common::wrap_address_as_span(searcher)
         );
 
         set_contract_address(searcher);
@@ -94,20 +92,26 @@ mod TestPurger {
 
         let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
         let error_margin: Ray = (RAY_PERCENT / 10).into();
-        common::assert_equalish(after_ltv, expected_ltv, error_margin, 'LTV not within safety margin');
+        common::assert_equalish(
+            after_ltv, expected_ltv, error_margin, 'LTV not within safety margin'
+        );
 
         // Check searcher yin balance
-        assert(shrine.get_yin(searcher) == searcher_start_yin - max_close_amt, 'wrong searcher yin balance');
+        assert(
+            shrine.get_yin(searcher) == searcher_start_yin - max_close_amt,
+            'wrong searcher yin balance'
+        );
 
         // Check that searcher has received collateral
         let expected_freed_pct: Ray = PurgerUtils::get_expected_freed_pct(
             before_value, max_close_amt, penalty
         );
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(target_trove_yang_asset_amts, expected_freed_pct);
+        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(
+            target_trove_yang_asset_amts, expected_freed_pct
+        );
         let after_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(searcher)
+            yangs, common::wrap_address_as_span(searcher)
         );
 
         PurgerUtils::assert_received_assets(
@@ -185,7 +189,7 @@ mod TestPurger {
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
 
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
         PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove);
 
@@ -221,7 +225,9 @@ mod TestPurger {
 
         // Make the target trove absorbable
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, start_value, before_debt, target_ltv); 
+        PurgerUtils::adjust_prices_for_trove_ltv(
+            shrine, yangs, start_value, before_debt, target_ltv
+        );
 
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove);
 
@@ -230,12 +236,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(caller)
+            yangs, common::wrap_address_as_span(caller)
         );
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(absorber.contract_address)
+            yangs, common::wrap_address_as_span(absorber.contract_address)
         );
         let expected_compensation_value: Wad = purger.get_compensation(target_trove);
 
@@ -255,16 +259,21 @@ mod TestPurger {
         if !is_fully_absorbed {
             let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
             let error_margin: Ray = (RAY_PERCENT / 10).into();
-            common::assert_equalish(after_ltv, expected_ltv, error_margin, 'LTV not within safety margin');
+            common::assert_equalish(
+                after_ltv, expected_ltv, error_margin, 'LTV not within safety margin'
+            );
         }
 
         // Check that caller has received compensation
-        let expected_compensation_pct: Ray = wadray::rdiv_ww(expected_compensation_value, before_value);
+        let expected_compensation_pct: Ray = wadray::rdiv_ww(
+            expected_compensation_value, before_value
+        );
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_compensation_amts: Span<u128> = common::transform_span_by_pct(target_trove_yang_asset_amts, expected_compensation_pct);
+        let expected_compensation_amts: Span<u128> = common::transform_span_by_pct(
+            target_trove_yang_asset_amts, expected_compensation_pct
+        );
         let after_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(caller)
+            yangs, common::wrap_address_as_span(caller)
         );
 
         PurgerUtils::assert_received_assets(
@@ -275,16 +284,20 @@ mod TestPurger {
         );
 
         // Check absorber yin balance
-        assert(shrine.get_yin(absorber.contract_address) == absorber_start_yin - max_close_amt, 'wrong absorber yin balance');
+        assert(
+            shrine.get_yin(absorber.contract_address) == absorber_start_yin - max_close_amt,
+            'wrong absorber yin balance'
+        );
 
         // Check that absorber has received collateral
         let expected_freed_pct: Ray = PurgerUtils::get_expected_freed_pct(
             before_value, max_close_amt, penalty
         );
-        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(target_trove_yang_asset_amts, expected_freed_pct);
+        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(
+            target_trove_yang_asset_amts, expected_freed_pct
+        );
         let after_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(absorber.contract_address)
+            yangs, common::wrap_address_as_span(absorber.contract_address)
         );
 
         PurgerUtils::assert_received_assets(
@@ -317,7 +330,9 @@ mod TestPurger {
 
         // Make the target trove absorbable
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, start_value, before_debt, target_ltv); 
+        PurgerUtils::adjust_prices_for_trove_ltv(
+            shrine, yangs, start_value, before_debt, target_ltv
+        );
 
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove);
 
@@ -327,12 +342,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(caller)
+            yangs, common::wrap_address_as_span(caller)
         );
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(absorber.contract_address)
+            yangs, common::wrap_address_as_span(absorber.contract_address)
         );
         let expected_compensation_value: Wad = purger.get_compensation(target_trove);
 
@@ -352,16 +365,21 @@ mod TestPurger {
         if !is_fully_absorbed {
             let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
             let error_margin: Ray = (RAY_PERCENT / 10).into();
-            common::assert_equalish(after_ltv, expected_ltv, error_margin, 'LTV not within safety margin');
+            common::assert_equalish(
+                after_ltv, expected_ltv, error_margin, 'LTV not within safety margin'
+            );
         }
 
         // Check that caller has received compensation
-        let expected_compensation_pct: Ray = wadray::rdiv_ww(expected_compensation_value, before_value);
+        let expected_compensation_pct: Ray = wadray::rdiv_ww(
+            expected_compensation_value, before_value
+        );
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_compensation_amts: Span<u128> = common::transform_span_by_pct(target_trove_yang_asset_amts, expected_compensation_pct);
+        let expected_compensation_amts: Span<u128> = common::transform_span_by_pct(
+            target_trove_yang_asset_amts, expected_compensation_pct
+        );
         let after_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(caller)
+            yangs, common::wrap_address_as_span(caller)
         );
 
         PurgerUtils::assert_received_assets(
@@ -372,16 +390,20 @@ mod TestPurger {
         );
 
         // Check absorber yin balance is wiped out
-        assert(shrine.get_yin(absorber.contract_address) == WadZeroable::zero(), 'wrong absorber yin balance');
+        assert(
+            shrine.get_yin(absorber.contract_address) == WadZeroable::zero(),
+            'wrong absorber yin balance'
+        );
 
         // Check that absorber has received proportionate share of collateral
         let expected_freed_pct: Ray = PurgerUtils::get_expected_freed_pct(
             before_value, close_amt, penalty
         );
-        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(target_trove_yang_asset_amts, expected_freed_pct);
+        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(
+            target_trove_yang_asset_amts, expected_freed_pct
+        );
         let after_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs,
-            common::wrap_address_as_span(absorber.contract_address)
+            yangs, common::wrap_address_as_span(absorber.contract_address)
         );
 
         PurgerUtils::assert_received_assets(
@@ -408,7 +430,7 @@ mod TestPurger {
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
         set_contract_address(PurgerUtils::random_user());
         purger.absorb(target_trove);
@@ -462,13 +484,13 @@ mod TestPurger {
         // Calculate the target trove value for the LTV to be above the threshold by 1%
 
         let target_ltv: Ray = threshold + RAY_PERCENT.into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv); 
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
         let (_, new_ltv, value, _) = shrine.get_trove_info(target_trove);
 
         PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove);
         PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
-    
+
         set_contract_address(PurgerUtils::random_user());
         purger.absorb(target_trove);
     }

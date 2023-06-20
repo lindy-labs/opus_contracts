@@ -247,15 +247,9 @@ mod PurgerUtils {
         debt: Wad,
         target_ltv: Ray,
     ) {
-        let unhealthy_value: Wad = wadray::rmul_wr(
-            debt, (RAY_ONE.into() / target_ltv)
-        );
+        let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        decrease_yang_prices_by_pct(
-            shrine,
-            yangs,
-            decrease_pct
-        );
+        decrease_yang_prices_by_pct(shrine, yangs, decrease_pct);
     }
 
     //
@@ -268,45 +262,51 @@ mod PurgerUtils {
     }
 
     fn assert_trove_is_healthy(
-        shrine: IShrineDispatcher,
-        purger: IPurgerDispatcher,
-        trove_id: u64
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        assert(purger.get_liquidation_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0');
-        assert(purger.get_max_liquidation_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
+        assert(
+            purger.get_liquidation_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0'
+        );
+        assert(
+            purger.get_max_liquidation_amount(trove_id) == WadZeroable::zero(),
+            'close amount should be 0'
+        );
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
     fn assert_trove_is_liquidatable(
-        shrine: IShrineDispatcher,
-        purger: IPurgerDispatcher,
-        trove_id: u64
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
 
         assert(purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
-        assert(purger.get_max_liquidation_amount(trove_id).is_non_zero(), 'close amount should not be 0');
+        assert(
+            purger.get_max_liquidation_amount(trove_id).is_non_zero(),
+            'close amount should not be 0'
+        );
     }
 
     fn assert_trove_is_absorbable(
-        shrine: IShrineDispatcher,
-        purger: IPurgerDispatcher,
-        trove_id: u64,
+        shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64, 
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
 
         assert(purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0');
-        assert(purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0');
+        assert(
+            purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0'
+        );
     }
 
-    fn assert_trove_is_not_absorbable(
-        purger: IPurgerDispatcher,
-        trove_id: u64,
-    ) {
-        assert(purger.get_absorption_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0');
-        assert(purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(), 'close amount should be 0');
+    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
+        assert(
+            purger.get_absorption_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0'
+        );
+        assert(
+            purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(),
+            'close amount should be 0'
+        );
     }
 
     // Helper function to assert that an address received the expected amoutn of assets
@@ -317,19 +317,27 @@ mod PurgerUtils {
         mut expected_freed_asset_amts: Span<u128>,
         error_margin: u128,
     ) {
-        
-
         loop {
             match expected_freed_asset_amts.pop_front() {
                 Option::Some(expected_freed_asset_amt) => {
-                    let mut before_asset_bal_arr: Span<u128> = *before_asset_bals.pop_front().unwrap();
+                    let mut before_asset_bal_arr: Span<u128> = *before_asset_bals
+                        .pop_front()
+                        .unwrap();
                     let before_asset_bal: u128 = *before_asset_bal_arr.pop_front().unwrap();
 
-                    let mut after_asset_bal_arr: Span<u128> = *after_asset_bals.pop_front().unwrap();
+                    let mut after_asset_bal_arr: Span<u128> = *after_asset_bals
+                        .pop_front()
+                        .unwrap();
                     let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
-                    let expected_after_asset_bal: u128 = before_asset_bal + *expected_freed_asset_amt;
-                    common::assert_equalish(after_asset_bal, expected_after_asset_bal, error_margin, 'wrong liquidator asset balance');
+                    let expected_after_asset_bal: u128 = before_asset_bal
+                        + *expected_freed_asset_amt;
+                    common::assert_equalish(
+                        after_asset_bal,
+                        expected_after_asset_bal,
+                        error_margin,
+                        'wrong liquidator asset balance'
+                    );
                 },
                 Option::None(_) => {
                     break;
