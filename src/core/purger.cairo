@@ -456,7 +456,7 @@ mod Purger {
         }
 
         // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case 
-        // to avoid underflow
+        // to avoid underflow. Note that this also guarantees `ltv` is lesser than one.
         if ltv_after_compensation > RAY_ONE.into() {
             return Option::Some(RayZeroable::zero());
         }
