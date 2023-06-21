@@ -46,26 +46,79 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_penalty_scalar_pass() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
+
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+        );
+
+        // Set thresholds to 90% so we can check the expected penalty
+        let threshold: Ray = (90 * RAY_PERCENT).into();
+        PurgerUtils::set_thresholds(shrine, yangs, threshold);
+
+        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 2 * RAY_PERCENT).into(); // 92% (Ray)
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+
+        let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+
+        // sanity check on LTV
+        let error_margin: Ray = 1000000_u128.into();
+        common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
+
+        // Set scalar to 1 (Ray)
+        set_contract_address(PurgerUtils::admin());
+        purger.set_penalty_scalar(RAY_ONE.into());
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let expected_penalty: Ray = 52200000000000000000000000_u128.into(); // 5.22% (Ray)
+        let error_margin: Ray = (RAY_PERCENT / 10).into();
+        common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #1');
+
+        // Set scalar to 0.97 (Ray)
+        purger.set_penalty_scalar(Purger::MIN_PENALTY_SCALAR.into());
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let expected_penalty: Ray = 21600000000000000000000000_u128.into(); // 2.16% (Ray)
+        common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #2');
+
+        // Set scalar to 1.06 (Ray)
+        purger.set_penalty_scalar(Purger::MAX_PENALTY_SCALAR.into());
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let expected_penalty: Ray = 54300000000000000000000000_u128.into(); // 5.43% (Ray)
+        common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #3');
+
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_set_penalty_scalar_parametrized() {
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_low_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
+
+        set_contract_address(PurgerUtils::admin());
+        purger.set_penalty_scalar((Purger::MIN_PENALTY_SCALAR - 1).into());
     }
 
     #[test]
     #[available_gas(20000000000)]
+    #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_high_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
+
+        set_contract_address(PurgerUtils::admin());
+        purger.set_penalty_scalar((Purger::MAX_PENALTY_SCALAR + 1).into());
     }
 
     #[test]
     #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_unauthorized_fail() {
+        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
+
+        set_contract_address(common::badguy());
+        purger.set_penalty_scalar(RAY_ONE.into());
     }
 
     //
