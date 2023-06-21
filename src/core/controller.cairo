@@ -47,6 +47,8 @@ mod Controller {
 
     #[external]
     fn update_multiplier() -> Ray {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+
         let shrine: IShrineDispatcher = shrine::read();
 
         let error: SignedRay = RAY_ONE.into() - shrine.get_yin_spot_price().into();
