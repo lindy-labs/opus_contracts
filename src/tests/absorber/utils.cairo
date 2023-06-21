@@ -29,7 +29,7 @@ mod AbsorberUtils {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_SCALE};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::mock_blesser::MockBlesser;
@@ -53,7 +53,7 @@ mod AbsorberUtils {
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(10000000000000000000); // 10 (Wad) - ETH
+        asset_amts.append(10 * WAD_ONE); // 10 (Wad) - ETH
         asset_amts.append(100000000); // 1 (10 ** 8) - BTC
         asset_amts.span()
     }
