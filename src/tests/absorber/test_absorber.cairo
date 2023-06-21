@@ -24,7 +24,9 @@ mod TestAbsorber {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_SCALE};
+    use aura::utils::wadray::{
+        Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
+    };
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -69,7 +71,7 @@ mod TestAbsorber {
 
         set_contract_address(AbsorberUtils::admin());
 
-        let new_limit: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
+        let new_limit: Ray = (75 * RAY_PERCENT).into();
         absorber.set_removal_limit(new_limit);
 
         assert(absorber.get_removal_limit() == new_limit, 'limit not updated');
@@ -95,7 +97,7 @@ mod TestAbsorber {
 
         set_contract_address(common::badguy());
 
-        let new_limit: Ray = 750000000000000000000000000_u128.into(); // 75% (Ray)
+        let new_limit: Ray = (75 * RAY_PERCENT).into();
         absorber.set_removal_limit(new_limit);
     }
 
@@ -505,7 +507,7 @@ mod TestAbsorber {
         let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
 
         // Test subsequent deposit
-        let second_provided_amt: Wad = 400000000000000000000_u128.into(); // 400 (Wad)
+        let second_provided_amt: Wad = (400 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
             shrine,
             abbot,
@@ -604,7 +606,7 @@ mod TestAbsorber {
         // Second epoch starts here
         // Step 3
         let second_provider = AbsorberUtils::provider_2();
-        let second_provided_amt: Wad = 5000000000000000000000_u128.into(); // 5_000 (Wad)
+        let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
             shrine,
             abbot,
@@ -797,7 +799,7 @@ mod TestAbsorber {
         // Second epoch starts here
         // Step 3
         let second_provider = AbsorberUtils::provider_2();
-        let second_provided_amt: Wad = 5000000000000000000000_u128.into(); // 5_000 (Wad)
+        let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
             shrine,
             abbot,
@@ -941,7 +943,7 @@ mod TestAbsorber {
         // Second epoch starts here
         // Step 3
         let second_provider = AbsorberUtils::provider_2();
-        let second_provided_amt: Wad = 5000000000000000000000_u128.into(); // 5_000 (Wad)
+        let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
             shrine,
             abbot,
@@ -1083,7 +1085,7 @@ mod TestAbsorber {
 
         // Step 3
         let second_provider = AbsorberUtils::provider_2();
-        let second_provided_amt: Wad = 5000000000000000000000_u128.into(); // 5_000 (Wad)
+        let second_provided_amt: Wad = (5000 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
             shrine,
             abbot,
@@ -1160,7 +1162,7 @@ mod TestAbsorber {
             common::scale_span_by_pct(second_update_assets, expected_first_provider_pct)
         );
 
-        let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
+        let error_margin: Wad = 10000_u128.into();
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -1230,7 +1232,7 @@ mod TestAbsorber {
             second_update_assets, expected_second_provider_pct
         );
 
-        let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
+        let error_margin: Wad = 10000_u128.into();
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             second_provider,
@@ -1460,7 +1462,7 @@ mod TestAbsorber {
         let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
-        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        let provided_amt: Wad = (10000 * WAD_ONE).into();
 
         let yang_asset_amts: Span<u128> = AbsorberUtils::provider_asset_amts();
         common::fund_user(provider, yangs, yang_asset_amts);
@@ -1481,7 +1483,7 @@ mod TestAbsorber {
         let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
-        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        let provided_amt: Wad = (10000 * WAD_ONE).into();
 
         let yang_asset_amts: Span<u128> = AbsorberUtils::provider_asset_amts();
         common::fund_user(provider, yangs, yang_asset_amts);
@@ -1602,7 +1604,7 @@ mod TestAbsorber {
         AbsorberUtils::add_rewards_to_absorber(absorber, reward_tokens, blessers.span());
 
         let provider = AbsorberUtils::provider_1();
-        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        let provided_amt: Wad = (10000 * WAD_ONE).into();
         AbsorberUtils::provide_to_absorber(
             shrine,
             abbot,

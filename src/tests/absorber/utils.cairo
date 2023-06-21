@@ -28,7 +28,7 @@ mod AbsorberUtils {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_SCALE};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::absorber::mock_blesser::MockBlesser;
@@ -52,7 +52,7 @@ mod AbsorberUtils {
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(10000000000000000000); // 10 (Wad) - ETH
+        asset_amts.append(10 * WAD_ONE); // 10 (Wad) - ETH
         asset_amts.append(100000000); // 1 (10 ** 8) - BTC
         asset_amts.span()
     }
@@ -250,7 +250,7 @@ mod AbsorberUtils {
         add_rewards_to_absorber(absorber, reward_tokens, blessers);
 
         let provider = provider_1();
-        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        let provided_amt: Wad = (10000 * WAD_ONE).into();
         provide_to_absorber(
             shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
         );
