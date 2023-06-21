@@ -4,7 +4,9 @@ mod TestAbsorber {
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
-    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait};
+    use starknet::{
+        ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
@@ -143,11 +145,12 @@ mod TestAbsorber {
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
         // Update existing reward
-        let new_aura_blesser: ContractAddress = contract_address_try_from_felt252('new aura blesser').unwrap();
+        let new_aura_blesser: ContractAddress = contract_address_try_from_felt252(
+            'new aura blesser'
+        )
+            .unwrap();
         aura_reward.is_active = false;
-        aura_reward.blesser = IBlesserDispatcher { 
-            contract_address: new_aura_blesser
-        };
+        aura_reward.blesser = IBlesserDispatcher { contract_address: new_aura_blesser };
         absorber.set_reward(aura_token, new_aura_blesser, false);
 
         let mut expected_rewards: Array<Reward> = Default::default();
