@@ -4,7 +4,9 @@ mod TestAbsorber {
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_block_timestamp, SyscallResultTrait};
+    use starknet::{
+        ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
@@ -22,7 +24,7 @@ mod TestAbsorber {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_SCALE, Wad, WadZeroable, WAD_SCALE};
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_SCALE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -37,7 +39,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorber_setup() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         assert(
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
@@ -63,7 +65,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_removal_limit_pass() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(AbsorberUtils::admin());
 
@@ -77,7 +79,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Limit is too low', 'ENTRYPOINT_FAILED'))]
     fn test_set_removal_limit_too_low_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(AbsorberUtils::admin());
 
@@ -89,7 +91,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_removal_limit_unauthorized_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
 
@@ -100,7 +102,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_reward_pass() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let aura_token: ContractAddress = AbsorberUtils::aura_token_deploy();
         let aura_blesser: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
@@ -143,8 +145,13 @@ mod TestAbsorber {
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
         // Update existing reward
+        let new_aura_blesser: ContractAddress = contract_address_try_from_felt252(
+            'new aura blesser'
+        )
+            .unwrap();
         aura_reward.is_active = false;
-        absorber.set_reward(aura_token, aura_blesser, false);
+        aura_reward.blesser = IBlesserDispatcher { contract_address: new_aura_blesser };
+        absorber.set_reward(aura_token, new_aura_blesser, false);
 
         let mut expected_rewards: Array<Reward> = Default::default();
         expected_rewards.append(aura_reward);
@@ -157,7 +164,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_token_zero_address_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
@@ -170,7 +177,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_blesser_zero_address_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
@@ -215,7 +222,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_kill_unauthorized_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.kill();
@@ -225,7 +232,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not live', 'ENTRYPOINT_FAILED'))]
     fn test_provide_after_kill_fail() {
-        let (shrine, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (shrine, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(AbsorberUtils::admin());
         absorber.kill();
@@ -244,15 +251,15 @@ mod TestAbsorber {
         let mut percentages_to_drain: Array<Ray> = Default::default();
         percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
 
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 2.17452316% (Ray)
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray) 
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
 
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 2.17452316% (Ray)
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
+        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
 
         let mut percentages_to_drain = percentages_to_drain.span();
 
@@ -279,11 +286,7 @@ mod TestAbsorber {
                         shrine, absorber, yangs, first_update_assets, *percentage_to_drain
                     );
 
-                    let is_fully_absorbed: bool = if *percentage_to_drain == RAY_SCALE.into() {
-                        true
-                    } else {
-                        false
-                    };
+                    let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
 
                     let expected_epoch = if is_fully_absorbed {
                         1
@@ -328,19 +331,18 @@ mod TestAbsorber {
                     );
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
 
-                    let before_absorbed_bals = common::get_token_balances(
-                        yangs, common::wrap_address_as_span(provider)
-                    );
+                    let before_absorbed_bals = common::get_token_balances(yangs, provider.into());
                     let before_reward_bals = common::get_token_balances(
-                        reward_tokens, common::wrap_address_as_span(provider)
+                        reward_tokens, provider.into()
                     );
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
 
-                    // Perform three different actions:
-                    // 1. `reap`
+                    // Perform three different actions 
+                    // (in the following order if the number of test cases is a multiple of 3):
+                    // 1. `provide`
                     // 2. `request` and `remove`
-                    // 3. `provide`
+                    // 3. `reap`
                     // and check that the provider receives rewards and absorbed assets
 
                     let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
@@ -349,8 +351,9 @@ mod TestAbsorber {
                     let mut remove_as_second_action: bool = false;
                     let mut provide_as_second_action: bool = false;
                     set_contract_address(provider);
-                    if percentages_to_drain.len() % 3 == 0 {
-                        absorber.reap();
+                    if percentages_to_drain.len() % 3 == 2 {
+                        absorber.provide(WAD_SCALE.into());
+                        provide_as_second_action = true;
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         set_block_timestamp(
@@ -359,8 +362,7 @@ mod TestAbsorber {
                         absorber.remove(BoundedU128::max().into());
                         remove_as_second_action = true;
                     } else {
-                        absorber.provide(WAD_SCALE.into());
-                        provide_as_second_action = true;
+                        absorber.reap();
                     }
 
                     // One distribution from `update` and another distribution from 
@@ -489,7 +491,7 @@ mod TestAbsorber {
         let before_absorber_yin_bal: u256 = yin.balance_of(absorber.contract_address);
 
         let before_reward_bals: Span<Span<u128>> = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(provider)
+            reward_tokens, provider.into()
         );
 
         assert(
@@ -638,10 +640,10 @@ mod TestAbsorber {
 
         // Step 5
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -691,10 +693,10 @@ mod TestAbsorber {
 
         // Step 6
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(second_provider)
+            reward_tokens, second_provider.into()
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(second_provider)
+            yangs, second_provider.into()
         );
 
         set_contract_address(second_provider);
@@ -822,10 +824,10 @@ mod TestAbsorber {
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -973,10 +975,10 @@ mod TestAbsorber {
         // Step 4
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -1140,10 +1142,10 @@ mod TestAbsorber {
         // Step 5
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
         let first_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(first_provider)
+            reward_tokens, first_provider.into()
         );
         let first_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(first_provider)
+            yangs, first_provider.into()
         );
 
         set_contract_address(first_provider);
@@ -1155,7 +1157,7 @@ mod TestAbsorber {
         // Derive the amount of absorbed assets the first provider is expected to receive
         let expected_first_provider_absorbed_asset_amts = common::combine_spans(
             first_update_assets,
-            common::transform_span_by_pct(second_update_assets, expected_first_provider_pct)
+            common::scale_span_by_pct(second_update_assets, expected_first_provider_pct)
         );
 
         let error_margin: Wad = 10000_u128.into(); // 10**6 (Wad)
@@ -1211,10 +1213,10 @@ mod TestAbsorber {
         // Step 6
         let second_provider_before_yin_bal: Wad = shrine.get_yin(second_provider);
         let second_provider_before_reward_bals = common::get_token_balances(
-            reward_tokens, common::wrap_address_as_span(second_provider)
+            reward_tokens, second_provider.into()
         );
         let second_provider_before_absorbed_bals = common::get_token_balances(
-            yangs, common::wrap_address_as_span(second_provider)
+            yangs, second_provider.into()
         );
 
         set_contract_address(second_provider);
@@ -1224,7 +1226,7 @@ mod TestAbsorber {
         absorber.reap();
 
         // Derive the amount of absorbed assets the second provider is expected to receive
-        let expected_second_provider_absorbed_asset_amts = common::transform_span_by_pct(
+        let expected_second_provider_absorbed_asset_amts = common::scale_span_by_pct(
             second_update_assets, expected_second_provider_pct
         );
 
@@ -1405,7 +1407,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_request_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.request();
@@ -1415,7 +1417,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_remove_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.remove(0_u128.into());
@@ -1425,7 +1427,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_reap_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.reap();
@@ -1435,7 +1437,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
     fn test_provide_less_than_initial_shares_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
         let less_than_initial_shares_amt: Wad = (Absorber::INITIAL_SHARES - 1).into();
@@ -1455,7 +1457,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_provide_insufficient_yin_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
@@ -1476,7 +1478,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_provide_insufficient_allowance_fail() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
@@ -1579,7 +1581,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_bestow_depleted_active_reward() {
-        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
         let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
 

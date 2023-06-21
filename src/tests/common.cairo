@@ -59,10 +59,22 @@ fn non_zero_address() -> ContractAddress {
 // Trait implementations
 //
 
+impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
+    fn into(self: ContractAddress) -> Span<ContractAddress> {
+        let mut tmp: Array<ContractAddress> = Default::default();
+        tmp.append(self);
+        tmp.span()
+    }
+}
+
 impl SpanPartialEq<
     T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
 > of PartialEq<Span<T>> {
     fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
+        if lhs.len() != rhs.len() {
+            return false;
+        }
+
         loop {
             match lhs.pop_front() {
                 Option::Some(lhs) => {
@@ -229,15 +241,8 @@ fn assert_equalish<
 // Helpers - Array functions
 //
 
-// Takes in an address and returns it as a span
-fn wrap_address_as_span(addr: ContractAddress) -> Span<ContractAddress> {
-    let mut addrs: Array<ContractAddress> = Default::default();
-    addrs.append(addr);
-    addrs.span()
-}
-
 // Helper function to multiply an array of values by a given percentage
-fn transform_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
     let mut split_asset_amts: Array<u128> = Default::default();
     loop {
         match asset_amts.pop_front() {
@@ -255,7 +260,7 @@ fn transform_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
     split_asset_amts.span()
 }
 
-// Helper function to combine two arrays of equal lengths into a single array.
+// Helper function to combine two arrays of equal lengths into a single array by doing element-wise addition.
 // Assumes the arrays are ordered identically.
 fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     assert(lhs.len() == rhs.len(), 'combining diff array lengths');
