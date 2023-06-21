@@ -664,9 +664,9 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_absorb_trove_debt_parametrized() {
         let mut thresholds: Span<Ray> =
-            PurgerUtils::interesting_thresholds_for_absorption_trove_debt();
+            PurgerUtils::interesting_thresholds_for_absorption_entire_trove_debt();
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
-            PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_trove_debt();
+            PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
 
         loop {
             match thresholds.pop_front() {

@@ -93,7 +93,7 @@ mod PurgerUtils {
     }
 
     // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
-    fn interesting_thresholds_for_absorption_trove_debt() -> Span<Ray> {
+    fn interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
         thresholds.append(787500000000000000000000000_u128.into()); // 78.75%
         thresholds.append((80 * RAY_PERCENT).into());
@@ -144,7 +144,7 @@ mod PurgerUtils {
 
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/b8drqdb32a.
-    fn ltvs_for_interesting_thresholds_for_absorption_trove_debt() -> Span<Span<Ray>> {
+    fn ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Span<Ray>> {
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
         let exceed_hundred_pct: Ray = (RAY_ONE + RAY_PERCENT).into();
 
@@ -360,6 +360,7 @@ mod PurgerUtils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
+    // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray, 
     ) {
@@ -399,11 +400,6 @@ mod PurgerUtils {
     // Test assertion helpers
     //
 
-    fn get_expected_freed_pct(trove_value: Wad, close_amt: Wad, penalty: Ray) -> Ray {
-        let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
-        wadray::rdiv_ww(freed_amt, trove_value)
-    }
-
     fn get_expected_compensation_assets(
         trove_asset_amts: Span<u128>, trove_value: Wad, compensation_value: Wad
     ) -> Span<u128> {
@@ -414,7 +410,8 @@ mod PurgerUtils {
     fn get_expected_liquidation_assets(
         trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray
     ) -> Span<u128> {
-        let expected_freed_pct: Ray = get_expected_freed_pct(trove_value, close_amt, penalty);
+        let freed_amt: Wad = wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty);
+        let expected_freed_pct: Ray = wadray::rdiv_ww(freed_amt, trove_value);
         common::scale_span_by_pct(trove_asset_amts, expected_freed_pct)
     }
     //fn get_expected_liquidation_assets
@@ -488,9 +485,10 @@ mod PurgerUtils {
 
     // Helper function to assert that an address received the expected amoutn of assets
     // based on the before and after balances.
+    // `before_asset_bals` and `after_asset_bals` should be retrieved using `get_token_balances`
     fn assert_received_assets(
-        mut before_asset_bals: Span<Span<u128>>, // Asset balances of liquidator returned by `get_token_balances`
-        mut after_asset_bals: Span<Span<u128>>, // Asset balances of liquidator returned by `get_Token_balances`
+        mut before_asset_bals: Span<Span<u128>>,
+        mut after_asset_bals: Span<Span<u128>>,
         mut expected_freed_asset_amts: Span<u128>,
         error_margin: u128,
     ) {
