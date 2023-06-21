@@ -74,38 +74,38 @@ mod PurgerUtils {
 
     fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append(700000000000000000000000000_u128.into()); // 70% (Ray)
-        thresholds.append(800000000000000000000000000_u128.into()); // 80% (Ray)
-        thresholds.append(900000000000000000000000000_u128.into()); // 90% (Ray)
-        thresholds.append(960000000000000000000000000_u128.into()); // 96% (Ray)
+        thresholds.append((70 * RAY_PERCENT).into());
+        thresholds.append((80 * RAY_PERCENT).into());
+        thresholds.append((90 * RAY_PERCENT).into());
+        thresholds.append((96 * RAY_PERCENT).into());
         thresholds.span()
     }
 
     // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
     fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append(650000000000000000000000000_u128.into()); // 65% (Ray)
-        thresholds.append(700000000000000000000000000_u128.into()); // 70% (Ray)
-        thresholds.append(750000000000000000000000000_u128.into()); // 75% (Ray)
-        thresholds.append(787400000000000000000000000_u128.into()); // 78.74% (Ray)
+        thresholds.append((65 * RAY_PERCENT).into());
+        thresholds.append((70 * RAY_PERCENT).into());
+        thresholds.append((75 * RAY_PERCENT).into());
+        thresholds.append(787400000000000000000000000_u128.into()); // 78.74%
         thresholds.span()
     }
 
     // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
     fn interesting_thresholds_for_absorption_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append(787500000000000000000000000_u128.into()); // 78.75% (Ray)
-        thresholds.append(800000000000000000000000000_u128.into()); // 80% (Ray)
-        thresholds.append(900000000000000000000000000_u128.into()); // 90% (Ray)
-        thresholds.append(960000000000000000000000000_u128.into()); // 96% (Ray)
+        thresholds.append(787500000000000000000000000_u128.into()); // 78.75%
+        thresholds.append((80 * RAY_PERCENT).into());
+        thresholds.append((90 * RAY_PERCENT).into());
+        thresholds.append((96 * RAY_PERCENT).into());
         thresholds.span()
     }
 
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/qoizltusle.
     fn ltvs_for_interesting_thresholds_for_absorption_below_trove_debt() -> Span<Span<Ray>> {
-        // The max possible penalty LTV is reached around this value for these thresholds
-        let max_possible_penalty_ltv: u128 = 862200000000000000000000000; // 86.22% (Ray)
+        // The max possible penalty LTV is last reached around this value for these thresholds
+        let max_possible_penalty_ltv: Ray = 862200000000000000000000000_u128.into(); // 86.22%
 
         let mut trove_ltvs: Array<Span<Ray>> = Default::default();
 
@@ -113,32 +113,28 @@ mod PurgerUtils {
         let mut ltvs_for_first_threshold: Array<Ray> = Default::default();
         // 71.18% (Ray) - LTV at which maximum penalty of 12.5% is first reached
         ltvs_for_first_threshold.append(711800000000000000000000000_u128.into());
-        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
-        ltvs_for_first_threshold.append(max_possible_penalty_ltv.into());
+        ltvs_for_first_threshold.append(max_possible_penalty_ltv);
         trove_ltvs.append(ltvs_for_first_threshold.span());
 
         // Second threshold of 70% (Ray)
         let mut ltvs_for_second_threshold: Array<Ray> = Default::default();
         // 76.65% (Ray) - LTV at which maximum penalty of 12.5% is first reached
         ltvs_for_second_threshold.append(766500000000000000000000000_u128.into());
-        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
-        ltvs_for_second_threshold.append(max_possible_penalty_ltv.into());
+        ltvs_for_second_threshold.append(max_possible_penalty_ltv);
         trove_ltvs.append(ltvs_for_second_threshold.span());
 
         // Third threshold of 75% (Ray)
         let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
         // 82.13% (Ray) - LTV at which maximum penalty of 12.5% is reached
         ltvs_for_third_threshold.append(821300000000000000000000000_u128.into());
-        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
-        ltvs_for_third_threshold.append(max_possible_penalty_ltv.into());
+        ltvs_for_third_threshold.append(max_possible_penalty_ltv);
         trove_ltvs.append(ltvs_for_third_threshold.span());
 
         // Fourth threshold of 78.74% (Ray)
         let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
         // 85.93% (Ray) - LTV at which maximum penalty of 12.5% is reached
         ltvs_for_first_threshold.append(859300000000000000000000000_u128.into());
-        // 86.22% (Ray) - LTV at which maximum penalty of 12.5% is last reached
-        ltvs_for_third_threshold.append(max_possible_penalty_ltv.into());
+        ltvs_for_third_threshold.append(max_possible_penalty_ltv);
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
 
         trove_ltvs.span()
@@ -179,7 +175,7 @@ mod PurgerUtils {
         // Fourth threshold of 96% (Ray)
         let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
         // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
-        ltvs_for_fourth_threshold.append(960000000000000000000000001_u128.into());
+        ltvs_for_fourth_threshold.append((96 * RAY_PERCENT + 1).into());
         ltvs_for_fourth_threshold.append(ninety_nine_pct);
         ltvs_for_fourth_threshold.append(exceed_hundred_pct);
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
@@ -192,21 +188,21 @@ mod PurgerUtils {
     // Note that thresholds >= 90% will be absorbable once LTV >= threshold
     fn interesting_thresholds_and_ltvs_below_absorption_ltv() -> (Span<Ray>, Span<Ray>) {
         let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append(650000000000000000000000000_u128.into()); // 65% (Ray)
-        thresholds.append(700000000000000000000000000_u128.into()); // 70% (Ray)
-        thresholds.append(750000000000000000000000000_u128.into()); // 75% (Ray)
+        thresholds.append((65 * RAY_PERCENT).into());
+        thresholds.append((70 * RAY_PERCENT).into());
+        thresholds.append((75 * RAY_PERCENT).into());
         thresholds.append(787400000000000000000000000_u128.into()); // 78.74% (Ray)
         thresholds.append(787500000000000000000000000_u128.into()); // 78.75% (Ray)
-        thresholds.append(800000000000000000000000000_u128.into()); // 80% (Ray)
+        thresholds.append((80 * RAY_PERCENT).into());
 
         // The LTV at which the maximum penalty is reached minus 0.01%
         let mut trove_ltvs: Array<Ray> = Default::default();
-        trove_ltvs.append(711700000000000000000000000_u128.into());
-        trove_ltvs.append(766400000000000000000000000_u128.into());
-        trove_ltvs.append(821200000000000000000000000_u128.into());
-        trove_ltvs.append(859200000000000000000000000_u128.into());
-        trove_ltvs.append(862200000000000000000000000_u128.into());
-        trove_ltvs.append(868900000000000000000000000_u128.into());
+        trove_ltvs.append(711700000000000000000000000_u128.into()); // 71.17% (Ray)
+        trove_ltvs.append(766400000000000000000000000_u128.into()); // 76.64% (Ray)
+        trove_ltvs.append(821200000000000000000000000_u128.into()); // 82.12% (Ray)
+        trove_ltvs.append(859200000000000000000000000_u128.into()); // 85.92% (Ray)
+        trove_ltvs.append(862200000000000000000000000_u128.into()); // 86.22% (Ray)
+        trove_ltvs.append(868900000000000000000000000_u128.into()); // 86.89% (Ray)
 
         (thresholds.span(), trove_ltvs.span())
     }
