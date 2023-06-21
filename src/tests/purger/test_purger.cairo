@@ -149,9 +149,8 @@ mod TestPurger {
         let target_ltv: Ray = (threshold.val + 1).into();
         PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
+        // Sanity check that LTV is at the target liquidation LTV
         let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
-
-        // Sanity check
         PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
 
         let (_, _, before_value, before_debt) = shrine.get_trove_info(target_trove);
@@ -171,11 +170,7 @@ mod TestPurger {
         let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
         assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
 
-        let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-        let error_margin: Ray = (RAY_PERCENT / 10).into();
-        common::assert_equalish(
-            after_ltv, expected_ltv, error_margin, 'LTV not within safety margin'
-        );
+        PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
 
         // Check searcher yin balance
         assert(
@@ -228,9 +223,6 @@ mod TestPurger {
                     target_ltvs.append((RAY_ONE + RAY_PERCENT).into()); // 101%
                     let mut target_ltvs: Span<Ray> = target_ltvs.span();
 
-                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into()
-                        * *threshold;
-
                     // Assert that we hit the branch for safety margin check at least once per threshold
                     let mut safety_margin_achieved: bool = false;
 
@@ -272,13 +264,8 @@ mod TestPurger {
 
                                 let is_fully_liquidated: bool = trove_debt == max_close_amt;
                                 if !is_fully_liquidated {
-                                    let error_margin: Ray = (RAY_PERCENT / 10).into();
-                                    common::assert_equalish(
-                                        after_ltv,
-                                        expected_safe_ltv,
-                                        error_margin,
-                                        'LTV not within safety margin'
-                                    );
+                                    PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
+
                                     assert(
                                         after_debt == before_debt - max_close_amt,
                                         'wrong debt after liquidation'
@@ -448,11 +435,7 @@ mod TestPurger {
 
         let is_fully_absorbed: bool = after_debt.is_zero();
         if !is_fully_absorbed {
-            let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-            let error_margin: Ray = (RAY_PERCENT / 10).into();
-            common::assert_equalish(
-                after_ltv, expected_ltv, error_margin, 'LTV not within safety margin'
-            );
+            PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
         }
 
         // Check that caller has received compensation
@@ -556,11 +539,7 @@ mod TestPurger {
 
         let is_fully_absorbed: bool = after_debt.is_zero();
         if !is_fully_absorbed {
-            let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-            let error_margin: Ray = (RAY_PERCENT / 10).into();
-            common::assert_equalish(
-                after_ltv, expected_ltv, error_margin, 'LTV not within safety margin'
-            );
+            PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
         }
 
         // Check that caller has received compensation
@@ -657,8 +636,6 @@ mod TestPurger {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-                    let expected_safe_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into()
-                        * *threshold;
 
                     // Inner loop iterating over LTVs at liquidation
                     loop {
@@ -718,13 +695,8 @@ mod TestPurger {
                                     'wrong debt after liquidation'
                                 );
 
-                                let error_margin: Ray = (RAY_PERCENT / 10).into();
-                                common::assert_equalish(
-                                    after_ltv,
-                                    expected_safe_ltv,
-                                    error_margin,
-                                    'LTV not within safety margin'
-                                );
+                                PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
+
                             },
                             Option::None(_) => {
                                 break;

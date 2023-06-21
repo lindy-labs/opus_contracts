@@ -438,6 +438,14 @@ mod PurgerUtils {
         );
     }
 
+    fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
+        let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
+        let error_margin: Ray = (RAY_PERCENT / 10).into();
+        common::assert_equalish(
+            ltv, expected_ltv, error_margin, 'LTV not within safety margin'
+        );
+    }
+
     // Helper function to assert that an address received the expected amoutn of assets
     // based on the before and after balances.
     fn assert_received_assets(
