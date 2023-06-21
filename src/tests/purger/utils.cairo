@@ -377,6 +377,21 @@ mod PurgerUtils {
         wadray::rdiv_ww(freed_amt, trove_value)
     }
 
+    fn get_expected_compensation_assets(
+        trove_asset_amts: Span<u128>, trove_value: Wad, compensation_value: Wad
+    ) -> Span<u128> {
+        let expected_compensation_pct: Ray = wadray::rdiv_ww(compensation_value, trove_value);
+        common::scale_span_by_pct(trove_asset_amts, expected_compensation_pct)
+    }
+
+    fn get_expected_liquidation_assets(
+        trove_asset_amts: Span<u128>, trove_value: Wad, close_amt: Wad, penalty: Ray
+    ) -> Span<u128> {
+        let expected_freed_pct: Ray = get_expected_freed_pct(trove_value, close_amt, penalty);
+        common::scale_span_by_pct(trove_asset_amts, expected_freed_pct)
+    }
+    //fn get_expected_liquidation_assets
+
     fn assert_trove_is_healthy(
         shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64
     ) {
