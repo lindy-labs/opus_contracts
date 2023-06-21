@@ -81,7 +81,7 @@ mod PurgerUtils {
         thresholds.span()
     }
 
-    // From around 78.74% threshold onwards, absorptions apply to the trove's debt
+    // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
     fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
         thresholds.append(650000000000000000000000000_u128.into()); // 65% (Ray)
@@ -91,7 +91,7 @@ mod PurgerUtils {
         thresholds.span()
     }
 
-    // From around 78.74% threshold onwards, absorptions apply to the trove's debt
+    // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
     fn interesting_thresholds_for_absorption_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
         thresholds.append(787500000000000000000000000_u128.into()); // 78.75% (Ray)
@@ -185,6 +185,30 @@ mod PurgerUtils {
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
 
         trove_ltvs.span()
+    }
+
+    // These values are selected based on the thresholds.
+    // Refer to https://www.desmos.com/calculator/b8drqdb32a.
+    // Note that thresholds >= 90% will be absorbable once LTV >= threshold
+    fn interesting_thresholds_and_ltvs_below_absorption_ltv() -> (Span<Ray>, Span<Ray>) {
+        let mut thresholds: Array<Ray> = Default::default();
+        thresholds.append(650000000000000000000000000_u128.into()); // 65% (Ray)
+        thresholds.append(700000000000000000000000000_u128.into()); // 70% (Ray)
+        thresholds.append(750000000000000000000000000_u128.into()); // 75% (Ray)
+        thresholds.append(787400000000000000000000000_u128.into()); // 78.74% (Ray)
+        thresholds.append(787500000000000000000000000_u128.into()); // 78.75% (Ray)
+        thresholds.append(800000000000000000000000000_u128.into()); // 80% (Ray)
+
+        // The LTV at which the maximum penalty is reached minus 0.01%
+        let mut trove_ltvs: Array<Ray> = Default::default();
+        trove_ltvs.append(711700000000000000000000000_u128.into());
+        trove_ltvs.append(766400000000000000000000000_u128.into());
+        trove_ltvs.append(821200000000000000000000000_u128.into());
+        trove_ltvs.append(859200000000000000000000000_u128.into());
+        trove_ltvs.append(862200000000000000000000000_u128.into());
+        trove_ltvs.append(868900000000000000000000000_u128.into());
+
+        (thresholds.span(), trove_ltvs.span())
     }
 
 

@@ -568,7 +568,7 @@ mod TestPurger {
     }
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
-    // and the LTV at liquidation, and checks for the following
+    // and the LTV at liquidation, and checks for the following for thresholds up to 78.74%:
     // 1. LTV has decreased to the target safety margin
     // 2. trove's debt is reduced by the close amount, which is less than the trove's debt
     #[test]
@@ -658,7 +658,8 @@ mod TestPurger {
     }
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
-    // and the LTV at liquidation, and checks that the trove's debt is absorbed in full
+    // and the LTV at liquidation, and checks that the trove's debt is absorbed in full for thresholds
+    // from 78.74% onwards.
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_trove_debt_parametrized() {
@@ -781,14 +782,9 @@ mod TestPurger {
 
         let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
-
         PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, trove_debt);
 
-        PurgerUtils::assert_trove_is_healthy(shrine, purger, target_trove);
-
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
-        // Calculate the target trove value for the LTV to be above the threshold by 1%
-
         let target_ltv: Ray = threshold + RAY_PERCENT.into();
         PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
@@ -799,5 +795,54 @@ mod TestPurger {
 
         set_contract_address(PurgerUtils::random_user());
         purger.absorb(target_trove);
+    }
+
+    // For thresholds < 90%, check that the LTV at which the trove is absorbable minus
+    // 0.01% is not absorbable.
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_absorb_marginally_below_absorbable_ltv_not_absorbable() {
+        let (mut thresholds, mut target_ltvs) =
+            PurgerUtils::interesting_thresholds_and_ltvs_below_absorption_ltv();
+
+        loop {
+            match thresholds.pop_front() {
+                Option::Some(threshold) => {
+                    let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
+                    let (shrine, abbot, absorber, purger, yangs, gates) =
+                        PurgerUtils::purger_deploy_with_searcher(
+                        searcher_start_yin
+                    );
+
+                    // Set thresholds to provided value
+                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                    let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+                    let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                        abbot, yangs, gates, trove_debt
+                    );
+
+                    let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+
+                    // Fund the absorber with twice the target trove's debt
+                    let absorber_start_yin: Wad = (before_debt.val * 2).into();
+                    PurgerUtils::funded_absorber(
+                        shrine, abbot, absorber, yangs, gates, absorber_start_yin
+                    );
+
+                    // Adjust the trove to the target LTV
+                    PurgerUtils::adjust_prices_for_trove_ltv(
+                        shrine, yangs, start_value, before_debt, *target_ltvs.pop_front().unwrap()
+                    );
+
+                    let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+                    PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+                    PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
     }
 }
