@@ -264,7 +264,8 @@ mod AbsorberUtils {
         ContractAddress, // provider
         Wad, // provided amount
     ) {
-        let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) = absorber_with_first_provider();
+        let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
+            absorber_with_first_provider();
 
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
