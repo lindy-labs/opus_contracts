@@ -1,73 +1,234 @@
 #[contract]
 mod Controller {
+    use starknet::ContractAddress;
+    use traits::{Into, TryInto};
+    use option::OptionTrait;
+
     use aura::core::roles::ControllerRoles;
 
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
     use aura::utils::wadray_signed;
     use aura::utils::wadray_signed::SignedRay;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, Ray};
+    use aura::utils::wadray::{Wad, Ray, RAY_ONE};
     use aura::utils::math;
 
-    #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
-    struct SignedRay {
-        value: Ray,
-        sign: bool,
-    }
+    // Time intervals between updates are scaled down by this factor 
+    // to prevent the integral term from getting too large
+    const INTERVAL: u128 = 3600; // 1 hours
 
     struct Storage {
+        shrine: IShrineDispatcher,
         integral_sum: Wad,
-        current_yin_spot_price: Ray,
         yin_price_last_updated: u64,
-        p_gain: Ray,
-        i_gain: Ray,
+        i_term_last_updated: u64,
+        i_term: SignedRay,
+        p_gain: SignedRay,
+        i_gain: SignedRay,
+        alpha_p: u8,
+        beta_p: u8,
+        alpha_i: u8,
+        beta_i: u8,
     }
 
-    fn constructor(admin: ContractAddress, p_gain: Ray, i_gain: Ray) {
+    fn constructor(
+        admin: ContractAddress, shrine: ContractAddress, p_gain: SignedRay, i_gain: SignedRay
+    ) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(ControllerRoles::TUNE_CONTROLLER, admin);
 
+        shrine::write(IShrineDispatcher { contract_address: shrine });
         p_gain::write(p_gain);
         i_gain::write(i_gain);
     }
 
-    #[view]
-    fn get_p_gain() -> Ray {
-        p_gain::read()
-    }
-
-    #[view]
-    fn get_i_gain() -> Ray {
-        i_gain::read()
-    }
-
+    // Core logic 
 
     #[external]
-    fn set_p_gain(p_gain: Ray) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        p_gain::write(p_gain);
-    }
+    fn update_multiplier() -> Ray {
+        let shrine: IShrineDispatcher = shrine::read();
 
-    #[external]
-    fn set_i_gain(i_gain: Ray) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        i_gain::write(i_gain);
+        let error: SignedRay = RAY_ONE.into() - shrine.get_yin_spot_price().into();
+        let current_timestamp = starknet::get_block_timestamp();
+
+        let new_i_term: SignedRay = get_i_term_internal(error, current_timestamp);
+        let multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error) + new_i_term;
+
+        i_term::write(new_i_term);
+        i_term_last_updated::write(current_timestamp);
+
+        let multiplier_ray: Ray = multiplier.try_into().unwrap();
+        shrine.set_multiplier(multiplier_ray);
+
+        multiplier_ray
     }
 
     #[view]
     fn get_current_multiplier() -> Ray {
-        let p_gain = p_gain::read();
-        let current_yin_spot_price = current_yin_spot_price::read();
+        let error: SignedRay = get_error();
+        let current_timestamp = starknet::get_block_timestamp();
+
+        let multiplier: SignedRay = RAY_ONE.into()
+            + get_p_term_internal(error)
+            + get_i_term_internal(error, current_timestamp);
+        multiplier.try_into().unwrap()
     }
 
-    // output of `nonlinear_part` should always be positive, since the multiplier cannot go below zero
     #[inline(always)]
-    fn nonlinear_part(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
-        let error_ray: Ray = error.into();
-        let denominator: SignedRay = sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
+    fn get_p_term_internal(error: SignedRay) -> SignedRay {
+        p_gain::read() * nonlinear_transform(error, alpha_p::read(), beta_p::read())
+    }
+
+    #[view]
+    fn get_p_term() -> SignedRay {
+        get_p_term_internal(get_error())
+    }
+
+    #[inline(always)]
+    fn get_i_term_internal(error: SignedRay, current_timestamp: u64) -> SignedRay {
+        let old_i_term = i_term::read();
+
+        let time_since_last_update: u128 = (current_timestamp - i_term_last_updated::read()).into();
+        let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
+            / (INTERVAL * RAY_ONE).into();
+
+        old_i_term
+            + nonlinear_transform(error, alpha_i::read(), beta_i::read())
+                * time_since_last_update_scaled
+    }
+
+    #[view]
+    fn get_i_term() -> SignedRay {
+        get_i_term_internal(get_error(), starknet::get_block_timestamp())
+    }
+
+    #[inline(always)]
+    fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
+        let error_ray: Ray = Ray { val: error.val };
+        let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
         math::pow(error, alpha) / denominator
     }
 
     #[inline(always)]
-    fn signed_add(lhs: SignedRay, rhs: SignedRay) -> SignedRay {}
+    fn get_error() -> SignedRay {
+        RAY_ONE.into() - shrine::read().get_yin_spot_price().into()
+    }
+
+    // Basic getters and setters 
+
+    #[view]
+    fn get_p_gain() -> SignedRay {
+        p_gain::read()
+    }
+
+    #[view]
+    fn get_i_gain() -> SignedRay {
+        i_gain::read()
+    }
+
+    #[view]
+    fn get_alpha_p() -> u8 {
+        alpha_p::read()
+    }
+
+    #[view]
+    fn get_beta_p() -> u8 {
+        beta_p::read()
+    }
+
+    #[view]
+    fn get_alpha_i() -> u8 {
+        alpha_i::read()
+    }
+
+    #[view]
+    fn get_beta_i() -> u8 {
+        beta_i::read()
+    }
+
+    #[external]
+    fn set_p_gain(p_gain: SignedRay) {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        p_gain::write(p_gain);
+    }
+
+    #[external]
+    fn set_i_gain(i_gain: SignedRay) {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        i_gain::write(i_gain);
+    }
+
+    #[external]
+    fn set_alpha_p(alpha_p: u8) {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        alpha_p::write(alpha_p);
+    }
+
+    #[external]
+    fn set_beta_p(beta_p: u8) {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        beta_p::write(beta_p);
+    }
+
+    #[external]
+    fn set_alpha_i(alpha_i: u8) {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        alpha_i::write(alpha_i);
+    }
+
+    #[external]
+    fn set_beta_i(beta_i: u8) {
+        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        beta_i::write(beta_i);
+    }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[view]
+    fn get_roles(account: ContractAddress) -> u128 {
+        AccessControl::get_roles(account)
+    }
+
+    #[view]
+    fn has_role(role: u128, account: ContractAddress) -> bool {
+        AccessControl::has_role(role, account)
+    }
+
+    #[view]
+    fn get_admin() -> ContractAddress {
+        AccessControl::get_admin()
+    }
+
+    #[view]
+    fn get_pending_admin() -> ContractAddress {
+        AccessControl::get_pending_admin()
+    }
+
+    #[external]
+    fn grant_role(role: u128, account: ContractAddress) {
+        AccessControl::grant_role(role, account);
+    }
+
+    #[external]
+    fn revoke_role(role: u128, account: ContractAddress) {
+        AccessControl::revoke_role(role, account);
+    }
+
+    #[external]
+    fn renounce_role(role: u128) {
+        AccessControl::renounce_role(role);
+    }
+
+    #[external]
+    fn set_pending_admin(new_admin: ContractAddress) {
+        AccessControl::set_pending_admin(new_admin);
+    }
+
+    #[external]
+    fn accept_admin() {
+        AccessControl::accept_admin();
+    }
 }

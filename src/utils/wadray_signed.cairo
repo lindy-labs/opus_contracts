@@ -5,7 +5,7 @@ use zeroable::Zeroable;
 
 
 use aura::utils::wadray;
-use aura::utils::wadray::Ray;
+use aura::utils::wadray::{Ray, Wad};
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
@@ -39,6 +39,23 @@ impl RayIntoSignedRay of Into<Ray, SignedRay> {
         SignedRay { val: self.val, sign: true }
     }
 }
+
+impl WadIntoSignedRay of Into<Wad, SignedRay> {
+    fn into(self: Wad) -> SignedRay {
+        SignedRay { val: self.val * wadray::DIFF, sign: true }
+    }
+}
+
+impl SignedRayTryIntoRay of TryInto<SignedRay, Ray> {
+    fn try_into(self: SignedRay) -> Option<Ray> {
+        if self.sign {
+            return Option::Some(Ray { val: self.val });
+        } else {
+            return Option::None(());
+        }
+    }
+}
+
 
 impl SignedRayAdd of Add<SignedRay> {
     fn add(lhs: SignedRay, rhs: SignedRay) -> SignedRay {

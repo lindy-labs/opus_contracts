@@ -20,6 +20,20 @@ mod tests {
 
     #[test]
     fn test_mul_div() {
-        let a = SignedRay{val: 100, sign: true};
+        let a = SignedRay{val: RAY_ONE, sign: true}; // 1.0 ray
+        let b = SignedRay{val: 2*RAY_ONE, sign: false}; // -2.0 ray
+        let c = SignedRay{val: 5*RAY_ONE, sign: true}; // 5.0 ray
+        let d = SignedRay{val: RAY_ONE, sign: false}; // -1.0 ray
+
+        // Test multiplication
+        assert((a * b) == SignedRay{val: 2*RAY_ONE, sign: false}, 'a * b != -2.0');
+        assert((a * c) == SignedRay{val: 5*RAY_ONE, sign: true}, 'a * c != 5.0');
+        assert((b * c) == SignedRay{val: 10*RAY_ONE, sign: false}, 'b * c != -10.0');
+
+        // Test division
+        assert((c / a) == SignedRay{val: 5*RAY_ONE, sign: true}, 'c / a != -5.0');
+        assert((a / d) == SignedRay{val: 1*RAY_ONE, sign: false}, 'a / d != -1.0');
+        assert((b / d) == SignedRay{val: 2*RAY_ONE, sign: true}, 'b / d != 2.0');
     }
+
 }
