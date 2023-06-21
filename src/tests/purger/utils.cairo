@@ -41,9 +41,6 @@ mod PurgerUtils {
     const TARGET_TROVE_ETH_DEPOSIT_AMT: u128 = 2000000000000000000; // 2 (Wad) - ETH
     const TARGET_TROVE_WBTC_DEPOSIT_AMT: u128 = 50000000; // 0.5 (10 ** 8) - wBTC
 
-    // The maximum possible penalty is reached at around this point
-    const MAX_POSSIBLE_PENALTY_LTV: u128 = 862200000000000000000000000; // 86.22% (Ray)
-
     //
     // Address constants
     //
@@ -148,7 +145,7 @@ mod PurgerUtils {
     }
 
     // These values are selected based on the thresholds.
-    // Refer to https://www.desmos.com/calculator/qoizltusle.
+    // Refer to https://www.desmos.com/calculator/b8drqdb32a.
     fn ltvs_for_interesting_thresholds_for_absorption_trove_debt() -> Span<Span<Ray>> {
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
         let exceed_hundred_pct: Ray = (RAY_ONE + RAY_PERCENT).into();
