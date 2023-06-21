@@ -4,7 +4,7 @@ mod TestAbsorber {
     use cmp::min;
     use integer::{BoundedU128, BoundedU256};
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_block_timestamp, SyscallResultTrait};
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
@@ -22,7 +22,7 @@ mod TestAbsorber {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_SCALE, Wad, WadZeroable, WAD_SCALE};
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_SCALE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -143,8 +143,12 @@ mod TestAbsorber {
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
         // Update existing reward
+        let new_aura_blesser: ContractAddress = contract_address_try_from_felt252('new aura blesser').unwrap();
         aura_reward.is_active = false;
-        absorber.set_reward(aura_token, aura_blesser, false);
+        aura_reward.blesser = IBlesserDispatcher { 
+            contract_address: new_aura_blesser
+        };
+        absorber.set_reward(aura_token, new_aura_blesser, false);
 
         let mut expected_rewards: Array<Reward> = Default::default();
         expected_rewards.append(aura_reward);
@@ -244,15 +248,15 @@ mod TestAbsorber {
         let mut percentages_to_drain: Array<Ray> = Default::default();
         percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
         percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
 
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 2.17452316% (Ray)
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray) 
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
 
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 2.17452316% (Ray)
-        percentages_to_drain.append(1000000000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 100% (Ray)
+        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
+        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
+        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
 
         let mut percentages_to_drain = percentages_to_drain.span();
 
@@ -331,10 +335,11 @@ mod TestAbsorber {
                     let before_last_absorption = absorber.get_provider_last_absorption(provider);
                     let before_provider_yin_bal: Wad = shrine.get_yin(provider);
 
-                    // Perform three different actions:
-                    // 1. `reap`
+                    // Perform three different actions 
+                    // (in the following order if the number of test cases is a multiple of 3):
+                    // 1. `provide`
                     // 2. `request` and `remove`
-                    // 3. `provide`
+                    // 3. `reap`
                     // and check that the provider receives rewards and absorbed assets
 
                     let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
@@ -343,8 +348,9 @@ mod TestAbsorber {
                     let mut remove_as_second_action: bool = false;
                     let mut provide_as_second_action: bool = false;
                     set_contract_address(provider);
-                    if percentages_to_drain.len() % 3 == 0 {
-                        absorber.reap();
+                    if percentages_to_drain.len() % 3 == 2 {
+                        absorber.provide(WAD_SCALE.into());
+                        provide_as_second_action = true;
                     } else if percentages_to_drain.len() % 3 == 1 {
                         absorber.request();
                         set_block_timestamp(
@@ -353,8 +359,7 @@ mod TestAbsorber {
                         absorber.remove(BoundedU128::max().into());
                         remove_as_second_action = true;
                     } else {
-                        absorber.provide(WAD_SCALE.into());
-                        provide_as_second_action = true;
+                        absorber.reap();
                     }
 
                     // One distribution from `update` and another distribution from 

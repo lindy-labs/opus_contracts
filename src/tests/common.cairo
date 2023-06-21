@@ -71,6 +71,10 @@ impl SpanPartialEq<
     T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
 > of PartialEq<Span<T>> {
     fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
+        if lhs.len() != rhs.len() {
+            return false;
+        }
+
         loop {
             match lhs.pop_front() {
                 Option::Some(lhs) => {
