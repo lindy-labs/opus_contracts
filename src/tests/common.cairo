@@ -1,6 +1,9 @@
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
-use starknet::{ContractAddress, contract_address_const, contract_address_try_from_felt252};
+use starknet::{
+    contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+    contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+};
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::set_contract_address;
 use traits::{Default, Into, TryInto};
@@ -10,8 +13,10 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::tests::erc20::ERC20;
+use aura::utils::types::Reward;
 use aura::utils::wadray;
-use aura::utils::wadray::Wad;
+use aura::utils::wadray::{Ray, Wad};
 
 use aura::tests::sentinel::utils::SentinelUtils;
 
@@ -46,12 +51,30 @@ fn trove3_owner_addr() -> ContractAddress {
     contract_address_try_from_felt252('trove3 owner').unwrap()
 }
 
+fn non_zero_address() -> ContractAddress {
+    contract_address_try_from_felt252('nonzero address').unwrap()
+}
+
 //
 // Trait implementations
 //
 
-impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>> of PartialEq<Span<T>> {
+impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
+    fn into(self: ContractAddress) -> Span<ContractAddress> {
+        let mut tmp: Array<ContractAddress> = Default::default();
+        tmp.append(self);
+        tmp.span()
+    }
+}
+
+impl SpanPartialEq<
+    T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
+> of PartialEq<Span<T>> {
     fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
+        if lhs.len() != rhs.len() {
+            return false;
+        }
+
         loop {
             match lhs.pop_front() {
                 Option::Some(lhs) => {
@@ -71,14 +94,46 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
     }
 }
 
+impl RewardPartialEq of PartialEq<Reward> {
+    fn eq(mut lhs: Reward, mut rhs: Reward) -> bool {
+        lhs.asset == rhs.asset
+            & lhs.blesser.contract_address == rhs.blesser.contract_address
+            & lhs.is_active == rhs.is_active
+    }
+
+    fn ne(lhs: Reward, rhs: Reward) -> bool {
+        !(lhs == rhs)
+    }
+}
+
 //
 // Helpers - Test setup
 //
 
+// Helper function to deploy a token
+fn deploy_token(
+    name: felt252,
+    symbol: felt252,
+    decimals: felt252,
+    initial_supply: u256,
+    recipient: ContractAddress,
+) -> ContractAddress {
+    let mut calldata = Default::default();
+    calldata.append(name);
+    calldata.append(symbol);
+    calldata.append(decimals);
+    calldata.append(initial_supply.low.into()); // u256.low
+    calldata.append(initial_supply.high.into()); // u256.high
+    calldata.append(contract_address_to_felt252(recipient));
+
+    let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
+    let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
+
+    token
+}
+
 // Helper function to fund a user account with yang assets
-fn fund_user(
-    user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>
-) {
+fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
@@ -133,8 +188,7 @@ fn open_trove_helper(
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
 fn get_token_balances(
-    mut tokens: Span<ContractAddress>,
-    addresses: Span<ContractAddress>,
+    mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>, 
 ) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = Default::default();
 
@@ -177,4 +231,49 @@ fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
     } else {
         assert(b - a <= error, message);
     }
+}
+
+
+//
+// Helpers - Array functions
+//
+
+// Helper function to multiply an array of values by a given percentage
+fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
+    let mut split_asset_amts: Array<u128> = Default::default();
+    loop {
+        match asset_amts.pop_front() {
+            Option::Some(asset_amt) => {
+                // Convert to Wad for fixed point operations
+                let asset_amt: Wad = (*asset_amt).into();
+                split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
+            },
+            Option::None(_) => {
+                break;
+            },
+        };
+    };
+
+    split_asset_amts.span()
+}
+
+// Helper function to combine two arrays of equal lengths into a single array by doing element-wise addition.
+// Assumes the arrays are ordered identically.
+fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
+    assert(lhs.len() == rhs.len(), 'combining diff array lengths');
+    let mut combined_asset_amts: Array<u128> = Default::default();
+
+    loop {
+        match lhs.pop_front() {
+            Option::Some(asset_amt) => {
+                // Convert to Wad for fixed point operations
+                combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
+            },
+            Option::None(_) => {
+                break;
+            },
+        };
+    };
+
+    combined_asset_amts.span()
 }
