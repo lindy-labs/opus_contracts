@@ -3,13 +3,14 @@ mod Controller {
     use starknet::ContractAddress;
     use traits::{Into, TryInto};
     use option::OptionTrait;
+    use zeroable::Zeroable;
 
     use aura::core::roles::ControllerRoles;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
     use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::SignedRay;
+    use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, Ray, RAY_ONE};
     use aura::utils::math;
@@ -52,13 +53,20 @@ mod Controller {
         let shrine: IShrineDispatcher = shrine::read();
 
         let error: SignedRay = RAY_ONE.into() - shrine.get_yin_spot_price().into();
-        let current_timestamp = starknet::get_block_timestamp();
 
-        let new_i_term: SignedRay = get_i_term_internal(error, current_timestamp);
-        let multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error) + new_i_term;
+        let i_gain = i_gain::read();
 
-        i_term::write(new_i_term);
-        i_term_last_updated::write(current_timestamp);
+        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
+
+        // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
+        if i_gain.is_non_zero() {
+            let current_timestamp = starknet::get_block_timestamp();
+            let new_i_term: SignedRay = get_i_term_internal(error, current_timestamp);
+            multiplier += i_gain::read() * new_i_term;
+
+            i_term::write(new_i_term);
+            i_term_last_updated::write(current_timestamp);
+        }
 
         let multiplier_ray: Ray = multiplier.try_into().unwrap();
         shrine.set_multiplier(multiplier_ray);
@@ -71,9 +79,13 @@ mod Controller {
         let error: SignedRay = get_error();
         let current_timestamp = starknet::get_block_timestamp();
 
-        let multiplier: SignedRay = RAY_ONE.into()
-            + get_p_term_internal(error)
-            + get_i_term_internal(error, current_timestamp);
+        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
+
+        let i_gain = i_gain::read();
+        if i_gain.is_non_zero() {
+            multiplier += i_gain * get_i_term_internal(error, current_timestamp);
+        }
+
         multiplier.try_into().unwrap()
     }
 
@@ -102,7 +114,12 @@ mod Controller {
 
     #[view]
     fn get_i_term() -> SignedRay {
-        get_i_term_internal(get_error(), starknet::get_block_timestamp())
+        let i_gain = i_gain::read();
+        if i_gain.is_zero() {
+            SignedRayZeroable::zero()
+        } else {
+            i_gain * get_i_term_internal(get_error(), starknet::get_block_timestamp())
+        }
     }
 
     #[inline(always)]
@@ -158,6 +175,11 @@ mod Controller {
     #[external]
     fn set_i_gain(i_gain: SignedRay) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        // Reset the integral term if the i_gain is set to zero
+        if i_gain.is_zero() {
+            i_term::write(SignedRayZeroable::zero());
+        }
+
         i_gain::write(i_gain);
     }
 

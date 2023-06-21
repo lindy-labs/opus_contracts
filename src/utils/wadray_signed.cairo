@@ -112,6 +112,13 @@ impl SignedRayPartialEq of PartialEq<SignedRay> {
     }
 }
 
+impl SignedRayAddEq of AddEq<SignedRay> {
+    #[inline(always)]
+    fn add_eq(ref self: SignedRay, other: SignedRay) {
+        self = self + other;
+    }
+}
+
 
 fn from_felt(val: felt252) -> SignedRay {
     let ray_val = integer::u128_try_from_felt252(_felt_abs(val)).unwrap();
