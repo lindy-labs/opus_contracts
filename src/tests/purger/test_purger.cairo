@@ -96,7 +96,6 @@ mod TestPurger {
         let penalty: Ray = purger.get_absorption_penalty(target_trove);
         let expected_penalty: Ray = 54300000000000000000000000_u128.into(); // 5.43% (Ray)
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #3');
-
     }
 
     #[test]
@@ -137,8 +136,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
         let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
-        let (shrine, abbot, _, purger, yangs, gates) =
-            PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             searcher_start_yin
         );
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -301,8 +299,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_fail() {
-        let (shrine, abbot, _, purger, yangs, gates) =
-            PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
         let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -320,8 +317,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
-        let (shrine, abbot, _, purger, yangs, gates) =
-            PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
         let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -354,8 +350,7 @@ mod TestPurger {
         let target_trove_yin: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let searcher_yin: Wad = (target_trove_yin.val / 10).into();
 
-        let (shrine, abbot, _, purger, yangs, gates) =
-            PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             searcher_yin
         );
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -696,7 +691,6 @@ mod TestPurger {
                                 );
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
-
                             },
                             Option::None(_) => {
                                 break;
@@ -814,9 +808,7 @@ mod TestPurger {
         );
 
         let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
-        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(
-            abbot, yangs, gates, trove_debt
-        );
+        let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
         PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, trove_debt);
 
@@ -836,9 +828,7 @@ mod TestPurger {
         );
 
         let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
-        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
-            abbot, yangs, gates, trove_debt
-        );
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
 
         PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, trove_debt);
 
