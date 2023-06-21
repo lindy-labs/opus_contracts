@@ -78,6 +78,7 @@ mod PurgerUtils {
         thresholds.append((80 * RAY_PERCENT).into());
         thresholds.append((90 * RAY_PERCENT).into());
         thresholds.append((96 * RAY_PERCENT).into());
+        thresholds.append((97 * RAY_PERCENT).into());
         thresholds.span()
     }
 
@@ -98,6 +99,7 @@ mod PurgerUtils {
         thresholds.append((80 * RAY_PERCENT).into());
         thresholds.append((90 * RAY_PERCENT).into());
         thresholds.append((96 * RAY_PERCENT).into());
+        thresholds.append((97 * RAY_PERCENT).into());
         thresholds.span()
     }
 
@@ -179,6 +181,14 @@ mod PurgerUtils {
         ltvs_for_fourth_threshold.append(ninety_nine_pct);
         ltvs_for_fourth_threshold.append(exceed_hundred_pct);
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
+
+        // Fifth threshold of 97% (Ray)
+        let mut ltvs_for_fifth_threshold: Array<Ray> = Default::default();
+        // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
+        ltvs_for_fifth_threshold.append((97 * RAY_PERCENT + 1).into());
+        ltvs_for_fifth_threshold.append(ninety_nine_pct);
+        ltvs_for_fifth_threshold.append(exceed_hundred_pct);
+        trove_ltvs.append(ltvs_for_fifth_threshold.span());
 
         trove_ltvs.span()
     }
