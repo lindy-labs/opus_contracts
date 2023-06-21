@@ -1356,7 +1356,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Only 1 removal per request', 'ENTRYPOINT_FAILED'))]
-    fn test_remove_fulfiilled_request_fail() {
+    fn test_remove_fulfilled_request_fail() {
         let (_, _, absorber, _, _, _, _, _, provider, _) =
             AbsorberUtils::absorber_with_rewards_and_first_provider();
 
@@ -1488,8 +1488,6 @@ mod TestAbsorber {
         common::open_trove_helper(abbot, provider, yangs, yang_asset_amts, gates, provided_amt);
 
         set_contract_address(provider);
-        let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
-
         absorber.provide(provided_amt);
     }
 
