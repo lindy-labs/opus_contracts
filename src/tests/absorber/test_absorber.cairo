@@ -163,7 +163,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
-    fn test_set_reward_token_zero_address_fail() {
+    fn test_set_reward_blesser_zero_address_fail() {
         let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let valid_address = common::non_zero_address();
@@ -176,7 +176,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
-    fn test_set_reward_blesser_zero_address_fail() {
+    fn test_set_reward_token_zero_address_fail() {
         let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let valid_address = common::non_zero_address();
