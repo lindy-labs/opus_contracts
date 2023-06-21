@@ -39,7 +39,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorber_setup() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         assert(
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
@@ -65,7 +65,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_removal_limit_pass() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(AbsorberUtils::admin());
 
@@ -79,7 +79,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Limit is too low', 'ENTRYPOINT_FAILED'))]
     fn test_set_removal_limit_too_low_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(AbsorberUtils::admin());
 
@@ -91,7 +91,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_removal_limit_unauthorized_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
 
@@ -102,7 +102,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_reward_pass() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let aura_token: ContractAddress = AbsorberUtils::aura_token_deploy();
         let aura_blesser: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
@@ -164,7 +164,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_token_zero_address_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
@@ -177,7 +177,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Address cannot be 0', 'ENTRYPOINT_FAILED'))]
     fn test_set_reward_blesser_zero_address_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         let valid_address = common::non_zero_address();
         let invalid_address = ContractAddressZeroable::zero();
@@ -222,7 +222,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_kill_unauthorized_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.kill();
@@ -232,7 +232,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not live', 'ENTRYPOINT_FAILED'))]
     fn test_provide_after_kill_fail() {
-        let (shrine, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (shrine, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(AbsorberUtils::admin());
         absorber.kill();
@@ -1407,7 +1407,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_request_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.request();
@@ -1417,7 +1417,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_remove_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.remove(0_u128.into());
@@ -1427,7 +1427,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('ABS: Not a provider', 'ENTRYPOINT_FAILED'))]
     fn test_non_provider_reap_fail() {
-        let (_, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
+        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         set_contract_address(common::badguy());
         absorber.reap();
@@ -1437,7 +1437,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED'))]
     fn test_provide_less_than_initial_shares_fail() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
         let less_than_initial_shares_amt: Wad = (Absorber::INITIAL_SHARES - 1).into();
@@ -1457,7 +1457,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_provide_insufficient_yin_fail() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
@@ -1478,7 +1478,7 @@ mod TestAbsorber {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('u256_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_provide_insufficient_allowance_fail() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
 
         let provider = AbsorberUtils::provider_1();
         let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
@@ -1581,7 +1581,7 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_bestow_depleted_active_reward() {
-        let (shrine, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+        let (shrine, _, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
         let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
 

@@ -100,7 +100,7 @@ mod TestPurger {
         let searcher: ContractAddress = PurgerUtils::searcher();
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(searcher)
+            yangs, searcher.into()
         );
 
         set_contract_address(searcher);
@@ -127,11 +127,11 @@ mod TestPurger {
             before_value, max_close_amt, penalty
         );
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(
+        let expected_freed_amts: Span<u128> = common::scale_span_by_pct(
             target_trove_yang_asset_amts, expected_freed_pct
         );
         let after_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(searcher)
+            yangs, searcher.into()
         );
 
         PurgerUtils::assert_received_assets(
@@ -366,10 +366,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(caller)
+            yangs, caller.into()
         );
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(absorber.contract_address)
+            yangs, absorber.contract_address.into()
         );
         let expected_compensation_value: Wad = purger.get_compensation(target_trove);
 
@@ -399,11 +399,11 @@ mod TestPurger {
             expected_compensation_value, before_value
         );
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_compensation_amts: Span<u128> = common::transform_span_by_pct(
+        let expected_compensation_amts: Span<u128> = common::scale_span_by_pct(
             target_trove_yang_asset_amts, expected_compensation_pct
         );
         let after_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(caller)
+            yangs, caller.into()
         );
 
         PurgerUtils::assert_received_assets(
@@ -423,11 +423,11 @@ mod TestPurger {
         let expected_freed_pct: Ray = PurgerUtils::get_expected_freed_pct(
             before_value, max_close_amt, penalty
         );
-        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(
+        let expected_freed_amts: Span<u128> = common::scale_span_by_pct(
             target_trove_yang_asset_amts, expected_freed_pct
         );
         let after_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(absorber.contract_address)
+            yangs, absorber.contract_address.into()
         );
 
         PurgerUtils::assert_received_assets(
@@ -474,10 +474,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(caller)
+            yangs, caller.into()
         );
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(absorber.contract_address)
+            yangs, absorber.contract_address.into()
         );
         let expected_compensation_value: Wad = purger.get_compensation(target_trove);
 
@@ -507,11 +507,11 @@ mod TestPurger {
             expected_compensation_value, before_value
         );
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_compensation_amts: Span<u128> = common::transform_span_by_pct(
+        let expected_compensation_amts: Span<u128> = common::scale_span_by_pct(
             target_trove_yang_asset_amts, expected_compensation_pct
         );
         let after_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(caller)
+            yangs, caller.into()
         );
 
         PurgerUtils::assert_received_assets(
@@ -531,11 +531,11 @@ mod TestPurger {
         let expected_freed_pct: Ray = PurgerUtils::get_expected_freed_pct(
             before_value, close_amt, penalty
         );
-        let expected_freed_amts: Span<u128> = common::transform_span_by_pct(
+        let expected_freed_amts: Span<u128> = common::scale_span_by_pct(
             target_trove_yang_asset_amts, expected_freed_pct
         );
         let after_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, common::wrap_address_as_span(absorber.contract_address)
+            yangs, absorber.contract_address.into()
         );
 
         PurgerUtils::assert_received_assets(
