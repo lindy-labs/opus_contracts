@@ -103,7 +103,7 @@ impl SignedRayZeroable of Zeroable<SignedRay> {
     }
 }
 
-impl SignedRayOnable of Oneable<SignedRay> {
+impl SignedRayOneable of Oneable<SignedRay> {
     #[inline(always)]
     fn one() -> SignedRay {
         SignedRay { val: RAY_ONE, sign: false }

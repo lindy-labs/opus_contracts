@@ -1,11 +1,13 @@
 #[cfg(test)]
 mod tests {
     use debug::PrintTrait;
+    use math::Oneable;
     use option::OptionTrait;
     use traits::{Into, TryInto};
+    use zeroable::Zeroable;
 
     use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use aura::utils::wadray_signed::{SignedRay, SignedRayOneable, SignedRayZeroable};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
@@ -113,5 +115,30 @@ mod tests {
         let e = SignedRay { val: 500, sign: true };
         let e_ray: Option<Ray> = e.try_into();
         assert(e_ray.is_none(), 'SignedRayTryIntoRay neg fail');
+    }
+
+    #[test]
+    fn test_zeroable_oneable() {
+        // Test SignedRayZeroable
+        let zero = SignedRayZeroable::zero();
+        assert(zero.val == 0, 'Zeroable zero fail');
+        assert(!zero.sign, 'Zeroable zero sign fail');
+        assert(zero.is_zero(), 'Zeroable is_zero fail');
+        assert(!zero.is_non_zero(), 'Zeroable is_non_zero fail');
+
+        let non_zero = SignedRay { val: 100, sign: false };
+        assert(!non_zero.is_zero(), 'Zeroable non_zero fail');
+        assert(non_zero.is_non_zero(), 'Zeroable non_zero fail');
+
+        // Test SignedRayOneable
+        let one = SignedRayOneable::one();
+        assert(one.val == RAY_ONE, 'Oneable one fail');
+        assert(!one.sign, 'Oneable one sign fail');
+        assert(one.is_one(), 'Oneable is_one fail');
+        assert(!one.is_non_one(), 'Oneable is_non_one fail');
+
+        let non_one = SignedRay { val: 200, sign: false };
+        assert(!non_one.is_one(), 'Oneable non_one fail');
+        assert(non_one.is_non_one(), 'Oneable non_one fail');
     }
 }
