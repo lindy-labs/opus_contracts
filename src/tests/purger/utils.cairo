@@ -252,6 +252,11 @@ mod PurgerUtils {
         Span<IGateDispatcher>,
     ) {
         let (shrine, sentinel, abbot, absorber, yangs, gates) = AbsorberUtils::absorber_deploy();
+
+        let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
+        let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
+        AbsorberUtils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing);
+
         let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(
             sentinel, shrine.contract_address
         );
