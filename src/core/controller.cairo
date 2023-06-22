@@ -20,6 +20,10 @@ mod Controller {
     // to prevent the integral term from getting too large
     const INTERVAL: u128 = 3600; // 1 hours
 
+    // multiplier bounds (ray)
+    const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
+    const MAX_MULTIPLIER: u128 = 1500000000000000000000000000; // 1.5
+
     struct Storage {
         shrine: IShrineDispatcher,
         yin_price_last_updated: u64,
@@ -75,7 +79,7 @@ mod Controller {
             multiplier += i_gain * get_i_term_internal(error);
         }
 
-        multiplier.try_into().unwrap()
+        bound_multiplier(multiplier.try_into()).unwrap()
     }
 
     #[view]
@@ -148,7 +152,7 @@ mod Controller {
             i_term_last_updated::write(current_timestamp);
         }
 
-        let multiplier_ray: Ray = multiplier.try_into().unwrap();
+        let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
         shrine.set_multiplier(multiplier_ray);
 
         multiplier_ray
@@ -183,24 +187,28 @@ mod Controller {
     #[external]
     fn set_alpha_p(alpha_p: u8) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        assert(alpha_p % 2 == 1, 'CTR: alpha_p must be odd');
         alpha_p::write(alpha_p);
     }
 
     #[external]
     fn set_beta_p(beta_p: u8) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        assert(beta_p % 2 == 0, 'CTR: beta_p must be even');
         beta_p::write(beta_p);
     }
 
     #[external]
     fn set_alpha_i(alpha_i: u8) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        assert(alpha_i % 2 == 1, 'CTR: alpha_i must be odd');
         alpha_i::write(alpha_i);
     }
 
     #[external]
     fn set_beta_i(beta_i: u8) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+        assert(beta_i % 2 == 0, 'CTR: beta_i must be even');
         beta_i::write(beta_i);
     }
 
@@ -237,6 +245,17 @@ mod Controller {
     #[inline(always)]
     fn get_error() -> SignedRay {
         RAY_ONE.into() - shrine::read().get_yin_spot_price().into()
+    }
+
+    #[inline(always)]
+    fn bound_multiplier(multiplier: SignedRay) -> SignedRay {
+        if multiplier > MAX_MULTIPLIER.into() {
+            MAX_MULTIPLIER
+        } else if multiplier < MIN_MULTIPLIER.into() {
+            MIN_MULTIPLIER
+        } else {
+            multiplier
+        }
     }
 
 
