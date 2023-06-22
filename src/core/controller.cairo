@@ -37,6 +37,12 @@ mod Controller {
         beta_i: u8,
     }
 
+    #[event]
+    fn ParameterUpdated(name: felt252, value: u8) {}
+
+    #[event]
+    fn GainUpdated(name: felt252, value: Ray) {}
+
     #[constructor]
     fn constructor(
         admin: ContractAddress,
@@ -62,6 +68,13 @@ mod Controller {
         beta_p::write(beta_p);
         alpha_i::write(alpha_i);
         beta_i::write(beta_i);
+
+        GainUpdated('p_gain', p_gain);
+        GainUpdated('i_gain', i_gain);
+        ParameterUpdated('alpha_p', alpha_p);
+        ParameterUpdated('beta_p', beta_p);
+        ParameterUpdated('alpha_i', alpha_i);
+        ParameterUpdated('beta_i', beta_i);
     }
 
     //
@@ -162,6 +175,7 @@ mod Controller {
     fn set_p_gain(p_gain: Ray) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         p_gain::write(p_gain.into());
+        GainUpdated('p_gain', p_gain);
     }
 
     #[external]
@@ -182,6 +196,7 @@ mod Controller {
         }
 
         i_gain::write(i_gain.into());
+        GainUpdated('i_gain', i_gain);
     }
 
     #[external]
@@ -189,6 +204,7 @@ mod Controller {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         assert(alpha_p % 2 == 1, 'CTR: alpha_p must be odd');
         alpha_p::write(alpha_p);
+        ParameterUpdated('alpha_p', alpha_p);
     }
 
     #[external]
@@ -196,6 +212,7 @@ mod Controller {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         assert(beta_p % 2 == 0, 'CTR: beta_p must be even');
         beta_p::write(beta_p);
+        ParameterUpdated('beta_p', beta_p);
     }
 
     #[external]
@@ -203,6 +220,7 @@ mod Controller {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         assert(alpha_i % 2 == 1, 'CTR: alpha_i must be odd');
         alpha_i::write(alpha_i);
+        ParameterUpdated('alpha_i', alpha_i);
     }
 
     #[external]
@@ -210,6 +228,7 @@ mod Controller {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         assert(beta_i % 2 == 0, 'CTR: beta_i must be even');
         beta_i::write(beta_i);
+        ParameterUpdated('beta_i', beta_i);
     }
 
     // 
