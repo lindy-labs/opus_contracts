@@ -3,7 +3,7 @@ mod tests {
     use traits::Into;
     use debug::PrintTrait;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE}; 
+    use aura::utils::wadray::{Ray, RAY_ONE};
     use aura::utils::math::{pow, sqrt};
     use aura::tests::common::assert_equalish;
 
@@ -11,16 +11,15 @@ mod tests {
     #[test]
     #[available_gas(20000000000)]
     fn test_sqrt() {
+        let ERROR_MARGIN = Ray { val: 1 };
 
-        let ERROR_MARGIN = Ray{val: 1};
-        
         assert(sqrt(0_u128.into()).val == 0_u128.into(), 'wrong sqrt #1');
 
         // Ground truth tests 
 
         // 1000
         assert_equalish(
-            sqrt(1000000000000000000000000000000_u128.into()), 
+            sqrt(1000000000000000000000000000000_u128.into()),
             31622776601683793319988935444_u128.into(),
             ERROR_MARGIN,
             'wrong sqrt #2'
@@ -28,7 +27,7 @@ mod tests {
 
         // 6969 
         assert_equalish(
-            sqrt(6969000000000000000000000000000_u128.into()), 
+            sqrt(6969000000000000000000000000000_u128.into()),
             83480536653761396384637711221_u128.into(),
             ERROR_MARGIN,
             'wrong sqrt #3'
@@ -36,7 +35,7 @@ mod tests {
 
         // pi 
         assert_equalish(
-            sqrt(3141592653589793238462643383_u128.into()), 
+            sqrt(3141592653589793238462643383_u128.into()),
             1772453850905516027298167483_u128.into(),
             ERROR_MARGIN,
             'wrong sqrt #4'
@@ -44,7 +43,7 @@ mod tests {
 
         // e 
         assert_equalish(
-            sqrt(2718281828459045235360287471_u128.into()), 
+            sqrt(2718281828459045235360287471_u128.into()),
             1648721270700128146848650787_u128.into(),
             ERROR_MARGIN,
             'wrong sqrt #5'
@@ -52,26 +51,23 @@ mod tests {
 
         // Testing the property x = sqrt(x)^2
 
-        let ERROR_MARGIN = Ray{val: 1000};
+        let ERROR_MARGIN = Ray { val: 1000 };
 
         assert_equalish(
-            (4 * RAY_ONE).into(), 
-            pow(sqrt((4 * RAY_ONE).into()), 2), 
-            ERROR_MARGIN,
-            'wrong sqrt #6'
+            (4 * RAY_ONE).into(), pow(sqrt((4 * RAY_ONE).into()), 2), ERROR_MARGIN, 'wrong sqrt #6'
         );
 
         assert_equalish(
-            (1000 * RAY_ONE).into(), 
-            pow(sqrt((1000 * RAY_ONE).into()), 2), 
+            (1000 * RAY_ONE).into(),
+            pow(sqrt((1000 * RAY_ONE).into()), 2),
             ERROR_MARGIN,
             'wrong sqrt #7'
         );
 
         // tau
         assert_equalish(
-            6283185307179586476925286766_u128.into(), 
-            pow(sqrt(6283185307179586476925286766_u128.into()), 2), 
+            6283185307179586476925286766_u128.into(),
+            pow(sqrt(6283185307179586476925286766_u128.into()), 2),
             ERROR_MARGIN,
             'wrong sqrt #8'
         );
@@ -86,20 +82,19 @@ mod tests {
         assert(pow(5_u128, 1) == 5_u128, 'wrong pow #3');
         assert(pow(5_u128, 2) == 25_u128, 'wrong pow #4');
 
-
         // Ray tests 
-        let ERROR_MARGIN = Ray{val: 1000};
+        let ERROR_MARGIN = Ray { val: 1000 };
 
         assert_equalish(
-            pow::<Ray>(3141592653589793238462643383_u128.into(), 2), 
-            9869604401089358618834490999_u128.into(), 
-            ERROR_MARGIN, 
+            pow::<Ray>(3141592653589793238462643383_u128.into(), 2),
+            9869604401089358618834490999_u128.into(),
+            ERROR_MARGIN,
             'wrong pow #5'
         );
 
         assert_equalish(
-            pow::<Ray>(1414213562373095048801688724_u128.into(), 4), 
-            (4*RAY_ONE).into(),
+            pow::<Ray>(1414213562373095048801688724_u128.into(), 4),
+            (4 * RAY_ONE).into(),
             ERROR_MARGIN,
             'wrong pow #6'
         );

@@ -1,7 +1,11 @@
 mod ControllerUtils {
     use array::ArrayTrait;
     use option::OptionTrait;
-    use starknet::{ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const, contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait};
+    use starknet::{
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
+        contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
+        get_block_timestamp, SyscallResultTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
@@ -19,14 +23,14 @@ mod ControllerUtils {
     use aura::utils::wadray::{Ray, Wad};
 
     use aura::tests::shrine::utils::ShrineUtils;
-    
+
     // Controller update interval 
     const ONE_HOUR: u64 = 3600; // 1 hour
 
     // Default controller parameters
     const P_GAIN: u128 = 100000000000000000000000000000; // 100 * RAY_ONE
     const I_GAIN: u128 = 0;
-    const ALPHA_P: u8 = 3; 
+    const ALPHA_P: u8 = 3;
     const BETA_P: u8 = 8;
     const ALPHA_I: u8 = 1;
     const BETA_I: u8 = 2;
@@ -54,20 +58,27 @@ mod ControllerUtils {
         calldata.append(ALPHA_I.into());
         calldata.append(BETA_I.into());
 
-        let controller_class_hash: ClassHash = class_hash_try_from_felt252(Controller::TEST_CLASS_HASH)
+        let controller_class_hash: ClassHash = class_hash_try_from_felt252(
+            Controller::TEST_CLASS_HASH
+        )
             .unwrap();
         let (controller_addr, _) = deploy_syscall(controller_class_hash, 0, calldata.span(), false)
             .unwrap_syscall();
 
-
-        let shrine_ac = IAccessControlDispatcher{ contract_address: shrine_addr};
+        let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
         shrine_ac.grant_role(ShrineRoles::SET_MULTIPLIER, controller_addr);
         shrine_ac.grant_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE, admin());
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        (IControllerDispatcher{ contract_address: controller_addr}, IShrineDispatcher{ contract_address: shrine_addr})
+        (
+            IControllerDispatcher {
+                contract_address: controller_addr
+                }, IShrineDispatcher {
+                contract_address: shrine_addr
+            }
+        )
     }
 
     #[inline(always)]

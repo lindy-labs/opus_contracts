@@ -36,7 +36,7 @@ mod TestController {
     #[available_gas(20000000000)]
     fn test_setters() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        
+
         set_contract_address(ControllerUtils::admin());
 
         controller.set_p_gain(1_u128.into());
@@ -75,17 +75,31 @@ mod TestController {
 
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
-        common::assert_equalish(controller.get_p_term(), 18715000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #2');
+        common::assert_equalish(
+            controller.get_p_term(),
+            18715000000000000_u128.into(),
+            ERROR_MARGIN.into(),
+            'Wrong p term #2'
+        );
         //common::assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
-        
+
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE2.into());
         controller.update_multiplier();
 
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
-        common::assert_equalish(controller.get_p_term(), 177156100000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #3');
-        common::assert_equalish(controller.get_i_term(), 57200000000000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong i term #3');
-
+        common::assert_equalish(
+            controller.get_p_term(),
+            177156100000000000_u128.into(),
+            ERROR_MARGIN.into(),
+            'Wrong p term #3'
+        );
+        common::assert_equalish(
+            controller.get_i_term(),
+            57200000000000000000000_u128.into(),
+            ERROR_MARGIN.into(),
+            'Wrong i term #3'
+        );
     }
 }

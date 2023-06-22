@@ -50,7 +50,9 @@ fn trove3_owner_addr() -> ContractAddress {
 // Trait implementations
 //
 
-impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>> of PartialEq<Span<T>> {
+impl SpanPartialEq<
+    T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
+> of PartialEq<Span<T>> {
     fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
         loop {
             match lhs.pop_front() {
@@ -76,9 +78,7 @@ impl SpanPartialEq<T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl T
 //
 
 // Helper function to fund a user account with yang assets
-fn fund_user(
-    user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>
-) {
+fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_amts: Span<u128>) {
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
@@ -133,8 +133,7 @@ fn open_trove_helper(
 // The return value is in the form of:
 // [[address1_token1_balance, address2_token1_balance, ...], [address1_token2_balance, ...], ...]
 fn get_token_balances(
-    mut tokens: Span<ContractAddress>,
-    addresses: Span<ContractAddress>,
+    mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>, 
 ) -> Span<Span<u128>> {
     let mut balances: Array<Span<u128>> = Default::default();
 
@@ -171,7 +170,11 @@ fn get_token_balances(
 //
 
 #[inline]
-fn assert_equalish<T, impl TSub: Sub<T>, impl TPartialOrd: PartialOrd<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>>(a: T, b: T, error: T, message: felt252) {
+fn assert_equalish<
+    T, impl TSub: Sub<T>, impl TPartialOrd: PartialOrd<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
+>(
+    a: T, b: T, error: T, message: felt252
+) {
     if a >= b {
         assert(a - b <= error, message);
     } else {

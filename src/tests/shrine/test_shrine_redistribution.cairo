@@ -38,10 +38,7 @@ mod TestShrineRedistribution {
         shrine.deposit(yang2_addr, common::TROVE_1, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
         shrine
             .forge(
-                trove1_owner,
-                common::TROVE_1,
-                ShrineUtils::TROVE1_FORGE_AMT.into(),
-                0_u128.into()
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
             );
     }
 
@@ -293,9 +290,7 @@ mod TestShrineRedistribution {
 
         assert(after_trove2_debt == expected_trove2_debt, 'wrong debt after redistribution');
 
-        assert(
-            shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id'
-        );
+        assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id');
         // Trigger an update in trove 2 with an empty melt
         shrine.melt(trove1_owner, common::TROVE_2, WadZeroable::zero());
         // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
@@ -361,9 +356,7 @@ mod TestShrineRedistribution {
         let (_, _, _, after_trove3_debt) = shrine.get_trove_info(common::TROVE_3);
         assert(after_trove3_debt == expected_trove3_debt, 'wrong debt after redistribution');
 
-        assert(
-            shrine.get_trove_redistribution_id(common::TROVE_3) == 0, 'wrong redistribution id'
-        );
+        assert(shrine.get_trove_redistribution_id(common::TROVE_3) == 0, 'wrong redistribution id');
         // Trigger an update in trove 3 with an empty melt
         shrine.melt(trove2_owner, common::TROVE_3, WadZeroable::zero());
         // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
