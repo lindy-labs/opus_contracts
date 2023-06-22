@@ -78,7 +78,13 @@ mod PurgerUtils {
         thresholds.append((80 * RAY_PERCENT).into());
         thresholds.append((90 * RAY_PERCENT).into());
         thresholds.append((96 * RAY_PERCENT).into());
+        // theoretical upper bound beyond which a penalty is not guaranteed 
+        // for absorptions after deducting compensation, meaning providers
+        // to the absorber will incur a loss for each absorption.
         thresholds.append((97 * RAY_PERCENT).into());
+        // Note that this threshold should not be used because it makes absorber 
+        // providers worse off, but it should not break the purger's logic.
+        thresholds.append((99 * RAY_PERCENT).into());
         thresholds.span()
     }
 
@@ -99,7 +105,13 @@ mod PurgerUtils {
         thresholds.append((80 * RAY_PERCENT).into());
         thresholds.append((90 * RAY_PERCENT).into());
         thresholds.append((96 * RAY_PERCENT).into());
+        // theoretical upper bound beyond which a penalty is not guaranteed 
+        // for absorptions after deducting compensation, meaning providers
+        // to the absorber will incur a loss for each absorption.
         thresholds.append((97 * RAY_PERCENT).into());
+        // Note that this threshold should not be used because it makes absorber 
+        // providers worse off, but it should not break the purger's logic.
+        thresholds.append((99 * RAY_PERCENT).into());
         thresholds.span()
     }
 
@@ -183,12 +195,21 @@ mod PurgerUtils {
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
 
         // Fifth threshold of 97% (Ray)
+        // This is the highest possible threshold because it may not be possible to charge a 
+        // penalty after deducting compensation beyond this LTV
         let mut ltvs_for_fifth_threshold: Array<Ray> = Default::default();
-        // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
         ltvs_for_fifth_threshold.append((97 * RAY_PERCENT + 1).into());
         ltvs_for_fifth_threshold.append(ninety_nine_pct);
         ltvs_for_fifth_threshold.append(exceed_hundred_pct);
         trove_ltvs.append(ltvs_for_fifth_threshold.span());
+
+        // Sixth threshold of 99% (Ray)
+        // Note that this threshold should not be used because it makes absorber 
+        // providers worse off, but it should not break the purger's logic.
+        let mut ltvs_for_sixth_threshold: Array<Ray> = Default::default();
+        ltvs_for_sixth_threshold.append((99 * RAY_PERCENT + 1).into());
+        ltvs_for_sixth_threshold.append(exceed_hundred_pct);
+        trove_ltvs.append(ltvs_for_sixth_threshold.span());
 
         trove_ltvs.span()
     }

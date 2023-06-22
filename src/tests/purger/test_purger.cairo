@@ -281,7 +281,8 @@ mod TestPurger {
         // We should hit the branch to check the post-liquidation LTV is at the expected safety margin
         // at least once per threshold, based on the target LTV that is just above the threshold.
         // This assertion provides this assurance.
-        assert(safe_ltv_count == num_thresholds, 'at least one per threshold');
+        // Offset 1 for the 99% threshold where close amount is always equal to trove's debt
+        assert(safe_ltv_count == num_thresholds - 1, 'at least one per threshold');
     }
 
     #[test]
