@@ -42,16 +42,16 @@ mod TestController {
         controller.set_p_gain(1_u128.into());
         controller.set_i_gain(2_u128.into());
         controller.set_alpha_p(3);
-        controller.set_alpha_i(4);
-        controller.set_beta_p(5);
-        controller.set_beta_i(6);
+        controller.set_alpha_i(5);
+        controller.set_beta_p(8);
+        controller.set_beta_i(4);
 
         assert(controller.get_p_gain() == 1_u128.into(), 'wrong p gain');
         assert(controller.get_i_gain() == 2_u128.into(), 'wrong i gain');
         assert(controller.get_alpha_p() == 3, 'wrong alpha_p');
-        assert(controller.get_alpha_i() == 4, 'wrong alpha_i');
-        assert(controller.get_beta_p() == 5, 'wrong beta_p');
-        assert(controller.get_beta_i() == 6, 'wrong beta_i');
+        assert(controller.get_alpha_i() == 5, 'wrong alpha_i');
+        assert(controller.get_beta_p() == 8, 'wrong beta_p');
+        assert(controller.get_beta_i() == 4, 'wrong beta_i');
     }
 
     #[test]
@@ -66,6 +66,7 @@ mod TestController {
 
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
+        controller.get_current_multiplier().val.print();
         assert(controller.get_p_term() == SignedRayZeroable::zero(), 'Wrong p term #1');
         assert(controller.get_i_term() == SignedRayZeroable::zero(), 'Wrong i term #2');
 
@@ -75,6 +76,7 @@ mod TestController {
 
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
+        controller.get_current_multiplier().val.print();
         common::assert_equalish(
             controller.get_p_term(),
             18715000000000000_u128.into(),
@@ -89,6 +91,7 @@ mod TestController {
 
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
+        controller.get_current_multiplier().val.print();
         common::assert_equalish(
             controller.get_p_term(),
             177156100000000000_u128.into(),
