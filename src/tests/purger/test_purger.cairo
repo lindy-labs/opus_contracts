@@ -536,6 +536,8 @@ mod TestPurger {
         assert(shrine.get_redistributions_count() == 1, 'wrong redistributions count');
     }
 
+    // Note that the absorber also zero shares in this test because no provider has
+    // provided yin yet. 
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_full_redistribution_pass() {
