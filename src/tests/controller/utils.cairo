@@ -60,10 +60,11 @@ mod ControllerUtils {
             .unwrap_syscall();
 
 
-        // Grant the controller the `SET_MULTIPLIER` role 
         let shrine_ac = IAccessControlDispatcher{ contract_address: shrine_addr};
         set_contract_address(ShrineUtils::admin());
         shrine_ac.grant_role(ShrineRoles::SET_MULTIPLIER, controller_addr);
+        shrine_ac.grant_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE, admin());
+
         set_contract_address(ContractAddressZeroable::zero());
 
         (IControllerDispatcher{ contract_address: controller_addr}, IShrineDispatcher{ contract_address: shrine_addr})

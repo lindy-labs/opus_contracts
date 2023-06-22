@@ -65,8 +65,6 @@ mod Controller {
 
     #[external]
     fn update_multiplier() -> Ray {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-
         let shrine: IShrineDispatcher = shrine::read();
 
         let error: SignedRay = RAY_ONE.into() - shrine.get_yin_spot_price().into();
@@ -184,20 +182,20 @@ mod Controller {
     }
 
     #[external]
-    fn set_p_gain(p_gain: SignedRay) {
+    fn set_p_gain(p_gain: Ray) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        p_gain::write(p_gain);
+        p_gain::write(p_gain.into());
     }
 
     #[external]
-    fn set_i_gain(i_gain: SignedRay) {
+    fn set_i_gain(i_gain: Ray) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         // Reset the integral term if the i_gain is set to zero
         if i_gain.is_zero() {
             i_term::write(SignedRayZeroable::zero());
         }
 
-        i_gain::write(i_gain);
+        i_gain::write(i_gain.into());
     }
 
     #[external]

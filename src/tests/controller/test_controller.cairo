@@ -16,8 +16,6 @@ mod TestController {
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad 
     const YIN_PRICE2: u128 = 999879000000000000; // wad
-    const YIN_PRICE3: u128 = 999942800000000000; // wad
-    const YIN_PRICE4: u128 = 999879000000000000; // wad
 
     const ERROR_MARGIN: u128 = 1000000000000_u128; // 10^-12 (ray)
 
@@ -60,15 +58,12 @@ mod TestController {
     #[available_gas(20000000000)]
     fn test_against_ground_truth() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        // Needed to call `set_multiplier`
-        ShrineUtils::make_root(shrine.contract_address, ShrineUtils::admin());
+
+        set_contract_address(ControllerUtils::admin());
 
         // Updating `i_gain` to match the ground truth simulation
-        set_contract_address(ControllerUtils::admin());
         controller.set_i_gain(100000000000000000000000_u128.into());
 
-
-        set_contract_address(ShrineUtils::admin());
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
         assert(controller.get_p_term() == SignedRayZeroable::zero(), 'Wrong p term #1');
@@ -76,7 +71,8 @@ mod TestController {
 
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE1.into());
-        
+        controller.update_multiplier();
+
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
         common::assert_equalish(controller.get_p_term(), 18715000000000000_u128.into(), ERROR_MARGIN.into(), 'Wrong p term #2');
@@ -84,6 +80,7 @@ mod TestController {
         
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE2.into());
+        controller.update_multiplier();
 
         controller.get_p_term().val.print();
         controller.get_i_term().val.print();
