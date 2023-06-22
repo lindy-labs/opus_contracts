@@ -119,6 +119,44 @@ impl SignedRayAddEq of AddEq<SignedRay> {
     }
 }
 
+impl SignedRayPartialOrd of PartialOrd<SignedRay> {
+    #[inline(always)]
+    fn le(lhs: SignedRay, rhs: SignedRay) -> bool {
+        if lhs.sign & rhs.sign {
+            return lhs.val <= rhs.val;
+        } else if !lhs.sign & !rhs.sign {
+            return lhs.val >= rhs.val;
+        } else if lhs.sign & !rhs.sign {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    #[inline(always)]
+    fn ge(lhs: SignedRay, rhs: SignedRay) -> bool {
+        SignedRayPartialOrd::lt(rhs, lhs)
+    }
+
+    #[inline(always)]
+    fn lt(lhs: SignedRay, rhs: SignedRay) -> bool {
+        if lhs.sign & rhs.sign {
+            return lhs.val < rhs.val;
+        } else if !lhs.sign & !rhs.sign {
+            return lhs.val > rhs.val;
+        } else if lhs.sign & !rhs.sign {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    #[inline(always)]
+    fn gt(lhs: SignedRay, rhs: SignedRay) -> bool {
+        SignedRayPartialOrd::le(rhs, lhs)
+    }
+}
+
 
 fn from_felt(val: felt252) -> SignedRay {
     let ray_val = integer::u128_try_from_felt252(_felt_abs(val)).unwrap();

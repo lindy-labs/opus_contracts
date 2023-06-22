@@ -1,5 +1,6 @@
 mod abbot;
 mod common;
+mod controller;
 mod erc20;
 mod equalizer;
 mod external;

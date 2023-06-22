@@ -1,6 +1,7 @@
 #[contract]
 mod Controller {
     use starknet::ContractAddress;
+    use starknet::{contract_address, get_block_timestamp};
     use traits::{Into, TryInto};
     use option::OptionTrait;
     use zeroable::Zeroable;
@@ -33,15 +34,31 @@ mod Controller {
         beta_i: u8,
     }
 
+    #[constructor]
     fn constructor(
-        admin: ContractAddress, shrine: ContractAddress, p_gain: SignedRay, i_gain: SignedRay
+        admin: ContractAddress,
+        shrine: ContractAddress,
+        p_gain: Ray,
+        i_gain: Ray,
+        alpha_p: u8,
+        beta_p: u8,
+        alpha_i: u8,
+        beta_i: u8,
     ) {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(ControllerRoles::TUNE_CONTROLLER, admin);
 
+        // Setting `i_term_last_updated1 to the current timestamp to 
+        // ensure that the integral term is correctly updated
+        i_term_last_updated::write(get_block_timestamp());
+
         shrine::write(IShrineDispatcher { contract_address: shrine });
-        p_gain::write(p_gain);
-        i_gain::write(i_gain);
+        p_gain::write(p_gain.into());
+        i_gain::write(i_gain.into());
+        alpha_p::write(alpha_p);
+        beta_p::write(beta_p);
+        alpha_i::write(alpha_i);
+        beta_i::write(beta_i);
     }
 
     // Core logic 
@@ -60,7 +77,7 @@ mod Controller {
 
         // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
         if i_gain.is_non_zero() {
-            let current_timestamp = starknet::get_block_timestamp();
+            let current_timestamp = get_block_timestamp();
             let new_i_term: SignedRay = get_i_term_internal(error, current_timestamp);
             multiplier += i_gain::read() * new_i_term;
 
@@ -77,7 +94,7 @@ mod Controller {
     #[view]
     fn get_current_multiplier() -> Ray {
         let error: SignedRay = get_error();
-        let current_timestamp = starknet::get_block_timestamp();
+        let current_timestamp = get_block_timestamp();
 
         let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
 
@@ -118,7 +135,7 @@ mod Controller {
         if i_gain.is_zero() {
             SignedRayZeroable::zero()
         } else {
-            i_gain * get_i_term_internal(get_error(), starknet::get_block_timestamp())
+            i_gain * get_i_term_internal(get_error(), get_block_timestamp())
         }
     }
 
