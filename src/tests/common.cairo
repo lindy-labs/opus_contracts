@@ -236,6 +236,25 @@ fn assert_equalish<
     }
 }
 
+fn assert_spans_equalish<
+    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl DropT: Drop<T>, impl CopyT: Copy<T>
+>(
+    mut a: Span<T>, mut b: Span<T>, error: T, message: felt252
+) {
+    assert(a.len() == b.len(), message);
+
+    loop {
+        match a.pop_front() {
+            Option::Some(a) => {
+                assert_equalish(*a, *b.pop_front().unwrap(), error, message);
+            },
+            Option::None(_) => {
+                break;
+            }
+        };
+    };
+}
+
 
 //
 // Helpers - Array functions
