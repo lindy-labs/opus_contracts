@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
     use debug::PrintTrait;
-    
+    use option::OptionTrait;
+    use traits::{Into, TryInto};
+
     use aura::utils::wadray_signed; 
     use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
-    use aura::utils::wadray::{RAY_ONE};
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
 
     #[test]
@@ -37,5 +40,81 @@ mod tests {
         assert((a / d) == SignedRay{val: 1*RAY_ONE, sign: true}, 'a / d != -1.0');
         assert((b / d) == SignedRay{val: 2*RAY_ONE, sign: false}, 'b / d != 2.0');
     }
+
+    #[test]
+    fn test_comparison() {
+        let a = SignedRay{val: 100, sign: false};
+        let b = SignedRay{val: 100, sign: true};
+        let c = SignedRay{val: 40, sign: true};
+        let d = SignedRay{val: 40, sign: false};
+        let zero = SignedRay{val: 0, sign: false};
+
+        // Test greater than operator
+        assert(a > b, 'a > b');
+        assert(a > c, 'a > c');
+        assert(!(b > a), 'b > a');
+        assert(!(c > a), 'c > a');
+        assert(!(zero > a), '0 > a');
+        assert(a > zero, 'a > 0');
+
+        // Test less than operator
+        assert(b < a, 'b < a');
+        assert(c < a, 'c < a');
+        assert(!(a < b), 'a < b');
+        assert(!(a < c), 'a < c');
+        assert(zero < a, '0 < a');
+        assert(!(a < zero), 'a < 0');
+
+        // Test greater than or equal to operator
+        assert(a >= b, 'a >= b');
+        assert(a >= d, 'a >= d');
+        assert(!(b >= a), 'b >= a');
+        assert(c >= c, 'c >= c');
+        assert(zero >= zero, '0 >= 0');
+        assert(a >= zero, 'a >= 0');
+        assert(!(zero >= a), '0 >= a');
+
+        // Test less than or equal to operator
+        assert(b <= a, 'b <= a');
+        assert(d <= a, 'd <= a');
+        assert(!(a <= b), 'a <= b');
+        assert(c <= c, 'c <= c');
+        assert(zero <= zero, '0 <= 0');
+        assert(zero <= a, '0 <= a');
+        assert(!(a <= zero), 'a <= 0');
+    }
+    
+    #[test]
+    fn test_into_conversions() {
+        // Test U128IntoSignedRay
+        let a: u128 = 100;
+        let a_signed: SignedRay = a.into();
+        assert(a_signed.val == a, 'U128IntoSignedRay val fail');
+        assert(!a_signed.sign, 'U128IntoSignedRay sign fail');
+
+        // Test RayIntoSignedRay
+        let b = Ray{val: 200};
+        let b_signed: SignedRay = b.into();
+        assert(b_signed.val == b.val, 'RayIntoSignedRay val fail');
+        assert(!b_signed.sign, 'RayIntoSignedRay sign fail');
+
+        // Test WadIntoSignedRay
+        let c = Wad{val: 300 * WAD_ONE};
+        let c_signed: SignedRay = c.into();
+        assert(c_signed.val == c.val * wadray::DIFF, 'WadIntoSignedRay val fail');
+        assert(!c_signed.sign, 'WadIntoSignedRay sign fail');
+
+        // Test SignedRayTryIntoRay
+        let d = SignedRay{val: 400, sign: false};
+        let d_ray: Option<Ray> = d.try_into();
+        assert(d_ray.is_some(), 'SignedRayTryIntoRay pos fail');
+        assert(d_ray.unwrap().val == d.val, 'SignedRayTryIntoRay val fail');
+
+        let e = SignedRay{val: 500, sign: true};
+        let e_ray: Option<Ray> = e.try_into();
+        assert(e_ray.is_none(), 'SignedRayTryIntoRay neg fail');
+    }
+
+
 
 }

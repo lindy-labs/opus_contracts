@@ -92,7 +92,7 @@ mod Controller {
             multiplier += i_gain * get_i_term_internal(error);
         }
 
-        bound_multiplier(multiplier.try_into()).unwrap()
+        bound_multiplier(multiplier).try_into().unwrap()
     }
 
     #[view]
@@ -269,9 +269,9 @@ mod Controller {
     #[inline(always)]
     fn bound_multiplier(multiplier: SignedRay) -> SignedRay {
         if multiplier > MAX_MULTIPLIER.into() {
-            MAX_MULTIPLIER
+            MAX_MULTIPLIER.into()
         } else if multiplier < MIN_MULTIPLIER.into() {
-            MIN_MULTIPLIER
+            MIN_MULTIPLIER.into()
         } else {
             multiplier
         }

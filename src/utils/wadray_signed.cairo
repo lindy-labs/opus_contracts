@@ -137,41 +137,43 @@ impl SignedRayAddEq of AddEq<SignedRay> {
     }
 }
 
+use debug::PrintTrait;
+
 impl SignedRayPartialOrd of PartialOrd<SignedRay> {
     #[inline(always)]
     fn le(lhs: SignedRay, rhs: SignedRay) -> bool {
-        if !lhs.sign & !rhs.sign {
-            return lhs.val <= rhs.val;
-        } else if lhs.sign & rhs.sign {
-            return lhs.val >= rhs.val;
-        } else if !lhs.sign & rhs.sign {
-            return false;
+        if lhs.sign != rhs.sign {
+            lhs.sign
         } else {
-            return true;
+            (lhs.val == rhs.val) | ((lhs.val < rhs.val) ^ lhs.sign)
         }
     }
 
     #[inline(always)]
     fn ge(lhs: SignedRay, rhs: SignedRay) -> bool {
-        SignedRayPartialOrd::lt(rhs, lhs)
+        if lhs.sign != rhs.sign {
+            !lhs.sign
+        } else {
+            (lhs.val == rhs.val) | ((lhs.val > rhs.val) ^ lhs.sign)
+        }
     }
 
     #[inline(always)]
     fn lt(lhs: SignedRay, rhs: SignedRay) -> bool {
-        if !lhs.sign & !rhs.sign {
-            return lhs.val < rhs.val;
-        } else if lhs.sign & rhs.sign {
-            return lhs.val > rhs.val;
-        } else if !lhs.sign & rhs.sign {
-            return false;
+        if lhs.sign != rhs.sign {
+            lhs.sign
         } else {
-            return true;
+            (lhs.val != rhs.val) & ((lhs.val < rhs.val) ^ lhs.sign)
         }
     }
 
     #[inline(always)]
     fn gt(lhs: SignedRay, rhs: SignedRay) -> bool {
-        SignedRayPartialOrd::le(rhs, lhs)
+        if lhs.sign != rhs.sign {
+            !lhs.sign
+        } else {
+            (lhs.val != rhs.val) & ((lhs.val > rhs.val) ^ lhs.sign)
+        }
     }
 }
 
