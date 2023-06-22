@@ -504,7 +504,7 @@ mod PurgerUtils {
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 
-    // Helper function to assert that an address received the expected amoutn of assets
+    // Helper function to assert that an address received the expected amount of assets
     // based on the before and after balances.
     // `before_asset_bals` and `after_asset_bals` should be retrieved using `get_token_balances`
     fn assert_received_assets(
