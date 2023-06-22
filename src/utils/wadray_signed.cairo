@@ -1,3 +1,4 @@
+use math::Oneable;
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, TryInto};
@@ -5,7 +6,7 @@ use zeroable::Zeroable;
 
 
 use aura::utils::wadray;
-use aura::utils::wadray::{Ray, Wad};
+use aura::utils::wadray::{Ray, Wad, RAY_ONE};
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
@@ -21,34 +22,34 @@ impl SignedRayIntoFelt252 of Into<SignedRay, felt252> {
         let mag_felt: felt252 = self.val.into();
 
         if self.sign {
-            return mag_felt;
-        } else {
             return mag_felt * -1;
+        } else {
+            return mag_felt;
         }
     }
 }
 
 impl U128IntoSignedRay of Into<u128, SignedRay> {
     fn into(self: u128) -> SignedRay {
-        SignedRay { val: self, sign: true }
+        SignedRay { val: self, sign: false }
     }
 }
 
 impl RayIntoSignedRay of Into<Ray, SignedRay> {
     fn into(self: Ray) -> SignedRay {
-        SignedRay { val: self.val, sign: true }
+        SignedRay { val: self.val, sign: false }
     }
 }
 
 impl WadIntoSignedRay of Into<Wad, SignedRay> {
     fn into(self: Wad) -> SignedRay {
-        SignedRay { val: self.val * wadray::DIFF, sign: true }
+        SignedRay { val: self.val * wadray::DIFF, sign: false }
     }
 }
 
 impl SignedRayTryIntoRay of TryInto<SignedRay, Ray> {
     fn try_into(self: SignedRay) -> Option<Ray> {
-        if self.sign {
+        if !self.sign {
             return Option::Some(Ray { val: self.val });
         } else {
             return Option::None(());
@@ -88,7 +89,7 @@ impl SignedRayDiv of Div<SignedRay> {
 impl SignedRayZeroable of Zeroable<SignedRay> {
     #[inline(always)]
     fn zero() -> SignedRay {
-        SignedRay { val: 0, sign: true }
+        SignedRay { val: 0, sign: false }
     }
 
     #[inline(always)]
@@ -99,6 +100,23 @@ impl SignedRayZeroable of Zeroable<SignedRay> {
     #[inline(always)]
     fn is_non_zero(self: SignedRay) -> bool {
         self.val != 0
+    }
+}
+
+impl SignedRayOnable of Oneable<SignedRay> {
+    #[inline(always)]
+    fn one() -> SignedRay {
+        SignedRay { val: RAY_ONE, sign: false }
+    }
+
+    #[inline(always)]
+    fn is_one(self: SignedRay) -> bool {
+        self.val == RAY_ONE & !self.sign
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: SignedRay) -> bool {
+        self.val != RAY_ONE | self.sign
     }
 }
 
@@ -122,11 +140,11 @@ impl SignedRayAddEq of AddEq<SignedRay> {
 impl SignedRayPartialOrd of PartialOrd<SignedRay> {
     #[inline(always)]
     fn le(lhs: SignedRay, rhs: SignedRay) -> bool {
-        if lhs.sign & rhs.sign {
+        if !lhs.sign & !rhs.sign {
             return lhs.val <= rhs.val;
-        } else if !lhs.sign & !rhs.sign {
+        } else if lhs.sign & rhs.sign {
             return lhs.val >= rhs.val;
-        } else if lhs.sign & !rhs.sign {
+        } else if !lhs.sign & rhs.sign {
             return false;
         } else {
             return true;
@@ -140,11 +158,11 @@ impl SignedRayPartialOrd of PartialOrd<SignedRay> {
 
     #[inline(always)]
     fn lt(lhs: SignedRay, rhs: SignedRay) -> bool {
-        if lhs.sign & rhs.sign {
+        if !lhs.sign & !rhs.sign {
             return lhs.val < rhs.val;
-        } else if !lhs.sign & !rhs.sign {
+        } else if lhs.sign & rhs.sign {
             return lhs.val > rhs.val;
-        } else if lhs.sign & !rhs.sign {
+        } else if !lhs.sign & rhs.sign {
             return false;
         } else {
             return true;
@@ -168,14 +186,14 @@ fn from_felt(val: felt252) -> SignedRay {
 // false = negative
 #[inline(always)]
 fn _felt_sign(a: felt252) -> bool {
-    integer::u256_from_felt252(a) <= integer::u256_from_felt252(HALF_PRIME)
+    integer::u256_from_felt252(a) > integer::u256_from_felt252(HALF_PRIME)
 }
 
 // Returns the absolute value of a signed `felt252`
 fn _felt_abs(a: felt252) -> felt252 {
     let a_sign = _felt_sign(a);
 
-    if a_sign {
+    if !a_sign {
         a
     } else {
         a * -1
@@ -184,5 +202,5 @@ fn _felt_abs(a: felt252) -> felt252 {
 
 // Returns the sign of the product in signed multiplication (or quotient in division)
 fn sign_from_mul(lhs_sign: bool, rhs_sign: bool) -> bool {
-    lhs_sign & rhs_sign | !lhs_sign & !rhs_sign
+    !lhs_sign & rhs_sign | lhs_sign & !rhs_sign
 }

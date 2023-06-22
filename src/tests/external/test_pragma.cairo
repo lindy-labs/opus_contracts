@@ -22,7 +22,7 @@ mod TestPragma {
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::types::Pragma::PricesResponse;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
@@ -283,7 +283,7 @@ mod TestPragma {
         let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_with_yangs();
 
         let price_ts: u256 = (get_block_timestamp() - 1000).into();
-        let pragma_price_scale: u128 = pow10(PragmaUtils::PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PragmaUtils::PRAGMA_DECIMALS);
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
         let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
@@ -408,7 +408,7 @@ mod TestPragma {
 
         let (before_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
 
-        let pragma_price_scale: u128 = pow10(PragmaUtils::PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PragmaUtils::PRAGMA_DECIMALS);
 
         let price: u128 = PragmaUtils::ETH_INIT_PRICE * pragma_price_scale;
         let invalid_num_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;

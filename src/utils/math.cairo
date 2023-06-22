@@ -1,3 +1,4 @@
+use math::Oneable;
 use traits::Into;
 use zeroable::Zeroable;
 
@@ -16,7 +17,8 @@ fn sqrt(x: Ray) -> Ray {
 
     // A small number for precision checking
     // There is a negligible change in performance when using a larger allowed error
-    let EPSILON: u128 = 1;
+    let EPSILON = Ray { val: 1 };
+
     loop {
         let previous_guess = guess;
 
@@ -25,22 +27,22 @@ fn sqrt(x: Ray) -> Ray {
 
         // Check if the guess is close enough to the previous guess
         if previous_guess >= guess {
-            if (previous_guess - guess) < EPSILON.into() {
+            if (previous_guess - guess) < EPSILON {
                 break guess;
             }
         } else {
-            if (guess - previous_guess) < EPSILON.into() {
+            if (guess - previous_guess) < EPSILON {
                 break guess;
             }
         };
     }
 }
 
-fn pow<T, impl TMul: Mul<T>, impl TZeroable: Zeroable<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(
+fn pow<T, impl TMul: Mul<T>, impl TOneable: Oneable<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(
     x: T, mut n: u8
 ) -> T {
     if n == 0 {
-        TZeroable::zero()
+        TOneable::one()
     } else if n == 1 {
         x
     } else if n % 2 == 0 {

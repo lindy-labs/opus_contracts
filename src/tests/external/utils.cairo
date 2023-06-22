@@ -19,7 +19,7 @@ mod PragmaUtils {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::types::Pragma::PricesResponse;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
@@ -79,7 +79,7 @@ mod PragmaUtils {
         };
 
         let price_ts: u64 = get_block_timestamp() - 1000;
-        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
         mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, ETH_INIT_PRICE, price_ts);
 
         let btc_price: u128 = WBTC_INIT_PRICE * pragma_price_scale;
@@ -169,7 +169,7 @@ mod PragmaUtils {
     fn mock_valid_price_update(
         mock_pragma: IMockPragmaDispatcher, pair_id: u256, price: u128, timestamp: u64
     ) {
-        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
 
         let price: u128 = price * pragma_price_scale;
         let response = PricesResponse {

@@ -22,7 +22,6 @@ mod Controller {
 
     struct Storage {
         shrine: IShrineDispatcher,
-        integral_sum: Wad,
         yin_price_last_updated: u64,
         i_term_last_updated: u64,
         i_term: SignedRay,
@@ -48,7 +47,7 @@ mod Controller {
         AccessControl::initializer(admin);
         AccessControl::grant_role_internal(ControllerRoles::TUNE_CONTROLLER, admin);
 
-        // Setting `i_term_last_updated1 to the current timestamp to 
+        // Setting `i_term_last_updated` to the current timestamp to 
         // ensure that the integral term is correctly updated
         i_term_last_updated::write(get_block_timestamp());
 
@@ -61,70 +60,27 @@ mod Controller {
         beta_i::write(beta_i);
     }
 
-    // Core logic 
-
-    #[external]
-    fn update_multiplier() -> Ray {
-        let shrine: IShrineDispatcher = shrine::read();
-
-        let error: SignedRay = RAY_ONE.into() - shrine.get_yin_spot_price().into();
-
-        let i_gain = i_gain::read();
-
-        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
-
-        // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
-        if i_gain.is_non_zero() {
-            let current_timestamp = get_block_timestamp();
-            let new_i_term: SignedRay = get_i_term_internal(error, current_timestamp);
-            multiplier += i_gain::read() * new_i_term;
-
-            i_term::write(new_i_term);
-            i_term_last_updated::write(current_timestamp);
-        }
-
-        let multiplier_ray: Ray = multiplier.try_into().unwrap();
-        shrine.set_multiplier(multiplier_ray);
-
-        multiplier_ray
-    }
+    //
+    // View functions 
+    // 
 
     #[view]
     fn get_current_multiplier() -> Ray {
         let error: SignedRay = get_error();
-        let current_timestamp = get_block_timestamp();
 
         let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
 
         let i_gain = i_gain::read();
         if i_gain.is_non_zero() {
-            multiplier += i_gain * get_i_term_internal(error, current_timestamp);
+            multiplier += i_gain * get_i_term_internal(error);
         }
 
         multiplier.try_into().unwrap()
     }
 
-    #[inline(always)]
-    fn get_p_term_internal(error: SignedRay) -> SignedRay {
-        p_gain::read() * nonlinear_transform(error, alpha_p::read(), beta_p::read())
-    }
-
     #[view]
     fn get_p_term() -> SignedRay {
         get_p_term_internal(get_error())
-    }
-
-    #[inline(always)]
-    fn get_i_term_internal(error: SignedRay, current_timestamp: u64) -> SignedRay {
-        let old_i_term = i_term::read();
-
-        let time_since_last_update: u128 = (current_timestamp - i_term_last_updated::read()).into();
-        let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
-            / (INTERVAL * RAY_ONE).into();
-
-        old_i_term
-            + nonlinear_transform(error, alpha_i::read(), beta_i::read())
-                * time_since_last_update_scaled
     }
 
     #[view]
@@ -133,23 +89,9 @@ mod Controller {
         if i_gain.is_zero() {
             SignedRayZeroable::zero()
         } else {
-            i_gain * get_i_term_internal(get_error(), get_block_timestamp())
+            i_gain * get_i_term_internal(get_error())
         }
     }
-
-    #[inline(always)]
-    fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
-        let error_ray: Ray = Ray { val: error.val };
-        let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
-        math::pow(error, alpha) / denominator
-    }
-
-    #[inline(always)]
-    fn get_error() -> SignedRay {
-        RAY_ONE.into() - shrine::read().get_yin_spot_price().into()
-    }
-
-    // Basic getters and setters 
 
     #[view]
     fn get_p_gain() -> SignedRay {
@@ -181,6 +123,37 @@ mod Controller {
         beta_i::read()
     }
 
+
+    // 
+    // External 
+    // 
+
+    #[external]
+    fn update_multiplier() -> Ray {
+        let shrine: IShrineDispatcher = shrine::read();
+
+        let error: SignedRay = get_error();
+
+        let i_gain = i_gain::read();
+
+        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
+
+        // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
+        if i_gain.is_non_zero() {
+            let current_timestamp = get_block_timestamp();
+            let new_i_term: SignedRay = get_i_term_internal(error);
+            multiplier += i_gain * new_i_term;
+
+            i_term::write(new_i_term);
+            i_term_last_updated::write(current_timestamp);
+        }
+
+        let multiplier_ray: Ray = multiplier.try_into().unwrap();
+        shrine.set_multiplier(multiplier_ray);
+
+        multiplier_ray
+    }
+
     #[external]
     fn set_p_gain(p_gain: Ray) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
@@ -190,6 +163,15 @@ mod Controller {
     #[external]
     fn set_i_gain(i_gain: Ray) {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+
+        // Since `i_term_last_updated` isn't updated in `update_multiplier` 
+        // while `i_gain` is zero, we must update it here whenever the 
+        // `i_gain` is set from zero to a non-zero value in order to ensure 
+        // that the accumulation of the integral term starts at zero. 
+        if i_gain::read().is_zero() {
+            i_term_last_updated::write(get_block_timestamp());
+        }
+
         // Reset the integral term if the i_gain is set to zero
         if i_gain.is_zero() {
             i_term::write(SignedRayZeroable::zero());
@@ -221,6 +203,42 @@ mod Controller {
         AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
         beta_i::write(beta_i);
     }
+
+    // 
+    // Internal functions 
+    //
+
+    #[inline(always)]
+    fn get_p_term_internal(error: SignedRay) -> SignedRay {
+        p_gain::read() * nonlinear_transform(error, alpha_p::read(), beta_p::read())
+    }
+
+    #[inline(always)]
+    fn get_i_term_internal(error: SignedRay) -> SignedRay {
+        let current_timestamp: u64 = get_block_timestamp();
+        let old_i_term = i_term::read();
+
+        let time_since_last_update: u128 = (current_timestamp - i_term_last_updated::read()).into();
+        let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
+            / (INTERVAL * RAY_ONE).into();
+
+        old_i_term
+            + nonlinear_transform(error, alpha_i::read(), beta_i::read())
+                * time_since_last_update_scaled
+    }
+
+    #[inline(always)]
+    fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
+        let error_ray: Ray = Ray { val: error.val };
+        let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
+        math::pow(error, alpha) / denominator
+    }
+
+    #[inline(always)]
+    fn get_error() -> SignedRay {
+        RAY_ONE.into() - shrine::read().get_yin_spot_price().into()
+    }
+
 
     //
     // Public AccessControl functions

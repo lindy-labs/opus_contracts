@@ -17,7 +17,7 @@ mod TestController {
     const YIN_PRICE1: u128 = 999942800000000000; // wad 
     const YIN_PRICE2: u128 = 999879000000000000; // wad
 
-    const ERROR_MARGIN: u128 = 1000000000000_u128; // 10^-12 (ray)
+    const ERROR_MARGIN: u128 = 1000000000000_u128; // 10^-15 (ray)
 
     #[test]
     #[available_gas(20000000000)]
