@@ -74,7 +74,7 @@ mod TestPurger {
 
         let penalty: Ray = purger.get_absorption_penalty(target_trove);
         let expected_penalty: Ray = 52200000000000000000000000_u128.into(); // 5.22%
-        let error_margin: Ray = (RAY_PERCENT / 10).into();
+        let error_margin: Ray = (RAY_PERCENT / 100).into(); // 0.01%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #1');
 
         // Set scalar to 0.97

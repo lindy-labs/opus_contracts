@@ -500,7 +500,7 @@ mod PurgerUtils {
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
         let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-        let error_margin: Ray = (RAY_PERCENT / 10).into();
+        let error_margin: Ray = (RAY_PERCENT / 100).into(); // 0.01%
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 
