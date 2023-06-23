@@ -38,7 +38,7 @@ mod tests {
         assert((b * c) == SignedRay { val: 10 * RAY_ONE, sign: true }, 'b * c != -10.0');
 
         // Test division
-        assert((c / a) == SignedRay { val: 5 * RAY_ONE, sign: false }, 'c / a != -5.0');
+        assert((c / a) == SignedRay { val: 5 * RAY_ONE, sign: false }, 'c / a != 5.0');
         assert((a / d) == SignedRay { val: 1 * RAY_ONE, sign: true }, 'a / d != -1.0');
         assert((b / d) == SignedRay { val: 2 * RAY_ONE, sign: false }, 'b / d != 2.0');
     }

@@ -1,20 +1,20 @@
 #[contract]
 mod Controller {
+    use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::{contract_address, get_block_timestamp};
     use traits::{Into, TryInto};
-    use option::OptionTrait;
     use zeroable::Zeroable;
 
     use aura::core::roles::ControllerRoles;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
-    use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use aura::utils::math;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, Ray, RAY_ONE};
-    use aura::utils::math;
+    use aura::utils::wadray_signed;
+    use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
 
     // Time intervals between updates are scaled down by this factor 
     // to prevent the integral term from getting too large

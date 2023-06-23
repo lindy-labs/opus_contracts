@@ -6,7 +6,7 @@ use zeroable::Zeroable;
 
 
 use aura::utils::wadray;
-use aura::utils::wadray::{Ray, Wad, RAY_ONE};
+use aura::utils::wadray::{Ray, RAY_ONE, Wad};
 
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
@@ -204,5 +204,5 @@ fn _felt_abs(a: felt252) -> felt252 {
 
 // Returns the sign of the product in signed multiplication (or quotient in division)
 fn sign_from_mul(lhs_sign: bool, rhs_sign: bool) -> bool {
-    !lhs_sign & rhs_sign | lhs_sign & !rhs_sign
+    (!lhs_sign & rhs_sig) | (lhs_sign & !rhs_sign)
 }

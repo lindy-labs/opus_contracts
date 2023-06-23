@@ -4,7 +4,6 @@ use zeroable::Zeroable;
 
 use aura::utils::wadray;
 use aura::utils::wadray::Ray;
-use debug::PrintTrait;
 
 fn sqrt(x: Ray) -> Ray {
     // Early return if x is zero
