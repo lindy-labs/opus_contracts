@@ -312,8 +312,7 @@ mod TestGate {
 
         let expected_total_assets = expected_total_assets - exit_amt;
 
-        let error_margin: Wad = 1_u128.into();
-        common::assert_equalish(enter4_amt.into(), exit_amt.into(), error_margin, 'exit amount');
+        common::assert_equalish::<Wad>(enter4_amt.into(), exit_amt.into(), 1_u128.into(), 'exit amount');
         assert(gate.get_total_assets() == expected_total_assets, 'exit get_total_assets');
         assert(gate.get_asset_amt_per_yang() == before_asset_amt_per_yang, 'exit get_asset_amt_per_yang');
     }
