@@ -53,11 +53,11 @@ mod TestPurger {
         );
 
         // Set thresholds to 90% so we can check the expected penalty
-        let threshold: Ray = (90 * RAY_PERCENT).into();
+        let threshold: Ray = (91 * RAY_PERCENT).into();
         PurgerUtils::set_thresholds(shrine, yangs, threshold);
 
         let (_, _, value, debt) = shrine.get_trove_info(target_trove);
-        let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 2 * RAY_PERCENT).into(); // 92%
+        let target_ltv: Ray = threshold + RAY_PERCENT.into(); // 92%
         PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
         // sanity check that LTV is at the target liquidation LTV
@@ -73,7 +73,7 @@ mod TestPurger {
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #1');
 
         let penalty: Ray = purger.get_absorption_penalty(target_trove);
-        let expected_penalty: Ray = 52200000000000000000000000_u128.into(); // 5.22%
+        let expected_penalty: Ray = 41000000000000000000000000_u128.into(); // 4.1%
         let error_margin: Ray = (RAY_PERCENT / 100).into(); // 0.01%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #1');
 
@@ -84,7 +84,7 @@ mod TestPurger {
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #2');
 
         let penalty: Ray = purger.get_absorption_penalty(target_trove);
-        let expected_penalty: Ray = 21600000000000000000000000_u128.into(); // 2.16%
+        let expected_penalty: Ray = 10700000000000000000000000_u128.into(); // 1.07%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #2');
 
         // Set scalar to 1.06
