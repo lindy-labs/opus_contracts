@@ -18,7 +18,7 @@ mod Controller {
 
     // Time intervals between updates are scaled down by this factor 
     // to prevent the integral term from getting too large
-    const INTERVAL: u128 = 3600; // 1 hours
+    const TIME_SCALE: u128 = 3600; // 1 hours
 
     // multiplier bounds (ray)
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
@@ -85,11 +85,13 @@ mod Controller {
     fn get_current_multiplier() -> Ray {
         let error: SignedRay = get_error();
 
+        let i_gain = i_gain::read();
+
         let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
 
-        let i_gain = i_gain::read();
         if i_gain.is_non_zero() {
-            multiplier += i_gain * get_i_term_internal(error);
+            let new_i_term: SignedRay = get_i_term_internal(error);
+            multiplier += i_gain * new_i_term;
         }
 
         bound_multiplier(multiplier).try_into().unwrap()
@@ -157,12 +159,11 @@ mod Controller {
 
         // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
         if i_gain.is_non_zero() {
-            let current_timestamp = get_block_timestamp();
             let new_i_term: SignedRay = get_i_term_internal(error);
             multiplier += i_gain * new_i_term;
 
             i_term::write(new_i_term);
-            i_term_last_updated::write(current_timestamp);
+            i_term_last_updated::write(get_block_timestamp());
         }
 
         let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
@@ -247,7 +248,7 @@ mod Controller {
 
         let time_since_last_update: u128 = (current_timestamp - i_term_last_updated::read()).into();
         let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
-            / (INTERVAL * RAY_ONE).into();
+            / (TIME_SCALE * RAY_ONE).into();
 
         old_i_term
             + nonlinear_transform(error, alpha_i::read(), beta_i::read())
