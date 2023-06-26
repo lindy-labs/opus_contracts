@@ -255,7 +255,9 @@ mod PurgerUtils {
 
         let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
-        AbsorberUtils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing);
+        AbsorberUtils::deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing
+        );
 
         let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(
             sentinel, shrine.contract_address
@@ -268,6 +270,7 @@ mod PurgerUtils {
         calldata.append(contract_address_to_felt252(admin));
         calldata.append(contract_address_to_felt252(shrine.contract_address));
         calldata.append(contract_address_to_felt252(sentinel.contract_address));
+        calldata.append(contract_address_to_felt252(abbot.contract_address));
         calldata.append(contract_address_to_felt252(absorber.contract_address));
         calldata.append(contract_address_to_felt252(oracle.contract_address));
 
@@ -538,7 +541,7 @@ mod PurgerUtils {
                         after_asset_bal,
                         expected_after_asset_bal,
                         error_margin,
-                        'wrong liquidator asset balance'
+                        'wrong asset balance'
                     );
                 },
                 Option::None(_) => {
