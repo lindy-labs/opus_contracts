@@ -345,10 +345,15 @@ mod Purger {
         // If the close amount cannot be fully absorbed, perform redistribution.
         if !is_fully_absorbed {
             // If the close amount is less than the trove's debt, free excess yangs to trove owner
-            // before redistribution of the remaining yangs backing the remainder debt 1 : 1
+            // before performing redistribution. The trove owner should receive the same amount of 
+            // collateral that would have been left in the trove assuming a full absorption without 
+            // redistribution.
             if max_purge_amt != trove_debt {
                 let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
-                let excess_pct: Ray = wadray::rdiv_ww(trove_value - trove_debt, trove_value);
+                let excess_pct: Ray = wadray::rdiv_ww(
+                    trove_value - wadray::rmul_wr(trove_debt, RAY_ONE.into() + trove_penalty),
+                    trove_value
+                );
                 free(shrine, trove_id, excess_pct, abbot::read().get_trove_owner(trove_id));
             }
 

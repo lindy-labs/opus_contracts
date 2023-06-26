@@ -645,7 +645,7 @@ mod TestPurger {
         // Check that trove owner has received excess collateral before redistribution
         let expected_excess_value: Wad = before_value
             - (expected_compensation_value
-                + wadray::rmul_wr(absorber_start_yin, penalty)
+                + wadray::rmul_wr(before_debt, penalty)
                 + before_debt);
         let expected_excess_pct: Ray = wadray::rdiv_ww(expected_excess_value, before_value);
         let expected_excess_amts: Span<u128> = common::scale_span_by_pct(
