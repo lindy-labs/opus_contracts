@@ -88,7 +88,7 @@ mod PurgerUtils {
         thresholds.span()
     }
 
-    // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
+    // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
     fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
         thresholds.append((65 * RAY_PERCENT).into());
@@ -98,7 +98,7 @@ mod PurgerUtils {
         thresholds.span()
     }
 
-    // From around 78.74+% threshold onwards, absorptions apply to the trove's debt
+    // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
     fn interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
         thresholds.append(787500000000000000000000000_u128.into()); // 78.75%
@@ -196,7 +196,7 @@ mod PurgerUtils {
 
         // Fifth threshold of 97% (Ray)
         // This is the highest possible threshold because it may not be possible to charge a 
-        // penalty after deducting compensation beyond this LTV
+        // penalty after deducting compensation at this LTV and beyond
         let mut ltvs_for_fifth_threshold: Array<Ray> = Default::default();
         ltvs_for_fifth_threshold.append((97 * RAY_PERCENT + 1).into());
         ltvs_for_fifth_threshold.append(ninety_nine_pct);
