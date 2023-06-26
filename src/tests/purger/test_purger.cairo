@@ -184,6 +184,7 @@ mod TestPurger {
             common::get_token_balances(yangs, searcher.into()),
             expected_freed_amts,
             10_u128, // error margin
+            'wrong searcher asset balance',
         );
 
         common::assert_spans_equalish(
@@ -436,6 +437,7 @@ mod TestPurger {
             common::get_token_balances(yangs, caller.into()),
             expected_compensation,
             10_u128, // error margin
+            'wrong caller asset balance',
         );
 
         common::assert_spans_equalish(
@@ -457,12 +459,13 @@ mod TestPurger {
                 target_trove_yang_asset_amts, before_value, max_close_amt, penalty
             ),
             10_u128, // error margin
+            'wrong absorber asset balance',
         );
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_partial_absorb_entire_trove_debt_with_redistribution_pass() {
+    fn test_partial_absorb_with_redistribution_pass_entire_trove_debt_pass() {
         let (shrine, abbot, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
@@ -511,13 +514,9 @@ mod TestPurger {
         assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
 
         // Check trove debt and LTV
-        let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
-        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
-
-        let is_fully_absorbed: bool = after_debt.is_zero();
-        if !is_fully_absorbed {
-            PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
-        }
+        let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
+        assert(after_debt == WadZeroable::zero(), 'wrong debt after liquidation');
+        assert(after_value == WadZeroable::zero(), 'wrong value after liquidation');
 
         // Check that caller has received compensation
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
@@ -529,6 +528,7 @@ mod TestPurger {
             common::get_token_balances(yangs, caller.into()),
             expected_compensation,
             10_u128, // error margin
+            'wrong caller asset balance',
         );
 
         common::assert_spans_equalish(
@@ -550,6 +550,7 @@ mod TestPurger {
                 target_trove_yang_asset_amts, before_value, close_amt, penalty
             ),
             10_u128, // error margin
+            'wrong absorber asset balance',
         );
 
         // Check redistribution occured
@@ -558,7 +559,7 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_partial_absorb_below_trove_debt_with_redistribution_pass() {
+    fn test_partial_absorb_with_redistribution_below_trove_debt_pass() {
         let (shrine, abbot, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
@@ -633,6 +634,7 @@ mod TestPurger {
             common::get_token_balances(yangs, caller.into()),
             expected_compensation,
             10_u128, // error margin
+            'wrong caller asset balance'
         );
 
         common::assert_spans_equalish(
@@ -655,6 +657,7 @@ mod TestPurger {
             common::get_token_balances(yangs, target_trove_owner.into()),
             expected_excess_amts,
             1_u128, // error margin
+            'wrong trove owner asset balance'
         );
 
         // Check absorber yin balance is wiped out
@@ -671,6 +674,7 @@ mod TestPurger {
                 target_trove_yang_asset_amts, before_value, close_amt, penalty
             ),
             10_u128, // error margin
+            'wrong absorber asset balance'
         );
 
         // Check redistribution occured
@@ -717,6 +721,7 @@ mod TestPurger {
             common::get_token_balances(yangs, caller.into()),
             expected_compensation,
             10_u128, // error margin
+            'wrong caller asset balance',
         );
 
         common::assert_spans_equalish(

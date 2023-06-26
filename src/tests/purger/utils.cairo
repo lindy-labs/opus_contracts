@@ -443,7 +443,6 @@ mod PurgerUtils {
         let expected_freed_pct: Ray = wadray::rdiv_ww(freed_amt, trove_value);
         common::scale_span_by_pct(trove_asset_amts, expected_freed_pct)
     }
-    //fn get_expected_liquidation_assets
 
     fn assert_trove_is_healthy(
         shrine: IShrineDispatcher, purger: IPurgerDispatcher, trove_id: u64
@@ -515,12 +514,12 @@ mod PurgerUtils {
     // Helper function to assert that an address received the expected amount of assets based 
     // on the before and after balances.
     // `before_asset_bals` and `after_asset_bals` should be retrieved using `get_token_balances`.
-
     fn assert_received_assets(
         mut before_asset_bals: Span<Span<u128>>,
         mut after_asset_bals: Span<Span<u128>>,
         mut expected_freed_asset_amts: Span<u128>,
         error_margin: u128,
+        message: felt252
     ) {
         loop {
             match expected_freed_asset_amts.pop_front() {
@@ -538,10 +537,7 @@ mod PurgerUtils {
                     let expected_after_asset_bal: u128 = before_asset_bal
                         + *expected_freed_asset_amt;
                     common::assert_equalish(
-                        after_asset_bal,
-                        expected_after_asset_bal,
-                        error_margin,
-                        'wrong asset balance'
+                        after_asset_bal, expected_after_asset_bal, error_margin, message, 
                     );
                 },
                 Option::None(_) => {
