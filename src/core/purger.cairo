@@ -9,6 +9,7 @@ mod Purger {
 
     use aura::core::roles::PurgerRoles;
 
+    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
@@ -51,6 +52,8 @@ mod Purger {
         shrine: IShrineDispatcher,
         // the Sentinel associated with the Shrine and this Purger
         sentinel: ISentinelDispatcher,
+        // the Abbot associated with the Shrine
+        abbot: IAbbotDispatcher,
         // the Absorber associated with this Purger
         absorber: IAbsorberDispatcher,
         // the Oracle associated with the Shrine and this Purger
@@ -91,6 +94,7 @@ mod Purger {
         admin: ContractAddress,
         shrine: ContractAddress,
         sentinel: ContractAddress,
+        abbot: ContractAddress,
         absorber: ContractAddress,
         oracle: ContractAddress,
     ) {
@@ -101,6 +105,7 @@ mod Purger {
 
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
+        abbot::write(IAbbotDispatcher { contract_address: abbot });
         absorber::write(IAbsorberDispatcher { contract_address: absorber });
         oracle::write(IOracleDispatcher { contract_address: oracle });
 
@@ -337,8 +342,16 @@ mod Purger {
             );
         }
 
-        // If it is not a full absorption, perform redistribution.
+        // If the close amount cannot be fully absorbed, perform redistribution.
         if !is_fully_absorbed {
+            // If the close amount is less than the trove's debt, free excess yangs to trove owner
+            // before redistribution of the remaining yangs backing the remainder debt 1 : 1
+            if max_purge_amt != trove_debt {
+                let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
+                let excess_pct: Ray = wadray::rdiv_ww(trove_value - trove_debt, trove_value);
+                free(shrine, trove_id, excess_pct, abbot::read().get_trove_owner(trove_id));
+            }
+
             shrine.redistribute(trove_id);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
