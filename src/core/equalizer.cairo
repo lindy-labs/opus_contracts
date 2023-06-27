@@ -97,8 +97,9 @@ mod Equalizer {
 
         let mut minted_surplus: Wad = WadZeroable::zero();
 
+        let recipients_copy = recipients;
         loop {
-            match recipients.pop_front() {
+            match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
                     let amount: Wad = rmul_wr(surplus, *(percentages.pop_front().unwrap()));
 
