@@ -97,7 +97,7 @@ mod Equalizer {
 
         let mut minted_surplus: Wad = WadZeroable::zero();
 
-        let recipients_copy = recipients;
+        let mut recipients_copy = recipients;
         loop {
             match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
