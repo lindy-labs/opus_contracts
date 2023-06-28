@@ -8,4 +8,5 @@ mod gate;
 mod purger;
 mod roles;
 mod sentinel;
+mod settler;
 mod shrine;

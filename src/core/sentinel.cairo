@@ -31,6 +31,8 @@ mod Sentinel {
         // mapping between a yang address and the cap on the yang's asset in the
         // asset's decimals
         yang_asset_max: LegacyMap::<ContractAddress, u128>,
+        // mapping between a yang address and its initial yang amount
+        initial_yang_amt: LegacyMap::<ContractAddress, Wad>,
         // mapping between a yang address and whether its Gate is live
         yang_is_live: LegacyMap::<ContractAddress, bool>,
     }
@@ -95,6 +97,11 @@ mod Sentinel {
     #[view]
     fn get_yang_asset_max(yang: ContractAddress) -> u128 {
         yang_asset_max::read(yang)
+    }
+
+    #[view]
+    fn get_initial_yang_amt(yang: ContractAddress) -> Wad {
+        initial_yang_amt::read(yang)
     }
 
     #[view]
@@ -163,6 +170,8 @@ mod Sentinel {
         let initial_yang_amt: Wad = wadray::fixed_point_to_wad(
             INITIAL_DEPOSIT_AMT, yang_erc20.decimals()
         );
+        initial_yang_amt::write(yang, initial_yang_amt);
+
         let initial_deposit_amt: u256 = INITIAL_DEPOSIT_AMT.into();
 
         let caller: ContractAddress = get_caller_address();
