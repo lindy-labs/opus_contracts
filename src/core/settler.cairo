@@ -85,6 +85,7 @@ mod Settler {
     // External
     //
 
+    // Update the cumulative redistributed debt to the latest redistribution
     #[external]
     fn record() {
         let shrine: IShrineDispatcher = shrine::read();
@@ -140,6 +141,8 @@ mod Settler {
     // Pay down outstanding debt from the caller's yin
     #[external]
     fn settle(amt: Wad) {
+        record();
+
         let caller: ContractAddress = get_caller_address();
         let mut cumulative_repaid_debt: Wad = cumulative_repaid_debt::read();
         // Cap the amount to the outstanding debt
@@ -153,7 +156,9 @@ mod Settler {
         Settle(caller, repay_amt);
     }
 
-    // Release all redistributed yang assets to the Shrine's admin
+    // Release all redistributed yang assets to the Shrine's admin, while ensuring
+    // that an amount of yang equivalent to the minimum initial deposit remains in the
+    // protocol to guard against the first depositor front-running exploit.
     #[external]
     fn recall() {
         let sentinel: ISentinelDispatcher = sentinel::read();
