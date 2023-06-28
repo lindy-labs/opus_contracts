@@ -66,7 +66,7 @@ mod Shrine {
         // (yang_id) -> (Total Supply)
         yang_total: LegacyMap::<u32, Wad>,
         // Stores information about the initial yang amount minted to the system
-        initial_yang_amt: LegacyMap::<u32, Wad>,
+        initial_yang_amts: LegacyMap::<u32, Wad>,
         // Number of collateral types accepted by the system.
         // The return value is also the ID of the last added collateral.
         yangs_count: u32,
@@ -1085,6 +1085,12 @@ mod Shrine {
         let mut current_yang_id: u32 = yangs_count::read();
         let mut redistributed_debt: Wad = 0_u128.into();
 
+        let yangs_count: u32 = yangs_count::read();
+        let (shrine_value: Wad, _) = get_shrine_threshold_and_value(current_interval);
+        // Note there is a slight discrepancy where the initial yang amount is not excluded from the value 
+        // of all other troves, but this should not materially impact the percentage calculation
+        let other_troves_total_value: Wad = shrine_value - trove_value;
+
         loop {
             if current_yang_id == 0 {
                 break redistributed_debt;
@@ -1101,20 +1107,10 @@ mod Shrine {
             // containing this yang
             deposits::write((current_yang_id, trove_id), 0_u128.into());
 
-            // Since the amount of assets in the Gate remains constant, decrementing the system's yang 
-            // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating) 
-            // the ratio of asset to yang for the remaining amount of that yang.
-            // 
-            // Example:
-            // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
-            //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
-            // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
-            //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
-            //   in the Gate remains at 100 units.
-            //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
-            //
-            let new_yang_total: Wad = yang_total::read(current_yang_id) - deposited;
-            yang_total::write(current_yang_id, new_yang_total);
+            let total_yang: Wad = yang_total::read(current_yang_id);
+
+            // Get the remainder amount of yangs in all other troves that can be redistributed
+            let other_troves_yang_amt: Wad = total_yang - deposited - initial_yang_amts::read(current_yang_id);
 
             // Calculate (value of yang / trove value) * debt and assign redistributed debt to yang
             let (yang_price, _, _) = get_recent_price_from(current_yang_id, current_interval);
@@ -1134,15 +1130,80 @@ mod Shrine {
                 current_yang_id, redistribution_id - 1
             );
             let adjusted_debt_to_distribute: Wad = debt_to_distribute + last_error;
-            let unit_debt: Wad = adjusted_debt_to_distribute / new_yang_total;
 
-            // Due to loss of precision from fixed point division, the actual debt distributed will be less than
-            // or equal to the amount of debt to distribute.
-            let actual_debt_distributed: Wad = unit_debt * new_yang_total;
-            let new_error: Wad = adjusted_debt_to_distribute - actual_debt_distributed;
-            let current_yang_redistribution = YangRedistribution {
-                unit_debt: unit_debt, error: new_error
-            };
+            // If there is no remainder amount of yangs in other troves for redistribution, redistribute to
+            // all other yangs without rebasing.
+            if other_troves_yang_amt.is_zero() {
+                
+                let mut inner_current_yang_id: u32 = yangs_count;
+
+                // Keep track of the actual debt distributed to calculate error at the end
+                let mut debt_distributed: Wad = WadZeroable::zero();
+                loop {
+                    if inner_current_yang_id == 0 {
+                        break;
+                    }
+
+                    if current_yang_id == yang_id {
+                        inner_current_yang_id -= 1;
+                        continue;
+                    }
+
+                    // Get the total amount of yang excluding the redistributed trove's that will receive
+                    // the redistribution
+                    let other_troves_total_yang_amt: Wad = yang_total::read(inner_current_yang_id) - deposits::read(trove_id, inner_current_yang_id);
+                    let (price, _, _) = get_recent_price_from(inner_current_yang_id, current_interval);
+                    let other_troves_total_yang_value: Wad = other_troves_total_yang_amt * price;
+                    let pct_to_redistribute: Ray = wadray::rdiv_ww(other_troves_total_yang_value, other_troves_total_value);
+
+                    let yang_amt_to_redistribute: Wad = wadray::rmul_wr(deposited, pct_to_redistribute);
+                    let yang_amt_per_other_yang: Wad = yang_amt_to_redistribute / other_troves_total_yang_amt;
+                    // TODO: write yang amt distributed to storage
+
+                    // TODO: collect errors, and decrement total yang amount by the error 
+                    // so that all remaining yangs gain proportionally
+
+                    // Distribute debt 
+                    let debt_to_distribute: Wad = wadray::rmul_wr(adjusted_debt_to_distribute, pct_to_redistribute);
+                    let unit_debt: Wad = debt_to_distribute / other_troves_total_yang_amt;
+                    // TODO: write to storage
+                    
+                    // Keep track of total debt distributed
+                    debt_distributed += unit_debt * other_troves_total_yang_amt;
+
+                    inner_current_yang_id -= 1
+                };
+
+                let new_error: Wad = adjusted_debt_to_distribute - debt_distributed;
+                let current_yang_redistribution = YangRedistribution {
+                    unit_debt: WadZeroable::zero(), error: new_error, exception: true
+                };
+            } else {
+                // Since the amount of assets in the Gate remains constant, decrementing the system's yang 
+                // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating) 
+                // the ratio of asset to yang for the remaining amount of that yang.
+                // 
+                // Example:
+                // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
+                //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
+                // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
+                //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
+                //   in the Gate remains at 100 units.
+                //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
+                //
+                let new_yang_total: Wad = total_yang - deposited;
+                yang_total::write(current_yang_id, new_yang_total);
+
+                let unit_debt: Wad = adjusted_debt_to_distribute / new_yang_total;
+
+                // Due to loss of precision from fixed point division, the actual debt distributed will be less than
+                // or equal to the amount of debt to distribute.
+                let actual_debt_distributed: Wad = unit_debt * new_yang_total;
+                let new_error: Wad = adjusted_debt_to_distribute - actual_debt_distributed;
+                let current_yang_redistribution = YangRedistribution {
+                    unit_debt: unit_debt, error: new_error, exception: false
+                };
+            }
 
             yang_redistributions::write(
                 (current_yang_id, redistribution_id), current_yang_redistribution
