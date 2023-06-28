@@ -15,10 +15,10 @@ mod Shrine {
     use aura::utils::exp::{exp, neg_exp};
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
-    use aura::utils::types::{Trove, YangRedistribution};
+    use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_DECIMALS, WAD_ONE};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 
     //
     // Constants
@@ -118,6 +118,10 @@ mod Shrine {
         // 2. amount of debt to be added to the next redistribution to calculate (1)
         // (yang_id, redistribution_id) -> YangRedistribution{debt_per_wad, debt_to_add_to_next}
         yang_redistributions: LegacyMap::<(u32, u32), YangRedistribution>,
+        // Mapping of recipient yang ID, redistribution ID and redistributed yang ID to
+        // 1. amount of redistributed yang per Wad unit of recipient yang
+        // 2. amount of debt per Wad unit of recipient yang
+        yang_to_yang_redistribution: LegacyMap::<(u32, u32, u32), ExceptionalYangRedistribution>,
         // Keeps track of whether shrine is live or killed
         is_live: bool,
         // Yin storage
@@ -417,7 +421,7 @@ mod Shrine {
         // Update initial yang supply
         // Used upstream to prevent first depositor front running
         yang_total::write(yang_id, initial_yang_amt);
-        initial_yang_amt::write(yang_id, initial_yang_amt);
+        initial_yang_amts::write(yang_id, initial_yang_amt);
 
         // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
 
@@ -1086,7 +1090,7 @@ mod Shrine {
         let mut redistributed_debt: Wad = 0_u128.into();
 
         let yangs_count: u32 = yangs_count::read();
-        let (shrine_value: Wad, _) = get_shrine_threshold_and_value(current_interval);
+        let (_, shrine_value) = get_shrine_threshold_and_value_internal(current_interval);
         // Note there is a slight discrepancy where the initial yang amount is not excluded from the value 
         // of all other troves, but this should not materially impact the percentage calculation
         let other_troves_total_value: Wad = shrine_value - trove_value;
@@ -1108,9 +1112,10 @@ mod Shrine {
             deposits::write((current_yang_id, trove_id), 0_u128.into());
 
             let total_yang: Wad = yang_total::read(current_yang_id);
+            let initial_yang: Wad = initial_yang_amts::read(current_yang_id);
 
             // Get the remainder amount of yangs in all other troves that can be redistributed
-            let other_troves_yang_amt: Wad = total_yang - deposited - initial_yang_amts::read(current_yang_id);
+            let other_troves_yang: Wad = total_yang - deposited - initial_yang;
 
             // Calculate (value of yang / trove value) * debt and assign redistributed debt to yang
             let (yang_price, _, _) = get_recent_price_from(current_yang_id, current_interval);
@@ -1133,10 +1138,11 @@ mod Shrine {
 
             // If there is no remainder amount of yangs in other troves for redistribution, redistribute to
             // all other yangs without rebasing.
-            if other_troves_yang_amt.is_zero() {
-                
+            if other_troves_yang.is_zero() {
                 let mut inner_current_yang_id: u32 = yangs_count;
 
+                // Keep track of actual yang distributed to calculate error at the end
+                let mut yang_distributed: Wad = WadZeroable::zero();
                 // Keep track of the actual debt distributed to calculate error at the end
                 let mut debt_distributed: Wad = WadZeroable::zero();
                 loop {
@@ -1144,40 +1150,69 @@ mod Shrine {
                         break;
                     }
 
-                    if current_yang_id == yang_id {
+                    // Skip yang currently being redistributed since there are no other 
+                    // troves with this yang
+                    if inner_current_yang_id == current_yang_id {
                         inner_current_yang_id -= 1;
                         continue;
                     }
 
                     // Get the total amount of yang excluding the redistributed trove's that will receive
                     // the redistribution
-                    let other_troves_total_yang_amt: Wad = yang_total::read(inner_current_yang_id) - deposits::read(trove_id, inner_current_yang_id);
-                    let (price, _, _) = get_recent_price_from(inner_current_yang_id, current_interval);
+                    let other_troves_total_yang_amt: Wad = yang_total::read(inner_current_yang_id)
+                        - deposits::read((inner_current_yang_id, trove_id));
+                    let (price, _, _) = get_recent_price_from(
+                        inner_current_yang_id, current_interval
+                    );
                     let other_troves_total_yang_value: Wad = other_troves_total_yang_amt * price;
-                    let pct_to_redistribute: Ray = wadray::rdiv_ww(other_troves_total_yang_value, other_troves_total_value);
+                    let pct_to_redistribute: Ray = wadray::rdiv_ww(
+                        other_troves_total_yang_value, other_troves_total_value
+                    );
 
-                    let yang_amt_to_redistribute: Wad = wadray::rmul_wr(deposited, pct_to_redistribute);
-                    let yang_amt_per_other_yang: Wad = yang_amt_to_redistribute / other_troves_total_yang_amt;
-                    // TODO: write yang amt distributed to storage
+                    let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
+                        deposited, pct_to_redistribute
+                    );
+                    let yang_amt_per_other_yang: Wad = yang_amt_to_redistribute
+                        / other_troves_total_yang_amt;
+
+                    // Increment cumulative distributed yang amount in order to calculate error at the end
+                    yang_distributed += other_troves_total_yang_amt * yang_amt_per_other_yang;
 
                     // TODO: collect errors, and decrement total yang amount by the error 
                     // so that all remaining yangs gain proportionally
 
                     // Distribute debt 
-                    let debt_to_distribute: Wad = wadray::rmul_wr(adjusted_debt_to_distribute, pct_to_redistribute);
+                    let debt_to_distribute: Wad = wadray::rmul_wr(
+                        adjusted_debt_to_distribute, pct_to_redistribute
+                    );
                     let unit_debt: Wad = debt_to_distribute / other_troves_total_yang_amt;
-                    // TODO: write to storage
-                    
+
+                    let exc_yang_redistribution = ExceptionalYangRedistribution {
+                        unit_debt: unit_debt, unit_yang: yang_amt_per_other_yang, 
+                    };
+                    yang_to_yang_redistribution::write(
+                        (inner_current_yang_id, redistribution_id, current_yang_id),
+                        exc_yang_redistribution
+                    );
+
                     // Keep track of total debt distributed
                     debt_distributed += unit_debt * other_troves_total_yang_amt;
 
-                    inner_current_yang_id -= 1
+                    inner_current_yang_id -= 1;
                 };
+
+                let yang_error: Wad = deposited - yang_distributed;
+                // decrement total yang amount by the error so that all remaining yangs gain proportionally
+                let new_yang_total: Wad = total_yang - yang_error;
+                yang_total::write(current_yang_id, new_yang_total);
 
                 let new_error: Wad = adjusted_debt_to_distribute - debt_distributed;
                 let current_yang_redistribution = YangRedistribution {
                     unit_debt: WadZeroable::zero(), error: new_error, exception: true
                 };
+                yang_redistributions::write(
+                    (current_yang_id, redistribution_id), current_yang_redistribution
+                );
             } else {
                 // Since the amount of assets in the Gate remains constant, decrementing the system's yang 
                 // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating) 
@@ -1194,7 +1229,13 @@ mod Shrine {
                 let new_yang_total: Wad = total_yang - deposited;
                 yang_total::write(current_yang_id, new_yang_total);
 
-                let unit_debt: Wad = adjusted_debt_to_distribute / new_yang_total;
+                // Note there is a slight discrepancy here because yangs is redistributed by rebasing,
+                // which means the initial yang amount is included, but the distribution of debt excludes
+                // the initial yang amount. However, it is unlikely to have any material impact because
+                // all redistributed debt will be attributed to user troves, with a negligible loss in 
+                // yang assets for these troves as a result of some amount going towards the initial yang 
+                // amount.
+                let unit_debt: Wad = adjusted_debt_to_distribute / other_troves_yang;
 
                 // Due to loss of precision from fixed point division, the actual debt distributed will be less than
                 // or equal to the amount of debt to distribute.
@@ -1203,11 +1244,10 @@ mod Shrine {
                 let current_yang_redistribution = YangRedistribution {
                     unit_debt: unit_debt, error: new_error, exception: false
                 };
+                yang_redistributions::write(
+                    (current_yang_id, redistribution_id), current_yang_redistribution
+                );
             }
-
-            yang_redistributions::write(
-                (current_yang_id, redistribution_id), current_yang_redistribution
-            );
 
             // If debt was rounded up, meaning it is now fully redistributed, skip the remaining yangs
             // Otherwise, continue the iteration
