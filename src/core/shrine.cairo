@@ -65,6 +65,8 @@ mod Shrine {
         // Stores information about the total supply for each yang
         // (yang_id) -> (Total Supply)
         yang_total: LegacyMap::<u32, Wad>,
+        // Stores information about the initial yang amount minted to the system
+        initial_yang_amt: LegacyMap::<u32, Wad>,
         // Number of collateral types accepted by the system.
         // The return value is also the ID of the last added collateral.
         yangs_count: u32,
@@ -415,6 +417,7 @@ mod Shrine {
         // Update initial yang supply
         // Used upstream to prevent first depositor front running
         yang_total::write(yang_id, initial_yang_amt);
+        initial_yang_amt::write(yang_id, initial_yang_amt);
 
         // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
 
