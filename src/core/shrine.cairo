@@ -1454,8 +1454,8 @@ mod Shrine {
                 let deposited: Wad = *yang_amts_copy.at(current_yang_id - 1);
 
                 // If the trove has deposited a yang, then it will be a normal redistribution.
-                // If the redistribution involved a yang that no other troves deposited, then check 
-                // if the current yang is the redistributed yang.
+                // Otherwise, if it is an exceptional redistribution (i.e. involved a yang that 
+                // no other troves deposited), check if the current yang is the redistributed yang.
                 if deposited.is_non_zero() {
                     // Get the amount of debt per yang for the current redistribution
                     let redistribution: YangRedistribution = yang_redistributions::read(
