@@ -990,7 +990,6 @@ mod Shrine {
                         if deposits::read((*yang_id, trove_id)).is_non_zero() {
                             continue;
                         }
-
                         deposits::write((*yang_id, trove_id), yang_amt);
                     },
                     Option::None(_) => {
@@ -1123,7 +1122,6 @@ mod Shrine {
         }
     }
 
-
     // Loop through yangs for the trove:
     // 1. set the deposit to 0
     // 2. calculate the redistributed debt for that yang and fixed point division error, and write to storage
@@ -1145,9 +1143,27 @@ mod Shrine {
         // of all other troves, but this should not have a material impact on calculating the percentages.
         let other_troves_total_value: Wad = shrine_value - trove_value;
 
+        // For yangs that cannot be redistributed via rebasing because no other troves
+        // has deposited that yang, keep track of their yang IDs so that the redistributed 
+        // trove's yang amount can be set to 0 after the main loop. The troves' yang amount
+        // cannot be modified while in the main loop for such yangs because it would result 
+        // in the amount of yangs for other troves to be calculated wrongly.
+        //
+        // For example, assuming the redistributed trove has yang1, yang2 and yang3, but the
+        // only other recipient trove has yang2:
+        // 1) First, redistribute yang3 to yang1 (0%) and yang2 (100%). Here, assuming, we set
+        //    yang3 amount for redistributed trove to 0. Total yang3 amount remains unchanged 
+        //    because they have been reallocated to remaining yang2 in other troves.
+        // 2) Next, redistribute yang2 as per the normal flow.
+        // 3) Finally, redistribute yang1. Here, we expect the yang2 to receive 100%. However,
+        //    since we set yang3 amount for redistributed trove to 0, but total yang3 amount 
+        //    remains unchanged, the total amount of yang3 in other troves is now wrongly 
+        //    calculated to be the total amount of yang3 in the system.
+        let mut exception_yang_ids: Array<u32> = Default::default();
+
         loop {
             if outer_yang_id == 0 {
-                break redistributed_debt;
+                break;
             }
 
             // Skip over this yang if it hasn't been deposited in the trove
@@ -1156,11 +1172,6 @@ mod Shrine {
                 outer_yang_id -= 1;
                 continue;
             }
-
-            // Set trove's deposit to zero as it will be distributed amongst all other troves 
-            // containing this yang, either via rebasing (if there are other troves with the same yang)
-            // or by reallocating (if there are no other troves with the same yang)
-            deposits::write((outer_yang_id, trove_id), 0_u128.into());
 
             let total_yang: Wad = yang_total::read(outer_yang_id);
             let initial_yang: Wad = initial_yang_amts::read(outer_yang_id);
@@ -1193,6 +1204,8 @@ mod Shrine {
             // Otherwise, redistribute yangs by rebasing, and reallocate debt to other troves
             // with the same yang.
             if other_troves_yang.is_zero() {
+                exception_yang_ids.append(outer_yang_id);
+
                 let mut inner_yang_id: u32 = yangs_count;
 
                 // Keep track of actual yang distributed to calculate error at the end
@@ -1213,11 +1226,17 @@ mod Shrine {
 
                     // Get the total amount of yang excluding the redistributed trove's that will receive
                     // the redistribution
+                    let initial_other_yang_amt: Wad = initial_yang_amts::read(inner_yang_id);
                     let other_troves_total_yang_amt: Wad = yang_total::read(inner_yang_id)
                         - deposits::read((inner_yang_id, trove_id))
-                        - initial_yang_amts::read(inner_yang_id);
+                        - initial_other_yang_amt;
                     let (price, _, _) = get_recent_price_from(inner_yang_id, current_interval);
-                    let other_troves_total_yang_value: Wad = other_troves_total_yang_amt * price;
+
+                    // Note that we include the initial yang amount here to calculate the percentage
+                    // because the total Shrine value will include the initial yang amounts too
+                    let other_troves_total_yang_value: Wad = (other_troves_total_yang_amt
+                        + initial_other_yang_amt)
+                        * price;
                     let pct_to_redistribute: Ray = wadray::rdiv_ww(
                         other_troves_total_yang_value, other_troves_total_value
                     );
@@ -1260,9 +1279,14 @@ mod Shrine {
                 is_exceptional_redistribution::write(redistribution_id, true);
 
                 let yang_error: Wad = deposited - actual_yang_distributed;
+
                 // decrement total yang amount by the error so that all remaining yangs gain proportionally
                 let new_yang_total: Wad = total_yang - yang_error;
                 yang_total::write(outer_yang_id, new_yang_total);
+                // Update trove deposits with error to prevent underflow when calculating other trove yangs
+                // in subsequent loops
+                // See note above the outer loop on why trove deposit cannot be set to 0 here.
+                deposits::write((outer_yang_id, trove_id), deposited - yang_error);
 
                 let new_error: Wad = adjusted_debt_to_distribute - actual_debt_distributed;
 
@@ -1287,6 +1311,11 @@ mod Shrine {
                 //   in the Gate remains at 100 units.
                 //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
                 //
+                // Set trove's deposit to zero as it will be distributed amongst all other troves 
+                // containing this yang, either via rebasing (if there are other troves with the same yang)
+                // or by reallocating (if there are no other troves with the same yang)
+                deposits::write((outer_yang_id, trove_id), 0_u128.into());
+
                 let new_yang_total: Wad = total_yang - deposited;
                 yang_total::write(outer_yang_id, new_yang_total);
 
@@ -1313,11 +1342,30 @@ mod Shrine {
             // If debt was rounded up, meaning it is now fully redistributed, skip the remaining yangs
             // Otherwise, continue the iteration
             if debt_to_distribute != raw_debt_to_distribute {
-                break redistributed_debt;
+                break;
             }
 
             outer_yang_id -= 1;
-        }
+        };
+
+        let mut exception_yang_ids: Span<u32> = exception_yang_ids.span();
+        loop {
+            match exception_yang_ids.pop_front() {
+                Option::Some(yang_id) => {
+                    // This must be done at the end so that we can properly calculate the total yang amount in 
+                    // other troves in case of an exceptional redistribution.
+                    // Set trove's deposit to zero as it will be distributed amongst all other troves 
+                    // containing this yang, either via rebasing (if there are other troves with the same yang)
+                    // or by reallocating (if there are no other troves with the same yang)
+                    deposits::write((*yang_id, trove_id), 0_u128.into());
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        redistributed_debt
     }
 
     // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.
