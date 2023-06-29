@@ -482,6 +482,9 @@ mod TestShrineRedistribution {
         let (_, _, before_recipient_trove1_value, before_recipient_trove1_debt) = shrine.get_trove_info(recipient_trove1);
         let (_, _, before_recipient_trove2_value, before_recipient_trove2_debt) = shrine.get_trove_info(recipient_trove2);
 
+        // Note that since there is only one yang in recipient troves, the check here is a lot simpler because
+        // all redistributions will follow the same proportion. See the next test with two recipient yangs for 
+        // a more detailed calculation when there is more than one recipient yang with different proportions 
         let total_recipient_troves_value: Wad = before_recipient_trove1_value + before_recipient_trove2_value;
         let expected_recipient_trove1_pct: Ray = wadray::rdiv_ww(before_recipient_trove1_value, total_recipient_troves_value);
         let expected_recipient_trove2_pct: Ray = wadray::rdiv_ww(before_recipient_trove2_value, total_recipient_troves_value);
@@ -503,7 +506,7 @@ mod TestShrineRedistribution {
         assert(
             shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id'
         );
-        // Trigger an update in trove 2 with an empty melt
+        // Trigger an update in recipient troves with an empty melt
         shrine.melt(trove1_owner, recipient_trove1, WadZeroable::zero());
         shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
 
@@ -543,7 +546,7 @@ mod TestShrineRedistribution {
 
         assert(shrine.get_deposit(yang2_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 2 left');
 
-        assert(shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 3 left');
+        assert(shrine.get_deposit(yang3_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 3 left');
         let recipient_trove1_yang3_amt: Wad = shrine.get_deposit(yang3_addr, recipient_trove1);
         let expected_recipient_trove1_yang3_amt: Wad = wadray::rmul_wr(ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct);
         common::assert_equalish(
@@ -671,7 +674,7 @@ mod TestShrineRedistribution {
         assert(
             shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id'
         );
-        // Trigger an update in trove 2 with an empty melt
+        // Trigger an update in recipient troves with an empty melt
         shrine.melt(trove1_owner, recipient_trove1, WadZeroable::zero());
         shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
 
@@ -682,7 +685,7 @@ mod TestShrineRedistribution {
         let (_, _, after_recipient_trove1_value, after_recipient_trove1_debt) = shrine.get_trove_info(recipient_trove1);
         let (_, _, after_recipient_trove2_value, after_recipient_trove2_debt) = shrine.get_trove_info(recipient_trove2);
 
-        // Check that troves 2 and 3 receives trove 1's yang1 and yang3
+        // Check that recipient troves receive trove 1's yang1
         assert(shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 1 left');
         let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
         let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct);
@@ -740,7 +743,8 @@ mod TestShrineRedistribution {
         // Sanity check
         assert(redistributed_yang1_debt + redistributed_yang2_debt + redistributed_yang3_debt < redistributed_trove_debt, 'should not exceed trove debt');
 
-        // Total value of yangs 2 and 3 minus redistributed trove's yangs
+        // Calculate the percentage of debt redistributed to each yang, and each recipient trove's entitlement
+        // to each portion.
         let other_troves_value: Wad = before_recipient_trove1_value + before_recipient_trove2_value;
         let other_troves_yang2_amt: Wad = (TROVE2_YANG2_DEPOSIT + TROVE3_YANG2_DEPOSIT).into();
         let other_troves_yang2_value: Wad = other_troves_yang2_amt * yang2_price;
