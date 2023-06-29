@@ -125,6 +125,7 @@ mod TestShrine {
         let mut exp_start_cumulative_prices: Array<Wad> = Default::default();
         exp_start_cumulative_prices.append(ShrineUtils::YANG1_START_PRICE.into());
         exp_start_cumulative_prices.append(ShrineUtils::YANG2_START_PRICE.into());
+        exp_start_cumulative_prices.append(ShrineUtils::YANG3_START_PRICE.into());
         let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
 
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);

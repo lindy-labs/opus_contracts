@@ -602,6 +602,7 @@ mod TestShrineCompound {
         let mut yang_addrs: Array<ContractAddress> = Default::default();
         yang_addrs.append(yang1_addr);
         yang_addrs.append(yang2_addr);
+        yang_addrs.append(yang3_addr);
 
         // Setup base rates for calling `Shrine.update_rates`.
         // The base rates are set in the following format:
@@ -629,6 +630,7 @@ mod TestShrineCompound {
         let mut first_rate_history_to_compound: Array<Ray> = Default::default();
         first_rate_history_to_compound.append(ShrineUtils::YANG1_BASE_RATE.into());
         first_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
+        first_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
         yang_base_rates_history_to_compound.append(first_rate_history_to_compound.span());
 
         let mut first_rate_history_to_update: Array<Ray> = Default::default();
@@ -641,6 +643,9 @@ mod TestShrineCompound {
 
         first_rate_history_to_update.append((RAY_SCALE + 1).into());
         second_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
+
+        first_rate_history_to_update.append((RAY_SCALE + 1).into());
+        second_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
 
         yang_base_rates_history_to_update.append(first_rate_history_to_update.span());
         yang_base_rates_history_to_compound.append(second_rate_history_to_compound.span());
@@ -656,6 +661,9 @@ mod TestShrineCompound {
         second_rate_history_to_update.append(yang2_second_rate_update);
         third_rate_history_to_compound.append(yang2_second_rate_update);
 
+        second_rate_history_to_update.append((RAY_SCALE + 1).into());
+        third_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
+
         yang_base_rates_history_to_update.append(second_rate_history_to_update.span());
         yang_base_rates_history_to_compound.append(third_rate_history_to_compound.span());
 
@@ -669,6 +677,9 @@ mod TestShrineCompound {
 
         third_rate_history_to_update.append((RAY_SCALE + 1).into());
         fourth_rate_history_to_compound.append(yang2_second_rate_update);
+
+        third_rate_history_to_update.append((RAY_SCALE + 1).into());
+        fourth_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
 
         yang_base_rates_history_to_update.append(third_rate_history_to_update.span());
         yang_base_rates_history_to_compound.append(fourth_rate_history_to_compound.span());
@@ -718,6 +729,7 @@ mod TestShrineCompound {
         let mut yangs_deposited: Array<Wad> = Default::default();
         yangs_deposited.append(yang1_deposit_amt);
         yangs_deposited.append(yang2_deposit_amt);
+        yangs_deposited.append(WadZeroable::zero());
 
         let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> = yang_base_rates_history_to_update
             .span();
@@ -759,6 +771,11 @@ mod TestShrineCompound {
                 shrine, yang2_addr, era_start_interval, era_end_interval
             );
             avg_yang_prices_for_era.append(yang2_avg_price);
+
+            let yang3_avg_price: Wad = ShrineUtils::get_avg_yang_price(
+                shrine, yang3_addr, era_start_interval, era_end_interval
+            );
+            avg_yang_prices_for_era.append(yang3_avg_price);
 
             avg_yang_prices_by_era.append(avg_yang_prices_for_era.span());
 
