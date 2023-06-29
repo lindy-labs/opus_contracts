@@ -987,10 +987,9 @@ mod Shrine {
 
                         // Skip if trove already had yang deposited, meaning that redistribution
                         // would have occurred via rebasing
-                        if deposits::read((*yang_id, trove_id)).is_non_zero() {
-                            continue;
+                        if deposits::read((*yang_id, trove_id)).is_zero() {
+                            deposits::write((*yang_id, trove_id), yang_amt);
                         }
-                        deposits::write((*yang_id, trove_id), yang_amt);
                     },
                     Option::None(_) => {
                         break;
