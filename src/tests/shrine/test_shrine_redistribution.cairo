@@ -831,6 +831,34 @@ mod TestShrineRedistribution {
             'wrong recipients debt increment',
         );
 
+        // Check invariant that redistributed unit debt should be equal to all debt redistributed to troves
+        // and the errors for all yangs
+        let mut cumulative_error: Wad = WadZeroable::zero();
+        let mut yangs = ShrineUtils::three_yang_addrs();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let yang_redistribution = shrine.get_redistribution_for_yang(*yang, expected_redistribution_id);
+                    yang_redistribution.error.print();
+                    cumulative_error += yang_redistribution.error;
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        redistributed_trove_debt.print();
+        (recipient_troves_debt_increment + cumulative_error).print();
+
+        // TODO: Ideally, this should be strict equality but there is a loss of precision. Is this acceptable?
+        common::assert_equalish(
+            redistributed_trove_debt,
+            recipient_troves_debt_increment + cumulative_error,
+            4_u128.into(), // error_margin
+            'redistribution invariant failed'
+        );
+
         // Note that we cannot fully check the updated value of the recipient trove here because
         // we need the oracle to update the yang price for yang2 and yang3 based on the new asset 
         // amount yang, but we can check the increase in value from yang1.
