@@ -800,8 +800,8 @@ mod TestShrineRedistribution {
         );
 
         // Note that we cannot fully check the updated value of the recipient trove here because
-        // we need the oracle to update the yang price for yang2 based on the new asset amount per 
-        // yang2, but we can check the increase in value from yang1 and yang3.
+        // we need the oracle to update the yang price for yang2 and yang3 based on the new asset 
+        // amount yang, but we can check the increase in value from yang1.
         let expected_recipient_trove1_value: Wad = before_recipient_trove1_value +
             (recipient_trove1_yang1_amt * yang1_price);
         common::assert_equalish(
