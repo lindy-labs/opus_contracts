@@ -26,10 +26,12 @@ mod TestShrineRedistribution {
 
     const TROVE2_YANG1_DEPOSIT: u128 = 2370000000000000000; // 2.37 (Wad)
     const TROVE2_YANG2_DEPOSIT: u128 = 8310000000000000000; // 8.31 (Wad)
+    const TROVE2_YANG3_DEPOSIT: u128 = 1320000000000000000; // 1.32 (Wad)
     const TROVE2_FORGE_AMT: u128 = 3456000000000000000000; // 3_456 (Wad)
 
     const TROVE3_YANG1_DEPOSIT: u128 = 4950000000000000000; // 4.95 (Wad)
     const TROVE3_YANG2_DEPOSIT: u128 = 6500000000000000000; // 6.5 (Wad)
+    const TROVE3_YANG3_DEPOSIT: u128 = 2111000000000000000; // 2.111 (Wad)
     const TROVE3_FORGE_AMT: u128 = 2222000000000000000000; // 2_222 (Wad)
 
     fn setup_trove1(shrine: IShrineDispatcher) {
@@ -443,11 +445,11 @@ mod TestShrineRedistribution {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_shrine_one_exceptional_redistribution() {
+    fn test_shrine_one_exceptional_redistribution_one_recipient_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
-        // while the recipient trove (trove 2) uses only yang 2.
+        // while the recipient troves (trove 2 and 3) uses only yang 2.
         let yang1_addr = ShrineUtils::yang1_addr();
         let yang2_addr = ShrineUtils::yang2_addr();
         let yang3_addr = ShrineUtils::yang3_addr();
@@ -466,11 +468,6 @@ mod TestShrineRedistribution {
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
                 0_u128.into()
             );
-
-        // Sanity check
-        assert(shrine.get_deposit(yang1_addr, redistributed_trove).is_non_zero(), '!!!');
-        assert(shrine.get_deposit(yang2_addr, redistributed_trove).is_non_zero(), '!!!');
-        assert(shrine.get_deposit(yang3_addr, redistributed_trove).is_non_zero(), '!!!');
 
         let trove2_owner = common::trove2_owner_addr();
         let recipient_trove1: u64 = common::TROVE_2;
@@ -519,10 +516,24 @@ mod TestShrineRedistribution {
 
         // Check that troves 2 and 3 receives trove 1's yang1 and yang3
         assert(shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 1 left');
-        assert(shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 1 left');
-
         let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
+        let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct);
+        common::assert_equalish(
+            recipient_trove1_yang1_amt,
+            expected_recipient_trove1_yang1_amt,
+            100_u128.into(), // error margin
+            'wrong recipient trove 1 yang 1'
+        );
+
         let recipient_trove2_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove2);
+        let expected_recipient_trove2_yang1_amt: Wad = wadray::rmul_wr(ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove2_pct);
+        common::assert_equalish(
+            recipient_trove2_yang1_amt,
+            expected_recipient_trove2_yang1_amt,
+            100_u128.into(), // error margin
+            'wrong recipient trove 2 yang 1'
+        );
+
         common::assert_equalish(
             recipient_trove1_yang1_amt + recipient_trove2_yang1_amt,
             ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), 
@@ -534,7 +545,22 @@ mod TestShrineRedistribution {
 
         assert(shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 3 left');
         let recipient_trove1_yang3_amt: Wad = shrine.get_deposit(yang3_addr, recipient_trove1);
+        let expected_recipient_trove1_yang3_amt: Wad = wadray::rmul_wr(ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove1_pct);
+        common::assert_equalish(
+            recipient_trove1_yang3_amt,
+            expected_recipient_trove1_yang3_amt,
+            100_u128.into(), // error margin
+            'wrong recipient trove 1 yang 3'
+        );
+    
         let recipient_trove2_yang3_amt: Wad = shrine.get_deposit(yang3_addr, recipient_trove2);
+        let expected_recipient_trove2_yang3_amt: Wad = wadray::rmul_wr(ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), expected_recipient_trove2_pct);
+        common::assert_equalish(
+            recipient_trove2_yang3_amt,
+            expected_recipient_trove2_yang3_amt,
+            100_u128.into(), // error margin
+            'wrong recipient trove 2 yang 3'
+        );
         common::assert_equalish(
             recipient_trove1_yang3_amt + recipient_trove2_yang3_amt,
             ShrineUtils::TROVE1_YANG3_DEPOSIT.into(), 
@@ -575,6 +601,135 @@ mod TestShrineRedistribution {
         let expected_recipient_trove1_value: Wad = before_recipient_trove1_value +
             (recipient_trove1_yang1_amt * yang1_price) + (recipient_trove1_yang3_amt * yang3_price);
 
+        common::assert_equalish(
+            after_recipient_trove1_value,
+            expected_recipient_trove1_value, 
+            100_u128.into(), // error margin
+            'wrong recipient trove1 value'
+        );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_shrine_one_exceptional_redistribution_two_recipient_yangs() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
+        // while the recipient troves (troves 2 and 3) use only yang2 and yang3
+        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang2_addr = ShrineUtils::yang2_addr();
+        let yang3_addr = ShrineUtils::yang3_addr();
+
+        let trove1_owner = common::trove1_owner_addr();
+        let redistributed_trove: u64 = common::TROVE_1;
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(yang1_addr, redistributed_trove, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, redistributed_trove, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
+        shrine.deposit(yang3_addr, redistributed_trove, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
+        shrine
+            .forge(
+                trove1_owner,
+                redistributed_trove,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                0_u128.into()
+            );
+
+        let trove2_owner = common::trove2_owner_addr();
+        let recipient_trove1: u64 = common::TROVE_2;
+        shrine.deposit(yang2_addr, recipient_trove1, TROVE2_YANG2_DEPOSIT.into());
+        shrine.deposit(yang2_addr, recipient_trove1, TROVE2_YANG3_DEPOSIT.into());
+        shrine.forge(trove2_owner, recipient_trove1, TROVE2_FORGE_AMT.into(), 0_u128.into());
+
+        let trove3_owner = common::trove3_owner_addr();
+        let recipient_trove2: u64 = common::TROVE_3;
+        shrine.deposit(yang2_addr, recipient_trove2, TROVE3_YANG2_DEPOSIT.into());
+        shrine.deposit(yang2_addr, recipient_trove2, TROVE3_YANG3_DEPOSIT.into());
+        shrine.forge(trove3_owner, recipient_trove2, TROVE3_FORGE_AMT.into(), 0_u128.into());
+
+        let (_, _, before_recipient_trove1_value, before_recipient_trove1_debt) = shrine.get_trove_info(recipient_trove1);
+        let (_, _, before_recipient_trove2_value, before_recipient_trove2_debt) = shrine.get_trove_info(recipient_trove2);
+
+        let total_recipient_troves_value: Wad = before_recipient_trove1_value + before_recipient_trove2_value;
+        let expected_recipient_trove1_pct: Ray = wadray::rdiv_ww(before_recipient_trove1_value, total_recipient_troves_value);
+        let expected_recipient_trove2_pct: Ray = wadray::rdiv_ww(before_recipient_trove2_value, total_recipient_troves_value);
+
+        // Simulate purge with 0 yin to update the trove's debt
+        let trove1_owner = common::trove1_owner_addr();
+        let (_, _, redistributed_trove_value, redistributed_trove_debt) = shrine.get_trove_info(common::TROVE_1);
+        shrine.melt(trove1_owner, common::TROVE_1, WadZeroable::zero());
+
+        assert(shrine.get_redistributions_count() == 0, 'wrong start state');
+        shrine.redistribute(common::TROVE_1);
+
+        let expected_redistribution_id: u32 = 1;
+        assert(
+            shrine.get_redistributions_count() == expected_redistribution_id,
+            'wrong redistribution count'
+        );
+
+        assert(
+            shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id'
+        );
+        // Trigger an update in trove 2 with an empty melt
+        shrine.melt(trove1_owner, recipient_trove1, WadZeroable::zero());
+        shrine.melt(trove1_owner, recipient_trove2, WadZeroable::zero());
+
+        // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
+        assert(shrine.get_trove_redistribution_id(recipient_trove1) == 1, 'wrong id');
+        assert(shrine.get_trove_redistribution_id(recipient_trove2) == 1, 'wrong id');
+
+        let (_, _, after_recipient_trove1_value, after_recipient_trove1_debt) = shrine.get_trove_info(recipient_trove1);
+        let (_, _, after_recipient_trove2_value, after_recipient_trove2_debt) = shrine.get_trove_info(recipient_trove2);
+
+        // Check that troves 2 and 3 receives trove 1's yang1 and yang3
+        assert(shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 1 left');
+        let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
+        let recipient_trove2_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove2);
+        common::assert_equalish(
+            recipient_trove1_yang1_amt + recipient_trove2_yang1_amt,
+            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), 
+            100_u128.into(), // error margin
+            'wrong recipient troves yang 1'
+        );
+
+        assert(shrine.get_deposit(yang2_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 2 left');
+        assert(shrine.get_deposit(yang3_addr, redistributed_trove) == WadZeroable::zero(), 'should be 0 yang 3 left');
+
+        // Check that recipient troves receives their proportion of trove 1's entire debt
+        let expected_recipient_trove1_debt: Wad = before_recipient_trove1_debt + wadray::rmul_wr(redistributed_trove_debt, expected_recipient_trove1_pct);
+        common::assert_equalish(
+            after_recipient_trove1_debt,
+            expected_recipient_trove1_debt, 
+            100_u128.into(), // error margin
+            'wrong recipient trove 1 debt',
+        );
+
+        let expected_recipient_trove2_debt: Wad = before_recipient_trove2_debt + wadray::rmul_wr(redistributed_trove_debt, expected_recipient_trove2_pct);
+        common::assert_equalish(
+            after_recipient_trove2_debt,
+            expected_recipient_trove2_debt, 
+            100_u128.into(), // error margin
+            'wrong recipient trove 2 debt',
+        );
+
+        let recipient_troves_debt_increment: Wad = (after_recipient_trove1_debt - before_recipient_trove1_debt) + (after_recipient_trove2_debt - before_recipient_trove2_debt);
+        common::assert_equalish(
+            redistributed_trove_debt,
+            recipient_troves_debt_increment, 
+            100_u128.into(), // error margin
+            'wrong recipients debt increment',
+        );
+
+        // Note that we cannot fully check the updated value of the recipient trove here because
+        // we need the oracle to update the yang price for yang2 based on the new asset amount per 
+        // yang2, but we can check the increase in value from yang1 and yang3.
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
+        let expected_recipient_trove1_value: Wad = before_recipient_trove1_value +
+            (recipient_trove1_yang1_amt * yang1_price);
+
+        after_recipient_trove1_value.print();
+        expected_recipient_trove1_value.print();
         common::assert_equalish(
             after_recipient_trove1_value,
             expected_recipient_trove1_value, 
