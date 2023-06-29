@@ -266,12 +266,17 @@ mod Shrine {
         }
 
         let compounded_debt: Wad = compound(trove_id, trove, interval);
-        let (yang_ids, yang_amts, compounded_debt_with_redistributed_debt) =
+        let (
+            yang_ids,
+            yang_amts,
+            compounded_debt_with_redistributed_debt,
+            has_exceptional_redistributions
+        ) =
             pull_redistributed_debt_and_yangs(
             trove_id, yang_ids, yang_amts, compounded_debt, redistributions_count::read()
         );
 
-        if compounded_debt_with_redistributed_debt != compounded_debt {
+        if has_exceptional_redistributions {
             let (new_threshold, new_value) = get_custom_trove_threshold_and_value(
                 yang_ids, yang_amts, interval
             );
@@ -1000,11 +1005,35 @@ mod Shrine {
         // Pull undistributed debt and update state
         let current_redistribution_id: u32 = redistributions_count::read();
         let (yang_ids, yang_amts) = get_trove_deposits(trove_id);
-        let (yang_ids, yang_amts, new_trove_debt) = pull_redistributed_debt_and_yangs(
+        let (mut yang_ids, mut yang_amts, new_trove_debt, has_exceptional_redistributions) =
+            pull_redistributed_debt_and_yangs(
             trove_id, yang_ids, yang_amts, compounded_trove_debt, current_redistribution_id
         );
 
-        // TODO: write updated yang_amts to trove
+        // If there was any exceptional redistribution, write updated yang_amts to trove
+        if has_exceptional_redistributions {
+            loop {
+                match yang_ids.pop_front() {
+                    Option::Some(yang_id) => {
+                        let yang_amt: Wad = *yang_amts.pop_front().unwrap();
+                        if yang_amt.is_zero() {
+                            continue;
+                        }
+
+                        // Skip if trove already had yang deposited, meaning that redistribution
+                        // would have occurred via rebasing
+                        if deposits::read((*yang_id, trove_id)).is_non_zero() {
+                            continue;
+                        }
+
+                        deposits::write((*yang_id, trove_id), yang_amt);
+                    },
+                    Option::None(_) => {
+                        break;
+                    },
+                };
+            };
+        }
 
         // Update trove
         let updated_trove: Trove = Trove {
@@ -1383,18 +1412,20 @@ mod Shrine {
     // 1. an ordered array of yang IDs,
     // 2. an ordered array of yang amounts including any exceptional redistributions
     // 3. updated redistributed debt, if any, otherwise it would be equivalent to the trove debt.
+    // 4. a boolean flag indicating whether there was any exceptional redistributions
     fn pull_redistributed_debt_and_yangs(
         trove_id: u64,
         yang_ids: Span<u32>,
         yang_amts: Span<Wad>,
         mut trove_debt: Wad,
         current_redistribution_id: u32
-    ) -> (Span<u32>, Span<Wad>, Wad) {
+    ) -> (Span<u32>, Span<Wad>, Wad, bool) {
+        let mut has_exceptional_redistributions: bool = false;
         let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
 
         // Early termination if no redistributions since trove was last updated
         if current_redistribution_id == trove_last_redistribution_id {
-            return (yang_ids, yang_amts, trove_debt);
+            return (yang_ids, yang_amts, trove_debt, has_exceptional_redistributions);
         }
 
         // Outer loop iterating over the trove's yangs
@@ -1435,6 +1466,8 @@ mod Shrine {
                         trove_debt += redistribution.unit_debt * deposited;
                     }
                 } else if is_exceptional {
+                    has_exceptional_redistributions = true;
+
                     // Get the amount of debt per yang for the current redistribution
                     let redistribution: YangRedistribution = yang_redistributions::read(
                         (current_yang_id, tmp_redistribution_id)
@@ -1492,7 +1525,7 @@ mod Shrine {
             tmp_redistribution_id += 1;
         };
 
-        (yang_ids, yang_amts_copy, trove_debt)
+        (yang_ids, yang_amts_copy, trove_debt, has_exceptional_redistributions)
     }
 
     // Returns the price for `yang_id` at `interval` if it is non-zero.
