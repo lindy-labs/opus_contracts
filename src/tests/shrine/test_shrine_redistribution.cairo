@@ -11,6 +11,7 @@ mod TestShrineRedistribution {
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::serde;
+    use aura::utils::types::{ExceptionalYangRedistribution, YangRedistribution};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable};
@@ -205,10 +206,10 @@ mod TestShrineRedistribution {
                     }
 
                     let expected_unit_debt = expected_yang_debt / remaining_yang;
-                    let unit_debt = shrine
-                        .get_redistributed_unit_debt_for_yang(*yang, expected_redistribution_id);
+                    let redistribution = shrine
+                        .get_redistribution_for_yang(*yang, expected_redistribution_id);
                     common::assert_equalish(
-                        expected_unit_debt, unit_debt, 1_u128.into(), 'wrong unit debt'
+                        expected_unit_debt, redistribution.unit_debt, 1_u128.into(), 'wrong unit debt'
                     );
 
                     expected_recipient_trove_debt_increment += recipient_trove_yang_deposit
@@ -423,9 +424,9 @@ mod TestShrineRedistribution {
         );
         assert(
             shrine
-                .get_redistributed_unit_debt_for_yang(
+                .get_redistribution_for_yang(
                     yang1_addr, expected_redistribution_id
-                ) == WadZeroable::zero(),
+                ).unit_debt == WadZeroable::zero(),
             'should be skipped'
         );
 
@@ -436,9 +437,9 @@ mod TestShrineRedistribution {
         let expected_unit_debt_for_yang2 = trove2_debt / expected_remaining_yang2;
         assert(
             shrine
-                .get_redistributed_unit_debt_for_yang(
+                .get_redistribution_for_yang(
                     yang2_addr, expected_redistribution_id
-                ) == expected_unit_debt_for_yang2,
+                ).unit_debt == expected_unit_debt_for_yang2,
             'wrong unit debt'
         );
     }
@@ -594,6 +595,33 @@ mod TestShrineRedistribution {
             recipient_troves_debt_increment, 
             100_u128.into(), // error margin
             'wrong recipients debt increment',
+        );
+
+        // Check invariant that redistributed unit debt should be equal to all debt redistributed to troves
+        // and the errors for all yangs
+        let mut cumulative_error: Wad = WadZeroable::zero();
+        let mut yangs = ShrineUtils::three_yang_addrs();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let yang_redistribution = shrine.get_redistribution_for_yang(*yang, expected_redistribution_id);
+                    yang_redistribution.error.print();
+                    cumulative_error += yang_redistribution.error;
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+
+        // TODO: Ideally, this should be strict equality but there is a loss of precision. Is this acceptable?
+        //       Even if we move to Ray, we will still be off by 1. It could be that we could eliminate it if we 
+        //       move to 45 decimal places.
+        common::assert_equalish(
+            redistributed_trove_debt,
+            recipient_troves_debt_increment + cumulative_error,
+            2_u128.into(), // error_margin
+            'redistribution invariant failed'
         );
 
         // Note that we cannot fully check the updated value of the recipient trove here because

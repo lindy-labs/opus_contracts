@@ -2,7 +2,7 @@ use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::Trove;
+use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangRedistribution};
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -21,7 +21,12 @@ trait IShrine {
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
     fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;
-    fn get_redistributed_unit_debt_for_yang(yang: ContractAddress, redistribution_id: u32) -> Wad;
+    fn get_redistribution_for_yang(
+        yang: ContractAddress, redistribution_id: u32
+    ) -> YangRedistribution;
+    fn get_exceptional_redistribution_for_yang_to_yang(
+        recipient_yang: ContractAddress, redistribution_id: u32, redistributed_yang: ContractAddress
+    ) -> ExceptionalYangRedistribution;
     fn get_live() -> bool;
     // external
     fn add_yang(

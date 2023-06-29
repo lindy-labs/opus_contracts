@@ -12,14 +12,14 @@ struct Trove {
     last_rate_era: u64,
 }
 
-#[derive(Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct YangRedistribution {
     unit_debt: Wad, // Amount of debt in wad to be distributed to each wad unit of yang
     error: Wad, // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
     exception: bool, // Whether the exception flow is triggered to redistribute the yang across all yangs
 }
 
-#[derive(Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct ExceptionalYangRedistribution {
     unit_debt: Wad, // Amount of debt to be distributed to each wad unit of recipient yang
     unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
