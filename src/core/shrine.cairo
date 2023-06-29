@@ -115,7 +115,7 @@ mod Shrine {
         trove_redistribution_id: LegacyMap::<u64, u32>,
         // Keeps track of whether the redistribution involves at least one yang that 
         // no other troves has deposited.
-        // (trove_id) -> (Is exceptional redistribution)
+        // (redistribution_id) -> (Is exceptional redistribution)
         is_exceptional_redistribution: LegacyMap::<u32, bool>,
         // Mapping of yang ID and redistribution ID to
         // 1. amount of debt in Wad to be redistributed to each Wad unit of yang
@@ -244,10 +244,7 @@ mod Shrine {
         // Get threshold and trove value
         let (mut threshold, mut value) = get_trove_threshold_and_value_internal(trove_id, interval);
 
-        // Calculate debt
         let trove: Trove = troves::read(trove_id);
-
-        let (yang_ids, yang_amts) = get_trove_deposits(trove_id);
 
         // Catch troves with no value
         if value.is_zero() {
@@ -265,7 +262,9 @@ mod Shrine {
             }
         }
 
+        // Calculate debt
         let compounded_debt: Wad = compound(trove_id, trove, interval);
+        let (yang_ids, yang_amts) = get_trove_deposits(trove_id);
         let (
             yang_ids,
             yang_amts,
@@ -1271,8 +1270,7 @@ mod Shrine {
                     let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
                         deposited_outer_yang, pct_to_redistribute
                     );
-                    let yang_amt_per_other_yang: Wad = yang_amt_to_redistribute
-                        / other_troves_recipient_yang_amt;
+                    let unit_yang: Wad = yang_amt_to_redistribute / other_troves_recipient_yang_amt;
 
                     // Distribute debt to the inner yang
                     let partial_adjusted_debt_to_distribute: Wad = wadray::rmul_wr(
@@ -1286,7 +1284,7 @@ mod Shrine {
 
                     // Update the distribution of the outer yang for the current inner yang
                     let exc_yang_redistribution = ExceptionalYangRedistribution {
-                        unit_debt: unit_debt, unit_yang: yang_amt_per_other_yang, 
+                        unit_debt: unit_debt, unit_yang: unit_yang, 
                     };
 
                     yang_to_yang_redistribution::write(
