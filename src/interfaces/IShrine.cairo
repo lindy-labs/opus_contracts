@@ -10,6 +10,7 @@ trait IShrine {
     // getters
     fn get_yin(user: ContractAddress) -> Wad;
     fn get_yang_total(yang: ContractAddress) -> Wad;
+    fn get_initial_yang_amt(yang: ContractAddress) -> Wad;
     fn get_yangs_count() -> u32;
     fn get_deposit(yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_total_debt() -> Wad;

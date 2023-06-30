@@ -2,7 +2,7 @@
 mod Shrine {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
-    use integer::{BoundedU128, BoundedU256, u256_safe_divmod};
+    use integer::{BoundedU128, BoundedU256, U256Zeroable, u256_safe_divmod};
     use option::OptionTrait;
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
@@ -1200,9 +1200,10 @@ mod Shrine {
                 yang_id_to_redistribute, current_interval
             );
             // TODO: check precision loss here
-            let raw_debt_to_distribute = ((yang_amt_to_redistribute * redistributed_yang_price)
-                / trove_value)
-                * trove_debt;
+            let raw_debt_to_distribute = wadray::rmul_rw(
+                wadray::rdiv_ww(yang_amt_to_redistribute * redistributed_yang_price, trove_value),
+                trove_debt
+            );
             let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
                 trove_debt, raw_debt_to_distribute, redistributed_debt
             );
@@ -1526,11 +1527,12 @@ mod Shrine {
 
                     // Compute threshold for rounding up outside of inner loop
                     let wad_scale: u256 = WAD_SCALE.into();
-                    let divisor: NonZero<u256> = wad_scale.try_into().unwrap();
+                    let wad_scale_divisor: NonZero<u256> = wad_scale.try_into().unwrap();
                     let debt_rounding_threshold: u256 = (WAD_ONE / 2).into();
 
                     // Keep track of the amount of redistributed yang for the trove
                     let mut yang_increment: Wad = WadZeroable::zero();
+                    let mut cumulative_r: u256 = U256Zeroable::zero();
                     loop {
                         if recipient_yang_id == 0 {
                             break;
@@ -1553,25 +1555,24 @@ mod Shrine {
                         yang_increment += deposited_recipient_yang
                             * exc_yang_redistribution.unit_yang;
 
-                        // Round up debt if there is any remainder from fixed point division so that 
+                        // Accumulate remainder from fixed point division for subsequent addition so that
                         // all redistributed debt accrue to troves. Note that this is not done for yangs
-                        // so that any rounding from loss of precision is in favour of the protocol.
-
-                        let (d, r) = u256_safe_divmod(
+                        // and any rounding from loss of precision would be in favour of the protocol.
+                        let (debt_increment, r) = u256_safe_divmod(
                             deposited_recipient_yang.into()
                                 * exc_yang_redistribution.unit_debt.into(),
-                            divisor
+                            wad_scale_divisor
                         );
+                        cumulative_r += r;
 
-                        let debt_increment: Wad = if r >= debt_rounding_threshold {
-                            d.try_into().unwrap() + 1_u128.into()
-                        } else {
-                            d.try_into().unwrap()
-                        };
-                        trove_debt += debt_increment;
+                        trove_debt += debt_increment.try_into().unwrap();
 
                         recipient_yang_id -= 1;
                     };
+
+                    // Add the cumulative remainder scaled by wad
+                    let (d, _) = u256_safe_divmod(cumulative_r, wad_scale_divisor);
+                    trove_debt += d.try_into().unwrap();
 
                     // Create a new `yang_amts` to include the redistributed yang
                     // Note that this should be ordered with yang IDs starting from 1,

@@ -112,7 +112,10 @@ mod TestShrineRedistribution {
 
                     // Calculate redistributed unit debt and error after redistributing debt
                     // for each yang
-                    let mut expected_yang_debt = yang_value / trove_value * trove_debt;
+                    let mut expected_yang_debt = wadray::rmul_rw(
+                        wadray::rdiv_ww(yang_value, trove_value), 
+                        trove_debt,
+                    );
                     cumulative_redistributed_debt += expected_yang_debt;
                     let remainder = trove_debt - cumulative_redistributed_debt;
                     if remainder < Shrine::ROUNDING_THRESHOLD.into() {
@@ -120,7 +123,7 @@ mod TestShrineRedistribution {
                         cumulative_redistributed_debt += remainder;
                     }
 
-                    let expected_remaining_yang = shrine.get_yang_total(*yang) - deposited;
+                    let expected_remaining_yang = shrine.get_yang_total(*yang) - deposited - shrine.get_initial_yang_amt(*yang);
                     let expected_unit_debt = expected_yang_debt / expected_remaining_yang;
                     expected_remaining_yangs.append(expected_remaining_yang);
                     expected_unit_debts.append(expected_unit_debt);
@@ -181,11 +184,13 @@ mod TestShrineRedistribution {
 
                     // Calculate the amount of debt redistributed for the yang, checking for
                     // rounding threshold,
-                    let mut expected_yang_debt = (*redistributed_trove_yang_values
+                    let mut expected_yang_debt = wadray::rmul_rw(
+                        wadray::rdiv_ww(*redistributed_trove_yang_values
                         .pop_front()
-                        .unwrap()
-                        / redistributed_trove_value)
-                        * redistributed_trove_debt;
+                        .unwrap(),
+                        redistributed_trove_value),
+                        redistributed_trove_debt
+                    );
                     // Use a temporary variable for cumulative redistributed debt to check for rounding
                     let tmp_cumulative_redistributed_debt = cumulative_redistributed_debt
                         + expected_yang_debt;
@@ -205,6 +210,7 @@ mod TestShrineRedistribution {
                     let expected_unit_debt = expected_yang_debt / remaining_yang;
                     let redistribution = shrine
                         .get_redistribution_for_yang(*yang, expected_redistribution_id);
+                        
                     common::assert_equalish(
                         expected_unit_debt,
                         redistribution.unit_debt,
@@ -914,7 +920,7 @@ mod TestShrineRedistribution {
                 },
             };
         };
-
+        
         assert(
             redistributed_trove_debt == recipient_troves_debt_increment + cumulative_error,
             'redistribution invariant failed'
