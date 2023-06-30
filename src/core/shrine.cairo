@@ -1249,8 +1249,8 @@ mod Shrine {
                         continue;
                     }
 
-                    // Get the total amount of recipient yang excluding the redistributed trove's 
-                    // that will receive the redistribution and initial amount.
+                    // Get the total amount of recipient yang excluding (1) the redistributed trove's 
+                    // that will receive the redistribution and (2) initial amount.
                     let recipient_yang_initial_amt: Wad = initial_yang_amts::read(
                         recipient_yang_id
                     );
@@ -1334,10 +1334,10 @@ mod Shrine {
                 // containing this yang, either via rebasing (if there are other troves with the same yang)
                 // or by reallocating (if there are no other troves with the same yang)
                 deposits::write((yang_id_to_redistribute, trove_id), 0_u128.into());
-
-                let updated_redistributed_yang_total_supply: Wad = redistributed_yang_total_supply
-                    - yang_amt_to_redistribute;
-                yang_total::write(yang_id_to_redistribute, updated_redistributed_yang_total_supply);
+                yang_total::write(
+                    yang_id_to_redistribute,
+                    redistributed_yang_total_supply - yang_amt_to_redistribute
+                );
 
                 // Note there is a slight discrepancy here because yang is redistributed by rebasing,
                 // which means the initial yang amount is included, but the distribution of debt excludes
@@ -1355,11 +1355,11 @@ mod Shrine {
                 new_error = adjusted_debt_to_distribute - actual_debt_distributed;
             }
 
-            let current_yang_redistribution = YangRedistribution {
+            let redistributed_yang_info = YangRedistribution {
                 unit_debt: redistributed_yang_unit_debt, error: new_error, exception: is_exception
             };
             yang_redistributions::write(
-                (yang_id_to_redistribute, redistribution_id), current_yang_redistribution
+                (yang_id_to_redistribute, redistribution_id), redistributed_yang_info
             );
 
             // If debt was rounded up, meaning it is now fully redistributed, skip the remaining yangs
@@ -1372,17 +1372,20 @@ mod Shrine {
         };
 
         // See comment at the start of this function on why this is needed.
-        let mut exception_yang_ids: Span<u32> = exception_yang_ids.span();
-        loop {
-            match exception_yang_ids.pop_front() {
-                Option::Some(yang_id) => {
-                    deposits::write((*yang_id, trove_id), 0_u128.into());
-                },
-                Option::None(_) => {
-                    break;
-                },
+        // Adding the length check saves around 42,000 gas in the ordinary redistribution
+        if exception_yang_ids.len().is_non_zero() {
+            let mut exception_yang_ids: Span<u32> = exception_yang_ids.span();
+            loop {
+                match exception_yang_ids.pop_front() {
+                    Option::Some(yang_id) => {
+                        deposits::write((*yang_id, trove_id), 0_u128.into());
+                    },
+                    Option::None(_) => {
+                        break;
+                    },
+                };
             };
-        };
+        }
 
         redistributed_debt
     }
