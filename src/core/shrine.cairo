@@ -1147,11 +1147,6 @@ mod Shrine {
         current_interval: u64
     ) -> Wad {
         let yangs_count: u32 = yangs_count::read();
-        let (_, shrine_value) = get_shrine_threshold_and_value_internal(current_interval);
-        // Note the initial yang amount is not excluded from the value of all other troves here.
-        // Therefore, when calculating a yang's total value as a percentage of the total value of all
-        // other troves, the initial yang amount should be included.
-        let other_troves_total_value: Wad = shrine_value - trove_value;
 
         // For yangs that cannot be redistributed via rebasing because no other troves
         // has deposited that yang, keep track of their yang IDs so that the redistributed 
@@ -1229,13 +1224,19 @@ mod Shrine {
             if redistributed_yang_remaining_pool.is_zero() {
                 exception_yang_ids.append(yang_id_to_redistribute);
 
-                let mut recipient_yang_id: u32 = yangs_count;
+                let (_, shrine_value) = get_shrine_threshold_and_value_internal(current_interval);
+                // Note the initial yang amount is not excluded from the value of all other troves here.
+                // Therefore, when calculating a yang's total value as a percentage of the total value of all
+                // other troves, the initial yang amount should be included.
+                let other_troves_total_value: Wad = shrine_value - trove_value;
 
                 // Keep track of the actual debt distributed to calculate error at the end
                 // There is no need to keep track of the actual yang distributed because 
                 // the trove's yang is zeroed after this outer loop (i.e. rebased), and
                 // any loss of precision will be in favour of the protocol.
                 let mut actual_debt_distributed: Wad = WadZeroable::zero();
+
+                let mut recipient_yang_id: u32 = yangs_count;
                 loop {
                     if recipient_yang_id == 0 {
                         break;
