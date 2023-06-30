@@ -2,12 +2,12 @@
 mod Shrine {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
-    use integer::{BoundedU128, BoundedU256};
+    use integer::{BoundedU128, BoundedU256, u256_safe_divmod};
     use option::OptionTrait;
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
-    use zeroable::Zeroable;
+    use zeroable::{NonZeroIntoImpl, Zeroable};
 
     use aura::core::roles::ShrineRoles;
 
@@ -18,7 +18,7 @@ mod Shrine {
     use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangRedistribution};
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
+    use aura::utils::wadray::{Ray, RayZeroable, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE};
 
     //
     // Constants
@@ -1518,6 +1518,11 @@ mod Shrine {
                     // Inner loop iterating over all yangs
                     let mut inner_yang_id: u32 = 1;
 
+                    // Compute threshold for rounding up outside of inner loop
+                    let wad_scale: u256 = WAD_SCALE.into();
+                    let divisor: NonZero<u256> = wad_scale.try_into().unwrap();
+                    let debt_rounding_threshold: u256 = (WAD_ONE / 2).into();
+
                     // Keep track of the amount of redistributed yang for the trove
                     let mut yang_increment: Wad = WadZeroable::zero();
                     loop {
@@ -1533,7 +1538,20 @@ mod Shrine {
                         let deposited: Wad = *yang_amts_copy.at(inner_yang_id - 1);
 
                         yang_increment += deposited * exc_yang_redistribution.unit_yang;
-                        let debt_increment: Wad = deposited * exc_yang_redistribution.unit_debt;
+
+                        // Round up debt if there is any remainder from fixed point division so that 
+                        // all redistributed debt accrue to troves. Note that this is not done for yangs
+                        // so that any rounding from loss of precision is in favour of the protocol.
+
+                        let (d, r) = u256_safe_divmod(
+                            deposited.into() * exc_yang_redistribution.unit_debt.into(), divisor
+                        );
+
+                        let debt_increment: Wad = if r >= debt_rounding_threshold {
+                            d.try_into().unwrap() + 1_u128.into()
+                        } else {
+                            d.try_into().unwrap()
+                        };
                         trove_debt += debt_increment;
 
                         inner_yang_id += 1;
