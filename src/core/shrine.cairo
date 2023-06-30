@@ -1199,7 +1199,6 @@ mod Shrine {
             let (redistributed_yang_price, _, _) = get_recent_price_from(
                 yang_id_to_redistribute, current_interval
             );
-            // TODO: check precision loss here
             let raw_debt_to_distribute = wadray::rmul_rw(
                 wadray::rdiv_ww(yang_amt_to_redistribute * redistributed_yang_price, trove_value),
                 trove_debt
