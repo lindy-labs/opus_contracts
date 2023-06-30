@@ -1450,8 +1450,6 @@ mod Shrine {
         }
     }
 
-    use debug::PrintTrait;
-
     // Takes in a value for the trove's debt, and returns the following:
     // 1. an ordered array of yang amounts including any exceptional redistributions, starting 
     //    from yang ID 1
