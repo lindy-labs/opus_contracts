@@ -1498,15 +1498,12 @@ mod Shrine {
 
                 let deposited: Wad = *yang_amts_copy
                     .at(redistributed_yang_id - yang_id_to_array_idx_offset);
-
+                let redistribution: YangRedistribution = yang_redistributions::read(
+                    (redistributed_yang_id, tmp_redistribution_id)
+                );
                 // If the trove has deposited a yang, then it will be a normal redistribution.
                 if deposited.is_non_zero() {
                     // Get the amount of debt per yang for the current redistribution
-                    // TODO: move this up one nesting
-                    let redistribution: YangRedistribution = yang_redistributions::read(
-                        (redistributed_yang_id, tmp_redistribution_id)
-                    );
-
                     if redistribution.unit_debt.is_non_zero() {
                         trove_debt += redistribution.unit_debt * deposited;
                     }
@@ -1523,9 +1520,6 @@ mod Shrine {
 
                 // Otherwise, if it is an exceptional redistribution (i.e. involved a yang that 
                 // no other troves deposited), check if the current yang is the redistributed yang.
-                let redistribution: YangRedistribution = yang_redistributions::read(
-                    (redistributed_yang_id, tmp_redistribution_id)
-                );
                 if redistribution.exception {
                     // Inner loop iterating over all yangs
                     let mut recipient_yang_id: u32 = yangs_count;
