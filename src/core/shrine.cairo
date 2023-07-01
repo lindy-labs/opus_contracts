@@ -270,7 +270,11 @@ mod Shrine {
         let (yang_ids, yang_amts) = get_trove_deposits(trove_id);
         let (yang_amts, compounded_debt_with_redistributed_debt, has_exceptional_redistributions) =
             pull_redistributed_debt_and_yangs(
-            trove_id, yang_amts, compounded_debt, redistributions_count::read()
+            trove_id,
+            yang_amts,
+            compounded_debt,
+            trove_redistribution_id::read(trove_id),
+            redistributions_count::read()
         );
 
         if has_exceptional_redistributions {
@@ -981,11 +985,16 @@ mod Shrine {
         let compounded_trove_debt: Wad = compound(trove_id, trove, current_interval);
 
         // Pull undistributed debt and update state
+        let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
         let current_redistribution_id: u32 = redistributions_count::read();
         let (mut yang_ids, yang_amts) = get_trove_deposits(trove_id);
         let (mut yang_amts, new_trove_debt, has_exceptional_redistributions) =
             pull_redistributed_debt_and_yangs(
-            trove_id, yang_amts, compounded_trove_debt, current_redistribution_id
+            trove_id,
+            yang_amts,
+            compounded_trove_debt,
+            trove_last_redistribution_id,
+            current_redistribution_id
         );
 
         // If there was any exceptional redistribution, write updated yang_amts to trove
@@ -1026,11 +1035,14 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Emit events only if there is a change in the trove's debt
-        if compounded_trove_debt != trove.debt {
+        // Emit only if interest accrued
+        let interest_has_accrued: bool = compounded_trove_debt != trove.debt;
+        if interest_has_accrued {
             DebtTotalUpdated(new_system_debt);
         }
-        if new_trove_debt != trove.debt {
+
+        // Emit only if interest accrued or redistributions were accounted for
+        if interest_has_accrued | trove_last_redistribution_id != current_redistribution_id {
             TroveUpdated(trove_id, updated_trove);
         }
     }
@@ -1511,10 +1523,13 @@ mod Shrine {
     // 2. updated redistributed debt, if any, otherwise it would be equivalent to the trove debt.
     // 3. a boolean flag indicating whether there was any exceptional redistributions
     fn pull_redistributed_debt_and_yangs(
-        trove_id: u64, yang_amts: Span<Wad>, mut trove_debt: Wad, current_redistribution_id: u32
+        trove_id: u64,
+        yang_amts: Span<Wad>,
+        mut trove_debt: Wad,
+        trove_last_redistribution_id: u32,
+        current_redistribution_id: u32
     ) -> (Span<Wad>, Wad, bool) {
         let mut has_exceptional_redistributions: bool = false;
-        let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
 
         // Early termination if no redistributions since trove was last updated
         if current_redistribution_id == trove_last_redistribution_id {
