@@ -943,7 +943,7 @@ mod TestShrineRedistribution {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_shrine_multiple_exceptional_redistribution() {
+    fn test_shrine_redistribution_after_unpulled_exceptional_redistribution() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         // Manually set up troves so that the redistributed trove (trove 1) uses all three yangs
