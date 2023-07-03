@@ -1652,15 +1652,13 @@ mod Shrine {
                         yang_increment += deposited_recipient_yang
                             * exc_yang_redistribution.unit_yang;
 
-                        // Accumulate remainder from fixed point division for subsequent addition 
-                        // so that all redistributed debt accrue to troves. Note that this is not 
-                        // done for yangs and any rounding from loss of precision would be in 
-                        // favour of the protocol.
                         let (debt_increment, r) = u256_safe_divmod(
                             deposited_recipient_yang.into()
                                 * exc_yang_redistribution.unit_debt.into(),
                             wad_scale_divisor
                         );
+                        // Accumulate remainder from fixed point division for subsequent addition 
+                        // so that all redistributed debt accrue to troves.
                         cumulative_r += r;
 
                         trove_debt += debt_increment.try_into().unwrap();
