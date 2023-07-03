@@ -237,7 +237,7 @@ fn assert_equalish<
 }
 
 fn assert_spans_equalish<
-    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl DropT: Drop<T>, impl CopyT: Copy<T>
+    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl CopyT: Copy<T>, impl DropT: Drop<T>
 >(
     mut a: Span<T>, mut b: Span<T>, error: T, message: felt252
 ) {
