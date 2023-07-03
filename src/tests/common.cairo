@@ -224,13 +224,35 @@ fn get_token_balances(
 // Helpers - Assertions
 //
 
-#[inline(always)]
-fn assert_equalish(a: Wad, b: Wad, error: Wad, message: felt252) {
+fn assert_equalish<
+    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
+>(
+    a: T, b: T, error: T, message: felt252
+) {
     if a >= b {
         assert(a - b <= error, message);
     } else {
         assert(b - a <= error, message);
     }
+}
+
+fn assert_spans_equalish<
+    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl CopyT: Copy<T>, impl DropT: Drop<T>
+>(
+    mut a: Span<T>, mut b: Span<T>, error: T, message: felt252
+) {
+    assert(a.len() == b.len(), message);
+
+    loop {
+        match a.pop_front() {
+            Option::Some(a) => {
+                assert_equalish(*a, *b.pop_front().unwrap(), error, message);
+            },
+            Option::None(_) => {
+                break;
+            }
+        };
+    };
 }
 
 

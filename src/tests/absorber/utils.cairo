@@ -24,6 +24,7 @@ mod AbsorberUtils {
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::{DistributionInfo, Reward};
@@ -99,6 +100,7 @@ mod AbsorberUtils {
 
     fn absorber_deploy() -> (
         IShrineDispatcher,
+        ISentinelDispatcher,
         IAbbotDispatcher,
         IAbsorberDispatcher,
         Span<ContractAddress>,
@@ -125,7 +127,7 @@ mod AbsorberUtils {
         set_contract_address(ContractAddressZeroable::zero());
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
-        (shrine, abbot, absorber, yangs, gates)
+        (shrine, sentinel, abbot, absorber, yangs, gates)
     }
 
     fn aura_token_deploy() -> ContractAddress {
@@ -228,6 +230,27 @@ mod AbsorberUtils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
+    fn absorber_with_first_provider() -> (
+        IShrineDispatcher,
+        ISentinelDispatcher,
+        IAbbotDispatcher,
+        IAbsorberDispatcher,
+        Span<ContractAddress>, // yangs
+        Span<IGateDispatcher>,
+        ContractAddress, // provider
+        Wad, // provided amount
+    ) {
+        let (shrine, sentinel, abbot, absorber, yangs, gates) = absorber_deploy();
+
+        let provider = provider_1();
+        let provided_amt: Wad = 10000000000000000000000_u128.into(); // 10_000 (Wad)
+        provide_to_absorber(
+            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
+        );
+
+        (shrine, sentinel, abbot, absorber, yangs, gates, provider, provided_amt)
+    }
+
     // Helper function to deploy Absorber, add rewards and create a trove.
     fn absorber_with_rewards_and_first_provider() -> (
         IShrineDispatcher,
@@ -241,19 +264,15 @@ mod AbsorberUtils {
         ContractAddress, // provider
         Wad, // provided amount
     ) {
-        let (shrine, abbot, absorber, yangs, gates) = absorber_deploy();
+        let (shrine, _, abbot, absorber, yangs, gates, provider, provided_amt) =
+            absorber_with_first_provider();
+
         let reward_tokens: Span<ContractAddress> = reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = reward_amts_per_blessing();
         let blessers: Span<ContractAddress> = deploy_blesser_for_rewards(
             absorber, reward_tokens, reward_amts_per_blessing
         );
         add_rewards_to_absorber(absorber, reward_tokens, blessers);
-
-        let provider = provider_1();
-        let provided_amt: Wad = (10000 * WAD_ONE).into();
-        provide_to_absorber(
-            shrine, abbot, absorber, provider, yangs, provider_asset_amts(), gates, provided_amt
-        );
 
         (
             shrine,

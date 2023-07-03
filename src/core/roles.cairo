@@ -5,6 +5,11 @@ mod AbsorberRoles {
     const UPDATE: u128 = 8;
 
     #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         KILL + SET_REMOVAL_LIMIT + SET_REWARD
     }
@@ -54,6 +59,11 @@ mod PragmaRoles {
     const UPDATE_PRICES: u128 = 16;
 
     #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE_PRICES
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
     }
@@ -78,6 +88,11 @@ mod SentinelRoles {
     #[inline(always)]
     fn abbot() -> u128 {
         ENTER + EXIT
+    }
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        EXIT
     }
 
     #[inline(always)]
@@ -127,6 +142,11 @@ mod ShrineRoles {
     #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
+    }
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        MELT + REDISTRIBUTE + SEIZE
     }
 
     #[inline(always)]
