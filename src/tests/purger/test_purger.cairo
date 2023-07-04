@@ -20,6 +20,7 @@ mod TestPurger {
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
     use aura::tests::common;
+    use aura::tests::flashmint::utils::FlashmintUtils;
     use aura::tests::purger::utils::PurgerUtils;
 
     use debug::PrintTrait;
@@ -190,6 +191,54 @@ mod TestPurger {
         common::assert_spans_equalish(
             freed_amts, expected_freed_amts, 10_u128, // error margin
              'wrong freed asset amount'
+        );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_liquidate_with_flashmint_pass() {
+        let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+            searcher_start_yin
+        );
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+        );
+        let flashmint = FlashmintUtils::flashmint_deploy(shrine.contract_address);
+        let flash_liquidator = PurgerUtils::flash_liquidator_deploy(
+            shrine.contract_address, 
+            abbot.contract_address,
+            flashmint.contract_address,
+            purger.contract_address
+        );
+
+        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_ltv: Ray = (threshold.val + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+
+        // Sanity check that LTV is at the target liquidation LTV
+        let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
+        PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+
+        let searcher: ContractAddress = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        flash_liquidator.flash_liquidate(target_trove);
+
+        // Check that LTV is close to safety margin
+        let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
+        let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
+        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+
+        PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
+
+        // Check searcher yin balance
+        assert(
+            shrine.get_yin(searcher) == searcher_start_yin - max_close_amt,
+            'wrong searcher yin balance'
+        );
+
+        let expected_freed_amts: Span<u128> = PurgerUtils::get_expected_liquidation_assets(
+            PurgerUtils::target_trove_yang_asset_amts(), before_value, max_close_amt, penalty
         );
     }
 

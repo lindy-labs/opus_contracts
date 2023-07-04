@@ -26,6 +26,7 @@ mod PurgerUtils {
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
     use aura::tests::external::utils::PragmaUtils;
+    use aura::tests::purger::flash_liquidator::{FlashLiquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
@@ -322,6 +323,24 @@ mod PurgerUtils {
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, absorber, purger, yangs, gates)
+    }
+
+    fn flash_liquidator_deploy(
+        shrine: ContractAddress,
+        abbot: ContractAddress,
+        flashmint: ContractAddress,
+        purger: ContractAddress,
+    ) -> IFlashLiquidatorDispatcher {
+        let mut calldata = Default::default(); 
+        calldata.append(contract_address_to_felt252(shrine));
+        calldata.append(contract_address_to_felt252(abbot));
+        calldata.append(contract_address_to_felt252(flashmint));
+        calldata.append(contract_address_to_felt252(purger));
+
+        let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(FlashLiquidator::TEST_CLASS_HASH).unwrap();
+        let (flash_liquidator_addr, _) = deploy_syscall(flash_liquidator_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        
+        IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
 
     fn funded_searcher(
