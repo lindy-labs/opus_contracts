@@ -468,7 +468,7 @@ mod Purger {
             (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
         );
 
-        if threshold >= ABSORPTION_THRESHOLD.into() {
+        if threshold > ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
             let penalty = min(
                 MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty
