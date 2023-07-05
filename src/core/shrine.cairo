@@ -336,12 +336,11 @@ mod Shrine {
     }
 
     #[view]
-    fn get_redistributed_unit_debt_for_yang(yang: ContractAddress, redistribution_id: u32) -> Wad {
+    fn get_redistribution_for_yang(
+        yang: ContractAddress, redistribution_id: u32
+    ) -> YangRedistribution {
         let yang_id: u32 = get_valid_yang_id(yang);
-        let redistribution: YangRedistribution = yang_redistributions::read(
-            (yang_id, redistribution_id)
-        );
-        redistribution.unit_debt
+        yang_redistributions::read((yang_id, redistribution_id))
     }
 
     #[view]

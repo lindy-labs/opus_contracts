@@ -201,7 +201,7 @@ mod TestShrineRedistribution {
 
                     let expected_unit_debt = expected_yang_debt / remaining_yang;
                     let unit_debt = shrine
-                        .get_redistributed_unit_debt_for_yang(*yang, expected_redistribution_id);
+                        .get_redistribution_for_yang(*yang, expected_redistribution_id).unit_debt;
                     common::assert_equalish(
                         expected_unit_debt, unit_debt, 1_u128.into(), 'wrong unit debt'
                     );
@@ -418,9 +418,9 @@ mod TestShrineRedistribution {
         );
         assert(
             shrine
-                .get_redistributed_unit_debt_for_yang(
+                .get_redistribution_for_yang(
                     yang1_addr, expected_redistribution_id
-                ) == WadZeroable::zero(),
+                ).unit_debt == WadZeroable::zero(),
             'should be skipped'
         );
 
@@ -431,9 +431,9 @@ mod TestShrineRedistribution {
         let expected_unit_debt_for_yang2 = trove2_debt / expected_remaining_yang2;
         assert(
             shrine
-                .get_redistributed_unit_debt_for_yang(
+                .get_redistribution_for_yang(
                     yang2_addr, expected_redistribution_id
-                ) == expected_unit_debt_for_yang2,
+                ).unit_debt == expected_unit_debt_for_yang2,
             'wrong unit debt'
         );
     }
