@@ -1,7 +1,10 @@
 mod FlashmintUtils {
     use array::ArrayTrait;
     use option::OptionTrait;
-    use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait};
+    use starknet::{
+        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
+        ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
@@ -12,7 +15,7 @@ mod FlashmintUtils {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait}; 
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::misc;
     use aura::utils::u256_conversions;
@@ -28,9 +31,9 @@ mod FlashmintUtils {
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
     fn build_calldata(should_return_correct: bool, usage: felt252) -> Span<felt252> {
-        let mut calldata = Default::default(); 
+        let mut calldata = Default::default();
         calldata.append(should_return_correct.into());
-        calldata.append(usage); 
+        calldata.append(usage);
         calldata.span()
     }
 
@@ -38,26 +41,32 @@ mod FlashmintUtils {
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(shrine));
 
-        let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(FlashMint::TEST_CLASS_HASH).unwrap();
-        let (flashmint_addr, _) = deploy_syscall(flashmint_class_hash, 0, calldata.span(), false).unwrap_syscall();
-        let flashmint = IFlashMintDispatcher{contract_address: flashmint_addr};
+        let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(
+            FlashMint::TEST_CLASS_HASH
+        )
+            .unwrap();
+        let (flashmint_addr, _) = deploy_syscall(flashmint_class_hash, 0, calldata.span(), false)
+            .unwrap_syscall();
+        let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
         // Grant flashmint contract the FLASHMINT role 
         set_contract_address(ShrineUtils::admin());
-        let shrine_accesscontrol = IAccessControlDispatcher {contract_address: shrine};
+        let shrine_accesscontrol = IAccessControlDispatcher { contract_address: shrine };
         shrine_accesscontrol.grant_role(ShrineRoles::flash_mint(), flashmint_addr);
 
         flashmint
     }
 
     fn flashmint_setup() -> (ContractAddress, IFlashMintDispatcher) {
-        let shrine: ContractAddress = ShrineUtils::shrine_deploy(); 
+        let shrine: ContractAddress = ShrineUtils::shrine_deploy();
         let flashmint: IFlashMintDispatcher = flashmint_deploy(shrine);
-        
-        let shrine_dispatcher = IShrineDispatcher{contract_address: shrine};
+
+        let shrine_dispatcher = IShrineDispatcher { contract_address: shrine };
 
         ShrineUtils::shrine_setup(shrine);
-        ShrineUtils::advance_prices_and_set_multiplier(shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
+        ShrineUtils::advance_prices_and_set_multiplier(
+            shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into()
+        );
 
         // Mint some yin in shrine 
         set_contract_address(ShrineUtils::admin());
@@ -66,11 +75,17 @@ mod FlashmintUtils {
     }
 
     fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
-        let mut calldata = Default::default(); 
+        let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(flashmint));
 
-        let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(FlashBorrower::TEST_CLASS_HASH).unwrap();
-        let (flash_borrower_addr, _) = deploy_syscall(flash_borrower_class_hash, 0, calldata.span(), false).unwrap_syscall();
+        let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(
+            FlashBorrower::TEST_CLASS_HASH
+        )
+            .unwrap();
+        let (flash_borrower_addr, _) = deploy_syscall(
+            flash_borrower_class_hash, 0, calldata.span(), false
+        )
+            .unwrap_syscall();
         flash_borrower_addr
     }
 

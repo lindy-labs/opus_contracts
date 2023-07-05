@@ -39,7 +39,12 @@ mod FlashLiquidator {
     }
 
     #[constructor]
-    fn constructor(shrine: ContractAddress, abbot: ContractAddress, flashmint: ContractAddress, purger: ContractAddress) {
+    fn constructor(
+        shrine: ContractAddress,
+        abbot: ContractAddress,
+        flashmint: ContractAddress,
+        purger: ContractAddress
+    ) {
         shrine::write(IShrineDispatcher { contract_address: shrine });
         abbot::write(IAbbotDispatcher { contract_address: abbot });
         flashmint::write(IFlashMintDispatcher { contract_address: flashmint });
@@ -47,7 +52,9 @@ mod FlashLiquidator {
     }
 
     #[external]
-    fn flash_liquidate(trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>) {
+    fn flash_liquidate(
+        trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>
+    ) {
         // Approve gate for tokens
         loop {
             match yangs.pop_front() {
@@ -67,12 +74,13 @@ mod FlashLiquidator {
         let mut call_data: Array<felt252> = Default::default();
         call_data.append(trove_id.into());
 
-        flashmint::read().flash_loan(
-            get_contract_address(), // receiver
-            shrine::read().contract_address, // token
-            max_close_amt.into(), // amount
-            call_data.span()
-        );
+        flashmint::read()
+            .flash_loan(
+                get_contract_address(), // receiver
+                shrine::read().contract_address, // token
+                max_close_amt.into(), // amount
+                call_data.span()
+            );
     }
 
     use debug::PrintTrait;
@@ -87,18 +95,23 @@ mod FlashLiquidator {
     ) -> u256 {
         let flash_liquidator: ContractAddress = get_contract_address();
 
-        assert(IERC20Dispatcher { contract_address: token }.balance_of(flash_liquidator) == amount, 'FL: incorrect loan amount');
+        assert(
+            IERC20Dispatcher { contract_address: token }.balance_of(flash_liquidator) == amount,
+            'FL: incorrect loan amount'
+        );
 
         let trove_id: u64 = (*call_data.pop_front().unwrap()).try_into().unwrap();
-        let (mut freed_assets, mut freed_asset_amts) = purger::read().liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
+        let (mut freed_assets, mut freed_asset_amts) = purger::read()
+            .liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
 
         // Open a trove with funded and freed assets, and mint the loan amount
-        abbot::read().open_trove(
-            amount.try_into().unwrap(), 
-            freed_assets, 
-            common::combine_spans(AbsorberUtils::provider_asset_amts(), freed_asset_amts), 
-            WadZeroable::zero()
-        );
+        abbot::read()
+            .open_trove(
+                amount.try_into().unwrap(),
+                freed_assets,
+                common::combine_spans(AbsorberUtils::provider_asset_amts(), freed_asset_amts),
+                WadZeroable::zero()
+            );
 
         ON_FLASH_MINT_SUCCESS
     }

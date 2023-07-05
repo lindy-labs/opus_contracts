@@ -22,7 +22,9 @@ mod TestPurger {
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
     use aura::tests::flashmint::utils::FlashmintUtils;
-    use aura::tests::purger::flash_liquidator::{IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait};
+    use aura::tests::purger::flash_liquidator::{
+        IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
+    };
     use aura::tests::purger::utils::PurgerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
@@ -216,7 +218,9 @@ mod TestPurger {
 
         // Fund flash liquidator contract with some collateral to open a trove
         // but not draw any debt
-        common::fund_user(flash_liquidator.contract_address, yangs, AbsorberUtils::provider_asset_amts());
+        common::fund_user(
+            flash_liquidator.contract_address, yangs, AbsorberUtils::provider_asset_amts()
+        );
 
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (threshold.val + 1).into();

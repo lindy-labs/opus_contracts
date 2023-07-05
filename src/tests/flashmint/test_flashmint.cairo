@@ -1,7 +1,10 @@
 mod TestFlashmint {
     use array::ArrayTrait;
     use option::OptionTrait;
-    use starknet::{contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait};
+    use starknet::{
+        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
+        ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait
+    };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into};
@@ -11,7 +14,7 @@ mod TestFlashmint {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait}; 
+    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::misc;
     use aura::utils::u256_conversions;
@@ -33,7 +36,12 @@ mod TestFlashmint {
 
         // Check that max loan is correct
         let max_loan: u256 = flashmint.max_flash_loan(shrine);
-        let expected_max_loan: u256 = (Wad { val: FlashmintUtils::YIN_TOTAL_SUPPLY } * Wad { val: FlashMint::FLASH_MINT_AMOUNT_PCT }).into();
+        let expected_max_loan: u256 = (Wad {
+            val: FlashmintUtils::YIN_TOTAL_SUPPLY
+            } * Wad {
+            val: FlashMint::FLASH_MINT_AMOUNT_PCT
+        })
+            .into();
         assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
     }
 
@@ -53,18 +61,19 @@ mod TestFlashmint {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
         let yin = ShrineUtils::yin(shrine);
 
-        let mut calldata: Span<felt252> = FlashmintUtils::build_calldata(true, FlashBorrower::VALID_USAGE);
+        let mut calldata: Span<felt252> = FlashmintUtils::build_calldata(
+            true, FlashBorrower::VALID_USAGE
+        );
 
         // `borrower` contains a check that ensures that `flashmint` actually transferred 
         // the full flash_loan amount
         flashmint.flash_loan(borrower, shrine, 1_u128.into(), calldata);
-        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 1'); 
+        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 1');
         flashmint.flash_loan(borrower, shrine, FlashmintUtils::DEFAULT_MINT_AMOUNT, calldata);
         assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 2');
         flashmint.flash_loan(borrower, shrine, (1000 * WAD_ONE).into(), calldata);
         assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 3');
-
-        // TODO: check event emissions for correct calldata
+    // TODO: check event emissions for correct calldata
     }
 
     #[test]
@@ -72,7 +81,13 @@ mod TestFlashmint {
     #[should_panic(expected: ('FM: amount exceeds maximum', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_excess_minting() {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, 1000000000000000000001_u256, FlashmintUtils::build_calldata(true, FlashBorrower::VALID_USAGE));
+        flashmint
+            .flash_loan(
+                borrower,
+                shrine,
+                1000000000000000000001_u256,
+                FlashmintUtils::build_calldata(true, FlashBorrower::VALID_USAGE)
+            );
     }
 
     #[test]
@@ -80,7 +95,13 @@ mod TestFlashmint {
     #[should_panic(expected: ('FM: on_flash_loan failed', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_incorrect_return() {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, FlashmintUtils::DEFAULT_MINT_AMOUNT, FlashmintUtils::build_calldata(false, FlashBorrower::VALID_USAGE));
+        flashmint
+            .flash_loan(
+                borrower,
+                shrine,
+                FlashmintUtils::DEFAULT_MINT_AMOUNT,
+                FlashmintUtils::build_calldata(false, FlashBorrower::VALID_USAGE)
+            );
     }
 
     #[test]
@@ -88,15 +109,30 @@ mod TestFlashmint {
     #[should_panic(expected: ('u128_sub Overflow', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_flashmint_steal() {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, FlashmintUtils::DEFAULT_MINT_AMOUNT, FlashmintUtils::build_calldata(true, FlashBorrower::ATTEMPT_TO_STEAL));
+        flashmint
+            .flash_loan(
+                borrower,
+                shrine,
+                FlashmintUtils::DEFAULT_MINT_AMOUNT,
+                FlashmintUtils::build_calldata(true, FlashBorrower::ATTEMPT_TO_STEAL)
+            );
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('RG: reentrant call', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(
+        expected: (
+            'RG: reentrant call', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'
+        )
+    )]
     fn test_flashmint_reenter() {
         let (shrine, flashmint, borrower) = FlashmintUtils::flash_borrower_setup();
-        flashmint.flash_loan(borrower, shrine, FlashmintUtils::DEFAULT_MINT_AMOUNT, FlashmintUtils::build_calldata(true, FlashBorrower::ATTEMPT_TO_REENTER));
-
+        flashmint
+            .flash_loan(
+                borrower,
+                shrine,
+                FlashmintUtils::DEFAULT_MINT_AMOUNT,
+                FlashmintUtils::build_calldata(true, FlashBorrower::ATTEMPT_TO_REENTER)
+            );
     }
 }
