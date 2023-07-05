@@ -13,7 +13,7 @@ mod FlashLiquidator {
     use array::{ArrayTrait, SpanTrait};
     use integer::BoundedInt;
     use option::OptionTrait;
-    use starknet::{contract_address_const, get_contract_address, ContractAddress};
+    use starknet::{get_contract_address, ContractAddress};
     use traits::{Default, Into, TryInto};
 
     use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;

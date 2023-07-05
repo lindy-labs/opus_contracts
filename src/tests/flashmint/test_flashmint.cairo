@@ -1,13 +1,6 @@
 mod TestFlashmint {
-    use array::ArrayTrait;
-    use option::OptionTrait;
-    use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait
-    };
-    use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
+    use starknet::ContractAddress;
+    use traits::Into;
 
     use aura::core::flashmint::FlashMint;
 
@@ -15,8 +8,6 @@ mod TestFlashmint {
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::misc;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WAD_ONE};
