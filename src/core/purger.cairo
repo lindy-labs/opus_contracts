@@ -258,8 +258,6 @@ mod Purger {
         (yangs, freed_assets_amts)
     }
 
-    use debug::PrintTrait;
-
     // Performs stability pool liquidations to pay down a trove's debt in full and transfer the 
     // freed collateral to the stability pool. If the stability pool does not have sufficient yin, 
     // the trove's debt and collateral will be proportionally redistributed among all troves 
@@ -318,9 +316,6 @@ mod Purger {
                 trove_penalty,
                 purge_amt
             );
-
-            'pct freed'.print();
-            percentage_freed.print();
 
             // Melt the trove's debt using the absorber's yin directly
             shrine.melt(absorber.contract_address, trove_id, purge_amt);
