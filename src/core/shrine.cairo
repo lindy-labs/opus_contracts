@@ -996,7 +996,11 @@ mod Shrine {
         let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
         let current_redistribution_id: u32 = redistributions_count::read();
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
-        let (mut updated_trove_yang_balances, new_trove_debt, has_exceptional_redistributions) =
+        let (
+            mut updated_trove_yang_balances,
+            compounded_debt_with_redistributed_debt,
+            has_exceptional_redistributions
+        ) =
             pull_redistributed_debt_and_yangs(
             trove_id,
             trove_yang_balances,
@@ -1025,7 +1029,7 @@ mod Shrine {
         // Update trove
         let updated_trove: Trove = Trove {
             charge_from: current_interval,
-            debt: new_trove_debt,
+            debt: compounded_debt_with_redistributed_debt,
             last_rate_era: rates_latest_era::read()
         };
         troves::write(trove_id, updated_trove);
@@ -1043,8 +1047,8 @@ mod Shrine {
             DebtTotalUpdated(new_system_debt);
         }
 
-        // Emit only if interest accrued or redistributions were accounted for
-        if interest_has_accrued | trove_last_redistribution_id != current_redistribution_id {
+        // Emit only if interest accrued or redistributed debt was pulled
+        if interest_has_accrued | compounded_debt_with_redistributed_debt != compounded_debt {
             TroveUpdated(trove_id, updated_trove);
         }
     }
