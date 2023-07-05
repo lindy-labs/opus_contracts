@@ -5,6 +5,7 @@ mod FlashBorrower {
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
     use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
+
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::utils::serde;

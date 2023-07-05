@@ -1,24 +1,35 @@
+use starknet::ContractAddress;
+
+use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::utils::serde;
+
 #[abi]
 trait IFlashLiquidator {
-    fn flash_liquidate(trove_id: u64);
+    fn flash_liquidate(trove_id: u64, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>);
 }
 
 #[contract]
 mod FlashLiquidator {
     use array::{ArrayTrait, SpanTrait};
+    use integer::BoundedInt;
     use option::OptionTrait;
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
-    use traits::{Default, Into};
+    use traits::{Default, Into, TryInto};
 
     use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
+
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::serde;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable};
+
+    use aura::tests::absorber::utils::AbsorberUtils;
+    use aura::tests::common;
 
     struct Storage {
         shrine: IShrineDispatcher,
@@ -35,25 +46,36 @@ mod FlashLiquidator {
         purger::write(IPurgerDispatcher { contract_address: purger });
     }
 
-    #[event]
-    fn FlashLoancall_dataReceived(initiator: ContractAddress, token: ContractAddress, amount: u256, fee: u256, call_data: Span<felt252>) {}
-
     #[external]
-    fn flash_liquidate(trove_id: u64) {
+    fn flash_liquidate(trove_id: u64, mut yangs: Span<ContractAddress>, mut gates: Span<IGateDispatcher>) {
+        // Approve gate for tokens
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                    let token = IERC20Dispatcher { contract_address: *yang };
+                    token.approve(gate.contract_address, BoundedInt::max());
+                },
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
+
         let purger: IPurgerDispatcher = purger::read();
         let max_close_amt: Wad = purger.get_max_liquidation_amount(trove_id);
-
-        let flash_liquidator: ContractAddress = get_contract_address();
-        let call_data: Array<felt252> = Default::default();
+        let mut call_data: Array<felt252> = Default::default();
         call_data.append(trove_id.into());
 
         flashmint::read().flash_loan(
             get_contract_address(), // receiver
-            shrine.contract_address, // token
+            shrine::read().contract_address, // token
             max_close_amt.into(), // amount
             call_data.span()
-        };
+        );
     }
+
+    use debug::PrintTrait;
 
     #[external]
     fn on_flash_loan(
@@ -63,20 +85,20 @@ mod FlashLiquidator {
         fee: u256,
         mut call_data: Span<felt252>
     ) -> u256 {
-        let call_data_copy = call_data;
-
-        let should_return_correct: bool = *call_data.pop_front().unwrap() != 0;
-        let action: felt252 = *call_data.pop_front().unwrap();
-
-        assert(IERC20Dispatcher{contract_address: token}.balance_of(get_contract_address()) == amount, 'FB: incorrect loan amount');
-
-        let trove_id: u64 = *call_data.pop_front().unwrap();
-
         let flash_liquidator: ContractAddress = get_contract_address();
-        let (freed_assets, freed_asset_amts) = purger::read().liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
 
-        // Open a trove with freed assets
-        abbot::read().open_trove(amount.into(), freed_assets, freed_asset_amts, WadZeroable::zero());
+        assert(IERC20Dispatcher { contract_address: token }.balance_of(flash_liquidator) == amount, 'FL: incorrect loan amount');
+
+        let trove_id: u64 = (*call_data.pop_front().unwrap()).try_into().unwrap();
+        let (mut freed_assets, mut freed_asset_amts) = purger::read().liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
+
+        // Open a trove with funded and freed assets, and mint the loan amount
+        abbot::read().open_trove(
+            amount.try_into().unwrap(), 
+            freed_assets, 
+            common::combine_spans(AbsorberUtils::provider_asset_amts(), freed_asset_amts), 
+            WadZeroable::zero()
+        );
 
         ON_FLASH_MINT_SUCCESS
     }

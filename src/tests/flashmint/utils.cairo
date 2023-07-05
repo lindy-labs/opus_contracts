@@ -60,6 +60,7 @@ mod FlashmintUtils {
         ShrineUtils::advance_prices_and_set_multiplier(shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into());
 
         // Mint some yin in shrine 
+        set_contract_address(ShrineUtils::admin());
         shrine_dispatcher.inject(ContractAddressZeroable::zero(), YIN_TOTAL_SUPPLY.into());
         (shrine, flashmint)
     }
