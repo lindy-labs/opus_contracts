@@ -92,4 +92,10 @@ mod ControllerUtils {
     fn fast_forward_1_hour() {
         set_block_timestamp(get_block_timestamp() + ONE_HOUR);
     }
+
+    #[inline(always)]
+    fn fast_forward_by_x_minutes(x: u64) {
+        set_block_timestamp(get_block_timestamp() + x * 60);
+    }
+    
 }

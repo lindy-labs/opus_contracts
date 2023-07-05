@@ -64,34 +64,26 @@ mod TestController {
         // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000_u128.into());
 
-        controller.get_p_term().val.print();
-        controller.get_i_term().val.print();
-        controller.get_current_multiplier().val.print();
         assert(controller.get_p_term() == SignedRayZeroable::zero(), 'Wrong p term #1');
-        assert(controller.get_i_term() == SignedRayZeroable::zero(), 'Wrong i term #2');
+        assert(controller.get_i_term() == SignedRayZeroable::zero(), 'Wrong i term #1');
 
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE1.into());
         controller.update_multiplier();
 
-        controller.get_p_term().val.print();
-        controller.get_i_term().val.print();
-        controller.get_current_multiplier().val.print();
         common::assert_equalish(
             controller.get_p_term(),
             18715000000000000_u128.into(),
             ERROR_MARGIN.into(),
             'Wrong p term #2'
         );
-        //common::assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
+        
+        common::assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
 
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE2.into());
         controller.update_multiplier();
 
-        controller.get_p_term().val.print();
-        controller.get_i_term().val.print();
-        controller.get_current_multiplier().val.print();
         common::assert_equalish(
             controller.get_p_term(),
             177156100000000000_u128.into(),
@@ -100,7 +92,7 @@ mod TestController {
         );
         common::assert_equalish(
             controller.get_i_term(),
-            57200000000000000000000_u128.into(),
+            5720000000000000000_u128.into(),
             ERROR_MARGIN.into(),
             'Wrong i term #3'
         );

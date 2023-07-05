@@ -26,6 +26,7 @@ mod Controller {
 
     struct Storage {
         shrine: IShrineDispatcher,
+        yin_previous_price: Wad,
         yin_price_last_updated: u64,
         i_term_last_updated: u64,
         i_term: SignedRay,
@@ -61,7 +62,12 @@ mod Controller {
         // ensure that the integral term is correctly updated
         i_term_last_updated::write(get_block_timestamp());
 
-        shrine::write(IShrineDispatcher { contract_address: shrine });
+        // Initializing the previous price to the current price
+        // This ensures the integral term is correctly calculated
+        let shrine = IShrineDispatcher { contract_address: shrine };
+        yin_previous_price::write(shrine.get_yin_spot_price().into());
+        shrine::write(shrine);
+
         p_gain::write(p_gain.into());
         i_gain::write(i_gain.into());
         alpha_p::write(alpha_p);
@@ -83,14 +89,12 @@ mod Controller {
 
     #[view]
     fn get_current_multiplier() -> Ray {
-        let error: SignedRay = get_error();
-
         let i_gain = i_gain::read();
 
-        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
+        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal();
 
         if i_gain.is_non_zero() {
-            let new_i_term: SignedRay = get_i_term_internal(error);
+            let new_i_term: SignedRay = get_i_term_internal();
             multiplier += i_gain * new_i_term;
         }
 
@@ -99,7 +103,7 @@ mod Controller {
 
     #[view]
     fn get_p_term() -> SignedRay {
-        get_p_term_internal(get_error())
+        get_p_term_internal()
     }
 
     #[view]
@@ -108,7 +112,7 @@ mod Controller {
         if i_gain.is_zero() {
             SignedRayZeroable::zero()
         } else {
-            i_gain * get_i_term_internal(get_error())
+            i_gain * get_i_term_internal()
         }
     }
 
@@ -151,20 +155,21 @@ mod Controller {
     fn update_multiplier() -> Ray {
         let shrine: IShrineDispatcher = shrine::read();
 
-        let error: SignedRay = get_error();
-
         let i_gain = i_gain::read();
 
-        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal(error);
+        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal();
 
         // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
         if i_gain.is_non_zero() {
-            let new_i_term: SignedRay = get_i_term_internal(error);
+            let new_i_term: SignedRay = get_i_term_internal();
             multiplier += i_gain * new_i_term;
 
             i_term::write(new_i_term);
             i_term_last_updated::write(get_block_timestamp());
         }
+
+        // Updating the previous yin price for the next i-term update 
+        yin_previous_price::write(shrine.get_yin_spot_price().into());
 
         let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
         shrine.set_multiplier(multiplier_ray);
@@ -237,12 +242,12 @@ mod Controller {
     //
 
     #[inline(always)]
-    fn get_p_term_internal(error: SignedRay) -> SignedRay {
-        p_gain::read() * nonlinear_transform(error, alpha_p::read(), beta_p::read())
+    fn get_p_term_internal() -> SignedRay {
+        p_gain::read() * nonlinear_transform(get_current_error(), alpha_p::read(), beta_p::read())
     }
 
     #[inline(always)]
-    fn get_i_term_internal(error: SignedRay) -> SignedRay {
+    fn get_i_term_internal() -> SignedRay {
         let current_timestamp: u64 = get_block_timestamp();
         let old_i_term = i_term::read();
 
@@ -251,7 +256,7 @@ mod Controller {
             / (TIME_SCALE * RAY_ONE).into();
 
         old_i_term
-            + nonlinear_transform(error, alpha_i::read(), beta_i::read())
+            + nonlinear_transform(get_prev_error(), alpha_i::read(), beta_i::read())
                 * time_since_last_update_scaled
     }
 
@@ -263,8 +268,14 @@ mod Controller {
     }
 
     #[inline(always)]
-    fn get_error() -> SignedRay {
+    fn get_current_error() -> SignedRay {
         RAY_ONE.into() - shrine::read().get_yin_spot_price().into()
+    }
+
+    // Returns the error at the time of the last update to the multiplier
+    #[inline(always)]
+    fn get_prev_error() -> SignedRay {
+        RAY_ONE.into() - yin_previous_price::read().into()
     }
 
     #[inline(always)]
