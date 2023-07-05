@@ -1703,7 +1703,6 @@ mod Shrine {
                             // similar to `get_trove_deposits`, so that the downward iteration
                             // in the previous loop can also be used to index into the array
                             // for the correct yang ID with 1 offset.
-                            let mut trove_yang_balances_copy = trove_yang_balances;
                             let mut updated_trove_yang_balances: Array<YangBalance> =
                                 Default::default();
                             let mut yang_id: u32 = START_YANG_IDX;
@@ -1720,7 +1719,7 @@ mod Shrine {
                                 } else {
                                     updated_trove_yang_balances
                                         .append(
-                                            *trove_yang_balances_copy
+                                            *trove_yang_balances
                                                 .at(yang_id - yang_id_to_array_idx_offset)
                                         );
                                 }
