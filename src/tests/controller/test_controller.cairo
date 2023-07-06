@@ -1,7 +1,9 @@
 mod TestController {
+    use array::ArrayTrait;
     use debug::PrintTrait;
+    use option::OptionTrait;
     use starknet::testing::set_contract_address;
-    use traits::Into;
+    use traits::{Default, Into};
 
     use aura::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -10,7 +12,7 @@ mod TestController {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
-    use aura::tests::common;
+    use aura::tests::common::assert_equalish;
     use aura::tests::controller::utils::ControllerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
@@ -71,30 +73,297 @@ mod TestController {
         shrine.update_yin_spot_price(YIN_PRICE1.into());
         controller.update_multiplier();
 
-        common::assert_equalish(
+        assert_equalish(
             controller.get_p_term(),
             18715000000000000_u128.into(),
             ERROR_MARGIN.into(),
             'Wrong p term #2'
         );
         
-        common::assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
+        assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
 
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE2.into());
         controller.update_multiplier();
 
-        common::assert_equalish(
+        assert_equalish(
             controller.get_p_term(),
             177156100000000000_u128.into(),
             ERROR_MARGIN.into(),
             'Wrong p term #3'
         );
-        common::assert_equalish(
+        assert_equalish(
             controller.get_i_term(),
             5720000000000000000_u128.into(),
             ERROR_MARGIN.into(),
             'Wrong i term #3'
         );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_against_ground_truth2() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::admin());
+
+        // Updating `i_gain` to match the ground truth simulation
+        controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
+        controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
+
+        // Loading our ground truth into arrays for comparison
+        let mut prices: Array<Wad> = Default::default();
+        let mut gt_p_terms: Array<SignedRay> = Default::default();
+        let mut gt_i_terms: Array<SignedRay> = Default::default();
+        let mut gt_multipliers: Array<Ray> = Default::default();
+
+        prices.append(990099009900990000_u128.into());
+        prices.append(990366354678218000_u128.into());
+        prices.append(990633735544555000_u128.into());
+        prices.append(991196767996938000_u128.into());
+        prices.append(991739556883818000_u128.into());
+        prices.append(992242243614704000_u128.into());
+        prices.append(992706195040200000_u128.into());
+        prices.append(993142884628952000_u128.into());
+        prices.append(993559692099288000_u128.into());
+        prices.append(993955814200459000_u128.into());
+        prices.append(994335056474406000_u128.into());
+        prices.append(994700440013533000_u128.into());
+        prices.append(995054185977344000_u128.into());
+        prices.append(995399740716883000_u128.into());
+        prices.append(995734834696816000_u128.into());
+        prices.append(996062810539847000_u128.into());
+        prices.append(996387925979872000_u128.into());
+        prices.append(996705233546627000_u128.into());
+        prices.append(997020242930630000_u128.into());
+        prices.append(997330674543210000_u128.into());
+        prices.append(997643112355959000_u128.into());
+        prices.append(997949115908752000_u128.into());
+        prices.append(998251035541544000_u128.into());
+        prices.append(998558656038350000_u128.into());
+        prices.append(998864120192415000_u128.into());
+        prices.append(999166007648390000_u128.into());
+        prices.append(999469499623981000_u128.into());
+        prices.append(999772517479079000_u128.into());
+        prices.append(1000076906317690000_u128.into());
+        prices.append(999783572518900000_u128.into());
+        prices.append(1000082233643610000_u128.into());
+        prices.append(999782291432283000_u128.into());
+        prices.append(1000084418040440000_u128.into());
+        prices.append(999774651681536000_u128.into());
+        prices.append(1000076306582700000_u128.into());
+        prices.append(999765562823952000_u128.into());
+        prices.append(1000067478586280000_u128.into());
+        prices.append(999773019374451000_u128.into());
+        prices.append(1000075753295850000_u128.into());
+        prices.append(999771699502100000_u128.into());
+        prices.append(1000074531257950000_u128.into());
+        prices.append(999772965087390000_u128.into());
+        prices.append(1000072685712120000_u128.into());
+        prices.append(999769822334539000_u128.into());
+        prices.append(1000073416183750000_u128.into());
+        prices.append(999773295592982000_u128.into());
+        prices.append(1000074746794400000_u128.into());
+        prices.append(999770911209658000_u128.into());
+        prices.append(1000070231385980000_u128.into());
+        prices.append(999765417689028000_u128.into());
+        prices.append(1000069974303700000_u128.into());
+
+        gt_p_terms.append(SignedRay{val: 970590147927647000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 894070898474206000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 821673437507969000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 682223134755347000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 563650679126526000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 466883377897327000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 388027439175095000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 322421778769981000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 267128295084547000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 220807295545965000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 181797017511202000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 148839923137893000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 120979934404742000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 97352460220021900000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 77590330680972000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 61032188256437500000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 47127014107944500000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 35766291049440400000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 26457120564074500000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 19019740391049200000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 13092320818861100000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 8626275988050790000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 5349866590771690000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 2994352321987200000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 1465538181737340000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 580077744495169000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 149299065094387000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 11771833128707600000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 454868699248396000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 10137648168357900000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 556094500531630000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 10318737437779200000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 601597192010593000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 11443607803844600000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 444309924306484000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 12884852286933400000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 307254269093854000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 11694088217335100000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 434714972188474000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 11899277040162700000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 414014311714013000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 11702480865715000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 384014080725509000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 12195217294212000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 395708534480748000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 11651447644416500000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 417616564726968000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 12022963179828800000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 346412629605555000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 12908797294705800000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 342622403010459000000, sign: true});
+
+        gt_i_terms.append(SignedRay{val: 0, sign: false});
+        gt_i_terms.append(SignedRay{val: 990050483961299000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 1953370315705950000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 2889955680281540000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 3770244771413480000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 4596260901939910000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 5372013197354250000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 6101374292736350000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 6787069709320670000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 7431087143392610000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 8035494683284410000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 8601979946211740000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 9131928503019010000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 9626503856398830000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 10086524917164800000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 10513037568019600000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 10906753462460900000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 11267958508146100000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 11597433365183300000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 11895407749273100000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 12162339343970200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 12398027453761000000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 12603115431573400000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 12778011609926200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 12922145856373900000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13035733763855500000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13119132970012600000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13172183000149500000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13194931251653000000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13187240619906900000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13208883367510000000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13200660003177300000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13222430859433100000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13213989055419400000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13236523886693600000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13228893228445400000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13252336945406000000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13245589086793100000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13268287148763300000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13260711819200200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13283541868395200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13276088742621000000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13298792233296800000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13291523662104200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13314541428040600000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13307199809685200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13329870249804400000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13322395570385200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13345304448818300000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13338281310237400000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 13361739540689300000000000, sign: false});
+
+        gt_multipliers.append(1970590147927650000000000000_u128.into());
+        gt_multipliers.append(1895060948958170000000000000_u128.into());
+        gt_multipliers.append(1823626807823680000000000000_u128.into());
+        gt_multipliers.append(1685113090435630000000000000_u128.into());
+        gt_multipliers.append(1567420923897940000000000000_u128.into());
+        gt_multipliers.append(1471479638799270000000000000_u128.into());
+        gt_multipliers.append(1393399452372450000000000000_u128.into());
+        gt_multipliers.append(1328523153062720000000000000_u128.into());
+        gt_multipliers.append(1273915364793870000000000000_u128.into());
+        gt_multipliers.append(1228238382689360000000000000_u128.into());
+        gt_multipliers.append(1189832512194490000000000000_u128.into());
+        gt_multipliers.append(1157441903084100000000000000_u128.into());
+        gt_multipliers.append(1130111862907760000000000000_u128.into());
+        gt_multipliers.append(1106978964076420000000000000_u128.into());
+        gt_multipliers.append(1087676855598140000000000000_u128.into());
+        gt_multipliers.append(1071545225824460000000000000_u128.into());
+        gt_multipliers.append(1058033767570410000000000000_u128.into());
+        gt_multipliers.append(1047034249557590000000000000_u128.into());
+        gt_multipliers.append(1038054553929260000000000000_u128.into());
+        gt_multipliers.append(1030915148140320000000000000_u128.into());
+        gt_multipliers.append(1025254660162830000000000000_u128.into());
+        gt_multipliers.append(1021024303441810000000000000_u128.into());
+        gt_multipliers.append(1017952982022350000000000000_u128.into());
+        gt_multipliers.append(1015772363931910000000000000_u128.into());
+        gt_multipliers.append(1014387684038110000000000000_u128.into());
+        gt_multipliers.append(1013615811508350000000000000_u128.into());
+        gt_multipliers.append(1013268432035110000000000000_u128.into());
+        gt_multipliers.append(1013183954833280000000000000_u128.into());
+        gt_multipliers.append(1013194476382950000000000000_u128.into());
+        gt_multipliers.append(1013197378268080000000000000_u128.into());
+        gt_multipliers.append(1013208327273010000000000000_u128.into());
+        gt_multipliers.append(1013210978740620000000000000_u128.into());
+        gt_multipliers.append(1013221829262240000000000000_u128.into());
+        gt_multipliers.append(1013225432663220000000000000_u128.into());
+        gt_multipliers.append(1013236079576770000000000000_u128.into());
+        gt_multipliers.append(1013241778080730000000000000_u128.into());
+        gt_multipliers.append(1013252029691140000000000000_u128.into());
+        gt_multipliers.append(1013257283175010000000000000_u128.into());
+        gt_multipliers.append(1013267852433790000000000000_u128.into());
+        gt_multipliers.append(1013272611096240000000000000_u128.into());
+        gt_multipliers.append(1013283127854080000000000000_u128.into());
+        gt_multipliers.append(1013287791223490000000000000_u128.into());
+        gt_multipliers.append(1013298408219220000000000000_u128.into());
+        gt_multipliers.append(1013303718879400000000000000_u128.into());
+        gt_multipliers.append(1013314145719510000000000000_u128.into());
+        gt_multipliers.append(1013318851257330000000000000_u128.into());
+        gt_multipliers.append(1013329452633240000000000000_u128.into());
+        gt_multipliers.append(1013334418533570000000000000_u128.into());
+        gt_multipliers.append(1013344958036190000000000000_u128.into());
+        gt_multipliers.append(1013351190107530000000000000_u128.into());
+        gt_multipliers.append(1013361396918290000000000000_u128.into());
+
+
+        loop {
+            match prices.pop_front() {
+                Option::Some(price) => {
+                    shrine.update_yin_spot_price(price);
+                    controller.update_multiplier();
+            
+                    // Checking the p term 
+                    assert_equalish(
+                        controller.get_p_term(),
+                        gt_p_terms.pop_front().unwrap(),
+                        ERROR_MARGIN.into(),
+                        'Wrong p term'
+                    );
+                    
+                    // Checking the i term 
+                    assert_equalish(
+                        controller.get_i_term(),
+                        gt_i_terms.pop_front().unwrap(),
+                        ERROR_MARGIN.into(),
+                        'Wrong i term'
+                    );
+
+                    // Checking the multiplier 
+                    assert_equalish(
+                        controller.get_current_multiplier(),
+                        gt_multipliers.pop_front().unwrap(),
+                        ERROR_MARGIN.into(),
+                        'Wrong multiplier'
+                    );
+
+                    ControllerUtils::fast_forward_1_hour();
+                    
+                }, 
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
+
     }
 }
