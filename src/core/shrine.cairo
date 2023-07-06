@@ -1688,16 +1688,13 @@ mod Shrine {
                                 };
                             };
 
-                            // Handle loss of precision from fixed point operations
-                            // 1. Add the cumulative remainder scaled by wad
-                            let cumulative_r: u128 = cumulative_r.try_into().unwrap();
+                            // Handle loss of precision from fixed point operations by rounding up
+                            // the cumulative remainder if `cumulative_r >= 0.5` before adding it to 
+                            // trove's debt 
+                            let cumulative_r: u128 = cumulative_r.try_into().unwrap()
+                                + (WAD_ONE / 2);
                             let precision_offset: u128 = cumulative_r / WAD_SCALE;
                             trove_debt += precision_offset.into();
-
-                            // 2. Perform rounding of the leftover cumulative remainder
-                            if cumulative_r % WAD_SCALE >= debt_rounding_threshold {
-                                trove_debt += 1_u128.into();
-                            }
 
                             // Create a new `trove_yang_balances` to include the redistributed yang
                             // Note that this should be ordered with yang IDs starting from 1,
