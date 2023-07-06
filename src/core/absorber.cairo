@@ -605,8 +605,11 @@ mod Absorber {
             // minimum shares worth of yin from the yin balance so that there is at least such amount
             // of yin that cannot be removed in the next epoch.
             if INITIAL_SHARES <= yin_balance.val {
+                // Since the remaining yin balance should be claimable by the previous epoch's providers,
+                // exclude the initial shares so that there will not be shares that is incapable of being
+                // converted to the next epoch's shares
                 let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
-                    yin_balance - INITIAL_SHARES.into(), total_shares
+                    yin_balance - INITIAL_SHARES.into(), recipient_shares
                 );
 
                 epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
