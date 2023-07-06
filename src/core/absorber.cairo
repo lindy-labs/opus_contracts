@@ -733,11 +733,9 @@ mod Absorber {
         );
 
         let mut new_shares: Wad = shares.try_into().unwrap();
-        let rounding_threshold: u256 = (RAY_ONE / 2).into();
-        // Perform rounding so that all shares are claimable
-        if r >= rounding_threshold {
-            new_shares += 1_u128.into();
-        }
+        // Round up if `r >= 0.5`
+        let rounded_r: u128 = r.try_into().unwrap() + (RAY_ONE / 2).into();
+        new_shares += (rounded_r / RAY_SCALE).into();
 
         convert_epoch_shares(start_epoch + 1, end_epoch, new_shares)
     }
