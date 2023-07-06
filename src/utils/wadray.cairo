@@ -289,6 +289,13 @@ impl WadIntoU256 of Into<Wad, u256> {
     }
 }
 
+impl RayIntoU256 of Into<Ray, u256> {
+    #[inline(always)]
+    fn into(self: Ray) -> u256 {
+        self.val.into()
+    }
+}
+
 impl U256TryIntoWad of TryInto<u256, Wad> {
     #[inline(always)]
     fn try_into(self: u256) -> Option<Wad> {

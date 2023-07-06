@@ -593,7 +593,7 @@ mod AbsorberUtils {
                     let expected_blessed_amt: Wad = wadray::rmul_wr(
                         reward_amt, blessings_multiplier
                     );
-                    let expected_amt_per_share: Wad = expected_blessed_amt / total_shares;
+                    let expected_amt_per_share: Wad = expected_blessed_amt / (total_shares - Absorber::INITIAL_SHARES.into());
 
                     assert(
                         reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
@@ -667,7 +667,7 @@ mod AbsorberUtils {
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
                     let expected_asset_amt_per_share: u128 = ((asset_amt + prev_error)
-                        / total_shares)
+                        / (total_shares - Absorber::INITIAL_SHARES.into()))
                         .val;
 
                     // Check asset amt per share is correct
@@ -678,7 +678,7 @@ mod AbsorberUtils {
 
                     // Check update amount = (total_shares * asset_amt per share) - prev_error + error
                     // Convert to Wad for fixed point operations
-                    let distributed_amt: Wad = (total_shares
+                    let distributed_amt: Wad = ((total_shares - Absorber::INITIAL_SHARES.into())
                         * actual_distribution.asset_amt_per_share.into())
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
