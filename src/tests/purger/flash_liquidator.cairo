@@ -83,8 +83,6 @@ mod FlashLiquidator {
             );
     }
 
-    use debug::PrintTrait;
-
     #[external]
     fn on_flash_loan(
         initiator: ContractAddress,
@@ -101,10 +99,12 @@ mod FlashLiquidator {
         );
 
         let trove_id: u64 = (*call_data.pop_front().unwrap()).try_into().unwrap();
-        let (mut freed_assets, mut freed_asset_amts) = purger::read()
+        let (freed_assets, freed_asset_amts) = purger::read()
             .liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
 
-        // Open a trove with funded and freed assets, and mint the loan amount
+        // Open a trove with funded and freed assets, and mint the loan amount.
+        // This should revert if the contract did not receive the freed assets
+        // from the liquidation.
         abbot::read()
             .open_trove(
                 amount.try_into().unwrap(),
