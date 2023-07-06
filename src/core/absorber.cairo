@@ -25,7 +25,7 @@ mod Absorber {
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad};
 
     //
     // Constants
@@ -604,7 +604,7 @@ mod Absorber {
             // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
             // minimum shares worth of yin from the yin balance so that there is at least such amount
             // of yin that cannot be removed in the next epoch.
-            if INITIAL_SHARES <= yin_balance.val {
+            if INITIAL_SHARES < yin_balance.val {
                 // Since the remaining yin balance should be claimable by the previous epoch's providers,
                 // exclude the initial shares so that there will not be shares that is incapable of being
                 // converted to the next epoch's shares
@@ -727,7 +727,17 @@ mod Absorber {
 
         let epoch_conversion_rate: Ray = epoch_share_conversion_rate::read(start_epoch);
 
-        let new_shares: Wad = wadray::rmul_wr(start_shares, epoch_conversion_rate);
+        let ray_scale: u256 = RAY_SCALE.into();
+        let (shares, r) = u256_safe_divmod(
+            start_shares.into() * epoch_conversion_rate.into(), ray_scale.try_into().unwrap()
+        );
+
+        let mut new_shares: Wad = shares.try_into().unwrap();
+        let rounding_threshold: u256 = (RAY_ONE / 2).into();
+        // Perform rounding so that all shares are claimable
+        if r >= rounding_threshold {
+            new_shares += 1_u128.into();
+        }
 
         convert_epoch_shares(start_epoch + 1, end_epoch, new_shares)
     }
