@@ -25,7 +25,7 @@ mod Absorber {
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad};
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WAD_ONE};
 
     //
     // Constants
@@ -39,6 +39,11 @@ mod Absorber {
 
     // Shares to be minted without a provider to avoid first provider front-running
     const INITIAL_SHARES: u128 = 1000; // 10 ** 3 (Wad);
+
+    // Minimum total shares, including the initial shares, for each epoch
+    // to prevent overflows in fixed point operations when the divisor (total shares)
+    // is a very small number
+    const MINIMUM_SHARES: u128 = 1000000000000000000; // 10 ** 18 (Wad);
 
     // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
     const MIN_LIMIT: u128 = 500000000000000000000000000; // 50 * wadray::RAY_PERCENT = 0.5
@@ -159,14 +164,17 @@ mod Absorber {
     fn Gain(
         assets: Span<ContractAddress>,
         asset_amts: Span<u128>,
-        total_shares: Wad,
+        total_recipient_shares: Wad,
         epoch: u32,
         absorption_id: u32,
     ) {}
 
     #[event]
     fn Bestow(
-        assets: Span<ContractAddress>, asset_amts: Span<u128>, total_shares: Wad, epoch: u32, 
+        assets: Span<ContractAddress>,
+        asset_amts: Span<u128>,
+        total_recipient_shares: Wad,
+        epoch: u32,
     ) {}
 
     #[event]
@@ -322,12 +330,13 @@ mod Absorber {
         );
 
         // Early return if we do not expect rewards to be distributed when the user calls `reap`
-        if total_shares.is_zero() | current_provider_shares.is_zero() {
+        if total_shares <= INITIAL_SHARES.into() | current_provider_shares.is_zero() {
             return (absorbed_assets, absorbed_asset_amts, reward_assets, reward_amts);
         }
 
+        let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
         let updated_reward_amts: Span<u128> = get_provider_pending_rewards(
-            provider, current_provider_shares, total_shares, current_epoch, reward_amts
+            provider, current_provider_shares, total_recipient_shares, current_epoch, reward_amts
         );
 
         (absorbed_assets, absorbed_asset_amts, reward_assets, updated_reward_amts)
@@ -408,8 +417,7 @@ mod Absorber {
         provisions::write(provider, Provision { epoch: current_epoch, shares: new_shares });
 
         // Update total shares for current epoch
-        let new_total_shares: Wad = total_shares::read() + issued_shares;
-        total_shares::write(new_total_shares);
+        total_shares::write(total_shares::read() + issued_shares);
 
         // Perform transfer of yin
         let absorber: ContractAddress = get_contract_address();
@@ -568,17 +576,17 @@ mod Absorber {
 
         // Exclude initial shares from the total amount of shares receiving absorbed assets
         let total_shares: Wad = total_shares::read();
-        let recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
+        let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
 
         // Emit `Gain` event before the loop as `assets` and `asset_amts` are consumed by the loop
-        Gain(assets, asset_amts, recipient_shares, current_epoch, current_absorption_id);
+        Gain(assets, asset_amts, total_recipient_shares, current_epoch, current_absorption_id);
 
         loop {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let asset_amt: u128 = *asset_amts.pop_front().unwrap();
                     update_absorbed_asset(
-                        current_absorption_id, recipient_shares, *asset, asset_amt
+                        current_absorption_id, total_recipient_shares, *asset, asset_amt
                     );
                 },
                 Option::None(_) => {
@@ -609,7 +617,7 @@ mod Absorber {
                 // exclude the initial shares so that there will not be shares that is incapable of being
                 // converted to the next epoch's shares
                 let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
-                    yin_balance - INITIAL_SHARES.into(), recipient_shares
+                    yin_balance - INITIAL_SHARES.into(), total_recipient_shares
                 );
 
                 epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
@@ -804,8 +812,6 @@ mod Absorber {
         let current_absorption_id: u32 = absorptions_count::read();
         provider_last_absorption::write(provider, current_absorption_id);
 
-        let total_shares: Wad = total_shares::read();
-
         // NOTE: both `get_absorbed_assets_for_provider_internal` and `get_provider_accumulated_rewards` 
         // contain early returns of empty arrays if `provision.shares` is zero.
 
@@ -972,6 +978,8 @@ mod Absorber {
         }
 
         // Trigger issuance of active rewards
+        let recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
+
         let mut rewards: Array<ContractAddress> = Default::default();
         let mut blessed_amts: Array<u128> = Default::default();
         let mut current_rewards_id: u8 = 0;
@@ -999,10 +1007,10 @@ mod Absorber {
                 let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
 
                 let asset_amt_per_share: u128 = wadray::wdiv_internal(
-                    total_amount_to_distribute, total_shares.val
+                    total_amount_to_distribute, recipient_shares.val
                 );
                 let actual_amount_distributed: u128 = wadray::wmul_internal(
-                    asset_amt_per_share, total_shares.val
+                    asset_amt_per_share, recipient_shares.val
                 );
                 let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
@@ -1021,7 +1029,7 @@ mod Absorber {
         };
 
         if rewards.len() > 0 {
-            Bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
+            Bestow(rewards.span(), blessed_amts.span(), recipient_shares, epoch);
         }
     }
 
@@ -1142,7 +1150,7 @@ mod Absorber {
     fn get_provider_pending_rewards(
         provider: ContractAddress,
         current_provider_shares: Wad,
-        total_shares: Wad,
+        total_recipient_shares: Wad,
         current_epoch: u32,
         mut accumulated_asset_amts: Span<u128>
     ) -> Span<u128> {
@@ -1159,7 +1167,7 @@ mod Absorber {
                     );
 
                     let pending_amt_per_share: u128 = wadray::wdiv_internal(
-                        pending_amt + reward_info.error, total_shares.val
+                        pending_amt + reward_info.error, total_recipient_shares.val
                     );
                     let provider_pending_amt: u128 = wadray::wmul_internal(
                         pending_amt_per_share, current_provider_shares.val
