@@ -1254,7 +1254,7 @@ mod TestAbsorber {
         // Convert to Wad for fixed point operations
         let expected_aura_reward_increment: Wad = (2 * *reward_amts_per_blessing.at(0)).into();
         let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
-            / total_shares;
+            / (total_shares - Absorber::INITIAL_SHARES.into());
         let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
             + expected_aura_reward_cumulative_increment.val;
         let updated_aura_reward_distribution: DistributionInfo = absorber
@@ -1323,9 +1323,9 @@ mod TestAbsorber {
         // Check reward cumulative is updated for AURA
         // Convert to Wad for fixed point operations
         let aura_reward_distribution = updated_aura_reward_distribution;
-        let expected_aura_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into();
+        let expected_aura_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into() + aura_reward_distribution.error.into();
         let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
-            / total_shares;
+            / (total_shares - Absorber::INITIAL_SHARES.into());
         let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
             + expected_aura_reward_cumulative_increment.val;
         let updated_aura_reward_distribution: DistributionInfo = absorber
