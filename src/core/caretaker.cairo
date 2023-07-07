@@ -314,7 +314,6 @@ mod Caretaker {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let asset_amt: u128 = *asset_amts_copy.pop_front().unwrap();
-
                     if asset_amt.is_zero() {
                         continue;
                     }

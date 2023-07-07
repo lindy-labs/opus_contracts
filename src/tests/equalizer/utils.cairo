@@ -25,7 +25,7 @@ mod EqualizerUtils {
 
     //
     // Convenience helpers
-    // 
+    //
 
     fn initial_recipients() -> Span<ContractAddress> {
         let mut recipients: Array<ContractAddress> = Default::default();
@@ -122,6 +122,10 @@ mod EqualizerUtils {
 
     fn equalizer_deploy() -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        equalizer_deploy_with_shrine(shrine.contract_address)
+    }
+
+    fn equalizer_deploy_with_shrine(shrine: ContractAddress) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let allocator: IAllocatorDispatcher = allocator_deploy(
             initial_recipients(), initial_percentages()
         );
@@ -129,7 +133,7 @@ mod EqualizerUtils {
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(shrine.contract_address));
+        calldata.append(contract_address_to_felt252(shrine));
         calldata.append(contract_address_to_felt252(allocator.contract_address));
 
         let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(
@@ -141,16 +145,12 @@ mod EqualizerUtils {
 
         set_contract_address(admin);
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
-            contract_address: shrine.contract_address
+            contract_address: shrine
         };
         shrine_ac.grant_role(ShrineRoles::INJECT, equalizer_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        let equalizer: IEqualizerDispatcher = IEqualizerDispatcher {
-            contract_address: equalizer_addr
-        };
-
-        (shrine, equalizer, allocator)
+        (IShrineDispatcher { contract_address: shrine }, IEqualizerDispatcher { contract_address: equalizer_addr }, allocator)
     }
 }

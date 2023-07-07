@@ -11,14 +11,15 @@ mod GateUtils {
     use traits::{Default, Into};
 
     use aura::core::gate::Gate;
-
     use aura::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
+    use aura::tests::common;
     use aura::tests::erc20::ERC20;
     use aura::tests::shrine::utils::ShrineUtils;
 
@@ -54,45 +55,11 @@ mod GateUtils {
     //
 
     fn eth_token_deploy() -> ContractAddress {
-        let mut calldata = Default::default();
-        calldata.append('Ether');
-        calldata.append('ETH');
-        calldata.append(18);
-        calldata.append(ETH_TOTAL.into()); // u256.low
-        calldata.append(0); // u256.high
-        calldata.append(contract_address_to_felt252(eth_hoarder()));
-
-        let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-        let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
-
-        // sanity check
-        assert(
-            IERC20Dispatcher { contract_address: token }.total_supply() == ETH_TOTAL.into(),
-            'wrong ETH supply'
-        );
-
-        token
+        common::deploy_token('Ether', 'ETH', 18, ETH_TOTAL.into(), eth_hoarder())
     }
 
     fn wbtc_token_deploy() -> ContractAddress {
-        let mut calldata = Default::default();
-        calldata.append('Bitcoin');
-        calldata.append('WBTC');
-        calldata.append(8);
-        calldata.append(WBTC_TOTAL.into()); // u256.low
-        calldata.append(0); // u256.high
-        calldata.append(contract_address_to_felt252(wbtc_hoarder()));
-
-        let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
-        let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
-
-        // sanity check
-        assert(
-            IERC20Dispatcher { contract_address: token }.total_supply() == WBTC_TOTAL.into(),
-            'wrong ETH supply'
-        );
-
-        token
+        common::deploy_token('Bitcoin', 'WBTC', 8, WBTC_TOTAL.into(), wbtc_hoarder())
     }
 
 

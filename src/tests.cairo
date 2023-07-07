@@ -1,10 +1,13 @@
 mod abbot;
+mod absorber;
+mod caretaker;
 mod common;
 mod controller;
 mod erc20;
 mod equalizer;
 mod external;
 mod gate;
+mod purger;
 mod sentinel;
 mod shrine;
 mod test_flashmint;

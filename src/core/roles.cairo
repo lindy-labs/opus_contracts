@@ -5,6 +5,11 @@ mod AbsorberRoles {
     const UPDATE: u128 = 8;
 
     #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         KILL + SET_REMOVAL_LIMIT + SET_REWARD
     }
@@ -16,6 +21,15 @@ mod AllocatorRoles {
     #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_ALLOCATION
+    }
+}
+
+mod BlesserRoles {
+    const BLESS: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        BLESS
     }
 }
 
@@ -54,8 +68,22 @@ mod PragmaRoles {
     const UPDATE_PRICES: u128 = 16;
 
     #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE_PRICES
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
+    }
+}
+
+mod PurgerRoles {
+    const SET_PENALTY_SCALAR: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_PENALTY_SCALAR
     }
 }
 
@@ -69,6 +97,16 @@ mod SentinelRoles {
     #[inline(always)]
     fn abbot() -> u128 {
         ENTER + EXIT
+    }
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        EXIT
+    }
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        EXIT
     }
 
     #[inline(always)]
@@ -99,6 +137,12 @@ mod ShrineRoles {
     fn abbot() -> u128 {
         DEPOSIT + FORGE + MELT + WITHDRAW
     }
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        EJECT + KILL + SEIZE
+    }
+
     #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
@@ -107,6 +151,11 @@ mod ShrineRoles {
     #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
+    }
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        MELT + REDISTRIBUTE + SEIZE
     }
 
     #[inline(always)]

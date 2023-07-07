@@ -159,12 +159,20 @@ mod ShrineUtils {
         set_contract_address(ContractAddressZeroable::zero());
     }
 
-    fn shrine_setup(shrine_addr: ContractAddress) {
+    fn setup_debt_ceiling(shrine_addr: ContractAddress) {
         make_root(shrine_addr, admin());
         // Set debt ceiling
         set_contract_address(admin());
         let shrine = shrine(shrine_addr);
         shrine.set_debt_ceiling(DEBT_CEILING.into());
+        // Reset contract address
+        set_contract_address(ContractAddressZeroable::zero());
+    }
+
+    fn shrine_setup(shrine_addr: ContractAddress) {
+        setup_debt_ceiling(shrine_addr);
+        let shrine = shrine(shrine_addr);
+        set_contract_address(admin());
 
         // Add yangs
         shrine
