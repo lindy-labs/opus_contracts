@@ -224,14 +224,8 @@ fn get_token_balances(
 // Helpers - Assertions
 //
 
-<<<<<<< HEAD
-#[inline]
-fn assert_equalish<
-    T, impl TSub: Sub<T>, impl TPartialOrd: PartialOrd<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
-=======
 fn assert_equalish<
     T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
->>>>>>> main
 >(
     a: T, b: T, error: T, message: felt252
 ) {
