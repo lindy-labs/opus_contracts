@@ -1045,11 +1045,6 @@ mod Shrine {
         let interest_has_accrued: bool = compounded_trove_debt != trove.debt;
         if interest_has_accrued {
             DebtTotalUpdated(new_system_debt);
-        }
-
-        // Emit only if interest accrued or redistributed debt was pulled
-        if interest_has_accrued
-            | compounded_trove_debt_with_redistributed_debt != compounded_trove_debt {
             TroveUpdated(trove_id, updated_trove);
         }
     }
