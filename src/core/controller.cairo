@@ -22,7 +22,7 @@ mod Controller {
 
     // multiplier bounds (ray)
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
-    const MAX_MULTIPLIER: u128 = 1500000000000000000000000000; // 1.5
+    const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
 
     struct Storage {
         shrine: IShrineDispatcher,

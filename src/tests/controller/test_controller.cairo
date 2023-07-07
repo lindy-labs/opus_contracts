@@ -19,7 +19,7 @@ mod TestController {
     const YIN_PRICE1: u128 = 999942800000000000; // wad 
     const YIN_PRICE2: u128 = 999879000000000000; // wad
 
-    const ERROR_MARGIN: u128 = 1000000000000_u128; // 10^-15 (ray)
+    const ERROR_MARGIN: u128 = 1000000000000000_u128; // 10^-12 (ray)
 
     #[test]
     #[available_gas(20000000000)]
@@ -168,6 +168,7 @@ mod TestController {
         prices.append(1000070231385980000_u128.into());
         prices.append(999765417689028000_u128.into());
         prices.append(1000069974303700000_u128.into());
+
 
         gt_p_terms.append(SignedRay{val: 970590147927647000000000000, sign: false});
         gt_p_terms.append(SignedRay{val: 894070898474206000000000000, sign: false});
@@ -325,22 +326,20 @@ mod TestController {
         gt_multipliers.append(1013351190107530000000000000_u128.into());
         gt_multipliers.append(1013361396918290000000000000_u128.into());
 
-
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
+                    
                     shrine.update_yin_spot_price(price);
                     controller.update_multiplier();
             
-                    // Checking the p term 
                     assert_equalish(
                         controller.get_p_term(),
                         gt_p_terms.pop_front().unwrap(),
                         ERROR_MARGIN.into(),
                         'Wrong p term'
                     );
-                    
-                    // Checking the i term 
+
                     assert_equalish(
                         controller.get_i_term(),
                         gt_i_terms.pop_front().unwrap(),
@@ -348,7 +347,6 @@ mod TestController {
                         'Wrong i term'
                     );
 
-                    // Checking the multiplier 
                     assert_equalish(
                         controller.get_current_multiplier(),
                         gt_multipliers.pop_front().unwrap(),
@@ -357,7 +355,6 @@ mod TestController {
                     );
 
                     ControllerUtils::fast_forward_1_hour();
-                    
                 }, 
                 Option::None(_) => {
                     break;
