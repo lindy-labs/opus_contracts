@@ -1165,7 +1165,8 @@ mod TestAbsorber {
                     ) =
                         AbsorberUtils::absorber_with_rewards_and_first_provider();
 
-                    let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+                    let first_epoch_total_shares: Wad = absorber
+                        .get_total_shares_for_current_epoch();
 
                     // Step 2
                     let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
@@ -1179,7 +1180,8 @@ mod TestAbsorber {
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
                     // New total shares should be equivalent to remaining yin in Absorber
                     assert(
-                        absorber.get_total_shares_for_current_epoch() == *remaining_yin_amt, 'wrong total shares'
+                        absorber.get_total_shares_for_current_epoch() == *remaining_yin_amt,
+                        'wrong total shares'
                     );
 
                     AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
@@ -1192,14 +1194,17 @@ mod TestAbsorber {
                     );
 
                     set_contract_address(first_provider);
-                    let (_, _, _, preview_reward_amts) = absorber
-                        .preview_reap(first_provider);
+                    let (_, _, _, preview_reward_amts) = absorber.preview_reap(first_provider);
 
                     // Trigger an update of the provider's Provision
                     absorber.provide(WadZeroable::zero());
                     let first_provider_info: Provision = absorber.get_provision(first_provider);
-                    let expected_provider_shares: Wad = *remaining_yin_amt - Absorber::INITIAL_SHARES.into();
-                    assert(first_provider_info.shares == expected_provider_shares, 'wrong provider shares');
+                    let expected_provider_shares: Wad = *remaining_yin_amt
+                        - Absorber::INITIAL_SHARES.into();
+                    assert(
+                        first_provider_info.shares == expected_provider_shares,
+                        'wrong provider shares'
+                    );
                     assert(first_provider_info.epoch == 1, 'wrong provider epoch');
 
                     let expected_first_provider_blessings_multiplier = RAY_SCALE.into();
@@ -1215,12 +1220,10 @@ mod TestAbsorber {
                         error_margin,
                     );
 
-                    let (_, _, _, mut preview_reward_amts) = absorber
-                        .preview_reap(first_provider);
+                    let (_, _, _, mut preview_reward_amts) = absorber.preview_reap(first_provider);
                     loop {
                         match preview_reward_amts.pop_front() {
                             Option::Some(reward_amt) => {
-
                                 assert((*reward_amt).is_zero(), 'expected rewards should be 0');
                             },
                             Option::None(_) => {
@@ -1437,7 +1440,8 @@ mod TestAbsorber {
         // Check reward cumulative is updated for AURA
         // Convert to Wad for fixed point operations
         let aura_reward_distribution = updated_aura_reward_distribution;
-        let expected_aura_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into() + aura_reward_distribution.error.into();
+        let expected_aura_reward_increment: Wad = (*reward_amts_per_blessing.at(0)).into()
+            + aura_reward_distribution.error.into();
         let expected_aura_reward_cumulative_increment: Wad = expected_aura_reward_increment
             / (total_shares - Absorber::INITIAL_SHARES.into());
         let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
