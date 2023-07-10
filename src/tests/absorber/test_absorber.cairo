@@ -404,13 +404,22 @@ mod TestAbsorber {
                     );
 
                     let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
-                    if is_fully_absorbed & !provide_as_second_action {
-                        assert(
-                            after_preview_reward_amts.len().is_zero(), 'should not have rewards'
-                        );
-                        AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
-                            absorber, expected_epoch - 1, reward_tokens
-                        );
+                    if is_fully_absorbed {
+                        if provide_as_second_action {
+                            // Updated preview amount should increase because of addition of error
+                            // from previous redistribution
+                            assert(
+                                *after_preview_reward_amts.at(0) > *preview_reward_amts.at(0),
+                                'preview amount should decrease'
+                            );
+                        } else {
+                            assert(
+                                after_preview_reward_amts.len().is_zero(), 'should not have rewards'
+                            );
+                            AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
+                                absorber, expected_epoch - 1, reward_tokens
+                            );
+                        }
                     } else if after_preview_reward_amts.len().is_non_zero() {
                         // Sanity check that updated preview reward amount is lower than before
                         assert(
@@ -779,7 +788,7 @@ mod TestAbsorber {
         let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
         // Amount of yin remaining needs to be sufficiently significant to account for loss of precision
         // from conversion of shares across epochs, after discounting initial shares.
-        let above_min_shares: Wad = (1000000000_u128).into(); // half-Wad scale
+        let above_min_shares: Wad = Absorber::MINIMUM_SHARES.into();
         let burn_amt: Wad = first_provided_amt - above_min_shares;
         AbsorberUtils::simulate_update_with_amt_to_drain(
             shrine, absorber, yangs, first_update_assets, burn_amt
@@ -894,7 +903,7 @@ mod TestAbsorber {
         );
     }
 
-    // Test 1 wei above initial shares remaining after absorption.
+    // Test minimum shares amount of yin remaining after absorption.
     // Sequence of events:
     // 1. Provider 1 provides
     // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
@@ -902,7 +911,7 @@ mod TestAbsorber {
     // 3. Provider 1 withdraws, which should be zero due to loss of precision.
     #[test]
     #[available_gas(20000000000)]
-    fn test_remove_after_threshold_absorption_one_above_minimum() {
+    fn test_remove_after_threshold_absorption_with_minimum_shares() {
         let (
             shrine,
             abbot,
@@ -975,13 +984,13 @@ mod TestAbsorber {
     // Sequence of events:
     // 1. Provider 1 provides
     // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
-    //    below the minimum initial shares so total shares in new epoch starts from 0. 
+    //    below the initial shares so total shares in new epoch starts from 0. 
     //    No rewards are distributed because total shares is zeroed.
     // 3. Provider 2 provides, provider 1 receives 1 round of rewards.
     // 4. Provider 1 withdraws, both providers share 1 round of rewards.
     #[test]
     #[available_gas(20000000000)]
-    fn test_provide_after_threshold_absorption_below_minimum() {
+    fn test_provide_after_threshold_absorption_below_initial_shares() {
         let (
             shrine,
             abbot,
@@ -1120,6 +1129,111 @@ mod TestAbsorber {
         AbsorberUtils::assert_provider_reward_cumulatives_updated(
             absorber, first_provider, reward_tokens
         );
+    }
+
+    // Test amount of yin remaining after absorption is above initial shares but below 
+    // minimum shares
+    // Sequence of events:
+    // 1. Provider 1 provides
+    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
+    //    above initial shares but below minimum shares
+    // 3. Provider 1 withdraws, no rewards should be distributed.
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_after_threshold_absorption_between_initial_and_minimum_shares() {
+        let mut remaining_yin_amts: Array<Wad> = Default::default();
+        // lower bound for remaining yin without total shares being zeroed
+        remaining_yin_amts.append((Absorber::INITIAL_SHARES + 1).into());
+        // upper bound for remaining yin before rewards are distributed
+        remaining_yin_amts.append((Absorber::MINIMUM_SHARES - 1).into());
+        let mut remaining_yin_amts = remaining_yin_amts.span();
+
+        loop {
+            match remaining_yin_amts.pop_front() {
+                Option::Some(remaining_yin_amt) => {
+                    let (
+                        shrine,
+                        abbot,
+                        absorber,
+                        yangs,
+                        gates,
+                        reward_tokens,
+                        _,
+                        reward_amts_per_blessing,
+                        first_provider,
+                        first_provided_amt
+                    ) =
+                        AbsorberUtils::absorber_with_rewards_and_first_provider();
+
+                    let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
+
+                    // Step 2
+                    let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
+                    let burn_amt: Wad = first_provided_amt - *remaining_yin_amt;
+                    AbsorberUtils::simulate_update_with_amt_to_drain(
+                        shrine, absorber, yangs, first_update_assets, burn_amt
+                    );
+
+                    // Check epoch and total shares after threshold absorption
+                    let expected_epoch: u32 = 1;
+                    assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
+                    // New total shares should be equivalent to remaining yin in Absorber
+                    assert(
+                        absorber.get_total_shares_for_current_epoch() == *remaining_yin_amt, 'wrong total shares'
+                    );
+
+                    AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
+                        absorber, expected_epoch - 1, reward_tokens
+                    );
+
+                    // Step 3
+                    let first_provider_before_reward_bals = common::get_token_balances(
+                        reward_tokens, first_provider.into()
+                    );
+
+                    set_contract_address(first_provider);
+                    let (_, _, _, preview_reward_amts) = absorber
+                        .preview_reap(first_provider);
+
+                    // Trigger an update of the provider's Provision
+                    absorber.provide(WadZeroable::zero());
+                    let first_provider_info: Provision = absorber.get_provision(first_provider);
+                    let expected_provider_shares: Wad = *remaining_yin_amt - Absorber::INITIAL_SHARES.into();
+                    assert(first_provider_info.shares == expected_provider_shares, 'wrong provider shares');
+                    assert(first_provider_info.epoch == 1, 'wrong provider epoch');
+
+                    let expected_first_provider_blessings_multiplier = RAY_SCALE.into();
+                    let error_margin: Wad = 1000_u128.into();
+                    AbsorberUtils::assert_provider_received_rewards(
+                        absorber,
+                        first_provider,
+                        reward_tokens,
+                        reward_amts_per_blessing,
+                        first_provider_before_reward_bals,
+                        preview_reward_amts,
+                        expected_first_provider_blessings_multiplier,
+                        error_margin,
+                    );
+
+                    let (_, _, _, mut preview_reward_amts) = absorber
+                        .preview_reap(first_provider);
+                    loop {
+                        match preview_reward_amts.pop_front() {
+                            Option::Some(reward_amt) => {
+
+                                assert((*reward_amt).is_zero(), 'expected rewards should be 0');
+                            },
+                            Option::None(_) => {
+                                break;
+                            }
+                        };
+                    };
+                },
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
     }
 
     // Sequence of events:
