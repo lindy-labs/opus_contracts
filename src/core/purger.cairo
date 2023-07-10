@@ -296,9 +296,13 @@ mod Purger {
             trove_penalty
         );
 
-        // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
-        // cap the amount to pay down to the absorber's balance (including if it is zero).
-        let purge_amt = min(max_purge_amt, absorber_yin_bal);
+        // If the absorber is operational, cap the purge amount to the absorber's balance 
+        // (including if it is zero).
+        let purge_amt = if absorber.is_operational() {
+            min(max_purge_amt, absorber_yin_bal)
+        } else {
+            WadZeroable::zero()
+        };
 
         // Transfer a percentage of the penalty to the caller as compensation
         let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);

@@ -23,6 +23,7 @@ trait IAbsorber {
     ) -> u128;
     fn get_removal_limit() -> Ray;
     fn get_live() -> bool;
+    fn is_operational() -> bool;
     fn preview_remove(provider: ContractAddress) -> Wad;
     fn preview_reap(
         provider: ContractAddress

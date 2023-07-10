@@ -43,7 +43,7 @@ mod Absorber {
     // Minimum total shares, including the initial shares, for each epoch
     // to prevent overflows in fixed point operations when the divisor (total shares)
     // is a very small number
-    const MINIMUM_SHARES: u128 = 1000000000000000000; // 10 ** 18 (Wad);
+    const MINIMUM_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
 
     // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
     const MIN_LIMIT: u128 = 500000000000000000000000000; // 50 * wadray::RAY_PERCENT = 0.5
@@ -289,6 +289,13 @@ mod Absorber {
     // View
     //
 
+    // Returns true if the total shares in current epoch is at least `MINIMUM_SHARES`, so as 
+    // to prevent underflows when distributing absorbed assets and rewards.
+    #[view]
+    fn is_operational() -> bool {
+        is_operational_internal(total_shares::read())
+    }
+
     // Returns the maximum amount of yin removable by a provider.
     #[view]
     fn preview_remove(provider: ContractAddress) -> Wad {
@@ -330,7 +337,7 @@ mod Absorber {
         );
 
         // Early return if we do not expect rewards to be distributed when the user calls `reap`
-        if total_shares <= INITIAL_SHARES.into() | current_provider_shares.is_zero() {
+        if !is_operational_internal(total_shares) | current_provider_shares.is_zero() {
             return (absorbed_assets, absorbed_asset_amts, reward_assets, reward_amts);
         }
 
@@ -662,6 +669,11 @@ mod Absorber {
         assert(is_live::read(), 'ABS: Not live');
     }
 
+    #[inline(always)]
+    fn is_operational_internal(total_shares: Wad) -> bool {
+        total_shares >= MINIMUM_SHARES.into()
+    }
+
     // Helper function to return a Yin ERC20 contract
     #[inline(always)]
     fn yin_erc20() -> IERC20Dispatcher {
@@ -971,9 +983,8 @@ mod Absorber {
     //
 
     fn bestow(epoch: u32, rewards_count: u8) {
-        // Defer rewards until at least one provider deposits
         let total_shares: Wad = total_shares::read();
-        if total_shares.is_zero() {
+        if !is_operational_internal(total_shares) {
             return;
         }
 
