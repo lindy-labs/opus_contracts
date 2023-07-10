@@ -854,8 +854,7 @@ mod TestAbsorber {
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
 
-        // Loosen error margin due to loss of precision from epoch share conversion
-        let error_margin: Wad = WAD_SCALE.into();
+        let error_margin: Wad = 1000_u128.into();
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
@@ -879,6 +878,8 @@ mod TestAbsorber {
         );
 
         let expected_first_provider_blessings_multiplier = (2 * RAY_SCALE).into();
+        // Loosen error margin due to loss of precision from epoch share conversion
+        let error_margin: Wad = WAD_SCALE.into();
         AbsorberUtils::assert_provider_received_rewards(
             absorber,
             first_provider,
