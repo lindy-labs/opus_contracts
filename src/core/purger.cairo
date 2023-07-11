@@ -118,11 +118,8 @@ mod Purger {
     // to determine if a trove is liquidatable or not
     #[view]
     fn get_liquidation_penalty(trove_id: u64) -> Ray {
-        let (threshold, ltv, _, _) = shrine::read().get_trove_info(trove_id);
-        match get_liquidation_penalty_internal(threshold, ltv) {
-            Option::Some(penalty) => penalty,
-            Option::None(_) => RayZeroable::zero(),
-        }
+        let (_, penalty) = preview_liquidation(trove_id);
+        penalty
     }
 
     // Returns the absorption penalty for the given trove
@@ -139,14 +136,8 @@ mod Purger {
     // Returns the maximum amount of debt that can be liquidated for a Trove
     #[view]
     fn get_max_liquidation_amount(trove_id: u64) -> Wad {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-
-        match get_liquidation_penalty_internal(threshold, ltv) {
-            Option::Some(penalty) => get_max_close_amount_internal(
-                threshold, ltv, value, debt, penalty
-            ),
-            Option::None(_) => WadZeroable::zero(),
-        }
+        let (max_liquidation_amt, _) = preview_liquidation(trove_id);
+        max_liquidation_amt
     }
 
     // Returns the maximum amount of debt that can be absorbed for a Trove
@@ -486,6 +477,19 @@ mod Purger {
             Option::None(_) => (
                 false, WadZeroable::zero(), WadZeroable::zero(), RayZeroable::zero()
             ),
+        }
+    }
+
+    // Helper function to return the following for a trove:
+    // 1. maximum liquidation amount (zero if trove is not liquidatable)
+    // 2. liquidation penalty (zero if trove is not liquidatable)
+    fn preview_liquidation(trove_id: u64) -> (Wad, Ray) {
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        match get_liquidation_penalty_internal(threshold, ltv) {
+            Option::Some(penalty) => {
+                (get_max_close_amount_internal(threshold, ltv, value, debt, penalty), penalty)
+            },
+            Option::None(_) => (WadZeroable::zero(), RayZeroable::zero()),
         }
     }
 
