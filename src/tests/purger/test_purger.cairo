@@ -119,8 +119,11 @@ mod TestPurger {
         let target_ltv: Ray = 910000000000000000000000000_u128.into();
         PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
+        let (trove_threshold, ltv, _, _) = shrine.get_trove_info(target_trove);
+        // sanity check that threshold is correct
+        assert(trove_threshold == threshold, 'threshold sanity check');
+
         // sanity check that LTV is at the target liquidation LTV
-        let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
         let error_margin: Ray = 100000000_u128.into();
         common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
 
