@@ -118,7 +118,8 @@ mod Purger {
     // to determine if a trove is liquidatable or not
     #[view]
     fn get_liquidation_penalty(trove_id: u64) -> Ray {
-        let (_, penalty) = preview_liquidation(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (penalty, _) = preview_liquidation(threshold, ltv, value, debt);
         penalty
     }
 
@@ -130,14 +131,15 @@ mod Purger {
     #[view]
     fn get_absorption_penalty(trove_id: u64) -> Ray {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (_, penalty, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
+        let (penalty, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
         penalty
     }
 
     // Returns the maximum amount of debt that can be liquidated for a Trove
     #[view]
     fn get_max_liquidation_amount(trove_id: u64) -> Wad {
-        let (max_liquidation_amt, _) = preview_liquidation(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (_, max_liquidation_amt) = preview_liquidation(threshold, ltv, value, debt);
         max_liquidation_amt
     }
 
@@ -145,7 +147,7 @@ mod Purger {
     #[view]
     fn get_max_absorption_amount(trove_id: u64) -> Wad {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (max_absorption_amt, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
+        let (_, max_absorption_amt, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
         max_absorption_amt
     }
 
@@ -159,8 +161,8 @@ mod Purger {
     #[view]
     fn is_absorbable(trove_id: u64) -> bool {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (max_absorption_amt, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
-        max_absorption_amt.is_non_zero()
+        let (penalty, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
+        penalty.is_non_zero()
     }
 
     #[view]
@@ -198,12 +200,10 @@ mod Purger {
         let shrine: IShrineDispatcher = shrine::read();
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
 
-        // Panics if the trove is healthy
-        let trove_penalty: Ray = get_liquidation_penalty_internal(trove_threshold, trove_ltv)
-            .expect('PU: Not liquidatable');
-        let max_close_amt: Wad = get_max_close_amount_internal(
-            trove_threshold, trove_ltv, trove_value, trove_debt, trove_penalty
+        let (trove_penalty, max_close_amt) = preview_liquidation(
+            trove_threshold, trove_ltv, trove_value, trove_debt
         );
+        assert(trove_penalty.is_non_zero(), 'PU: Not liquidatable');
 
         // Cap the liquidation amount to the trove's maximum close amount
         let purge_amt: Wad = min(amt, max_close_amt);
@@ -246,8 +246,8 @@ mod Purger {
 
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
         let (
-            max_purge_amt,
             trove_penalty,
+            max_purge_amt,
             compensation_pct,
             _,
             ltv_after_compensation,
@@ -256,7 +256,7 @@ mod Purger {
             preview_absorption(
             trove_threshold, trove_ltv, trove_value, trove_debt
         );
-        assert(max_purge_amt.is_non_zero(), 'PU: Not absorbable');
+        assert(trove_penalty.is_non_zero(), 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
@@ -456,15 +456,15 @@ mod Purger {
     }
 
     // Helper function to return the following for a trove:
-    // 1. maximum absorption amount (zero if trove is not absorbable)
-    // 2. absorption penalty (zero if trove is not absorbable)
+    // 1. absorption penalty (zero if trove is not absorbable)
+    // 2. maximum absorption amount (zero if trove is not absorbable)
     // 3. percentage of trove value to be compensated to the caller (zero if trove is not absorbable)
     // 4. amount of compensation due to the caller (zero if trove is not absorbable)
     // 5. LTV after compensation
     // 6. value after compensation
     fn preview_absorption(
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad
-    ) -> (Wad, Ray, Ray, Wad, Ray, Wad) {
+    ) -> (Ray, Wad, Ray, Wad, Ray, Wad) {
         let compensation_pct: Ray = get_compensation_pct(value);
         let ltv_after_compensation: Ray = ltv / (RAY_ONE.into() - compensation_pct);
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
@@ -479,8 +479,8 @@ mod Purger {
                     threshold, ltv_after_compensation, value_after_compensation, debt, penalty
                 );
                 (
-                    max_absorption_amt,
                     penalty,
+                    max_absorption_amt,
                     compensation_pct,
                     compensation,
                     ltv_after_compensation,
@@ -488,8 +488,8 @@ mod Purger {
                 )
             },
             Option::None(_) => (
-                WadZeroable::zero(),
                 RayZeroable::zero(),
+                WadZeroable::zero(),
                 RayZeroable::zero(),
                 WadZeroable::zero(),
                 ltv,
@@ -499,15 +499,14 @@ mod Purger {
     }
 
     // Helper function to return the following for a trove:
-    // 1. maximum liquidation amount (zero if trove is not liquidatable)
-    // 2. liquidation penalty (zero if trove is not liquidatable)
-    fn preview_liquidation(trove_id: u64) -> (Wad, Ray) {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+    // 1. liquidation penalty (zero if trove is not liquidatable)
+    // 2. maximum liquidation amount (zero if trove is not liquidatable)
+    fn preview_liquidation(threshold: Ray, ltv: Ray, value: Wad, debt: Wad) -> (Ray, Wad) {
         match get_liquidation_penalty_internal(threshold, ltv) {
             Option::Some(penalty) => {
-                (get_max_close_amount_internal(threshold, ltv, value, debt, penalty), penalty)
+                (penalty, get_max_close_amount_internal(threshold, ltv, value, debt, penalty))
             },
-            Option::None(_) => (WadZeroable::zero(), RayZeroable::zero()),
+            Option::None(_) => (RayZeroable::zero(), WadZeroable::zero()),
         }
     }
 
