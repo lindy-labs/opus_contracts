@@ -129,7 +129,8 @@ mod Purger {
     // to determine if a trove is absorbable or not
     #[view]
     fn get_absorption_penalty(trove_id: u64) -> Ray {
-        let (_, _, _, penalty) = preview_absorption(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (_, penalty, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
         penalty
     }
 
@@ -143,20 +144,23 @@ mod Purger {
     // Returns the maximum amount of debt that can be absorbed for a Trove
     #[view]
     fn get_max_absorption_amount(trove_id: u64) -> Wad {
-        let (_, max_absorption_amt, _, _) = preview_absorption(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (max_absorption_amt, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
         max_absorption_amt
     }
 
     #[view]
     fn get_compensation(trove_id: u64) -> Wad {
-        let (_, _, compensation, _) = preview_absorption(trove_id);
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (_, _, _, compensation, _, _) = preview_absorption(threshold, ltv, value, debt);
         compensation
     }
 
     #[view]
     fn is_absorbable(trove_id: u64) -> bool {
-        let (is_absorbable, _, _, _) = preview_absorption(trove_id);
-        is_absorbable
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (max_absorption_amt, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
+        max_absorption_amt.is_non_zero()
     }
 
     #[view]
@@ -241,29 +245,23 @@ mod Purger {
         let shrine: IShrineDispatcher = shrine::read();
 
         let (trove_threshold, trove_ltv, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
-        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(
-            trove_value, trove_ltv
+        let (
+            max_purge_amt,
+            trove_penalty,
+            compensation_pct,
+            compensation,
+            ltv_after_compensation,
+            value_after_compensation
+        ) =
+            preview_absorption(
+            trove_threshold, trove_ltv, trove_value, trove_debt
         );
-        let trove_penalty: Ray = get_absorption_penalty_internal(
-            trove_threshold, trove_ltv, ltv_after_compensation
-        )
-            .expect('PU: Not absorbable');
+        assert(max_purge_amt.is_non_zero(), 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
 
         let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
-        // LTV and value after compensation are used to calculate the max purge amount
-        let value_after_compensation = wadray::rmul_rw(
-            RAY_ONE.into() - compensation_pct, trove_value
-        );
-        let max_purge_amt: Wad = get_max_close_amount_internal(
-            trove_threshold,
-            ltv_after_compensation,
-            value_after_compensation,
-            trove_debt,
-            trove_penalty
-        );
 
         // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
         // cap the amount to pay down to the absorber's balance (including if it is zero).
@@ -458,24 +456,44 @@ mod Purger {
     }
 
     // Helper function to return the following for a trove:
-    // 1. whether the trove is absorbable
-    // 2. maximum absorption amount (zero if trove is not absorbable)
-    // 3. amount of compensation due to the caller (zero if trove is not absorbable)
-    // 4. absorption penalty (zero if trove is not absorbable)
-    fn preview_absorption(trove_id: u64) -> (bool, Wad, Wad, Ray) {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
+    // 1. maximum absorption amount (zero if trove is not absorbable)
+    // 2. absorption penalty (zero if trove is not absorbable)
+    // 3. percentage of trove value to be compensated to the caller (zero if trove is not absorbable)
+    // 4. amount of compensation due to the caller (zero if trove is not absorbable)
+    // 5. LTV after compensation
+    // 6. value after compensation
+    fn preview_absorption(
+        threshold: Ray, ltv: Ray, value: Wad, debt: Wad
+    ) -> (Wad, Ray, Ray, Wad, Ray, Wad) {
+        let compensation_pct: Ray = get_compensation_pct(value);
+        let ltv_after_compensation: Ray = ltv / (RAY_ONE.into() - compensation_pct);
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
             Option::Some(penalty) => {
                 let compensation: Wad = wadray::rmul_rw(compensation_pct, value);
-                let value_after_compensation: Wad = value - compensation;
+                let value_after_compensation: Wad = wadray::rmul_rw(
+                    RAY_ONE.into() - compensation_pct, value
+                );
+
+                // LTV and value after compensation are used to calculate the max purge amount
                 let max_absorption_amt: Wad = get_max_close_amount_internal(
                     threshold, ltv_after_compensation, value_after_compensation, debt, penalty
                 );
-                (true, max_absorption_amt, compensation, penalty)
+                (
+                    max_absorption_amt,
+                    penalty,
+                    compensation_pct,
+                    compensation,
+                    ltv_after_compensation,
+                    value_after_compensation
+                )
             },
             Option::None(_) => (
-                false, WadZeroable::zero(), WadZeroable::zero(), RayZeroable::zero()
+                WadZeroable::zero(),
+                RayZeroable::zero(),
+                RayZeroable::zero(),
+                WadZeroable::zero(),
+                ltv,
+                value
             ),
         }
     }
@@ -510,20 +528,16 @@ mod Purger {
         }
     }
 
-    // Returns a tuple of:
-    // 1. the amount of compensation due to the caller of `absorb` as a percentage of 
-    //    the value of the trove's collateral, capped at 3% of the trove's value or the percentage
-    //    of the trove's value equivalent to `COMPENSATION_CAP`.
-    // 2. The trove's LTV after the compensation is deducted
-
-    fn get_compensation_pct(trove_value: Wad, trove_ltv: Ray) -> (Ray, Ray) {
+    // Returns the amount of compensation due to the caller of `absorb` as a percentage of 
+    // the value of the trove's collateral, capped at 3% of the trove's value or the percentage
+    // of the trove's value equivalent to `COMPENSATION_CAP`
+    fn get_compensation_pct(trove_value: Wad) -> Ray {
         let default_compensation_pct: Ray = COMPENSATION_PCT.into();
         let default_compensation: Wad = wadray::rmul_wr(trove_value, default_compensation_pct);
         if default_compensation.val < COMPENSATION_CAP {
-            (default_compensation_pct, trove_ltv / (RAY_ONE.into() - default_compensation_pct))
+            default_compensation_pct
         } else {
-            let compensation_pct = wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value);
-            (compensation_pct, trove_ltv / (RAY_ONE.into() - compensation_pct))
+            wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value)
         }
     }
 
