@@ -786,14 +786,10 @@ mod Absorber {
         current_absorption_id: u32,
         current_epoch: u32,
         rewards_count: u8
-    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>, ) {
-        let current_absorption_id: u32 = absorptions_count::read();
-
+    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>) {
         let (absorbed_assets, absorbed_amts) = get_absorbed_assets_for_provider_internal(
             provider, provision, provider_last_absorption_id, current_absorption_id
         );
-
-        // Get accumulated rewards
         let (reward_assets, reward_amts) = get_provider_accumulated_rewards(
             provider, provision, current_epoch, rewards_count
         );
@@ -815,7 +811,6 @@ mod Absorber {
 
         // NOTE: both absorbed assets and rewarded assets will be empty arrays 
         // if `provision.shares` is zero.
-
         let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
             get_absorbed_and_rewarded_assets_for_provider(
             provider,
@@ -838,7 +833,7 @@ mod Absorber {
         // `reap_internal` was called.
         // 
         // NOTE: We cannot rely on the array of reward addresses returned by
-        // `get_provider_accumulated_rewards` because it returns an empty array when 
+        // `get_absorbed_and_rewarded_assets_for_provider` because it returns an empty array when 
         // `provision.shares` is zero. This would result in a bug where the reward cumulatives
         // for new providers are not updated to the latest epoch's values and start at 0. This 
         // wrongly entitles a new provider to receive rewards from epoch 0 up to the 
