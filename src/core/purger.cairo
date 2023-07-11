@@ -346,6 +346,10 @@ mod Purger {
             oracle::read().update_prices();
         }
 
+        // Safety check to ensure the new LTV is lower than old LTV 
+        let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
+        assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
+
         Compensate(caller, yangs, compensations);
 
         (yangs, compensations)
