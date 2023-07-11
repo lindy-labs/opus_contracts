@@ -249,7 +249,7 @@ mod Purger {
             max_purge_amt,
             trove_penalty,
             compensation_pct,
-            compensation,
+            _,
             ltv_after_compensation,
             value_after_compensation
         ) =
