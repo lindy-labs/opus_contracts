@@ -132,12 +132,8 @@ mod Purger {
     // to determine if a trove is absorbable or not
     #[view]
     fn get_absorption_penalty(trove_id: u64) -> Ray {
-        let (threshold, ltv, value, _) = shrine::read().get_trove_info(trove_id);
-        let (_, ltv_after_compensation) = get_compensation_pct(value, ltv);
-        match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
-            Option::Some(penalty) => penalty,
-            Option::None(_) => RayZeroable::zero(),
-        }
+        let (_, _, _, penalty) = preview_absorption(trove_id);
+        penalty
     }
 
     // Returns the maximum amount of debt that can be liquidated for a Trove
@@ -156,38 +152,20 @@ mod Purger {
     // Returns the maximum amount of debt that can be absorbed for a Trove
     #[view]
     fn get_max_absorption_amount(trove_id: u64) -> Wad {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
-
-        let value_after_compensation: Wad = wadray::rmul_rw(
-            RAY_ONE.into() - compensation_pct, value
-        );
-        match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
-            Option::Some(penalty) => get_max_close_amount_internal(
-                threshold, ltv_after_compensation, value_after_compensation, debt, penalty
-            ),
-            Option::None(_) => WadZeroable::zero(),
-        }
+        let (_, max_absorption_amt, _, _) = preview_absorption(trove_id);
+        max_absorption_amt
     }
 
     #[view]
     fn get_compensation(trove_id: u64) -> Wad {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
-        match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
-            Option::Some(_) => wadray::rmul_rw(compensation_pct, value),
-            Option::None(_) => WadZeroable::zero(),
-        }
+        let (_, _, compensation, _) = preview_absorption(trove_id);
+        compensation
     }
 
     #[view]
     fn is_absorbable(trove_id: u64) -> bool {
-        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (_, ltv_after_compensation) = get_compensation_pct(value, ltv);
-        match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
-            Option::Some(_) => true,
-            Option::None(_) => false,
-        }
+        let (is_absorbable, _, _, _) = preview_absorption(trove_id);
+        is_absorbable
     }
 
     #[view]
@@ -485,6 +463,29 @@ mod Purger {
             Option::Some(penalty)
         } else {
             Option::None(())
+        }
+    }
+
+    // Helper function to return the following for a trove:
+    // 1. whether the trove is absorbable
+    // 2. maximum absorption amount (zero if trove is not absorbable)
+    // 3. amount of compensation due to the caller (zero if trove is not absorbable)
+    // 4. absorption penalty (zero if trove is not absorbable)
+    fn preview_absorption(trove_id: u64) -> (bool, Wad, Wad, Ray) {
+        let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
+        let (compensation_pct, ltv_after_compensation) = get_compensation_pct(value, ltv);
+        match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
+            Option::Some(penalty) => {
+                let compensation: Wad = wadray::rmul_rw(compensation_pct, value);
+                let value_after_compensation: Wad = value - compensation;
+                let max_absorption_amt: Wad = get_max_close_amount_internal(
+                    threshold, ltv_after_compensation, value_after_compensation, debt, penalty
+                );
+                (true, max_absorption_amt, compensation, penalty)
+            },
+            Option::None(_) => (
+                false, WadZeroable::zero(), WadZeroable::zero(), RayZeroable::zero()
+            ),
         }
     }
 
