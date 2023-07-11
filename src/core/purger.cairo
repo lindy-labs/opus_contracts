@@ -161,8 +161,8 @@ mod Purger {
     #[view]
     fn is_absorbable(trove_id: u64) -> bool {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (penalty, _, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
-        penalty.is_non_zero()
+        let (_, max_absorption_amt, _, _, _, _) = preview_absorption(threshold, ltv, value, debt);
+        max_absorption_amt.is_non_zero()
     }
 
     #[view]
@@ -203,7 +203,7 @@ mod Purger {
         let (trove_penalty, max_close_amt) = preview_liquidation(
             trove_threshold, trove_ltv, trove_value, trove_debt
         );
-        assert(trove_penalty.is_non_zero(), 'PU: Not liquidatable');
+        assert(max_close_amt.is_non_zero(), 'PU: Not liquidatable');
 
         // Cap the liquidation amount to the trove's maximum close amount
         let purge_amt: Wad = min(amt, max_close_amt);
@@ -256,7 +256,7 @@ mod Purger {
             preview_absorption(
             trove_threshold, trove_ltv, trove_value, trove_debt
         );
-        assert(trove_penalty.is_non_zero(), 'PU: Not absorbable');
+        assert(max_purge_amt.is_non_zero(), 'PU: Not absorbable');
 
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
