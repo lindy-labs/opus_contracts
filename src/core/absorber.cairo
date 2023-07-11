@@ -301,18 +301,15 @@ mod Absorber {
         provider: ContractAddress
     ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>) {
         let provision: Provision = provisions::read(provider);
-        let provider_last_absorption_id: u32 = provider_last_absorption::read(provider);
-        let current_absorption_id: u32 = absorptions_count::read();
-
-        let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
-            provider, provision, provider_last_absorption_id, current_absorption_id
-        );
-
-        // Get accumulated rewards
-        let rewards_count: u8 = rewards_count::read();
         let current_epoch: u32 = current_epoch::read();
-        let (reward_assets, reward_amts) = get_provider_accumulated_rewards(
-            provider, provision, current_epoch, rewards_count
+        let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
+            get_absorbed_and_rewarded_assets_for_provider(
+            provider,
+            provision,
+            provider_last_absorption::read(provider),
+            absorptions_count::read(),
+            current_epoch,
+            rewards_count::read()
         );
 
         // Add pending rewards
@@ -323,14 +320,16 @@ mod Absorber {
 
         // Early return if we do not expect rewards to be distributed when the user calls `reap`
         if total_shares.is_zero() | current_provider_shares.is_zero() {
-            return (absorbed_assets, absorbed_asset_amts, reward_assets, reward_amts);
+            return (absorbed_assets, absorbed_amts, reward_assets, reward_amts);
         }
 
         let updated_reward_amts: Span<u128> = get_provider_pending_rewards(
             provider, current_provider_shares, total_shares, current_epoch, reward_amts
         );
 
-        (absorbed_assets, absorbed_asset_amts, reward_assets, updated_reward_amts)
+        // NOTE: both absorbed assets and rewarded assets will be empty arrays 
+        // if `provision.shares` is zero.
+        (absorbed_assets, absorbed_amts, reward_assets, updated_reward_amts)
     }
 
 
@@ -777,6 +776,31 @@ mod Absorber {
     // Internal - helpers for `reap`
     //
 
+    // Wrapper function over `get_absorbed_assets_for_provider_internal` and 
+    // `get_provider_accumulated_rewards` for re-use by `preview_reap` and
+    // `reap_internal`
+    fn get_absorbed_and_rewarded_assets_for_provider(
+        provider: ContractAddress,
+        provision: Provision,
+        provider_last_absorption_id: u32,
+        current_absorption_id: u32,
+        current_epoch: u32,
+        rewards_count: u8
+    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>, ) {
+        let current_absorption_id: u32 = absorptions_count::read();
+
+        let (absorbed_assets, absorbed_amts) = get_absorbed_assets_for_provider_internal(
+            provider, provision, provider_last_absorption_id, current_absorption_id
+        );
+
+        // Get accumulated rewards
+        let (reward_assets, reward_amts) = get_provider_accumulated_rewards(
+            provider, provision, current_epoch, rewards_count
+        );
+
+        (absorbed_assets, absorbed_amts, reward_assets, reward_amts)
+    }
+
     // Internal function to be called whenever a provider takes an action to ensure absorbed assets
     // are properly transferred to the provider before updating the provider's information
     fn reap_internal(provider: ContractAddress, provision: Provision, current_epoch: u32) {
@@ -789,22 +813,22 @@ mod Absorber {
         let current_absorption_id: u32 = absorptions_count::read();
         provider_last_absorption::write(provider, current_absorption_id);
 
-        let total_shares: Wad = total_shares::read();
+        // NOTE: both absorbed assets and rewarded assets will be empty arrays 
+        // if `provision.shares` is zero.
 
-        // NOTE: both `get_absorbed_assets_for_provider_internal` and `get_provider_accumulated_rewards` 
-        // contain early returns of empty arrays if `provision.shares` is zero.
-
-        // Loop over absorbed assets and transfer
-        let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
-            provider, provision, provider_last_absorption_id, current_absorption_id
+        let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
+            get_absorbed_and_rewarded_assets_for_provider(
+            provider,
+            provision,
+            provider_last_absorption_id,
+            current_absorption_id,
+            current_epoch,
+            rewards_count
         );
-        transfer_assets(provider, absorbed_assets, absorbed_asset_amts);
 
-        // Loop over accumulated rewards, transfer and update provider's rewards cumulative
-        let (reward_assets, reward_asset_amts) = get_provider_accumulated_rewards(
-            provider, provision, current_epoch, rewards_count
-        );
-        transfer_assets(provider, reward_assets, reward_asset_amts);
+        // Loop over absorbed and rewarded assets and transfer
+        transfer_assets(provider, absorbed_assets, absorbed_amts);
+        transfer_assets(provider, reward_assets, reward_amts);
 
         // NOTE: it is very important that this function is called, even for a new provider. 
         // If a new provider's cumulative rewards are not updated to the current epoch,
@@ -822,7 +846,7 @@ mod Absorber {
         // transferring rewards during a `reap_internal` call.
         update_provider_cumulative_rewards(provider, current_epoch, rewards_count);
 
-        Reap(provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_asset_amts);
+        Reap(provider, absorbed_assets, absorbed_amts, reward_assets, reward_amts);
     }
 
     // Internal function to calculate the absorbed assets that a provider is entitled to
