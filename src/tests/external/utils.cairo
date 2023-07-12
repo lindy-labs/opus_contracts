@@ -92,6 +92,12 @@ mod PragmaUtils {
         IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, 
     ) {
         let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
+        pragma_deploy_with_shrine(sentinel, shrine_addr)
+    }
+
+    fn pragma_deploy_with_shrine(sentinel: ISentinelDispatcher, shrine_addr: ContractAddress) -> (
+        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, 
+    ) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
 
         let admin: ContractAddress = admin();
@@ -148,6 +154,12 @@ mod PragmaUtils {
         gates.append(eth_gate);
         gates.append(wbtc_gate);
 
+        add_yangs_to_pragma(pragma, yangs.span());
+
+        (shrine, pragma, sentinel, mock_pragma, yangs.span(), gates.span())
+    }
+
+    fn add_yangs_to_pragma(pragma: IPragmaDispatcher, yangs: Span<ContractAddress>) {
         set_contract_address(admin());
 
         // Add yangs to Pragma
@@ -155,8 +167,6 @@ mod PragmaUtils {
         pragma.add_yang(WBTC_USD_PAIR_ID, *yangs.at(1));
 
         set_contract_address(ContractAddressZeroable::zero());
-
-        (shrine, pragma, sentinel, mock_pragma, yangs.span(), gates.span())
     }
 
     //

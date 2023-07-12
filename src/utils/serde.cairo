@@ -5,6 +5,7 @@ use starknet::contract_address::{ContractAddress, ContractAddressSerde};
 use traits::Default;
 
 use aura::interfaces::IAbsorber::IBlesserDispatcher;
+use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 
 impl SpanSerde<T, impl TSerde: Serde<T>, impl TDrop: Drop<T>> of Serde<Span<T>> {
     fn serialize(self: @Span<T>, ref output: Array<felt252>) {
@@ -34,6 +35,20 @@ impl IBlesserDispatcherSerde of Serde<IBlesserDispatcher> {
     fn deserialize(ref serialized: Span<felt252>) -> Option<IBlesserDispatcher> {
         Option::Some(
             IBlesserDispatcher {
+                contract_address: ContractAddressSerde::deserialize(ref serialized).unwrap()
+            }
+        )
+    }
+}
+
+impl IGateDispatcherSerde of Serde<IGateDispatcher> {
+    fn serialize(self: @IGateDispatcher, ref output: Array<felt252>) {
+        ContractAddressSerde::serialize(self.contract_address, ref output);
+    }
+
+    fn deserialize(ref serialized: Span<felt252>) -> Option<IGateDispatcher> {
+        Option::Some(
+            IGateDispatcher {
                 contract_address: ContractAddressSerde::deserialize(ref serialized).unwrap()
             }
         )
