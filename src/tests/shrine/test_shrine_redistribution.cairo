@@ -1268,4 +1268,45 @@ mod TestShrineRedistribution {
             'wrong total yang 3'
         );
     }
+
+    // Redistribution with only 1 trove.
+    // Since the trove's yangs are zeroed, the initial yang would essentially "receive" 
+    // the trove's value via rebasing. The trove's debt would also be zeroed even though
+    // it was not distributed at all. However, the debt would still be backed, and the 
+    // value can be accessed in the event of a shutdown.
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_shrine_redistribution_only_one_trove_remaining() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
+        set_contract_address(ShrineUtils::admin());
+        setup_trove1(shrine);
+
+        let (_, _, before_trove_value, before_trove_debt) = shrine.get_trove_info(common::TROVE_1);
+
+        // Simulate purge with 0 yin to update the trove's debt
+        set_contract_address(ShrineUtils::admin());
+        let trove1_owner = common::trove1_owner_addr();
+        let (_, _, trove1_value, trove1_debt) = shrine.get_trove_info(common::TROVE_1);
+        shrine.melt(trove1_owner, common::TROVE_1, WadZeroable::zero());
+
+        assert(shrine.get_redistributions_count() == 0, 'wrong start state');
+        shrine.redistribute(common::TROVE_1);
+
+        let expected_redistribution_id: u32 = 1;
+        assert(
+            shrine.get_redistributions_count() == expected_redistribution_id,
+            'wrong redistribution count'
+        );
+
+        let (_, _, after_trove_value, after_trove_debt) = shrine.get_trove_info(common::TROVE_2);
+        assert(after_trove_value == WadZeroable::zero(), 'wrong value post redistribution');
+        assert(after_trove_debt == WadZeroable::zero(), 'wrong debt after redistribution');
+
+        assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id');
+        // Trigger an update in trove 2 with an empty melt
+        shrine.melt(trove1_owner, common::TROVE_2, WadZeroable::zero());
+        // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
+        assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 1, 'wrong id');
+    }
 }
