@@ -1277,11 +1277,53 @@ mod Shrine {
                     let mut debt_error: Wad = WadZeroable::zero();
                     let mut is_exception: bool = false;
 
-                    // If there is no remainder amount of yangs in other troves for redistribution, 
-                    // redistribute by reallocating the yangs and debt to all other yangs.
-                    // Otherwise, redistribute yangs by rebasing, and reallocate debt to other troves
-                    // with the same yang.
-                    if redistributed_yang_remaining_pool.is_zero() {
+                    // If there is some remainder amount of yangs in other troves for redistribution, 
+                    // redistribute yangs by rebasing, and reallocate debt to other troves with the same yang.
+                    // This is expected to be the common case.
+                    // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
+                    if redistributed_yang_remaining_pool.is_non_zero() {
+                        // Since the amount of assets in the Gate remains constant, decrementing the system's yang 
+                        // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating) 
+                        // the ratio of asset to yang for the remaining amount of that yang.
+                        // 
+                        // Example:
+                        // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
+                        //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
+                        // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
+                        //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
+                        //   in the Gate remains at 100 units.
+                        //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
+                        //
+                        // Set trove's deposit to zero as it will be distributed amongst all other troves 
+                        // containing this yang, either via rebasing (if there are other troves with the same yang)
+                        // or by reallocating (if there are no other troves with the same yang)
+                        //
+                        // Note that the trove's deposit and total supply are updated after this loop.
+                        // See comment at this array's declaration on why.
+                        new_yang_totals
+                            .append(
+                                YangBalance {
+                                    yang_id: yang_id_to_redistribute,
+                                    amount: redistributed_yang_total_supply
+                                        - yang_amt_to_redistribute
+                                }
+                            );
+
+                        // There is a slight discrepancy here because yang is redistributed by rebasing,
+                        // which means the initial yang amount is included, but the distribution of debt excludes
+                        // the initial yang amount. However, it is unlikely to have any material impact because
+                        // all redistributed debt will be attributed to user troves, with a negligible loss in 
+                        // yang assets for these troves as a result of some amount going towards the initial yang 
+                        // amount.
+                        redistributed_yang_unit_debt = adjusted_debt_to_distribute
+                            / redistributed_yang_remaining_pool;
+
+                        // Due to loss of precision from fixed point division, the actual debt distributed will be less than
+                        // or equal to the amount of debt to distribute.
+                        let actual_debt_distributed: Wad = redistributed_yang_unit_debt
+                            * redistributed_yang_remaining_pool;
+                        debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
+                    } else {
                         if !has_exceptional_redistribution {
                             // This operation is gas-intensive so we only run it when we encounter the first 
                             // yang that cannot be distributed via rebasing, and store the value in the 
@@ -1416,48 +1458,6 @@ mod Shrine {
                                     amount: redistributed_yang_total_supply - yang_error
                                 }
                             );
-                    } else {
-                        // Since the amount of assets in the Gate remains constant, decrementing the system's yang 
-                        // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating) 
-                        // the ratio of asset to yang for the remaining amount of that yang.
-                        // 
-                        // Example:
-                        // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
-                        //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
-                        // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
-                        //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
-                        //   in the Gate remains at 100 units.
-                        //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
-                        //
-                        // Set trove's deposit to zero as it will be distributed amongst all other troves 
-                        // containing this yang, either via rebasing (if there are other troves with the same yang)
-                        // or by reallocating (if there are no other troves with the same yang)
-                        //
-                        // Note that the trove's deposit and total supply are updated after this loop.
-                        // See comment at this array's declaration on why.
-                        new_yang_totals
-                            .append(
-                                YangBalance {
-                                    yang_id: yang_id_to_redistribute,
-                                    amount: redistributed_yang_total_supply
-                                        - yang_amt_to_redistribute
-                                }
-                            );
-
-                        // There is a slight discrepancy here because yang is redistributed by rebasing,
-                        // which means the initial yang amount is included, but the distribution of debt excludes
-                        // the initial yang amount. However, it is unlikely to have any material impact because
-                        // all redistributed debt will be attributed to user troves, with a negligible loss in 
-                        // yang assets for these troves as a result of some amount going towards the initial yang 
-                        // amount.
-                        redistributed_yang_unit_debt = adjusted_debt_to_distribute
-                            / redistributed_yang_remaining_pool;
-
-                        // Due to loss of precision from fixed point division, the actual debt distributed will be less than
-                        // or equal to the amount of debt to distribute.
-                        let actual_debt_distributed: Wad = redistributed_yang_unit_debt
-                            * redistributed_yang_remaining_pool;
-                        debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
                     }
 
                     let redistributed_yang_info = YangRedistribution {
