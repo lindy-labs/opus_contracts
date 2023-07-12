@@ -439,6 +439,8 @@ mod TestPragma {
         let (after_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_token_addr);
         assert(before_wbtc_price == after_wbtc_price, 'price should not be updated #2');
 
+        assert(!pragma.probe_task(), 'should not be ready');
+
         // TODO: check that `PricesUpdated` event is not emitted
     }
 
