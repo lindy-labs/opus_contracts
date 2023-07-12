@@ -49,8 +49,8 @@ mod Pragma {
         // the minimal time difference in seconds of how often we
         // want to fetch from the oracle
         update_frequency: u64,
-        // block timestamp of when the prices were last updated
-        last_price_update_timestamp: u64,
+        // block timestamp of the last `update_prices` call
+        last_update_prices_call_timestamp: u64,
         // values used to determine if we consider a price update fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which we consider a
@@ -249,9 +249,10 @@ mod Pragma {
             idx += 1;
         };
 
-        // Record the last price update timestamp if at least one price update is valid
+        // ecord the timestamp for the last `update_prices` call 
+        last_update_prices_call_timestamp::write(block_timestamp);
+        // Emit the event only if at least one price update is valid
         if invalid_update_count < yangs_count {
-            last_price_update_timestamp::write(block_timestamp);
             PricesUpdated(block_timestamp, get_caller_address());
         }
     }
@@ -265,7 +266,7 @@ mod Pragma {
     #[inline(always)]
     fn probe_task() -> bool {
         let seconds_since_last_update: u64 = get_block_timestamp()
-            - last_price_update_timestamp::read();
+            - last_update_prices_call_timestamp::read();
         update_frequency::read() <= seconds_since_last_update
     }
 
