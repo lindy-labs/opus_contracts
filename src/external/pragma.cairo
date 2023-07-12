@@ -210,7 +210,7 @@ mod Pragma {
         assert(can_update, 'PGM: Too soon to update prices');
 
         let block_timestamp: u64 = get_block_timestamp();
-        let mut invalid_update_count: u32 = 0;
+        let mut has_valid_update: bool = false;
 
         let mut idx: u32 = 0;
         let yangs_count: u32 = yangs_count::read();
@@ -234,9 +234,9 @@ mod Pragma {
             // if we receive what we consider a valid price from the oracle, record it in the Shrine,
             // otherwise emit an event about the update being invalid
             if is_valid_price_update(response, asset_amt_per_yang) {
+                has_valid_update = true;
                 shrine::read().advance(settings.yang, price * asset_amt_per_yang);
             } else {
-                invalid_update_count += 1;
                 InvalidPriceUpdate(
                     settings.yang,
                     price,
@@ -249,10 +249,10 @@ mod Pragma {
             idx += 1;
         };
 
-        // ecord the timestamp for the last `update_prices` call 
+        // Record the timestamp for the last `update_prices` call 
         last_update_prices_call_timestamp::write(block_timestamp);
         // Emit the event only if at least one price update is valid
-        if invalid_update_count < yangs_count {
+        if has_valid_update {
             PricesUpdated(block_timestamp, get_caller_address());
         }
     }
