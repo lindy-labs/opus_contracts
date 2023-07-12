@@ -267,7 +267,6 @@ mod Shrine {
 
         // Calculate debt
         let compounded_debt: Wad = compound(trove_id, trove, interval);
-        let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (
             updated_trove_yang_balances,
             compounded_debt_with_redistributed_debt,
@@ -275,14 +274,13 @@ mod Shrine {
         ) =
             pull_redistributed_debt_and_yangs(
             trove_id,
-            trove_yang_balances,
             compounded_debt,
             trove_redistribution_id::read(trove_id),
             redistributions_count::read()
         );
 
         if has_exceptional_redistributions {
-            let (new_threshold, new_value) = get_custom_trove_threshold_and_value(
+            let (new_threshold, new_value) = get_simulated_trove_threshold_and_value(
                 updated_trove_yang_balances, interval
             );
             threshold = new_threshold;
@@ -995,29 +993,21 @@ mod Shrine {
         // Pull undistributed debt and update state
         let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
         let current_redistribution_id: u32 = redistributions_count::read();
-        let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (
             mut updated_trove_yang_balances,
             compounded_trove_debt_with_redistributed_debt,
             has_exceptional_redistributions
         ) =
             pull_redistributed_debt_and_yangs(
-            trove_id,
-            trove_yang_balances,
-            compounded_trove_debt,
-            trove_last_redistribution_id,
-            current_redistribution_id
+            trove_id, compounded_trove_debt, trove_last_redistribution_id, current_redistribution_id
         );
 
         // If there was any exceptional redistribution, write updated yang_amts to trove
         if has_exceptional_redistributions {
             loop {
                 match updated_trove_yang_balances.pop_front() {
-                    Option::Some(updated_balance) => {
-                        let updated_balance = *updated_balance;
-                        deposits::write(
-                            (updated_balance.yang_id, trove_id), updated_balance.amount
-                        );
+                    Option::Some(yang_balance) => {
+                        deposits::write((*yang_balance.yang_id, trove_id), *yang_balance.amount);
                     },
                     Option::None(_) => {
                         break;
@@ -1185,7 +1175,7 @@ mod Shrine {
         // be the first yang or the last yang), we need the total yang supply for all yangs 
         // (regardless how they are to be redistributed) to remain constant throughout the 
         // iteration over the yangs deposited in the trove. Therefore, we keep track of the
-        // updated total supply for each ayng, and only update them after the loop.
+        // updated total supply for each yang, and only update them after the loop.
         // 
         //
         // For yangs that cannot be redistributed via rebasing because no other troves
@@ -1323,24 +1313,22 @@ mod Shrine {
                         loop {
                             match trove_recipient_yang_balances.pop_front() {
                                 Option::Some(recipient_yang) => {
-                                    let recipient_yang = *recipient_yang;
-
                                     // Skip yang currently being redistributed
-                                    if recipient_yang.yang_id == yang_id_to_redistribute {
+                                    if *recipient_yang.yang_id == yang_id_to_redistribute {
                                         continue;
                                     }
 
                                     let recipient_yang_initial_amt: Wad = initial_yang_amts::read(
-                                        recipient_yang.yang_id
+                                        *recipient_yang.yang_id
                                     );
                                     // Get the total amount of recipient yang that will receive the 
                                     // redistribution, which excludes 
                                     // (1) the redistributed trove's deposit; and 
                                     // (2) initial yang amount.
                                     let recipient_yang_remaining_pool: Wad = yang_total::read(
-                                        recipient_yang.yang_id
+                                        *recipient_yang.yang_id
                                     )
-                                        - recipient_yang.amount
+                                        - *recipient_yang.amount
                                         - recipient_yang_initial_amt;
 
                                     // Skip to the next yang if no other troves have this yang
@@ -1349,7 +1337,7 @@ mod Shrine {
                                     }
 
                                     let (recipient_yang_price, _, _) = get_recent_price_from(
-                                        recipient_yang.yang_id, current_interval
+                                        *recipient_yang.yang_id, current_interval
                                     );
 
                                     // Note that we include the initial yang amount here to calculate the percentage
@@ -1395,7 +1383,7 @@ mod Shrine {
 
                                     yang_to_yang_redistribution::write(
                                         (
-                                            recipient_yang.yang_id,
+                                            *recipient_yang.yang_id,
                                             redistribution_id,
                                             yang_id_to_redistribute
                                         ),
@@ -1416,6 +1404,10 @@ mod Shrine {
                         // propagated.
                         debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
 
+                        // The redistributed yang which was not distributed to recipient yangs due to precision loss, 
+                        // is subtracted here from the total supply, thereby causing a rebase which increases the 
+                        // asset : yang ratio. The result is that the error is distributed equally across all yang holders, 
+                        // including any new holders who were credited this yang by the exceptional redistribution. 
                         let yang_error: Wad = yang_amt_to_redistribute - actual_yang_distributed;
                         new_yang_totals
                             .append(
@@ -1494,9 +1486,8 @@ mod Shrine {
         loop {
             match new_yang_totals.pop_front() {
                 Option::Some(yang_balance) => {
-                    let yang_balance = *yang_balance;
-                    deposits::write((yang_balance.yang_id, trove_id), 0_u128.into());
-                    yang_total::write(yang_balance.yang_id, yang_balance.amount);
+                    deposits::write((*yang_balance.yang_id, trove_id), 0_u128.into());
+                    yang_total::write(*yang_balance.yang_id, *yang_balance.amount);
                 },
                 Option::None(_) => {
                     break;
@@ -1574,13 +1565,13 @@ mod Shrine {
     // 3. a boolean flag indicating whether there was any exceptional redistributions
     fn pull_redistributed_debt_and_yangs(
         trove_id: u64,
-        mut trove_yang_balances: Span<YangBalance>,
         mut trove_debt: Wad,
         trove_last_redistribution_id: u32,
         current_redistribution_id: u32
     ) -> (Span<YangBalance>, Wad, bool) {
         let mut has_exceptional_redistributions: bool = false;
 
+        let mut trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         // Early termination if no redistributions since trove was last updated
         if current_redistribution_id == trove_last_redistribution_id {
             return (trove_yang_balances, trove_debt, has_exceptional_redistributions);
@@ -1610,16 +1601,15 @@ mod Shrine {
             loop {
                 match trove_yang_balances_copy.pop_front() {
                     Option::Some(redistributed_yang_balance) => {
-                        let redistributed_yang_balance = *redistributed_yang_balance;
                         let redistribution: YangRedistribution = yang_redistributions::read(
-                            (redistributed_yang_balance.yang_id, tmp_redistribution_id)
+                            (*redistributed_yang_balance.yang_id, tmp_redistribution_id)
                         );
                         // If the trove has deposited a yang, then it will be a normal redistribution.
-                        if redistributed_yang_balance.amount.is_non_zero() {
+                        if (*redistributed_yang_balance.amount).is_non_zero() {
                             // Get the amount of debt per yang for the current redistribution
                             if redistribution.unit_debt.is_non_zero() {
                                 trove_debt += redistribution.unit_debt
-                                    * redistributed_yang_balance.amount;
+                                    * *redistributed_yang_balance.amount;
                             }
                             continue;
                         }
@@ -1648,26 +1638,25 @@ mod Shrine {
                             loop {
                                 match recipient_trove_yang_balances.pop_front() {
                                     Option::Some(recipient_yang_balance) => {
-                                        let recipient_yang_balance = *recipient_yang_balance;
                                         let exc_yang_redistribution: ExceptionalYangRedistribution =
                                             yang_to_yang_redistribution::read(
                                             (
-                                                recipient_yang_balance.yang_id,
+                                                *recipient_yang_balance.yang_id,
                                                 tmp_redistribution_id,
-                                                redistributed_yang_balance.yang_id
+                                                *redistributed_yang_balance.yang_id
                                             )
                                         );
 
                                         // Skip if trove does not have any of this yang
-                                        if recipient_yang_balance.amount.is_zero() {
+                                        if (*recipient_yang_balance.amount).is_zero() {
                                             continue;
                                         }
 
-                                        yang_increment += recipient_yang_balance.amount
+                                        yang_increment += *recipient_yang_balance.amount
                                             * exc_yang_redistribution.unit_yang;
 
                                         let (debt_increment, r) = u256_safe_divmod(
-                                            recipient_yang_balance.amount.into()
+                                            (*recipient_yang_balance.amount).into()
                                                 * exc_yang_redistribution.unit_debt.into(),
                                             wad_scale_divisor
                                         );
@@ -1704,7 +1693,7 @@ mod Shrine {
                                     break;
                                 }
 
-                                if yang_id == redistributed_yang_balance.yang_id {
+                                if yang_id == *redistributed_yang_balance.yang_id {
                                     updated_trove_yang_balances
                                         .append(
                                             YangBalance { yang_id: yang_id, amount: yang_increment }
@@ -1866,7 +1855,7 @@ mod Shrine {
     // The underlying assumption is that the amount of each yang deposited at `interval` is the same as the amount currently deposited.
     fn get_trove_threshold_and_value_internal(trove_id: u64, interval: u64) -> (Ray, Wad) {
         let mut current_yang_id: u32 = yangs_count::read();
-        let mut weighted_threshold: Ray = 0_u128.into();
+        let mut weighted_threshold_sum: Ray = 0_u128.into();
         let mut trove_value: Wad = 0_u128.into();
 
         loop {
@@ -1884,38 +1873,39 @@ mod Shrine {
 
                 let yang_deposited_value = deposited * price;
                 trove_value += yang_deposited_value;
-                weighted_threshold += wadray::wmul_rw(yang_threshold, yang_deposited_value);
+                weighted_threshold_sum += wadray::wmul_rw(yang_threshold, yang_deposited_value);
             }
 
             current_yang_id -= 1;
         };
 
         if trove_value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold, trove_value), trove_value);
+            return (wadray::wdiv_rw(weighted_threshold_sum, trove_value), trove_value);
         }
 
         (0_u128.into(), 0_u128.into())
     }
 
-    // Helper to manually calculate a trove value based on an array of yang amounts
-    fn get_custom_trove_threshold_and_value(
+    // Helper to manually calculate what a trove's threshold and value at the given interval would be 
+    // if its yang balances were equivalent to the `trove_yang_balances` argument.
+    fn get_simulated_trove_threshold_and_value(
         mut trove_yang_balances: Span<YangBalance>, interval: u64
     ) -> (Ray, Wad) {
         let mut trove_value: Wad = WadZeroable::zero();
-        let mut weighted_threshold: Ray = RayZeroable::zero();
+        let mut weighted_threshold_sum: Ray = RayZeroable::zero();
         loop {
             match trove_yang_balances.pop_front() {
                 Option::Some(yang_balance) => {
                     // Update cumulative values only if user has deposited the current yang
-                    let yang_balance = *yang_balance;
-                    if yang_balance.amount.is_non_zero() {
-                        let yang_threshold: Ray = thresholds::read(yang_balance.yang_id);
+                    if (*yang_balance.amount).is_non_zero() {
+                        let yang_threshold: Ray = thresholds::read(*yang_balance.yang_id);
 
-                        let (price, _, _) = get_recent_price_from(yang_balance.yang_id, interval);
+                        let (price, _, _) = get_recent_price_from(*yang_balance.yang_id, interval);
 
-                        let yang_deposited_value = yang_balance.amount * price;
+                        let yang_deposited_value = *yang_balance.amount * price;
                         trove_value += yang_deposited_value;
-                        weighted_threshold += wadray::wmul_rw(yang_threshold, yang_deposited_value);
+                        weighted_threshold_sum +=
+                            wadray::wmul_rw(yang_threshold, yang_deposited_value);
                     }
                 },
                 Option::None(_) => {
@@ -1925,7 +1915,7 @@ mod Shrine {
         };
 
         if trove_value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold, trove_value), trove_value);
+            return (wadray::wdiv_rw(weighted_threshold_sum, trove_value), trove_value);
         }
 
         (RayZeroable::zero(), WadZeroable::zero())
@@ -1936,7 +1926,7 @@ mod Shrine {
     // all troves to calculate the total value of all troves.
     fn get_shrine_threshold_and_value_internal(current_interval: u64) -> (Ray, Wad) {
         let mut current_yang_id: u32 = yangs_count::read();
-        let mut weighted_threshold: Ray = 0_u128.into();
+        let mut weighted_threshold_sum: Ray = 0_u128.into();
         let mut value: Wad = 0_u128.into();
 
         loop {
@@ -1954,14 +1944,14 @@ mod Shrine {
 
                 let yang_deposited_value = deposited * price;
                 value += yang_deposited_value;
-                weighted_threshold += wadray::wmul_rw(yang_threshold, yang_deposited_value);
+                weighted_threshold_sum += wadray::wmul_rw(yang_threshold, yang_deposited_value);
             }
 
             current_yang_id -= 1;
         };
 
         if value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold, value), value);
+            return (wadray::wdiv_rw(weighted_threshold_sum, value), value);
         }
 
         (0_u128.into(), 0_u128.into())
