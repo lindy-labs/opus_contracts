@@ -230,6 +230,43 @@ mod TestShrineRedistribution {
         (expected_recipient_trove_debt_increment, cumulative_redistributed_debt)
     }
 
+    // Checks that sum(trove yang amt * unit debt) for all troves is equal to total_yang_amt * unit_debt
+    // for all yangs for a redistribution, so as to ensure there is no precision loss.
+    fn assert_redistributed_debt_invariant(
+        shrine: IShrineDispatcher,
+        mut yangs: Span<ContractAddress>,
+        troves_count: u64,
+        redistributed_trove_debt: Wad,
+        redistribution_id: u32,
+    ) {
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    // Get total redistributed debt for yang
+                    let unit_debt: Wad = shrine.get_redistributed_unit_debt_for_yang(*yang, redistribution_id);
+                    let redistributed_debt_for_yang: Wad = shrine.get_yang_total(*yang) *  unit_debt;
+                    let mut cumulative_debt_for_troves: Wad = WadZeroable::zero();
+
+                    let mut idx: u64 = troves_count;
+                    loop {
+                        if idx == 0 {
+                            break;
+                        }
+
+                        cumulative_debt_for_troves += shrine.get_deposit(*yang, idx) * unit_debt;
+
+                        idx -= 1;
+                    };
+
+                    assert(cumulative_debt_for_troves == redistributed_debt_for_yang, 'yang debt mismatch');
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
+    }
+
     //
     // Tests
     //
@@ -281,6 +318,14 @@ mod TestShrineRedistribution {
             trove1_yang_values,
             expected_redistribution_id,
             empty_errors, // Dummy values
+        );
+
+        assert_redistributed_debt_invariant(
+            shrine,
+            yang_addrs,
+            3, //troves count
+            trove1_debt,
+            1, // TODO: Replace with `expected_redistribution_id` once `Unknown ap change` error is gone
         );
 
         let expected_trove2_debt = before_trove2_debt + expected_trove2_debt_increment;
@@ -350,6 +395,14 @@ mod TestShrineRedistribution {
             trove2_yang_values,
             expected_redistribution_id,
             expected_trove1_errors,
+        );
+
+        assert_redistributed_debt_invariant(
+            shrine,
+            yang_addrs,
+            3, //troves count
+            trove2_debt,
+            2, // TODO: Replace with `expected_redistribution_id` once `Unknown ap change` error is gone
         );
 
         let expected_trove3_debt = before_trove3_debt + expected_trove3_debt_increment;
@@ -435,6 +488,14 @@ mod TestShrineRedistribution {
                     yang2_addr, expected_redistribution_id
                 ) == expected_unit_debt_for_yang2,
             'wrong unit debt'
+        );
+
+        assert_redistributed_debt_invariant(
+            shrine,
+            yang_addrs,
+            3, //troves count
+            trove2_debt,
+            1, // TODO: Replace with `expected_redistribution_id` once `Unknown ap change` error is gone
         );
     }
 }
