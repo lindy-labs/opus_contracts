@@ -373,7 +373,7 @@ mod TestController {
 
         set_contract_address(ControllerUtils::admin());
 
-        // Updating `i_gain` to match the ground truth simulation
+        // Updating `i_gain` to match .the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
         controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
 
@@ -401,28 +401,27 @@ mod TestController {
         gt_p_terms.append(SignedRay{val: 125000000000000000000000000, sign: false});
         gt_p_terms.append(SignedRay{val: 125000000000000000000000000, sign: false});
 
-
         gt_i_terms.append(SignedRay{val: 0, sign: false});
         gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 199999600001200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 219999650000983000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 259999570001223000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 299999490001463000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 339999410001703000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 379999330001943000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 199999900000075000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 299999850000113000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 499999450001313000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 699999050002513000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 999997700011625000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 1399994500050020000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 1799991300088420000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 2299985050205610000000000, sign: false});
 
         gt_multipliers.append(1001000000000000000000000000_u128.into());
         gt_multipliers.append(1001099999950000000000000000_u128.into());
-        gt_multipliers.append(1011050371852100000000000000_u128.into());
-        gt_multipliers.append(1028000743754200000000000000_u128.into());
-        gt_multipliers.append(1038051115306300000000000000_u128.into());
-        gt_multipliers.append(1076662728820120000000000000_u128.into());
-        gt_multipliers.append(1133374341383950000000000000_u128.into());
-        gt_multipliers.append(1162209128090610000000000000_u128.into());
-        gt_multipliers.append(1260348195726020000000000000_u128.into());
-        gt_multipliers.append(1297587260311510000000000000_u128.into());
+        gt_multipliers.append(1001199999900000000000000000_u128.into());
+        gt_multipliers.append(1008299999850000000000000000_u128.into());
+        gt_multipliers.append(1008499999450000000000000000_u128.into());
+        gt_multipliers.append(1027699999050000000000000000_u128.into());
+        gt_multipliers.append(1064999997700010000000000000_u128.into());
+        gt_multipliers.append(1065399994500050000000000000_u128.into());
+        gt_multipliers.append(1126799991300090000000000000_u128.into());
+        gt_multipliers.append(1127299985050210000000000000_u128.into());
 
         gt_update_intervals.append(1_u64.into());
         gt_update_intervals.append(4_u64.into());
@@ -437,10 +436,14 @@ mod TestController {
             if current_interval > end_interval {
                 break;
             }
-
-            if current_interval == gt_update_intervals.pop_front().unwrap() {
-                shrine.update_yin_spot_price(prices.pop_front().unwrap());
-                controller.update_multiplier();
+            
+            if gt_update_intervals.len() > 0 {
+                if current_interval == *gt_update_intervals.at(0) {
+                    gt_update_intervals.pop_front();
+                    let price: Wad = prices.pop_front().unwrap();
+                    shrine.update_yin_spot_price(price);
+                    controller.update_multiplier();
+                }
             }
 
             assert_equalish(
@@ -450,7 +453,6 @@ mod TestController {
                 'Wrong p term'
             );
 
-            controller.get_i_term().val.print();
             assert_equalish(
                 controller.get_i_term(),
                 gt_i_terms.pop_front().unwrap(),
