@@ -550,7 +550,7 @@ mod Absorber {
 
     // Update assets received after an absorption
     #[external]
-    fn update(mut assets: Span<ContractAddress>, mut asset_amts: Span<u128>) {
+    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>) {
         AccessControl::assert_has_role(AbsorberRoles::UPDATE);
 
         let current_epoch: u32 = current_epoch::read();
@@ -568,13 +568,12 @@ mod Absorber {
 
         let total_shares: Wad = total_shares::read();
 
-        // Emit `Gain` event before the loop as `assets` and `asset_amts` are consumed by the loop
-        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
-
+        let mut assets_copy = assets;
+        let mut asset_amts_copy = asset_amts;
         loop {
-            match assets.pop_front() {
+            match assets_copy.pop_front() {
                 Option::Some(asset) => {
-                    let asset_amt: u128 = *asset_amts.pop_front().unwrap();
+                    let asset_amt: u128 = *asset_amts_copy.pop_front().unwrap();
                     update_absorbed_asset(current_absorption_id, total_shares, *asset, asset_amt);
                 },
                 Option::None(_) => {
@@ -624,6 +623,8 @@ mod Absorber {
             // Transfer reward errors of current epoch to the next epoch
             propagate_reward_errors(rewards_count, current_epoch);
         }
+
+        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
     }
 
     #[external]
