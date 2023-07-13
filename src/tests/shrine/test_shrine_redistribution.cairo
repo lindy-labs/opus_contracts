@@ -1050,7 +1050,7 @@ mod TestShrineRedistribution {
         common::assert_equalish(
             redistributed_trove_debt,
             recipient_troves_debt_increment + cumulative_error,
-            5_u128.into(),  // error margin
+            5_u128.into(), // error margin
             'loss of precision in pulling',
         );
 
@@ -1317,12 +1317,28 @@ mod TestShrineRedistribution {
     fn test_multi_troves_system_debt_not_exceeded() {
         let shrine: IShrineDispatcher = redistribution_setup();
 
-        let yang_addrs: Span<ContractAddress> = ShrineUtils::two_yang_addrs();        let yang1_addr = ShrineUtils::yang1_addr();
-        let yang1_addr = *yang_addrs.at(0);
+        let yang_addrs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let yang1_addr = *yang_addrs.at(2);
         let yang2_addr = *yang_addrs.at(1);
+        let yang3_addr = *yang_addrs.at(0);
 
         let trove1_owner = common::trove1_owner_addr();
- 
+        let redistributed_trove: u64 = common::TROVE_1;
+
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(yang1_addr, redistributed_trove, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, redistributed_trove, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
+        shrine.deposit(yang3_addr, redistributed_trove, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
+        shrine
+            .forge(
+                trove1_owner,
+                redistributed_trove,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                0_u128.into()
+            );
+
+        let trove1_owner = common::trove1_owner_addr();
+
         // Create another 10 troves with different collateral amounts
         let mut idx: u64 = 0;
         let new_troves_count: u64 = 10;
@@ -1334,13 +1350,19 @@ mod TestShrineRedistribution {
 
             let trove_idx: u64 = 4 + idx;
             let tmp_multiplier: u128 = (idx + 1).into();
-            shrine.deposit(yang1_addr, trove_idx, (tmp_multiplier * 100000000000000000).into()); // idx * 0.1 Wad
-            shrine.deposit(yang2_addr, trove_idx, (tmp_multiplier * 200000000000000000).into()); // idx * 0.2 Wad
+            shrine
+                .deposit(
+                    yang1_addr, trove_idx, (tmp_multiplier * 100000000000000000).into()
+                ); // idx * 0.1 Wad
+            shrine
+                .deposit(
+                    yang2_addr, trove_idx, (tmp_multiplier * 200000000000000000).into()
+                ); // idx * 0.2 Wad
 
             idx += 1;
         };
 
-        shrine.redistribute(common::TROVE_1);
+        shrine.redistribute(redistributed_trove);
 
         let mut idx: u64 = 1;
         let total_troves_count: u64 = new_troves_count + 3;
@@ -1363,7 +1385,9 @@ mod TestShrineRedistribution {
 
         let cumulative_redistributed_debt: Wad = cumulative_troves_debt + cumulative_error;
         let total_debt: Wad = shrine.get_total_debt();
-        common::assert_equalish(cumulative_redistributed_debt, total_debt, 100_u128.into(), 'total debt mismatch');
+        common::assert_equalish(
+            cumulative_redistributed_debt, total_debt, 20_u128.into(), 'total debt mismatch'
+        );
         assert(cumulative_redistributed_debt <= total_debt, 'sum(troves debt) > total debt');
     }
 }

@@ -1654,7 +1654,7 @@ mod Shrine {
                                             wad_scale_divisor
                                         );
                                         // Accumulate remainder from fixed point division for subsequent addition 
-                                        // so that all redistributed debt accrue to troves.
+                                        // to minimize precision loss
                                         cumulative_r += r;
 
                                         trove_debt += debt_increment.try_into().unwrap();
