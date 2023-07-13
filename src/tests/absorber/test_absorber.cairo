@@ -47,7 +47,7 @@ mod TestAbsorber {
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
             'total shares should be 0'
         );
-        assert(absorber.get_current_epoch() == 0, 'epoch should be 0');
+        assert(absorber.get_current_epoch() == 1, 'epoch should be 1');
         assert(absorber.get_absorptions_count() == 0, 'absorptions count should be 0');
         assert(absorber.get_rewards_count() == 0, 'rewards should be 0');
         assert(absorber.get_removal_limit() == AbsorberUtils::REMOVAL_LIMIT.into(), 'wrong limit');
@@ -291,9 +291,9 @@ mod TestAbsorber {
                     let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
 
                     let expected_epoch = if is_fully_absorbed {
-                        1
+                        2
                     } else {
-                        0
+                        1
                     };
                     let expected_total_shares: Wad = if is_fully_absorbed {
                         WadZeroable::zero()
@@ -317,7 +317,7 @@ mod TestAbsorber {
                     );
 
                     let expected_blessings_multiplier: Ray = RAY_SCALE.into();
-                    let absorption_epoch = 0;
+                    let absorption_epoch = 1;
                     AbsorberUtils::assert_reward_cumulative_updated(
                         absorber,
                         before_total_shares,
@@ -543,7 +543,7 @@ mod TestAbsorber {
         );
 
         let expected_blessings_multiplier: Ray = RAY_SCALE.into();
-        let expected_epoch: u32 = 0;
+        let expected_epoch: u32 = 1;
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             before_total_shares,
@@ -629,7 +629,7 @@ mod TestAbsorber {
             'wrong provider shares'
         );
 
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = 2;
         assert(second_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
         let second_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
@@ -668,7 +668,7 @@ mod TestAbsorber {
         );
 
         let expected_blessings_multiplier: Ray = RAY_SCALE.into();
-        let expected_epoch: u32 = 0;
+        let expected_epoch: u32 = 1;
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             first_epoch_total_shares,
@@ -723,7 +723,7 @@ mod TestAbsorber {
         );
 
         let expected_blessings_multiplier: Ray = RAY_SCALE.into();
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = 2;
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             second_epoch_total_shares,
@@ -786,7 +786,7 @@ mod TestAbsorber {
         );
 
         // Check epoch and total shares after threshold absorption
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = 2;
         assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
         assert(
             absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
@@ -813,7 +813,7 @@ mod TestAbsorber {
 
         let second_provider_info: Provision = absorber.get_provision(second_provider);
         assert(second_provider_info.shares == second_provided_amt, 'wrong provider shares');
-        assert(second_provider_info.epoch == 1, 'wrong provider epoch');
+        assert(second_provider_info.epoch == 2, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into();
         common::assert_equalish(
@@ -849,7 +849,8 @@ mod TestAbsorber {
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
-        assert(first_provider_info.epoch == 1, 'wrong provider epoch');
+        first_provider_info.epoch.print();
+        assert(first_provider_info.epoch == 2, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
@@ -868,7 +869,7 @@ mod TestAbsorber {
 
         // Check rewards
         let expected_first_epoch_blessings_multiplier: Ray = RAY_SCALE.into();
-        let first_epoch: u32 = 0;
+        let first_epoch: u32 = 1;
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             first_epoch_total_shares,
@@ -929,7 +930,7 @@ mod TestAbsorber {
         );
 
         // Check epoch and total shares after threshold absorption
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = 2;
         assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
         assert(
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
@@ -964,7 +965,7 @@ mod TestAbsorber {
             second_provider_info.shares == second_provided_amt - Absorber::INITIAL_SHARES.into(),
             'wrong provider shares'
         );
-        assert(second_provider_info.epoch == 1, 'wrong provider epoch');
+        assert(second_provider_info.epoch == 2, 'wrong provider epoch');
 
         let error_margin: Wad = 1000_u128.into(); // equal to initial minimum shares
         common::assert_equalish(
@@ -999,7 +1000,7 @@ mod TestAbsorber {
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
-        assert(first_provider_info.epoch == 1, 'wrong provider epoch');
+        assert(first_provider_info.epoch == 2, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
@@ -1017,7 +1018,7 @@ mod TestAbsorber {
 
         // Check rewards
         let expected_first_epoch_blessings_multiplier: Ray = RAY_SCALE.into();
-        let first_epoch: u32 = 0;
+        let first_epoch: u32 = 1;
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             first_epoch_total_shares,
@@ -1105,7 +1106,7 @@ mod TestAbsorber {
             second_provider_info.shares == expected_second_provider_shares, 'wrong provider shares'
         );
 
-        let expected_epoch: u32 = 0;
+        let expected_epoch: u32 = 1;
         assert(second_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
         let error_margin: Wad = 1_u128
@@ -1180,8 +1181,9 @@ mod TestAbsorber {
             / total_shares;
         let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
             + expected_aura_reward_cumulative_increment.val;
+        // TODO: replace with `expected_epoch` once `Unknown ap change` error is gone
         let updated_aura_reward_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 0);
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 1);
         assert(
             updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
             'wrong AURA reward cumulative #1'
@@ -1514,7 +1516,7 @@ mod TestAbsorber {
         ) =
             AbsorberUtils::absorber_with_rewards_and_first_provider();
 
-        let expected_epoch: u32 = 0;
+        let expected_epoch: u32 = 1;
         let aura_addr: ContractAddress = *reward_tokens.at(0);
         let aura_blesser_addr: ContractAddress = *blessers.at(0);
         let veaura_addr: ContractAddress = *reward_tokens.at(1);
@@ -1616,7 +1618,7 @@ mod TestAbsorber {
             provided_amt
         );
 
-        let expected_epoch: u32 = 0;
+        let expected_epoch: u32 = 1;
         let before_aura_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
         let before_veaura_distribution: DistributionInfo = absorber
