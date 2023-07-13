@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod TestShrineRedistribution {
     use array::{ArrayTrait, SpanTrait};
+    use integer::u256_safe_divmod;
     use option::OptionTrait;
-    use traits::{Default, Into};
+    use traits::{Default, Into, TryInto};
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
@@ -12,16 +13,18 @@ mod TestShrineRedistribution {
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_SCALE};
 
     use aura::tests::shrine::utils::ShrineUtils;
     use aura::tests::common;
+
+    use debug::PrintTrait;
 
     //
     // Setup
     //
 
-    const TROVE2_YANG1_DEPOSIT: u128 = 2370000000000000000; // 2.37 (Wad)
+    const TROVE2_YANG1_DEPOSIT: u128 = 370000000000000000; // 0.37 (Wad)
     const TROVE2_YANG2_DEPOSIT: u128 = 8310000000000000000; // 8.31 (Wad)
     const TROVE2_FORGE_AMT: u128 = 3456000000000000000000; // 3_456 (Wad)
 
@@ -242,6 +245,7 @@ mod TestShrineRedistribution {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
+                    'yang'.print();
                     // Get total redistributed debt for yang
                     let unit_debt: Wad = shrine.get_redistributed_unit_debt_for_yang(*yang, redistribution_id);
                     let redistributed_debt_for_yang: Wad = shrine.get_yang_total(*yang) *  unit_debt;
@@ -253,10 +257,26 @@ mod TestShrineRedistribution {
                             break;
                         }
 
-                        cumulative_debt_for_troves += shrine.get_deposit(*yang, idx) * unit_debt;
+                        let trove_yang_deposit: Wad = shrine.get_deposit(*yang, idx);
+                        let wad_scale: u256 = WAD_SCALE.into();
+                        let (mut trove_increment, r) = u256_safe_divmod(
+                            trove_yang_deposit.into() * unit_debt.into(),
+                            wad_scale.try_into().unwrap()
+                        );
+                        'remainder'.print();
+                        r.print();
+                        if r >= (WAD_SCALE / 2).into() {
+                            'rounding up'.print();
+                            trove_increment += 1_u128.into();
+                        }
+
+                        cumulative_debt_for_troves += trove_increment.try_into().unwrap();
 
                         idx -= 1;
                     };
+
+                    cumulative_debt_for_troves.print();
+                    redistributed_debt_for_yang.print();
 
                     assert(cumulative_debt_for_troves == redistributed_debt_for_yang, 'yang debt mismatch');
                 },
@@ -275,6 +295,24 @@ mod TestShrineRedistribution {
     #[available_gas(20000000000)]
     fn test_shrine_one_redistribution() {
         let shrine: IShrineDispatcher = redistribution_setup();
+
+        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang2_addr = ShrineUtils::yang2_addr();
+
+        let trove2_owner = common::trove2_owner_addr();
+        shrine.deposit(yang1_addr, 4, TROVE2_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, 4, TROVE2_YANG2_DEPOSIT.into());
+        shrine.forge(trove2_owner, 4, TROVE2_FORGE_AMT.into(), 0_u128.into());
+
+
+        shrine.deposit(yang1_addr, 5, TROVE2_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, 5, TROVE2_YANG2_DEPOSIT.into());
+        shrine.forge(trove2_owner, 5, TROVE2_FORGE_AMT.into(), 0_u128.into());
+
+
+        shrine.deposit(yang1_addr, 6, TROVE2_YANG1_DEPOSIT.into());
+        shrine.deposit(yang2_addr, 6, TROVE2_YANG2_DEPOSIT.into());
+        shrine.forge(trove2_owner, 6, TROVE2_FORGE_AMT.into(), 0_u128.into());
 
         let (_, _, _, before_trove2_debt) = shrine.get_trove_info(common::TROVE_2);
 
@@ -323,7 +361,7 @@ mod TestShrineRedistribution {
         assert_redistributed_debt_invariant(
             shrine,
             yang_addrs,
-            3, //troves count
+            6, //troves count
             trove1_debt,
             1, // TODO: Replace with `expected_redistribution_id` once `Unknown ap change` error is gone
         );
