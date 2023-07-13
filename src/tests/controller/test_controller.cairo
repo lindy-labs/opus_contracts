@@ -361,6 +361,112 @@ mod TestController {
                 }
             };
         };
+    }
 
+    // In previous simulations, the time between updates was consistently 1 hour.
+    // This test is to ensure that the controller is still working as expected
+    // when the time between updates is variable. 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_against_ground_truth3() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::admin());
+
+        // Updating `i_gain` to match the ground truth simulation
+        controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
+        controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
+
+        // Loading our ground truth into arrays for comparison
+        let mut prices: Array<Wad> = Default::default();
+        let mut gt_p_terms: Array<SignedRay> = Default::default();
+        let mut gt_i_terms: Array<SignedRay> = Default::default();
+        let mut gt_multipliers: Array<Ray> = Default::default();
+        let mut gt_update_intervals: Array<u64> = Default::default();
+
+        prices.append(999000000000000000_u128.into());
+        prices.append(998000000000000000_u128.into());
+        prices.append(997000000000000000_u128.into());
+        prices.append(996000000000000000_u128.into());
+        prices.append(995000000000000000_u128.into());
+
+        gt_p_terms.append(SignedRay{val: 1000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 1000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 1000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 8000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 8000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 27000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 64000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 64000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 125000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 125000000000000000000000000, sign: false});
+
+
+        gt_i_terms.append(SignedRay{val: 0, sign: false});
+        gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 199999600001200000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 219999650000983000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 259999570001223000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 299999490001463000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 339999410001703000000000, sign: false});
+        gt_i_terms.append(SignedRay{val: 379999330001943000000000, sign: false});
+
+        gt_multipliers.append(1001000000000000000000000000_u128.into());
+        gt_multipliers.append(1001099999950000000000000000_u128.into());
+        gt_multipliers.append(1011050371852100000000000000_u128.into());
+        gt_multipliers.append(1028000743754200000000000000_u128.into());
+        gt_multipliers.append(1038051115306300000000000000_u128.into());
+        gt_multipliers.append(1076662728820120000000000000_u128.into());
+        gt_multipliers.append(1133374341383950000000000000_u128.into());
+        gt_multipliers.append(1162209128090610000000000000_u128.into());
+        gt_multipliers.append(1260348195726020000000000000_u128.into());
+        gt_multipliers.append(1297587260311510000000000000_u128.into());
+
+        gt_update_intervals.append(1_u64.into());
+        gt_update_intervals.append(4_u64.into());
+        gt_update_intervals.append(6_u64.into());
+        gt_update_intervals.append(7_u64.into());
+        gt_update_intervals.append(9_u64.into());
+
+        let mut current_interval: u64 = 1;
+        let end_interval: u64 = 10; 
+
+        loop {
+            if current_interval > end_interval {
+                break;
+            }
+
+            if current_interval == gt_update_intervals.pop_front().unwrap() {
+                shrine.update_yin_spot_price(prices.pop_front().unwrap());
+                controller.update_multiplier();
+            }
+
+            assert_equalish(
+                controller.get_p_term(),
+                gt_p_terms.pop_front().unwrap(),
+                ERROR_MARGIN.into(),
+                'Wrong p term'
+            );
+
+            controller.get_i_term().val.print();
+            assert_equalish(
+                controller.get_i_term(),
+                gt_i_terms.pop_front().unwrap(),
+                ERROR_MARGIN.into(),
+                'Wrong i term'
+            );
+
+            assert_equalish(
+                controller.get_current_multiplier(),
+                gt_multipliers.pop_front().unwrap(),
+                ERROR_MARGIN.into(),
+                'Wrong multiplier'
+            );
+
+            ControllerUtils::fast_forward_1_hour();
+            current_interval += 1;
+        }
     }
 }
