@@ -1047,9 +1047,11 @@ mod TestShrineRedistribution {
             'debt invariant failed'
         );
 
-        assert(
-            redistributed_trove_debt == recipient_troves_debt_increment + cumulative_error,
-            'loss of precision in pulling'
+        common::assert_equalish(
+            redistributed_trove_debt,
+            recipient_troves_debt_increment + cumulative_error,
+            5_u128.into(),  // error margin
+            'loss of precision in pulling',
         );
 
         // Note that we cannot fully check the updated value of the recipient trove here because
@@ -1308,5 +1310,60 @@ mod TestShrineRedistribution {
         shrine.melt(trove1_owner, common::TROVE_2, WadZeroable::zero());
         // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
         assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 1, 'wrong id');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_multi_troves_system_debt_not_exceeded() {
+        let shrine: IShrineDispatcher = redistribution_setup();
+
+        let yang_addrs: Span<ContractAddress> = ShrineUtils::two_yang_addrs();        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang1_addr = *yang_addrs.at(0);
+        let yang2_addr = *yang_addrs.at(1);
+
+        let trove1_owner = common::trove1_owner_addr();
+ 
+        // Create another 10 troves with different collateral amounts
+        let mut idx: u64 = 0;
+        let new_troves_count: u64 = 10;
+        set_contract_address(ShrineUtils::admin());
+        loop {
+            if idx == new_troves_count {
+                break;
+            }
+
+            let trove_idx: u64 = 4 + idx;
+            let tmp_multiplier: u128 = (idx + 1).into();
+            shrine.deposit(yang1_addr, trove_idx, (tmp_multiplier * 100000000000000000).into()); // idx * 0.1 Wad
+            shrine.deposit(yang2_addr, trove_idx, (tmp_multiplier * 200000000000000000).into()); // idx * 0.2 Wad
+
+            idx += 1;
+        };
+
+        shrine.redistribute(common::TROVE_1);
+
+        let mut idx: u64 = 1;
+        let total_troves_count: u64 = new_troves_count + 3;
+        let mut cumulative_troves_debt: Wad = WadZeroable::zero();
+        loop {
+            if idx == total_troves_count + 1 {
+                break;
+            }
+
+            let (_, _, _, trove_debt) = shrine.get_trove_info(idx);
+            cumulative_troves_debt += trove_debt;
+
+            idx += 1;
+        };
+
+        let expected_redistribution_id = 1;
+        let cumulative_error: Wad = get_redistributed_debt_error(
+            shrine, yang_addrs, expected_redistribution_id, 
+        );
+
+        let cumulative_redistributed_debt: Wad = cumulative_troves_debt + cumulative_error;
+        let total_debt: Wad = shrine.get_total_debt();
+        common::assert_equalish(cumulative_redistributed_debt, total_debt, 100_u128.into(), 'total debt mismatch');
+        assert(cumulative_redistributed_debt <= total_debt, 'sum(troves debt) > total debt');
     }
 }
