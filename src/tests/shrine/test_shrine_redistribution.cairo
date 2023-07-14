@@ -295,6 +295,10 @@ mod TestShrineRedistribution {
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
         shrine.redistribute(common::TROVE_1);
 
+        let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_1);
+        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
+
         let expected_redistribution_id: u32 = 1;
         assert(
             shrine.get_redistributions_count() == expected_redistribution_id,
@@ -362,6 +366,10 @@ mod TestShrineRedistribution {
         let (_, _, _, redistributed_debt) = shrine.get_trove_info(common::TROVE_2);
 
         shrine.redistribute(common::TROVE_2);
+
+        let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
+        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let expected_redistribution_id: u32 = 2;
         assert(
@@ -438,6 +446,10 @@ mod TestShrineRedistribution {
         // Redistribute trove 2
         shrine.melt(trove2_owner, common::TROVE_2, WadZeroable::zero());
         shrine.redistribute(common::TROVE_2);
+
+        let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
+        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         // Check that yang 1 unit debt is zero
         let expected_redistribution_id: u32 = 1;
