@@ -391,19 +391,6 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
-// BoundedInt
-impl BoundedWad of BoundedInt<Wad> {
-    #[inline(always)]
-    fn min() -> Wad nopanic {
-        Wad { val: 0 }
-    }
-
-    #[inline(always)]
-    fn max() -> Wad nopanic {
-        Wad { val: BoundedU128::max() }
-    }
-}
-
 // Debug print
 impl WadPrintImpl of PrintTrait<Wad> {
     fn print(self: Wad) {

@@ -8,6 +8,7 @@ mod Purger {
     use zeroable::Zeroable;
 
     use aura::core::roles::PurgerRoles;
+    use aura::core::shrine::Shrine::FORGE_FEE_CAP_PCT;
 
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -19,7 +20,7 @@ mod Purger {
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray;
-    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV 
     // the trove should have after a liquidation, which in turn determines the
@@ -347,8 +348,9 @@ mod Purger {
             // This ensures that the yang amount corresponds to the correct value. 
             // Otherwise, the remaining yangs in the trove would appreciate in value from the rebasing.
             if max_purge_amt == trove_debt {
-                shrine.redistribute(trove_id, BoundedWad::max());
+                shrine.redistribute(trove_id);
             } else {
+                // Get the updated trove value and debt after absorption
                 let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
                 let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
                 let excess_pct: Ray = wadray::rdiv_ww(
@@ -359,27 +361,42 @@ mod Purger {
                 let purger: ContractAddress = get_contract_address();
 
                 // Withdraw excess yang to contract, and melt excess debt
+                let remaining_debt: Wad = trove_debt - debt_to_redistribute;
+                shrine.inject(purger, remaining_debt);
+                shrine.melt(purger, trove_id, remaining_debt);
+
                 let (mut assets, mut asset_amts) = free(shrine, trove_id, excess_pct, purger);
 
-                shrine.redistribute(trove_id, debt_to_redistribute);
+                shrine.redistribute(trove_id);
 
-                // Deposit excess back into trove, and forge excess debt
+                // Deposit excess back into trove
                 let sentinel: ISentinelDispatcher = sentinel::read();
                 loop {
                     match assets.pop_front() {
                         Option::Some(asset) => {
-                            let gate: ContractAddress = sentinel.get_gate_address(*asset);
                             let asset_amt: u128 = *asset_amts.pop_front().unwrap();
                             IERC20Dispatcher {
                                 contract_address: *asset
-                            }.approve(gate, asset_amt.into());
-                            sentinel.enter(*asset, purger, trove_id, asset_amt);
+                            }.approve(sentinel.get_gate_address(*asset), asset_amt.into());
+                            let yang_amt: Wad = sentinel.enter(*asset, purger, trove_id, asset_amt);
+                            shrine.deposit(*asset, trove_id, yang_amt);
                         },
                         Option::None(_) => {
                             break;
                         }
                     };
                 };
+
+                // Add remaining debt back to trove
+                shrine.forge(purger, trove_id, remaining_debt, FORGE_FEE_CAP_PCT.into());
+                let (_, _, updated_trove_value, updated_trove_debt) = shrine
+                    .get_trove_info(trove_id);
+
+                let forge_fee: Wad = updated_trove_debt - remaining_debt;
+                assert(updated_trove_debt == remaining_debt + forge_fee, 'SH: Debt mismatch');
+                shrine.inject(purger, forge_fee);
+                shrine.melt(purger, trove_id, forge_fee);
+                shrine.eject(purger, remaining_debt);
             }
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 

@@ -92,7 +92,7 @@ mod SentinelRoles {
 
     #[inline(always)]
     fn purger() -> u128 {
-        EXIT
+        ENTER + EXIT
     }
 
     #[inline(always)]
@@ -146,7 +146,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn purger() -> u128 {
-        MELT + REDISTRIBUTE + SEIZE
+        DEPOSIT + EJECT + FORGE + INJECT + MELT + REDISTRIBUTE + SEIZE
     }
 
     #[inline(always)]
