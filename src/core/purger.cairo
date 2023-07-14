@@ -446,10 +446,14 @@ mod Purger {
     }
 
     // Returns `Option::None` if the trove is not absorbable, otherwise returns the absorption penalty
-    // A trove is absorbable if
-    //  - ltv > threshold
-    //  - its threshold is greater than `ABSORPTION_THRESHOLD` OR penalty == (1 - usable_ltv)/usable_ltv
-    // If LTV exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`. 
+    // A trove is absorbable if and only if:
+    // 1. ltv > threshold; and
+    // 2. either of the following is true:
+    //    a) its threshold is greater than `ABSORPTION_THRESHOLD`; or 
+    //    b) the penalty is at the maximum possible for the current LTV such that the post-liquidation
+    //       LTV is not worse off (i.e. penalty == (1 - usable_ltv)/usable_ltv).
+    //
+    // If threshold exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`. 
     fn get_absorption_penalty_internal(
         threshold: Ray, ltv: Ray, ltv_after_compensation: Ray
     ) -> Option<Ray> {
@@ -470,7 +474,7 @@ mod Purger {
             (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
         );
 
-        if threshold >= ABSORPTION_THRESHOLD.into() {
+        if threshold > ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
             let penalty = min(
                 MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty

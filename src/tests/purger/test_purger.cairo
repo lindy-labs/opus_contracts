@@ -58,7 +58,7 @@ mod TestPurger {
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
 
-        // Set thresholds to 90% so we can check the expected penalty
+        // Set thresholds to 91% so we can check the scalar is applied to the penalty
         let threshold: Ray = (91 * RAY_PERCENT).into();
         PurgerUtils::set_thresholds(shrine, yangs, threshold);
 
@@ -102,6 +102,48 @@ mod TestPurger {
         let penalty: Ray = purger.get_absorption_penalty(target_trove);
         let expected_penalty: Ray = 54300000000000000000000000_u128.into(); // 5.43%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #3');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_penalty_scalar_lower_bound() {
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
+
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+        );
+
+        // Set thresholds to 90% so we can check the scalar is not applied to the penalty
+        let threshold: Ray = (90 * RAY_PERCENT).into();
+        PurgerUtils::set_thresholds(shrine, yangs, threshold);
+
+        let (_, _, value, debt) = shrine.get_trove_info(target_trove);
+        // 91%; Note that if a penalty scalar is applied, then the trove would be absorbable
+        // at this LTV because the penalty would be the maximum possible penalty. On the other
+        // hand, if a penalty scalar is not applied, then the maximum possible penalty will be
+        // reached from 92.09% onwards, so the trove would not be absorbable at this LTV
+        let target_ltv: Ray = 910000000000000000000000000_u128.into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+
+        let (trove_threshold, ltv, _, _) = shrine.get_trove_info(target_trove);
+        // sanity check that threshold is correct
+        assert(trove_threshold == threshold, 'threshold sanity check');
+
+        // sanity check that LTV is at the target liquidation LTV
+        let error_margin: Ray = 100000000_u128.into();
+        common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let expected_penalty: Ray = RayZeroable::zero();
+        assert(penalty == RayZeroable::zero(), 'should not be absorbable #1');
+
+        // Set scalar to 1.06 and check the trove is still not absorbable.
+        set_contract_address(PurgerUtils::admin());
+        let penalty_scalar: Ray = Purger::MAX_PENALTY_SCALAR.into();
+        purger.set_penalty_scalar(penalty_scalar);
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        assert(penalty == RayZeroable::zero(), 'should not be absorbable #2');
     }
 
     #[test]
