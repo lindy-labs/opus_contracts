@@ -288,6 +288,49 @@ mod Shrine {
         (threshold, ltv, value, compounded_debt_with_redistributed_debt)
     }
 
+    // Returns a tuple of:
+    // 1. an array of `YangBalance` struct representing yang amounts attributed to the trove 
+    //    from exceptional redistributions but not yet pulled to the trove.
+    //    If there were no exceptional redistributions, then an empty array is returned.
+    // 2. the amount of debt attributed to the trove from ordinary and exceptional redistributions
+    //    but not yet pulled to the trove
+    #[view]
+    fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad) {
+        let (updated_trove_yang_balances, pulled_debt, ) = pull_redistributed_debt_and_yangs(
+            trove_id,
+            WadZeroable::zero(),
+            trove_redistribution_id::read(trove_id),
+            redistributions_count::read()
+        );
+
+        let mut added_yangs: Array<YangBalance> = Default::default();
+        if updated_trove_yang_balances.is_some() {
+            let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
+            let mut trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
+            loop {
+                match updated_trove_yang_balances.pop_front() {
+                    Option::Some(updated_yang_balance) => {
+                        let increment: Wad = *updated_yang_balance.amount
+                            - (*trove_yang_balances.pop_front().unwrap()).amount;
+                        if increment.is_non_zero() {
+                            added_yangs
+                                .append(
+                                    YangBalance {
+                                        yang_id: *updated_yang_balance.yang_id, amount: increment
+                                    }
+                                );
+                        }
+                    },
+                    Option::None(_) => {
+                        break;
+                    },
+                };
+            };
+        }
+
+        (added_yangs.span(), pulled_debt)
+    }
+
     #[view]
     fn get_yin(user: ContractAddress) -> Wad {
         yin::read(user)

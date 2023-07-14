@@ -2,7 +2,7 @@ use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangRedistribution};
+use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution};
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -51,6 +51,7 @@ trait IShrine {
     // view
     fn get_shrine_threshold_and_value() -> (Ray, Wad);
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);
+    fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad);
     fn get_current_yang_price(yang: ContractAddress) -> (Wad, Wad, u64);
     fn get_current_multiplier() -> (Ray, Ray, u64);
     fn get_yin_spot_price() -> Wad;
