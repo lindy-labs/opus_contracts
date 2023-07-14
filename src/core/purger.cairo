@@ -303,6 +303,11 @@ mod Purger {
         // Transfer a percentage of the penalty to the caller as compensation
         let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
 
+        // Melt the trove's debt using the absorber's yin directly
+        // This needs to be called even if `purge_amt` is 0 so that accrued interest
+        // will be charged on the trove before `shrine.redistribute`.
+        shrine.melt(absorber.contract_address, trove_id, purge_amt);
+
         let can_absorb_any: bool = purge_amt.is_non_zero();
         let is_fully_absorbed: bool = purge_amt == max_purge_amt;
 
@@ -316,9 +321,6 @@ mod Purger {
                 trove_penalty,
                 purge_amt
             );
-
-            // Melt the trove's debt using the absorber's yin directly
-            shrine.melt(absorber.contract_address, trove_id, purge_amt);
 
             // Free collateral corresponding to the purged amount
             let (yangs, absorbed_assets_amts) = free(
