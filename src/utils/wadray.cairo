@@ -1,5 +1,5 @@
 use debug::PrintTrait;
-use integer::{Felt252TryIntoU128, U128IntoFelt252};
+use integer::{BoundedInt, BoundedU128, Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
@@ -388,6 +388,19 @@ impl RayZeroable of Zeroable<Ray> {
     #[inline(always)]
     fn is_non_zero(self: Ray) -> bool {
         self.val != 0
+    }
+}
+
+// BoundedInt
+impl BoundedWad of BoundedInt<Wad> {
+    #[inline(always)]
+    fn min() -> Wad nopanic {
+        Wad { val: 0 }
+    }
+
+    #[inline(always)]
+    fn max() -> Wad nopanic {
+        Wad { val: BoundedU128::max() }
     }
 }
 

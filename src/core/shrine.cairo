@@ -723,7 +723,7 @@ mod Shrine {
     }
 
     #[external]
-    fn redistribute(trove_id: u64) {
+    fn redistribute(trove_id: u64, amt: Wad) {
         AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
         let current_interval: u64 = now();
@@ -738,13 +738,15 @@ mod Shrine {
         let redistribution_id: u32 = redistributions_count::read() + 1;
         redistributions_count::write(redistribution_id);
 
+        let debt_to_redistribute: Wad = min(amt, trove.debt);
+
         // Perform redistribution
         let redistributed_debt = redistribute_internal(
-            redistribution_id, trove_id, trove_value, trove.debt, current_interval
+            redistribution_id, trove_id, trove_value, debt_to_redistribute, current_interval
         );
 
         trove.charge_from = current_interval;
-        trove.debt = 0_u128.into();
+        trove.debt = trove.debt - debt_to_redistribute;
         troves::write(trove_id, trove);
 
         // Event 
@@ -1076,7 +1078,7 @@ mod Shrine {
         redistribution_id: u32,
         trove_id: u64,
         trove_value: Wad,
-        trove_debt: Wad,
+        debt_to_redistribute: Wad,
         current_interval: u64
     ) -> Wad {
         let mut current_yang_id: u32 = yangs_count::read();
@@ -1115,10 +1117,11 @@ mod Shrine {
 
             // Calculate (value of yang / trove value) * debt and assign redistributed debt to yang
             let (yang_price, _, _) = get_recent_price_from(current_yang_id, current_interval);
-            let raw_debt_to_distribute = ((deposited * yang_price) / trove_value) * trove_debt;
+            let raw_debt_to_distribute_for_yang = ((deposited * yang_price) / trove_value)
+                * debt_to_redistribute;
 
-            let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
-                trove_debt, raw_debt_to_distribute, redistributed_debt
+            let (debt_to_distribute_for_yang, updated_redistributed_debt) = round_distributed_debt(
+                debt_to_redistribute, raw_debt_to_distribute_for_yang, redistributed_debt
             );
 
             // TODO: using `redistributed_debt` directly as return value of `round_distributed_debt`
@@ -1130,13 +1133,14 @@ mod Shrine {
             let last_error: Wad = get_recent_redistribution_error_for_yang(
                 current_yang_id, redistribution_id - 1
             );
-            let adjusted_debt_to_distribute: Wad = debt_to_distribute + last_error;
-            let unit_debt: Wad = adjusted_debt_to_distribute / new_yang_total;
+            let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang
+                + last_error;
+            let unit_debt: Wad = adjusted_debt_to_distribute_for_yang / new_yang_total;
 
             // Due to loss of precision from fixed point division, the actual debt distributed will be less than
             // or equal to the amount of debt to distribute.
             let actual_debt_distributed: Wad = unit_debt * new_yang_total;
-            let new_error: Wad = adjusted_debt_to_distribute - actual_debt_distributed;
+            let new_error: Wad = adjusted_debt_to_distribute_for_yang - actual_debt_distributed;
             let current_yang_redistribution = YangRedistribution {
                 unit_debt: unit_debt, error: new_error
             };
@@ -1147,7 +1151,7 @@ mod Shrine {
 
             // If debt was rounded up, meaning it is now fully redistributed, skip the remaining yangs
             // Otherwise, continue the iteration
-            if debt_to_distribute != raw_debt_to_distribute {
+            if debt_to_distribute_for_yang != raw_debt_to_distribute_for_yang {
                 break redistributed_debt;
             }
 

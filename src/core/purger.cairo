@@ -3,13 +3,14 @@ mod Purger {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use traits::{Default, Into};
     use zeroable::Zeroable;
 
     use aura::core::roles::PurgerRoles;
 
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -18,7 +19,7 @@ mod Purger {
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV 
     // the trove should have after a liquidation, which in turn determines the
@@ -341,7 +342,45 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            shrine.redistribute(trove_id);
+            // If the close amount is less than the trove's debt, free excess yangs to the purger
+            // before performing redistribution, and then deposit back to the trove.
+            // This ensures that the yang amount corresponds to the correct value. 
+            // Otherwise, the remaining yangs in the trove would appreciate in value from the rebasing.
+            if max_purge_amt != trove_debt {
+                let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
+                let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
+                let excess_pct: Ray = wadray::rdiv_ww(
+                    trove_value
+                        - wadray::rmul_wr(debt_to_redistribute, RAY_ONE.into() + trove_penalty),
+                    trove_value
+                );
+                let purger: ContractAddress = get_contract_address();
+
+                // Withdraw excess yang to contract, and melt excess debt
+                let (mut assets, mut asset_amts) = free(shrine, trove_id, excess_pct, purger);
+
+                shrine.redistribute(trove_id, debt_to_redistribute);
+
+                // Deposit excess back into trove, and forge excess debt
+                let sentinel: ISentinelDispatcher = sentinel::read();
+                loop {
+                    match assets.pop_front() {
+                        Option::Some(asset) => {
+                            let gate: ContractAddress = sentinel.get_gate_address(*asset);
+                            let asset_amt: u128 = *asset_amts.pop_front().unwrap();
+                            IERC20Dispatcher {
+                                contract_address: *asset
+                            }.approve(gate, asset_amt.into());
+                            sentinel.enter(*asset, purger, trove_id, asset_amt);
+                        },
+                        Option::None(_) => {
+                            break;
+                        }
+                    };
+                };
+            } else {
+                shrine.redistribute(trove_id, BoundedWad::max());
+            }
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
