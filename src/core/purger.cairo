@@ -346,7 +346,9 @@ mod Purger {
             // before performing redistribution, and then deposit back to the trove.
             // This ensures that the yang amount corresponds to the correct value. 
             // Otherwise, the remaining yangs in the trove would appreciate in value from the rebasing.
-            if max_purge_amt != trove_debt {
+            if max_purge_amt == trove_debt {
+                shrine.redistribute(trove_id, BoundedWad::max());
+            } else {
                 let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove_id);
                 let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
                 let excess_pct: Ray = wadray::rdiv_ww(
@@ -378,8 +380,6 @@ mod Purger {
                         }
                     };
                 };
-            } else {
-                shrine.redistribute(trove_id, BoundedWad::max());
             }
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
