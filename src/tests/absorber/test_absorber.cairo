@@ -629,8 +629,7 @@ mod TestAbsorber {
             'wrong provider shares'
         );
 
-        let first_epoch: u32 = 1;
-        let expected_current_epoch: u32 = first_epoch + 1;
+        let expected_current_epoch: u32 = Absorber::FIRST_EPOCH + 1;
         assert(second_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let second_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
@@ -672,7 +671,7 @@ mod TestAbsorber {
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             first_epoch_total_shares,
-            first_epoch,
+            Absorber::FIRST_EPOCH,
             reward_tokens,
             reward_amts_per_blessing,
             expected_blessings_multiplier
@@ -785,15 +784,14 @@ mod TestAbsorber {
         );
 
         // Check epoch and total shares after threshold absorption
-        let first_epoch: u32 = 1;
-        let expected_current_epoch: u32 = first_epoch + 1;
+        let expected_current_epoch: u32 = Absorber::FIRST_EPOCH + 1;
         assert(absorber.get_current_epoch() == expected_current_epoch, 'wrong epoch');
         assert(
             absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
         );
 
         AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
-            absorber, first_epoch, reward_tokens
+            absorber, Absorber::FIRST_EPOCH, reward_tokens
         );
 
         // Second epoch starts here
@@ -871,7 +869,7 @@ mod TestAbsorber {
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             first_epoch_total_shares,
-            first_epoch,
+            Absorber::FIRST_EPOCH,
             reward_tokens,
             reward_amts_per_blessing,
             expected_first_epoch_blessings_multiplier
@@ -928,8 +926,7 @@ mod TestAbsorber {
         );
 
         // Check epoch and total shares after threshold absorption
-        let first_epoch: u32 = 1;
-        let expected_current_epoch: u32 = first_epoch + 1;
+        let expected_current_epoch: u32 = Absorber::FIRST_EPOCH + 1;
         assert(absorber.get_current_epoch() == expected_current_epoch, 'wrong epoch');
         assert(
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
@@ -937,7 +934,7 @@ mod TestAbsorber {
         );
 
         AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
-            absorber, first_epoch, reward_tokens
+            absorber, Absorber::FIRST_EPOCH, reward_tokens
         );
 
         // Second epoch starts here
@@ -1020,7 +1017,7 @@ mod TestAbsorber {
         AbsorberUtils::assert_reward_cumulative_updated(
             absorber,
             first_epoch_total_shares,
-            first_epoch,
+            Absorber::FIRST_EPOCH,
             reward_tokens,
             reward_amts_per_blessing,
             expected_first_epoch_blessings_multiplier
@@ -1121,9 +1118,8 @@ mod TestAbsorber {
             absorber, second_provider, reward_tokens
         );
 
-        // TODO: replace with `expected_epoch` once `Unknown ap change` error is gone
         let aura_reward_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 1);
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), Absorber::FIRST_EPOCH);
 
         let total_shares: Wad = absorber.get_total_shares_for_current_epoch();
         let first_provider_info: Provision = absorber.get_provision(first_provider);
@@ -1180,9 +1176,8 @@ mod TestAbsorber {
             / total_shares;
         let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
             + expected_aura_reward_cumulative_increment.val;
-        // TODO: replace with `expected_epoch` once `Unknown ap change` error is gone
         let updated_aura_reward_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 1);
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), Absorber::FIRST_EPOCH);
         assert(
             updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
             'wrong AURA reward cumulative #1'
@@ -1252,9 +1247,8 @@ mod TestAbsorber {
             / total_shares;
         let expected_aura_reward_cumulative: u128 = aura_reward_distribution.asset_amt_per_share
             + expected_aura_reward_cumulative_increment.val;
-        // TODO: replace with `expected_epoch` once `Unknown ap change` error is gone
         let updated_aura_reward_distribution: DistributionInfo = absorber
-            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), 1);
+            .get_cumulative_reward_amt_by_epoch(*reward_tokens.at(0), Absorber::FIRST_EPOCH);
         assert(
             updated_aura_reward_distribution.asset_amt_per_share == expected_aura_reward_cumulative,
             'wrong AURA reward cumulative #2'

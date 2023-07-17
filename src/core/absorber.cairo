@@ -40,6 +40,9 @@ mod Absorber {
     // Shares to be minted without a provider to avoid first provider front-running
     const INITIAL_SHARES: u128 = 1000; // 10 ** 3 (Wad);
 
+    // First epoch of the Absorber 
+    const FIRST_EPOCH: u32 = 1;
+
     // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
     const MIN_LIMIT: u128 = 500000000000000000000000000; // 50 * wadray::RAY_PERCENT = 0.5
 
@@ -186,7 +189,7 @@ mod Absorber {
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         is_live::write(true);
         set_removal_limit_internal(limit);
-        current_epoch::write(1);
+        current_epoch::write(FIRST_EPOCH);
     }
 
     //
