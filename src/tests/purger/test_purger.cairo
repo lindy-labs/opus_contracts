@@ -21,6 +21,7 @@ mod TestPurger {
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
+    use aura::tests::external::utils::PragmaUtils;
     use aura::tests::flashmint::utils::FlashmintUtils;
     use aura::tests::purger::flash_liquidator::{
         IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
@@ -37,7 +38,7 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_purger_setup() {
-        let (shrine, abbot, absorber, purger, yangs, gates) = PurgerUtils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = PurgerUtils::purger_deploy();
         let purger_ac = IAccessControlDispatcher { contract_address: purger.contract_address };
         assert(
             purger_ac.get_roles(PurgerUtils::admin()) == PurgerRoles::default_admin_role(),
@@ -52,7 +53,8 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_set_penalty_scalar_pass() {
-        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
+        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
@@ -64,11 +66,11 @@ mod TestPurger {
 
         let (_, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = threshold + RAY_PERCENT.into(); // 92%
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv);
 
         // sanity check that LTV is at the target liquidation LTV
         let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
-        let error_margin: Ray = 1000000_u128.into();
+        let error_margin: Ray = 2000000_u128.into();
         common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
 
         // Set scalar to 1
@@ -108,7 +110,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_low_fail() {
-        let (_, _, _, purger, _, _) = PurgerUtils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = PurgerUtils::purger_deploy();
 
         set_contract_address(PurgerUtils::admin());
         purger.set_penalty_scalar((Purger::MIN_PENALTY_SCALAR - 1).into());
@@ -118,7 +120,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_high_fail() {
-        let (_, _, _, purger, _, _) = PurgerUtils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = PurgerUtils::purger_deploy();
 
         set_contract_address(PurgerUtils::admin());
         purger.set_penalty_scalar((Purger::MAX_PENALTY_SCALAR + 1).into());
@@ -128,7 +130,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_unauthorized_fail() {
-        let (_, _, _, purger, _, _) = PurgerUtils::purger_deploy();
+        let (_, _, _, _, purger, _, _) = PurgerUtils::purger_deploy();
 
         set_contract_address(common::badguy());
         purger.set_penalty_scalar(RAY_ONE.into());
@@ -142,16 +144,17 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_liquidate_pass() {
         let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
-        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             searcher_start_yin
         );
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (threshold.val + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv);
 
         // Sanity check that LTV is at the target liquidation LTV
         let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
@@ -202,9 +205,11 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_with_flashmint_pass() {
-        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
@@ -224,7 +229,7 @@ mod TestPurger {
 
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (threshold.val + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv);
 
         // Sanity check that LTV is at the target liquidation LTV
         let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
@@ -250,6 +255,8 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_liquidate_parametrized() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
         let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_liquidation();
 
         let num_thresholds: usize = thresholds.len();
@@ -275,7 +282,7 @@ mod TestPurger {
                         match target_ltvs.pop_front() {
                             Option::Some(target_ltv) => {
                                 let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
-                                let (shrine, abbot, _, purger, yangs, gates) =
+                                let (shrine, abbot, mock_pragma, _, purger, yangs, gates) =
                                     PurgerUtils::purger_deploy_with_searcher(
                                     searcher_start_yin
                                 );
@@ -291,7 +298,7 @@ mod TestPurger {
                                 let (_, _, value, before_debt) = shrine
                                     .get_trove_info(target_trove);
                                 PurgerUtils::adjust_prices_for_trove_ltv(
-                                    shrine, yangs, value, before_debt, *target_ltv
+                                    shrine, mock_pragma, yangs, yang_pair_ids, value, before_debt, *target_ltv
                                 );
 
                                 let penalty: Ray = purger.get_liquidation_penalty(target_trove);
@@ -346,7 +353,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_fail() {
-        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
         let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -364,7 +371,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
     fn test_liquidate_trove_healthy_high_threshold_fail() {
-        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, _, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
         let healthy_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -396,9 +403,10 @@ mod TestPurger {
         let target_trove_yin: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let searcher_yin: Wad = (target_trove_yin.val / 10).into();
 
-        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+        let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             searcher_yin
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, target_trove_yin
         );
@@ -406,7 +414,7 @@ mod TestPurger {
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
 
         let target_ltv: Ray = (threshold.val + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv);
 
         // Sanity check that LTV is at the target liquidation LTV
         let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
@@ -424,13 +432,14 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_full_absorb_pass() {
-        let (shrine, abbot, absorber, purger, yangs, gates) =
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
         let (threshold, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
 
@@ -444,7 +453,7 @@ mod TestPurger {
         // Make the target trove absorbable
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
         PurgerUtils::adjust_prices_for_trove_ltv(
-            shrine, yangs, start_value, before_debt, target_ltv
+            shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, target_ltv
         );
         let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
@@ -515,10 +524,11 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_partial_absorb_with_redistribution_pass_entire_trove_debt_pass() {
-        let (shrine, abbot, absorber, purger, yangs, gates) =
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
@@ -535,7 +545,7 @@ mod TestPurger {
         // Make the target trove absorbable
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
         PurgerUtils::adjust_prices_for_trove_ltv(
-            shrine, yangs, start_value, before_debt, target_ltv
+            shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, target_ltv
         );
 
         let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
@@ -606,22 +616,141 @@ mod TestPurger {
         assert(shrine.get_redistributions_count() == 1, 'wrong redistributions count');
     }
 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_partial_absorb_with_redistribution_below_trove_debt_pass() {
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+            PurgerUtils::purger_deploy_with_searcher(
+            PurgerUtils::SEARCHER_YIN.into()
+        );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+        );
+        let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
+
+        // Set threshold to 70% to test partial absorption when max close amount 
+        // is less than trove's debt
+        let threshold: Ray = 700000000000000000000000000_u128.into();
+        PurgerUtils::set_thresholds(shrine, yangs, threshold);
+
+        let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+
+        // Make the target trove absorbable
+        let target_ltv: Ray = 770000000000000000000000000_u128.into();
+        PurgerUtils::adjust_prices_for_trove_ltv(
+            shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, target_ltv
+        );
+
+        let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
+
+        PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
+        let caller: ContractAddress = PurgerUtils::random_user();
+
+
+        let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs, caller.into()
+        );
+        let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs, absorber.contract_address.into()
+        );
+        let expected_compensation_value: Wad = purger.get_compensation(target_trove);
+
+        // Fund the absorber with half of the max close amount
+        let absorber_start_yin: Wad = (max_close_amt.val / 2).into();
+        let close_amt = absorber_start_yin;
+        PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
+
+        // sanity check
+        assert(
+            shrine.get_yin(absorber.contract_address) < max_close_amt, 'not less than close amount'
+        );
+
+        let target_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
+        let before_target_trove_owner_asset_bals: Span<Span<u128>> = common::get_token_balances(
+            yangs, target_trove_owner.into()
+        );
+
+        let caller: ContractAddress = PurgerUtils::random_user();
+        set_contract_address(caller);
+        let (_, compensation) = purger.absorb(target_trove);
+
+        // Check absorption occured
+        assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
+
+        // Check trove debt and LTV
+        let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
+        let expected_after_debt: Wad = before_debt - max_close_amt;
+        let expected_after_value: Wad = before_value - expected_compensation_value - wadray::rmul_wr(max_close_amt, RAY_ONE.into() + penalty);
+        assert(after_debt == expected_after_debt, 'wrong debt after liquidation');
+
+        after_value.print();
+        expected_after_value.print();
+        common::assert_equalish(
+            after_value, 
+            expected_after_value,
+            100000000000000_u128.into(), // error margin
+            'wrong value after liquidation'
+        );
+
+        // Check that caller has received compensation
+        let expected_compensation: Span<u128> = PurgerUtils::get_expected_compensation_assets(
+            target_trove_yang_asset_amts, before_value, expected_compensation_value
+        );
+        PurgerUtils::assert_received_assets(
+            before_caller_asset_bals,
+            common::get_token_balances(yangs, caller.into()),
+            expected_compensation,
+            10_u128, // error margin
+            'wrong caller asset balance'
+        );
+
+        common::assert_spans_equalish(
+            compensation, expected_compensation, 10_u128, // error margin
+             'wrong freed asset amount'
+        );
+
+        // Check absorber yin balance is wiped out
+        assert(
+            shrine.get_yin(absorber.contract_address) == WadZeroable::zero(),
+            'wrong absorber yin balance'
+        );
+
+        // Check that absorber has received proportionate share of collateral
+        PurgerUtils::assert_received_assets(
+            before_absorber_asset_bals,
+            common::get_token_balances(yangs, absorber.contract_address.into()),
+            PurgerUtils::get_expected_liquidation_assets(
+                target_trove_yang_asset_amts, before_value, close_amt, penalty
+            ),
+            10_u128, // error margin
+            'wrong absorber asset balance'
+        );
+
+        // Check redistribution occured
+        assert(shrine.get_redistributions_count() == 1, 'wrong redistributions count');
+    }
+
     // Note that the absorber also zero shares in this test because no provider has
     // provided yin yet. 
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_full_redistribution_pass() {
-        let (shrine, abbot, absorber, purger, yangs, gates) =
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
 
         let (_, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv);
 
         let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
 
@@ -674,6 +803,8 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_less_than_trove_debt_parametrized() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
         let mut thresholds: Span<Ray> =
             PurgerUtils::interesting_thresholds_for_absorption_below_trove_debt();
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
@@ -689,7 +820,7 @@ mod TestPurger {
                         match target_ltvs.pop_front() {
                             Option::Some(target_ltv) => {
                                 let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
-                                let (shrine, abbot, absorber, purger, yangs, gates) =
+                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                                     PurgerUtils::purger_deploy_with_searcher(
                                     searcher_start_yin
                                 );
@@ -719,7 +850,7 @@ mod TestPurger {
 
                                 // Make the target trove absorbable
                                 PurgerUtils::adjust_prices_for_trove_ltv(
-                                    shrine, yangs, start_value, before_debt, *target_ltv
+                                    shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, *target_ltv
                                 );
                                 let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
 
@@ -763,6 +894,8 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_trove_debt_parametrized() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
         let mut thresholds: Span<Ray> =
             PurgerUtils::interesting_thresholds_for_absorption_entire_trove_debt();
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
@@ -778,7 +911,7 @@ mod TestPurger {
                         match target_ltvs.pop_front() {
                             Option::Some(target_ltv) => {
                                 let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
-                                let (shrine, abbot, absorber, purger, yangs, gates) =
+                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                                     PurgerUtils::purger_deploy_with_searcher(
                                     searcher_start_yin
                                 );
@@ -808,7 +941,7 @@ mod TestPurger {
 
                                 // Make the target trove absorbable
                                 PurgerUtils::adjust_prices_for_trove_ltv(
-                                    shrine, yangs, start_value, before_debt, *target_ltv
+                                    shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, *target_ltv
                                 );
 
                                 let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
@@ -855,7 +988,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
     fn test_absorb_trove_healthy_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) =
+        let (shrine, abbot, _, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
@@ -875,10 +1008,11 @@ mod TestPurger {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not absorbable', 'ENTRYPOINT_FAILED'))]
     fn test_absorb_below_absorbable_ltv_fail() {
-        let (shrine, abbot, absorber, purger, yangs, gates) =
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
         let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
@@ -886,7 +1020,7 @@ mod TestPurger {
 
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = threshold + RAY_PERCENT.into();
-        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, mock_pragma, yangs, yang_pair_ids, value, debt, target_ltv);
 
         let (_, new_ltv, value, _) = shrine.get_trove_info(target_trove);
 
@@ -902,6 +1036,8 @@ mod TestPurger {
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_marginally_below_absorbable_ltv_not_absorbable() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
         let (mut thresholds, mut target_ltvs) =
             PurgerUtils::interesting_thresholds_and_ltvs_below_absorption_ltv();
 
@@ -909,7 +1045,7 @@ mod TestPurger {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let searcher_start_yin: Wad = PurgerUtils::SEARCHER_YIN.into();
-                    let (shrine, abbot, absorber, purger, yangs, gates) =
+                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                         PurgerUtils::purger_deploy_with_searcher(
                         searcher_start_yin
                     );
@@ -932,7 +1068,7 @@ mod TestPurger {
 
                     // Adjust the trove to the target LTV
                     PurgerUtils::adjust_prices_for_trove_ltv(
-                        shrine, yangs, start_value, before_debt, *target_ltvs.pop_front().unwrap()
+                        shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, *target_ltvs.pop_front().unwrap()
                     );
 
                     let (_, ltv, _, _) = shrine.get_trove_info(target_trove);

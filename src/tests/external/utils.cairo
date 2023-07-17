@@ -59,6 +59,18 @@ mod PragmaUtils {
     }
 
     //
+    // Helpers
+    //
+
+    #[inline(always)]
+    fn yang_pair_ids() -> Span<u256> {
+        let mut pair_ids: Array<u256> = Default::default();
+        pair_ids.append(ETH_USD_PAIR_ID);
+        pair_ids.append(WBTC_USD_PAIR_ID);
+        pair_ids.span()
+    }
+
+    //
     // Test setup helpers
     //
 

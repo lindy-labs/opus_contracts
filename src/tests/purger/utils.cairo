@@ -4,7 +4,7 @@ mod PurgerUtils {
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        SyscallResultTrait
+        get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -17,14 +17,18 @@ mod PurgerUtils {
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
+    use aura::tests::external::mock_pragma::{
+        IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
+    };
     use aura::tests::external::utils::PragmaUtils;
     use aura::tests::purger::flash_liquidator::{
         FlashLiquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
@@ -249,6 +253,7 @@ mod PurgerUtils {
     fn purger_deploy() -> (
         IShrineDispatcher,
         IAbbotDispatcher,
+        IMockPragmaDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -262,10 +267,20 @@ mod PurgerUtils {
             absorber, reward_tokens, reward_amts_per_blessing
         );
 
-        let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(
+        let (_, oracle, _, mock_pragma) = PragmaUtils::pragma_deploy_with_shrine(
             sentinel, shrine.contract_address
         );
         PragmaUtils::add_yangs_to_pragma(oracle, yangs);
+
+        // Seed initial prices for ETH and WBTC in Pragma
+        let current_ts = get_block_timestamp();
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE, current_ts
+        );
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::WBTC_INIT_PRICE, current_ts
+        );
+        IOracleDispatcher { contract_address: oracle.contract_address }.update_prices();
 
         let admin: ContractAddress = admin();
 
@@ -310,7 +325,7 @@ mod PurgerUtils {
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        (shrine, abbot, absorber, purger, yangs, gates)
+        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
     }
 
     fn purger_deploy_with_searcher(
@@ -318,15 +333,16 @@ mod PurgerUtils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
+        IMockPragmaDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, absorber, purger, yangs, gates) = purger_deploy();
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy();
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
-        (shrine, abbot, absorber, purger, yangs, gates)
+        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
     }
 
     fn flash_liquidator_deploy(
@@ -417,8 +433,13 @@ mod PurgerUtils {
 
     // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray, 
+        shrine: IShrineDispatcher, 
+        mock_pragma: IMockPragmaDispatcher, 
+        mut yangs: Span<ContractAddress>, 
+        mut yang_pair_ids: Span<u256>,
+        pct_decrease: Ray, 
     ) {
+        let current_ts = get_block_timestamp();
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
@@ -427,7 +448,16 @@ mod PurgerUtils {
                     let new_price: Wad = wadray::rmul_wr(
                         yang_price, (RAY_ONE.into() - pct_decrease)
                     );
-                    shrine.advance(*yang, new_price);
+                    let new_price: u128 = new_price.val / WAD_SCALE;
+                    shrine.advance(*yang, (new_price * WAD_SCALE).into());
+
+                    //let new_empiric_price: u128 = new_price.val / scale;
+                    PragmaUtils::mock_valid_price_update(
+                        mock_pragma, 
+                        *yang_pair_ids.pop_front().unwrap(), 
+                        new_price, 
+                        current_ts
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -441,14 +471,16 @@ mod PurgerUtils {
     // yang prices
     fn adjust_prices_for_trove_ltv(
         shrine: IShrineDispatcher,
+        mock_pragma: IMockPragmaDispatcher,
         yangs: Span<ContractAddress>,
+        yang_pair_ids: Span<u256>,
         value: Wad,
         debt: Wad,
         target_ltv: Ray,
     ) {
         let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        decrease_yang_prices_by_pct(shrine, yangs, decrease_pct);
+        decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
     }
 
     //
