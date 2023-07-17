@@ -21,9 +21,10 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::utils::pow::pow10;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE, WAD_SCALE
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
     };
 
     use aura::tests::absorber::utils::AbsorberUtils;
@@ -442,6 +443,7 @@ mod PurgerUtils {
         pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
+        let scale: u128 = pow10(WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
@@ -450,12 +452,16 @@ mod PurgerUtils {
                     let new_price: Wad = wadray::rmul_wr(
                         yang_price, (RAY_ONE.into() - pct_decrease)
                     );
-                    let new_price: u128 = new_price.val / WAD_SCALE;
-                    shrine.advance(*yang, (new_price * WAD_SCALE).into());
+                    let new_pragma_price: u128 = new_price.val / scale;
+                    // Note that `new_price` is more precise than `new_pragma_price` so 
+                    // the `new_pragma_price` is a rounded down value of `new_price`.
+                    // `new_price` is used so that there is more control over the precision of 
+                    // the target LTV. 
+                    shrine.advance(*yang, new_price);
 
                     //let new_empiric_price: u128 = new_price.val / scale;
-                    PragmaUtils::mock_valid_price_update(
-                        mock_pragma, *yang_pair_ids.pop_front().unwrap(), new_price, current_ts
+                    PragmaUtils::mock_valid_price_update_scaled(
+                        mock_pragma, *yang_pair_ids.pop_front().unwrap(), new_pragma_price, current_ts
                     );
                 },
                 Option::None(_) => {

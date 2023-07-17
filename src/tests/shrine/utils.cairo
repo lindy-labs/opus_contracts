@@ -129,7 +129,7 @@ mod ShrineUtils {
     // Helper function to advance timestamp by one interval
     #[inline(always)]
     fn advance_interval() {
-        set_block_timestamp(get_block_timestamp() + Shrine::TIME_INTERVAL);
+        common::advance_intervals(1);
     }
 
     // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID

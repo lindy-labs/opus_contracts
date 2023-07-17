@@ -202,4 +202,16 @@ mod PragmaUtils {
         };
         mock_pragma.next_get_data_median(pair_id, response);
     }
+
+    fn mock_valid_price_update_scaled(
+        mock_pragma: IMockPragmaDispatcher, pair_id: u256, price: u128, timestamp: u64
+    ) {
+        let response = PricesResponse {
+            price: price.into(),
+            decimals: PRAGMA_DECIMALS.into(),
+            last_updated_timestamp: timestamp.into(),
+            num_sources_aggregated: DEFAULT_NUM_SOURCES,
+        };
+        mock_pragma.next_get_data_median(pair_id, response);
+    }
 }
