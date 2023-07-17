@@ -45,7 +45,7 @@ trait IShrine {
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad);
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn redistribute(trove_id: u64);
+    fn redistribute(trove_id: u64, pct_to_redistribute: Ray);
     fn inject(receiver: ContractAddress, amount: Wad);
     fn eject(burner: ContractAddress, amount: Wad);
     // view

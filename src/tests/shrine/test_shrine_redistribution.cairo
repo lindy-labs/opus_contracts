@@ -14,7 +14,7 @@ mod TestShrineRedistribution {
     use aura::utils::types::{ExceptionalYangRedistribution, YangRedistribution};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WadZeroable};
 
     use aura::tests::shrine::utils::ShrineUtils;
     use aura::tests::common;
@@ -293,7 +293,7 @@ mod TestShrineRedistribution {
         shrine.melt(trove1_owner, common::TROVE_1, WadZeroable::zero());
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
-        shrine.redistribute(common::TROVE_1);
+        shrine.redistribute(common::TROVE_1, RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_1);
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
@@ -350,7 +350,7 @@ mod TestShrineRedistribution {
         // Perform first redistribution - covered by previous test
         set_contract_address(ShrineUtils::admin());
         shrine.melt(common::trove1_owner_addr(), common::TROVE_1, WadZeroable::zero());
-        shrine.redistribute(common::TROVE_1);
+        shrine.redistribute(common::TROVE_1, RAY_ONE.into());
 
         let trove2_owner = common::trove2_owner_addr();
 
@@ -365,7 +365,7 @@ mod TestShrineRedistribution {
         shrine.melt(trove2_owner, common::TROVE_2, WadZeroable::zero());
         let (_, _, _, redistributed_debt) = shrine.get_trove_info(common::TROVE_2);
 
-        shrine.redistribute(common::TROVE_2);
+        shrine.redistribute(common::TROVE_2, RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
@@ -445,7 +445,7 @@ mod TestShrineRedistribution {
 
         // Redistribute trove 2
         shrine.melt(trove2_owner, common::TROVE_2, WadZeroable::zero());
-        shrine.redistribute(common::TROVE_2);
+        shrine.redistribute(common::TROVE_2, RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
@@ -540,7 +540,7 @@ mod TestShrineRedistribution {
         shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
-        shrine.redistribute(redistributed_trove);
+        shrine.redistribute(redistributed_trove, RAY_ONE.into());
 
         let expected_redistribution_id: u32 = 1;
         assert(
@@ -812,7 +812,7 @@ mod TestShrineRedistribution {
         shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
-        shrine.redistribute(redistributed_trove);
+        shrine.redistribute(redistributed_trove, RAY_ONE.into());
 
         let expected_redistribution_id: u32 = 1;
         assert(
@@ -1132,7 +1132,7 @@ mod TestShrineRedistribution {
         );
 
         shrine.melt(trove1_owner, redistributed_trove1, WadZeroable::zero());
-        shrine.redistribute(redistributed_trove1);
+        shrine.redistribute(redistributed_trove1, RAY_ONE.into());
 
         let expected_redistribution_id: u32 = 1;
         let first_redistribution_yang2_unit_debt: Wad = shrine
@@ -1154,7 +1154,7 @@ mod TestShrineRedistribution {
         // yang 1 for trove 3 is properly redistributed to trove 2, even if trove 2
         // is not updated.
         shrine.melt(trove3_owner, redistributed_trove2, WadZeroable::zero());
-        shrine.redistribute(redistributed_trove2);
+        shrine.redistribute(redistributed_trove2, RAY_ONE.into());
 
         assert(shrine.get_redistributions_count() == 2, 'wrong redistributions count');
 
@@ -1305,7 +1305,7 @@ mod TestShrineRedistribution {
         shrine.melt(trove1_owner, common::TROVE_1, WadZeroable::zero());
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
-        shrine.redistribute(common::TROVE_1);
+        shrine.redistribute(common::TROVE_1, RAY_ONE.into());
 
         let expected_redistribution_id: u32 = 1;
         assert(
@@ -1374,7 +1374,7 @@ mod TestShrineRedistribution {
             idx += 1;
         };
 
-        shrine.redistribute(redistributed_trove);
+        shrine.redistribute(redistributed_trove, RAY_ONE.into());
 
         let mut idx: u64 = 1;
         let total_troves_count: u64 = new_troves_count + 3;

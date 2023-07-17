@@ -811,7 +811,7 @@ mod Shrine {
     }
 
     #[external]
-    fn redistribute(trove_id: u64) {
+    fn redistribute(trove_id: u64, pct_to_redistribute: Ray) {
         AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
         let current_interval: u64 = now();
@@ -828,7 +828,12 @@ mod Shrine {
 
         // Perform redistribution
         let redistributed_debt = redistribute_internal(
-            redistribution_id, trove_id, trove_value, trove.debt, current_interval
+            redistribution_id,
+            pct_to_redistribute,
+            trove_id,
+            trove_value,
+            trove.debt,
+            current_interval
         );
 
         // `round_distributed_debt` should guarantee that the redistributed debt
@@ -838,6 +843,10 @@ mod Shrine {
         trove.charge_from = current_interval;
         trove.debt = 0_u128.into();
         troves::write(trove_id, trove);
+
+        // Update the redistribution ID so that the redistributed trove does not 
+        // receive its own redistributions
+        trove_redistribution_id::write(trove_id, redistribution_id);
 
         // Event 
         TroveRedistributed(redistribution_id, trove_id, redistributed_debt);
@@ -1191,6 +1200,7 @@ mod Shrine {
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
         redistribution_id: u32,
+        pct_to_redistribute: Ray,
         trove_id: u64,
         trove_value: Wad,
         trove_debt: Wad,
@@ -1266,10 +1276,13 @@ mod Shrine {
         loop {
             match trove_yang_balances_copy.pop_front() {
                 Option::Some(yang_balance) => {
-                    let yang_amt_to_redistribute = (*yang_balance).amount;
+                    let trove_yang_amt: Wad = (*yang_balance).amount;
+                    let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
+                        trove_yang_amt, pct_to_redistribute
+                    );
                     let yang_id_to_redistribute = (*yang_balance).yang_id;
                     // Skip over this yang if it has not been deposited in the trove
-                    if yang_amt_to_redistribute.is_zero() {
+                    if trove_yang_amt.is_zero() {
                         continue;
                     }
 
@@ -1281,8 +1294,10 @@ mod Shrine {
                     );
 
                     // Get the remainder amount of yangs in all other troves that can be redistributed
+                    // This excludes any remaining yang in the redistributed trove if the percentage to
+                    // be redistributed is less than 100%.
                     let redistributed_yang_remaining_pool: Wad = redistributed_yang_total_supply
-                        - yang_amt_to_redistribute
+                        - trove_yang_amt
                         - redistributed_yang_initial_amt;
 
                     // Calculate the actual amount of debt that should be redistributed, including any rounding

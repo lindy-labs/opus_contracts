@@ -3,7 +3,7 @@ mod Purger {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_caller_address};
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use traits::{Default, Into};
     use zeroable::Zeroable;
 
@@ -339,7 +339,73 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            shrine.redistribute(trove_id);
+            let redistribute_all_remainder_debt: bool = max_purge_amt == trove_debt;
+            if redistribute_all_remainder_debt {
+                shrine.redistribute(trove_id, RAY_ONE.into());
+            } else {
+                // Loop over yangs and get the excess asset amount that should remain
+                let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
+                let excess_pct: Ray = wadray::rdiv_ww(
+                    trove_value
+                        - wadray::rmul_wr(debt_to_redistribute, RAY_ONE.into() + trove_penalty),
+                    trove_value
+                );
+
+                let sentinel: ISentinelDispatcher = sentinel::read();
+                let mut yangs_copy = yangs;
+                let mut excess_asset_amts: Array<u128> = Default::default();
+                loop {
+                    match yangs_copy.pop_front() {
+                        Option::Some(yang) => {
+                            let trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
+                            let trove_assets: u128 = sentinel.preview_exit(*yang, trove_yang);
+                            excess_asset_amts
+                                .append(wadray::rmul_wr(trove_assets.into(), excess_pct).val);
+                        },
+                        Option::None(_) => {
+                            break;
+                        }
+                    };
+                };
+
+                // Redistribute
+                shrine.redistribute(trove_id, excess_pct);
+
+                // Loop over yangs and adjust yang amounts
+                let purger = get_contract_address();
+                let mut yangs_copy = yangs;
+                let mut excess_asset_amts = excess_asset_amts.span();
+                loop {
+                    match yangs_copy.pop_front() {
+                        Option::Some(yang) => {
+                            let trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
+                            let yang_total: Wad = shrine.get_yang_total(*yang);
+                            let excess_asset_amt: u128 = *excess_asset_amts.pop_front().unwrap();
+
+                            // The amount of excess yang that should be in the trove after redistribution 
+                            // can be derived based on the expected amount of assets based on the exchange
+                            // rate of yang to asset before the redistribution using this equation:
+                            //
+                            //                    excess_asset_amt * total_yang_excluding_redistributed_trove
+                            // excess_yang_amt = -------------------------------------------------------------
+                            //                                 total_assets - excess_asset_amt
+                            let excess_yang: Wad = (excess_asset_amt.into()
+                                * (yang_total - trove_yang))
+                                / (sentinel.get_total_assets(*yang).into()
+                                    - excess_asset_amt.into());
+
+                            // Derive the error to offset from the trove's yang.
+                            // This ensures that the trove has the target asset amount for each yang based on 
+                            // the appreciated asset amount per yang after the redistribution.
+                            let yang_offset: Wad = trove_yang - excess_yang;
+                            shrine.melt(purger, trove_id, yang_offset);
+                        },
+                        Option::None(_) => {
+                            break;
+                        },
+                    };
+                };
+            }
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
