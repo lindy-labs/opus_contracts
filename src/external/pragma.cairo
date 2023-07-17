@@ -184,7 +184,7 @@ mod Pragma {
         AccessControl::assert_has_role(PragmaRoles::ADD_YANG);
         assert(pair_id != 0, 'PGM: Invalid pair ID');
         assert(yang.is_non_zero(), 'PGM: Invalid yang address');
-        assert_new_yang(yang);
+        assert_new_yang(pair_id, yang);
 
         // doing a sanity check if Pragma actually offers a price feed
         // of the requested asset and if it's suitable for our needs
@@ -288,6 +288,7 @@ mod Pragma {
 
             let settings: YangSettings = yang_settings::read(idx);
             assert(settings.yang != yang, 'PGM: Yang already present');
+            assert(settings.pair_id != pair_id, 'PGM: Pair ID already present');
             idx += 1;
         };
     }
