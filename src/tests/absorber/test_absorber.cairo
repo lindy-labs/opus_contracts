@@ -47,7 +47,7 @@ mod TestAbsorber {
             absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
             'total shares should be 0'
         );
-        assert(absorber.get_current_epoch() == 1, 'epoch should be 1');
+        assert(absorber.get_current_epoch() == Absorber::FIRST_EPOCH, 'epoch should be 1');
         assert(absorber.get_absorptions_count() == 0, 'absorptions count should be 0');
         assert(absorber.get_rewards_count() == 0, 'rewards should be 0');
         assert(absorber.get_removal_limit() == AbsorberUtils::REMOVAL_LIMIT.into(), 'wrong limit');
@@ -291,9 +291,9 @@ mod TestAbsorber {
                     let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
 
                     let expected_epoch = if is_fully_absorbed {
-                        2
+                        Absorber::FIRST_EPOCH + 1
                     } else {
-                        1
+                        Absorber::FIRST_EPOCH
                     };
                     let expected_total_shares: Wad = if is_fully_absorbed {
                         WadZeroable::zero()
@@ -317,7 +317,7 @@ mod TestAbsorber {
                     );
 
                     let expected_blessings_multiplier: Ray = RAY_SCALE.into();
-                    let absorption_epoch = 1;
+                    let absorption_epoch = Absorber::FIRST_EPOCH;
                     AbsorberUtils::assert_reward_cumulative_updated(
                         absorber,
                         before_total_shares,
@@ -1101,7 +1101,7 @@ mod TestAbsorber {
             second_provider_info.shares == expected_second_provider_shares, 'wrong provider shares'
         );
 
-        let expected_current_epoch: u32 = 1;
+        let expected_current_epoch: u32 = Absorber::FIRST_EPOCH;
         assert(second_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let error_margin: Wad = 1_u128
@@ -1510,7 +1510,7 @@ mod TestAbsorber {
         ) =
             AbsorberUtils::absorber_with_rewards_and_first_provider();
 
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = Absorber::FIRST_EPOCH;
         let aura_addr: ContractAddress = *reward_tokens.at(0);
         let aura_blesser_addr: ContractAddress = *blessers.at(0);
         let veaura_addr: ContractAddress = *reward_tokens.at(1);
@@ -1612,7 +1612,7 @@ mod TestAbsorber {
             provided_amt
         );
 
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = Absorber::FIRST_EPOCH;
         let before_aura_distribution: DistributionInfo = absorber
             .get_cumulative_reward_amt_by_epoch(aura_addr, expected_epoch);
         let before_veaura_distribution: DistributionInfo = absorber
