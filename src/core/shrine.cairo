@@ -811,7 +811,7 @@ mod Shrine {
     }
 
     #[external]
-    fn redistribute(trove_id: u64, pct_to_redistribute: Ray) {
+    fn redistribute(trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray) {
         AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
         let current_interval: u64 = now();
@@ -827,12 +827,13 @@ mod Shrine {
         redistributions_count::write(redistribution_id);
 
         // Perform redistribution
+        let debt_to_redistribute: Wad = min(debt_to_redistribute, trove.debt);
         let redistributed_debt = redistribute_internal(
             redistribution_id,
-            pct_to_redistribute,
+            pct_value_to_redistribute,
             trove_id,
             trove_value,
-            trove.debt,
+            debt_to_redistribute,
             current_interval
         );
 
@@ -841,7 +842,7 @@ mod Shrine {
         // to ensure that `redistribute` does not fail.
 
         trove.charge_from = current_interval;
-        trove.debt = 0_u128.into();
+        trove.debt -= debt_to_redistribute;
         troves::write(trove_id, trove);
 
         // Update the redistribution ID so that the redistributed trove does not 
@@ -1203,7 +1204,7 @@ mod Shrine {
         pct_to_redistribute: Ray,
         trove_id: u64,
         trove_value: Wad,
-        trove_debt: Wad,
+        trove_debt_to_redistribute: Wad,
         current_interval: u64
     ) -> Wad {
         let yangs_count: u32 = yangs_count::read();
@@ -1309,10 +1310,10 @@ mod Shrine {
                         wadray::rdiv_ww(
                             yang_amt_to_redistribute * redistributed_yang_price, trove_value
                         ),
-                        trove_debt
+                        trove_debt_to_redistribute
                     );
                     let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
-                        trove_debt, raw_debt_to_distribute, redistributed_debt
+                        trove_debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
                     );
 
                     redistributed_debt = updated_redistributed_debt;

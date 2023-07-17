@@ -18,7 +18,7 @@ mod Purger {
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV 
     // the trove should have after a liquidation, which in turn determines the
@@ -341,15 +341,15 @@ mod Purger {
         if !is_fully_absorbed {
             let redistribute_all_remainder_debt: bool = max_purge_amt == trove_debt;
             if redistribute_all_remainder_debt {
-                shrine.redistribute(trove_id, RAY_ONE.into());
+                shrine.redistribute(trove_id, BoundedWad::max(), RAY_ONE.into());
             } else {
                 // Loop over yangs and get the excess asset amount that should remain
                 let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
-                let excess_pct: Ray = wadray::rdiv_ww(
-                    trove_value
-                        - wadray::rmul_wr(debt_to_redistribute, RAY_ONE.into() + trove_penalty),
+                let pct_value_to_redistribute: Ray = wadray::rdiv_ww(
+                    wadray::rmul_wr(debt_to_redistribute, RAY_ONE.into() + trove_penalty),
                     trove_value
                 );
+                let excess_pct: Ray = RAY_ONE.into() - pct_value_to_redistribute;
 
                 let sentinel: ISentinelDispatcher = sentinel::read();
                 let mut yangs_copy = yangs;
@@ -369,7 +369,7 @@ mod Purger {
                 };
 
                 // Redistribute
-                shrine.redistribute(trove_id, excess_pct);
+                shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 
                 // Loop over yangs and adjust yang amounts
                 let purger = get_contract_address();
