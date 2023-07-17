@@ -345,6 +345,31 @@ mod Purger {
             if redistribute_all_remainder_debt {
                 shrine.redistribute(trove_id, BoundedWad::max(), RAY_ONE.into());
             } else {
+                // Additional manipulation is needed when redistributing only part of a trove's debt
+                // because the trove stands to "gain" from the redistribution of its own yangs through
+                // its remainder amount of yangs (`trove_remainder_yang_amt`).
+
+                // Using the expected amount of assets that should remain in the trove (`excess_asset_amt`),
+                // we can derive the amount of excess yang (`excess_yang_amt`) that should be in the trove after 
+                // redistribution. 
+                //
+                // excess_asset_amt = excess_yang_amt * asset_amt_per_yang_wad_after_redistribution
+                //                                                        total assets
+                //                  = excess_yang_amt * -----------------------------------------------------------
+                //                                       (yang_total_ - trove_remainder_yang_amt) + excess_yang_amt
+                //
+                // The above equation can be transformed to the one below:
+                //
+                //
+                //                    excess_asset_amt * total_yang_excluding_redistributed_trove
+                // excess_yang_amt = -------------------------------------------------------------
+                //                                 total_assets - excess_asset_amt
+                //
+                // By deducting the difference between the remainder amount of a yang and the amount of 
+                // yang required to entitle the redistributed trove to the excess amount of assets (based 
+                // on the current asset amount per yang wad) from both the trove and the total supply, the
+                // trove will now be entitled to the correct amount of excess assets.
+
                 // Loop over yangs and get the excess asset amount that should remain in the 
                 // trove after redistribution
                 let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
@@ -388,13 +413,7 @@ mod Purger {
                             let yang_total: Wad = shrine.get_yang_total(*yang);
                             let excess_asset_amt: u128 = *excess_asset_amts.pop_front().unwrap();
 
-                            // The amount of excess yang that should be in the trove after redistribution 
-                            // can be derived based on the expected amount of assets based on the exchange
-                            // rate of yang to asset before the redistribution using this equation:
-                            //
-                            //                    excess_asset_amt * total_yang_excluding_redistributed_trove
-                            // excess_yang_amt = -------------------------------------------------------------
-                            //                                 total_assets - excess_asset_amt
+                            // See above for how this equation is derived
                             let excess_yang: Wad = (excess_asset_amt.into()
                                 * (yang_total - trove_yang))
                                 / (sentinel.get_total_assets(*yang).into()
