@@ -22,7 +22,9 @@ mod PurgerUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
+    use aura::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE, WAD_SCALE
+    };
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -433,11 +435,11 @@ mod PurgerUtils {
 
     // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, 
-        mock_pragma: IMockPragmaDispatcher, 
-        mut yangs: Span<ContractAddress>, 
+        shrine: IShrineDispatcher,
+        mock_pragma: IMockPragmaDispatcher,
+        mut yangs: Span<ContractAddress>,
         mut yang_pair_ids: Span<u256>,
-        pct_decrease: Ray, 
+        pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
         set_contract_address(ShrineUtils::admin());
@@ -453,10 +455,7 @@ mod PurgerUtils {
 
                     //let new_empiric_price: u128 = new_price.val / scale;
                     PragmaUtils::mock_valid_price_update(
-                        mock_pragma, 
-                        *yang_pair_ids.pop_front().unwrap(), 
-                        new_price, 
-                        current_ts
+                        mock_pragma, *yang_pair_ids.pop_front().unwrap(), new_price, current_ts
                     );
                 },
                 Option::None(_) => {

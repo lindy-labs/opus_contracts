@@ -107,9 +107,9 @@ mod PragmaUtils {
         pragma_deploy_with_shrine(sentinel, shrine_addr)
     }
 
-    fn pragma_deploy_with_shrine(sentinel: ISentinelDispatcher, shrine_addr: ContractAddress) -> (
-        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, 
-    ) {
+    fn pragma_deploy_with_shrine(
+        sentinel: ISentinelDispatcher, shrine_addr: ContractAddress
+    ) -> (IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, ) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
 
         let admin: ContractAddress = admin();
