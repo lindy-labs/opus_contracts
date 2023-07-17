@@ -308,14 +308,16 @@ mod Purger {
 
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
+        let mut percentage_freed: Ray = RayZeroable::zero();
         if can_absorb_any {
-            let percentage_freed: Ray = get_percentage_freed(
-                ltv_after_compensation,
-                value_after_compensation,
-                trove_debt,
-                trove_penalty,
-                purge_amt
-            );
+            percentage_freed =
+                get_percentage_freed(
+                    ltv_after_compensation,
+                    value_after_compensation,
+                    trove_debt,
+                    trove_penalty,
+                    purge_amt
+                );
 
             // Melt the trove's debt using the absorber's yin directly
             shrine.melt(absorber.contract_address, trove_id, purge_amt);
@@ -343,11 +345,14 @@ mod Purger {
             if redistribute_all_remainder_debt {
                 shrine.redistribute(trove_id, BoundedWad::max(), RAY_ONE.into());
             } else {
-                // Loop over yangs and get the excess asset amount that should remain
+                // Loop over yangs and get the excess asset amount that should remain in the 
+                // trove after redistribution
                 let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
+                let remaining_trove_value: Wad = value_after_compensation
+                    - wadray::rmul_wr(value_after_compensation, percentage_freed);
                 let pct_value_to_redistribute: Ray = wadray::rdiv_ww(
                     wadray::rmul_wr(debt_to_redistribute, RAY_ONE.into() + trove_penalty),
-                    trove_value
+                    remaining_trove_value
                 );
                 let excess_pct: Ray = RAY_ONE.into() - pct_value_to_redistribute;
 
@@ -357,10 +362,11 @@ mod Purger {
                 loop {
                     match yangs_copy.pop_front() {
                         Option::Some(yang) => {
-                            let trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                            let trove_assets: u128 = sentinel.preview_exit(*yang, trove_yang);
+                            let excess_trove_yang: Wad = wadray::rmul_wr(
+                                shrine.get_deposit(*yang, trove_id), excess_pct
+                            );
                             excess_asset_amts
-                                .append(wadray::rmul_wr(trove_assets.into(), excess_pct).val);
+                                .append(sentinel.preview_exit(*yang, excess_trove_yang));
                         },
                         Option::None(_) => {
                             break;
@@ -371,8 +377,8 @@ mod Purger {
                 // Redistribute
                 shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 
-                // Loop over yangs and adjust yang amounts
-                let purger = get_contract_address();
+                // Loop over yangs and adjust yang amounts so that the correct amount of yang
+                // assets remain in 
                 let mut yangs_copy = yangs;
                 let mut excess_asset_amts = excess_asset_amts.span();
                 loop {
@@ -398,7 +404,7 @@ mod Purger {
                             // This ensures that the trove has the target asset amount for each yang based on 
                             // the appreciated asset amount per yang after the redistribution.
                             let yang_offset: Wad = trove_yang - excess_yang;
-                            shrine.melt(purger, trove_id, yang_offset);
+                            shrine.withdraw(*yang, trove_id, yang_offset);
                         },
                         Option::None(_) => {
                             break;

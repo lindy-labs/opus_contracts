@@ -1201,13 +1201,17 @@ mod Shrine {
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
         redistribution_id: u32,
-        pct_to_redistribute: Ray,
+        pct_value_to_redistribute: Ray,
         trove_id: u64,
         trove_value: Wad,
         trove_debt_to_redistribute: Wad,
         current_interval: u64
     ) -> Wad {
         let yangs_count: u32 = yangs_count::read();
+
+        let trove_value_to_redistribute: Wad = min(
+            wadray::rmul_wr(trove_value, pct_value_to_redistribute), trove_value
+        );
 
         // Placeholders to be used for exceptional redistributions so that 
         // `get_shrine_threshold_and_value` only needs to be called once
@@ -1267,6 +1271,7 @@ mod Shrine {
         //    yang2 and yang3. However, the total shrine value is now incorrect because yang2 and
         //    yang3 total yang amounts have decremented, but the yang prices have not been updated.
         let mut new_yang_totals: Array<YangBalance> = Default::default();
+        let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
 
@@ -1278,14 +1283,15 @@ mod Shrine {
             match trove_yang_balances_copy.pop_front() {
                 Option::Some(yang_balance) => {
                     let trove_yang_amt: Wad = (*yang_balance).amount;
-                    let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
-                        trove_yang_amt, pct_to_redistribute
-                    );
                     let yang_id_to_redistribute = (*yang_balance).yang_id;
                     // Skip over this yang if it has not been deposited in the trove
                     if trove_yang_amt.is_zero() {
                         continue;
                     }
+
+                    let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
+                        trove_yang_amt, pct_value_to_redistribute
+                    );
 
                     let redistributed_yang_total_supply: Wad = yang_total::read(
                         yang_id_to_redistribute
@@ -1308,7 +1314,8 @@ mod Shrine {
                     );
                     let raw_debt_to_distribute = wadray::rmul_rw(
                         wadray::rdiv_ww(
-                            yang_amt_to_redistribute * redistributed_yang_price, trove_value
+                            yang_amt_to_redistribute * redistributed_yang_price,
+                            trove_value_to_redistribute
                         ),
                         trove_debt_to_redistribute
                     );
@@ -1521,6 +1528,14 @@ mod Shrine {
                         (yang_id_to_redistribute, redistribution_id), redistributed_yang_info
                     );
 
+                    updated_trove_yang_balances
+                        .append(
+                            YangBalance {
+                                yang_id: yang_id_to_redistribute,
+                                amount: trove_yang_amt - yang_amt_to_redistribute
+                            }
+                        );
+
                     // If debt was rounded up, meaning it is now fully redistributed, skip the remaining yangs
                     // Otherwise, continue the iteration
                     if debt_to_distribute != raw_debt_to_distribute {
@@ -1535,10 +1550,17 @@ mod Shrine {
 
         // See comment at this array's declaration on why.
         let mut new_yang_totals: Span<YangBalance> = new_yang_totals.span();
+        let mut updated_trove_yang_balances: Span<YangBalance> = updated_trove_yang_balances.span();
         loop {
             match new_yang_totals.pop_front() {
                 Option::Some(yang_balance) => {
-                    deposits::write((*yang_balance.yang_id, trove_id), 0_u128.into());
+                    let updated_trove_yang_balance: YangBalance = *updated_trove_yang_balances
+                        .pop_front()
+                        .unwrap();
+                    deposits::write(
+                        (updated_trove_yang_balance.yang_id, trove_id),
+                        updated_trove_yang_balance.amount
+                    );
                     yang_total::write(*yang_balance.yang_id, *yang_balance.amount);
                 },
                 Option::None(_) => {
