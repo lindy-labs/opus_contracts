@@ -277,7 +277,7 @@ mod Pragma {
     // Internal functions
     //
 
-    fn assert_new_yang(yang: ContractAddress) {
+    fn assert_new_yang(pair_id: u256, yang: ContractAddress) {
         let mut idx: u32 = LOOP_START;
         let yangs_count: u32 = yangs_count::read();
 
