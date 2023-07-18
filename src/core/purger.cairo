@@ -414,18 +414,16 @@ mod Purger {
                             let trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                             let yang_total: Wad = shrine.get_yang_total(*yang);
                             let excess_asset_amt: u128 = *excess_asset_amts.pop_front().unwrap();
-
                             // See above for how this equation is derived
                             let excess_yang: Wad = (excess_asset_amt.into()
                                 * (yang_total - trove_yang))
-                                / (sentinel.get_total_assets(*yang).into()
-                                    - excess_asset_amt.into());
+                                / (sentinel.get_total_assets(*yang) - excess_asset_amt).into();
 
                             // Derive the error to offset from the trove's yang.
                             // This ensures that the trove has the target asset amount for each yang based on 
                             // the appreciated asset amount per yang after the redistribution.
                             let yang_offset: Wad = trove_yang - excess_yang;
-                            shrine.withdraw(*yang, trove_id, yang_offset);
+                            shrine.seize(*yang, trove_id, yang_offset);
                         },
                         Option::None(_) => {
                             break;

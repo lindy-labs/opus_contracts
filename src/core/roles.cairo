@@ -146,7 +146,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn purger() -> u128 {
-        MELT + REDISTRIBUTE + SEIZE + WITHDRAW
+        MELT + REDISTRIBUTE + SEIZE
     }
 
     #[inline(always)]
