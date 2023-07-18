@@ -263,6 +263,19 @@ mod PurgerUtils {
         yang_asset_amts_cases.span()
     }
 
+    fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
+        let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        yang_asset_amts_cases.append(target_trove_yang_asset_amts());
+
+        // Dust yang case
+        let mut dust_yang_case: Array<u128> = Default::default();
+        dust_yang_case.append((20 * WAD_ONE).into()); // 10 (Wad) ETH
+        dust_yang_case.append(100_u128.into()); // 5E-8 (WBTC decimals) WBTC
+        yang_asset_amts_cases.append(dust_yang_case.span());
+
+        yang_asset_amts_cases.span()
+    }
+
     //
     // Test setup helpers
     //
@@ -475,7 +488,10 @@ mod PurgerUtils {
 
                     //let new_empiric_price: u128 = new_price.val / scale;
                     PragmaUtils::mock_valid_price_update_scaled(
-                        mock_pragma, *yang_pair_ids.pop_front().unwrap(), new_pragma_price, current_ts
+                        mock_pragma,
+                        *yang_pair_ids.pop_front().unwrap(),
+                        new_pragma_price,
+                        current_ts
                     );
                 },
                 Option::None(_) => {
