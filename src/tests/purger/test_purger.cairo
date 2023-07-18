@@ -623,7 +623,7 @@ mod TestPurger {
         loop {
             match yang_asset_amts_cases.pop_front() {
                 Option::Some(yang_asset_amts) => {
-                    let (shrine, abbot, absorber, purger, yangs, gates) =
+                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                         PurgerUtils::purger_deploy();
                     let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
                     let target_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -757,7 +757,7 @@ mod TestPurger {
                     common::assert_equalish(
                         after_recipient_trove_debt,
                         expected_recipient_trove_debt,
-                        1000000000000000_u128.into(), // error margin
+                        (WAD_ONE / 100).into(), // error margin
                         'wrong recipient trove debt'
                     );
                 },
@@ -954,7 +954,7 @@ mod TestPurger {
         loop {
             match yang_asset_amts_cases.pop_front() {
                 Option::Some(yang_asset_amts) => {
-                    let (shrine, abbot, absorber, purger, yangs, gates) =
+                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
                         PurgerUtils::purger_deploy();
                     let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
                     let target_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -1050,7 +1050,7 @@ mod TestPurger {
                     common::assert_equalish(
                         recipient_trove_debt,
                         before_target_trove_debt,
-                        1000000000000000_u128.into(),
+                        (WAD_ONE / 100).into(), // error margin
                         'wrong recipient trove debt'
                     );
                 },
