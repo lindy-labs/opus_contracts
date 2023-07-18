@@ -582,7 +582,7 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_partial_absorb_with_redistribution_entire_trove_debt_pass() {
+    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized() {
         let mut yang_asset_amts_cases = PurgerUtils::interesting_yang_amts_for_recipient_trove();
         loop {
             match yang_asset_amts_cases.pop_front() {
@@ -736,7 +736,7 @@ mod TestPurger {
     // provided yin yet. 
     #[test]
     #[available_gas(20000000000)]
-    fn test_absorb_full_redistribution_pass() {
+    fn test_absorb_full_redistribution_parametrized() {
         let mut yang_asset_amts_cases = PurgerUtils::interesting_yang_amts_for_recipient_trove();
         loop {
             match yang_asset_amts_cases.pop_front() {
