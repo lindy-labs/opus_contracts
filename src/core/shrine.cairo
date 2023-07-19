@@ -267,7 +267,7 @@ mod Shrine {
 
         // Calculate debt
         let compounded_debt: Wad = compound(trove_id, trove, interval);
-        let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt, ) =
+        let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt) =
             pull_redistributed_debt_and_yangs(
             trove_id,
             compounded_debt,
@@ -296,7 +296,7 @@ mod Shrine {
     //    but not yet pulled to the trove
     #[view]
     fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad) {
-        let (updated_trove_yang_balances, pulled_debt, ) = pull_redistributed_debt_and_yangs(
+        let (updated_trove_yang_balances, pulled_debt) = pull_redistributed_debt_and_yangs(
             trove_id,
             WadZeroable::zero(),
             trove_redistribution_id::read(trove_id),
@@ -306,12 +306,13 @@ mod Shrine {
         let mut added_yangs: Array<YangBalance> = Default::default();
         if updated_trove_yang_balances.is_some() {
             let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
-            let mut trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
             loop {
                 match updated_trove_yang_balances.pop_front() {
                     Option::Some(updated_yang_balance) => {
-                        let increment: Wad = *updated_yang_balance.amount
-                            - (*trove_yang_balances.pop_front().unwrap()).amount;
+                        let trove_yang_balance: Wad = deposits::read(
+                            (*updated_yang_balance.yang_id, trove_id)
+                        );
+                        let increment: Wad = *updated_yang_balance.amount - trove_yang_balance;
                         if increment.is_non_zero() {
                             added_yangs
                                 .append(
