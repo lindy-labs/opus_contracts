@@ -1262,7 +1262,7 @@ mod Shrine {
         // Keep track of the total debt redistributed for the return value
         let mut redistributed_debt: Wad = 0_u128.into();
         let mut trove_yang_balances_copy = trove_yang_balances;
-        // Iterate over the yangs deposited in the trove to be redistributed
+        // Iterate over the yangs deposited in the trove, which are to be redistributed
         loop {
             match trove_yang_balances_copy.pop_front() {
                 Option::Some(yang_balance) => {
@@ -1517,7 +1517,7 @@ mod Shrine {
             };
         };
 
-        // See comment at this array's declaration on why.
+        // See comment at this array's declaration on why this is necessary
         let mut new_yang_totals: Span<YangBalance> = new_yang_totals.span();
         loop {
             match new_yang_totals.pop_front() {
@@ -1662,7 +1662,6 @@ mod Shrine {
                             // Compute threshold for rounding up outside of inner loop
                             let wad_scale: u256 = WAD_SCALE.into();
                             let wad_scale_divisor: NonZero<u256> = wad_scale.try_into().unwrap();
-                            let debt_rounding_threshold: u128 = WAD_ONE / 2;
 
                             // Keep track of the amount of redistributed yang that the trove will receive
                             let mut yang_increment: Wad = WadZeroable::zero();
