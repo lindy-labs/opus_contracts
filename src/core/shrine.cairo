@@ -7,7 +7,7 @@ mod Shrine {
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
-    use zeroable::{NonZeroIntoImpl, Zeroable};
+    use zeroable::Zeroable;
 
     use aura::core::roles::ShrineRoles;
 

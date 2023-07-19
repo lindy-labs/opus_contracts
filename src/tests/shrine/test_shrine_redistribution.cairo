@@ -1324,6 +1324,10 @@ mod TestShrineRedistribution {
         assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 1, 'wrong id');
     }
 
+    // This test asserts that the sum of troves' debt after pulling redistributed debt does not
+    // exceed the total debt.
+    // Note that yangs 1 and 2 are normally redistributed, and yang 3 is exceptionally 
+    // redistributed.
     #[test]
     #[available_gas(20000000000)]
     fn test_multi_troves_system_debt_not_exceeded() {
