@@ -343,8 +343,7 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            let redistribute_all_remainder_debt: bool = max_purge_amt == trove_debt;
-            if redistribute_all_remainder_debt {
+            if max_purge_amt == trove_debt {
                 shrine.redistribute(trove_id, BoundedWad::max(), RAY_ONE.into());
             } else {
                 // Additional manipulation is needed when redistributing only part of a trove's debt
@@ -358,7 +357,7 @@ mod Purger {
                 // excess_asset_amt = excess_yang_amt * asset_amt_per_yang_wad_after_redistribution
                 //                                                        total assets
                 //                  = excess_yang_amt * -----------------------------------------------------------
-                //                                       (yang_total_ - trove_remainder_yang_amt) + excess_yang_amt
+                //                                       (yang_total - trove_remainder_yang_amt) + excess_yang_amt
                 //
                 // The above equation can be transformed to the one below:
                 //
@@ -404,8 +403,9 @@ mod Purger {
                 // Redistribute
                 shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 
-                // Loop over yangs and adjust yang amounts so that the correct amount of yang
-                // assets remain in 
+                // Loop over yangs and adjust yang amounts so that it corresponds to the correct 
+                // amount of yang assets derived earlier, based on the updated asset amount per
+                // yang wad.
                 let mut yangs_copy = yangs;
                 let mut excess_asset_amts = excess_asset_amts.span();
                 loop {
@@ -422,8 +422,7 @@ mod Purger {
                             // Derive the error to offset from the trove's yang.
                             // This ensures that the trove has the target asset amount for each yang based on 
                             // the appreciated asset amount per yang after the redistribution.
-                            let yang_offset: Wad = trove_yang - excess_yang;
-                            shrine.seize(*yang, trove_id, yang_offset);
+                            shrine.seize(*yang, trove_id, trove_yang - excess_yang);
                         },
                         Option::None(_) => {
                             break;
