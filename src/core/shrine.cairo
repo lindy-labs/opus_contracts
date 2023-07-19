@@ -1068,9 +1068,8 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Emit only if interest accrued
-        let interest_has_accrued: bool = compounded_trove_debt != trove.debt;
-        if interest_has_accrued {
+        // Emit events only if there is a change in the trove's debt
+        if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
             TroveUpdated(trove_id, updated_trove);
         }
