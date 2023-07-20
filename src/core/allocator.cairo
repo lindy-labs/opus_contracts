@@ -4,6 +4,7 @@ mod Allocator {
     use option::OptionTrait;
     use starknet::ContractAddress;
     use traits::{Default, Into};
+    use zeroable::Zeroable;
 
     use aura::core::roles::AllocatorRoles;
 
