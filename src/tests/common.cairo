@@ -2,11 +2,13 @@ use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
 use starknet::{
     contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-    contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
+    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
 };
 use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::set_contract_address;
+use starknet::testing::{set_block_timestamp, set_contract_address};
 use traits::{Default, Into, TryInto};
+
+use aura::core::shrine::Shrine;
 
 use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
 use aura::interfaces::IERC20::{
@@ -109,6 +111,12 @@ impl RewardPartialEq of PartialEq<Reward> {
 //
 // Helpers - Test setup
 //
+
+// Helper function to advance timestamp by the given intervals
+#[inline(always)]
+fn advance_intervals(intervals: u64) {
+    set_block_timestamp(get_block_timestamp() + (intervals * Shrine::TIME_INTERVAL));
+}
 
 // Helper function to deploy a token
 fn deploy_token(

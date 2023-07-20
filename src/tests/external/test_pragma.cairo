@@ -240,6 +240,34 @@ mod TestPragma {
 
     #[test]
     #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Yang already present', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_non_unique_address_fail() {
+        let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(
+            sentinel, shrine.contract_address
+        );
+
+        set_contract_address(PragmaUtils::admin());
+        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, eth_token_addr);
+        pragma.add_yang(PragmaUtils::WBTC_USD_PAIR_ID, eth_token_addr);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('PGM: Pair ID already present', 'ENTRYPOINT_FAILED'))]
+    fn test_add_yang_non_unique_pair_id_fail() {
+        let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();
+        let (eth_token_addr, eth_gate) = SentinelUtils::add_eth_yang(
+            sentinel, shrine.contract_address
+        );
+
+        set_contract_address(PragmaUtils::admin());
+        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, eth_token_addr);
+        pragma.add_yang(PragmaUtils::ETH_USD_PAIR_ID, pepe_token_addr());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
     #[should_panic(expected: ('PGM: Invalid pair ID', 'ENTRYPOINT_FAILED'))]
     fn test_add_yang_invalid_pair_id_fail() {
         let (shrine, pragma, sentinel, _) = PragmaUtils::pragma_deploy();

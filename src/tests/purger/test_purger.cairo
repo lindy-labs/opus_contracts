@@ -20,8 +20,14 @@ mod TestPurger {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
+    use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
+    use aura::tests::flashmint::utils::FlashmintUtils;
+    use aura::tests::purger::flash_liquidator::{
+        IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
+    };
     use aura::tests::purger::utils::PurgerUtils;
+    use aura::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
 
@@ -53,7 +59,7 @@ mod TestPurger {
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
 
-        // Set thresholds to 90% so we can check the expected penalty
+        // Set thresholds to 91% so we can check the scalar is applied to the penalty
         let threshold: Ray = (91 * RAY_PERCENT).into();
         PurgerUtils::set_thresholds(shrine, yangs, threshold);
 
@@ -101,6 +107,48 @@ mod TestPurger {
 
     #[test]
     #[available_gas(20000000000)]
+    fn test_penalty_scalar_lower_bound() {
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
+
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+        );
+
+        // Set thresholds to 90% so we can check the scalar is not applied to the penalty
+        let threshold: Ray = (90 * RAY_PERCENT).into();
+        PurgerUtils::set_thresholds(shrine, yangs, threshold);
+
+        let (_, _, value, debt) = shrine.get_trove_info(target_trove);
+        // 91%; Note that if a penalty scalar is applied, then the trove would be absorbable
+        // at this LTV because the penalty would be the maximum possible penalty. On the other
+        // hand, if a penalty scalar is not applied, then the maximum possible penalty will be
+        // reached from 92.09% onwards, so the trove would not be absorbable at this LTV
+        let target_ltv: Ray = 910000000000000000000000000_u128.into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+
+        let (trove_threshold, ltv, _, _) = shrine.get_trove_info(target_trove);
+        // sanity check that threshold is correct
+        assert(trove_threshold == threshold, 'threshold sanity check');
+
+        // sanity check that LTV is at the target liquidation LTV
+        let error_margin: Ray = 100000000_u128.into();
+        common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let expected_penalty: Ray = RayZeroable::zero();
+        assert(penalty == RayZeroable::zero(), 'should not be absorbable #1');
+
+        // Set scalar to 1.06 and check the trove is still not absorbable.
+        set_contract_address(PurgerUtils::admin());
+        let penalty_scalar: Ray = Purger::MAX_PENALTY_SCALAR.into();
+        purger.set_penalty_scalar(penalty_scalar);
+
+        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        assert(penalty == RayZeroable::zero(), 'should not be absorbable #2');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Invalid scalar', 'ENTRYPOINT_FAILED'))]
     fn test_set_penalty_scalar_too_low_fail() {
         let (_, _, _, purger, _, _) = PurgerUtils::purger_deploy();
@@ -140,11 +188,20 @@ mod TestPurger {
         let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
             searcher_start_yin
         );
+        let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
-            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+            abbot, yangs, gates, initial_trove_debt
         );
 
+        // Accrue some interest
+        common::advance_intervals(500);
+
+        let before_total_debt: Wad = shrine.get_total_debt();
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
+        let accrued_interest: Wad = debt - initial_trove_debt;
+        // Sanity check that some interest has accrued
+        assert(accrued_interest.is_non_zero(), 'no interest accrued');
+
         let target_ltv: Ray = (threshold.val + 1).into();
         PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
 
@@ -162,6 +219,10 @@ mod TestPurger {
 
         set_contract_address(searcher);
         let (_, freed_amts) = purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+
+        // Assert that total debt includes accrued interest on liquidated trove
+        let after_total_debt: Wad = shrine.get_total_debt();
+        assert(after_total_debt == before_total_debt + accrued_interest - max_close_amt, 'wrong total debt');
 
         // Check that LTV is close to safety margin
         let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
@@ -192,6 +253,49 @@ mod TestPurger {
             freed_amts, expected_freed_amts, 10_u128, // error margin
              'wrong freed asset amount'
         );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_liquidate_with_flashmint_pass() {
+        let (shrine, abbot, _, purger, yangs, gates) = PurgerUtils::purger_deploy_with_searcher(
+            PurgerUtils::SEARCHER_YIN.into()
+        );
+        let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+        );
+        let flashmint = FlashmintUtils::flashmint_deploy(shrine.contract_address);
+        let flash_liquidator = PurgerUtils::flash_liquidator_deploy(
+            shrine.contract_address,
+            abbot.contract_address,
+            flashmint.contract_address,
+            purger.contract_address
+        );
+
+        // Fund flash liquidator contract with some collateral to open a trove
+        // but not draw any debt
+        common::fund_user(
+            flash_liquidator.contract_address, yangs, AbsorberUtils::provider_asset_amts()
+        );
+
+        let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
+        let target_ltv: Ray = (threshold.val + 1).into();
+        PurgerUtils::adjust_prices_for_trove_ltv(shrine, yangs, value, debt, target_ltv);
+
+        // Sanity check that LTV is at the target liquidation LTV
+        let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
+        PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+        let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
+
+        let searcher: ContractAddress = PurgerUtils::searcher();
+        set_contract_address(searcher);
+        flash_liquidator.flash_liquidate(target_trove, yangs, gates);
+
+        // Check that LTV is close to safety margin
+        let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
+        assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
+
+        PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
     }
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
@@ -380,11 +484,18 @@ mod TestPurger {
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+        let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
-            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+            abbot, yangs, gates, initial_trove_debt
         );
 
+        // Accrue some interest
+        common::advance_intervals(500);
+
         let (threshold, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+        let accrued_interest: Wad = before_debt - initial_trove_debt;
+        // Sanity check that some interest has accrued
+        assert(accrued_interest.is_non_zero(), 'no interest accrued');
 
         // Fund the absorber with twice the target trove's debt
         let absorber_start_yin: Wad = (before_debt.val * 2).into();
@@ -392,6 +503,8 @@ mod TestPurger {
 
         // sanity check
         assert(shrine.get_yin(absorber.contract_address) > before_debt, 'not full absorption');
+
+        let before_total_debt: Wad = shrine.get_total_debt();
 
         // Make the target trove absorbable
         let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
@@ -415,6 +528,10 @@ mod TestPurger {
 
         set_contract_address(caller);
         let (_, compensation) = purger.absorb(target_trove);
+
+        // Assert that total debt includes accrued interest on liquidated trove
+        let after_total_debt: Wad = shrine.get_total_debt();
+        assert(after_total_debt == before_total_debt + accrued_interest - max_close_amt, 'wrong total debt');
 
         // Check absorption occured
         assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
@@ -471,15 +588,24 @@ mod TestPurger {
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+        let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
-            abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+            abbot, yangs, gates, initial_trove_debt
         );
 
+        // Accrue some interest
+        common::advance_intervals(500);
+
         let (threshold, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+        let accrued_interest: Wad = before_debt - initial_trove_debt;
+        // Sanity check that some interest has accrued
+        assert(accrued_interest.is_non_zero(), 'no interest accrued');
 
         // Fund the absorber with a third of the target trove's debt
         let absorber_start_yin: Wad = (before_debt.val / 3).into();
         PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
+
+        let before_total_debt: Wad = shrine.get_total_debt();
 
         // sanity check
         assert(shrine.get_yin(absorber.contract_address) < before_debt, 'not partial absorption');
@@ -497,6 +623,9 @@ mod TestPurger {
         let penalty: Ray = purger.get_absorption_penalty(target_trove);
         let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
         let close_amt: Wad = absorber_start_yin;
+        // Sanity check 
+        assert(close_amt <= max_close_amt, 'max close amount exceeded');
+
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -510,6 +639,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
         set_contract_address(caller);
         let (_, compensation) = purger.absorb(target_trove);
+
+        // Assert that total debt includes accrued interest on liquidated trove
+        let after_total_debt: Wad = shrine.get_total_debt();
+        assert(after_total_debt == before_total_debt + accrued_interest - close_amt, 'wrong total debt');
 
         // Check absorption occured
         assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
@@ -577,11 +710,18 @@ mod TestPurger {
                         PurgerUtils::purger_deploy_with_searcher(
                         PurgerUtils::SEARCHER_YIN.into()
                     );
+                    let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
                     let target_trove: u64 = PurgerUtils::funded_healthy_trove(
-                        abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
+                        abbot, yangs, gates, initial_trove_debt
                     );
 
+                    // Accrue some interest
+                    common::advance_intervals(500);
+
                     let (_, _, value, debt) = shrine.get_trove_info(target_trove);
+                    let accrued_interest: Wad = debt - initial_trove_debt;
+                    // Sanity check that some interest has accrued
+                    assert(accrued_interest.is_non_zero(), 'no interest accrued');
                     let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
                     PurgerUtils::adjust_prices_for_trove_ltv(
                         shrine, yangs, value, debt, target_ltv
@@ -591,6 +731,7 @@ mod TestPurger {
 
                     PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
 
+                    
                     let caller: ContractAddress = PurgerUtils::random_user();
                     let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
                         yangs, caller.into()
@@ -603,8 +744,19 @@ mod TestPurger {
                             shrine, abbot, absorber, yangs, gates, *absorber_yin_amt
                         );
                     }
+
+                    let before_total_debt: Wad = shrine.get_total_debt();
+                    let (_, _, _, debt) = shrine.get_trove_info(target_trove);
+                    let accrued_interest: Wad = debt - initial_trove_debt;
+                    // Sanity check that some interest has accrued
+                    assert(accrued_interest.is_non_zero(), 'no interest accrued');
+
                     set_contract_address(caller);
                     let (_, compensation) = purger.absorb(target_trove);
+
+                    // Assert that total debt includes accrued interest on liquidated trove
+                    let after_total_debt: Wad = shrine.get_total_debt();
+                    assert(after_total_debt == before_total_debt + accrued_interest, 'wrong total debt');
 
                     // Check that caller has received compensation
                     let target_trove_yang_asset_amts: Span<u128> =
