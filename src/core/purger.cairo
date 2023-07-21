@@ -290,8 +290,6 @@ mod Purger {
                 false
             );
 
-            let (_, _, _, trove_debt) = shrine.get_trove_info(trove_id);
-
             absorber.update(yangs, absorbed_assets_amts);
             Purged(
                 trove_id,
@@ -313,7 +311,7 @@ mod Purger {
         }
 
         // Safety check to ensure the new LTV is lower than old LTV 
-        let (_, updated_trove_ltv, _, trove_debt) = shrine.get_trove_info(trove_id);
+        let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
         Compensate(caller, yangs, compensations);
