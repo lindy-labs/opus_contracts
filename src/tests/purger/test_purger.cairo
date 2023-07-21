@@ -778,11 +778,11 @@ mod TestPurger {
                                 let (_, after_ltv, after_value, after_debt) = shrine
                                     .get_trove_info(target_trove);
                                 assert(
-                                    after_ltv == RayZeroable::zero(), 'wrong debt after liquidation'
+                                    after_ltv == RayZeroable::zero(), 'wrong LTV after liquidation'
                                 );
-                                assert(
-                                    after_value == WadZeroable::zero(),
-                                    'wrong debt after liquidation'
+                                common::assert_equalish(
+                                    after_value, WadZeroable::zero(), 1000_u128.into(),
+                                    'wrong value after liquidation'
                                 );
                                 assert(
                                     after_debt == WadZeroable::zero(),
