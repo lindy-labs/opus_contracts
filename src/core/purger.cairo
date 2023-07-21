@@ -266,15 +266,17 @@ mod Purger {
             shrine, trove_id, trove_ltv, trove_value, trove_debt, compensation, caller, true
         );
 
+        // Melt the trove's debt using the absorber's yin directly
+        // This needs to be called even if `purge_amt` is 0 so that accrued interest
+        // will be charged on the trove before `shrine.redistribute`.
+        shrine.melt(absorber.contract_address, trove_id, purge_amt);
+
         let can_absorb_any: bool = purge_amt.is_non_zero();
         let is_fully_absorbed: bool = purge_amt == max_purge_amt;
 
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
         if can_absorb_any {
-            // Melt the trove's debt using the absorber's yin directly
-            shrine.melt(absorber.contract_address, trove_id, purge_amt);
-
             // Free collateral corresponding to the purged amount
             let freed_value: Wad = wadray::rmul_wr(purge_amt, RAY_ONE.into() + trove_penalty);
             let (yangs, absorbed_assets_amts) = free(
@@ -287,6 +289,8 @@ mod Purger {
                 absorber.contract_address,
                 false
             );
+
+            let (_, _, _, trove_debt) = shrine.get_trove_info(trove_id);
 
             absorber.update(yangs, absorbed_assets_amts);
             Purged(
@@ -307,6 +311,10 @@ mod Purger {
             // redistribution
             oracle::read().update_prices();
         }
+
+        // Safety check to ensure the new LTV is lower than old LTV 
+        let (_, updated_trove_ltv, _, trove_debt) = shrine.get_trove_info(trove_id);
+        assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
         Compensate(caller, yangs, compensations);
 
@@ -422,10 +430,14 @@ mod Purger {
     }
 
     // Returns `Option::None` if the trove is not absorbable, otherwise returns the absorption penalty
-    // A trove is absorbable if
-    //  - ltv > threshold
-    //  - its threshold is greater than `ABSORPTION_THRESHOLD` OR penalty == (1 - usable_ltv)/usable_ltv
-    // If LTV exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`. 
+    // A trove is absorbable if and only if:
+    // 1. ltv > threshold; and
+    // 2. either of the following is true:
+    //    a) its threshold is greater than `ABSORPTION_THRESHOLD`; or 
+    //    b) the penalty is at the maximum possible for the current LTV such that the post-liquidation
+    //       LTV is not worse off (i.e. penalty == (1 - usable_ltv)/usable_ltv).
+    //
+    // If threshold exceeds ABSORPTION_THRESHOLD, the marginal penalty is scaled by `penalty_scalar`. 
     fn get_absorption_penalty_internal(
         threshold: Ray, ltv: Ray, ltv_after_compensation: Ray
     ) -> Option<Ray> {
@@ -446,7 +458,7 @@ mod Purger {
             (RAY_ONE.into() - ltv_after_compensation) / ltv_after_compensation, MAX_PENALTY.into()
         );
 
-        if threshold >= ABSORPTION_THRESHOLD.into() {
+        if threshold > ABSORPTION_THRESHOLD.into() {
             let s = penalty_scalar::read();
             let penalty = min(
                 MIN_PENALTY.into() + s * ltv / threshold - RAY_ONE.into(), max_possible_penalty
@@ -507,23 +519,6 @@ mod Purger {
                 (penalty, get_max_close_amount_internal(threshold, ltv, value, debt, penalty))
             },
             Option::None(_) => (RayZeroable::zero(), WadZeroable::zero()),
-        }
-    }
-
-    // Helper function to calculate percentage of collateral freed.
-    // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided by total trove value.
-    // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
-    fn get_percentage_freed(
-        trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad, 
-    ) -> Ray {
-        if trove_ltv.val <= RAY_ONE {
-            let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
-            // Capping the freed amount to the maximum possible (which is the trove's entire value)
-            let freed_amt: Wad = min(penalty_amt + purge_amt, trove_value);
-
-            wadray::rdiv_ww(freed_amt, trove_value)
-        } else {
-            wadray::rdiv_ww(purge_amt, trove_debt)
         }
     }
 
