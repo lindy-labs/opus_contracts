@@ -5,7 +5,7 @@ use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::serde::IBlesserDispatcherSerde;
 use aura::utils::wadray::{Ray, Wad};
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, PartialEq, Serde, storage_access::StorageAccess)]
 struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     debt: Wad, // Normalized debt
