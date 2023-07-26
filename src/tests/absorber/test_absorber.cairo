@@ -52,6 +52,7 @@ mod TestAbsorber {
         assert(absorber.get_rewards_count() == 0, 'rewards should be 0');
         assert(absorber.get_removal_limit() == AbsorberUtils::REMOVAL_LIMIT.into(), 'wrong limit');
         assert(absorber.get_live(), 'should be live');
+        assert(!absorber.is_operational(), 'should not be operational');
 
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber.contract_address };
         assert(
@@ -281,6 +282,7 @@ mod TestAbsorber {
                         first_provided_amt
                     ) =
                         AbsorberUtils::absorber_with_rewards_and_first_provider();
+                    assert(absorber.is_operational(), 'should be operational');
 
                     // Simulate absorption
                     let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
@@ -412,6 +414,7 @@ mod TestAbsorber {
                                 *after_preview_reward_amts.at(0) > *preview_reward_amts.at(0),
                                 'preview amount should decrease'
                             );
+                            assert(absorber.is_operational(), 'should be operational');
                         } else {
                             assert(
                                 after_preview_reward_amts.len().is_zero(), 'should not have rewards'
@@ -419,6 +422,7 @@ mod TestAbsorber {
                             AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
                                 absorber, expected_epoch - 1, reward_tokens
                             );
+                            assert(!absorber.is_operational(), 'should not be operational');
                         }
                     } else if after_preview_reward_amts.len().is_non_zero() {
                         // Sanity check that updated preview reward amount is lower than before
@@ -781,6 +785,7 @@ mod TestAbsorber {
             first_provided_amt
         ) =
             AbsorberUtils::absorber_with_rewards_and_first_provider();
+        assert(absorber.is_operational(), 'should be operational');
 
         let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
 
@@ -793,6 +798,8 @@ mod TestAbsorber {
         AbsorberUtils::simulate_update_with_amt_to_drain(
             shrine, absorber, yangs, first_update_assets, burn_amt
         );
+
+        assert(absorber.is_operational(), 'should be operational');
 
         // Check epoch and total shares after threshold absorption
         let expected_epoch: u32 = 1;
@@ -819,6 +826,8 @@ mod TestAbsorber {
             gates,
             second_provided_amt
         );
+
+        assert(absorber.is_operational(), 'should be operational');
 
         let second_provider_info: Provision = absorber.get_provision(second_provider);
         assert(second_provider_info.shares == second_provided_amt, 'wrong provider shares');
@@ -848,6 +857,8 @@ mod TestAbsorber {
         absorber.request();
         set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
         absorber.remove(BoundedU128::max().into());
+
+        assert(absorber.is_operational(), 'should be operational');
 
         // Check that first provider receives some amount of yin from the converted 
         // epoch shares.
@@ -904,77 +915,7 @@ mod TestAbsorber {
         );
     }
 
-    // Sequence of events:
-    // 1. Provider 1 provides
-    // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
-    //    exactly 1 wei greater than the minimum initial shares. 
-    // 3. Provider 1 withdraws, which should be zero due to loss of precision.
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_remove_after_threshold_absorption_one_above_minimum() {
-        let (
-            shrine,
-            abbot,
-            absorber,
-            yangs,
-            gates,
-            reward_tokens,
-            _,
-            reward_amts_per_blessing,
-            first_provider,
-            first_provided_amt
-        ) =
-            AbsorberUtils::absorber_with_rewards_and_first_provider();
-
-        let first_epoch_total_shares: Wad = absorber.get_total_shares_for_current_epoch();
-
-        // Step 2
-        let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
-        // Amount of yin remaining needs to be sufficiently significant to account for loss of precision
-        // from conversion of shares across epochs, after discounting initial shares.
-        let excess_above_minimum: Wad = 1_u128.into();
-        let above_min_shares: Wad = Absorber::INITIAL_SHARES.into() + excess_above_minimum;
-        let burn_amt: Wad = first_provided_amt - above_min_shares;
-        AbsorberUtils::simulate_update_with_amt_to_drain(
-            shrine, absorber, yangs, first_update_assets, burn_amt
-        );
-
-        // Check epoch and total shares after threshold absorption
-        let expected_epoch: u32 = 1;
-        assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
-        assert(
-            absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
-        );
-
-        AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
-            absorber, expected_epoch - 1, reward_tokens
-        );
-
-        // Step 3
-        let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
-
-        set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
-            .preview_reap(first_provider);
-
-        absorber.request();
-        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedU128::max().into());
-
-        // First provider should not receive any yin due to rounding down to 0 shares in
-        // new epoch from loss of precision
-        assert(
-            shrine.get_yin(first_provider) == first_provider_before_yin_bal, 'yin should not change'
-        );
-
-        let first_provider_info: Provision = absorber.get_provision(first_provider);
-        assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
-        assert(first_provider_info.epoch == 1, 'wrong provider epoch');
-
-        let request: Request = absorber.get_provider_request(first_provider);
-        assert(request.has_removed, 'request should be fulfilled');
-    }
-
+    // Test 1 wei above initial shares remaining after absorption.
     // Sequence of events:
     // 1. Provider 1 provides
     // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
@@ -1016,6 +957,7 @@ mod TestAbsorber {
         assert(
             absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
         );
+        assert(!absorber.is_operational(), 'should not be operational');
 
         AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
             absorber, expected_epoch - 1, reward_tokens
@@ -1050,6 +992,10 @@ mod TestAbsorber {
 
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
+
+        assert(
+            absorber.get_total_shares_for_current_epoch() == Absorber::INITIAL_SHARES.into(), 'wrong total shares #2'
+        );
     }
 
     // Sequence of events:
@@ -1097,6 +1043,8 @@ mod TestAbsorber {
             absorber, expected_epoch - 1, reward_tokens
         );
 
+        assert(!absorber.is_operational(), 'should not be operational');
+
         // Second epoch starts here
         // Step 3
         let second_provider = AbsorberUtils::provider_2();
@@ -1111,6 +1059,8 @@ mod TestAbsorber {
             gates,
             second_provided_amt
         );
+
+        assert(absorber.is_operational(), 'should be operational');
 
         let second_provider_info: Provision = absorber.get_provision(second_provider);
         assert(
@@ -1147,6 +1097,8 @@ mod TestAbsorber {
         absorber.request();
         set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
         absorber.remove(BoundedU128::max().into());
+
+        assert(absorber.is_operational(), 'should be operational');
 
         // First provider should not receive any yin
         assert(
@@ -1245,6 +1197,8 @@ mod TestAbsorber {
                     AbsorberUtils::simulate_update_with_amt_to_drain(
                         shrine, absorber, yangs, first_update_assets, burn_amt
                     );
+
+                    assert(!absorber.is_operational(), 'should not be operational');
 
                     // Check epoch and total shares after threshold absorption
                     let expected_epoch: u32 = 1;
