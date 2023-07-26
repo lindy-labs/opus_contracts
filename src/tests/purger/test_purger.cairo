@@ -220,7 +220,10 @@ mod TestPurger {
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
-        assert(after_total_debt == before_total_debt + accrued_interest - max_close_amt, 'wrong total debt');
+        assert(
+            after_total_debt == before_total_debt + accrued_interest - max_close_amt,
+            'wrong total debt'
+        );
 
         // Check that LTV is close to safety margin
         let (_, after_ltv, _, after_debt) = shrine.get_trove_info(target_trove);
@@ -348,7 +351,8 @@ mod TestPurger {
                                     shrine, yangs, value, before_debt, *target_ltv
                                 );
 
-                                let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
+                                let (penalty, max_close_amt) = purger
+                                    .preview_liquidate(target_trove);
 
                                 let searcher: ContractAddress = PurgerUtils::searcher();
                                 set_contract_address(searcher);
@@ -510,7 +514,8 @@ mod TestPurger {
         let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
 
-        let (penalty, max_close_amt, expected_compensation_value) = purger.preview_absorb(target_trove);
+        let (penalty, max_close_amt, expected_compensation_value) = purger
+            .preview_absorb(target_trove);
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -525,7 +530,10 @@ mod TestPurger {
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
-        assert(after_total_debt == before_total_debt + accrued_interest - max_close_amt, 'wrong total debt');
+        assert(
+            after_total_debt == before_total_debt + accrued_interest - max_close_amt,
+            'wrong total debt'
+        );
 
         // Check absorption occured
         assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
@@ -614,7 +622,8 @@ mod TestPurger {
 
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
 
-        let (penalty, max_close_amt, expected_compensation_value) = purger.preview_absorb(target_trove);
+        let (penalty, max_close_amt, expected_compensation_value) = purger
+            .preview_absorb(target_trove);
         let close_amt: Wad = absorber_start_yin;
         // Sanity check 
         assert(close_amt <= max_close_amt, 'max close amount exceeded');
@@ -634,7 +643,9 @@ mod TestPurger {
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
-        assert(after_total_debt == before_total_debt + accrued_interest - close_amt, 'wrong total debt');
+        assert(
+            after_total_debt == before_total_debt + accrued_interest - close_amt, 'wrong total debt'
+        );
 
         // Check absorption occured
         assert(absorber.get_absorptions_count() == 1, 'wrong absorptions count');
@@ -917,7 +928,9 @@ mod TestPurger {
                                     after_ltv == RayZeroable::zero(), 'wrong LTV after liquidation'
                                 );
                                 common::assert_equalish(
-                                    after_value, WadZeroable::zero(), 1000_u128.into(),
+                                    after_value,
+                                    WadZeroable::zero(),
+                                    1000_u128.into(),
                                     'wrong value after liquidation'
                                 );
                                 assert(
