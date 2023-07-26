@@ -600,7 +600,7 @@ mod Absorber {
             // If new epoch's yin balance exceeds the initial minimum shares, deduct the initial
             // minimum shares worth of yin from the yin balance so that there is at least such amount
             // of yin that cannot be removed in the next epoch.
-            if INITIAL_SHARES <= yin_balance.val {
+            if INITIAL_SHARES < yin_balance.val {
                 let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
                     yin_balance - INITIAL_SHARES.into(), total_shares
                 );
