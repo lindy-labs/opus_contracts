@@ -5,7 +5,7 @@ mod ShrineUtils {
     use traits::{Default, Into, TryInto};
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, get_block_timestamp, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -52,10 +52,15 @@ mod ShrineUtils {
     const YANG2_START_PRICE: u128 = 500000000000000000000; // 500 (Wad)
     const YANG2_BASE_RATE: u128 = 30000000000000000000000000; // 3% (Ray)
 
+    const YANG3_THRESHOLD: u128 = 850000000000000000000000000; // 85% (Ray)
+    const YANG3_START_PRICE: u128 = 1000000000000000000000; // 1_000 (Wad)
+    const YANG3_BASE_RATE: u128 = 25000000000000000000000000; // 2.5% (Ray)
+
     const INITIAL_YANG_AMT: u128 = 0;
 
     const TROVE1_YANG1_DEPOSIT: u128 = 5000000000000000000; // 5 (Wad)
     const TROVE1_YANG2_DEPOSIT: u128 = 8000000000000000000; // 8 (Wad)
+    const TROVE1_YANG3_DEPOSIT: u128 = 6000000000000000000; // 6 (Wad)
     const TROVE1_FORGE_AMT: u128 = 3000000000000000000000; // 3_000 (Wad)
 
     //
@@ -71,11 +76,15 @@ mod ShrineUtils {
     }
 
     fn yang1_addr() -> ContractAddress {
-        contract_address_const::<0x1234>()
+        contract_address_try_from_felt252('yang 1').unwrap()
     }
 
     fn yang2_addr() -> ContractAddress {
-        contract_address_const::<0x2345>()
+        contract_address_try_from_felt252('yang 2').unwrap()
+    }
+
+    fn yang3_addr() -> ContractAddress {
+        contract_address_try_from_felt252('yang 3').unwrap()
     }
 
     fn invalid_yang_addr() -> ContractAddress {
@@ -120,14 +129,22 @@ mod ShrineUtils {
     // Helper function to advance timestamp by one interval
     #[inline(always)]
     fn advance_interval() {
-        set_block_timestamp(get_block_timestamp() + Shrine::TIME_INTERVAL);
+        common::advance_intervals(1);
     }
 
     // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID
     // and terminates at yang ID 0. This affects which yang receives any rounding of
     // debt that falls below the rounding threshold.
-    fn yang_addrs() -> Span<ContractAddress> {
+    fn two_yang_addrs() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = Default::default();
+        yang_addrs.append(yang2_addr());
+        yang_addrs.append(yang1_addr());
+        yang_addrs.span()
+    }
+
+    fn three_yang_addrs() -> Span<ContractAddress> {
+        let mut yang_addrs: Array<ContractAddress> = Default::default();
+        yang_addrs.append(yang3_addr());
         yang_addrs.append(yang2_addr());
         yang_addrs.append(yang1_addr());
         yang_addrs.span()
@@ -187,6 +204,14 @@ mod ShrineUtils {
                 YANG2_BASE_RATE.into(),
                 INITIAL_YANG_AMT.into()
             );
+        shrine
+            .add_yang(
+                yang3_addr(),
+                YANG3_THRESHOLD.into(),
+                YANG3_START_PRICE.into(),
+                YANG3_BASE_RATE.into(),
+                INITIAL_YANG_AMT.into()
+            );
 
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
@@ -198,6 +223,7 @@ mod ShrineUtils {
         num_intervals: u64,
         yang1_start_price: Wad,
         yang2_start_price: Wad,
+        yang3_start_price: Wad,
     ) -> (Span<ContractAddress>, Span<Span<Wad>>) {
         let yang1_addr: ContractAddress = yang1_addr();
         let yang1_feed: Span<Wad> = generate_yang_feed(yang1_start_price);
@@ -205,13 +231,18 @@ mod ShrineUtils {
         let yang2_addr: ContractAddress = yang2_addr();
         let yang2_feed: Span<Wad> = generate_yang_feed(yang2_start_price);
 
+        let yang3_addr: ContractAddress = yang3_addr();
+        let yang3_feed: Span<Wad> = generate_yang_feed(yang3_start_price);
+
         let mut yang_addrs: Array<ContractAddress> = Default::default();
         yang_addrs.append(yang1_addr);
         yang_addrs.append(yang2_addr);
+        yang_addrs.append(yang3_addr);
 
         let mut yang_feeds: Array<Span<Wad>> = Default::default();
         yang_feeds.append(yang1_feed);
         yang_feeds.append(yang2_feed);
+        yang_feeds.append(yang3_feed);
 
         let mut idx: u32 = 0;
         set_contract_address(admin());
@@ -225,6 +256,7 @@ mod ShrineUtils {
 
             shrine.advance(yang1_addr, *yang1_feed[idx]);
             shrine.advance(yang2_addr, *yang2_feed[idx]);
+            shrine.advance(yang3_addr, *yang3_feed[idx]);
             shrine.set_multiplier(RAY_ONE.into());
 
             timestamp += Shrine::TIME_INTERVAL;
@@ -245,7 +277,7 @@ mod ShrineUtils {
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
-            shrine, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into()
+            shrine, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into()
         );
         shrine
     }

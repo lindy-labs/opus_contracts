@@ -2,7 +2,7 @@ use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::{Trove, YangRedistribution};
+use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution};
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -10,6 +10,7 @@ trait IShrine {
     // getters
     fn get_yin(user: ContractAddress) -> Wad;
     fn get_yang_total(yang: ContractAddress) -> Wad;
+    fn get_initial_yang_amt(yang: ContractAddress) -> Wad;
     fn get_yangs_count() -> u32;
     fn get_deposit(yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_total_debt() -> Wad;
@@ -24,6 +25,9 @@ trait IShrine {
     fn get_redistribution_for_yang(
         yang: ContractAddress, redistribution_id: u32
     ) -> YangRedistribution;
+    fn get_exceptional_redistribution_for_yang_to_yang(
+        recipient_yang: ContractAddress, redistribution_id: u32, redistributed_yang: ContractAddress
+    ) -> ExceptionalYangRedistribution;
     fn get_live() -> bool;
     // external
     fn add_yang(
@@ -47,6 +51,7 @@ trait IShrine {
     // view
     fn get_shrine_threshold_and_value() -> (Ray, Wad);
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);
+    fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad);
     fn get_current_yang_price(yang: ContractAddress) -> (Wad, Wad, u64);
     fn get_current_multiplier() -> (Ray, Ray, u64);
     fn get_yin_spot_price() -> Wad;
