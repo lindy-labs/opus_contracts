@@ -134,7 +134,7 @@ mod Purger {
     #[view]
     fn preview_absorb(trove_id: u64) -> (Ray, Wad, Wad) {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (penalty, max_absorption_amt, compensation, _, _) = preview_absorption(
+        let (penalty, max_absorption_amt, compensation, _, _) = preview_absorb_internal(
             threshold, ltv, value, debt
         );
         (penalty, max_absorption_amt, compensation)
@@ -143,7 +143,7 @@ mod Purger {
     #[view]
     fn is_absorbable(trove_id: u64) -> bool {
         let (threshold, ltv, value, debt) = shrine::read().get_trove_info(trove_id);
-        let (_, max_absorption_amt, _, _, _) = preview_absorption(threshold, ltv, value, debt);
+        let (_, max_absorption_amt, _, _, _) = preview_absorb_internal(threshold, ltv, value, debt);
         max_absorption_amt.is_non_zero()
     }
 
@@ -230,7 +230,7 @@ mod Purger {
             ltv_after_compensation,
             value_after_compensation
         ) =
-            preview_absorption(
+            preview_absorb_internal(
             trove_threshold, trove_ltv, trove_value, trove_debt
         );
         assert(max_purge_amt.is_non_zero(), 'PU: Not absorbable');
@@ -455,7 +455,7 @@ mod Purger {
     // 3. amount of compensation due to the caller (zero if trove is not absorbable)
     // 4. LTV after compensation
     // 5. value after compensation
-    fn preview_absorption(
+    fn preview_absorb_internal(
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad
     ) -> (Ray, Wad, Wad, Ray, Wad) {
         let compensation: Wad = get_compensation_internal(value);
