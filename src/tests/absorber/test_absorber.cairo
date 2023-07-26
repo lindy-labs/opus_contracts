@@ -929,7 +929,7 @@ mod TestAbsorber {
         );
 
         // Check epoch and total shares after threshold absorption
-        let expected_epoch: u32 = 1;
+        let expected_epoch: u32 = Absorber::FIRST_EPOCH + 1;
         assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
         assert(
             absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
@@ -958,7 +958,7 @@ mod TestAbsorber {
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
-        assert(first_provider_info.epoch == 1, 'wrong provider epoch');
+        assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
