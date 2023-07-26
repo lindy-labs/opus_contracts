@@ -545,7 +545,7 @@ mod Shrine {
     // yangs[i]'s base rate will be set to new_rates[i]
     // yangs's length must equal the number of yangs available.
     #[external]
-    fn update_rates(mut yangs: Span<ContractAddress>, mut new_rates: Span<Ray>) {
+    fn update_rates(yangs: Span<ContractAddress>, new_rates: Span<Ray>) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_RATES);
 
         let yangs_len = yangs.len();
@@ -570,15 +570,14 @@ mod Shrine {
             rates_intervals::write(new_era, current_interval);
         }
 
-        // Event is emitted here because the spans will be modified in the loop below
-        YangRatesUpdated(new_era, current_interval, yangs, new_rates);
-
         // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
         // yang's rate isn't being updated, and so we get the previous value.
+        let mut yangs_copy = yangs;
+        let mut new_rates_copy = new_rates;
         loop {
-            match new_rates.pop_front() {
+            match new_rates_copy.pop_front() {
                 Option::Some(rate) => {
-                    let current_yang_id: u32 = get_valid_yang_id(*yangs.pop_front().unwrap());
+                    let current_yang_id: u32 = get_valid_yang_id(*yangs_copy.pop_front().unwrap());
                     if *rate.val == USE_PREV_BASE_RATE {
                         // Setting new era rate to the previous era's rate
                         yang_rates::write(
@@ -611,6 +610,8 @@ mod Shrine {
             assert(yang_rates::read((idx, new_era)).is_non_zero(), 'SH: Incorrect rate update');
             idx -= 1;
         };
+
+        YangRatesUpdated(new_era, current_interval, yangs, new_rates);
     }
 
     // Deposit a specified amount of a Yang into a Trove
@@ -958,9 +959,13 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Emit events only if there is a change in the trove's debt
+        // Emit only if there is a change in the trove's debt
         if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
+        }
+
+        // Emit only if there is a change in the `Trove` struct
+        if updated_trove != trove {
             TroveUpdated(trove_id, updated_trove);
         }
     }

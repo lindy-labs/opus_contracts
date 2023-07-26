@@ -97,7 +97,7 @@ mod Allocator {
     // - both arrays of recipient addresses and percentages are of equal length;
     // - there is at least one recipient;
     // - the percentages add up to one Ray.
-    fn set_allocation_internal(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) {
+    fn set_allocation_internal(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
         assert(recipients_len != 0, 'AL: No recipients');
         assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');
@@ -105,15 +105,14 @@ mod Allocator {
         let mut total_percentage: Ray = RayZeroable::zero();
         let mut idx: u32 = 0;
 
-        // Event is emitted here because the spans will be modified in the loop below
-        AllocationUpdated(recipients, percentages);
-
+        let mut recipients_copy = recipients;
+        let mut percentages_copy = percentages;
         loop {
-            match recipients.pop_front() {
+            match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
                     recipients::write(idx, *recipient);
 
-                    let percentage: Ray = *(percentages.pop_front().unwrap());
+                    let percentage: Ray = *(percentages_copy.pop_front().unwrap());
                     percentages::write(*recipient, percentage);
 
                     total_percentage += percentage;
@@ -129,6 +128,8 @@ mod Allocator {
         assert(total_percentage == RAY_ONE.into(), 'AL: sum(percentages) != RAY_ONE');
 
         recipients_count::write(recipients_len);
+
+        AllocationUpdated(recipients, percentages);
     }
 
     //
