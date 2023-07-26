@@ -475,13 +475,9 @@ mod PurgerUtils {
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        assert(
-            purger.get_liquidation_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0'
-        );
-        assert(
-            purger.get_max_liquidation_amount(trove_id) == WadZeroable::zero(),
-            'close amount should be 0'
-        );
+        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
+        assert(penalty.is_zero(), 'penalty should be 0');
+        assert(max_liquidation_amt.is_zero(), 'close amount should be 0');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
@@ -490,16 +486,12 @@ mod PurgerUtils {
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
 
-        assert(
-            purger.get_max_liquidation_amount(trove_id).is_non_zero(),
-            'close amount should not be 0'
-        );
+        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
+        assert(penalty.is_non_zero(), 'close amount should not be 0');
         if ltv < RAY_ONE.into() {
-            assert(
-                purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0'
-            );
+            assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
-            assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
+            assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
@@ -509,26 +501,19 @@ mod PurgerUtils {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        assert(
-            purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0'
-        );
+        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
+        assert(max_absorption_amt.is_non_zero(), 'close amount should not be 0');
         if ltv < (RAY_ONE - Purger::COMPENSATION_PCT).into() {
-            assert(
-                purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0'
-            );
+            assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
-            assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
+            assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
-        assert(
-            purger.get_absorption_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0'
-        );
-        assert(
-            purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(),
-            'close amount should be 0'
-        );
+        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
+        assert(penalty.is_zero(), 'penalty should be 0');
+        assert(max_absorption_amt.is_zero(), 'close amount should be 0');
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
