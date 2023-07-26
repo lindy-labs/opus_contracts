@@ -904,7 +904,6 @@ mod TestAbsorber {
         );
     }
 
-    // Test 1 wei above initial shares remaining after absorption.
     // Sequence of events:
     // 1. Provider 1 provides
     // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
