@@ -65,10 +65,10 @@ mod Allocator {
         let mut percentages: Array<Ray> = Default::default();
 
         let mut idx: u32 = LOOP_START;
-        let recipients_count: u32 = recipients_count::read();
+        let loop_end: u32 = recipients_count::read() + LOOP_START;
 
         loop {
-            if idx == recipients_count + LOOP_START {
+            if idx == loop_end {
                 break (recipients.span(), percentages.span());
             }
 

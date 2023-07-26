@@ -79,11 +79,11 @@ mod Sentinel {
 
     #[view]
     fn get_yang_addresses() -> Span<ContractAddress> {
-        let count: u64 = yang_addresses_count::read();
         let mut idx: u64 = LOOP_START;
+        let loop_end: u64 = yang_addresses_count::read() + LOOP_START;
         let mut addresses: Array<ContractAddress> = Default::default();
         loop {
-            if idx == count + LOOP_START {
+            if idx == loop_end {
                 break addresses.span();
             }
             addresses.append(yang_addresses::read(idx));

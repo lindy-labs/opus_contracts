@@ -215,12 +215,11 @@ mod Pragma {
 
         let block_timestamp: u64 = get_block_timestamp();
         let mut idx: u32 = LOOP_START;
+        let loop_end: u32 = yangs_count::read() + LOOP_START;
         let mut has_valid_update: bool = false;
 
-        let yangs_count: u32 = yangs_count::read();
-
         loop {
-            if idx == yangs_count + LOOP_START {
+            if idx == loop_end {
                 break;
             }
 
@@ -285,10 +284,10 @@ mod Pragma {
 
     fn assert_new_yang(pair_id: u256, yang: ContractAddress) {
         let mut idx: u32 = LOOP_START;
-        let yangs_count: u32 = yangs_count::read();
+        let loop_end: u32 = yangs_count::read() + LOOP_START;
 
         loop {
-            if idx == yangs_count + LOOP_START {
+            if idx == loop_end {
                 break;
             }
 
