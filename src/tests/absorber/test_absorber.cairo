@@ -965,6 +965,10 @@ mod TestAbsorber {
 
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
+
+        assert(
+            absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
+        );
     }
 
     // Sequence of events:
