@@ -460,11 +460,10 @@ mod Purger {
     fn preview_absorb_internal(
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad
     ) -> (Ray, Wad, Ray, Wad, Ray, Wad) {
-        let compensation_pct: Ray = get_compensation_pct(value);
+        let (compensation_pct, compensation) = get_compensation(value);
         let ltv_after_compensation: Ray = ltv / (RAY_ONE.into() - compensation_pct);
         match get_absorption_penalty_internal(threshold, ltv, ltv_after_compensation) {
             Option::Some(penalty) => {
-                let compensation: Wad = wadray::rmul_rw(compensation_pct, value);
                 let value_after_compensation: Wad = wadray::rmul_rw(
                     RAY_ONE.into() - compensation_pct, value
                 );
@@ -522,16 +521,18 @@ mod Purger {
         }
     }
 
-    // Returns the amount of compensation due to the caller of `absorb` as a percentage of 
-    // the value of the trove's collateral, capped at 3% of the trove's value or the percentage
-    // of the trove's value equivalent to `COMPENSATION_CAP`
-    fn get_compensation_pct(trove_value: Wad) -> Ray {
+    // Returns:
+    // 1. the amount of compensation due to the caller of `absorb` as a percentage of 
+    //    the value of the trove's collateral, capped at 3% of the trove's value or the percentage
+    //    of the trove's value equivalent to `COMPENSATION_CAP`
+    // 2. the value of (1) in Wad
+    fn get_compensation(trove_value: Wad) -> (Ray, Wad) {
         let default_compensation_pct: Ray = COMPENSATION_PCT.into();
         let default_compensation: Wad = wadray::rmul_wr(trove_value, default_compensation_pct);
         if default_compensation.val < COMPENSATION_CAP {
-            default_compensation_pct
+            (default_compensation_pct, default_compensation)
         } else {
-            wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value)
+            (wadray::rdiv_ww(COMPENSATION_CAP.into(), trove_value), COMPENSATION_CAP.into())
         }
     }
 
