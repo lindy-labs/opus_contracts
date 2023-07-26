@@ -792,30 +792,30 @@ mod TestPurger {
         assert(after_value > WadZeroable::zero(), 'wrong value after liquidation');
 
         // Since 1 wei of debt is left, this falls below the rounding threshold and this 1 wei 
-        // will be redistributed to wBTC, which is the first yang in the main loop of 
+        // will be redistributed to ETH, which is the first yang in the main loop of 
         // `shrine.redistribute_internal`. Since it is not possible to perform division,
         // this 1 wei will accrue as error.
-        let wbtc_addr: ContractAddress = *yangs.at(1);
+        let eth_addr: ContractAddress = *yangs.at(0);
         let expected_redistribution_id: u32 = 1;
-        let wbtc_redistribution: YangRedistribution = shrine
-            .get_redistribution_for_yang(wbtc_addr, expected_redistribution_id);
-        assert(wbtc_redistribution.unit_debt == WadZeroable::zero(), 'wrong wBTC unit debt');
-        assert(wbtc_redistribution.error == debt_shortfall, 'wrong wBTC unit debt error');
+        let eth_redistribution: YangRedistribution = shrine
+            .get_redistribution_for_yang(eth_addr, expected_redistribution_id);
+        assert(eth_redistribution.unit_debt.is_zero(), 'wrong ETH unit debt');
+        assert(eth_redistribution.error == debt_shortfall, 'wrong ETH unit debt error');
         assert(
-            shrine.get_deposit(wbtc_addr, target_trove) == WadZeroable::zero(),
+            shrine.get_deposit(eth_addr, target_trove).is_zero(),
             'wrong WBTC yang remaining'
         );
 
-        // ETH should not receive any redistributed debt, because of the rounding up to
-        // wBTC, and as a result would have a dust amount of yang remaining in the trove.
-        let eth_addr: ContractAddress = *yangs.at(0);
-        let eth_redistribution: YangRedistribution = shrine
-            .get_redistribution_for_yang(eth_addr, expected_redistribution_id);
-        assert(eth_redistribution.unit_debt == WadZeroable::zero(), 'wrong ETH unit debt');
-        assert(eth_redistribution.error == WadZeroable::zero(), 'wrong ETH unit debt error');
+        // wBTC should not receive any redistributed debt, because of the rounding up to
+        // ETH, and as a result would have a dust amount of yang remaining in the trove.
+        let wbtc_addr: ContractAddress = *yangs.at(1);
+        let wbtc_redistribution: YangRedistribution = shrine
+            .get_redistribution_for_yang(wbtc_addr, expected_redistribution_id);
+        assert(wbtc_redistribution.unit_debt.is_zero(), 'wrong wBTC unit debt');
+        assert(wbtc_redistribution.error.is_zero(), 'wrong wBTC unit debt error');
         assert(
-            shrine.get_deposit(eth_addr, target_trove) > WadZeroable::zero(),
-            'wrong ETH yang remaining'
+            shrine.get_deposit(wbtc_addr, target_trove).is_non_zero(),
+            'wrong wBTC yang remaining'
         );
 
         // Check that caller has received compensation
