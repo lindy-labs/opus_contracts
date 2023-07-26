@@ -1068,9 +1068,13 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Emit events only if there is a change in the trove's debt
+        // Emit only if there is a change in the trove's debt
         if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
+        }
+
+        // Emit only if there is a change in the `Trove` struct
+        if updated_trove != trove {
             TroveUpdated(trove_id, updated_trove);
         }
     }

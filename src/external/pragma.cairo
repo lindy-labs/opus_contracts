@@ -49,8 +49,8 @@ mod Pragma {
         // the minimal time difference in seconds of how often we
         // want to fetch from the oracle
         update_frequency: u64,
-        // block timestamp of when the prices were last updated
-        last_price_update_timestamp: u64,
+        // block timestamp of the last `update_prices` call
+        last_update_prices_call_timestamp: u64,
         // values used to determine if we consider a price update fresh or stale:
         // `freshness` is the maximum number of seconds between block timestamp and
         // the last update timestamp (as reported by Pragma) for which we consider a
@@ -210,6 +210,8 @@ mod Pragma {
         assert(can_update, 'PGM: Too soon to update prices');
 
         let block_timestamp: u64 = get_block_timestamp();
+        let mut has_valid_update: bool = false;
+
         let mut idx: u32 = 0;
         let yangs_count: u32 = yangs_count::read();
 
@@ -232,6 +234,7 @@ mod Pragma {
             // if we receive what we consider a valid price from the oracle, record it in the Shrine,
             // otherwise emit an event about the update being invalid
             if is_valid_price_update(response, asset_amt_per_yang) {
+                has_valid_update = true;
                 shrine::read().advance(settings.yang, price * asset_amt_per_yang);
             } else {
                 InvalidPriceUpdate(
@@ -246,9 +249,12 @@ mod Pragma {
             idx += 1;
         };
 
-        // record and emit the latest prices update timestamp
-        last_price_update_timestamp::write(block_timestamp);
-        PricesUpdated(block_timestamp, get_caller_address());
+        // Record the timestamp for the last `update_prices` call 
+        last_update_prices_call_timestamp::write(block_timestamp);
+        // Emit the event only if at least one price update is valid
+        if has_valid_update {
+            PricesUpdated(block_timestamp, get_caller_address());
+        }
     }
 
     //
@@ -260,7 +266,7 @@ mod Pragma {
     #[inline(always)]
     fn probe_task() -> bool {
         let seconds_since_last_update: u64 = get_block_timestamp()
-            - last_price_update_timestamp::read();
+            - last_update_prices_call_timestamp::read();
         update_frequency::read() <= seconds_since_last_update
     }
 
