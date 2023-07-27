@@ -299,6 +299,10 @@ mod TestShrineRedistribution {
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
+        let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_1);
+        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
+
         let expected_redistribution_id: u32 = 1;
         assert(
             shrine.get_redistributions_count() == expected_redistribution_id,
@@ -366,6 +370,10 @@ mod TestShrineRedistribution {
         let (_, _, _, redistributed_debt) = shrine.get_trove_info(common::TROVE_2);
 
         shrine.redistribute(common::TROVE_2, BoundedWad::max(), RAY_ONE.into());
+
+        let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
+        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
@@ -446,6 +454,10 @@ mod TestShrineRedistribution {
         // Redistribute trove 2
         shrine.melt(trove2_owner, common::TROVE_2, WadZeroable::zero());
         shrine.redistribute(common::TROVE_2, BoundedWad::max(), RAY_ONE.into());
+
+        let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
+        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
@@ -1324,6 +1336,10 @@ mod TestShrineRedistribution {
         assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 1, 'wrong id');
     }
 
+    // This test asserts that the sum of troves' debt after pulling redistributed debt does not
+    // exceed the total debt.
+    // Note that yangs 1 and 2 are normally redistributed, and yang 3 is exceptionally 
+    // redistributed.
     #[test]
     #[available_gas(20000000000)]
     fn test_multi_troves_system_debt_not_exceeded() {

@@ -267,7 +267,7 @@ mod Shrine {
 
         // Calculate debt
         let compounded_debt: Wad = compound(trove_id, trove, interval);
-        let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt, ) =
+        let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt) =
             pull_redistributed_debt_and_yangs(
             trove_id,
             compounded_debt,
@@ -296,7 +296,7 @@ mod Shrine {
     //    but not yet pulled to the trove
     #[view]
     fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad) {
-        let (updated_trove_yang_balances, pulled_debt, ) = pull_redistributed_debt_and_yangs(
+        let (updated_trove_yang_balances, pulled_debt) = pull_redistributed_debt_and_yangs(
             trove_id,
             WadZeroable::zero(),
             trove_redistribution_id::read(trove_id),
@@ -306,12 +306,13 @@ mod Shrine {
         let mut added_yangs: Array<YangBalance> = Default::default();
         if updated_trove_yang_balances.is_some() {
             let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
-            let mut trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
             loop {
                 match updated_trove_yang_balances.pop_front() {
                     Option::Some(updated_yang_balance) => {
-                        let increment: Wad = *updated_yang_balance.amount
-                            - (*trove_yang_balances.pop_front().unwrap()).amount;
+                        let trove_yang_balance: Wad = deposits::read(
+                            (*updated_yang_balance.yang_id, trove_id)
+                        );
+                        let increment: Wad = *updated_yang_balance.amount - trove_yang_balance;
                         if increment.is_non_zero() {
                             added_yangs
                                 .append(
@@ -633,7 +634,7 @@ mod Shrine {
     // yangs[i]'s base rate will be set to new_rates[i]
     // yangs's length must equal the number of yangs available.
     #[external]
-    fn update_rates(mut yangs: Span<ContractAddress>, mut new_rates: Span<Ray>) {
+    fn update_rates(yangs: Span<ContractAddress>, new_rates: Span<Ray>) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_RATES);
 
         let yangs_len = yangs.len();
@@ -658,15 +659,14 @@ mod Shrine {
             rates_intervals::write(new_era, current_interval);
         }
 
-        // Event is emitted here because the spans will be modified in the loop below
-        YangRatesUpdated(new_era, current_interval, yangs, new_rates);
-
         // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
         // yang's rate isn't being updated, and so we get the previous value.
+        let mut yangs_copy = yangs;
+        let mut new_rates_copy = new_rates;
         loop {
-            match new_rates.pop_front() {
+            match new_rates_copy.pop_front() {
                 Option::Some(rate) => {
-                    let current_yang_id: u32 = get_valid_yang_id(*yangs.pop_front().unwrap());
+                    let current_yang_id: u32 = get_valid_yang_id(*yangs_copy.pop_front().unwrap());
                     if *rate.val == USE_PREV_BASE_RATE {
                         // Setting new era rate to the previous era's rate
                         yang_rates::write(
@@ -699,6 +699,8 @@ mod Shrine {
             assert(yang_rates::read((idx, new_era)).is_non_zero(), 'SH: Incorrect rate update');
             idx -= 1;
         };
+
+        YangRatesUpdated(new_era, current_interval, yangs, new_rates);
     }
 
     // Deposit a specified amount of a Yang into a Trove
@@ -1077,10 +1079,13 @@ mod Shrine {
         let new_system_debt: Wad = total_debt::read() + (compounded_trove_debt - trove.debt);
         total_debt::write(new_system_debt);
 
-        // Emit only if interest accrued
-        let interest_has_accrued: bool = compounded_trove_debt != trove.debt;
-        if interest_has_accrued {
+        // Emit only if there is a change in the trove's debt
+        if compounded_trove_debt != trove.debt {
             DebtTotalUpdated(new_system_debt);
+        }
+
+        // Emit only if there is a change in the `Trove` struct
+        if updated_trove != trove {
             TroveUpdated(trove_id, updated_trove);
         }
     }
@@ -1700,7 +1705,6 @@ mod Shrine {
                             // Compute threshold for rounding up outside of inner loop
                             let wad_scale: u256 = WAD_SCALE.into();
                             let wad_scale_divisor: NonZero<u256> = wad_scale.try_into().unwrap();
-                            let debt_rounding_threshold: u128 = WAD_ONE / 2;
 
                             // Keep track of the amount of redistributed yang that the trove will receive
                             let mut yang_increment: Wad = WadZeroable::zero();
