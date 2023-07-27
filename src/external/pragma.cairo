@@ -27,6 +27,10 @@ mod Pragma {
     use aura::utils::u256_conversions::{U256TryIntoU8, U256TryIntoU64, U256TryIntoU128};
     use aura::utils::wadray::{fixed_point_to_wad, Wad};
 
+    // Helper constant to set the starting index for iterating over the yangs
+    // in the order they were added
+    const LOOP_START: u32 = 1;
+
     // there are sanity bounds for settable values, i.e. they can never
     // be set outside of this hardcoded range
     // the range is [lower, upper]
@@ -60,7 +64,7 @@ mod Pragma {
         price_validity_thresholds: PriceValidityThresholds,
         // number of yangs in `yang_settings` "array"
         yangs_count: u32,
-        // a 0-based "array" of values used to get the Yang prices from Pragma
+        // a 1-based "array" of values used to get the Yang prices from Pragma
         yang_settings: LegacyMap::<u32, YangSettings>
     }
 
@@ -189,10 +193,10 @@ mod Pragma {
         assert(response.decimals != 0, 'PGM: Unknown pair ID');
         assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
 
-        let index: u32 = yangs_count::read();
+        let index: u32 = yangs_count::read() + 1;
         let settings = YangSettings { pair_id, yang };
         yang_settings::write(index, settings);
-        yangs_count::write(index + 1);
+        yangs_count::write(index);
 
         YangAdded(index, settings);
     }
@@ -210,13 +214,12 @@ mod Pragma {
         assert(can_update, 'PGM: Too soon to update prices');
 
         let block_timestamp: u64 = get_block_timestamp();
+        let mut idx: u32 = LOOP_START;
+        let loop_end: u32 = yangs_count::read() + LOOP_START;
         let mut has_valid_update: bool = false;
 
-        let mut idx: u32 = 0;
-        let yangs_count: u32 = yangs_count::read();
-
         loop {
-            if idx == yangs_count {
+            if idx == loop_end {
                 break;
             }
 
@@ -280,11 +283,11 @@ mod Pragma {
     //
 
     fn assert_new_yang(pair_id: u256, yang: ContractAddress) {
-        let mut idx: u32 = 0;
-        let yangs_count: u32 = yangs_count::read();
+        let mut idx: u32 = LOOP_START;
+        let loop_end: u32 = yangs_count::read() + LOOP_START;
 
         loop {
-            if idx == yangs_count {
+            if idx == loop_end {
                 break;
             }
 
