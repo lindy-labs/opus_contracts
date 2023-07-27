@@ -40,6 +40,9 @@ mod Absorber {
     // Shares to be minted without a provider to avoid first provider front-running
     const INITIAL_SHARES: u128 = 1000; // 10 ** 3 (Wad);
 
+    // First epoch of the Absorber 
+    const FIRST_EPOCH: u32 = 1;
+
     // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
     const MIN_LIMIT: u128 = 500000000000000000000000000; // 50 * wadray::RAY_PERCENT = 0.5
 
@@ -72,7 +75,7 @@ mod Absorber {
         shrine: IShrineDispatcher,
         // boolean flag indicating whether the absorber is live or not
         is_live: bool,
-        // epoch starts from 0
+        // epoch starts from 1
         // both shares and absorptions are tied to an epoch
         // the epoch is incremented when the amount of yin per share drops below the threshold.
         // this includes when the absorber's yin balance is completely depleted.
@@ -186,6 +189,7 @@ mod Absorber {
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         is_live::write(true);
         set_removal_limit_internal(limit);
+        current_epoch::write(FIRST_EPOCH);
     }
 
     //
@@ -542,7 +546,7 @@ mod Absorber {
 
     // Update assets received after an absorption
     #[external]
-    fn update(mut assets: Span<ContractAddress>, mut asset_amts: Span<u128>) {
+    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>) {
         AccessControl::assert_has_role(AbsorberRoles::UPDATE);
 
         let current_epoch: u32 = current_epoch::read();
@@ -559,13 +563,12 @@ mod Absorber {
 
         let total_shares: Wad = total_shares::read();
 
-        // Emit `Gain` event before the loop as `assets` and `asset_amts` are consumed by the loop
-        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
-
+        let mut assets_copy = assets;
+        let mut asset_amts_copy = asset_amts;
         loop {
-            match assets.pop_front() {
+            match assets_copy.pop_front() {
                 Option::Some(asset) => {
-                    let asset_amt: u128 = *asset_amts.pop_front().unwrap();
+                    let asset_amt: u128 = *asset_amts_copy.pop_front().unwrap();
                     update_absorbed_asset(current_absorption_id, total_shares, *asset, asset_amt);
                 },
                 Option::None(_) => {
@@ -615,6 +618,8 @@ mod Absorber {
             // Transfer reward errors of current epoch to the next epoch
             propagate_reward_errors(current_epoch);
         }
+
+        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
     }
 
     #[external]

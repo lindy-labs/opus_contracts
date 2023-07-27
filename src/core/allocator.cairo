@@ -13,9 +13,14 @@ mod Allocator {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
+    // Helper constant to set the starting index for iterating over the recipients
+    // and percentages in the order they were added
+    const LOOP_START: u32 = 1;
+
     struct Storage {
         // Number of recipients in the current allocation
         recipients_count: u32,
+        // Starts from index 1
         // Keeps track of the address for each recipient by index
         // Note that the index count of recipients stored in this mapping may exceed the 
         // current `recipients_count`. This will happen if any previous allocations had 
@@ -59,11 +64,11 @@ mod Allocator {
         let mut recipients: Array<ContractAddress> = Default::default();
         let mut percentages: Array<Ray> = Default::default();
 
-        let mut idx: u32 = 0;
-        let recipients_count: u32 = recipients_count::read();
+        let mut idx: u32 = LOOP_START;
+        let loop_end: u32 = recipients_count::read() + LOOP_START;
 
         loop {
-            if idx == recipients_count {
+            if idx == loop_end {
                 break (recipients.span(), percentages.span());
             }
 
@@ -97,23 +102,22 @@ mod Allocator {
     // - both arrays of recipient addresses and percentages are of equal length;
     // - there is at least one recipient;
     // - the percentages add up to one Ray.
-    fn set_allocation_internal(mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>) {
+    fn set_allocation_internal(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
         assert(recipients_len != 0, 'AL: No recipients');
         assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');
 
         let mut total_percentage: Ray = RayZeroable::zero();
-        let mut idx: u32 = 0;
+        let mut idx: u32 = LOOP_START;
 
-        // Event is emitted here because the spans will be modified in the loop below
-        AllocationUpdated(recipients, percentages);
-
+        let mut recipients_copy = recipients;
+        let mut percentages_copy = percentages;
         loop {
-            match recipients.pop_front() {
+            match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
                     recipients::write(idx, *recipient);
 
-                    let percentage: Ray = *(percentages.pop_front().unwrap());
+                    let percentage: Ray = *(percentages_copy.pop_front().unwrap());
                     percentages::write(*recipient, percentage);
 
                     total_percentage += percentage;
@@ -129,6 +133,8 @@ mod Allocator {
         assert(total_percentage == RAY_ONE.into(), 'AL: sum(percentages) != RAY_ONE');
 
         recipients_count::write(recipients_len);
+
+        AllocationUpdated(recipients, percentages);
     }
 
     //
