@@ -13,9 +13,14 @@ mod Allocator {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
+    // Helper constant to set the starting index for iterating over the recipients
+    // and percentages in the order they were added
+    const LOOP_START: u32 = 1;
+
     struct Storage {
         // Number of recipients in the current allocation
         recipients_count: u32,
+        // Starts from index 1
         // Keeps track of the address for each recipient by index
         // Note that the index count of recipients stored in this mapping may exceed the 
         // current `recipients_count`. This will happen if any previous allocations had 
@@ -59,11 +64,11 @@ mod Allocator {
         let mut recipients: Array<ContractAddress> = Default::default();
         let mut percentages: Array<Ray> = Default::default();
 
-        let mut idx: u32 = 0;
-        let recipients_count: u32 = recipients_count::read();
+        let mut idx: u32 = LOOP_START;
+        let loop_end: u32 = recipients_count::read() + LOOP_START;
 
         loop {
-            if idx == recipients_count {
+            if idx == loop_end {
                 break (recipients.span(), percentages.span());
             }
 
@@ -103,7 +108,7 @@ mod Allocator {
         assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');
 
         let mut total_percentage: Ray = RayZeroable::zero();
-        let mut idx: u32 = 0;
+        let mut idx: u32 = LOOP_START;
 
         let mut recipients_copy = recipients;
         let mut percentages_copy = percentages;

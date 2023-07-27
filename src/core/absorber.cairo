@@ -40,6 +40,9 @@ mod Absorber {
     // Shares to be minted without a provider to avoid first provider front-running
     const INITIAL_SHARES: u128 = 1000; // 10 ** 3 (Wad);
 
+    // First epoch of the Absorber 
+    const FIRST_EPOCH: u32 = 1;
+
     // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
     const MIN_LIMIT: u128 = 500000000000000000000000000; // 50 * wadray::RAY_PERCENT = 0.5
 
@@ -72,7 +75,7 @@ mod Absorber {
         shrine: IShrineDispatcher,
         // boolean flag indicating whether the absorber is live or not
         is_live: bool,
-        // epoch starts from 0
+        // epoch starts from 1
         // both shares and absorptions are tied to an epoch
         // the epoch is incremented when the amount of yin per share drops below the threshold.
         // this includes when the absorber's yin balance is completely depleted.
@@ -186,6 +189,7 @@ mod Absorber {
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         is_live::write(true);
         set_removal_limit_internal(limit);
+        current_epoch::write(FIRST_EPOCH);
     }
 
     //
