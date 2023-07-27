@@ -451,20 +451,12 @@ mod TestShrineRedistribution {
         assert(attributed_debt == WadZeroable::zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
-        // Check that yang 1 unit debt is zero
         let expected_redistribution_id: u32 = 1;
         assert(
             shrine.get_redistributions_count() == expected_redistribution_id,
             'wrong redistribution count'
         );
-        assert(
-            shrine
-                .get_redistribution_for_yang(
-                    yang1_addr, expected_redistribution_id
-                ).unit_debt == WadZeroable::zero(),
-            'should be skipped'
-        );
-
+        
         // Check that all of trove 2's debt was distributed to yang 1
         let expected_remaining_yang1: Wad = (ShrineUtils::TROVE1_YANG1_DEPOSIT
             + TROVE3_YANG1_DEPOSIT)
@@ -472,10 +464,17 @@ mod TestShrineRedistribution {
         let expected_unit_debt_for_yang2 = trove2_debt / expected_remaining_yang1;
         assert(
             shrine
-                .get_redistribution_for_yang(
-                    yang2_addr, expected_redistribution_id
-                ).unit_debt == expected_unit_debt_for_yang2,
+                .get_redistribution_for_yang(yang1_addr, expected_redistribution_id)
+                .unit_debt == expected_unit_debt_for_yang2,
             'wrong unit debt'
+        );
+
+        // Check that yang 2 unit debt is zero
+        assert(
+            shrine
+                .get_redistribution_for_yang(yang2_addr, expected_redistribution_id)
+                .unit_debt == WadZeroable::zero(),
+            'should be skipped'
         );
     }
 
