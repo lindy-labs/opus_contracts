@@ -283,7 +283,6 @@ mod Purger {
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
 
-        let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
         // LTV and value after compensation are used to calculate the max purge amount
         let value_after_compensation = wadray::rmul_rw(
             RAY_ONE.into() - compensation_pct, trove_value
@@ -299,7 +298,7 @@ mod Purger {
         // If the absorber is operational, cap the purge amount to the absorber's balance 
         // (including if it is zero).
         let purge_amt = if absorber.is_operational() {
-            min(max_purge_amt, absorber_yin_bal)
+            min(max_purge_amt, shrine.get_yin(absorber.contract_address))
         } else {
             WadZeroable::zero()
         };

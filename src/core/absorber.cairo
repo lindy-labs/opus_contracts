@@ -763,7 +763,7 @@ mod Absorber {
 
     // Helper function to update each provider's entitlement of an absorbed asset
     fn update_absorbed_asset(
-        absorption_id: u32, recipient_shares: Wad, asset: ContractAddress, amount: u128
+        absorption_id: u32, total_recipient_shares: Wad, asset: ContractAddress, amount: u128
     ) {
         if amount == 0 {
             return;
@@ -773,10 +773,10 @@ mod Absorber {
         let total_amount_to_distribute: u128 = amount + last_error;
 
         let asset_amt_per_share: u128 = wadray::wdiv_internal(
-            total_amount_to_distribute, recipient_shares.val
+            total_amount_to_distribute, total_recipient_shares.val
         );
         let actual_amount_distributed: u128 = wadray::wmul_internal(
-            asset_amt_per_share, recipient_shares.val
+            asset_amt_per_share, total_recipient_shares.val
         );
         let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
@@ -986,7 +986,7 @@ mod Absorber {
         }
 
         // Trigger issuance of active rewards
-        let recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
+        let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
 
         let mut rewards: Array<ContractAddress> = Default::default();
         let mut blessed_amts: Array<u128> = Default::default();
@@ -1015,10 +1015,10 @@ mod Absorber {
                 let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
 
                 let asset_amt_per_share: u128 = wadray::wdiv_internal(
-                    total_amount_to_distribute, recipient_shares.val
+                    total_amount_to_distribute, total_recipient_shares.val
                 );
                 let actual_amount_distributed: u128 = wadray::wmul_internal(
-                    asset_amt_per_share, recipient_shares.val
+                    asset_amt_per_share, total_recipient_shares.val
                 );
                 let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
@@ -1037,7 +1037,7 @@ mod Absorber {
         };
 
         if rewards.len() > 0 {
-            Bestow(rewards.span(), blessed_amts.span(), recipient_shares, epoch);
+            Bestow(rewards.span(), blessed_amts.span(), total_recipient_shares, epoch);
         }
     }
 
