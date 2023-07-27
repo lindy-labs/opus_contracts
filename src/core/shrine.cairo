@@ -7,7 +7,7 @@ mod Shrine {
     use starknet::get_caller_address;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
-    use zeroable::{NonZeroIntoImpl, Zeroable};
+    use zeroable::Zeroable;
 
     use aura::core::roles::ShrineRoles;
 
@@ -832,10 +832,10 @@ mod Shrine {
         let debt_to_redistribute: Wad = min(debt_to_redistribute, trove.debt);
         let redistributed_debt = redistribute_internal(
             redistribution_id,
-            pct_value_to_redistribute,
             trove_id,
             trove_value,
             debt_to_redistribute,
+            pct_value_to_redistribute,
             current_interval
         );
 
@@ -848,7 +848,8 @@ mod Shrine {
         troves::write(trove_id, trove);
 
         // Update the redistribution ID so that the redistributed trove does not 
-        // receive its own redistributions
+        // receive any of its own exceptional redistributions. This assumes that the 
+        // trove's last redistribution ID has been updated to `redistribution_id - 1`.
         trove_redistribution_id::write(trove_id, redistribution_id);
 
         // Event 
@@ -1206,10 +1207,10 @@ mod Shrine {
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
         redistribution_id: u32,
-        pct_value_to_redistribute: Ray,
         trove_id: u64,
         trove_value: Wad,
         trove_debt_to_redistribute: Wad,
+        pct_value_to_redistribute: Ray,
         current_interval: u64
     ) -> Wad {
         let yangs_count: u32 = yangs_count::read();
@@ -1553,7 +1554,7 @@ mod Shrine {
             };
         };
 
-        // See comment at this array's declaration on why.
+        // See comment at this array's declaration on why this is necessary.
         let mut new_yang_totals: Span<YangBalance> = new_yang_totals.span();
         let mut updated_trove_yang_balances: Span<YangBalance> = updated_trove_yang_balances.span();
         loop {

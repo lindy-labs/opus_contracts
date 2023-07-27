@@ -296,7 +296,7 @@ mod TestShrineRedistribution {
         shrine.redistribute(common::TROVE_1, BoundedWad::max(), RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_1);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_1);
@@ -372,7 +372,7 @@ mod TestShrineRedistribution {
         shrine.redistribute(common::TROVE_2, BoundedWad::max(), RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
@@ -456,11 +456,11 @@ mod TestShrineRedistribution {
         shrine.redistribute(common::TROVE_2, BoundedWad::max(), RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let (attributed_yangs, attributed_debt) = shrine.get_redistributions_attributed_to_trove(common::TROVE_2);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         // Check that yang 1 unit debt is zero

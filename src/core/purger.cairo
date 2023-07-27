@@ -3,7 +3,7 @@ mod Purger {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use option::OptionTrait;
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use starknet::{ContractAddress, get_caller_address};
     use traits::{Default, Into};
     use zeroable::Zeroable;
 
