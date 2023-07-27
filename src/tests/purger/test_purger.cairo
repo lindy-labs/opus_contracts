@@ -746,7 +746,7 @@ mod TestPurger {
 
         let (threshold, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
 
-        // Fund the absorber with the target trove's debt but short of 1000 wei
+        // Fund the absorber with the target trove's debt but short of 1 wei
         let debt_shortfall: Wad = 1_u128.into();
         let absorber_start_yin: Wad = before_debt - debt_shortfall;
         PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, absorber_start_yin);
