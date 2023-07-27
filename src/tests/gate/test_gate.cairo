@@ -28,12 +28,12 @@ mod TestGate {
 
         assert(gate.get_shrine() == shrine, 'get_shrine');
         assert(gate.get_asset() == eth, 'get_asset');
-        assert(gate.get_total_assets() == 0, 'get_total_assets');
+        assert(gate.get_total_assets().is_zero(), 'get_total_assets');
 
         // need to add_yang for the next set of asserts
         GateUtils::add_eth_as_yang(shrine, eth);
 
-        assert(gate.get_total_yang() == 0_u128.into(), 'get_total_yang');
+        assert(gate.get_total_yang().is_zero(), 'get_total_yang');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
     }
 
@@ -46,12 +46,12 @@ mod TestGate {
 
         assert(gate.get_shrine() == shrine, 'get_shrine');
         assert(gate.get_asset() == wbtc, 'get_asset');
-        assert(gate.get_total_assets() == 0, 'get_total_assets');
+        assert(gate.get_total_assets().is_zero(), 'get_total_assets');
 
         // need to add_yang for the next set of asserts
         GateUtils::add_wbtc_as_yang(shrine, wbtc);
 
-        assert(gate.get_total_yang() == 0_u128.into(), 'get_total_yang');
+        assert(gate.get_total_yang().is_zero(), 'get_total_yang');
         assert(gate.get_asset_amt_per_yang() == WAD_SCALE.into(), 'get_asset_amt_per_yang');
     }
 
