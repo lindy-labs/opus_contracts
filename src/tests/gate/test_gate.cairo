@@ -8,6 +8,7 @@ mod TestGate {
     use starknet::{ContractAddress, contract_address_const};
     use starknet::testing::set_contract_address;
     use traits::Into;
+    use zeroable::Zeroable;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
