@@ -241,6 +241,20 @@ mod PurgerUtils {
         (thresholds.span(), trove_ltvs.span())
     }
 
+    fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
+        let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        // base case for ordinary redistributions
+        yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
+
+        // exceptional redistribution because recipient trove does not have
+        // WBTC yang but redistributed trove has WBTC yang
+        let mut exceptional_case: Array<u128> = Default::default();
+        exceptional_case.append(20 * WAD_ONE); // 20 (Wad) ETH
+        exceptional_case.append(0_u128); // 0 WBTC
+        yang_asset_amts_cases.append(exceptional_case.span());
+
+        yang_asset_amts_cases.span()
+    }
 
     //
     // Test setup helpers
