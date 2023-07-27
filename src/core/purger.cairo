@@ -311,19 +311,21 @@ mod Purger {
         let can_absorb_any: bool = purge_amt.is_non_zero();
         let is_fully_absorbed: bool = purge_amt == max_purge_amt;
 
+        let percentage_freed: Ray = if can_absorb_any {
+            get_percentage_freed(
+                ltv_after_compensation,
+                value_after_compensation,
+                trove_debt,
+                trove_penalty,
+                purge_amt
+            )
+        } else {
+            RayZeroable::zero()
+        };
+
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
-        let mut percentage_freed: Ray = RayZeroable::zero();
         if can_absorb_any {
-            percentage_freed =
-                get_percentage_freed(
-                    ltv_after_compensation,
-                    value_after_compensation,
-                    trove_debt,
-                    trove_penalty,
-                    purge_amt
-                );
-
             // Free collateral corresponding to the purged amount
             let (yangs, absorbed_assets_amts) = free(
                 shrine, trove_id, percentage_freed, absorber.contract_address
