@@ -971,7 +971,7 @@ mod TestAbsorber {
         absorber.provide(WadZeroable::zero());
         let first_provider_info: Provision = absorber.get_provision(first_provider);
         assert(first_provider_info.shares == 1_u128.into(), 'wrong provider shares');
-        assert(first_provider_info.epoch == 1, 'wrong provider epoch');
+        assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
         absorber.request();
         set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
@@ -1197,7 +1197,7 @@ mod TestAbsorber {
                     assert(!absorber.is_operational(), 'should not be operational');
 
                     // Check epoch and total shares after threshold absorption
-                    let expected_epoch: u32 = 1;
+                    let expected_epoch: u32 = Absorber::FIRST_EPOCH + 1;
                     assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
                     // New total shares should be equivalent to remaining yin in Absorber
                     assert(
@@ -1226,7 +1226,7 @@ mod TestAbsorber {
                         first_provider_info.shares == expected_provider_shares,
                         'wrong provider shares'
                     );
-                    assert(first_provider_info.epoch == 1, 'wrong provider epoch');
+                    assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
                     let expected_first_provider_blessings_multiplier = RAY_SCALE.into();
                     let error_margin: Wad = 1000_u128.into();
