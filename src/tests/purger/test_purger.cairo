@@ -828,7 +828,7 @@ mod TestPurger {
     }
 
     #[test]
-    #[available_gas(20000000000)]
+    #[available_gas(200000000000)]
     fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             PurgerUtils::interesting_yang_amts_for_redistributed_trove();
@@ -928,6 +928,12 @@ mod TestPurger {
                                                 .get_absorption_penalty(target_trove);
                                             let max_close_amt: Wad = purger
                                                 .get_max_absorption_amount(target_trove);
+                                            // sanity check
+                                            assert(
+                                                max_close_amt < before_debt,
+                                                'close amt not below trove debt'
+                                            );
+
                                             let caller: ContractAddress =
                                                 PurgerUtils::random_user();
 
