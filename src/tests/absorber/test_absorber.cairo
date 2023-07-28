@@ -917,7 +917,7 @@ mod TestAbsorber {
     // 1. Provider 1 provides
     // 2. Absorption occurs; yin per share falls below threshold, and yin amount is 
     //    exactly 1 wei greater than the minimum initial shares. 
-    // 3. Provider 1 withdraws, which should be zero due to loss of precision.
+    // 3. Provider 1 should have zero shares due to loss of precision
     #[test]
     #[available_gas(20000000000)]
     fn test_remove_after_threshold_absorption_with_minimum_shares() {
