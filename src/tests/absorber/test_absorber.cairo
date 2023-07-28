@@ -952,7 +952,7 @@ mod TestAbsorber {
         let expected_epoch: u32 = Absorber::FIRST_EPOCH + 1;
         assert(absorber.get_current_epoch() == expected_epoch, 'wrong epoch');
         assert(
-            absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares'
+            absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares #1'
         );
         assert(!absorber.is_operational(), 'should not be operational');
 
@@ -970,28 +970,11 @@ mod TestAbsorber {
         // Trigger an update of the provider's Provision
         absorber.provide(WadZeroable::zero());
         let first_provider_info: Provision = absorber.get_provision(first_provider);
-        assert(first_provider_info.shares == 1_u128.into(), 'wrong provider shares');
+        // FIrst provider has zero shares due to loss of precision
+        assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
-
-        absorber.request();
-        set_block_timestamp(get_block_timestamp() + Absorber::REQUEST_BASE_TIMELOCK);
-        absorber.remove(BoundedU128::max().into());
-
-        // First provider should not receive any yin even though he has 1 share due to 
-        // loss of precision
         assert(
-            shrine.get_yin(first_provider) == first_provider_before_yin_bal, 'yin should not change'
-        );
-
-        let first_provider_info: Provision = absorber.get_provision(first_provider);
-        assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
-        assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
-
-        let request: Request = absorber.get_provider_request(first_provider);
-        assert(request.has_removed, 'request should be fulfilled');
-
-        assert(
-            absorber.get_total_shares_for_current_epoch() == Absorber::INITIAL_SHARES.into(), 'wrong total shares #2'
+            absorber.get_total_shares_for_current_epoch() == above_min_shares, 'wrong total shares #2'
         );
     }
 
@@ -1222,8 +1205,10 @@ mod TestAbsorber {
                     let first_provider_info: Provision = absorber.get_provision(first_provider);
                     let expected_provider_shares: Wad = *remaining_yin_amt
                         - Absorber::INITIAL_SHARES.into();
-                    assert(
-                        first_provider_info.shares == expected_provider_shares,
+                    common::assert_equalish(
+                        first_provider_info.shares, 
+                        expected_provider_shares, 
+                        1_u128.into(), // error margin for loss of precision from rounding down
                         'wrong provider shares'
                     );
                     assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');

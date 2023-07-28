@@ -25,7 +25,7 @@ mod Absorber {
     use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE, RAY_SCALE, Wad, WAD_ONE};
+    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
     //
     // Constants
@@ -748,16 +748,7 @@ mod Absorber {
         }
 
         let epoch_conversion_rate: Ray = epoch_share_conversion_rate::read(start_epoch);
-
-        let ray_scale: u256 = RAY_SCALE.into();
-        let (shares, r) = u256_safe_divmod(
-            start_shares.into() * epoch_conversion_rate.into(), ray_scale.try_into().unwrap()
-        );
-
-        let mut new_shares: Wad = shares.try_into().unwrap();
-        // Round up if `r >= 0.5`
-        let rounded_r: u128 = r.try_into().unwrap() + (RAY_ONE / 2).into();
-        new_shares += (rounded_r / RAY_SCALE).into();
+        let new_shares: Wad = wadray::rmul_wr(start_shares, epoch_conversion_rate);
 
         convert_epoch_shares(start_epoch + 1, end_epoch, new_shares)
     }
