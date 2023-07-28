@@ -295,6 +295,9 @@ mod TestPurger {
             flash_liquidator.contract_address, yangs, AbsorberUtils::provider_asset_amts()
         );
 
+        // Accrue some interest
+        common::advance_intervals(500);
+
         let (threshold, _, value, debt) = shrine.get_trove_info(target_trove);
         let target_ltv: Ray = (threshold.val + 1).into();
         PurgerUtils::adjust_prices_for_trove_ltv(
@@ -365,6 +368,9 @@ mod TestPurger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
+                                // Accrue some interest
+                                common::advance_intervals(500);
+
                                 let (_, _, value, before_debt) = shrine
                                     .get_trove_info(target_trove);
                                 PurgerUtils::adjust_prices_for_trove_ltv(
@@ -389,7 +395,7 @@ mod TestPurger {
                                 let (_, after_ltv, _, after_debt) = shrine
                                     .get_trove_info(target_trove);
 
-                                let is_fully_liquidated: bool = trove_debt == max_close_amt;
+                                let is_fully_liquidated: bool = before_debt == max_close_amt;
                                 if !is_fully_liquidated {
                                     PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
 
@@ -1345,6 +1351,9 @@ mod TestPurger {
                                     abbot, yangs, gates, trove_debt
                                 );
 
+                                // Accrue some interest
+                                common::advance_intervals(500);
+
                                 let (_, _, start_value, before_debt) = shrine
                                     .get_trove_info(target_trove);
 
@@ -1441,6 +1450,9 @@ mod TestPurger {
                                 let target_trove: u64 = PurgerUtils::funded_healthy_trove(
                                     abbot, yangs, gates, trove_debt
                                 );
+
+                                // Accrue some interest
+                                common::advance_intervals(500);
 
                                 let (_, _, start_value, before_debt) = shrine
                                     .get_trove_info(target_trove);
@@ -1583,6 +1595,9 @@ mod TestPurger {
                     let target_trove: u64 = PurgerUtils::funded_healthy_trove(
                         abbot, yangs, gates, trove_debt
                     );
+
+                    // Accrue some interest
+                    common::advance_intervals(500);
 
                     let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
 
