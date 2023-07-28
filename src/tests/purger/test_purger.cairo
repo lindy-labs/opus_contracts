@@ -8,7 +8,6 @@ mod TestPurger {
     use traits::Into;
     use zeroable::Zeroable;
 
-    use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
     use aura::core::roles::PurgerRoles;
 
@@ -733,6 +732,8 @@ mod TestPurger {
         };
     }
 
+    // Note that the absorber also zero shares in this test because no provider has
+    // provided yin yet. 
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_full_redistribution_parametrized() {
