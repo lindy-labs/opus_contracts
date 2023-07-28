@@ -817,7 +817,6 @@ mod Shrine {
         AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
         let current_interval: u64 = now();
-        let (_, trove_value) = get_trove_threshold_and_value_internal(trove_id, current_interval);
 
         // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
         // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
@@ -833,7 +832,6 @@ mod Shrine {
         redistribute_internal(
             redistribution_id,
             trove_id,
-            trove_value,
             debt_to_redistribute,
             pct_value_to_redistribute,
             current_interval
@@ -1209,16 +1207,11 @@ mod Shrine {
     fn redistribute_internal(
         redistribution_id: u32,
         trove_id: u64,
-        trove_value: Wad,
         trove_debt_to_redistribute: Wad,
         pct_value_to_redistribute: Ray,
         current_interval: u64
     ) {
         let yangs_count: u32 = yangs_count::read();
-
-        let trove_value_to_redistribute: Wad = min(
-            wadray::rmul_wr(trove_value, pct_value_to_redistribute), trove_value
-        );
 
         // Placeholders to be used for exceptional redistributions so that 
         // `get_shrine_threshold_and_value` only needs to be called once
@@ -1283,6 +1276,12 @@ mod Shrine {
         let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
+        let (_, trove_value) = get_simulated_trove_threshold_and_value(
+            trove_yang_balances, current_interval
+        );
+        let trove_value_to_redistribute: Wad = min(
+            wadray::rmul_wr(trove_value, pct_value_to_redistribute), trove_value
+        );
 
         // Keep track of the total debt redistributed for the return value
         let mut redistributed_debt: Wad = WadZeroable::zero();
@@ -1317,8 +1316,8 @@ mod Shrine {
                         - trove_yang_amt
                         - redistributed_yang_initial_amt;
 
-                    // Calculate the actual amount of debt that should be redistributed, including any rounding
-                    // of dust amounts of debt.
+                    // Calculate the actual amount of debt that should be redistributed, including any 
+                    // rounding of dust amounts of debt.
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
                     );
