@@ -158,7 +158,7 @@ mod PurgerUtils {
         let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
         // 86.2203% (Ray) - LTV at which maximum penalty of 12.5% is reached
         ltvs_for_fourth_threshold.append(862203000000000000000000000_u128.into());
-        ltvs_for_fourth_threshold.append(max_possible_penalty_ltv);
+        ltvs_for_fourth_threshold.append(862222200000000000000000000_u128.into());
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
 
         trove_ltvs.span()
