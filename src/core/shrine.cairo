@@ -841,9 +841,11 @@ mod Shrine {
         trove.debt -= debt_to_redistribute;
         troves::write(trove_id, trove);
 
-        // Update the redistribution ID so that the redistributed trove does not 
-        // receive any of its own exceptional redistributions. This assumes that the 
-        // trove's last redistribution ID has been updated to `redistribution_id - 1`.
+        // Update the redistribution ID so that it is not possible for the redistributed 
+        // trove to receive any of its own exceptional redistribution in the event of a
+        // redistribution of an amount less than the trove's debt. 
+        // Note that the trove's last redistribution ID should have been updated to 
+        // `redistribution_id - 1`.
         trove_redistribution_id::write(trove_id, redistribution_id);
 
         // Event 
