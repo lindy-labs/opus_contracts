@@ -14,7 +14,7 @@ mod TestShrineRedistribution {
     use aura::utils::types::{ExceptionalYangRedistribution, YangRedistribution};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{BoundedWad, Ray, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
     use aura::tests::shrine::utils::ShrineUtils;
     use aura::tests::common;
@@ -407,6 +407,83 @@ mod TestShrineRedistribution {
         shrine.melt(trove2_owner, common::TROVE_3, WadZeroable::zero());
         // TODO: checking equality with `expected_redistribution_id` causes `Unknown ap change` error
         assert(shrine.get_trove_redistribution_id(common::TROVE_3) == 2, 'wrong id');
+    }
+
+    // Parametrized test to check that partial redistribution of a trove results in the correct
+    // value and debt for the redistributed trove.
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_shrine_redistribution_parametrized() {
+        let mut percentages: Array<Ray> = Default::default();
+        // Note that zero is an invalid value for debt due to zero division
+        percentages.append((15 * RAY_PERCENT).into());
+        percentages.append((99 * RAY_PERCENT).into());
+        percentages.append((100 * RAY_PERCENT).into());
+        let mut percentages = percentages.span();
+
+        loop {
+            match percentages.pop_front() {
+                Option::Some(percentage) => {
+                    let shrine: IShrineDispatcher = redistribution_setup();
+
+                    let (_, _, _, before_trove2_debt) = shrine.get_trove_info(common::TROVE_2);
+
+                    // Note order is reversed to match `yang_addrs`
+                    let mut trove2_yang_deposits: Array<Wad> = Default::default();
+                    trove2_yang_deposits.append(TROVE2_YANG2_DEPOSIT.into());
+                    trove2_yang_deposits.append(TROVE2_YANG1_DEPOSIT.into());
+                    let mut trove2_yang_deposits = trove2_yang_deposits.span();
+
+                    let yang_addrs: Span<ContractAddress> = ShrineUtils::two_yang_addrs();
+                    let redistributed_trove = common::TROVE_1;
+                    let (
+                        redistributed_trove_yang_values,
+                        expected_unit_debts,
+                        _,
+                        expected_remaining_yangs
+                    ) =
+                        preview_trove_redistribution(
+                        shrine, yang_addrs, redistributed_trove
+                    );
+
+                    // Simulate purge with 0 yin to update the trove's debt
+                    set_contract_address(ShrineUtils::admin());
+                    let trove1_owner = common::trove1_owner_addr();
+                    let (_, _, before_redistributed_trove_value, before_redistributed_trove_debt) =
+                        shrine
+                        .get_trove_info(redistributed_trove);
+                    shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
+
+                    assert(shrine.get_redistributions_count() == 0, 'wrong start state');
+                    let debt_to_redistribute: Wad = wadray::rmul_wr(
+                        before_redistributed_trove_debt, *percentage
+                    );
+                    let value_to_redistribute: Wad = wadray::rmul_wr(
+                        before_redistributed_trove_value, *percentage
+                    );
+                    shrine.redistribute(redistributed_trove, debt_to_redistribute, *percentage);
+
+                    let (_, _, after_redistributed_trove_value, after_redistributed_trove_debt) =
+                        shrine
+                        .get_trove_info(redistributed_trove);
+                    assert(
+                        after_redistributed_trove_debt == before_redistributed_trove_debt
+                            - debt_to_redistribute,
+                        'wrong redistributed trove debt'
+                    );
+
+                    common::assert_equalish(
+                        after_redistributed_trove_value,
+                        before_redistributed_trove_value - value_to_redistribute,
+                        10_u128.into(), // error margin
+                        'wrong redistributed trove value'
+                    );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
     }
 
     #[test]
