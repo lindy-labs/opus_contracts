@@ -1204,6 +1204,10 @@ mod Shrine {
     //       deposited excluding the initial yang amount;
     //    and in both cases, store the fixed point division error, and write to storage.
     //
+    // Note that `pct_value_to_redistribute` should not exceed one Ray (100%) or it would lead to
+    // an overflow when deducting the redistributed amount of yang from the trove.
+    // Note that `trove_debt_to_redistribute` cannot be zero or this will revert due to zero division.
+    //
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
         redistribution_id: u32,
@@ -1321,6 +1325,7 @@ mod Shrine {
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
                     );
+                    'here'.print();
                     let raw_debt_to_distribute = wadray::rmul_rw(
                         wadray::rdiv_ww(
                             yang_amt_to_redistribute * redistributed_yang_price,
@@ -1328,6 +1333,7 @@ mod Shrine {
                         ),
                         trove_debt_to_redistribute
                     );
+                    'after here'.print();
                     let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
                         trove_debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
                     );
