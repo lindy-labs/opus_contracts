@@ -13,6 +13,7 @@ mod TestPurger {
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -861,8 +862,7 @@ mod TestPurger {
                                 common::advance_intervals(500);
 
                                 let before_total_debt: Wad = shrine.get_total_debt();
-                                let (_, _, before_target_trove_value, before_target_trove_debt) =
-                                    shrine
+                                let (_, _, _, before_target_trove_debt) = shrine
                                     .get_trove_info(target_trove);
                                 let accrued_interest: Wad = before_target_trove_debt
                                     - initial_trove_debt;
@@ -937,13 +937,6 @@ mod TestPurger {
                                     'not less than close amount'
                                 );
 
-                                let target_trove_owner: ContractAddress =
-                                    PurgerUtils::target_trove_owner();
-                                let before_target_trove_owner_asset_bals: Span<Span<u128>> =
-                                    common::get_token_balances(
-                                    yangs, target_trove_owner.into()
-                                );
-
                                 let caller: ContractAddress = PurgerUtils::random_user();
                                 set_contract_address(caller);
                                 let (_, compensation) = purger.absorb(target_trove);
@@ -966,9 +959,12 @@ mod TestPurger {
                                 let (_, after_ltv, after_value, after_debt) = shrine
                                     .get_trove_info(target_trove);
                                 let expected_after_debt: Wad = before_debt - max_close_amt;
+                                let expected_redistributed_value: Wad = wadray::rmul_wr(
+                                    max_close_amt, RAY_ONE.into() + penalty
+                                );
                                 let expected_after_value: Wad = before_value
                                     - expected_compensation_value
-                                    - wadray::rmul_wr(max_close_amt, RAY_ONE.into() + penalty);
+                                    - expected_redistributed_value;
                                 assert(
                                     after_debt == expected_after_debt,
                                     'wrong debt after liquidation'
@@ -1043,6 +1039,42 @@ mod TestPurger {
                                     (WAD_ONE / 100).into(), // error margin
                                     'wrong recipient trove debt'
                                 );
+
+                                // Check remainder yang assets for redistributed trove is correct
+                                let expected_remainder_pct: Ray = wadray::rdiv_ww(
+                                    expected_after_value, before_value
+                                );
+                                let mut expected_remainder_trove_yang_asset_amts =
+                                    common::scale_span_by_pct(
+                                    *target_trove_yang_asset_amts, expected_remainder_pct
+                                );
+
+                                let mut yangs_copy = yangs;
+                                let mut gates_copy = gates;
+                                loop {
+                                    match expected_remainder_trove_yang_asset_amts.pop_front() {
+                                        Option::Some(expected_asset_amt) => {
+                                            let gate: IGateDispatcher = *gates_copy
+                                                .pop_front()
+                                                .unwrap();
+                                            let remainder_trove_yang: Wad = shrine
+                                                .get_deposit(
+                                                    *yangs_copy.pop_front().unwrap(), target_trove
+                                                );
+                                            let remainder_asset_amt: u128 = gate
+                                                .preview_exit(remainder_trove_yang);
+                                            common::assert_equalish(
+                                                remainder_asset_amt,
+                                                *expected_asset_amt,
+                                                100_u128.into(),
+                                                'wrong remainder yang asset'
+                                            );
+                                        },
+                                        Option::None(_) => {
+                                            break;
+                                        },
+                                    };
+                                };
                             },
                             Option::None(_) => {
                                 break;
