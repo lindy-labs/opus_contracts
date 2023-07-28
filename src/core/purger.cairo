@@ -345,14 +345,15 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            if max_purge_amt == trove_debt {
+            let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
+            if redistribute_trove_debt_in_full {
                 shrine.redistribute(trove_id, BoundedWad::max(), RAY_ONE.into());
             } else {
                 // Additional manipulation is needed when redistributing only part of a trove's debt
                 // because the trove stands to "gain" from the redistribution of its own yangs through
                 // its remainder amount of yangs (`trove_remainder_yang_amt`).
 
-                // Using the expected amount of assets that should remain in the trove (`excess_asset_amt`),
+                // Since we know the expected amount of assets that should remain in the trove (`excess_asset_amt`),
                 // we can derive the amount of excess yang (`excess_yang_amt`) that should be in the trove after 
                 // redistribution. 
                 //
@@ -361,17 +362,18 @@ mod Purger {
                 //                  = excess_yang_amt * -----------------------------------------------------------
                 //                                       (yang_total - trove_remainder_yang_amt) + excess_yang_amt
                 //
-                // The above equation can be transformed to the one below:
                 //
+                // The above equation can be transformed to:
                 //
                 //                    excess_asset_amt * total_yang_excluding_redistributed_trove
                 // excess_yang_amt = -------------------------------------------------------------
                 //                                 total_assets - excess_asset_amt
                 //
-                // By deducting the difference between the remainder amount of a yang and the amount of 
-                // yang required to entitle the redistributed trove to the excess amount of assets (based 
-                // on the current asset amount per yang wad) from both the trove and the total supply, the
-                // trove will now be entitled to the correct amount of excess assets.
+                //
+                // After redistribution, we simply deduct the difference between the remainder amount of yang 
+                // in the trove (`trove_remainder_yang_amt`) and the amount of yang required to entitle the 
+                // redistributed trove to the earlier derived excess amount of assets (`excess_yang_amt`)
+                // from both the trove and the total supply.
 
                 // Loop over yangs and get the excess asset amount that should remain in the 
                 // trove after redistribution

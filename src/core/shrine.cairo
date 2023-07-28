@@ -1232,12 +1232,12 @@ mod Shrine {
         // be the first yang or the last yang), we need the total yang supply for all yangs 
         // (regardless how they are to be redistributed) to remain constant throughout the 
         // iteration over the yangs deposited in the trove. Therefore, we keep track of the
-        // updated total supply for each yang, and only update them after the loop.
-        // 
+        // updated total supply and the redistributed trove's remainder amount for each yang, 
+        // and only update them after the loop.
         //
         // For yangs that cannot be redistributed via rebasing because no other troves
         // has deposited that yang, keep track of their yang IDs so that the redistributed 
-        // trove's yang amount can be set to 0 after the main loop. The troves' yang amount
+        // trove's yang amount can be updated after the main loop. The troves' yang amount
         // cannot be modified while in the main loop for such yangs because it would result 
         // in the amount of yangs for other troves to be calculated wrongly.
         //
@@ -1276,6 +1276,8 @@ mod Shrine {
         //    determine how much of yang1 and its proportional debt should be redistributed between
         //    yang2 and yang3. However, the total shrine value is now incorrect because yang2 and
         //    yang3 total yang amounts have decremented, but the yang prices have not been updated.
+        //
+        // Note that these two arrays should be equal in length at the end of the main loop.
         let mut new_yang_totals: Array<YangBalance> = Default::default();
         let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
@@ -1292,6 +1294,7 @@ mod Shrine {
                     let yang_id_to_redistribute = (*yang_balance).yang_id;
                     // Skip over this yang if it has not been deposited in the trove
                     if trove_yang_amt.is_zero() {
+                        updated_trove_yang_balances.append(*yang_balance);
                         continue;
                     }
 
@@ -1554,12 +1557,12 @@ mod Shrine {
             };
         };
 
-        // See comment at this array's declaration on why this is necessary.
+        // See comment at both arrays' declarations on why this is necessary
         let mut new_yang_totals: Span<YangBalance> = new_yang_totals.span();
         let mut updated_trove_yang_balances: Span<YangBalance> = updated_trove_yang_balances.span();
         loop {
             match new_yang_totals.pop_front() {
-                Option::Some(yang_balance) => {
+                Option::Some(total_yang_balance) => {
                     let updated_trove_yang_balance: YangBalance = *updated_trove_yang_balances
                         .pop_front()
                         .unwrap();
@@ -1567,7 +1570,8 @@ mod Shrine {
                         (updated_trove_yang_balance.yang_id, trove_id),
                         updated_trove_yang_balance.amount
                     );
-                    yang_total::write(*yang_balance.yang_id, *yang_balance.amount);
+
+                    yang_total::write(*total_yang_balance.yang_id, *total_yang_balance.amount);
                 },
                 Option::None(_) => {
                     break;
