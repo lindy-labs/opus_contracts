@@ -300,11 +300,6 @@ mod TestShrineRedistribution {
         assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
-        let (attributed_yangs, attributed_debt) = shrine
-            .get_redistributions_attributed_to_trove(common::TROVE_1);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
-        assert(attributed_yangs.len().is_zero(), 'should be empty');
-
         let expected_redistribution_id: u32 = 1;
         assert(
             shrine.get_redistributions_count() == expected_redistribution_id,
@@ -376,11 +371,6 @@ mod TestShrineRedistribution {
         let (attributed_yangs, attributed_debt) = shrine
             .get_redistributions_attributed_to_trove(common::TROVE_2);
         assert(attributed_debt.is_zero(), 'should be zero');
-        assert(attributed_yangs.len().is_zero(), 'should be empty');
-
-        let (attributed_yangs, attributed_debt) = shrine
-            .get_redistributions_attributed_to_trove(common::TROVE_2);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let expected_redistribution_id: u32 = 2;
@@ -462,13 +452,8 @@ mod TestShrineRedistribution {
 
         let (attributed_yangs, attributed_debt) = shrine
             .get_redistributions_attributed_to_trove(redistributed_trove);
-        assert(attributed_debt.is_zero(), 'should be zero #1');
-        assert(attributed_yangs.len().is_zero(), 'should be empty #1');
-
-        let (attributed_yangs, attributed_debt) = shrine
-            .get_redistributions_attributed_to_trove(redistributed_trove);
-        assert(attributed_debt.is_zero(), 'should be zero #2');
-        assert(attributed_yangs.len().is_zero(), 'should be empty #2');
+        assert(attributed_debt.is_zero(), 'should be zero');
+        assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         // Check that yang 1 unit debt is zero
         let expected_redistribution_id: u32 = 1;
