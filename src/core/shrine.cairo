@@ -830,7 +830,7 @@ mod Shrine {
 
         // Perform redistribution
         let debt_to_redistribute: Wad = min(debt_to_redistribute, trove.debt);
-        let redistributed_debt = redistribute_internal(
+        redistribute_internal(
             redistribution_id,
             trove_id,
             trove_value,
@@ -838,10 +838,6 @@ mod Shrine {
             pct_value_to_redistribute,
             current_interval
         );
-
-        // `round_distributed_debt` should guarantee that the redistributed debt
-        // is equal to the trove's debt. Therefore, we do not assert equality here
-        // to ensure that `redistribute` does not fail.
 
         trove.charge_from = current_interval;
         trove.debt -= debt_to_redistribute;
@@ -853,7 +849,7 @@ mod Shrine {
         trove_redistribution_id::write(trove_id, redistribution_id);
 
         // Event 
-        TroveRedistributed(redistribution_id, trove_id, redistributed_debt);
+        TroveRedistributed(redistribution_id, trove_id, debt_to_redistribute);
     }
 
     // Mint a specified amount of synthetic without attributing the debt to a Trove
@@ -1206,7 +1202,8 @@ mod Shrine {
     //
     // Note that `pct_value_to_redistribute` should not exceed one Ray (100%) or it would lead to
     // an overflow when deducting the redistributed amount of yang from the trove.
-    // Note that `trove_debt_to_redistribute` cannot be zero or this will revert due to zero division.
+    // Note that `trove_debt_to_redistribute` cannot be zero as it would lead to a revert due to 
+    // zero division.
     //
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
@@ -1216,7 +1213,7 @@ mod Shrine {
         trove_debt_to_redistribute: Wad,
         pct_value_to_redistribute: Ray,
         current_interval: u64
-    ) -> Wad {
+    ) {
         let yangs_count: u32 = yangs_count::read();
 
         let trove_value_to_redistribute: Wad = min(
@@ -1288,7 +1285,7 @@ mod Shrine {
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
 
         // Keep track of the total debt redistributed for the return value
-        let mut redistributed_debt: Wad = 0_u128.into();
+        let mut redistributed_debt: Wad = WadZeroable::zero();
         let mut trove_yang_balances_copy = trove_yang_balances;
         // Iterate over the yangs deposited in the trove to be redistributed
         loop {
@@ -1325,7 +1322,6 @@ mod Shrine {
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
                     );
-                    'here'.print();
                     let raw_debt_to_distribute = wadray::rmul_rw(
                         wadray::rdiv_ww(
                             yang_amt_to_redistribute * redistributed_yang_price,
@@ -1333,7 +1329,6 @@ mod Shrine {
                         ),
                         trove_debt_to_redistribute
                     );
-                    'after here'.print();
                     let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
                         trove_debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
                     );
@@ -1584,8 +1579,6 @@ mod Shrine {
                 },
             };
         };
-
-        redistributed_debt
     }
 
     // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.
