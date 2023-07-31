@@ -91,8 +91,12 @@ mod PragmaUtils {
         };
 
         let price_ts: u64 = get_block_timestamp() - 1000;
-        mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, convert_price_to_pragma_scale(ETH_INIT_PRICE), price_ts);
-        mock_valid_price_update(mock_pragma, WBTC_USD_PAIR_ID, convert_price_to_pragma_scale(WBTC_INIT_PRICE), price_ts);
+        mock_valid_price_update(
+            mock_pragma, ETH_USD_PAIR_ID, convert_price_to_pragma_scale(ETH_INIT_PRICE), price_ts
+        );
+        mock_valid_price_update(
+            mock_pragma, WBTC_USD_PAIR_ID, convert_price_to_pragma_scale(WBTC_INIT_PRICE), price_ts
+        );
 
         mock_pragma
     }

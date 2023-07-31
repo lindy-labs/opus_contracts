@@ -349,12 +349,18 @@ mod TestPragma {
         let first_ts = get_block_timestamp() + 1;
         let mut raw_eth_price: u128 = PragmaUtils::ETH_INIT_PRICE;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(raw_eth_price), first_ts
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_eth_price),
+            first_ts
         );
 
         let mut raw_wbtc_price: u128 = PragmaUtils::WBTC_INIT_PRICE;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(raw_wbtc_price), first_ts
+            mock_pragma,
+            PragmaUtils::WBTC_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_wbtc_price),
+            first_ts
         );
 
         pragma_oracle.update_prices();
@@ -380,19 +386,31 @@ mod TestPragma {
         set_block_timestamp(next_ts);
         raw_eth_price += 10;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(raw_eth_price), next_ts
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_eth_price),
+            next_ts
         );
         raw_wbtc_price += 10;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(raw_wbtc_price), next_ts
+            mock_pragma,
+            PragmaUtils::WBTC_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_wbtc_price),
+            next_ts
         );
         pragma_oracle.update_prices();
 
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
-        assert(eth_price == (raw_eth_price * rebase_multiplier * WAD_SCALE).into(), 'wrong rebased ETH price');
+        assert(
+            eth_price == (raw_eth_price * rebase_multiplier * WAD_SCALE).into(),
+            'wrong rebased ETH price'
+        );
 
         let (wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
-        assert(wbtc_price == (raw_wbtc_price * rebase_multiplier * WAD_SCALE).into(), 'wrong rebased WBTC price');
+        assert(
+            wbtc_price == (raw_wbtc_price * rebase_multiplier * WAD_SCALE).into(),
+            'wrong rebased WBTC price'
+        );
     }
 
     #[test]
@@ -413,7 +431,9 @@ mod TestPragma {
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
         let mut new_ts: u64 = get_block_timestamp() + 1;
-        let mut price: u128 = PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE + 10);
+        let mut price: u128 = PragmaUtils::convert_price_to_pragma_scale(
+            PragmaUtils::ETH_INIT_PRICE + 10
+        );
         set_block_timestamp(new_ts);
         PragmaUtils::mock_valid_price_update(
             mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts
@@ -471,8 +491,7 @@ mod TestPragma {
         assert(before_wbtc_price == after_wbtc_price, 'price should not be updated #2');
 
         assert(!pragma.probe_task(), 'should not be ready');
-
-        // TODO: check that `PricesUpdated` event is not emitted
+    // TODO: check that `PricesUpdated` event is not emitted
     }
 
     // TODO: This can only be completed when we are able to test if an event is emitted
@@ -493,7 +512,10 @@ mod TestPragma {
         let new_ts: u64 = get_block_timestamp() + 1;
         set_block_timestamp(new_ts);
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE + 10), new_ts
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE + 10),
+            new_ts
         );
         pragma_oracle.update_prices();
 
