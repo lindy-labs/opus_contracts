@@ -247,7 +247,7 @@ mod Purger {
         // Free collateral corresponding to the purged amount
         let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
 
-        // Safety check to ensure the new LTV is lower than old LTV 
+        // Safety check to ensure the new LTV is not worse off
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
@@ -440,7 +440,7 @@ mod Purger {
             oracle::read().update_prices();
         }
 
-        // Safety check to ensure the new LTV is lower than old LTV 
+        // Safety check to ensure the new LTV is not worse off
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
