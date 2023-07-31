@@ -18,7 +18,7 @@ mod Purger {
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
     use aura::utils::wadray;
-    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV 
     // the trove should have after a liquidation, which in turn determines the
@@ -345,9 +345,11 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
+            let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
+
             let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
             if redistribute_trove_debt_in_full {
-                shrine.redistribute(trove_id, BoundedWad::max(), RAY_ONE.into());
+                shrine.redistribute(trove_id, debt_to_redistribute, RAY_ONE.into());
             } else {
                 // Additional manipulation is needed when redistributing only part of a trove's debt
                 // because the trove stands to "gain" from the redistribution of its own yangs through
@@ -377,13 +379,14 @@ mod Purger {
 
                 // Loop over yangs and get the excess asset amount that should remain in the 
                 // trove after redistribution
-                let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
                 let remaining_trove_value: Wad = value_after_compensation
                     - wadray::rmul_wr(value_after_compensation, percentage_freed);
                 let pct_value_to_redistribute: Ray = wadray::rdiv_ww(
                     wadray::rmul_wr(debt_to_redistribute, RAY_ONE.into() + trove_penalty),
                     remaining_trove_value
                 );
+                // Note that `pct_value_to_redistribute` should be less than 100% if 
+                // the maximum close amount is less than the trove's debt.
                 let excess_pct: Ray = RAY_ONE.into() - pct_value_to_redistribute;
 
                 let sentinel: ISentinelDispatcher = sentinel::read();

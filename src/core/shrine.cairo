@@ -824,7 +824,6 @@ mod Shrine {
         redistributions_count::write(redistribution_id);
 
         // Perform redistribution
-        let debt_to_redistribute: Wad = min(debt_to_redistribute, trove.debt);
         redistribute_internal(
             redistribution_id,
             trove_id,
@@ -1287,8 +1286,8 @@ mod Shrine {
         let (_, trove_value) = get_simulated_trove_threshold_and_value(
             trove_yang_balances, current_interval
         );
-        let trove_value_to_redistribute: Wad = min(
-            wadray::rmul_wr(trove_value, pct_value_to_redistribute), trove_value
+        let trove_value_to_redistribute: Wad = wadray::rmul_wr(
+            trove_value, pct_value_to_redistribute
         );
 
         // Keep track of the total debt redistributed for the return value
