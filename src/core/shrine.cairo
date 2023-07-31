@@ -1204,11 +1204,11 @@ mod Shrine {
     //       deposited excluding the initial yang amount;
     //    and in both cases, store the fixed point division error, and write to storage.
     //
-    // Note that this internal function will revert if:
-    // 1. `pct_value_to_redistribute` exceeds one Ray (100%) due to an overflow when deducting 
-    //     the redistributed amount of yang from the trove; or
-    // 2. `debt_to_redistribute` is equal to zero as it would lead to a revert due to 
-    //     zero division when calculating the amount of debt to be redistributed for a yang.
+    // Note that this internal function will revert if `pct_value_to_redistribute` is:
+    // 1. zero, due to zero division error when calculating the amount of debt to be
+    //    redistributed for each yang; or
+    // 2. exceeds one Ray (100%), due to an overflow when deducting the redistributed 
+    //    amount of yang from the trove.
     //
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
