@@ -681,12 +681,6 @@ mod TestPurger {
                                     .get_trove_info(recipient_trove);
                                 let before_total_debt: Wad = shrine.get_total_debt();
 
-                                // sanity check
-                                assert(
-                                    shrine.get_yin(absorber.contract_address) < before_debt,
-                                    'not partial absorption'
-                                );
-
                                 // Make the target trove absorbable
                                 let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
                                 PurgerUtils::adjust_prices_for_trove_ltv(
@@ -709,8 +703,12 @@ mod TestPurger {
                                 let max_close_amt: Wad = purger
                                     .get_max_absorption_amount(target_trove);
                                 let close_amt: Wad = absorber_start_yin;
+
                                 // Sanity check 
-                                assert(close_amt <= max_close_amt, 'max close amount exceeded');
+                                assert(
+                                    shrine.get_yin(absorber.contract_address) < max_close_amt,
+                                    'not less than close amount'
+                                );
 
                                 let caller: ContractAddress = PurgerUtils::random_user();
 
@@ -725,7 +723,6 @@ mod TestPurger {
                                 let expected_compensation_value: Wad = purger
                                     .get_compensation(target_trove);
 
-                                let caller: ContractAddress = PurgerUtils::random_user();
                                 set_contract_address(caller);
                                 let (_, compensation) = purger.absorb(target_trove);
 
@@ -985,8 +982,6 @@ mod TestPurger {
                                                 'not less than close amount'
                                             );
 
-                                            let caller: ContractAddress =
-                                                PurgerUtils::random_user();
                                             set_contract_address(caller);
                                             let (_, compensation) = purger.absorb(target_trove);
 
