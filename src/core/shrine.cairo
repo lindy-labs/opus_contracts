@@ -838,6 +838,7 @@ mod Shrine {
         );
 
         trove.charge_from = current_interval;
+        // Note that this will revert if `debt_to_redistribute` exceeds the trove's debt.
         trove.debt -= debt_to_redistribute;
         troves::write(trove_id, trove);
 
@@ -1200,10 +1201,11 @@ mod Shrine {
     //       deposited excluding the initial yang amount;
     //    and in both cases, store the fixed point division error, and write to storage.
     //
-    // Note that `pct_value_to_redistribute` should not exceed one Ray (100%) or it would lead to
-    // an overflow when deducting the redistributed amount of yang from the trove.
-    // Note that `trove_debt_to_redistribute` cannot be zero as it would lead to a revert due to 
-    // zero division.
+    // Note that this helper function will revert if:
+    // 1. `pct_value_to_redistribute` exceeds one Ray (100%) due to an overflow when deducting 
+    //     the redistributed amount of yang from the trove; or
+    // 2. `trove_debt_to_redistribute` is equal to zero as it would lead to a revert due to 
+    //     zero division.
     //
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
