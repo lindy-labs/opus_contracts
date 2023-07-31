@@ -190,7 +190,7 @@ mod PurgerUtils {
 
         // Third threshold of 90% (Ray)
         let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
-        // 92.09% (Ray) - LTV at which maximum penalty is reached
+        // 92.1% (Ray) - LTV at which maximum penalty is reached
         ltvs_for_third_threshold.append(921000000000000000000000000_u128.into());
         ltvs_for_third_threshold.append(ninety_nine_pct);
         ltvs_for_third_threshold.append(exceed_hundred_pct);
