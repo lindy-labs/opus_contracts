@@ -305,10 +305,10 @@ mod PurgerUtils {
         // Seed initial prices for ETH and WBTC in Pragma
         let current_ts = get_block_timestamp();
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE, current_ts
+            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE), current_ts
         );
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::WBTC_INIT_PRICE, current_ts
+            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::WBTC_INIT_PRICE), current_ts
         );
         IOracleDispatcher { contract_address: oracle.contract_address }.update_prices();
 
@@ -486,8 +486,7 @@ mod PurgerUtils {
                     // the target LTV. 
                     shrine.advance(*yang, new_price);
 
-                    //let new_empiric_price: u128 = new_price.val / scale;
-                    PragmaUtils::mock_valid_price_update_scaled(
+                    PragmaUtils::mock_valid_price_update(
                         mock_pragma,
                         *yang_pair_ids.pop_front().unwrap(),
                         new_pragma_price,
