@@ -1011,11 +1011,13 @@ mod TestPurger {
                                             let expected_after_value: Wad = before_value
                                                 - expected_compensation_value
                                                 - expected_redistributed_value;
+                                            assert(after_debt.is_non_zero(), 'debt should not be 0');
                                             assert(
                                                 after_debt == expected_after_debt,
                                                 'wrong debt after liquidation'
                                             );
 
+                                            assert(after_value.is_non_zero(), 'value should not be 0');
                                             common::assert_equalish(
                                                 after_value,
                                                 expected_after_value,
@@ -1079,9 +1081,10 @@ mod TestPurger {
                                             // Check recipient trove's debt
                                             let (_, _, _, after_recipient_trove_debt) = shrine
                                                 .get_trove_info(recipient_trove);
+                                            let expected_redistributed_amt: Wad = max_close_amt - close_amt;
                                             let expected_recipient_trove_debt: Wad =
                                                 recipient_trove_debt
-                                                + (max_close_amt - close_amt);
+                                                + expected_redistributed_amt;
                                             common::assert_equalish(
                                                 after_recipient_trove_debt,
                                                 expected_recipient_trove_debt,
