@@ -1204,17 +1204,17 @@ mod Shrine {
     //       deposited excluding the initial yang amount;
     //    and in both cases, store the fixed point division error, and write to storage.
     //
-    // Note that this helper function will revert if:
+    // Note that this internal function will revert if:
     // 1. `pct_value_to_redistribute` exceeds one Ray (100%) due to an overflow when deducting 
     //     the redistributed amount of yang from the trove; or
-    // 2. `trove_debt_to_redistribute` is equal to zero as it would lead to a revert due to 
-    //     zero division.
+    // 2. `debt_to_redistribute` is equal to zero as it would lead to a revert due to 
+    //     zero division when calculating the amount of debt to be redistributed for a yang.
     //
     // Returns the total amount of debt redistributed.
     fn redistribute_internal(
         redistribution_id: u32,
         trove_id: u64,
-        trove_debt_to_redistribute: Wad,
+        debt_to_redistribute: Wad,
         pct_value_to_redistribute: Ray,
         current_interval: u64
     ) {
@@ -1333,10 +1333,10 @@ mod Shrine {
                             yang_amt_to_redistribute * redistributed_yang_price,
                             trove_value_to_redistribute
                         ),
-                        trove_debt_to_redistribute
+                        debt_to_redistribute
                     );
                     let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
-                        trove_debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
+                        debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
                     );
 
                     redistributed_debt = updated_redistributed_debt;
@@ -1610,7 +1610,7 @@ mod Shrine {
 
     // Helper function to round up the debt to be redistributed for a yang if the remaining debt
     // falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
-    // of debt redistributed is equal to the trove's debt
+    // of debt redistributed is equal to amount intended to be redistributed
     fn round_distributed_debt(
         total_debt_to_distribute: Wad, debt_to_distribute: Wad, cumulative_redistributed_debt: Wad
     ) -> (Wad, Wad) {
