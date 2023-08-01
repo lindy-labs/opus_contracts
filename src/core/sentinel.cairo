@@ -17,10 +17,6 @@ mod Sentinel {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
-    // Helper constant to set the starting index for iterating over the 
-    // yangs in the order they were added
-    const LOOP_START: u64 = 1;
-
     const INITIAL_DEPOSIT_AMT: u128 = 1000;
 
     struct Storage {
@@ -79,11 +75,11 @@ mod Sentinel {
 
     #[view]
     fn get_yang_addresses() -> Span<ContractAddress> {
-        let mut idx: u64 = LOOP_START;
-        let loop_end: u64 = yang_addresses_count::read() + LOOP_START;
+        let count: u64 = yang_addresses_count::read();
+        let mut idx: u64 = 0;
         let mut addresses: Array<ContractAddress> = Default::default();
         loop {
-            if idx == loop_end {
+            if idx == count {
                 break addresses.span();
             }
             addresses.append(yang_addresses::read(idx));
@@ -154,9 +150,9 @@ mod Sentinel {
         let gate = IGateDispatcher { contract_address: gate };
         assert(gate.get_asset() == yang, 'SE: Asset of gate is not yang');
 
-        let index: u64 = yang_addresses_count::read() + 1;
-        yang_addresses_count::write(index);
-        yang_addresses::write(index, yang);
+        let yang_count: u64 = yang_addresses_count::read();
+        yang_addresses_count::write(yang_count + 1);
+        yang_addresses::write(yang_count, yang);
         yang_to_gate::write(yang, gate);
         yang_is_live::write(yang, true);
         yang_asset_max::write(yang, yang_asset_max);

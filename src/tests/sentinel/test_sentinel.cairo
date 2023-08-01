@@ -56,9 +56,8 @@ mod TestSentinel {
             'Wrong yang addresses'
         );
 
-        assert(sentinel.get_yang(0) == ContractAddressZeroable::zero(), 'Should be zero address');
-        assert(sentinel.get_yang(1) == *assets.at(0), 'Wrong yang #1');
-        assert(sentinel.get_yang(2) == *assets.at(1), 'Wrong yang #2');
+        assert(sentinel.get_yang(0) == *assets.at(0), 'Wrong yang #1');
+        assert(sentinel.get_yang(1) == *assets.at(1), 'Wrong yang #2');
 
         assert(
             sentinel.get_yang_asset_max(eth) == SentinelUtils::ETH_ASSET_MAX, 'Wrong asset max #1'
@@ -280,7 +279,9 @@ mod TestSentinel {
                 .into(),
             'Wrong eth bal after enter'
         );
-        assert(shrine.get_deposit(eth, common::TROVE_1) == yang_amt, 'Wrong yang bal in shrine');
+        assert(
+            shrine.get_deposit(eth, common::TROVE_1) == yang_amt, 'Wrong yang bal in shrine'
+        );
 
         let preview_eth_amt: u128 = sentinel.preview_exit(eth, WAD_ONE.into());
         let eth_amt: u128 = sentinel.exit(eth, user, common::TROVE_1, WAD_ONE.into());
@@ -341,7 +342,8 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(contract_address_const::<0xf00>(), user, common::TROVE_1, deposit_amt.val);
+        sentinel
+            .enter(contract_address_const::<0xf00>(), user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -369,7 +371,8 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(contract_address_const::<0xf00>(), user, common::TROVE_1, WAD_ONE.into());
+        sentinel
+            .exit(contract_address_const::<0xf00>(), user, common::TROVE_1, WAD_ONE.into());
     }
 
     #[test]

@@ -6,8 +6,11 @@ use aura::utils::wadray::{Ray, Wad};
 #[abi]
 trait IPurger {
     // view
-    fn preview_liquidate(trove_id: u64) -> (Ray, Wad);
-    fn preview_absorb(trove_id: u64) -> (Ray, Wad, Wad);
+    fn get_liquidation_penalty(trove_id: u64) -> Ray;
+    fn get_absorption_penalty(trove_id: u64) -> Ray;
+    fn get_max_liquidation_amount(trove_id: u64) -> Wad;
+    fn get_max_absorption_amount(trove_id: u64) -> Wad;
+    fn get_compensation(trove_id: u64) -> Wad;
     fn is_absorbable(trove_id: u64) -> bool;
     fn get_penalty_scalar() -> Ray;
     // external

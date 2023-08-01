@@ -69,7 +69,7 @@ mod TestShrine {
         assert(shrine.get_debt_ceiling() == ShrineUtils::DEBT_CEILING.into(), 'wrong debt ceiling');
 
         // Check yangs
-        assert(shrine.get_yangs_count() == 3, 'wrong yangs count');
+        assert(shrine.get_yangs_count() == 2, 'wrong yangs count');
 
         let expected_era: u64 = 0;
 
@@ -114,8 +114,7 @@ mod TestShrine {
             shrine,
             ShrineUtils::FEED_LEN,
             ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into()
+            ShrineUtils::YANG2_START_PRICE.into()
         );
         let mut yang_addrs = yang_addrs;
         let mut yang_feeds = yang_feeds;
@@ -125,7 +124,6 @@ mod TestShrine {
         let mut exp_start_cumulative_prices: Array<Wad> = Default::default();
         exp_start_cumulative_prices.append(ShrineUtils::YANG1_START_PRICE.into());
         exp_start_cumulative_prices.append(ShrineUtils::YANG2_START_PRICE.into());
-        exp_start_cumulative_prices.append(ShrineUtils::YANG3_START_PRICE.into());
         let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
 
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);
@@ -195,7 +193,7 @@ mod TestShrine {
     fn test_add_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         let yangs_count: u32 = shrine.get_yangs_count();
-        assert(yangs_count == 3, 'incorrect yangs count');
+        assert(yangs_count == 2, 'incorrect yangs count');
 
         let new_yang_address: ContractAddress = contract_address_const::<0x9870>();
         let new_yang_threshold: Ray = 600000000000000000000000000_u128.into(); // 60% (Ray)

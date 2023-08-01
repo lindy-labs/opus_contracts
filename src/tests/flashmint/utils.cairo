@@ -63,7 +63,7 @@ mod FlashmintUtils {
 
         ShrineUtils::shrine_setup(shrine);
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()
+            shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into()
         );
 
         // Mint some yin in shrine 

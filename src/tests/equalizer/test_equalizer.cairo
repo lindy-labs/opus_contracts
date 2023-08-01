@@ -55,7 +55,7 @@ mod TestEqualizer {
 
         // Set the price to make the interest calculation easier
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, 1, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG3_START_PRICE.into()
+            shrine, 1, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into()
         );
 
         // Charge trove 1 and sanity check that some debt has accrued

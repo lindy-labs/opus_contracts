@@ -5,30 +5,17 @@ use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::serde::IBlesserDispatcherSerde;
 use aura::utils::wadray::{Ray, Wad};
 
-#[derive(Copy, Drop, Serde)]
-struct YangBalance {
-    yang_id: u32, //  ID of yang in Shrine
-    amount: Wad, // Amount of yang in Wad
-}
-
-#[derive(Copy, Drop, PartialEq, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation
     debt: Wad, // Normalized debt
     last_rate_era: u64,
 }
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Drop, Serde, storage_access::StorageAccess)]
 struct YangRedistribution {
     unit_debt: Wad, // Amount of debt in wad to be distributed to each wad unit of yang
     error: Wad, // Amount of debt to be added to the next redistribution to calculate `debt_per_yang`
-    exception: bool, // Whether the exception flow is triggered to redistribute the yang across all yangs
-}
-
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
-struct ExceptionalYangRedistribution {
-    unit_debt: Wad, // Amount of debt to be distributed to each wad unit of recipient yang
-    unit_yang: Wad, // Amount of redistributed yang to be distributed to each wad unit of recipient yang
 }
 
 
