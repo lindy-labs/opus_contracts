@@ -151,7 +151,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn sentinel() -> u128 {
-        ADD_YANG + SET_THRESHOLD
+        ADD_YANG
     }
 
     #[cfg(test)]

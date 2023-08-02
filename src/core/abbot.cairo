@@ -167,7 +167,9 @@ mod Abbot {
     // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
     #[external]
     fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
-        assert(yang.is_non_zero(), 'ABB: Yang address cannot be 0');
+        // There is no need to check the yang address is non-zero because the
+        // Sentinel does not allow a zero address yang to be added.
+
         assert(trove_id != 0, 'ABB: Trove ID cannot be 0');
         assert(trove_id <= troves_count::read(), 'ABB: Non-existent trove');
         // note that caller does not need to be the trove's owner to deposit
@@ -178,7 +180,9 @@ mod Abbot {
     // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
     #[external]
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        assert(yang.is_non_zero(), 'ABB: Yang address cannot be 0');
+        // There is no need to check the yang address is non-zero because the
+        // Sentinel does not allow a zero address yang to be added.
+
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
