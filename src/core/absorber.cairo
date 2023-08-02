@@ -959,13 +959,13 @@ mod Absorber {
 
         // Trigger issuance of active rewards
         let epoch: u32 = current_epoch::read();
-        let rewards_count: u8 = rewards_count::read();
         let mut rewards: Array<ContractAddress> = Default::default();
         let mut blessed_amts: Array<u128> = Default::default();
         let mut current_rewards_id: u8 = 0;
 
+        let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == loop_end {
                 break;
             }
 
@@ -1027,11 +1027,10 @@ mod Absorber {
             return (rewards.span(), reward_amts.span());
         }
 
-        let current_epoch: u32 = current_epoch::read();
-        let rewards_count: u8 = rewards_count::read();
-
+        let outer_loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
+        let inner_loop_end: u32 = current_epoch::read() + 1;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == outer_loop_end {
                 break (rewards.span(), reward_amts.span());
             }
 
@@ -1044,7 +1043,7 @@ mod Absorber {
                 // Terminate after the current epoch because we need to calculate rewards for the current
                 // epoch first
                 // There is also an early termination if the provider has no shares in current epoch
-                if epoch == current_epoch + 1 | epoch_shares.is_zero() {
+                if epoch == inner_loop_end | epoch_shares.is_zero() {
                     break;
                 }
 
@@ -1082,10 +1081,9 @@ mod Absorber {
     fn update_provider_cumulative_rewards(provider: ContractAddress) {
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
         let epoch: u32 = current_epoch::read();
-        let rewards_count: u8 = rewards_count::read();
-
+        let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == loop_end {
                 break;
             }
 
@@ -1104,11 +1102,10 @@ mod Absorber {
     // Transfers the error for a reward from the given epoch to the next epoch
     // `current_rewards_id` should start at `1`.
     fn propagate_reward_errors(epoch: u32) {
-        let rewards_count: u8 = rewards_count::read();
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
-
+        let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == loop_end {
                 break;
             }
 
