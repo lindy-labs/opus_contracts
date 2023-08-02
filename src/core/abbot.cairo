@@ -99,7 +99,7 @@ mod Abbot {
         mut amounts: Span<u128>,
         max_forge_fee_pct: Wad
     ) -> u64 {
-        assert(yangs.len() != 0_usize, 'ABB: No yangs');
+        assert(yangs.len().is_non_zero(), 'ABB: No yangs');
         assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
 
         let troves_count: u64 = troves_count::read();

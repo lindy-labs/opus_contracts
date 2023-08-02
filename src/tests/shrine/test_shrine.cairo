@@ -99,8 +99,8 @@ mod TestShrine {
 
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        assert(threshold == RayZeroable::zero(), 'wrong shrine threshold');
-        assert(value == WadZeroable::zero(), 'wrong shrine value');
+        assert(threshold.is_zero(), 'wrong shrine threshold');
+        assert(value.is_zero(), 'wrong shrine value');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -215,7 +215,7 @@ mod TestShrine {
 
         assert(shrine.get_yangs_count() == yangs_count + 1, 'incorrect yangs count');
         assert(
-            shrine.get_yang_total(new_yang_address) == WadZeroable::zero(), 'incorrect yang total'
+            shrine.get_yang_total(new_yang_address).is_zero(), 'incorrect yang total'
         );
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
@@ -509,7 +509,7 @@ mod TestShrine {
         );
 
         let (_, ltv, _, _) = shrine.get_trove_info(common::TROVE_1);
-        assert(ltv == RayZeroable::zero(), 'LTV should be zero');
+        assert(ltv.is_zero(), 'LTV should be zero');
 
         assert(shrine.is_healthy(common::TROVE_1), 'trove should be healthy');
 
@@ -894,7 +894,7 @@ mod TestShrine {
 
         yin.transfer(yin_user, 0_u256);
         assert(success, 'yin transfer fail');
-        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
@@ -954,7 +954,7 @@ mod TestShrine {
 
         assert(success, 'yin transfer fail');
 
-        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
@@ -1332,10 +1332,10 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(common::TROVE_3);
-        assert(threshold == RayZeroable::zero(), 'threshold should be 0');
-        assert(ltv == RayZeroable::zero(), 'LTV should be 0');
-        assert(value == WadZeroable::zero(), 'value should be 0');
-        assert(debt == WadZeroable::zero(), 'debt should be 0');
+        assert(threshold.is_zero(), 'threshold should be 0');
+        assert(ltv.is_zero(), 'LTV should be 0');
+        assert(value.is_zero(), 'value should be 0');
+        assert(debt.is_zero(), 'debt should be 0');
     }
 
     //

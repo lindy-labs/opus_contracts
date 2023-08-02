@@ -4,6 +4,7 @@ mod Allocator {
     use option::OptionTrait;
     use starknet::ContractAddress;
     use traits::{Default, Into};
+    use zeroable::Zeroable;
 
     use aura::core::roles::AllocatorRoles;
 
@@ -104,7 +105,7 @@ mod Allocator {
     // - the percentages add up to one Ray.
     fn set_allocation_internal(recipients: Span<ContractAddress>, percentages: Span<Ray>) {
         let recipients_len: u32 = recipients.len();
-        assert(recipients_len != 0, 'AL: No recipients');
+        assert(recipients_len.is_non_zero(), 'AL: No recipients');
         assert(recipients_len == percentages.len(), 'AL: Array lengths mismatch');
 
         let mut total_percentage: Ray = RayZeroable::zero();

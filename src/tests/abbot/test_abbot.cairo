@@ -6,6 +6,7 @@ mod TestAbbot {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into, TryInto};
+    use zeroable::Zeroable;
 
     use aura::core::sentinel::Sentinel;
 
@@ -194,7 +195,7 @@ mod TestAbbot {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     assert(
-                        shrine.get_deposit(*yang, trove_id) == WadZeroable::zero(),
+                        shrine.get_deposit(*yang, trove_id).is_zero(),
                         'wrong yang amount'
                     );
                 },
@@ -205,7 +206,7 @@ mod TestAbbot {
         };
 
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt == WadZeroable::zero(), 'wrong trove debt');
+        assert(debt.is_zero(), 'wrong trove debt');
     }
 
     #[test]
@@ -496,7 +497,7 @@ mod TestAbbot {
         abbot.melt(trove_id, after_trove_debt);
 
         let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(final_trove_debt == WadZeroable::zero(), 'wrong trove debt');
+        assert(final_trove_debt.is_zero(), 'wrong trove debt');
     }
 
     #[test]
