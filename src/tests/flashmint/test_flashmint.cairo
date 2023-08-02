@@ -1,6 +1,7 @@
 mod TestFlashmint {
     use starknet::ContractAddress;
     use traits::Into;
+    use zeroable::Zeroable;
 
     use aura::core::flashmint::FlashMint;
 
@@ -43,7 +44,7 @@ mod TestFlashmint {
         let flashmint: IFlashMintDispatcher = FlashmintUtils::flashmint_deploy(shrine);
 
         // Check that flash fee is correct
-        assert(flashmint.flash_fee(shrine, 0xdeadbeefdead_u256) == 0_u256, 'Incorrect flash fee');
+        assert(flashmint.flash_fee(shrine, 0xdeadbeefdead_u256).is_zero(), 'Incorrect flash fee');
     }
 
     #[test]
@@ -59,11 +60,11 @@ mod TestFlashmint {
         // `borrower` contains a check that ensures that `flashmint` actually transferred 
         // the full flash_loan amount
         flashmint.flash_loan(borrower, shrine, 1_u128.into(), calldata);
-        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 1');
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 1');
         flashmint.flash_loan(borrower, shrine, FlashmintUtils::DEFAULT_MINT_AMOUNT, calldata);
-        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 2');
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 2');
         flashmint.flash_loan(borrower, shrine, (1000 * WAD_ONE).into(), calldata);
-        assert(yin.balance_of(borrower) == 0_u256, 'Wrong yin bal after flashmint 3');
+        assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 3');
     // TODO: check event emissions for correct calldata
     }
 

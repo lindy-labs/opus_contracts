@@ -686,7 +686,7 @@ mod Absorber {
             yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
         );
         let computed_shares: u128 = computed_shares.try_into().unwrap();
-        if round_up & r != 0 {
+        if round_up & r.is_non_zero() {
             return ((computed_shares + 1).into(), (computed_shares + 1).into());
         }
         (computed_shares.into(), computed_shares.into())
@@ -729,7 +729,7 @@ mod Absorber {
     fn update_absorbed_asset(
         absorption_id: u32, total_shares: Wad, asset: ContractAddress, amount: u128
     ) {
-        if amount == 0 {
+        if amount.is_zero() {
             return;
         }
 
@@ -761,7 +761,7 @@ mod Absorber {
         // asset_amt_per_share is checked because it is possible for the error to be zero. 
         // On the other hand, asset_amt_per_share may be zero in extreme edge cases with 
         // a non-zero error that is spilled over to the next absorption. 
-        if absorption.asset_amt_per_share != 0 | absorption.error != 0 {
+        if absorption.asset_amt_per_share.is_non_zero() | absorption.error.is_non_zero() {
             return absorption.error;
         }
 
@@ -902,7 +902,7 @@ mod Absorber {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let asset_amt: u128 = *asset_amts.pop_front().unwrap();
-                    if asset_amt != 0 {
+                    if asset_amt.is_non_zero() {
                         let asset_amt: u256 = asset_amt.into();
                         IERC20Dispatcher { contract_address: *asset }.transfer(to, asset_amt);
                     }
@@ -934,7 +934,7 @@ mod Absorber {
 
         assert(ltv_to_threshold <= limit, 'ABS: Relative LTV above limit');
 
-        assert(request.timestamp != 0, 'ABS: No request found');
+        assert(request.timestamp.is_non_zero(), 'ABS: No request found');
         assert(!request.has_removed, 'ABS: Only 1 removal per request');
 
         let current_timestamp: u64 = starknet::get_block_timestamp();
@@ -980,7 +980,7 @@ mod Absorber {
             let blessed_amt = reward.blesser.bless();
             blessed_amts.append(blessed_amt);
 
-            if blessed_amt != 0 {
+            if blessed_amt.is_non_zero() {
                 let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                     (reward.asset, epoch)
                 );
@@ -1008,7 +1008,7 @@ mod Absorber {
             current_rewards_id += 1;
         };
 
-        if rewards.len() > 0 {
+        if rewards.len().is_non_zero() {
             Bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
         }
     }
