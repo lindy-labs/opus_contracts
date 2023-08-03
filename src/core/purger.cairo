@@ -308,10 +308,10 @@ mod Purger {
         // will be charged on the trove before `shrine.redistribute`.
         shrine.melt(absorber.contract_address, trove_id, purge_amt);
 
-        let can_absorb_any: bool = purge_amt.is_non_zero();
+        let can_absorb_some: bool = purge_amt.is_non_zero();
         let is_fully_absorbed: bool = purge_amt == max_purge_amt;
 
-        let percentage_freed: Ray = if can_absorb_any {
+        let percentage_freed: Ray = if can_absorb_some {
             get_percentage_freed(
                 ltv_after_compensation,
                 value_after_compensation,
@@ -325,7 +325,7 @@ mod Purger {
 
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
-        if can_absorb_any {
+        if can_absorb_some {
             // Free collateral corresponding to the purged amount
             let (yangs, absorbed_assets_amts) = free(
                 shrine, trove_id, percentage_freed, absorber.contract_address
@@ -361,7 +361,8 @@ mod Purger {
                 // redistribution. 
                 //
                 // excess_asset_amt = excess_yang_amt * asset_amt_per_yang_wad_after_redistribution
-                //                                                        total assets
+                //
+                //                                                        total_assets
                 //                  = excess_yang_amt * -----------------------------------------------------------
                 //                                       (yang_total - trove_remainder_yang_amt) + excess_yang_amt
                 //
@@ -423,14 +424,16 @@ mod Purger {
                             let yang_total: Wad = shrine.get_yang_total(*yang);
                             let excess_asset_amt: u128 = *excess_asset_amts.pop_front().unwrap();
                             // See above for how this equation is derived
-                            let excess_yang: Wad = (excess_asset_amt.into()
-                                * (yang_total - trove_yang))
-                                / (sentinel.get_total_assets(*yang) - excess_asset_amt).into();
+                            let total_assets: Wad = sentinel.get_total_assets(*yang);
+                            let total_yang_excluding_redistributed_trove: Wad = yang_total - trove_yang;
+                            let excess_yang_amt: Wad = (excess_asset_amt.into()
+                                * total_yang_excluding_redistributed_trove)
+                                / (total_assets - excess_asset_amt).into();
 
                             // Derive the error to offset from the trove's yang.
                             // This ensures that the trove has the target asset amount for each yang based on 
                             // the appreciated asset amount per yang after the redistribution.
-                            shrine.seize(*yang, trove_id, trove_yang - excess_yang);
+                            shrine.seize(*yang, trove_id, trove_yang - excess_yang_amt);
                         },
                         Option::None(_) => {
                             break;
