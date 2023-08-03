@@ -190,7 +190,7 @@ mod Pragma {
         // of the requested asset and if it's suitable for our needs
         let response: PricesResponse = oracle::read().get_data_median(DataType::Spot(pair_id));
         // Pragma returns 0 decimals for an unknown pair ID
-        assert(response.decimals != 0, 'PGM: Unknown pair ID');
+        assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
         assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
 
         let index: u32 = yangs_count::read() + 1;

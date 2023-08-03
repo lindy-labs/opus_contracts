@@ -209,14 +209,14 @@ mod TestCaretaker {
         assert(user1_yang1_after_balance == user1_yang1_before_balance + (*released_amounts[1]).into(), 'user1 yang1 after balance');
 
         // assert nothing's left in the shrine for the released trove
-        assert(shrine.get_deposit(*yangs[0], trove1_id) == 0_u128.into(), 'trove1 yang0 deposit');
-        assert(shrine.get_deposit(*yangs[1], trove1_id) == 0_u128.into(), 'trove1 yang1 deposit');
+        assert(shrine.get_deposit(*yangs[0], trove1_id).is_zero(), 'trove1 yang0 deposit');
+        assert(shrine.get_deposit(*yangs[1], trove1_id).is_zero(), 'trove1 yang1 deposit');
 
         // sanity check that for user with only one yang, release reports a 0 asset amount
         set_contract_address(user2);
         let (released_assets, released_amounts) = caretaker.release(trove2_id);
         assert(released_assets == yangs, 'not all yangs released 2');
-        assert(*released_amounts[1] == 0_u128, 'incorrect release');
+        assert((*released_amounts[1]).is_zero(), 'incorrect release');
     }
 
     #[test]
@@ -268,7 +268,7 @@ mod TestCaretaker {
         let (reclaimed_assets, reclaimed_amounts) = caretaker.reclaim(shrine.get_yin(user1));
 
         // assert none of user's yin is left
-        assert(shrine.get_yin(user1) == 0_u128.into(), 'user yin balance');
+        assert(shrine.get_yin(user1).is_zero(), 'user yin balance');
         // assert scammer still has theirs
         assert(shrine.get_yin(scammer) == scam_amt.try_into().unwrap(), 'scammer yin balance 1');
 
@@ -303,7 +303,7 @@ mod TestCaretaker {
         let (reclaimed_assets, reclaimed_amounts) = caretaker.reclaim(shrine.get_yin(scammer));
 
         // assert all yin has been reclaimed
-        assert(shrine.get_yin(scammer) == 0_u128.into(), 'scammer yin balance 2');
+        assert(shrine.get_yin(scammer).is_zero(), 'scammer yin balance 2');
 
         let ct_yang0_after_balance: u256 = y0.balance_of(caretaker.contract_address);
         let ct_yang1_after_balance: u256 = y1.balance_of(caretaker.contract_address);
@@ -374,8 +374,8 @@ mod TestCaretaker {
         let (released_assets, released_amounts) = caretaker.release(trove1_id);
 
         // 0 released amounts also mean no `sentinel.exit` and `shrine.seize`
-        assert(*released_amounts[0] == 0_u128, 'incorrect armageddon release 1');
-        assert(*released_amounts[1] == 0_u128, 'incorrect armageddon release 2')
+        assert((*released_amounts[0]).is_zero(), 'incorrect armageddon release 1');
+        assert((*released_amounts[1]).is_zero(), 'incorrect armageddon release 2')
     }
 
     #[test]
