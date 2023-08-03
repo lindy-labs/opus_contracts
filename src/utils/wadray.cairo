@@ -25,7 +25,7 @@ const DIFF: u128 = 1000000000;
 
 #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Wad {
-    val: u128,
+    val: u128, 
 }
 
 #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
@@ -357,7 +357,7 @@ impl RayPartialOrd of PartialOrd<Ray> {
 }
 
 // Bounded
-impl BoundedWad of BoundedInt<Wad>  {
+impl BoundedWad of BoundedInt<Wad> {
     #[inline(always)]
     fn min() -> Wad nopanic {
         Wad { val: 0 }
