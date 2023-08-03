@@ -1052,7 +1052,7 @@ mod TestPurger {
                                                 shrine
                                                     .get_yin(
                                                         absorber.contract_address
-                                                    ) == WadZeroable::zero(),
+                                                    ).is_zero(),
                                                 'wrong absorber yin balance'
                                             );
 

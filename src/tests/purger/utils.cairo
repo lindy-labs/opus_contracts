@@ -548,10 +548,10 @@ mod PurgerUtils {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
         assert(
-            purger.get_liquidation_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0'
+            purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0'
         );
         assert(
-            purger.get_max_liquidation_amount(trove_id) == WadZeroable::zero(),
+            purger.get_max_liquidation_amount(trove_id).is_zero(),
             'close amount should be 0'
         );
         assert_trove_is_not_absorbable(purger, trove_id);
@@ -595,10 +595,10 @@ mod PurgerUtils {
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
         assert(
-            purger.get_absorption_penalty(trove_id) == RayZeroable::zero(), 'penalty should be 0'
+            purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0'
         );
         assert(
-            purger.get_max_absorption_amount(trove_id) == WadZeroable::zero(),
+            purger.get_max_absorption_amount(trove_id).is_zero(),
             'close amount should be 0'
         );
     }
