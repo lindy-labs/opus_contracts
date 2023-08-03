@@ -786,10 +786,10 @@ mod TestPurger {
 
         // Check trove debt and LTV
         let (_, after_ltv, after_value, after_debt) = shrine.get_trove_info(target_trove);
-        assert(after_ltv == RayZeroable::zero(), 'wrong LTV after liquidation');
-        assert(after_debt == WadZeroable::zero(), 'wrong debt after liquidation');
+        assert(after_ltv.is_zero(), 'wrong LTV after liquidation');
+        assert(after_debt.is_zero(), 'wrong debt after liquidation');
         // There should be some dust amount of yang remaining - see below
-        assert(after_value > WadZeroable::zero(), 'wrong value after liquidation');
+        assert(after_value.is_non_zero(), 'wrong value after liquidation');
 
         // Since 1 wei of debt is left, this falls below the rounding threshold and this 1 wei 
         // will be redistributed to ETH, which is the first yang in the main loop of 
