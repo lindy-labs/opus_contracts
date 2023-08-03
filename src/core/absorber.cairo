@@ -305,18 +305,10 @@ mod Absorber {
         provider: ContractAddress
     ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>) {
         let provision: Provision = provisions::read(provider);
-        let provider_last_absorption_id: u32 = provider_last_absorption::read(provider);
-        let current_absorption_id: u32 = absorptions_count::read();
-
-        let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
-            provider, provision, provider_last_absorption_id, current_absorption_id
-        );
-
-        // Get accumulated rewards
-        let rewards_count: u8 = rewards_count::read();
         let current_epoch: u32 = current_epoch::read();
-        let (reward_assets, reward_amts) = get_provider_accumulated_rewards(
-            provider, provision, current_epoch, rewards_count
+        let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
+            get_absorbed_and_rewarded_assets_for_provider(
+            provider, provision
         );
 
         // Add pending rewards
@@ -327,14 +319,16 @@ mod Absorber {
 
         // Early return if we do not expect rewards to be distributed when the user calls `reap`
         if total_shares.is_zero() | current_provider_shares.is_zero() {
-            return (absorbed_assets, absorbed_asset_amts, reward_assets, reward_amts);
+            return (absorbed_assets, absorbed_amts, reward_assets, reward_amts);
         }
 
         let updated_reward_amts: Span<u128> = get_provider_pending_rewards(
             provider, current_provider_shares, total_shares, current_epoch, reward_amts
         );
 
-        (absorbed_assets, absorbed_asset_amts, reward_assets, updated_reward_amts)
+        // NOTE: both absorbed assets and rewarded assets will be empty arrays 
+        // if `provision.shares` is zero.
+        (absorbed_assets, absorbed_amts, reward_assets, updated_reward_amts)
     }
 
 
@@ -391,12 +385,11 @@ mod Absorber {
     fn provide(amount: Wad) {
         assert_live();
 
-        let current_epoch: u32 = current_epoch::read();
         let provider: ContractAddress = get_caller_address();
 
         // Withdraw absorbed collateral before updating shares
         let provision: Provision = provisions::read(provider);
-        reap_internal(provider, provision, current_epoch);
+        reap_internal(provider, provision);
 
         // Calculate number of shares to issue to provider and to add to total for current epoch
         // The two values deviate only when it is the first provision of an epoch and
@@ -404,6 +397,7 @@ mod Absorber {
         let (new_provision_shares, issued_shares) = convert_to_shares(amount, false);
 
         // If epoch has changed, convert shares in previous epoch to new epoch's shares
+        let current_epoch: u32 = current_epoch::read();
         let converted_shares: Wad = convert_epoch_shares(
             provision.epoch, current_epoch, provision.shares
         );
@@ -466,12 +460,11 @@ mod Absorber {
         let request: Request = provider_request::read(provider);
         assert_can_remove(request);
 
-        let current_epoch: u32 = current_epoch::read();
-
         // Withdraw absorbed collateral before updating shares
-        reap_internal(provider, provision, current_epoch);
+        reap_internal(provider, provision);
 
         // Fetch the shares for current epoch
+        let current_epoch: u32 = current_epoch::read();
         let current_provider_shares: Wad = convert_epoch_shares(
             provision.epoch, current_epoch, provision.shares
         );
@@ -538,12 +531,11 @@ mod Absorber {
         let provision: Provision = provisions::read(provider);
         assert_provider(provision);
 
-        let current_epoch: u32 = current_epoch::read();
-
-        reap_internal(provider, provision, current_epoch);
+        reap_internal(provider, provision);
 
         // Update provider's epoch and shares to current epoch's
         // Epoch must be updated to prevent provider from repeatedly claiming rewards
+        let current_epoch: u32 = current_epoch::read();
         let current_provider_shares: Wad = convert_epoch_shares(
             provision.epoch, current_epoch, provision.shares
         );
@@ -560,8 +552,7 @@ mod Absorber {
         let current_epoch: u32 = current_epoch::read();
 
         // Trigger issuance of rewards
-        let rewards_count: u8 = rewards_count::read();
-        bestow(current_epoch, rewards_count);
+        bestow();
 
         // Increment absorption ID
         let current_absorption_id: u32 = absorptions_count::read() + 1;
@@ -625,7 +616,7 @@ mod Absorber {
             EpochChanged(current_epoch, new_epoch);
 
             // Transfer reward errors of current epoch to the next epoch
-            propagate_reward_errors(rewards_count, current_epoch);
+            propagate_reward_errors(current_epoch);
         }
 
         Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
@@ -695,7 +686,7 @@ mod Absorber {
             yin_amt.into() * total_shares.into(), yin_balance.try_into().expect('Division by zero')
         );
         let computed_shares: u128 = computed_shares.try_into().unwrap();
-        if round_up & r != 0 {
+        if round_up & r.is_non_zero() {
             return ((computed_shares + 1).into(), (computed_shares + 1).into());
         }
         (computed_shares.into(), computed_shares.into())
@@ -738,7 +729,7 @@ mod Absorber {
     fn update_absorbed_asset(
         absorption_id: u32, total_shares: Wad, asset: ContractAddress, amount: u128
     ) {
-        if amount == 0 {
+        if amount.is_zero() {
             return;
         }
 
@@ -770,7 +761,7 @@ mod Absorber {
         // asset_amt_per_share is checked because it is possible for the error to be zero. 
         // On the other hand, asset_amt_per_share may be zero in extreme edge cases with 
         // a non-zero error that is spilled over to the next absorption. 
-        if absorption.asset_amt_per_share != 0 | absorption.error != 0 {
+        if absorption.asset_amt_per_share.is_non_zero() | absorption.error.is_non_zero() {
             return absorption.error;
         }
 
@@ -782,34 +773,39 @@ mod Absorber {
     // Internal - helpers for `reap`
     //
 
+    // Wrapper function over `get_absorbed_assets_for_provider_internal` and 
+    // `get_provider_accumulated_rewards` for re-use by `preview_reap` and
+    // `reap_internal`
+    fn get_absorbed_and_rewarded_assets_for_provider(
+        provider: ContractAddress, provision: Provision
+    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>) {
+        let (absorbed_assets, absorbed_amts) = get_absorbed_assets_for_provider_internal(
+            provider, provision
+        );
+        let (reward_assets, reward_amts) = get_provider_accumulated_rewards(provider, provision);
+
+        (absorbed_assets, absorbed_amts, reward_assets, reward_amts)
+    }
+
     // Internal function to be called whenever a provider takes an action to ensure absorbed assets
     // are properly transferred to the provider before updating the provider's information
-    fn reap_internal(provider: ContractAddress, provision: Provision, current_epoch: u32) {
+    fn reap_internal(provider: ContractAddress, provision: Provision) {
         // Trigger issuance of rewards
-        let rewards_count: u8 = rewards_count::read();
-        bestow(current_epoch, rewards_count);
+        bestow();
+
+        // NOTE: both absorbed assets and rewarded assets will be empty arrays 
+        // if `provision.shares` is zero.
+        let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
+            get_absorbed_and_rewarded_assets_for_provider(
+            provider, provision
+        );
 
         // Get and update provider's absorption ID
-        let provider_last_absorption_id: u32 = provider_last_absorption::read(provider);
-        let current_absorption_id: u32 = absorptions_count::read();
-        provider_last_absorption::write(provider, current_absorption_id);
+        provider_last_absorption::write(provider, absorptions_count::read());
 
-        let total_shares: Wad = total_shares::read();
-
-        // NOTE: both `get_absorbed_assets_for_provider_internal` and `get_provider_accumulated_rewards` 
-        // contain early returns of empty arrays if `provision.shares` is zero.
-
-        // Loop over absorbed assets and transfer
-        let (absorbed_assets, absorbed_asset_amts) = get_absorbed_assets_for_provider_internal(
-            provider, provision, provider_last_absorption_id, current_absorption_id
-        );
-        transfer_assets(provider, absorbed_assets, absorbed_asset_amts);
-
-        // Loop over accumulated rewards, transfer and update provider's rewards cumulative
-        let (reward_assets, reward_asset_amts) = get_provider_accumulated_rewards(
-            provider, provision, current_epoch, rewards_count
-        );
-        transfer_assets(provider, reward_assets, reward_asset_amts);
+        // Loop over absorbed and rewarded assets and transfer
+        transfer_assets(provider, absorbed_assets, absorbed_amts);
+        transfer_assets(provider, reward_assets, reward_amts);
 
         // NOTE: it is very important that this function is called, even for a new provider. 
         // If a new provider's cumulative rewards are not updated to the current epoch,
@@ -819,26 +815,26 @@ mod Absorber {
         // `reap_internal` was called.
         // 
         // NOTE: We cannot rely on the array of reward addresses returned by
-        // `get_provider_accumulated_rewards` because it returns an empty array when 
+        // `get_absorbed_and_rewarded_assets_for_provider` because it returns an empty array when 
         // `provision.shares` is zero. This would result in a bug where the reward cumulatives
         // for new providers are not updated to the latest epoch's values and start at 0. This 
         // wrongly entitles a new provider to receive rewards from epoch 0 up to the 
         // latest epoch's values, which would eventually result in an underflow when 
         // transferring rewards during a `reap_internal` call.
-        update_provider_cumulative_rewards(provider, current_epoch, rewards_count);
+        update_provider_cumulative_rewards(provider);
 
-        Reap(provider, absorbed_assets, absorbed_asset_amts, reward_assets, reward_asset_amts);
+        Reap(provider, absorbed_assets, absorbed_amts, reward_assets, reward_amts);
     }
 
     // Internal function to calculate the absorbed assets that a provider is entitled to
     // Returns a tuple of an array of assets and an array of amounts of each asset
     fn get_absorbed_assets_for_provider_internal(
-        provider: ContractAddress,
-        provision: Provision,
-        provided_absorption_id: u32,
-        current_absorption_id: u32
+        provider: ContractAddress, provision: Provision, 
     ) -> (Span<ContractAddress>, Span<u128>) {
         let mut asset_amts: Array<u128> = Default::default();
+
+        let current_absorption_id: u32 = absorptions_count::read();
+        let provided_absorption_id: u32 = provider_last_absorption::read(provider);
 
         // Early termination by returning empty arrays
 
@@ -906,7 +902,7 @@ mod Absorber {
             match assets.pop_front() {
                 Option::Some(asset) => {
                     let asset_amt: u128 = *asset_amts.pop_front().unwrap();
-                    if asset_amt != 0 {
+                    if asset_amt.is_non_zero() {
                         let asset_amt: u256 = asset_amt.into();
                         IERC20Dispatcher { contract_address: *asset }.transfer(to, asset_amt);
                     }
@@ -938,7 +934,7 @@ mod Absorber {
 
         assert(ltv_to_threshold <= limit, 'ABS: Relative LTV above limit');
 
-        assert(request.timestamp != 0, 'ABS: No request found');
+        assert(request.timestamp.is_non_zero(), 'ABS: No request found');
         assert(!request.has_removed, 'ABS: Only 1 removal per request');
 
         let current_timestamp: u64 = starknet::get_block_timestamp();
@@ -954,7 +950,7 @@ mod Absorber {
     // Internal - helpers for rewards
     //
 
-    fn bestow(epoch: u32, rewards_count: u8) {
+    fn bestow() {
         // Defer rewards until at least one provider deposits
         let total_shares: Wad = total_shares::read();
         if total_shares.is_zero() {
@@ -962,12 +958,14 @@ mod Absorber {
         }
 
         // Trigger issuance of active rewards
+        let epoch: u32 = current_epoch::read();
         let mut rewards: Array<ContractAddress> = Default::default();
         let mut blessed_amts: Array<u128> = Default::default();
         let mut current_rewards_id: u8 = 0;
 
+        let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == loop_end {
                 break;
             }
 
@@ -982,7 +980,7 @@ mod Absorber {
             let blessed_amt = reward.blesser.bless();
             blessed_amts.append(blessed_amt);
 
-            if blessed_amt != 0 {
+            if blessed_amt.is_non_zero() {
                 let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                     (reward.asset, epoch)
                 );
@@ -1010,7 +1008,7 @@ mod Absorber {
             current_rewards_id += 1;
         };
 
-        if rewards.len() > 0 {
+        if rewards.len().is_non_zero() {
             Bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
         }
     }
@@ -1018,7 +1016,7 @@ mod Absorber {
     // Helper function to loop over all rewards and calculate the accumulated amounts for a provider.
     // It also returns a tuple of ordered arrays of the asset address and accumulated amounts for rewards.
     fn get_provider_accumulated_rewards(
-        provider: ContractAddress, provision: Provision, current_epoch: u32, rewards_count: u8
+        provider: ContractAddress, provision: Provision
     ) -> (Span<ContractAddress>, Span<u128>) {
         let mut rewards: Array<ContractAddress> = Default::default();
         let mut reward_amts: Array<u128> = Default::default();
@@ -1029,8 +1027,10 @@ mod Absorber {
             return (rewards.span(), reward_amts.span());
         }
 
+        let outer_loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
+        let inner_loop_end: u32 = current_epoch::read() + 1;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == outer_loop_end {
                 break (rewards.span(), reward_amts.span());
             }
 
@@ -1043,7 +1043,7 @@ mod Absorber {
                 // Terminate after the current epoch because we need to calculate rewards for the current
                 // epoch first
                 // There is also an early termination if the provider has no shares in current epoch
-                if epoch == current_epoch + 1 | epoch_shares.is_zero() {
+                if epoch == inner_loop_end | epoch_shares.is_zero() {
                     break;
                 }
 
@@ -1078,13 +1078,12 @@ mod Absorber {
     // All rewards should be updated for a provider because an inactive reward may be set to active,
     // receive a distribution, and set to inactive again. If a provider's cumulative is not updated
     // for this reward, the provider can repeatedly claim the difference and drain the absorber.
-    fn update_provider_cumulative_rewards(
-        provider: ContractAddress, epoch: u32, rewards_count: u8, 
-    ) {
+    fn update_provider_cumulative_rewards(provider: ContractAddress) {
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
-
+        let epoch: u32 = current_epoch::read();
+        let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == loop_end {
                 break;
             }
 
@@ -1102,11 +1101,11 @@ mod Absorber {
 
     // Transfers the error for a reward from the given epoch to the next epoch
     // `current_rewards_id` should start at `1`.
-    fn propagate_reward_errors(rewards_count: u8, epoch: u32) {
+    fn propagate_reward_errors(epoch: u32) {
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
-
+        let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         loop {
-            if current_rewards_id == rewards_count + REWARDS_LOOP_START {
+            if current_rewards_id == loop_end {
                 break;
             }
 

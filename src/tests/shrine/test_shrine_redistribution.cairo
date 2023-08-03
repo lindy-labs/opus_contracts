@@ -196,7 +196,7 @@ mod TestShrineRedistribution {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     assert(
-                        shrine.get_deposit(*yang, redistributed_trove_id) == WadZeroable::zero(),
+                        shrine.get_deposit(*yang, redistributed_trove_id).is_zero(),
                         'deposit should be 0'
                     );
 
@@ -297,7 +297,7 @@ mod TestShrineRedistribution {
 
         let (attributed_yangs, attributed_debt) = shrine
             .get_redistributions_attributed_to_trove(common::TROVE_1);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let expected_redistribution_id: u32 = 1;
@@ -370,7 +370,7 @@ mod TestShrineRedistribution {
 
         let (attributed_yangs, attributed_debt) = shrine
             .get_redistributions_attributed_to_trove(common::TROVE_2);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let expected_redistribution_id: u32 = 2;
@@ -451,7 +451,7 @@ mod TestShrineRedistribution {
 
         let (attributed_yangs, attributed_debt) = shrine
             .get_redistributions_attributed_to_trove(common::TROVE_2);
-        assert(attributed_debt == WadZeroable::zero(), 'should be zero');
+        assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
         let expected_redistribution_id: u32 = 1;
@@ -597,7 +597,7 @@ mod TestShrineRedistribution {
 
         // Check that troves 2 and 3 receives trove 1's yang1 and yang3
         assert(
-            shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(),
+            shrine.get_deposit(yang1_addr, redistributed_trove).is_zero(),
             'should be 0 yang 1 left'
         );
         let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
@@ -638,12 +638,12 @@ mod TestShrineRedistribution {
         );
 
         assert(
-            shrine.get_deposit(yang2_addr, redistributed_trove) == WadZeroable::zero(),
+            shrine.get_deposit(yang2_addr, redistributed_trove).is_zero(),
             'should be 0 yang 2 left'
         );
 
         assert(
-            shrine.get_deposit(yang3_addr, redistributed_trove) == WadZeroable::zero(),
+            shrine.get_deposit(yang3_addr, redistributed_trove).is_zero(),
             'should be 0 yang 3 left'
         );
         let recipient_trove1_yang3_amt: Wad = shrine.get_deposit(yang3_addr, recipient_trove1);
@@ -848,7 +848,7 @@ mod TestShrineRedistribution {
 
         // Check that recipient troves receive trove 1's yang1
         assert(
-            shrine.get_deposit(yang1_addr, redistributed_trove) == WadZeroable::zero(),
+            shrine.get_deposit(yang1_addr, redistributed_trove).is_zero(),
             'should be 0 yang 1 left'
         );
         let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
@@ -901,11 +901,11 @@ mod TestShrineRedistribution {
         );
 
         assert(
-            shrine.get_deposit(yang2_addr, redistributed_trove) == WadZeroable::zero(),
+            shrine.get_deposit(yang2_addr, redistributed_trove).is_zero(),
             'should be 0 yang 2 left'
         );
         assert(
-            shrine.get_deposit(yang3_addr, redistributed_trove) == WadZeroable::zero(),
+            shrine.get_deposit(yang3_addr, redistributed_trove).is_zero(),
             'should be 0 yang 3 left'
         );
 
@@ -1226,7 +1226,7 @@ mod TestShrineRedistribution {
         //
 
         assert(
-            shrine.get_deposit(yang1_addr, redistributed_trove2) == WadZeroable::zero(),
+            shrine.get_deposit(yang1_addr, redistributed_trove2).is_zero(),
             'should be 0 yang 1 left'
         );
         // Recipient trove's yang 1 amount should be the amount received from the first 
@@ -1250,7 +1250,7 @@ mod TestShrineRedistribution {
         );
 
         assert(
-            shrine.get_deposit(yang2_addr, redistributed_trove2) == WadZeroable::zero(),
+            shrine.get_deposit(yang2_addr, redistributed_trove2).is_zero(),
             'should be 0 yang 2 left'
         );
         // Recipient trove's yang2 should stay constant since all redistributions were via rebasing
@@ -1264,7 +1264,7 @@ mod TestShrineRedistribution {
         );
 
         assert(
-            shrine.get_deposit(yang3_addr, redistributed_trove2) == WadZeroable::zero(),
+            shrine.get_deposit(yang3_addr, redistributed_trove2).is_zero(),
             'should be 0 yang 3 left'
         );
         // Recipient trove's yang 3 amount should be the amount received from the first 
@@ -1318,8 +1318,8 @@ mod TestShrineRedistribution {
         );
 
         let (_, _, after_trove_value, after_trove_debt) = shrine.get_trove_info(common::TROVE_2);
-        assert(after_trove_value == WadZeroable::zero(), 'wrong value post redistribution');
-        assert(after_trove_debt == WadZeroable::zero(), 'wrong debt after redistribution');
+        assert(after_trove_value.is_zero(), 'wrong value post redistribution');
+        assert(after_trove_debt.is_zero(), 'wrong debt after redistribution');
 
         assert(shrine.get_trove_redistribution_id(common::TROVE_2) == 0, 'wrong redistribution id');
         // Trigger an update in trove 2 with an empty melt

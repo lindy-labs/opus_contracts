@@ -171,7 +171,7 @@ mod Shrine {
     #[event]
     fn ThresholdUpdated(yang: ContractAddress, threshold: Ray) {}
 
-    #[external]
+    #[event]
     fn ForgeFeePaid(trove_id: u64, fee: Wad, fee_pct: Wad) {}
 
     #[event]
@@ -498,7 +498,7 @@ mod Shrine {
         yangs_count::write(yang_id);
 
         // Set threshold
-        set_threshold(yang, threshold);
+        set_threshold_internal(yang, threshold);
 
         // Update initial yang supply
         // Used upstream to prevent first depositor front running
@@ -545,11 +545,7 @@ mod Shrine {
     fn set_threshold(yang: ContractAddress, new_threshold: Ray) {
         AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
-        assert(new_threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
-        thresholds::write(get_valid_yang_id(yang), new_threshold);
-
-        // Event emission
-        ThresholdUpdated(yang, new_threshold);
+        set_threshold_internal(yang, new_threshold);
     }
 
     #[external]
@@ -976,6 +972,14 @@ mod Shrine {
     #[inline(always)]
     fn now() -> u64 {
         starknet::get_block_timestamp() / TIME_INTERVAL
+    }
+
+    fn set_threshold_internal(yang: ContractAddress, threshold: Ray) {
+        assert(threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
+        thresholds::write(get_valid_yang_id(yang), threshold);
+
+        // Event emission
+        ThresholdUpdated(yang, threshold);
     }
 
     fn forge_internal(user: ContractAddress, amount: Wad) {
@@ -1627,8 +1631,9 @@ mod Shrine {
 
         // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
         let yang_id_to_array_idx_offset: u32 = 1;
+        let loop_end: u32 = current_redistribution_id + 1;
         loop {
-            if tmp_redistribution_id == current_redistribution_id + 1 {
+            if tmp_redistribution_id == loop_end {
                 break;
             }
 
