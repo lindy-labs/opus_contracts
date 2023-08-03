@@ -424,7 +424,7 @@ mod Purger {
                             let yang_total: Wad = shrine.get_yang_total(*yang);
                             let excess_asset_amt: u128 = *excess_asset_amts.pop_front().unwrap();
                             // See above for how this equation is derived
-                            let total_assets: Wad = sentinel.get_total_assets(*yang);
+                            let total_assets: u128 = sentinel.get_total_assets(*yang);
                             let total_yang_excluding_redistributed_trove: Wad = yang_total - trove_yang;
                             let excess_yang_amt: Wad = (excess_asset_amt.into()
                                 * total_yang_excluding_redistributed_trove)
