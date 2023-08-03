@@ -135,7 +135,7 @@ mod TestPurger {
 
         let (penalty, _, _) = purger.preview_absorb(target_trove);
         let expected_penalty: Ray = RayZeroable::zero();
-        assert(penalty == RayZeroable::zero(), 'should not be absorbable #1');
+        assert(penalty.is_zero(), 'should not be absorbable #1');
 
         // Set scalar to 1.06 and check the trove is still not absorbable.
         set_contract_address(PurgerUtils::admin());
@@ -143,7 +143,7 @@ mod TestPurger {
         purger.set_penalty_scalar(penalty_scalar);
 
         let (penalty, _, _) = purger.preview_absorb(target_trove);
-        assert(penalty == RayZeroable::zero(), 'should not be absorbable #2');
+        assert(penalty.is_zero(), 'should not be absorbable #2');
     }
 
     #[test]
@@ -376,7 +376,7 @@ mod TestPurger {
                                         safety_margin_achieved = true;
                                     }
                                 } else {
-                                    assert(after_debt == WadZeroable::zero(), 'should be 0 debt');
+                                    assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
                             },
                             Option::None(_) => {
@@ -668,8 +668,8 @@ mod TestPurger {
                     // Check trove debt and LTV
                     let (_, after_ltv, after_value, after_debt) = shrine
                         .get_trove_info(target_trove);
-                    assert(after_debt == WadZeroable::zero(), 'wrong debt after liquidation');
-                    assert(after_value == WadZeroable::zero(), 'wrong value after liquidation');
+                    assert(after_debt.is_zero(), 'wrong debt after liquidation');
+                    assert(after_value.is_zero(), 'wrong value after liquidation');
 
                     // Check that caller has received compensation
                     let target_trove_yang_asset_amts: Span<u128> =
@@ -695,7 +695,7 @@ mod TestPurger {
 
                     // Check absorber yin balance is wiped out
                     assert(
-                        shrine.get_yin(absorber.contract_address) == WadZeroable::zero(),
+                        shrine.get_yin(absorber.contract_address).is_zero(),
                         'wrong absorber yin balance'
                     );
 
@@ -822,9 +822,9 @@ mod TestPurger {
                     let (_, ltv, after_target_trove_value, after_target_trove_debt) = shrine
                         .get_trove_info(target_trove);
                     assert(shrine.is_healthy(target_trove), 'should be healthy');
-                    assert(ltv == RayZeroable::zero(), 'LTV should be 0');
-                    assert(after_target_trove_value == WadZeroable::zero(), 'value should be 0');
-                    assert(after_target_trove_debt == WadZeroable::zero(), 'debt should be 0');
+                    assert(ltv.is_zero(), 'LTV should be 0');
+                    assert(after_target_trove_value.is_zero(), 'value should be 0');
+                    assert(after_target_trove_debt.is_zero(), 'debt should be 0');
 
                     // Check no absorption occured
                     assert(absorber.get_absorptions_count() == 0, 'wrong absorptions count');
@@ -1006,7 +1006,7 @@ mod TestPurger {
                                 let (_, after_ltv, after_value, after_debt) = shrine
                                     .get_trove_info(target_trove);
                                 assert(
-                                    after_ltv == RayZeroable::zero(), 'wrong LTV after liquidation'
+                                    after_ltv.is_zero(), 'wrong LTV after liquidation'
                                 );
                                 common::assert_equalish(
                                     after_value,
@@ -1015,7 +1015,7 @@ mod TestPurger {
                                     'wrong value after liquidation'
                                 );
                                 assert(
-                                    after_debt == WadZeroable::zero(),
+                                    after_debt.is_zero(),
                                     'wrong debt after liquidation'
                                 );
                             },

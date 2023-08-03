@@ -639,7 +639,7 @@ mod AbsorberUtils {
                         'error not propagated'
                     );
                     assert(
-                        after_epoch_distribution.asset_amt_per_share == 0,
+                        after_epoch_distribution.asset_amt_per_share.is_zero(),
                         'wrong start reward cumulative'
                     );
                 },
