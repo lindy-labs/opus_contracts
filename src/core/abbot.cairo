@@ -10,6 +10,7 @@ mod Abbot {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
+    use aura::utils::types::AssetBalance;
     use aura::utils::wadray::{Wad, U128IntoWad};
 
     struct Storage {
@@ -94,13 +95,9 @@ mod Abbot {
     // `amounts` are denominated in asset's decimals
     #[external]
     fn open_trove(
-        forge_amount: Wad,
-        mut yangs: Span<ContractAddress>,
-        mut amounts: Span<u128>,
-        max_forge_fee_pct: Wad
+        forge_amount: Wad, mut yang_assets: Span<AssetBalance>, max_forge_fee_pct: Wad
     ) -> u64 {
-        assert(yangs.len().is_non_zero(), 'ABB: No yangs');
-        assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
+        assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
 
         let troves_count: u64 = troves_count::read();
         troves_count::write(troves_count + 1);
@@ -115,10 +112,9 @@ mod Abbot {
 
         // deposit all requested Yangs into the system
         loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let amount: u128 = *amounts.pop_front().unwrap();
-                    deposit_internal(*yang, user, new_trove_id, amount);
+            match yang_assets.pop_front() {
+                Option::Some(yang_asset) => {
+                    deposit_internal(*yang_asset.asset, user, new_trove_id, *yang_asset.amount);
                 },
                 Option::None(_) => {
                     break;

@@ -2,6 +2,7 @@ use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde;
+use aura::utils::types::AssetBalance;
 use aura::utils::wadray::Wad;
 
 
@@ -13,7 +14,7 @@ trait IAbbot {
     fn get_troves_count() -> u64;
     // external
     fn open_trove(
-        forge_amount: Wad, yangs: Span<ContractAddress>, amounts: Span<u128>, max_forge_fee_pct: Wad
+        forge_amount: Wad, yang_assets: Span<AssetBalance>, max_forge_fee_pct: Wad
     ) -> u64;
     fn close_trove(trove_id: u64);
     fn deposit(yang: ContractAddress, trove_id: u64, amount: u128);
