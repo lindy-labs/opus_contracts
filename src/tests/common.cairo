@@ -2,7 +2,8 @@ use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
 use starknet::{
     contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
-    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
+    contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+    SyscallResultTrait
 };
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -16,7 +17,7 @@ use aura::interfaces::IERC20::{
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::tests::erc20::ERC20;
-use aura::utils::types::Reward;
+use aura::utils::types::{AssetBalance, Reward};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad};
 
@@ -160,7 +161,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
 fn open_trove_helper(
     abbot: IAbbotDispatcher,
     user: ContractAddress,
-    mut yangs: Span<ContractAddress>,
+    yangs: Span<ContractAddress>,
     yang_asset_amts: Span<u128>,
     mut gates: Span<IGateDispatcher>,
     forge_amt: Wad
@@ -181,7 +182,8 @@ fn open_trove_helper(
     };
 
     set_contract_address(user);
-    let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
+    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
+    let trove_id: u64 = abbot.open_trove(forge_amt, yang_assets, 0_u128.into());
 
     set_contract_address(ContractAddressZeroable::zero());
 
@@ -267,6 +269,25 @@ fn assert_spans_equalish<
 //
 // Helpers - Array functions
 //
+
+fn combine_assets_and_amts(
+    mut assets: Span<ContractAddress>, mut amts: Span<u128>
+) -> Span<AssetBalance> {
+    let mut asset_balances: Array<AssetBalance> = Default::default();
+    loop {
+        match assets.pop_front() {
+            Option::Some(assets) => {
+                asset_balances
+                    .append(AssetBalance { asset: *assets, amount: *amts.pop_front().unwrap(),  });
+            },
+            Option::None(_) => {
+                break;
+            },
+        };
+    };
+
+    asset_balances.span()
+}
 
 // Helper function to multiply an array of values by a given percentage
 fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {

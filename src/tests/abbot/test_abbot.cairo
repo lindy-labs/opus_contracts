@@ -14,6 +14,7 @@ mod TestAbbot {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
 
@@ -147,22 +148,10 @@ mod TestAbbot {
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
         set_contract_address(trove_owner);
-        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Array lengths mismatch', 'ENTRYPOINT_FAILED'))]
-    fn test_open_trove_input_args_mismatch_fail() {
-        let (_, _, abbot, yangs, _) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
-
-        let yang_amts: Array<u128> = Default::default();
-        let forge_amt: Wad = 1_u128.into();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
-
-        set_contract_address(trove_owner);
-        abbot.open_trove(forge_amt, yangs, yang_amts.span(), max_forge_fee_pct);
+        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs.span(), yang_amts.span()
+        );
+        abbot.open_trove(forge_amt, yang_assets, max_forge_fee_pct);
     }
 
     #[test]
@@ -179,7 +168,10 @@ mod TestAbbot {
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
-        abbot.open_trove(forge_amt, yangs.span(), yang_amts.span(), max_forge_fee_pct);
+        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs.span(), yang_amts.span()
+        );
+        abbot.open_trove(forge_amt, yang_assets, max_forge_fee_pct);
     }
 
     #[test]
@@ -194,10 +186,7 @@ mod TestAbbot {
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
-                    assert(
-                        shrine.get_deposit(*yang, trove_id).is_zero(),
-                        'wrong yang amount'
-                    );
+                    assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
                 },
                 Option::None(_) => {
                     break;
