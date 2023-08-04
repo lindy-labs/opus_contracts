@@ -10,6 +10,7 @@ mod Abbot {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
+    use aura::utils::types::AssetBalance;
     use aura::utils::wadray::{BoundedWad, Wad};
 
     struct Storage {
