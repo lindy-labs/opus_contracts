@@ -172,7 +172,7 @@ mod Shrine {
     #[event]
     fn ThresholdUpdated(yang: ContractAddress, threshold: Ray) {}
 
-    #[external]
+    #[event]
     fn ForgeFeePaid(trove_id: u64, fee: Wad, fee_pct: Wad) {}
 
     #[event]
