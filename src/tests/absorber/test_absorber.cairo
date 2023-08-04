@@ -22,7 +22,7 @@ mod TestAbsorber {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
+    use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{
         Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
@@ -347,7 +347,7 @@ mod TestAbsorber {
                     // 3. `reap`
                     // and check that the provider receives rewards and absorbed assets
 
-                    let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+                    let (preview_absorbed_assets, preview_rewarded_assets) = absorber
                         .preview_reap(provider);
 
                     let mut remove_as_second_action: bool = false;
@@ -377,7 +377,7 @@ mod TestAbsorber {
 
                     // Check rewards
                     // Custom error margin is used due to loss of precision and initial minimum shares
-                    let error_margin: Wad = 500_u128.into();
+                    let error_margin: u128 = 500;
 
                     AbsorberUtils::assert_provider_received_absorbed_assets(
                         absorber,
@@ -385,7 +385,7 @@ mod TestAbsorber {
                         yangs,
                         first_update_assets,
                         before_absorbed_bals,
-                        preview_absorbed_amts,
+                        preview_absorbed_assets,
                         error_margin,
                     );
 
@@ -395,7 +395,7 @@ mod TestAbsorber {
                         reward_tokens,
                         reward_amts_per_blessing,
                         before_reward_bals,
-                        preview_reward_amts,
+                        preview_rewarded_assets,
                         expected_blessings_multiplier,
                         error_margin,
                     );
@@ -403,18 +403,20 @@ mod TestAbsorber {
                         absorber, provider, reward_tokens
                     );
 
-                    let (_, _, _, after_preview_reward_amts) = absorber.preview_reap(provider);
+                    let (_, after_preview_reward_assets) = absorber.preview_reap(provider);
                     if is_fully_absorbed & !provide_as_second_action {
                         assert(
-                            after_preview_reward_amts.len().is_zero(), 'should not have rewards'
+                            after_preview_reward_assets.len().is_zero(), 'should not have rewards'
                         );
                         AbsorberUtils::assert_reward_errors_propagated_to_next_epoch(
                             absorber, expected_epoch - 1, reward_tokens
                         );
-                    } else if after_preview_reward_amts.len().is_non_zero() {
+                    } else if after_preview_reward_assets.len().is_non_zero() {
                         // Sanity check that updated preview reward amount is lower than before
                         assert(
-                            *after_preview_reward_amts.at(0) < *preview_reward_amts.at(0),
+                            (*after_preview_reward_assets.at(0))
+                                .amount < (*preview_rewarded_assets.at(0))
+                                .amount,
                             'preview amount should decrease'
                         );
                     }
@@ -461,8 +463,10 @@ mod TestAbsorber {
             AbsorberUtils::absorber_with_rewards_and_first_provider();
 
         set_contract_address(common::badguy());
-        let first_update_assets: Span<u128> = AbsorberUtils::first_update_assets();
-        absorber.update(yangs, first_update_assets);
+        let first_update_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, AbsorberUtils::first_update_assets()
+        );
+        absorber.update(first_update_assets);
     }
 
     //
@@ -504,7 +508,8 @@ mod TestAbsorber {
         assert(before_absorber_yin_bal == first_provided_amt.into(), 'wrong yin balance');
 
         // Get preview amounts to check expected rewards
-        let (_, _, _, preview_reward_amts) = absorber.preview_reap(provider);
+        'preview'.print();
+        let (_, preview_rewarded_assets) = absorber.preview_reap(provider);
 
         // Test subsequent deposit
         let second_provided_amt: Wad = (400 * WAD_ONE).into();
@@ -554,14 +559,14 @@ mod TestAbsorber {
         );
 
         // Check rewards
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: u128 = 1000;
         AbsorberUtils::assert_provider_received_rewards(
             absorber,
             provider,
             reward_tokens,
             reward_amts_per_blessing,
             before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_blessings_multiplier,
             error_margin,
         );
@@ -649,21 +654,21 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.reap();
 
         assert(absorber.get_provider_last_absorption(first_provider) == 2, 'wrong last absorption');
 
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: u128 = 1000;
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
             yangs,
             first_update_assets,
             first_provider_before_absorbed_bals,
-            preview_absorbed_amts,
+            preview_absorbed_assets,
             error_margin,
         );
 
@@ -684,7 +689,7 @@ mod TestAbsorber {
             reward_tokens,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_blessings_multiplier,
             error_margin,
         );
@@ -701,7 +706,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(second_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_aseets, preview_rewarded_assets) = absorber
             .preview_reap(second_provider);
 
         absorber.reap();
@@ -710,14 +715,14 @@ mod TestAbsorber {
             absorber.get_provider_last_absorption(second_provider) == 2, 'wrong last absorption'
         );
 
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: u128 = 1000;
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             second_provider,
             yangs,
             second_update_assets,
             second_provider_before_absorbed_bals,
-            preview_absorbed_amts,
+            preview_absorbed_assets,
             error_margin,
         );
 
@@ -738,7 +743,7 @@ mod TestAbsorber {
             reward_tokens,
             reward_amts_per_blessing,
             second_provider_before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_blessings_multiplier,
             error_margin,
         );
@@ -831,7 +836,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
@@ -852,14 +857,14 @@ mod TestAbsorber {
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
 
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: u128 = 1000;
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
             yangs,
             first_update_assets,
             first_provider_before_absorbed_bals,
-            preview_absorbed_amts,
+            preview_absorbed_assets,
             error_margin,
         );
 
@@ -876,14 +881,14 @@ mod TestAbsorber {
 
         let expected_first_provider_blessings_multiplier = (2 * RAY_SCALE).into();
         // Loosen error margin due to loss of precision from epoch share conversion
-        let error_margin: Wad = WAD_SCALE.into();
+        let error_margin: u128 = WAD_SCALE;
         AbsorberUtils::assert_provider_received_rewards(
             absorber,
             first_provider,
             reward_tokens,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
@@ -943,7 +948,7 @@ mod TestAbsorber {
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
 
         set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
@@ -1057,7 +1062,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
@@ -1077,14 +1082,14 @@ mod TestAbsorber {
         let request: Request = absorber.get_provider_request(first_provider);
         assert(request.has_removed, 'request should be fulfilled');
 
-        let error_margin: Wad = 1000_u128.into();
+        let error_margin: u128 = 1000;
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
             yangs,
             first_update_assets,
             first_provider_before_absorbed_bals,
-            preview_absorbed_amts,
+            preview_absorbed_assets,
             error_margin,
         );
 
@@ -1108,7 +1113,7 @@ mod TestAbsorber {
             reward_tokens,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
@@ -1180,8 +1185,8 @@ mod TestAbsorber {
         let expected_current_epoch: u32 = Absorber::FIRST_EPOCH;
         assert(second_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
-        let error_margin: Wad = 1_u128
-            .into(); // loss of precision from rounding favouring the protocol
+        // loss of precision from rounding favouring the protocol
+        let error_margin: Wad = 1_u128.into();
         common::assert_equalish(
             absorber.preview_remove(second_provider),
             second_provided_amt,
@@ -1223,7 +1228,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.reap();
@@ -1234,14 +1239,14 @@ mod TestAbsorber {
             common::scale_span_by_pct(second_update_assets, expected_first_provider_pct)
         );
 
-        let error_margin: Wad = 10000_u128.into();
+        let error_margin: u128 = 10000;
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             first_provider,
             yangs,
             expected_first_provider_absorbed_asset_amts,
             first_provider_before_absorbed_bals,
-            preview_absorbed_amts,
+            preview_absorbed_assets,
             error_margin,
         );
 
@@ -1270,7 +1275,7 @@ mod TestAbsorber {
             reward_tokens,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
@@ -1294,7 +1299,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(second_provider);
-        let (_, preview_absorbed_amts, _, preview_reward_amts) = absorber
+        let (preview_absorbed_aseets, preview_rewarded_assets) = absorber
             .preview_reap(second_provider);
 
         absorber.reap();
@@ -1304,14 +1309,14 @@ mod TestAbsorber {
             second_update_assets, expected_second_provider_pct
         );
 
-        let error_margin: Wad = 10000_u128.into();
+        let error_margin: u128 = 10000;
         AbsorberUtils::assert_provider_received_absorbed_assets(
             absorber,
             second_provider,
             yangs,
             expected_second_provider_absorbed_asset_amts,
             second_provider_before_absorbed_bals,
-            preview_absorbed_amts,
+            preview_absorbed_assets,
             error_margin,
         );
 
@@ -1340,7 +1345,7 @@ mod TestAbsorber {
             reward_tokens,
             reward_amts_per_blessing,
             second_provider_before_reward_bals,
-            preview_reward_amts,
+            preview_rewarded_assets,
             expected_second_provider_blessings_multiplier,
             error_margin,
         );

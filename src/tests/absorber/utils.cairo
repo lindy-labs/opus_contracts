@@ -27,7 +27,7 @@ mod AbsorberUtils {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{DistributionInfo, Reward};
+    use aura::utils::types::{AssetBalance, DistributionInfo, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
@@ -373,7 +373,10 @@ mod AbsorberUtils {
 
         // Simulate transfer of "freed" assets to absorber
         set_contract_address(mock_purger());
-        absorber.update(yangs, yang_asset_amts);
+        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, yang_asset_amts
+        );
+        absorber.update(absorbed_assets);
 
         loop {
             match yangs.pop_front() {
@@ -423,8 +426,8 @@ mod AbsorberUtils {
         mut asset_addresses: Span<ContractAddress>,
         mut absorbed_amts: Span<u128>,
         mut before_balances: Span<Span<u128>>,
-        mut preview_amts: Span<u128>,
-        error_margin: Wad,
+        mut preview_absorbed_assets: Span<AssetBalance>,
+        error_margin: u128,
     ) {
         loop {
             match asset_addresses.pop_front() {
@@ -432,21 +435,24 @@ mod AbsorberUtils {
                     // Check provider has received correct amount of reward tokens
                     // Convert to Wad for fixed point operations
                     let absorbed_amt: Wad = (*absorbed_amts.pop_front().unwrap()).into();
-                    let after_provider_bal: Wad = IERC20Dispatcher {
+                    let after_provider_bal: u128 = IERC20Dispatcher {
                         contract_address: *asset
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let before_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into();
-                    let expected_bal: Wad = before_bal + absorbed_amt;
+                    let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
+                    let expected_bal: u128 = before_bal + absorbed_amt.val;
 
                     common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
                     );
 
                     // Check preview amounts are equal
-                    let preview_amt = *preview_amts.pop_front().unwrap();
+                    let preview_absorbed_asset = *preview_absorbed_assets.pop_front().unwrap();
                     common::assert_equalish(
-                        absorbed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
+                        absorbed_amt.val,
+                        preview_absorbed_asset.amount,
+                        error_margin,
+                        'wrong preview amount'
                     );
                 },
                 Option::None(_) => {
@@ -487,9 +493,9 @@ mod AbsorberUtils {
         mut asset_addresses: Span<ContractAddress>,
         mut reward_amts_per_blessing: Span<u128>,
         mut before_balances: Span<Span<u128>>,
-        mut preview_amts: Span<u128>,
+        mut preview_rewarded_assets: Span<AssetBalance>,
         blessings_multiplier: Ray,
-        error_margin: Wad,
+        error_margin: u128,
     ) {
         loop {
             match asset_addresses.pop_front() {
@@ -498,21 +504,24 @@ mod AbsorberUtils {
                     // Convert to Wad for fixed point operations
                     let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
                     let blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
-                    let after_provider_bal: Wad = IERC20Dispatcher {
+                    let after_provider_bal: u128 = IERC20Dispatcher {
                         contract_address: *asset
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
-                        + blessed_amt.into();
+                    let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into()
+                        + blessed_amt.val;
 
                     common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong reward balance'
                     );
 
                     // Check preview amounts are equal
-                    let preview_amt = *preview_amts.pop_front().unwrap();
+                    let preview_rewarded_asset = *preview_rewarded_assets.pop_front().unwrap();
                     common::assert_equalish(
-                        blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
+                        blessed_amt.val,
+                        preview_rewarded_asset.amount,
+                        error_margin,
+                        'wrong preview amount'
                     );
                 },
                 Option::None(_) => {

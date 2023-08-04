@@ -25,6 +25,7 @@ mod FlashLiquidator {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::serde;
+    use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable};
 
@@ -99,19 +100,34 @@ mod FlashLiquidator {
         );
 
         let trove_id: u64 = (*call_data.pop_front().unwrap()).try_into().unwrap();
-        let (freed_assets, freed_asset_amts) = purger::read()
+        let freed_assets: Span<AssetBalance> = purger::read()
             .liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
+
+        let mut provider_assets: Span<u128> = AbsorberUtils::provider_asset_amts();
+        let mut updated_assets: Array<AssetBalance> = Default::default();
+        let mut freed_assets_copy = freed_assets;
+        loop {
+            match freed_assets_copy.pop_front() {
+                Option::Some(freed_asset) => {
+                    updated_assets
+                        .append(
+                            AssetBalance {
+                                asset: *freed_asset.asset,
+                                amount: *freed_asset.amount + *provider_assets.pop_front().unwrap()
+                            }
+                        );
+                },
+                Option::None(_) => {
+                    break;
+                },
+            };
+        };
 
         // Open a trove with funded and freed assets, and mint the loan amount.
         // This should revert if the contract did not receive the freed assets
         // from the liquidation.
         abbot::read()
-            .open_trove(
-                amount.try_into().unwrap(),
-                freed_assets,
-                common::combine_spans(AbsorberUtils::provider_asset_amts(), freed_asset_amts),
-                WadZeroable::zero()
-            );
+            .open_trove(amount.try_into().unwrap(), updated_assets.span(), WadZeroable::zero());
 
         ON_FLASH_MINT_SUCCESS
     }

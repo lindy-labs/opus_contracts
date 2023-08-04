@@ -265,6 +265,25 @@ fn assert_spans_equalish<
     };
 }
 
+fn assert_asset_balances_equalish(
+    mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
+) {
+    assert(a.len() == b.len(), message);
+
+    loop {
+        match a.pop_front() {
+            Option::Some(a) => {
+                let b: AssetBalance = *b.pop_front().unwrap();
+                assert(*a.asset == b.asset, 'wrong asset address');
+                assert_equalish(*a.amount, b.amount, error, message);
+            },
+            Option::None(_) => {
+                break;
+            }
+        };
+    };
+}
+
 
 //
 // Helpers - Array functions
