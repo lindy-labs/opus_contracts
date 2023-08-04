@@ -1640,8 +1640,9 @@ mod Shrine {
 
         // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
         let yang_id_to_array_idx_offset: u32 = 1;
+        let loop_end: u32 = current_redistribution_id + 1;
         loop {
-            if tmp_redistribution_id == current_redistribution_id + 1 {
+            if tmp_redistribution_id == loop_end {
                 break;
             }
 
