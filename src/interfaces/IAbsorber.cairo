@@ -24,9 +24,7 @@ trait IAbsorber {
     fn get_removal_limit() -> Ray;
     fn get_live() -> bool;
     fn preview_remove(provider: ContractAddress) -> Wad;
-    fn preview_reap(
-        provider: ContractAddress
-    ) -> (Span<AssetBalance>, Span<AssetBalance>);
+    fn preview_reap(provider: ContractAddress) -> (Span<AssetBalance>, Span<AssetBalance>);
     // external
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool);
     fn set_removal_limit(limit: Ray);

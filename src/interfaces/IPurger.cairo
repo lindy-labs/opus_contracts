@@ -16,8 +16,6 @@ trait IPurger {
     fn get_penalty_scalar() -> Ray;
     // external
     fn set_penalty_scalar(new_scalar: Ray);
-    fn liquidate(
-        trove_id: u64, amt: Wad, recipient: ContractAddress
-    ) -> Span<AssetBalance>;
+    fn liquidate(trove_id: u64, amt: Wad, recipient: ContractAddress) -> Span<AssetBalance>;
     fn absorb(trove_id: u64) -> Span<AssetBalance>;
 }
