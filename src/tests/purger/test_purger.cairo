@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod TestPurger {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU128;
     use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
@@ -17,7 +16,7 @@ mod TestPurger {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -217,7 +216,7 @@ mod TestPurger {
         );
 
         set_contract_address(searcher);
-        let (_, freed_amts) = purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+        let (_, freed_amts) = purger.liquidate(target_trove, BoundedWad::max(), searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
@@ -355,7 +354,7 @@ mod TestPurger {
 
                                 let searcher: ContractAddress = PurgerUtils::searcher();
                                 set_contract_address(searcher);
-                                purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+                                purger.liquidate(target_trove, BoundedWad::max(), searcher);
 
                                 // Check that LTV is close to safety margin
                                 let (_, after_ltv, _, after_debt) = shrine
@@ -412,7 +411,7 @@ mod TestPurger {
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);
+        purger.liquidate(healthy_trove, BoundedWad::max(), searcher);
     }
 
     #[test]
@@ -441,7 +440,7 @@ mod TestPurger {
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);
+        purger.liquidate(healthy_trove, BoundedWad::max(), searcher);
     }
 
     #[test]
@@ -469,7 +468,7 @@ mod TestPurger {
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+        purger.liquidate(target_trove, BoundedWad::max(), searcher);
     }
 
     //
@@ -639,7 +638,7 @@ mod TestPurger {
                     let penalty: Ray = purger.get_absorption_penalty(target_trove);
                     let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
                     let close_amt: Wad = absorber_start_yin;
-                    // Sanity check 
+                    // Sanity check
                     assert(close_amt <= max_close_amt, 'max close amount exceeded');
 
                     let caller: ContractAddress = PurgerUtils::random_user();
@@ -733,7 +732,7 @@ mod TestPurger {
     }
 
     // Note that the absorber also zero shares in this test because no provider has
-    // provided yin yet. 
+    // provided yin yet.
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_full_redistribution_parametrized() {
