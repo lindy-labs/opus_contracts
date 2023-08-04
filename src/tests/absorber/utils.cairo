@@ -407,52 +407,46 @@ mod AbsorberUtils {
     // - `absorber` - Deployed Absorber instance.
     //
     // - `provider` - Address of the provider.
-    //  
-    // - `asset_addresses` = Ordered list of the absorbed asset token addresses.
     //
     // - `absorbed_amts` - Ordered list of the amount of assets absorbed.
     // 
     // - `before_balances` - Ordered list of the provider's absorbed asset token balances before 
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
     // 
-    // - `preview_amts` - Ordered list of the expected amount of absorbed assets the provider is entitled to 
-    //    withdraw based on `preview_reap`, in the token's decimal precision.
+    // - `preview_absorbed_assets` - Ordered list of `AssetBalance` struct representing the expected 
+    //    amount of absorbed assets the provider is entitled to withdraw based on `preview_reap`, 
+    //    in the token's decimal precision.
     //
     // - `error_margin` - Acceptable error margin
     // 
     fn assert_provider_received_absorbed_assets(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
-        mut asset_addresses: Span<ContractAddress>,
         mut absorbed_amts: Span<u128>,
         mut before_balances: Span<Span<u128>>,
         mut preview_absorbed_assets: Span<AssetBalance>,
         error_margin: u128,
     ) {
         loop {
-            match asset_addresses.pop_front() {
+            match preview_absorbed_assets.pop_front() {
                 Option::Some(asset) => {
                     // Check provider has received correct amount of reward tokens
                     // Convert to Wad for fixed point operations
-                    let absorbed_amt: Wad = (*absorbed_amts.pop_front().unwrap()).into();
+                    let absorbed_amt: u128 = *absorbed_amts.pop_front().unwrap();
                     let after_provider_bal: u128 = IERC20Dispatcher {
-                        contract_address: *asset
+                        contract_address: *asset.asset
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
-                    let expected_bal: u128 = before_bal + absorbed_amt.val;
+                    let expected_bal: u128 = before_bal + absorbed_amt;
 
                     common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
                     );
 
                     // Check preview amounts are equal
-                    let preview_absorbed_asset = *preview_absorbed_assets.pop_front().unwrap();
                     common::assert_equalish(
-                        absorbed_amt.val,
-                        preview_absorbed_asset.amount,
-                        error_margin,
-                        'wrong preview amount'
+                        absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
                     );
                 },
                 Option::None(_) => {
@@ -472,15 +466,13 @@ mod AbsorberUtils {
     //
     // - `provider` - Address of the provider.
     // 
-    // - `asset_addresses` = Ordered list of the reward tokens contracts.
-    //
     // - `reward_amts_per_blessing` - Ordered list of the reward token amount transferred to the absorber per blessing
     // 
     // - `before_balances` - Ordered list of the provider's reward token balances before receiving the rewards
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
     // 
-    // - `preview_amts` - Ordered list of the expected amount of reward tokens the provider is entitled to 
-    //    withdraw based on `preview_reap`, in the token's decimal precision.
+    // - `preview_rewarded_assets` - Ordered list of `AssetBalance` struct representing the expected amount of reward 
+    //    tokens the provider is entitled to withdraw based on `preview_reap`, in the token's decimal precision.
     //
     // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
     //    amount the provider should receive.
@@ -490,7 +482,6 @@ mod AbsorberUtils {
     fn assert_provider_received_rewards(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
-        mut asset_addresses: Span<ContractAddress>,
         mut reward_amts_per_blessing: Span<u128>,
         mut before_balances: Span<Span<u128>>,
         mut preview_rewarded_assets: Span<AssetBalance>,
@@ -498,14 +489,14 @@ mod AbsorberUtils {
         error_margin: u128,
     ) {
         loop {
-            match asset_addresses.pop_front() {
+            match preview_rewarded_assets.pop_front() {
                 Option::Some(asset) => {
                     // Check provider has received correct amount of reward tokens
                     // Convert to Wad for fixed point operations
                     let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
                     let blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
                     let after_provider_bal: u128 = IERC20Dispatcher {
-                        contract_address: *asset
+                        contract_address: *asset.asset
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into()
@@ -516,12 +507,11 @@ mod AbsorberUtils {
                     );
 
                     // Check preview amounts are equal
-                    let preview_rewarded_asset = *preview_rewarded_assets.pop_front().unwrap();
                     common::assert_equalish(
                         blessed_amt.val,
-                        preview_rewarded_asset.amount,
+                        *asset.amount,
                         error_margin,
-                        'wrong preview amount'
+                        'wrong preview rewarded amount'
                     );
                 },
                 Option::None(_) => {
