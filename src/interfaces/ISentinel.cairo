@@ -29,4 +29,6 @@ trait ISentinel {
     fn enter(yang: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad;
     fn exit(yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128;
     fn kill_gate(yang: ContractAddress);
+    fn mark_yang_risky(yang: ContractAddress);
+    fn mark_yang_safe(yang: ContractAddress);
 }

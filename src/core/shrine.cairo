@@ -4,7 +4,7 @@ mod Shrine {
     use cmp::min;
     use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
     use option::OptionTrait;
-    use starknet::get_caller_address;
+    use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
@@ -19,7 +19,12 @@ mod Shrine {
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{
+<<<<<<< HEAD
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
+=======
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE,
+        WAD_SCALE
+>>>>>>> 097313d0 (feat: yang delisting)
     };
 
     //
@@ -31,6 +36,13 @@ mod Shrine {
     const MAX_MULTIPLIER: u128 = 3000000000000000000000000000; // Max of 3x (ray): 3 * RAY_ONE
 
     const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
+
+    // When we deem a yang risky, we can mark it as soft delisted. During the
+    // DELISTING_PERIOD, this decision can be reverted and the yang's status
+    // can be changed back to normal. If this does not happen, the yang is
+    // hard delisted, forever.
+    // The start of a Yang's delisting period is tracked in `yang_delisting`
+    const DELISTING_PERIOD: u64 = 15768000; // 6 months
 
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
@@ -111,7 +123,14 @@ mod Shrine {
         // Keeps track of the interest rate of each yang at each era
         // (yang_id, era) -> (Interest Rate)
         yang_rates: LegacyMap::<(u32, u64), Ray>,
+        // Keeps track of when a yang was marked as delisted (the delisting process started)
+        // 0 means it is not delisted
+        // (yang_id) -> (soft delisting timestamp)
+        yang_delisting: LegacyMap::<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
+        // NOTE: don't read the value directly, instead use `get_yang_threshold_internal`
+        //       because a yang might be delisted; the function will return the correct
+        //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
         thresholds: LegacyMap::<u32, Ray>,
         // Keeps track of how many redistributions have occurred
@@ -403,10 +422,24 @@ mod Shrine {
         multiplier::read(interval)
     }
 
+    // Returns the delisting status of a yang as 2 booleans,
+    // first indicating if it is currently delisted (soft delisting),
+    // second if it is delisted forever (hard delisting)
+    #[view]
+    fn get_yang_delisting_status(yang: ContractAddress) -> (bool, bool) {
+        let yang_id: u32 = get_valid_yang_id(yang);
+        let delisting_ts: u64 = yang_delisting::read(yang_id);
+        if delisting_ts.is_zero() {
+            (false, false)
+        } else {
+            (true, delisting_ts + DELISTING_PERIOD <= get_block_timestamp())
+        }
+    }
+
     #[view]
     fn get_yang_threshold(yang: ContractAddress) -> Ray {
         let yang_id: u32 = get_valid_yang_id(yang);
-        thresholds::read(yang_id)
+        get_yang_threshold_internal(yang_id)
     }
 
     #[view]
@@ -873,6 +906,18 @@ mod Shrine {
     fn eject(burner: ContractAddress, amount: Wad) {
         AccessControl::assert_has_role(ShrineRoles::EJECT);
         melt_internal(burner, amount);
+    }
+
+    // Set the timestamp when a Yang's delisting period started
+    // Setting to 0 means the Yang is not delisted (i.e. it's safe)
+    #[external]
+    fn update_yang_delisting(yang: ContractAddress, delisting_ts: u64) {
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_DELISTING);
+        assert(delisting_ts <= get_block_timestamp(), 'SH: Invalid delisting timestamp');
+        let (_, hard) = get_yang_delisting_status(yang);
+        assert(!hard, 'SH: Permanent hard delisting');
+        let yang_id: u32 = get_valid_yang_id(yang);
+        yang_delisting::write(yang_id, delisting_ts);
     }
 
 
@@ -2019,7 +2064,7 @@ mod Shrine {
 
             // Update cumulative values only if user has deposited the current yang
             if deposited.is_non_zero() {
-                let yang_threshold: Ray = thresholds::read(current_yang_id);
+                let yang_threshold: Ray = get_yang_threshold_internal(current_yang_id);
 
                 let (price, _, _) = get_recent_price_from(current_yang_id, interval);
 
@@ -2050,7 +2095,9 @@ mod Shrine {
                 Option::Some(yang_balance) => {
                     // Update cumulative values only if user has deposited the current yang
                     if (*yang_balance.amount).is_non_zero() {
-                        let yang_threshold: Ray = thresholds::read(*yang_balance.yang_id);
+                        let yang_threshold: Ray = get_yang_threshold_internal(
+                            *yang_balance.yang_id
+                        );
 
                         let (price, _, _) = get_recent_price_from(*yang_balance.yang_id, interval);
 
@@ -2090,7 +2137,7 @@ mod Shrine {
 
             // Update cumulative values only if current yang has been deposited
             if deposited.is_non_zero() {
-                let yang_threshold: Ray = thresholds::read(current_yang_id);
+                let yang_threshold: Ray = get_yang_threshold_internal(current_yang_id);
 
                 let (price, _, _) = get_recent_price_from(current_yang_id, current_interval);
 
@@ -2109,6 +2156,28 @@ mod Shrine {
         (0_u128.into(), 0_u128.into())
     }
 
+    fn get_yang_threshold_internal(yang_id: u32) -> Ray {
+        let base_threshold: Ray = thresholds::read(yang_id);
+        let delisting_ts: u64 = yang_delisting::read(yang_id);
+        let current_ts: u64 = get_block_timestamp();
+
+        // not delisted
+        if delisting_ts.is_zero() {
+            return base_threshold;
+        }
+
+        // hard delisting
+        if delisting_ts + DELISTING_PERIOD <= current_ts {
+            return RayZeroable::zero();
+        }
+
+        // soft delisting
+        // linearly decrease the threshold from base_threshold to 0
+        // based on the time passed since delisting
+        let ts_diff: u64 = current_ts - delisting_ts;
+        let decrease_pct: u128 = (ts_diff / (DELISTING_PERIOD / 100)).into();
+        base_threshold * (RAY_ONE.into() - (decrease_pct * RAY_PERCENT).into())
+    }
 
     //
     // Internal ERC20 functions

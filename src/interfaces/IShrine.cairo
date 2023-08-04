@@ -20,6 +20,7 @@ trait IShrine {
     fn get_current_rate_era() -> u64;
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
+    fn get_yang_delisting_status(yang: ContractAddress) -> (bool, bool);
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
     fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;
@@ -49,6 +50,7 @@ trait IShrine {
     fn redistribute(trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray);
     fn inject(receiver: ContractAddress, amount: Wad);
     fn eject(burner: ContractAddress, amount: Wad);
+    fn update_yang_delisting(yang: ContractAddress, delisting_ts: u64);
     // view
     fn get_shrine_threshold_and_value() -> (Ray, Wad);
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);

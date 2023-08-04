@@ -1,7 +1,7 @@
 #[contract]
 mod Sentinel {
     use array::{ArrayTrait, SpanTrait};
-    use starknet::get_caller_address;
+    use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Default, Into};
     use zeroable::Zeroable;
@@ -17,7 +17,7 @@ mod Sentinel {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
-    // Helper constant to set the starting index for iterating over the 
+    // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
     const LOOP_START: u64 = 1;
 
@@ -65,7 +65,7 @@ mod Sentinel {
 
     //
     // View Functions
-    // 
+    //
 
     #[view]
     fn get_gate_address(yang: ContractAddress) -> ContractAddress {
@@ -135,7 +135,7 @@ mod Sentinel {
 
     //
     // External functions
-    // 
+    //
 
     #[external]
     fn add_yang(
@@ -223,6 +223,18 @@ mod Sentinel {
         GateKilled(yang, yang_to_gate::read(yang).contract_address);
     }
 
+    #[external]
+    fn mark_yang_risky(yang: ContractAddress) {
+        AccessControl::assert_has_role(SentinelRoles::MARK_YANG);
+        shrine::read().update_yang_delisting(yang, get_block_timestamp());
+    }
+
+    #[external]
+    fn mark_yang_safe(yang: ContractAddress) {
+        AccessControl::assert_has_role(SentinelRoles::MARK_YANG);
+        shrine::read().update_yang_delisting(yang, 0);
+    }
+
     //
     // Internal
     //
@@ -233,6 +245,8 @@ mod Sentinel {
     fn assert_can_enter(yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
         assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
         assert(yang_is_live::read(yang), 'SE: Gate is not live');
+        let (soft_delisted, _) = shrine::read().get_yang_delisting_status(yang);
+        assert(!soft_delisted, 'SE: Yang marked as risky');
         let current_total: u128 = gate.get_total_assets();
         let max_amt: u128 = yang_asset_max::read(yang);
         assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
