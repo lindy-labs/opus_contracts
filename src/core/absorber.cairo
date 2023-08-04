@@ -889,8 +889,9 @@ mod Absorber {
         loop {
             match asset_balances.pop_front() {
                 Option::Some(asset_balance) => {
-                    if (*asset_balance.amount).is_non_zero() {
-                        let asset_amt: u256 = (*asset_balance.amount).into();
+                    let asset_amt: u128 = *asset_balance.amount;
+                    if asset_amt.is_non_zero() {
+                        let asset_amt: u256 = asset_amt.into();
                         IERC20Dispatcher {
                             contract_address: *asset_balance.asset
                         }.transfer(to, asset_amt);
