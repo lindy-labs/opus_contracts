@@ -29,7 +29,7 @@ mod TestSentinel {
     fn test_deploy_sentinel_and_add_yang() {
         let (sentinel, shrine, assets, gates) = SentinelUtils::deploy_sentinel_with_gates();
 
-        // Checking that sentinel was set up correctly 
+        // Checking that sentinel was set up correctly
 
         let eth_gate = *gates.at(0);
         let wbtc_gate = *gates.at(1);
@@ -76,7 +76,7 @@ mod TestSentinel {
             'Wrong roles for admin'
         );
 
-        // Checking that the gates were set up correctly 
+        // Checking that the gates were set up correctly
 
         assert((eth_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #1');
         assert((wbtc_gate).get_sentinel() == sentinel.contract_address, 'Wrong sentinel #2');
@@ -217,11 +217,11 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::admin());
 
-        // Test increasing the max 
+        // Test increasing the max
         sentinel.set_yang_asset_max(eth, new_asset_max);
         assert(sentinel.get_yang_asset_max(eth) == new_asset_max, 'Wrong asset max');
 
-        // Test decreasing the max 
+        // Test decreasing the max
         sentinel.set_yang_asset_max(eth, new_asset_max - 1);
         assert(sentinel.get_yang_asset_max(eth) == new_asset_max - 1, 'Wrong asset max');
 
@@ -443,7 +443,7 @@ mod TestSentinel {
     fn test_kill_gate_and_exit() {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
-        // Making a regular deposit 
+        // Making a regular deposit
         let eth_erc20 = IERC20Dispatcher { contract_address: eth };
         let user: ContractAddress = GateUtils::eth_hoarder();
 
@@ -456,7 +456,7 @@ mod TestSentinel {
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, common::TROVE_1, yang_amt);
 
-        // Killing the gate 
+        // Killing the gate
         set_contract_address(SentinelUtils::admin());
         sentinel.kill_gate(eth);
 
@@ -481,4 +481,55 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::mock_abbot());
         sentinel.preview_enter(eth, deposit_amt.val);
     }
+
+    #[test]
+    #[available_gas(10000000000)]
+    fn test_mark_yang_risky_and_safe() {
+        let (sentinel, shrine, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
+        set_contract_address(SentinelUtils::admin());
+
+        sentinel.mark_yang_risky(eth);
+        let (soft, hard) = shrine.get_yang_delisting_status(eth);
+        assert(soft, 'eth soft delisting');
+        assert(!hard, 'eth hard delisting');
+
+        sentinel.mark_yang_safe(eth);
+        let (soft, hard) = shrine.get_yang_delisting_status(eth);
+        assert(!soft, 'eth marked safe, soft');
+        assert(!hard, 'eth marked safe, hard');
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Yang marked as risky', 'ENTRYPOINT_FAILED'))]
+    fn test_try_enter_when_yang_marked_risky() {
+        let (sentinel, shrine, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
+        set_contract_address(SentinelUtils::admin());
+        sentinel.mark_yang_risky(eth);
+
+        let user: ContractAddress = GateUtils::eth_hoarder();
+        let deposit_amt: Wad = (2 * WAD_ONE).into();
+
+        set_contract_address(SentinelUtils::mock_abbot());
+        sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
+    fn test_mark_yang_risky_unauthorized() {
+        let (sentinel, _, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
+        set_contract_address(common::badguy());
+        sentinel.mark_yang_risky(eth);
+    }
+
+    #[test]
+    #[available_gas(10000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_mark_yang_safe_unauthorized() {
+        let (sentinel, _, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
+        set_contract_address(common::badguy());
+        sentinel.mark_yang_safe(eth);
+    }
+
 }

@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
+    use debug::PrintTrait;
     use integer::BoundedU256;
     use option::OptionTrait;
     use traits::{Default, Into};
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use zeroable::Zeroable;
 
     use aura::core::shrine::Shrine;
@@ -1436,5 +1437,173 @@ mod TestShrine {
         shrine.update_yin_spot_price(fourth_yin_price);
         assert(shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4');
 
+    }
+
+    //
+    // Tests - delisting
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_get_yang_delisting_status_basic() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        // TODO: after move to cairo v2.1.0 which has PartialEq on 2-tuples, this can be simplified
+        let (yang1_soft, yang1_hard) = shrine.get_yang_delisting_status(ShrineUtils::yang1_addr());
+        assert(!yang1_soft, 'yang1 soft delisting');
+        assert(!yang1_hard, 'yang1 hard delisting');
+        let (yang2_soft, yang2_hard) = shrine.get_yang_delisting_status(ShrineUtils::yang2_addr());
+        assert(!yang2_soft, 'yang2 soft delisting');
+        assert(!yang2_hard, 'yang2 hard delisting');
+        let (yang3_soft, yang3_hard) = shrine.get_yang_delisting_status(ShrineUtils::yang3_addr());
+        assert(!yang3_soft, 'yang3 soft delisting');
+        assert(!yang3_hard, 'yang3 hard delisting');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_get_yang_delisting_status_nonexisting_yang() {
+        let shrine = ShrineUtils::shrine(ShrineUtils::shrine_deploy());
+        shrine.get_yang_delisting_status(ShrineUtils::invalid_yang_addr());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_delisting_set_and_unset() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+
+        // initiate yang's delisting, starting now
+        shrine.update_yang_delisting(yang, start_ts);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(soft, 'soft delisting 1');
+        assert(!hard, 'hard delisting 1');
+
+        // reset the delisting by setting yang's ts to 0
+        shrine.update_yang_delisting(yang, 0);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(!soft, 'soft delisting 2');
+        assert(!hard, 'hard delisting 2');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_delisting_status_not_authorized() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+        set_contract_address(common::badguy());
+
+        shrine.update_yang_delisting(yang, 42);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_delisting_progress_soft_to_hard() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+
+        // initiate yang's delisting, starting now
+        shrine.update_yang_delisting(yang, start_ts);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(soft, 'soft delisting 1');
+        assert(!hard, 'hard delisting 1');
+        // check threshold (should be the same at the beginning)
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
+
+        // the threshold should decrease by 1% in this amount of time
+        let one_pct = Shrine::DELISTING_PERIOD / 100;
+
+        // move time forward
+        set_block_timestamp(start_ts + one_pct);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(soft, 'soft delisting 2');
+        assert(!hard, 'hard delisting 2');
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
+
+        // move time forward
+        set_block_timestamp(start_ts + one_pct * 20);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(soft, 'soft delisting 3');
+        assert(!hard, 'hard delisting 3');
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
+
+        // move time forward to a second before hard delisting
+        set_block_timestamp(start_ts + Shrine::DELISTING_PERIOD - 1);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(soft, 'soft delisting 4');
+        assert(!hard, 'hard delisting 4');
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
+
+        // move time forward to end of soft delisting, start of hard delisting
+        set_block_timestamp(start_ts + Shrine::DELISTING_PERIOD);
+
+        // check delisting status
+        let (soft, hard) = shrine.get_yang_delisting_status(yang);
+        assert(soft, 'soft delisting 5');
+        assert(hard, 'hard delisting 5');
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == RayZeroable::zero(), 'threshold 5');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Permanent hard delisting', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_delisting_cannot_reset_after_hard_delisting() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+        // mark as delisted
+        shrine.update_yang_delisting(yang, start_ts - Shrine::DELISTING_PERIOD);
+        // sanity check
+        let (_, hard) = shrine.get_yang_delisting_status(yang);
+        assert(hard, 'delisted');
+
+        // trying to reset yang delisting status, should fail
+        shrine.update_yang_delisting(yang, 0);
     }
 }
