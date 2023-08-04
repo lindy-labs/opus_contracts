@@ -516,7 +516,7 @@ mod TestSentinel {
 
     #[test]
     #[available_gas(10000000000)]
-    #[should_panic(expected: ('SE: Gate is not live', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_mark_yang_risky_unauthorized() {
         let (sentinel, _, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
         set_contract_address(common::badguy());
