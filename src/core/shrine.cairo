@@ -99,7 +99,8 @@ mod Shrine {
         // the yang at each time interval, both as Rays
         // (interval) -> (multiplier, cumulative_multiplier)
         multiplier: LegacyMap::<u64, (Ray, Ray)>,
-        // Keeps track of the most recent rates index
+        // Keeps track of the most recent rates index.
+        // Rate era starts at 1.
         // Each index is associated with an update to the interest rates of all yangs.
         rates_latest_era: u64,
         // Keeps track of the interval at which the rate update at `era` was made.
@@ -171,7 +172,7 @@ mod Shrine {
     #[event]
     fn ThresholdUpdated(yang: ContractAddress, threshold: Ray) {}
 
-    #[event]
+    #[external]
     fn ForgeFeePaid(trove_id: u64, fee: Wad, fee_pct: Wad) {}
 
     #[event]
@@ -222,6 +223,9 @@ mod Shrine {
         let prev_interval: u64 = now() - 1;
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         multiplier::write(prev_interval, (init_multiplier, init_multiplier));
+
+        // Setting initial rate era to 1
+        rates_latest_era::write(1);
 
         // Setting initial yin spot price to 1
         yin_spot_price::write(WAD_ONE.into());
@@ -380,6 +384,11 @@ mod Shrine {
     fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray {
         let yang_id: u32 = get_valid_yang_id(yang);
         yang_rates::read((yang_id, idx))
+    }
+
+    #[view]
+    fn get_current_rate_era() -> u64 {
+        rates_latest_era::read()
     }
 
     #[view]
@@ -1631,9 +1640,8 @@ mod Shrine {
 
         // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
         let yang_id_to_array_idx_offset: u32 = 1;
-        let loop_end: u32 = current_redistribution_id + 1;
         loop {
-            if tmp_redistribution_id == loop_end {
+            if tmp_redistribution_id == current_redistribution_id + 1 {
                 break;
             }
 
