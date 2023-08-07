@@ -1575,7 +1575,7 @@ mod TestShrine {
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
 
-        // move time forward to a second before hard suspension
+        // move time forward to a second before permanent suspension
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
         // check suspension status

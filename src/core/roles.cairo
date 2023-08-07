@@ -83,8 +83,8 @@ mod SentinelRoles {
     const ENTER: u128 = 2;
     const EXIT: u128 = 4;
     const KILL_GATE: u128 = 8;
-    const MARK_YANG: u128 = 16;
-    const SET_YANG_ASSET_MAX: u128 = 32;
+    const SET_YANG_ASSET_MAX: u128 = 16;
+    const UPDATE_YANG_SUSPENSION: u128 = 32;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -103,7 +103,7 @@ mod SentinelRoles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + KILL_GATE + MARK_YANG + SET_YANG_ASSET_MAX
+        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX + UPDATE_YANG_SUSPENSION
     }
 }
 
