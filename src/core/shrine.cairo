@@ -34,11 +34,11 @@ mod Shrine {
     const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
 
     // If a yang is deemed risky, it can be marked as suspended. During the
-    // SUSPENSION_PERIOD, this decision can be reverted and the yang's status
+    // SUSPENSION_GRACE_PERIOD, this decision can be reverted and the yang's status
     // can be changed back to normal. If this does not happen, the yang is
     // suspended forever, i.e. can't be used in the system ever again.
     // The start of a Yang's suspension period is tracked in `yang_suspension`
-    const SUSPENSION_PERIOD: u64 = 15768000; // 182.5 days, half a year, in seconds
+    const SUSPENSION_GRACE_PERIOD: u64 = 15768000; // 182.5 days, half a year, in seconds
 
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
@@ -419,7 +419,7 @@ mod Shrine {
         if suspension_ts.is_zero() {
             (false, false)
         } else {
-            (true, suspension_ts + SUSPENSION_PERIOD <= get_block_timestamp())
+            (true, suspension_ts + SUSPENSION_GRACE_PERIOD <= get_block_timestamp())
         }
     }
 
@@ -2062,7 +2062,7 @@ mod Shrine {
         }
 
         // permanently suspended
-        if suspension_ts + SUSPENSION_PERIOD <= current_ts {
+        if suspension_ts + SUSPENSION_GRACE_PERIOD <= current_ts {
             return RayZeroable::zero();
         }
 
@@ -2070,7 +2070,7 @@ mod Shrine {
         // linearly decrease the threshold from base_threshold to 0
         // based on the time passed since suspension started
         let ts_diff: u64 = current_ts - suspension_ts;
-        let decrease_pct: u128 = (ts_diff / (SUSPENSION_PERIOD / 100)).into();
+        let decrease_pct: u128 = (ts_diff / (SUSPENSION_GRACE_PERIOD / 100)).into();
         base_threshold * (RAY_ONE.into() - (decrease_pct * RAY_PERCENT).into())
     }
 

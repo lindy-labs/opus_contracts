@@ -1502,7 +1502,7 @@ mod TestShrine {
         assert(!permanent, 'permanent suspension 1');
 
         // setting block time to a second before the suspension would be permanent
-        set_block_timestamp(start_ts + Shrine::SUSPENSION_PERIOD - 1);
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
         // reset the suspension by setting yang's ts to 0
         shrine.update_yang_suspension(yang, 0);
@@ -1551,7 +1551,7 @@ mod TestShrine {
         assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
 
         // the threshold should decrease by 1% in this amount of time
-        let one_pct = Shrine::SUSPENSION_PERIOD / 100;
+        let one_pct = Shrine::SUSPENSION_GRACE_PERIOD / 100;
 
         // move time forward
         set_block_timestamp(start_ts + one_pct);
@@ -1576,7 +1576,7 @@ mod TestShrine {
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
 
         // move time forward to a second before hard suspension
-        set_block_timestamp(start_ts + Shrine::SUSPENSION_PERIOD - 1);
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
         // check suspension status
         let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
@@ -1587,7 +1587,7 @@ mod TestShrine {
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
 
         // move time forward to end of temp suspension, start of permanent one
-        set_block_timestamp(start_ts + Shrine::SUSPENSION_PERIOD);
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
 
         // check suspension status
      let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
@@ -1612,7 +1612,7 @@ mod TestShrine {
         set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
         // mark permanent
-        shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_PERIOD);
+        shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_GRACE_PERIOD);
         // sanity check
         let (_, perm) = shrine.get_yang_suspension_status(yang);
         assert(perm, 'delisted');
