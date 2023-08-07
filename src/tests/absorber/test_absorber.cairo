@@ -347,7 +347,7 @@ mod TestAbsorber {
                     // 3. `reap`
                     // and check that the provider receives rewards and absorbed assets
 
-                    let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+                    let (preview_absorbed_assets, preview_reward_assets) = absorber
                         .preview_reap(provider);
 
                     let mut remove_as_second_action: bool = false;
@@ -393,7 +393,7 @@ mod TestAbsorber {
                         provider,
                         reward_amts_per_blessing,
                         before_reward_bals,
-                        preview_rewarded_assets,
+                        preview_reward_assets,
                         expected_blessings_multiplier,
                         error_margin,
                     );
@@ -413,7 +413,7 @@ mod TestAbsorber {
                         // Sanity check that updated preview reward amount is lower than before
                         assert(
                             (*after_preview_reward_assets.at(0))
-                                .amount < (*preview_rewarded_assets.at(0))
+                                .amount < (*preview_reward_assets.at(0))
                                 .amount,
                             'preview amount should decrease'
                         );
@@ -506,7 +506,7 @@ mod TestAbsorber {
         assert(before_absorber_yin_bal == first_provided_amt.into(), 'wrong yin balance');
 
         // Get preview amounts to check expected rewards
-        let (_, preview_rewarded_assets) = absorber.preview_reap(provider);
+        let (_, preview_reward_assets) = absorber.preview_reap(provider);
 
         // Test subsequent deposit
         let second_provided_amt: Wad = (400 * WAD_ONE).into();
@@ -562,7 +562,7 @@ mod TestAbsorber {
             provider,
             reward_amts_per_blessing,
             before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_blessings_multiplier,
             error_margin,
         );
@@ -650,7 +650,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.reap();
@@ -683,7 +683,7 @@ mod TestAbsorber {
             first_provider,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_blessings_multiplier,
             error_margin,
         );
@@ -700,7 +700,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(second_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(second_provider);
 
         absorber.reap();
@@ -735,7 +735,7 @@ mod TestAbsorber {
             second_provider,
             reward_amts_per_blessing,
             second_provider_before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_blessings_multiplier,
             error_margin,
         );
@@ -828,7 +828,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
@@ -878,7 +878,7 @@ mod TestAbsorber {
             first_provider,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
@@ -938,7 +938,7 @@ mod TestAbsorber {
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
 
         set_contract_address(first_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
@@ -1052,7 +1052,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.request();
@@ -1101,7 +1101,7 @@ mod TestAbsorber {
             first_provider,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
@@ -1216,7 +1216,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(first_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(first_provider);
 
         absorber.reap();
@@ -1261,7 +1261,7 @@ mod TestAbsorber {
             first_provider,
             reward_amts_per_blessing,
             first_provider_before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_first_provider_blessings_multiplier,
             error_margin,
         );
@@ -1285,7 +1285,7 @@ mod TestAbsorber {
         );
 
         set_contract_address(second_provider);
-        let (preview_absorbed_assets, preview_rewarded_assets) = absorber
+        let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(second_provider);
 
         absorber.reap();
@@ -1329,7 +1329,7 @@ mod TestAbsorber {
             second_provider,
             reward_amts_per_blessing,
             second_provider_before_reward_bals,
-            preview_rewarded_assets,
+            preview_reward_assets,
             expected_second_provider_blessings_multiplier,
             error_margin,
         );
