@@ -17,6 +17,7 @@ trait IShrine {
     fn get_total_yin() -> Wad;
     fn get_yang_price(yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray;
+    fn get_current_rate_era() -> u64;
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
     fn get_yang_threshold(yang: ContractAddress) -> Ray;

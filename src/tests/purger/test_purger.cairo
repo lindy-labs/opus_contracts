@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod TestPurger {
     use array::{ArrayTrait, SpanTrait};
-    use integer::BoundedU128;
     use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
@@ -18,7 +17,9 @@ mod TestPurger {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use aura::utils::wadray::{
+        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
+    };
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -229,7 +230,7 @@ mod TestPurger {
         );
 
         set_contract_address(searcher);
-        let (_, freed_amts) = purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+        let (_, freed_amts) = purger.liquidate(target_trove, BoundedWad::max(), searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
@@ -389,7 +390,7 @@ mod TestPurger {
 
                                 let searcher: ContractAddress = PurgerUtils::searcher();
                                 set_contract_address(searcher);
-                                purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+                                purger.liquidate(target_trove, BoundedWad::max(), searcher);
 
                                 // Check that LTV is close to safety margin
                                 let (_, after_ltv, _, after_debt) = shrine
@@ -446,7 +447,7 @@ mod TestPurger {
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);
+        purger.liquidate(healthy_trove, BoundedWad::max(), searcher);
     }
 
     #[test]
@@ -475,7 +476,7 @@ mod TestPurger {
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(healthy_trove, BoundedU128::max().into(), searcher);
+        purger.liquidate(healthy_trove, BoundedWad::max(), searcher);
     }
 
     #[test]
@@ -507,7 +508,7 @@ mod TestPurger {
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
-        purger.liquidate(target_trove, BoundedU128::max().into(), searcher);
+        purger.liquidate(target_trove, BoundedWad::max(), searcher);
     }
 
     //
@@ -743,14 +744,8 @@ mod TestPurger {
                                 // Check trove debt and LTV
                                 let (_, after_ltv, after_value, after_debt) = shrine
                                     .get_trove_info(target_trove);
-                                assert(
-                                    after_debt.is_zero(),
-                                    'wrong debt after liquidation'
-                                );
-                                assert(
-                                    after_value.is_zero(),
-                                    'wrong value after liquidation'
-                                );
+                                assert(after_debt.is_zero(), 'wrong debt after liquidation');
+                                assert(after_value.is_zero(), 'wrong value after liquidation');
 
                                 // Check that caller has received compensation
                                 let expected_compensation: Span<u128> =
@@ -776,8 +771,7 @@ mod TestPurger {
 
                                 // Check absorber yin balance is wiped out
                                 assert(
-                                    shrine
-                                        .get_yin(absorber.contract_address).is_zero(),
+                                    shrine.get_yin(absorber.contract_address).is_zero(),
                                     'wrong absorber yin balance'
                                 );
 
@@ -1011,13 +1005,17 @@ mod TestPurger {
                                             let expected_after_value: Wad = before_value
                                                 - expected_compensation_value
                                                 - expected_redistributed_value;
-                                            assert(after_debt.is_non_zero(), 'debt should not be 0');
+                                            assert(
+                                                after_debt.is_non_zero(), 'debt should not be 0'
+                                            );
                                             assert(
                                                 after_debt == expected_after_debt,
                                                 'wrong debt after liquidation'
                                             );
 
-                                            assert(after_value.is_non_zero(), 'value should not be 0');
+                                            assert(
+                                                after_value.is_non_zero(), 'value should not be 0'
+                                            );
                                             common::assert_equalish(
                                                 after_value,
                                                 expected_after_value,
@@ -1049,10 +1047,7 @@ mod TestPurger {
 
                                             // Check absorber yin balance is wiped out
                                             assert(
-                                                shrine
-                                                    .get_yin(
-                                                        absorber.contract_address
-                                                    ).is_zero(),
+                                                shrine.get_yin(absorber.contract_address).is_zero(),
                                                 'wrong absorber yin balance'
                                             );
 
@@ -1081,7 +1076,8 @@ mod TestPurger {
                                             // Check recipient trove's debt
                                             let (_, _, _, after_recipient_trove_debt) = shrine
                                                 .get_trove_info(recipient_trove);
-                                            let expected_redistributed_amt: Wad = max_close_amt - close_amt;
+                                            let expected_redistributed_amt: Wad = max_close_amt
+                                                - close_amt;
                                             let expected_recipient_trove_debt: Wad =
                                                 recipient_trove_debt
                                                 + expected_redistributed_amt;
@@ -1151,7 +1147,7 @@ mod TestPurger {
     }
 
     // Note that the absorber also zero shares in this test because no provider has
-    // provided yin yet. 
+    // provided yin yet.
     #[test]
     #[available_gas(20000000000)]
     fn test_absorb_full_redistribution_parametrized() {
@@ -1269,14 +1265,8 @@ mod TestPurger {
                                     .get_trove_info(target_trove);
                                 assert(shrine.is_healthy(target_trove), 'should be healthy');
                                 assert(ltv.is_zero(), 'LTV should be 0');
-                                assert(
-                                    after_target_trove_value.is_zero(),
-                                    'value should be 0'
-                                );
-                                assert(
-                                    after_target_trove_debt.is_zero(),
-                                    'debt should be 0'
-                                );
+                                assert(after_target_trove_value.is_zero(), 'value should be 0');
+                                assert(after_target_trove_debt.is_zero(), 'debt should be 0');
 
                                 // Check no absorption occured
                                 assert(
@@ -1493,17 +1483,9 @@ mod TestPurger {
                                 // Check that LTV is close to safety margin
                                 let (_, after_ltv, after_value, after_debt) = shrine
                                     .get_trove_info(target_trove);
-                                assert(
-                                    after_ltv.is_zero(), 'wrong debt after liquidation'
-                                );
-                                assert(
-                                    after_value.is_zero(),
-                                    'wrong debt after liquidation'
-                                );
-                                assert(
-                                    after_debt.is_zero(),
-                                    'wrong debt after liquidation'
-                                );
+                                assert(after_ltv.is_zero(), 'wrong debt after liquidation');
+                                assert(after_value.is_zero(), 'wrong debt after liquidation');
+                                assert(after_debt.is_zero(), 'wrong debt after liquidation');
                             },
                             Option::None(_) => {
                                 break;

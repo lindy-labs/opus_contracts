@@ -10,7 +10,7 @@ mod Abbot {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
-    use aura::utils::wadray::{Wad, U128IntoWad};
+    use aura::utils::wadray::{BoundedWad, Wad};
 
     struct Storage {
         // Shrine associated with this Abbot
@@ -89,7 +89,7 @@ mod Abbot {
     // External functions
     //
 
-    // create a new trove in the system with Yang deposits, 
+    // create a new trove in the system with Yang deposits,
     // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
     // `amounts` are denominated in asset's decimals
     #[external]
@@ -142,7 +142,7 @@ mod Abbot {
 
         let shrine = shrine::read();
         // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-        shrine.melt(user, trove_id, integer::BoundedU128::max().into());
+        shrine.melt(user, trove_id, BoundedWad::max());
 
         let mut yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
         // withdraw each and every Yang belonging to the trove from the system

@@ -283,16 +283,29 @@ mod tests {
     }
 
     #[test]
-    fn test_u128_into_wadray() {
-        // Test U128IntoWad
-        let wad_value: u128 = 42;
-        let wad_result: Wad = wad_value.into();
-        assert(wad_result.val == wad_value, 'Incorrect u128->Wad conversion');
+    fn test_conversions_from_primitive_types() {
+        assert(Wad { val: 1 } == 1_u8.into(), 'Wad u8');
+        assert(Wad { val: 1 } == 1_u16.into(), 'Wad u16');
+        assert(Wad { val: 1 } == 1_u32.into(), 'Wad u32');
+        assert(Wad { val: 1 } == 1_u64.into(), 'Wad u64');
+        assert(Wad { val: 1 } == 1_u128.into(), 'Wad u128');
 
-        // Test U128IntoRay
-        let ray_value: u128 = 84;
-        let ray_result: Ray = ray_value.into();
-        assert(ray_result.val == ray_value, 'Incorrect u128->Ray conversion');
+        assert(Ray { val: 1 } == 1_u8.into(), 'Ray u8');
+        assert(Ray { val: 1 } == 1_u16.into(), 'Ray u16');
+        assert(Ray { val: 1 } == 1_u32.into(), 'Ray u32');
+        assert(Ray { val: 1 } == 1_u64.into(), 'Ray u64');
+        assert(Ray { val: 1 } == 1_u128.into(), 'Ray u128');
+    }
+
+    #[test]
+    fn test_bounded() {
+        let max_u128 = 0xffffffffffffffffffffffffffffffff;
+
+        assert(wadray::BoundedWad::min() == Wad { val: 0 }, 'Wad min');
+        assert(wadray::BoundedWad::max() == Wad { val: max_u128 }, 'Wad max');
+
+        assert(wadray::BoundedRay::min() == Ray { val: 0 }, 'Ray min');
+        assert(wadray::BoundedRay::max() == Ray { val: max_u128 }, 'Ray max');
     }
 
     #[test]
