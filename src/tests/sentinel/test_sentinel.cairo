@@ -484,28 +484,32 @@ mod TestSentinel {
 
     #[test]
     #[available_gas(10000000000)]
-    fn test_mark_yang_risky_and_safe() {
+    fn test_suspend_unsuspend_yang() {
         let (sentinel, shrine, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
         set_contract_address(SentinelUtils::admin());
 
-        sentinel.mark_yang_risky(eth);
-        let (soft, hard) = shrine.get_yang_delisting_status(eth);
-        assert(soft, 'eth soft delisting');
-        assert(!hard, 'eth hard delisting');
+        let (temp, perm) = shrine.get_yang_suspension_status(eth);
+        assert(!temp, 'eth temp suspension 1');
+        assert(!perm, 'eth perm suspension 1');
 
-        sentinel.mark_yang_safe(eth);
-        let (soft, hard) = shrine.get_yang_delisting_status(eth);
-        assert(!soft, 'eth marked safe, soft');
-        assert(!hard, 'eth marked safe, hard');
+        sentinel.suspend_yang(eth);
+        let (temp, perm) = shrine.get_yang_suspension_status(eth);
+        assert(temp, 'eth temp suspension 2');
+        assert(!perm, 'eth perm suspension 2');
+
+        sentinel.unsuspend_yang(eth);
+        let (temp, perm) = shrine.get_yang_suspension_status(eth);
+        assert(!temp, 'eth temp suspension 3');
+        assert(!perm, 'eth temp suspension 3');
     }
 
     #[test]
     #[available_gas(10000000000)]
-    #[should_panic(expected: ('SE: Yang marked as risky', 'ENTRYPOINT_FAILED'))]
-    fn test_try_enter_when_yang_marked_risky() {
+    #[should_panic(expected: ('SE: Yang suspended', 'ENTRYPOINT_FAILED'))]
+    fn test_try_enter_when_yang_suspended() {
         let (sentinel, shrine, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
         set_contract_address(SentinelUtils::admin());
-        sentinel.mark_yang_risky(eth);
+        sentinel.suspend_yang(eth);
 
         let user: ContractAddress = GateUtils::eth_hoarder();
         let deposit_amt: Wad = (2 * WAD_ONE).into();
@@ -517,19 +521,19 @@ mod TestSentinel {
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_mark_yang_risky_unauthorized() {
+    fn test_try_suspending_yang_unauthorized() {
         let (sentinel, _, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
         set_contract_address(common::badguy());
-        sentinel.mark_yang_risky(eth);
+        sentinel.suspend_yang(eth);
     }
 
     #[test]
     #[available_gas(10000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_mark_yang_safe_unauthorized() {
+    fn test_try_unsuspending_yang_unauthorized() {
         let (sentinel, _, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
         set_contract_address(common::badguy());
-        sentinel.mark_yang_safe(eth);
+        sentinel.unsuspend_yang(eth);
     }
 
 }

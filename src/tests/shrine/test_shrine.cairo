@@ -1440,39 +1440,50 @@ mod TestShrine {
     }
 
     //
-    // Tests - delisting
+    // Tests - yang suspension
     //
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_get_yang_delisting_status_basic() {
+    fn test_get_yang_suspension_status_basic() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
 
         // TODO: after move to cairo v2.1.0 which has PartialEq on 2-tuples, this can be simplified
-        let (yang1_soft, yang1_hard) = shrine.get_yang_delisting_status(ShrineUtils::yang1_addr());
-        assert(!yang1_soft, 'yang1 soft delisting');
-        assert(!yang1_hard, 'yang1 hard delisting');
-        let (yang2_soft, yang2_hard) = shrine.get_yang_delisting_status(ShrineUtils::yang2_addr());
-        assert(!yang2_soft, 'yang2 soft delisting');
-        assert(!yang2_hard, 'yang2 hard delisting');
-        let (yang3_soft, yang3_hard) = shrine.get_yang_delisting_status(ShrineUtils::yang3_addr());
-        assert(!yang3_soft, 'yang3 soft delisting');
-        assert(!yang3_hard, 'yang3 hard delisting');
+        let (yang1_temp, yang1_perm) = shrine.get_yang_suspension_status(ShrineUtils::yang1_addr());
+        assert(!yang1_temp, 'yang1 temporary suspension');
+        assert(!yang1_perm, 'yang1 permanent suspension');
+        let (yang2_temp, yang2_perm) = shrine.get_yang_suspension_status(ShrineUtils::yang2_addr());
+        assert(!yang2_temp, 'yang2 temporary suspension');
+        assert(!yang2_perm, 'yang2 permanent suspension');
+        let (yang3_temp, yang3_perm) = shrine.get_yang_suspension_status(ShrineUtils::yang3_addr());
+        assert(!yang3_temp, 'yang3 temporary suspension');
+        assert(!yang3_perm, 'yang3 permanent suspension');
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
-    fn test_get_yang_delisting_status_nonexisting_yang() {
+    fn test_get_yang_suspension_status_nonexisting_yang() {
         let shrine = ShrineUtils::shrine(ShrineUtils::shrine_deploy());
-        shrine.get_yang_delisting_status(ShrineUtils::invalid_yang_addr());
+        shrine.get_yang_suspension_status(ShrineUtils::invalid_yang_addr());
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_yang_delisting_set_and_unset() {
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_set_yang_suspension_status_non_existing_yang() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        set_contract_address(ShrineUtils::admin());
+        shrine.update_yang_suspension(ShrineUtils::invalid_yang_addr(), 0);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_suspension_set_and_unset() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -1482,39 +1493,42 @@ mod TestShrine {
         set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
 
-        // initiate yang's delisting, starting now
-        shrine.update_yang_delisting(yang, start_ts);
+        // initiate yang's suspension, starting now
+        shrine.update_yang_suspension(yang, start_ts);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(soft, 'soft delisting 1');
-        assert(!hard, 'hard delisting 1');
+        // check suspension status
+        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(temporary, 'temporary suspension 1');
+        assert(!permanent, 'permanent suspension 1');
 
-        // reset the delisting by setting yang's ts to 0
-        shrine.update_yang_delisting(yang, 0);
+        // setting block time to a second before the suspension would be permanent
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_PERIOD - 1);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(!soft, 'soft delisting 2');
-        assert(!hard, 'hard delisting 2');
+        // reset the suspension by setting yang's ts to 0
+        shrine.update_yang_suspension(yang, 0);
+
+        // check suspension status
+        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(!temporary, 'temporary suspension 2');
+        assert(!permanent, 'permanent suspension 2');
     }
 
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_delisting_status_not_authorized() {
+    fn test_set_suspension_status_not_authorized() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
         let yang = ShrineUtils::yang1_addr();
         set_contract_address(common::badguy());
 
-        shrine.update_yang_delisting(yang, 42);
+        shrine.update_yang_suspension(yang, 42);
     }
 
     #[test]
     #[available_gas(20000000000)]
-    fn test_yang_delisting_progress_soft_to_hard() {
+    fn test_yang_suspension_progress_temp_to_permanent() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -1525,27 +1539,27 @@ mod TestShrine {
         set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
 
-        // initiate yang's delisting, starting now
-        shrine.update_yang_delisting(yang, start_ts);
+        // initiate yang's suspension, starting now
+        shrine.update_yang_suspension(yang, start_ts);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(soft, 'soft delisting 1');
-        assert(!hard, 'hard delisting 1');
+        // check suspension status
+        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(temporary, 'temporary suspension 1');
+        assert(!permanent, 'permanent suspension 1');
         // check threshold (should be the same at the beginning)
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
 
         // the threshold should decrease by 1% in this amount of time
-        let one_pct = Shrine::DELISTING_PERIOD / 100;
+        let one_pct = Shrine::SUSPENSION_PERIOD / 100;
 
         // move time forward
         set_block_timestamp(start_ts + one_pct);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(soft, 'soft delisting 2');
-        assert(!hard, 'hard delisting 2');
+        // check suspension status
+        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(temporary, 'temporary suspension 2');
+        assert(!permanent, 'permanent suspension 2');
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
@@ -1553,32 +1567,32 @@ mod TestShrine {
         // move time forward
         set_block_timestamp(start_ts + one_pct * 20);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(soft, 'soft delisting 3');
-        assert(!hard, 'hard delisting 3');
+        // check suspension status
+        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(temporary, 'temporary suspension 3');
+        assert(!permanent, 'permanent suspension 3');
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
 
-        // move time forward to a second before hard delisting
-        set_block_timestamp(start_ts + Shrine::DELISTING_PERIOD - 1);
+        // move time forward to a second before hard suspension
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_PERIOD - 1);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(soft, 'soft delisting 4');
-        assert(!hard, 'hard delisting 4');
+        // check suspension status
+        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(temporary, 'temporary suspension 4');
+        assert(!permanent, 'permanent suspension 4');
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
 
-        // move time forward to end of soft delisting, start of hard delisting
-        set_block_timestamp(start_ts + Shrine::DELISTING_PERIOD);
+        // move time forward to end of temp suspension, start of permanent one
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_PERIOD);
 
-        // check delisting status
-        let (soft, hard) = shrine.get_yang_delisting_status(yang);
-        assert(soft, 'soft delisting 5');
-        assert(hard, 'hard delisting 5');
+        // check suspension status
+     let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
+        assert(temporary, 'temporary suspension 5');
+        assert(permanent, 'permanent suspension 5');
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == RayZeroable::zero(), 'threshold 5');
@@ -1586,8 +1600,8 @@ mod TestShrine {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: Permanent hard delisting', 'ENTRYPOINT_FAILED'))]
-    fn test_yang_delisting_cannot_reset_after_hard_delisting() {
+    #[should_panic(expected: ('SH: Permanent suspension', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_suspension_cannot_reset_after_permanent() {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -1597,13 +1611,29 @@ mod TestShrine {
 
         set_block_timestamp(start_ts);
         set_contract_address(ShrineUtils::admin());
-        // mark as delisted
-        shrine.update_yang_delisting(yang, start_ts - Shrine::DELISTING_PERIOD);
+        // mark permanent
+        shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_PERIOD);
         // sanity check
-        let (_, hard) = shrine.get_yang_delisting_status(yang);
-        assert(hard, 'delisted');
+        let (_, perm) = shrine.get_yang_suspension_status(yang);
+        assert(perm, 'delisted');
 
-        // trying to reset yang delisting status, should fail
-        shrine.update_yang_delisting(yang, 0);
+        // trying to reset yang suspension status, should fail
+        shrine.update_yang_suspension(yang, 0);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Invalid timestamp', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_set_suspension_ts_to_future() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+        let ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(ts);
+        set_contract_address(ShrineUtils::admin());
+
+        shrine.update_yang_suspension(yang, ts + 1);
     }
 }

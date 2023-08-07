@@ -33,12 +33,12 @@ mod Shrine {
 
     const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
 
-    // When we deem a yang risky, we can mark it as soft delisted. During the
-    // DELISTING_PERIOD, this decision can be reverted and the yang's status
+    // If a yang is deemed risky, it can be marked as suspended. During the
+    // SUSPENSION_PERIOD, this decision can be reverted and the yang's status
     // can be changed back to normal. If this does not happen, the yang is
-    // hard delisted, forever.
-    // The start of a Yang's delisting period is tracked in `yang_delisting`
-    const DELISTING_PERIOD: u64 = 15768000; // 6 months
+    // suspended forever, i.e. can't be used in the system ever again.
+    // The start of a Yang's suspension period is tracked in `yang_suspension`
+    const SUSPENSION_PERIOD: u64 = 15768000; // 182.5 days, half a year, in seconds
 
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
@@ -118,13 +118,13 @@ mod Shrine {
         // Keeps track of the interest rate of each yang at each era
         // (yang_id, era) -> (Interest Rate)
         yang_rates: LegacyMap::<(u32, u64), Ray>,
-        // Keeps track of when a yang was marked as delisted (the delisting process started)
-        // 0 means it is not delisted
-        // (yang_id) -> (soft delisting timestamp)
-        yang_delisting: LegacyMap::<u32, u64>,
+        // Keeps track of when a yang was suspended
+        // 0 means it is not suspended
+        // (yang_id) -> (suspension timestamp)
+        yang_suspension: LegacyMap::<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
         // NOTE: don't read the value directly, instead use `get_yang_threshold_internal`
-        //       because a yang might be delisted; the function will return the correct
+        //       because a yang might be suspended; the function will return the correct
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
         thresholds: LegacyMap::<u32, Ray>,
@@ -409,17 +409,17 @@ mod Shrine {
         multiplier::read(interval)
     }
 
-    // Returns the delisting status of a yang as 2 booleans,
-    // first indicating if it is currently delisted (soft delisting),
-    // second if it is delisted forever (hard delisting)
+    // Returns the suspension status of a yang as 2 booleans,
+    // first indicating if it is currently suspended (potentially reversibly),
+    // second if it is suspended forever
     #[view]
-    fn get_yang_delisting_status(yang: ContractAddress) -> (bool, bool) {
+    fn get_yang_suspension_status(yang: ContractAddress) -> (bool, bool) {
         let yang_id: u32 = get_valid_yang_id(yang);
-        let delisting_ts: u64 = yang_delisting::read(yang_id);
-        if delisting_ts.is_zero() {
+        let suspension_ts: u64 = yang_suspension::read(yang_id);
+        if suspension_ts.is_zero() {
             (false, false)
         } else {
-            (true, delisting_ts + DELISTING_PERIOD <= get_block_timestamp())
+            (true, suspension_ts + SUSPENSION_PERIOD <= get_block_timestamp())
         }
     }
 
@@ -888,16 +888,16 @@ mod Shrine {
         melt_internal(burner, amount);
     }
 
-    // Set the timestamp when a Yang's delisting period started
-    // Setting to 0 means the Yang is not delisted (i.e. it's safe)
+    // Set the timestamp when a Yang's suspension period started
+    // Setting to 0 means the Yang is not suspended (i.e. it's deemed safe)
     #[external]
-    fn update_yang_delisting(yang: ContractAddress, delisting_ts: u64) {
-        AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_DELISTING);
-        assert(delisting_ts <= get_block_timestamp(), 'SH: Invalid delisting timestamp');
-        let (_, hard) = get_yang_delisting_status(yang);
-        assert(!hard, 'SH: Permanent hard delisting');
+    fn update_yang_suspension(yang: ContractAddress, ts: u64) {
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
+        assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
+        let (_, permanent) = get_yang_suspension_status(yang);
+        assert(!permanent, 'SH: Permanent suspension');
         let yang_id: u32 = get_valid_yang_id(yang);
-        yang_delisting::write(yang_id, delisting_ts);
+        yang_suspension::write(yang_id, ts);
     }
 
 
@@ -2053,24 +2053,24 @@ mod Shrine {
 
     fn get_yang_threshold_internal(yang_id: u32) -> Ray {
         let base_threshold: Ray = thresholds::read(yang_id);
-        let delisting_ts: u64 = yang_delisting::read(yang_id);
+        let suspension_ts: u64 = yang_suspension::read(yang_id);
         let current_ts: u64 = get_block_timestamp();
 
-        // not delisted
-        if delisting_ts.is_zero() {
+        // not suspended
+        if suspension_ts.is_zero() {
             return base_threshold;
         }
 
-        // hard delisting
-        if delisting_ts + DELISTING_PERIOD <= current_ts {
+        // permanently suspended
+        if suspension_ts + SUSPENSION_PERIOD <= current_ts {
             return RayZeroable::zero();
         }
 
-        // soft delisting
+        // reversible suspension
         // linearly decrease the threshold from base_threshold to 0
-        // based on the time passed since delisting
-        let ts_diff: u64 = current_ts - delisting_ts;
-        let decrease_pct: u128 = (ts_diff / (DELISTING_PERIOD / 100)).into();
+        // based on the time passed since suspension started
+        let ts_diff: u64 = current_ts - suspension_ts;
+        let decrease_pct: u128 = (ts_diff / (SUSPENSION_PERIOD / 100)).into();
         base_threshold * (RAY_ONE.into() - (decrease_pct * RAY_PERCENT).into())
     }
 
