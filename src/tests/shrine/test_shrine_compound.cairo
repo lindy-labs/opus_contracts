@@ -790,6 +790,8 @@ mod TestShrineCompound {
 
                 set_contract_address(ShrineUtils::admin());
                 shrine.update_rates(yang_addrs.span(), yang_base_rates_to_update);
+                let expected_era: u64 = i + 2;
+                assert(shrine.get_current_rate_era() == expected_era, 'wrong rate era');
 
                 // Check that base rates are updated correctly
                 let mut yang_addrs_copy: Span<ContractAddress> = yang_addrs.span();
@@ -800,8 +802,7 @@ mod TestShrineCompound {
                 loop {
                     match yang_addrs_copy.pop_front() {
                         Option::Some(yang_addr) => {
-                            let era: u64 = i + 1;
-                            let rate: Ray = shrine.get_yang_rate(*yang_addr, era);
+                            let rate: Ray = shrine.get_yang_rate(*yang_addr, expected_era);
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },

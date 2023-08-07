@@ -98,12 +98,13 @@ mod TestSentinel {
             'Wrong yang threshold #2'
         );
 
+        let expected_era: u64 = 1;
         assert(
-            shrine.get_yang_rate(eth, 0) == ShrineUtils::YANG1_BASE_RATE.into(),
+            shrine.get_yang_rate(eth, expected_era) == ShrineUtils::YANG1_BASE_RATE.into(),
             'Wrong yang rate #1'
         );
         assert(
-            shrine.get_yang_rate(wbtc, 0) == ShrineUtils::YANG2_BASE_RATE.into(),
+            shrine.get_yang_rate(wbtc, expected_era) == ShrineUtils::YANG2_BASE_RATE.into(),
             'Wrong yang rate #2'
         );
 

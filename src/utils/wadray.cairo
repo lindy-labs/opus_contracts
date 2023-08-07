@@ -1,5 +1,5 @@
 use debug::PrintTrait;
-use integer::{Felt252TryIntoU128, U128IntoFelt252};
+use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
@@ -97,7 +97,7 @@ fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
 }
 
 //
-// Internal helpers 
+// Internal helpers
 //
 
 #[inline(always)]
@@ -268,17 +268,17 @@ impl RayIntoWad of Into<Ray, Wad> {
     }
 }
 
-impl U128IntoWad of Into<u128, Wad> {
+impl TIntoWad<T, impl TIntoU128: Into<T, u128>> of Into<T, Wad> {
     #[inline(always)]
-    fn into(self: u128) -> Wad {
-        Wad { val: self }
+    fn into(self: T) -> Wad {
+        Wad { val: self.into() }
     }
 }
 
-impl U128IntoRay of Into<u128, Ray> {
+impl TIntoRay<T, impl TIntoU128: Into<T, u128>> of Into<T, Ray> {
     #[inline(always)]
-    fn into(self: u128) -> Ray {
-        Ray { val: self }
+    fn into(self: T) -> Ray {
+        Ray { val: self.into() }
     }
 }
 
@@ -360,6 +360,31 @@ impl RayPartialOrd of PartialOrd<Ray> {
 
     fn gt(lhs: Ray, rhs: Ray) -> bool {
         lhs.val > rhs.val
+    }
+}
+
+// Bounded
+impl BoundedWad of BoundedInt<Wad> {
+    #[inline(always)]
+    fn min() -> Wad nopanic {
+        Wad { val: 0 }
+    }
+
+    #[inline(always)]
+    fn max() -> Wad nopanic {
+        Wad { val: integer::BoundedU128::max() }
+    }
+}
+
+impl BoundedRay of BoundedInt<Ray> {
+    #[inline(always)]
+    fn min() -> Ray nopanic {
+        Ray { val: 0 }
+    }
+
+    #[inline(always)]
+    fn max() -> Ray nopanic {
+        Ray { val: integer::BoundedU128::max() }
     }
 }
 
