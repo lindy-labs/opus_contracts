@@ -376,18 +376,17 @@ mod Purger {
                 Option::Some(yang) => {
                     let deposited_yang_amt: Wad = shrine.get_deposit(*yang, trove_id);
 
-                    // Continue iteration if no yang deposited
-                    if deposited_yang_amt.is_zero() {
-                        freed_assets.append(AssetBalance { asset: *yang, amount: 0,  });
-                        continue;
-                    }
+                    let freed_asset_amt: u128 = if deposited_yang_amt.is_zero() {
+                        0
+                    } else {
+                        let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
+                        let freed_asset_amt: u128 = sentinel
+                            .exit(*yang, recipient, trove_id, freed_yang);
+                        shrine.seize(*yang, trove_id, freed_yang);
+                        freed_asset_amt
+                    };
 
-                    let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
-
-                    let freed_asset_amt: u128 = sentinel
-                        .exit(*yang, recipient, trove_id, freed_yang);
                     freed_assets.append(AssetBalance { asset: *yang, amount: freed_asset_amt });
-                    shrine.seize(*yang, trove_id, freed_yang);
                 },
                 Option::None(_) => {
                     break;
