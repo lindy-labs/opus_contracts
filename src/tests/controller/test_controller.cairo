@@ -26,7 +26,7 @@ mod TestController {
     fn test_deploy_controller() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
 
-        let ((p_gain, i_gain), (alpha_p, alpha_i, beta_p, beta_i)) = controller.get_parameters();
+        let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
         assert(p_gain == ControllerUtils::P_GAIN.into(), 'wrong p gain');
         assert(i_gain == ControllerUtils::I_GAIN.into(), 'wrong i gain');
         assert(alpha_p == ControllerUtils::ALPHA_P, 'wrong alpha_p');
@@ -49,13 +49,81 @@ mod TestController {
         controller.set_beta_p(8);
         controller.set_beta_i(4);
 
-        let ((p_gain, i_gain), (alpha_p, alpha_i, beta_p, beta_i)) = controller.get_parameters();
+        let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
         assert(p_gain == 1_u128.into(), 'wrong p gain');
         assert(i_gain == 2_u128.into(), 'wrong i gain');
         assert(alpha_p == 3, 'wrong alpha_p');
         assert(alpha_i == 5, 'wrong alpha_i');
         assert(beta_p == 8, 'wrong beta_p');
         assert(beta_i == 4, 'wrong beta_i');
+    }
+
+    // Testing unauthorized calls of setters 
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_p_gain_unauthorized() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::bad_guy());
+
+        controller.set_p_gain(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_i_gain_unauthorized() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::bad_guy());
+
+        controller.set_i_gain(1_u128.into());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_alpha_p_unauthorized() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::bad_guy());
+
+        controller.set_alpha_p(1);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_alpha_i_unauthorized() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::bad_guy());
+
+        controller.set_alpha_i(1);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_beta_p_unauthorized() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::bad_guy());
+
+        controller.set_beta_p(1);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_beta_i_unauthorized() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::bad_guy());
+
+        controller.set_beta_i(1);
     }
 
     #[test]

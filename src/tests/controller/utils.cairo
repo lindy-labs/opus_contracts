@@ -43,6 +43,11 @@ mod ControllerUtils {
         contract_address_try_from_felt252('controller admin').unwrap()
     }
 
+    #[inline(always)]
+    fn bad_guy() -> ContractAddress {
+        contract_address_try_from_felt252('bad guy').unwrap()
+    }
+
 
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
