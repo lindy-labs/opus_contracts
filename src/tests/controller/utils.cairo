@@ -1,4 +1,5 @@
 mod ControllerUtils {
+    use debug::PrintTrait;
     use array::ArrayTrait;
     use option::OptionTrait;
     use starknet::{
@@ -45,6 +46,7 @@ mod ControllerUtils {
 
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::make_root(shrine_addr, ShrineUtils::admin());
 
         let mut calldata = Default::default();
         calldata.append(contract_address_to_felt252(admin()));

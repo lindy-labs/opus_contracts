@@ -1,8 +1,7 @@
 #[contract]
 mod Controller {
     use option::OptionTrait;
-    use starknet::ContractAddress;
-    use starknet::{contract_address, get_block_timestamp};
+    use starknet::{ContractAddress, contract_address, get_block_timestamp};
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
@@ -18,7 +17,7 @@ mod Controller {
 
     // Time intervals between updates are scaled down by this factor 
     // to prevent the integral term from getting too large
-    const TIME_SCALE: u128 = 3600; // 1 hours
+    const TIME_SCALE: u128 = 3600; // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
@@ -65,7 +64,7 @@ mod Controller {
         // Initializing the previous price to the current price
         // This ensures the integral term is correctly calculated
         let shrine = IShrineDispatcher { contract_address: shrine };
-        yin_previous_price::write(shrine.get_yin_spot_price().into());
+        yin_previous_price::write(shrine.get_yin_spot_price());
         shrine::write(shrine);
 
         p_gain::write(p_gain.into());
@@ -117,42 +116,19 @@ mod Controller {
     }
 
     #[view]
-    fn get_p_gain() -> SignedRay {
-        p_gain::read()
+    fn get_parameters() -> ((SignedRay, SignedRay), (u8, u8, u8, u8)) {
+        (
+            (p_gain::read(), i_gain::read()),
+            (alpha_p::read(), beta_p::read(), alpha_i::read(), beta_i::read(), )
+        )
     }
-
-    #[view]
-    fn get_i_gain() -> SignedRay {
-        i_gain::read()
-    }
-
-    #[view]
-    fn get_alpha_p() -> u8 {
-        alpha_p::read()
-    }
-
-    #[view]
-    fn get_beta_p() -> u8 {
-        beta_p::read()
-    }
-
-    #[view]
-    fn get_alpha_i() -> u8 {
-        alpha_i::read()
-    }
-
-    #[view]
-    fn get_beta_i() -> u8 {
-        beta_i::read()
-    }
-
 
     // 
     // External 
     // 
 
     #[external]
-    fn update_multiplier() -> Ray {
+    fn update_multiplier() {
         let shrine: IShrineDispatcher = shrine::read();
 
         let i_gain = i_gain::read();
@@ -168,13 +144,11 @@ mod Controller {
             i_term_last_updated::write(get_block_timestamp());
         }
 
-        // Updating the previous yin price for the next i-term update 
+        // Updating the previous yin price for the next integral term update 
         yin_previous_price::write(shrine.get_yin_spot_price().into());
 
         let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
         shrine.set_multiplier(multiplier_ray);
-
-        multiplier_ray
     }
 
     #[external]

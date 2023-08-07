@@ -419,15 +419,11 @@ mod TestShrineCompound {
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`'
         let intervals_to_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
-<<<<<<< HEAD
-            shrine, intervals_to_skip, yang1_price, yang2_price
-=======
             shrine,
             intervals_to_skip,
             yang1_price,
             yang2_price,
             yang3_price,
->>>>>>> main
         );
         let last_updated_interval_before_start: u64 = ShrineUtils::current_interval();
 

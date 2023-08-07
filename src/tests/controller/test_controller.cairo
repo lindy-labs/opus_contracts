@@ -26,12 +26,13 @@ mod TestController {
     fn test_deploy_controller() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
 
-        assert(controller.get_p_gain() == ControllerUtils::P_GAIN.into(), 'wrong p gain');
-        assert(controller.get_i_gain() == ControllerUtils::I_GAIN.into(), 'wrong i gain');
-        assert(controller.get_alpha_p() == ControllerUtils::ALPHA_P, 'wrong alpha_p');
-        assert(controller.get_alpha_i() == ControllerUtils::ALPHA_I, 'wrong alpha_i');
-        assert(controller.get_beta_p() == ControllerUtils::BETA_P, 'wrong beta_p');
-        assert(controller.get_beta_i() == ControllerUtils::BETA_I, 'wrong beta_i');
+        let ((p_gain, i_gain), (alpha_p, alpha_i, beta_p, beta_i)) = controller.get_parameters();
+        assert(p_gain == ControllerUtils::P_GAIN.into(), 'wrong p gain');
+        assert(i_gain == ControllerUtils::I_GAIN.into(), 'wrong i gain');
+        assert(alpha_p == ControllerUtils::ALPHA_P, 'wrong alpha_p');
+        assert(alpha_i == ControllerUtils::ALPHA_I, 'wrong alpha_i');
+        assert(beta_p == ControllerUtils::BETA_P, 'wrong beta_p');
+        assert(beta_i == ControllerUtils::BETA_I, 'wrong beta_i');
     }
 
     #[test]
@@ -48,12 +49,13 @@ mod TestController {
         controller.set_beta_p(8);
         controller.set_beta_i(4);
 
-        assert(controller.get_p_gain() == 1_u128.into(), 'wrong p gain');
-        assert(controller.get_i_gain() == 2_u128.into(), 'wrong i gain');
-        assert(controller.get_alpha_p() == 3, 'wrong alpha_p');
-        assert(controller.get_alpha_i() == 5, 'wrong alpha_i');
-        assert(controller.get_beta_p() == 8, 'wrong beta_p');
-        assert(controller.get_beta_i() == 4, 'wrong beta_i');
+        let ((p_gain, i_gain), (alpha_p, alpha_i, beta_p, beta_i)) = controller.get_parameters();
+        assert(p_gain == 1_u128.into(), 'wrong p gain');
+        assert(i_gain == 2_u128.into(), 'wrong i gain');
+        assert(alpha_p == 3, 'wrong alpha_p');
+        assert(alpha_i == 5, 'wrong alpha_i');
+        assert(beta_p == 8, 'wrong beta_p');
+        assert(beta_i == 4, 'wrong beta_i');
     }
 
     #[test]
@@ -373,7 +375,7 @@ mod TestController {
 
         set_contract_address(ControllerUtils::admin());
 
-        // Updating `i_gain` to match .the ground truth simulation
+        // Updating `i_gain` to match the ground truth simulation
         controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
         controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
 
@@ -470,5 +472,31 @@ mod TestController {
             ControllerUtils::fast_forward_1_hour();
             current_interval += 1;
         }
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_frequent_updates() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+        set_contract_address(ControllerUtils::admin());
+        controller.set_i_gain(100000000000000000000000_u128.into()); // Ensuring the integral gain is non-zero
+
+        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE1.into());
+        controller.update_multiplier();
+        
+        // Standard flow, updating the multiplier every hour
+        let prev_multiplier: Ray = controller.get_current_multiplier();
+        ControllerUtils::fast_forward_1_hour();
+        controller.update_multiplier();
+        let current_multiplier: Ray = controller.get_current_multiplier();
+        assert(current_multiplier > prev_multiplier, 'Multiplier should increase');
+
+        // Suddenly the multiplier is updated multiple times within the same block. 
+        // The multiplier should not change. 
+        controller.update_multiplier();
+        controller.update_multiplier();
+        controller.update_multiplier();
+
+        assert(current_multiplier == controller.get_current_multiplier(), 'Multiplier should not change');
     }
 }

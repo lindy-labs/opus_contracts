@@ -1,10 +1,6 @@
 use debug::PrintTrait;
-<<<<<<< HEAD
-use integer::{Felt252TryIntoU128, U128IntoFelt252};
-use math::Oneable;
-=======
 use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
->>>>>>> main
+use math::Oneable;
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
