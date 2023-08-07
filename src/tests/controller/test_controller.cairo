@@ -65,9 +65,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_p_gain_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-
         set_contract_address(ControllerUtils::bad_guy());
-
         controller.set_p_gain(1_u128.into());
     }
 
@@ -76,9 +74,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_i_gain_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-
         set_contract_address(ControllerUtils::bad_guy());
-
         controller.set_i_gain(1_u128.into());
     }
 
@@ -87,9 +83,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_alpha_p_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-
         set_contract_address(ControllerUtils::bad_guy());
-
         controller.set_alpha_p(1);
     }
 
@@ -98,9 +92,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_alpha_i_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-
         set_contract_address(ControllerUtils::bad_guy());
-
         controller.set_alpha_i(1);
     }
 
@@ -109,9 +101,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_beta_p_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-
         set_contract_address(ControllerUtils::bad_guy());
-
         controller.set_beta_p(1);
     }
 
@@ -120,9 +110,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_beta_i_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-
         set_contract_address(ControllerUtils::bad_guy());
-
         controller.set_beta_i(1);
     }
 
