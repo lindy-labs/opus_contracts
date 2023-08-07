@@ -3,13 +3,13 @@ use option::OptionTrait;
 use traits::{Into, TryInto};
 
 use aura::utils::u256_conversions::{U128IntoU256, U256TryIntoU128};
-use aura::utils::wadray::{Wad, WAD_ONE, U128IntoWad};
+use aura::utils::wadray::{Wad, WAD_ONE, TIntoWad};
 
 // PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol
 
 //
 // Constants
-// 
+//
 
 const ONE_18: u128 = 1000000000000000000;
 
@@ -52,8 +52,8 @@ const x11: u128 = 6250000000000000000; // 2ˆ-4
 const a11: u128 = 106449445891785942956; // eˆ(x11)
 
 
-// NOTE: this function currently only handles positive exponents, since it deals in uints. 
-// TODO: 
+// NOTE: this function currently only handles positive exponents, since it deals in uints.
+// TODO:
 // - once an int type is added, consider handling negative exponents too, although
 //   it may not be necessary for our purposes.
 
