@@ -224,15 +224,15 @@ mod Sentinel {
     }
 
     #[external]
-    fn mark_yang_risky(yang: ContractAddress) {
+    fn suspend_yang(yang: ContractAddress) {
         AccessControl::assert_has_role(SentinelRoles::MARK_YANG);
-        shrine::read().update_yang_delisting(yang, get_block_timestamp());
+        shrine::read().update_yang_suspension(yang, get_block_timestamp());
     }
 
     #[external]
-    fn mark_yang_safe(yang: ContractAddress) {
+    fn unsuspend_yang(yang: ContractAddress) {
         AccessControl::assert_has_role(SentinelRoles::MARK_YANG);
-        shrine::read().update_yang_delisting(yang, 0);
+        shrine::read().update_yang_suspension(yang, 0);
     }
 
     //
@@ -245,8 +245,8 @@ mod Sentinel {
     fn assert_can_enter(yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
         assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
         assert(yang_is_live::read(yang), 'SE: Gate is not live');
-        let (soft_delisted, _) = shrine::read().get_yang_delisting_status(yang);
-        assert(!soft_delisted, 'SE: Yang marked as risky');
+        let (suspended, _) = shrine::read().get_yang_suspension_status(yang);
+        assert(!suspended, 'SE: Yang suspended');
         let current_total: u128 = gate.get_total_assets();
         let max_amt: u128 = yang_asset_max::read(yang);
         assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');

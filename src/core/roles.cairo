@@ -122,7 +122,7 @@ mod ShrineRoles {
     const SET_MULTIPLIER: u128 = 2048;
     const SET_THRESHOLD: u128 = 4096;
     const UPDATE_RATES: u128 = 8192;
-    const UPDATE_YANG_DELISTING: u128 = 16384;
+    const UPDATE_YANG_SUSPENSION: u128 = 16384;
     const UPDATE_YIN_SPOT_PRICE: u128 = 32768;
     const WITHDRAW: u128 = 65536;
 
@@ -153,7 +153,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn sentinel() -> u128 {
-        ADD_YANG + UPDATE_YANG_DELISTING
+        ADD_YANG + UPDATE_YANG_SUSPENSION
     }
 
     #[cfg(test)]
@@ -173,7 +173,7 @@ mod ShrineRoles {
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES
-            + UPDATE_YANG_DELISTING
+            + UPDATE_YANG_SUSPENSION
             + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
     }
