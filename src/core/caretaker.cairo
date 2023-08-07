@@ -242,14 +242,17 @@ mod Caretaker {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
                     let deposited_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    let mut asset_amt: u128 = 0;
-                    if deposited_yang.is_non_zero() {
-                        asset_amt = sentinel.exit(*yang, trove_owner, trove_id, deposited_yang);
+                    let asset_amt: u128 = if deposited_yang.is_zero() {
+                        0
+                    } else {
+                        let exit_amt: u128 = sentinel
+                            .exit(*yang, trove_owner, trove_id, deposited_yang);
                         // Seize the collateral only after assets have been
                         // transferred so that the asset amount per yang in Gate
                         // does not change and user receives the correct amount
                         shrine.seize(*yang, trove_id, deposited_yang);
-                    }
+                        exit_amt
+                    };
                     released_assets.append(AssetBalance { asset: *yang, amount: asset_amt });
                 },
                 Option::None(_) => {

@@ -309,13 +309,13 @@ mod Absorber {
             return (absorbed_assets, rewarded_assets);
         }
 
-        let updated_reward_assets: Span<AssetBalance> = get_provider_pending_rewards(
+        let updated_rewarded_assets: Span<AssetBalance> = get_provider_pending_rewards(
             provider, current_provider_shares, total_shares, current_epoch, rewarded_assets
         );
 
         // NOTE: both absorbed assets and rewarded assets will be empty arrays 
         // if `provision.shares` is zero.
-        (absorbed_assets, updated_reward_assets)
+        (absorbed_assets, updated_rewarded_assets)
     }
 
 
@@ -554,12 +554,7 @@ mod Absorber {
         loop {
             match asset_balances_copy.pop_front() {
                 Option::Some(asset_balance) => {
-                    update_absorbed_asset(
-                        current_absorption_id,
-                        total_shares,
-                        *asset_balance.asset,
-                        *asset_balance.amount
-                    );
+                    update_absorbed_asset(current_absorption_id, total_shares, *asset_balance);
                 },
                 Option::None(_) => {
                     break;
@@ -716,15 +711,15 @@ mod Absorber {
     //
 
     // Helper function to update each provider's entitlement of an absorbed asset
-    fn update_absorbed_asset(
-        absorption_id: u32, total_shares: Wad, asset: ContractAddress, amount: u128
-    ) {
-        if amount.is_zero() {
+    fn update_absorbed_asset(absorption_id: u32, total_shares: Wad, asset_balance: AssetBalance) {
+        if asset_balance.amount.is_zero() {
             return;
         }
 
-        let last_error: u128 = get_recent_asset_absorption_error(asset, absorption_id);
-        let total_amount_to_distribute: u128 = amount + last_error;
+        let last_error: u128 = get_recent_asset_absorption_error(
+            asset_balance.asset, absorption_id
+        );
+        let total_amount_to_distribute: u128 = asset_balance.amount + last_error;
 
         let asset_amt_per_share: u128 = wadray::wdiv_internal(
             total_amount_to_distribute, total_shares.val
@@ -735,7 +730,7 @@ mod Absorber {
         let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
         asset_absorption::write(
-            (asset, absorption_id), DistributionInfo { asset_amt_per_share, error }
+            (asset_balance.asset, absorption_id), DistributionInfo { asset_amt_per_share, error }
         );
     }
 
@@ -889,12 +884,10 @@ mod Absorber {
         loop {
             match asset_balances.pop_front() {
                 Option::Some(asset_balance) => {
-                    let asset_amt: u128 = *asset_balance.amount;
-                    if asset_amt.is_non_zero() {
-                        let asset_amt: u256 = asset_amt.into();
+                    if (*asset_balance.amount).is_non_zero() {
                         IERC20Dispatcher {
                             contract_address: *asset_balance.asset
-                        }.transfer(to, asset_amt);
+                        }.transfer(to, (*asset_balance.amount).into());
                     }
                 },
                 Option::None(_) => {
@@ -965,7 +958,7 @@ mod Absorber {
             }
 
             let blessed_amt = reward.blesser.bless();
-            blessed_assets.append(AssetBalance { asset: reward.asset, amount: blessed_amt,  });
+            blessed_assets.append(AssetBalance { asset: reward.asset, amount: blessed_amt });
 
             if blessed_amt.is_non_zero() {
                 let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
@@ -1054,7 +1047,7 @@ mod Absorber {
             };
 
             accumulated_reward_assets
-                .append(AssetBalance { asset: reward.asset, amount: reward_amt,  });
+                .append(AssetBalance { asset: reward.asset, amount: reward_amt });
 
             current_rewards_id += 1;
         }
