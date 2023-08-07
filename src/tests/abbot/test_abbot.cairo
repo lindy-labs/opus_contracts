@@ -6,6 +6,7 @@ mod TestAbbot {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
     use traits::{Default, Into, TryInto};
+    use zeroable::Zeroable;
 
     use aura::core::sentinel::Sentinel;
 
@@ -194,7 +195,7 @@ mod TestAbbot {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     assert(
-                        shrine.get_deposit(*yang, trove_id) == WadZeroable::zero(),
+                        shrine.get_deposit(*yang, trove_id).is_zero(),
                         'wrong yang amount'
                     );
                 },
@@ -205,7 +206,7 @@ mod TestAbbot {
         };
 
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt == WadZeroable::zero(), 'wrong trove debt');
+        assert(debt.is_zero(), 'wrong trove debt');
     }
 
     #[test]
@@ -289,10 +290,10 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_deposit_zero_address_yang_fail() {
-        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
+            AbbotUtils::deploy_abbot_and_open_trove();
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
@@ -384,17 +385,17 @@ mod TestAbbot {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Yang address cannot be 0', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
     fn test_withdraw_zero_address_yang_fail() {
-        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+        let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
+            AbbotUtils::deploy_abbot_and_open_trove();
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
-        let amount: u128 = 1;
+        let amount: Wad = 1_u128.into();
 
         set_contract_address(trove_owner);
-        abbot.deposit(invalid_yang_addr, trove_id, amount);
+        abbot.withdraw(invalid_yang_addr, trove_id, amount);
     }
 
     #[test]
@@ -496,7 +497,7 @@ mod TestAbbot {
         abbot.melt(trove_id, after_trove_debt);
 
         let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(final_trove_debt == WadZeroable::zero(), 'wrong trove debt');
+        assert(final_trove_debt.is_zero(), 'wrong trove debt');
     }
 
     #[test]

@@ -26,6 +26,9 @@ mod PurgerUtils {
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
     use aura::tests::external::utils::PragmaUtils;
+    use aura::tests::purger::flash_liquidator::{
+        FlashLiquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
+    };
     use aura::tests::sentinel::utils::SentinelUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
@@ -238,6 +241,20 @@ mod PurgerUtils {
         (thresholds.span(), trove_ltvs.span())
     }
 
+    fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
+        let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        // base case for ordinary redistributions
+        yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
+
+        // exceptional redistribution because recipient trove does not have
+        // WBTC yang but redistributed trove has WBTC yang
+        let mut exceptional_case: Array<u128> = Default::default();
+        exceptional_case.append(20 * WAD_ONE); // 20 (Wad) ETH
+        exceptional_case.append(0_u128); // 0 WBTC
+        yang_asset_amts_cases.append(exceptional_case.span());
+
+        yang_asset_amts_cases.span()
+    }
 
     //
     // Test setup helpers
@@ -255,7 +272,9 @@ mod PurgerUtils {
 
         let reward_tokens: Span<ContractAddress> = AbsorberUtils::reward_tokens_deploy();
         let reward_amts_per_blessing: Span<u128> = AbsorberUtils::reward_amts_per_blessing();
-        AbsorberUtils::deploy_blesser_for_rewards(absorber, reward_tokens, reward_amts_per_blessing);
+        AbsorberUtils::deploy_blesser_for_rewards(
+            absorber, reward_tokens, reward_amts_per_blessing
+        );
 
         let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(
             sentinel, shrine.contract_address
@@ -322,6 +341,30 @@ mod PurgerUtils {
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
         (shrine, abbot, absorber, purger, yangs, gates)
+    }
+
+    fn flash_liquidator_deploy(
+        shrine: ContractAddress,
+        abbot: ContractAddress,
+        flashmint: ContractAddress,
+        purger: ContractAddress,
+    ) -> IFlashLiquidatorDispatcher {
+        let mut calldata = Default::default();
+        calldata.append(contract_address_to_felt252(shrine));
+        calldata.append(contract_address_to_felt252(abbot));
+        calldata.append(contract_address_to_felt252(flashmint));
+        calldata.append(contract_address_to_felt252(purger));
+
+        let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(
+            FlashLiquidator::TEST_CLASS_HASH
+        )
+            .unwrap();
+        let (flash_liquidator_addr, _) = deploy_syscall(
+            flash_liquidator_class_hash, 0, calldata.span(), false
+        )
+            .unwrap_syscall();
+
+        IFlashLiquidatorDispatcher { contract_address: flash_liquidator_addr }
     }
 
     fn funded_searcher(

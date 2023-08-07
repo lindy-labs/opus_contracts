@@ -10,7 +10,7 @@ mod Abbot {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
-    use aura::utils::wadray::{Wad, U128IntoWad};
+    use aura::utils::wadray::{BoundedWad, Wad};
 
     struct Storage {
         // Shrine associated with this Abbot
@@ -89,7 +89,7 @@ mod Abbot {
     // External functions
     //
 
-    // create a new trove in the system with Yang deposits, 
+    // create a new trove in the system with Yang deposits,
     // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
     // `amounts` are denominated in asset's decimals
     #[external]
@@ -99,7 +99,7 @@ mod Abbot {
         mut amounts: Span<u128>,
         max_forge_fee_pct: Wad
     ) -> u64 {
-        assert(yangs.len() != 0_usize, 'ABB: No yangs');
+        assert(yangs.len().is_non_zero(), 'ABB: No yangs');
         assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
 
         let troves_count: u64 = troves_count::read();
@@ -142,7 +142,7 @@ mod Abbot {
 
         let shrine = shrine::read();
         // melting "max Wad" to instruct Shrine to melt *all* of trove's debt
-        shrine.melt(user, trove_id, integer::BoundedU128::max().into());
+        shrine.melt(user, trove_id, BoundedWad::max());
 
         let mut yangs: Span<ContractAddress> = sentinel::read().get_yang_addresses();
         // withdraw each and every Yang belonging to the trove from the system
@@ -167,7 +167,9 @@ mod Abbot {
     // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
     #[external]
     fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
-        assert(yang.is_non_zero(), 'ABB: Yang address cannot be 0');
+        // There is no need to check the yang address is non-zero because the
+        // Sentinel does not allow a zero address yang to be added.
+
         assert(trove_id != 0, 'ABB: Trove ID cannot be 0');
         assert(trove_id <= troves_count::read(), 'ABB: Non-existent trove');
         // note that caller does not need to be the trove's owner to deposit
@@ -178,7 +180,9 @@ mod Abbot {
     // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
     #[external]
     fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
-        assert(yang.is_non_zero(), 'ABB: Yang address cannot be 0');
+        // There is no need to check the yang address is non-zero because the
+        // Sentinel does not allow a zero address yang to be added.
+
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 

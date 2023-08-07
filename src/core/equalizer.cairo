@@ -12,7 +12,7 @@ mod Equalizer {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde::SpanSerde;
-    use aura::utils::wadray::{Ray, rmul_wr, U128IntoWad, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
 
     struct Storage {
         // the Allocator to read the current allocation of recipients of any minted
@@ -89,7 +89,7 @@ mod Equalizer {
         let (total_debt, surplus) = get_debt_and_surplus(shrine);
 
         if surplus.is_zero() {
-            return 0_u128.into();
+            return WadZeroable::zero();
         }
 
         let allocator: IAllocatorDispatcher = allocator::read();
@@ -97,8 +97,9 @@ mod Equalizer {
 
         let mut minted_surplus: Wad = WadZeroable::zero();
 
+        let mut recipients_copy = recipients;
         loop {
-            match recipients.pop_front() {
+            match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
                     let amount: Wad = rmul_wr(surplus, *(percentages.pop_front().unwrap()));
 

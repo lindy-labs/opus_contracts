@@ -44,10 +44,11 @@ mod TestShrineCompound {
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         // technically not needed since we only use yang1 here but we do so to simplify the helper
         let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang2_addr());
+        let (yang3_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang3_addr());
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, ShrineUtils::FEED_LEN, yang1_price, yang2_price
+            shrine, ShrineUtils::FEED_LEN, yang1_price, yang2_price, yang3_price
         );
 
         // Offset by 1 because `advance_prices_and_set_multiplier` updates `start_interval`.
@@ -97,16 +98,18 @@ mod TestShrineCompound {
 
         let yang1_addr = ShrineUtils::yang1_addr();
         let yang2_addr = ShrineUtils::yang2_addr();
+        let yang3_addr = ShrineUtils::yang3_addr();
         // Note that this is the price at `start_interval - 1` because we advanced one interval
         // after the last price update
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         // technically not needed since we only use yang1 here but we do so to simplify the helper
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
+        let (yang3_price, _, _) = shrine.get_current_yang_price(yang3_addr);
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
         let num_intervals_before_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, num_intervals_before_skip, yang1_price, yang2_price
+            shrine, num_intervals_before_skip, yang1_price, yang2_price, yang3_price
         );
 
         let skipped_interval: u64 = start_interval + num_intervals_before_skip;
@@ -120,9 +123,10 @@ mod TestShrineCompound {
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
+        let (yang3_price, _, _) = shrine.get_current_yang_price(yang3_addr);
 
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, num_intervals_after_skip, yang1_price, yang2_price
+            shrine, num_intervals_after_skip, yang1_price, yang2_price, yang3_price
         );
 
         // sanity check that skipped interval has no price values
@@ -340,7 +344,8 @@ mod TestShrineCompound {
             shrine,
             intervals_to_skip,
             ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into()
+            ShrineUtils::YANG2_START_PRICE.into(),
+            ShrineUtils::YANG3_START_PRICE.into(),
         );
         // Offset by 1 because of a single call to `advance_prices_and_set_multiplier`
         let last_updated_interval: u64 = start_interval + intervals_to_skip - 1;
@@ -409,11 +414,20 @@ mod TestShrineCompound {
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang2_addr());
+        let (yang3_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang3_addr());
 
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`'
         let intervals_to_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
+<<<<<<< HEAD
             shrine, intervals_to_skip, yang1_price, yang2_price
+=======
+            shrine,
+            intervals_to_skip,
+            yang1_price,
+            yang2_price,
+            yang3_price,
+>>>>>>> main
         );
         let last_updated_interval_before_start: u64 = ShrineUtils::current_interval();
 
@@ -603,16 +617,19 @@ mod TestShrineCompound {
             shrine,
             ShrineUtils::FEED_LEN,
             ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into()
+            ShrineUtils::YANG2_START_PRICE.into(),
+            ShrineUtils::YANG3_START_PRICE.into(),
         );
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
+        let yang3_addr: ContractAddress = ShrineUtils::yang3_addr();
 
         let mut yang_addrs: Array<ContractAddress> = Default::default();
         yang_addrs.append(yang1_addr);
         yang_addrs.append(yang2_addr);
+        yang_addrs.append(yang3_addr);
 
         // Setup base rates for calling `Shrine.update_rates`.
         // The base rates are set in the following format:
@@ -640,6 +657,7 @@ mod TestShrineCompound {
         let mut first_rate_history_to_compound: Array<Ray> = Default::default();
         first_rate_history_to_compound.append(ShrineUtils::YANG1_BASE_RATE.into());
         first_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
+        first_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
         yang_base_rates_history_to_compound.append(first_rate_history_to_compound.span());
 
         let mut first_rate_history_to_update: Array<Ray> = Default::default();
@@ -652,6 +670,9 @@ mod TestShrineCompound {
 
         first_rate_history_to_update.append((RAY_SCALE + 1).into());
         second_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
+
+        first_rate_history_to_update.append((RAY_SCALE + 1).into());
+        second_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
 
         yang_base_rates_history_to_update.append(first_rate_history_to_update.span());
         yang_base_rates_history_to_compound.append(second_rate_history_to_compound.span());
@@ -667,6 +688,9 @@ mod TestShrineCompound {
         second_rate_history_to_update.append(yang2_second_rate_update);
         third_rate_history_to_compound.append(yang2_second_rate_update);
 
+        second_rate_history_to_update.append((RAY_SCALE + 1).into());
+        third_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
+
         yang_base_rates_history_to_update.append(second_rate_history_to_update.span());
         yang_base_rates_history_to_compound.append(third_rate_history_to_compound.span());
 
@@ -680,6 +704,9 @@ mod TestShrineCompound {
 
         third_rate_history_to_update.append((RAY_SCALE + 1).into());
         fourth_rate_history_to_compound.append(yang2_second_rate_update);
+
+        third_rate_history_to_update.append((RAY_SCALE + 1).into());
+        fourth_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
 
         yang_base_rates_history_to_update.append(third_rate_history_to_update.span());
         yang_base_rates_history_to_compound.append(fourth_rate_history_to_compound.span());
@@ -729,6 +756,7 @@ mod TestShrineCompound {
         let mut yangs_deposited: Array<Wad> = Default::default();
         yangs_deposited.append(yang1_deposit_amt);
         yangs_deposited.append(yang2_deposit_amt);
+        yangs_deposited.append(WadZeroable::zero());
 
         let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> =
             yang_base_rates_history_to_update
@@ -749,12 +777,13 @@ mod TestShrineCompound {
             // Fetch the latest yang prices
             let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
             let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
+            let (yang3_price, _, _) = shrine.get_current_yang_price(yang3_addr);
 
             // First, we advance an interval so the last price is not overwritten.
             // Next, Advance the prices by the number of intervals between each base rate update
             ShrineUtils::advance_interval();
             ShrineUtils::advance_prices_and_set_multiplier(
-                shrine, BASE_RATE_UPDATE_SPACING, yang1_price, yang2_price
+                shrine, BASE_RATE_UPDATE_SPACING, yang1_price, yang2_price, yang3_price
             );
 
             let era_end_interval: u64 = era_start_interval + BASE_RATE_UPDATE_SPACING;
@@ -771,6 +800,11 @@ mod TestShrineCompound {
             );
             avg_yang_prices_for_era.append(yang2_avg_price);
 
+            let yang3_avg_price: Wad = ShrineUtils::get_avg_yang_price(
+                shrine, yang3_addr, era_start_interval, era_end_interval
+            );
+            avg_yang_prices_for_era.append(yang3_avg_price);
+
             avg_yang_prices_by_era.append(avg_yang_prices_for_era.span());
 
             // Append multiplier
@@ -785,6 +819,8 @@ mod TestShrineCompound {
 
                 set_contract_address(ShrineUtils::admin());
                 shrine.update_rates(yang_addrs.span(), yang_base_rates_to_update);
+                let expected_era: u64 = i + 2;
+                assert(shrine.get_current_rate_era() == expected_era, 'wrong rate era');
 
                 // Check that base rates are updated correctly
                 let mut yang_addrs_copy: Span<ContractAddress> = yang_addrs.span();
@@ -795,8 +831,7 @@ mod TestShrineCompound {
                 loop {
                     match yang_addrs_copy.pop_front() {
                         Option::Some(yang_addr) => {
-                            let era: u64 = i + 1;
-                            let rate: Ray = shrine.get_yang_rate(*yang_addr, era);
+                            let rate: Ray = shrine.get_yang_rate(*yang_addr, expected_era);
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },

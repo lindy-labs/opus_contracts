@@ -289,6 +289,7 @@ mod AbsorberUtils {
     }
 
     // Helper function to open a trove and provide to the Absorber
+    // Returns the trove ID.
     fn provide_to_absorber(
         shrine: IShrineDispatcher,
         abbot: IAbbotDispatcher,
@@ -298,10 +299,10 @@ mod AbsorberUtils {
         yang_asset_amts: Span<u128>,
         gates: Span<IGateDispatcher>,
         amt: Wad
-    ) {
+    ) -> u64 {
         common::fund_user(provider, yangs, yang_asset_amts);
         // Additional amount for testing subsequent provision
-        common::open_trove_helper(
+        let trove: u64 = common::open_trove_helper(
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
 
@@ -311,6 +312,8 @@ mod AbsorberUtils {
         absorber.provide(amt);
 
         set_contract_address(ContractAddressZeroable::zero());
+
+        trove
     }
 
     // Helper function to simulate an update by:
@@ -636,7 +639,7 @@ mod AbsorberUtils {
                         'error not propagated'
                     );
                     assert(
-                        after_epoch_distribution.asset_amt_per_share == 0,
+                        after_epoch_distribution.asset_amt_per_share.is_zero(),
                         'wrong start reward cumulative'
                     );
                 },

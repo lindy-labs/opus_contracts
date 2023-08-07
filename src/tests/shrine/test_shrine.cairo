@@ -70,9 +70,9 @@ mod TestShrine {
         assert(shrine.get_debt_ceiling() == ShrineUtils::DEBT_CEILING.into(), 'wrong debt ceiling');
 
         // Check yangs
-        assert(shrine.get_yangs_count() == 2, 'wrong yangs count');
+        assert(shrine.get_yangs_count() == 3, 'wrong yangs count');
 
-        let expected_era: u64 = 0;
+        let expected_era: u64 = 1;
 
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
@@ -100,8 +100,8 @@ mod TestShrine {
 
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        assert(threshold == RayZeroable::zero(), 'wrong shrine threshold');
-        assert(value == WadZeroable::zero(), 'wrong shrine value');
+        assert(threshold.is_zero(), 'wrong shrine threshold');
+        assert(value.is_zero(), 'wrong shrine value');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -115,7 +115,8 @@ mod TestShrine {
             shrine,
             ShrineUtils::FEED_LEN,
             ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into()
+            ShrineUtils::YANG2_START_PRICE.into(),
+            ShrineUtils::YANG3_START_PRICE.into()
         );
         let mut yang_addrs = yang_addrs;
         let mut yang_feeds = yang_feeds;
@@ -125,6 +126,7 @@ mod TestShrine {
         let mut exp_start_cumulative_prices: Array<Wad> = Default::default();
         exp_start_cumulative_prices.append(ShrineUtils::YANG1_START_PRICE.into());
         exp_start_cumulative_prices.append(ShrineUtils::YANG2_START_PRICE.into());
+        exp_start_cumulative_prices.append(ShrineUtils::YANG3_START_PRICE.into());
         let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
 
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);
@@ -193,8 +195,9 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_add_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let current_rate_era: u64 = shrine.get_current_rate_era();
         let yangs_count: u32 = shrine.get_yangs_count();
-        assert(yangs_count == 2, 'incorrect yangs count');
+        assert(yangs_count == 3, 'incorrect yangs count');
 
         let new_yang_address: ContractAddress = contract_address_const::<0x9870>();
         let new_yang_threshold: Ray = 600000000000000000000000000_u128.into(); // 60% (Ray)
@@ -214,7 +217,7 @@ mod TestShrine {
 
         assert(shrine.get_yangs_count() == yangs_count + 1, 'incorrect yangs count');
         assert(
-            shrine.get_yang_total(new_yang_address) == WadZeroable::zero(), 'incorrect yang total'
+            shrine.get_yang_total(new_yang_address).is_zero(), 'incorrect yang total'
         );
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
@@ -224,9 +227,8 @@ mod TestShrine {
             'incorrect yang threshold'
         );
 
-        let expected_rate_era: u64 = 0_u64;
         assert(
-            shrine.get_yang_rate(new_yang_address, expected_rate_era) == new_yang_rate,
+            shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate,
             'incorrect yang rate'
         );
     }
@@ -506,7 +508,7 @@ mod TestShrine {
         );
 
         let (_, ltv, _, _) = shrine.get_trove_info(common::TROVE_1);
-        assert(ltv == RayZeroable::zero(), 'LTV should be zero');
+        assert(ltv.is_zero(), 'LTV should be zero');
 
         assert(shrine.is_healthy(common::TROVE_1), 'trove should be healthy');
 
@@ -902,7 +904,7 @@ mod TestShrine {
 
         yin.transfer(yin_user, 0_u256);
         assert(success, 'yin transfer fail');
-        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
@@ -962,7 +964,7 @@ mod TestShrine {
 
         assert(success, 'yin transfer fail');
 
-        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
@@ -1357,10 +1359,10 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(common::TROVE_3);
-        assert(threshold == RayZeroable::zero(), 'threshold should be 0');
-        assert(ltv == RayZeroable::zero(), 'LTV should be 0');
-        assert(value == WadZeroable::zero(), 'value should be 0');
-        assert(debt == WadZeroable::zero(), 'debt should be 0');
+        assert(threshold.is_zero(), 'threshold should be 0');
+        assert(ltv.is_zero(), 'LTV should be 0');
+        assert(value.is_zero(), 'value should be 0');
+        assert(debt.is_zero(), 'debt should be 0');
     }
 
     //

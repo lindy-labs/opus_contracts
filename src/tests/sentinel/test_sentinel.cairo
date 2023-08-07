@@ -56,8 +56,9 @@ mod TestSentinel {
             'Wrong yang addresses'
         );
 
-        assert(sentinel.get_yang(0) == *assets.at(0), 'Wrong yang #1');
-        assert(sentinel.get_yang(1) == *assets.at(1), 'Wrong yang #2');
+        assert(sentinel.get_yang(0) == ContractAddressZeroable::zero(), 'Should be zero address');
+        assert(sentinel.get_yang(1) == *assets.at(0), 'Wrong yang #1');
+        assert(sentinel.get_yang(2) == *assets.at(1), 'Wrong yang #2');
 
         assert(
             sentinel.get_yang_asset_max(eth) == SentinelUtils::ETH_ASSET_MAX, 'Wrong asset max #1'
@@ -97,12 +98,13 @@ mod TestSentinel {
             'Wrong yang threshold #2'
         );
 
+        let expected_era: u64 = 1;
         assert(
-            shrine.get_yang_rate(eth, 0) == ShrineUtils::YANG1_BASE_RATE.into(),
+            shrine.get_yang_rate(eth, expected_era) == ShrineUtils::YANG1_BASE_RATE.into(),
             'Wrong yang rate #1'
         );
         assert(
-            shrine.get_yang_rate(wbtc, 0) == ShrineUtils::YANG2_BASE_RATE.into(),
+            shrine.get_yang_rate(wbtc, expected_era) == ShrineUtils::YANG2_BASE_RATE.into(),
             'Wrong yang rate #2'
         );
 

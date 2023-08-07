@@ -143,7 +143,7 @@ mod Gate {
         assert_sentinel();
 
         let asset_amt: u128 = convert_to_assets(yang_amt);
-        if asset_amt == 0 {
+        if asset_amt.is_zero() {
             return 0;
         }
 
