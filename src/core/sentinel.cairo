@@ -225,13 +225,13 @@ mod Sentinel {
 
     #[external]
     fn suspend_yang(yang: ContractAddress) {
-        AccessControl::assert_has_role(SentinelRoles::MARK_YANG);
+        AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
         shrine::read().update_yang_suspension(yang, get_block_timestamp());
     }
 
     #[external]
     fn unsuspend_yang(yang: ContractAddress) {
-        AccessControl::assert_has_role(SentinelRoles::MARK_YANG);
+        AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
         shrine::read().update_yang_suspension(yang, 0);
     }
 

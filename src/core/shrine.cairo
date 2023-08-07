@@ -40,7 +40,7 @@ mod Shrine {
     // If a yang is deemed risky, it can be marked as suspended. During the
     // SUSPENSION_GRACE_PERIOD, this decision can be reverted and the yang's status
     // can be changed back to normal. If this does not happen, the yang is
-    // suspended forever, i.e. can't be used in the system ever again.
+    // suspended permanently, i.e. can't be used in the system ever again.
     // The start of a Yang's suspension period is tracked in `yang_suspension`
     const SUSPENSION_GRACE_PERIOD: u64 = 15768000; // 182.5 days, half a year, in seconds
 
@@ -424,7 +424,7 @@ mod Shrine {
 
     // Returns the suspension status of a yang as 2 booleans,
     // first indicating if it is currently suspended (potentially reversibly),
-    // second if it is suspended forever
+    // second if it is suspended permanently
     #[view]
     fn get_yang_suspension_status(yang: ContractAddress) -> (bool, bool) {
         let yang_id: u32 = get_valid_yang_id(yang);
