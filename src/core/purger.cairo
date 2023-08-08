@@ -258,6 +258,8 @@ mod Purger {
         (yangs, freed_assets_amts)
     }
 
+    use debug::PrintTrait;
+
     // Performs stability pool liquidations to pay down a trove's debt in full and transfer the 
     // freed collateral to the stability pool. If the stability pool does not have sufficient yin, 
     // the trove's debt and collateral will be proportionally redistributed among all troves 
@@ -323,9 +325,12 @@ mod Purger {
             RayZeroable::zero()
         };
 
+        'percentage_freed'.print();
+        percentage_freed.print();
         // Only update the absorber and emit the `Purged` event if Absorber has some yin  
         // to melt the trove's debt and receive freed trove assets in return
         if can_absorb_some {
+            'absorbing'.print();
             // Free collateral corresponding to the purged amount
             let (yangs, absorbed_assets_amts) = free(
                 shrine, trove_id, percentage_freed, absorber.contract_address
@@ -345,7 +350,8 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            // This is guaranteed to be non-zero.
+            'redistributing'.print();
+            // This is guaranteed to be greater than zero.
             let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
 
             let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
@@ -394,6 +400,7 @@ mod Purger {
                 let sentinel: ISentinelDispatcher = sentinel::read();
                 let mut yangs_copy = yangs;
                 let mut excess_asset_amts: Array<u128> = Default::default();
+                'calculating excess'.print();
                 loop {
                     match yangs_copy.pop_front() {
                         Option::Some(yang) => {
@@ -408,15 +415,16 @@ mod Purger {
                         }
                     };
                 };
-
+                'calling redistribute'.print();
                 // Redistribute
                 shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
-
+                'redistributed'.print();
                 // Loop over yangs and adjust yang amounts so that it corresponds to the correct 
                 // amount of yang assets derived earlier, based on the updated asset amount per
                 // yang wad.
                 let mut yangs_copy = yangs;
                 let mut excess_asset_amts = excess_asset_amts.span();
+                'seizing'.print();
                 loop {
                     match yangs_copy.pop_front() {
                         Option::Some(yang) => {
@@ -441,6 +449,7 @@ mod Purger {
                         },
                     };
                 };
+                'seized'.print();
             }
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
