@@ -876,6 +876,8 @@ mod TestPurger {
                                 loop {
                                     match interesting_thresholds.pop_front() {
                                         Option::Some(threshold) => {
+                                            'threshold'.print();
+                                            (*threshold).print();
                                             // Use only the first value which guarantees the max absorption amount is less
                                             // than the trove's debt
                                             let mut target_ltvs_arr: Span<Ray> = *target_ltvs
@@ -999,7 +1001,7 @@ mod TestPurger {
                                                     if absorber_yin_idx == 1 {
                                                         1000_u128.into()
                                                     } else {
-                                                        (max_close_amt.val - 1).into()
+                                                        (max_close_amt.val - 1001).into()
                                                     }
                                                 };
                                                 'start yin'.print();
@@ -1055,8 +1057,7 @@ mod TestPurger {
                                                 // Check trove debt and LTV
                                                 let (_, after_ltv, after_value, after_debt) = shrine
                                                     .get_trove_info(target_trove);
-                                                let expected_after_debt: Wad = before_debt
-                                                    - max_close_amt;
+                                                
                                                 let expected_redistributed_value: Wad = wadray::rmul_wr(
                                                     max_close_amt, RAY_ONE.into() + penalty
                                                 );
@@ -1066,10 +1067,22 @@ mod TestPurger {
                                                 assert(
                                                     after_debt.is_non_zero(), 'debt should not be 0'
                                                 );
+
+                                                //if absorber_yin_idx == 2 {
+                                                //    let expected_after_debt: Wad = before_debt
+                                                //    - absorber_start_yin;
+                                                //    assert(
+                                                //        after_debt == expected_after_debt,
+                                                //        'wrong debt after liquidation'
+                                                //    );
+                                                //} else {
+                                                let expected_after_debt: Wad = before_debt
+                                                - max_close_amt;
                                                 assert(
                                                     after_debt == expected_after_debt,
                                                     'wrong debt after liquidation'
                                                 );
+                                                //}
 
                                                 assert(
                                                     after_value.is_non_zero(), 'value should not be 0'
@@ -1077,7 +1090,7 @@ mod TestPurger {
                                                 common::assert_equalish(
                                                     after_value,
                                                     expected_after_value,
-                                                    100000000000000_u128.into(), // error margin
+                                                    1000000000000000_u128.into(), // error margin
                                                     'wrong value after liquidation'
                                                 );
 

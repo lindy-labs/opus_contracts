@@ -348,11 +348,11 @@ mod Purger {
             );
         }
 
+        let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
         // If it is not a full absorption, perform redistribution.
-        if !is_fully_absorbed {
+        if !is_fully_absorbed & debt_to_redistribute > 1000_u128.into() {
             'redistributing'.print();
             // This is guaranteed to be greater than zero.
-            let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
 
             let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
             if redistribute_trove_debt_in_full {

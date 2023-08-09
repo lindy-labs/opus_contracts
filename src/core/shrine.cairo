@@ -1207,7 +1207,7 @@ mod Shrine {
 
     // Loop through yangs for the trove:
     // 1. redistribute a yang by either:
-    //    a. if at least one other trove has deposited that yang, redistribute within the same yang; or
+    //    a. if at least one other trove has deposited that yang, setting the deposit to 0; or
     //    b. otherwise, redistribute this yang to all other yangs that at least one other trove
     //       has deposited;
     // 2. redistribute the proportional debt for that yang:
@@ -1231,9 +1231,6 @@ mod Shrine {
         pct_value_to_redistribute: Ray,
         current_interval: u64
     ) {
-        'redistribute_internal'.print();
-        'pct value to redis'.print();
-        pct_value_to_redistribute.print();
         let yangs_count: u32 = yangs_count::read();
 
         // Placeholders to be used for exceptional redistributions so that
@@ -1299,8 +1296,8 @@ mod Shrine {
         let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
-        let (_, trove_value) = get_trove_threshold_and_value_internal(
-            trove_id, current_interval
+        let (_, trove_value) = get_simulated_trove_threshold_and_value(
+            trove_yang_balances, current_interval
         );
         let trove_value_to_redistribute: Wad = wadray::rmul_wr(
             trove_value, pct_value_to_redistribute
@@ -1313,9 +1310,7 @@ mod Shrine {
         loop {
             match trove_yang_balances_copy.pop_front() {
                 Option::Some(yang_balance) => {
-                    'loop over trove yang bal'.print();
                     let trove_yang_amt: Wad = (*yang_balance).amount;
-                    trove_yang_amt.print();
                     let yang_id_to_redistribute = (*yang_balance).yang_id;
                     // Skip over this yang if it has not been deposited in the trove
                     if trove_yang_amt.is_zero() {
@@ -1326,247 +1321,238 @@ mod Shrine {
                     let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
                         trove_yang_amt, pct_value_to_redistribute
                     );
-                    'yang amt to redis'.print();
-                    yang_amt_to_redistribute.print();
 
-                    let mut debt_error: Wad = WadZeroable::zero();
+                    let redistributed_yang_total_supply: Wad = yang_total::read(
+                        yang_id_to_redistribute
+                    );
+                    let redistributed_yang_initial_amt: Wad = initial_yang_amts::read(
+                        yang_id_to_redistribute
+                    );
+
+                    // Get the remainder amount of yangs in all other troves that can be redistributed
+                    // This excludes any remaining yang in the redistributed trove if the percentage to
+                    // be redistributed is less than 100%.
+                    let redistributed_yang_remaining_pool: Wad = redistributed_yang_total_supply
+                        - trove_yang_amt
+                        - redistributed_yang_initial_amt;
+
+                    // Calculate the actual amount of debt that should be redistributed, including any 
+                    // rounding of dust amounts of debt.
+                    let (redistributed_yang_price, _, _) = get_recent_price_from(
+                        yang_id_to_redistribute, current_interval
+                    );
+                    'calculating yang debt pct'.print();
+                    yang_amt_to_redistribute.print();
+                    trove_value_to_redistribute.print();
+                    let yang_debt_pct: Ray = wadray::rdiv_ww(
+                            yang_amt_to_redistribute * redistributed_yang_price,
+                            trove_value_to_redistribute
+                        );
+                    yang_debt_pct.print();
+                    'calculating raw debt'.print();
+                    let raw_debt_to_distribute = wadray::rmul_rw(
+                        yang_debt_pct,
+                        debt_to_redistribute
+                    );
+                    raw_debt_to_distribute.print();
+                    let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
+                        debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
+                    );
+
+                    redistributed_debt = updated_redistributed_debt;
+
+                    // Adjust debt to distribute by adding the error from the last redistribution
+                    let last_error: Wad = get_recent_redistribution_error_for_yang(
+                        yang_id_to_redistribute, redistribution_id - 1
+                    );
+                    let adjusted_debt_to_distribute: Wad = debt_to_distribute + last_error;
+
                     // Placeholders for `YangRedistribution` struct members
                     let mut redistributed_yang_unit_debt: Wad = WadZeroable::zero();
+                    let mut debt_error: Wad = WadZeroable::zero();
                     let mut is_exception: bool = false;
-                    // `yang_amt_to_redistribute` could be zero due to loss of precision
-                    // when `pct_value_to_redistribute` is a very small value. In this
-                    // case, we add the debt to the error for the yang.
-                    let mut debt_to_distribute: Wad = WadZeroable::zero();
-                    let mut raw_debt_to_distribute: Wad = debt_to_redistribute;
-                    if yang_amt_to_redistribute.is_zero() {
-                        'skipping zero yang amt'.print();
-                        continue;
+
+                    // If there is some remainder amount of yangs in other troves for redistribution,
+                    // redistribute yangs by rebasing, and reallocate debt to other troves with the same yang.
+                    // This is expected to be the common case.
+                    // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
+                    if redistributed_yang_remaining_pool.is_non_zero() {
+                        // Since the amount of assets in the Gate remains constant, decrementing the system's yang
+                        // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating)
+                        // the ratio of asset to yang for the remaining amount of that yang.
+                        //
+                        // Example:
+                        // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
+                        //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
+                        // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
+                        //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
+                        //   in the Gate remains at 100 units.
+                        //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
+                        //
+                        // Set trove's deposit to zero as it will be distributed amongst all other troves
+                        // containing this yang, either via rebasing (if there are other troves with the same yang)
+                        // or by reallocating (if there are no other troves with the same yang)
+                        //
+                        // Note that the trove's deposit and total supply are updated after this loop.
+                        // See comment at this array's declaration on why.
+                        new_yang_totals
+                            .append(
+                                YangBalance {
+                                    yang_id: yang_id_to_redistribute,
+                                    amount: redistributed_yang_total_supply
+                                        - yang_amt_to_redistribute
+                                }
+                            );
+
+                        // There is a slight discrepancy here because yang is redistributed by rebasing,
+                        // which means the initial yang amount is included, but the distribution of debt excludes
+                        // the initial yang amount. However, it is unlikely to have any material impact because
+                        // all redistributed debt will be attributed to user troves, with a negligible loss in
+                        // yang assets for these troves as a result of some amount going towards the initial yang
+                        // amount.
+                        redistributed_yang_unit_debt = adjusted_debt_to_distribute
+                            / redistributed_yang_remaining_pool;
+
+                        // Due to loss of precision from fixed point division, the actual debt distributed will be less than
+                        // or equal to the amount of debt to distribute.
+                        let actual_debt_distributed: Wad = redistributed_yang_unit_debt
+                            * redistributed_yang_remaining_pool;
+                        debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
                     } else {
-                        
-                        let redistributed_yang_total_supply: Wad = yang_total::read(
-                            yang_id_to_redistribute
-                        );
-                        let redistributed_yang_initial_amt: Wad = initial_yang_amts::read(
-                            yang_id_to_redistribute
-                        );
+                        if !has_exceptional_redistribution {
+                            // This operation is gas-intensive so we only run it when we encounter the first
+                            // yang that cannot be distributed via rebasing, and store the value in the
+                            // placeholders declared at the beginning of this function.
+                            let (_, tmp_shrine_value) = get_shrine_threshold_and_value_internal(
+                                current_interval
+                            );
+                            shrine_value = tmp_shrine_value;
+                            // Note the initial yang amount is not excluded from the value of all other troves
+                            // here (it will also be more expensive if we want to do so). Therefore, when
+                            // calculating a yang's total value as a percentage of the total value of all
+                            // other troves, the value of the initial yang amount should be included too.
+                            other_troves_total_value = shrine_value - trove_value;
 
-                        // Get the remainder amount of yangs in all other troves that can be redistributed
-                        // This excludes any remaining yang in the redistributed trove if the percentage to
-                        // be redistributed is less than 100%.
-                        let redistributed_yang_remaining_pool: Wad = redistributed_yang_total_supply
-                            - trove_yang_amt
-                            - redistributed_yang_initial_amt;
-                        
-                        // Calculate the actual amount of debt that should be redistributed, including any 
-                        // rounding of dust amounts of debt.
-                        let (redistributed_yang_price, _, _) = get_recent_price_from(
-                            yang_id_to_redistribute, current_interval
-                        );
-                        'calculating raw debt'.print();
-                        raw_debt_to_distribute = wadray::rmul_rw(
-                            wadray::rdiv_ww(
-                                yang_amt_to_redistribute * redistributed_yang_price,
-                                trove_value_to_redistribute
-                            ),
-                            debt_to_redistribute
-                        );
-                        'raw debt'.print();
-                        raw_debt_to_distribute.print();
-                        let (tmp_debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
-                            debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
-                        );
-                        debt_to_distribute = tmp_debt_to_distribute;
-
-                        redistributed_debt = updated_redistributed_debt;
-
-                        // Adjust debt to distribute by adding the error from the last redistribution
-                        let last_error: Wad = get_recent_redistribution_error_for_yang(
-                            yang_id_to_redistribute, redistribution_id - 1
-                        );
-                        let adjusted_debt_to_distribute: Wad = debt_to_distribute + last_error;
-
-                        // If there is some remainder amount of yangs in other troves for redistribution,
-                        // redistribute yangs by rebasing, and reallocate debt to other troves with the same yang.
-                        // This is expected to be the common case.
-                        // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
-                        if redistributed_yang_remaining_pool.is_non_zero() {
-                            // Since the amount of assets in the Gate remains constant, decrementing the system's yang
-                            // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating)
-                            // the ratio of asset to yang for the remaining amount of that yang.
-                            //
-                            // Example:
-                            // - At T0, there is a total of 100 units of YANG_1, and 100 units of YANG_1_ASSET in the Gate.
-                            //   1 unit of YANG_1 corresponds to 1 unit of YANG_1_ASSET.
-                            // - At T1, a trove with 10 units of YANG_1 is redistributed. The trove's deposit of YANG_1 is
-                            //   zeroed, and the total units of YANG_1 drops to 90 (100 - 10 = 90). The amount of YANG_1_ASSET
-                            //   in the Gate remains at 100 units.
-                            //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
-                            //
-                            // Set trove's deposit to zero as it will be distributed amongst all other troves
-                            // containing this yang, either via rebasing (if there are other troves with the same yang)
-                            // or by reallocating (if there are no other troves with the same yang)
-                            //
-                            // Note that the trove's deposit and total supply are updated after this loop.
-                            // See comment at this array's declaration on why.
-                            new_yang_totals
-                                .append(
-                                    YangBalance {
-                                        yang_id: yang_id_to_redistribute,
-                                        amount: redistributed_yang_total_supply
-                                            - yang_amt_to_redistribute
-                                    }
-                                );
-
-                            // There is a slight discrepancy here because yang is redistributed by rebasing,
-                            // which means the initial yang amount is included, but the distribution of debt excludes
-                            // the initial yang amount. However, it is unlikely to have any material impact because
-                            // all redistributed debt will be attributed to user troves, with a negligible loss in
-                            // yang assets for these troves as a result of some amount going towards the initial yang
-                            // amount.
-                            redistributed_yang_unit_debt = adjusted_debt_to_distribute
-                                / redistributed_yang_remaining_pool;
-
-                            // Due to loss of precision from fixed point division, the actual debt distributed will be less than
-                            // or equal to the amount of debt to distribute.
-                            let actual_debt_distributed: Wad = redistributed_yang_unit_debt
-                                * redistributed_yang_remaining_pool;
-                            debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
-                        } else {
-                            if !has_exceptional_redistribution {
-                                // This operation is gas-intensive so we only run it when we encounter the first
-                                // yang that cannot be distributed via rebasing, and store the value in the
-                                // placeholders declared at the beginning of this function.
-                                let (_, tmp_shrine_value) = get_shrine_threshold_and_value_internal(
-                                    current_interval
-                                );
-                                shrine_value = tmp_shrine_value;
-                                // Note the initial yang amount is not excluded from the value of all other troves
-                                // here (it will also be more expensive if we want to do so). Therefore, when
-                                // calculating a yang's total value as a percentage of the total value of all
-                                // other troves, the value of the initial yang amount should be included too.
-                                other_troves_total_value = shrine_value - trove_value;
-
-                                // Update boolean flag so that we do not call `get_shrine_threshold_and_value`
-                                // again for any subsequent yangs that require exceptional redistributions.
-                                has_exceptional_redistribution = true;
-                            }
-
-                            // Keep track of the actual debt and yang distributed to calculate error at the end
-                            // This is necessary for yang so that subsequent redistributions do not accrue to the
-                            // earlier redistributed yang amount that cannot be attributed to any troves due to
-                            // loss of precision.
-                            let mut actual_debt_distributed: Wad = WadZeroable::zero();
-                            let mut actual_yang_distributed: Wad = WadZeroable::zero();
-
-                            let mut trove_recipient_yang_balances = trove_yang_balances;
-                            // Inner loop over all yangs
-                            loop {
-                                match trove_recipient_yang_balances.pop_front() {
-                                    Option::Some(recipient_yang) => {
-                                        // Skip yang currently being redistributed
-                                        if *recipient_yang.yang_id == yang_id_to_redistribute {
-                                            continue;
-                                        }
-
-                                        let recipient_yang_initial_amt: Wad = initial_yang_amts::read(
-                                            *recipient_yang.yang_id
-                                        );
-                                        // Get the total amount of recipient yang that will receive the
-                                        // redistribution, which excludes
-                                        // (1) the redistributed trove's deposit; and
-                                        // (2) initial yang amount.
-                                        let recipient_yang_remaining_pool: Wad = yang_total::read(
-                                            *recipient_yang.yang_id
-                                        )
-                                            - *recipient_yang.amount
-                                            - recipient_yang_initial_amt;
-
-                                        // Skip to the next yang if no other troves have this yang
-                                        if recipient_yang_remaining_pool.is_zero() {
-                                            continue;
-                                        }
-
-                                        let (recipient_yang_price, _, _) = get_recent_price_from(
-                                            *recipient_yang.yang_id, current_interval
-                                        );
-
-                                        // Note that we include the initial yang amount here to calculate the percentage
-                                        // because the total Shrine value will include the initial yang amounts too
-                                        let recipient_yang_remaining_pool_value: Wad =
-                                            (recipient_yang_remaining_pool
-                                            + recipient_yang_initial_amt)
-                                            * recipient_yang_price;
-                                        let pct_to_redistribute_to_recipient_yang: Ray =
-                                            wadray::rdiv_ww(
-                                            recipient_yang_remaining_pool_value,
-                                            other_troves_total_value
-                                        );
-
-                                        // Allocate the redistributed yang to the recipient yang
-                                        let partial_yang_amt_to_redistribute: Wad = wadray::rmul_wr(
-                                            yang_amt_to_redistribute,
-                                            pct_to_redistribute_to_recipient_yang
-                                        );
-                                        let unit_yang: Wad = partial_yang_amt_to_redistribute
-                                            / recipient_yang_remaining_pool;
-
-                                        actual_yang_distributed += unit_yang
-                                            * recipient_yang_remaining_pool;
-
-                                        // Distribute debt to the recipient yang
-                                        let partial_adjusted_debt_to_distribute: Wad = wadray::rmul_wr(
-                                            adjusted_debt_to_distribute,
-                                            pct_to_redistribute_to_recipient_yang
-                                        );
-                                        let unit_debt: Wad = partial_adjusted_debt_to_distribute
-                                            / recipient_yang_remaining_pool;
-
-                                        // Keep track of debt distributed to calculate error at the end
-                                        actual_debt_distributed += unit_debt
-                                            * recipient_yang_remaining_pool;
-
-                                        // Update the distribution of the redistributed yang for the
-                                        // current recipient yang
-                                        let exc_yang_redistribution = ExceptionalYangRedistribution {
-                                            unit_debt, unit_yang, 
-                                        };
-
-                                        yang_to_yang_redistribution::write(
-                                            (
-                                                *recipient_yang.yang_id,
-                                                redistribution_id,
-                                                yang_id_to_redistribute
-                                            ),
-                                            exc_yang_redistribution
-                                        );
-                                    },
-                                    Option::None(_) => {
-                                        break;
-                                    },
-                                };
-                            };
-
-                            is_exceptional_redistribution::write(redistribution_id, true);
-                            is_exception = true;
-
-                            // Unit debt is zero because it has been redistributed to other yangs, but error
-                            // can still be derived from the redistribution across other recipient yangs and
-                            // propagated.
-                            debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
-
-                            // The redistributed yang which was not distributed to recipient yangs due to precision loss,
-                            // is subtracted here from the total supply, thereby causing a rebase which increases the
-                            // asset : yang ratio. The result is that the error is distributed equally across all yang holders,
-                            // including any new holders who were credited this yang by the exceptional redistribution.
-                            let yang_error: Wad = yang_amt_to_redistribute - actual_yang_distributed;
-                            new_yang_totals
-                                .append(
-                                    YangBalance {
-                                        yang_id: yang_id_to_redistribute,
-                                        amount: redistributed_yang_total_supply - yang_error
-                                    }
-                                );
+                            // Update boolean flag so that we do not call `get_shrine_threshold_and_value`
+                            // again for any subsequent yangs that require exceptional redistributions.
+                            has_exceptional_redistribution = true;
                         }
+
+                        // Keep track of the actual debt and yang distributed to calculate error at the end
+                        // This is necessary for yang so that subsequent redistributions do not accrue to the
+                        // earlier redistributed yang amount that cannot be attributed to any troves due to
+                        // loss of precision.
+                        let mut actual_debt_distributed: Wad = WadZeroable::zero();
+                        let mut actual_yang_distributed: Wad = WadZeroable::zero();
+
+                        let mut trove_recipient_yang_balances = trove_yang_balances;
+                        // Inner loop over all yangs
+                        loop {
+                            match trove_recipient_yang_balances.pop_front() {
+                                Option::Some(recipient_yang) => {
+                                    // Skip yang currently being redistributed
+                                    if *recipient_yang.yang_id == yang_id_to_redistribute {
+                                        continue;
+                                    }
+
+                                    let recipient_yang_initial_amt: Wad = initial_yang_amts::read(
+                                        *recipient_yang.yang_id
+                                    );
+                                    // Get the total amount of recipient yang that will receive the
+                                    // redistribution, which excludes
+                                    // (1) the redistributed trove's deposit; and
+                                    // (2) initial yang amount.
+                                    let recipient_yang_remaining_pool: Wad = yang_total::read(
+                                        *recipient_yang.yang_id
+                                    )
+                                        - *recipient_yang.amount
+                                        - recipient_yang_initial_amt;
+
+                                    // Skip to the next yang if no other troves have this yang
+                                    if recipient_yang_remaining_pool.is_zero() {
+                                        continue;
+                                    }
+
+                                    let (recipient_yang_price, _, _) = get_recent_price_from(
+                                        *recipient_yang.yang_id, current_interval
+                                    );
+
+                                    // Note that we include the initial yang amount here to calculate the percentage
+                                    // because the total Shrine value will include the initial yang amounts too
+                                    let recipient_yang_remaining_pool_value: Wad =
+                                        (recipient_yang_remaining_pool
+                                        + recipient_yang_initial_amt)
+                                        * recipient_yang_price;
+                                    let pct_to_redistribute_to_recipient_yang: Ray =
+                                        wadray::rdiv_ww(
+                                        recipient_yang_remaining_pool_value,
+                                        other_troves_total_value
+                                    );
+
+                                    // Allocate the redistributed yang to the recipient yang
+                                    let partial_yang_amt_to_redistribute: Wad = wadray::rmul_wr(
+                                        yang_amt_to_redistribute,
+                                        pct_to_redistribute_to_recipient_yang
+                                    );
+                                    let unit_yang: Wad = partial_yang_amt_to_redistribute
+                                        / recipient_yang_remaining_pool;
+
+                                    actual_yang_distributed += unit_yang
+                                        * recipient_yang_remaining_pool;
+
+                                    // Distribute debt to the recipient yang
+                                    let partial_adjusted_debt_to_distribute: Wad = wadray::rmul_wr(
+                                        adjusted_debt_to_distribute,
+                                        pct_to_redistribute_to_recipient_yang
+                                    );
+                                    let unit_debt: Wad = partial_adjusted_debt_to_distribute
+                                        / recipient_yang_remaining_pool;
+
+                                    // Keep track of debt distributed to calculate error at the end
+                                    actual_debt_distributed += unit_debt
+                                        * recipient_yang_remaining_pool;
+
+                                    // Update the distribution of the redistributed yang for the
+                                    // current recipient yang
+                                    let exc_yang_redistribution = ExceptionalYangRedistribution {
+                                        unit_debt, unit_yang, 
+                                    };
+
+                                    yang_to_yang_redistribution::write(
+                                        (
+                                            *recipient_yang.yang_id,
+                                            redistribution_id,
+                                            yang_id_to_redistribute
+                                        ),
+                                        exc_yang_redistribution
+                                    );
+                                },
+                                Option::None(_) => {
+                                    break;
+                                },
+                            };
+                        };
+
+                        is_exceptional_redistribution::write(redistribution_id, true);
+                        is_exception = true;
+
+                        // Unit debt is zero because it has been redistributed to other yangs, but error
+                        // can still be derived from the redistribution across other recipient yangs and
+                        // propagated.
+                        debt_error = adjusted_debt_to_distribute - actual_debt_distributed;
+
+                        // The redistributed yang which was not distributed to recipient yangs due to precision loss,
+                        // is subtracted here from the total supply, thereby causing a rebase which increases the
+                        // asset : yang ratio. The result is that the error is distributed equally across all yang holders,
+                        // including any new holders who were credited this yang by the exceptional redistribution.
+                        let yang_error: Wad = yang_amt_to_redistribute - actual_yang_distributed;
+                        new_yang_totals
+                            .append(
+                                YangBalance {
+                                    yang_id: yang_id_to_redistribute,
+                                    amount: redistributed_yang_total_supply - yang_error
+                                }
+                            );
                     }
 
                     let redistributed_yang_info = YangRedistribution {
