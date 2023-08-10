@@ -1203,8 +1203,6 @@ mod Shrine {
         }
     }
 
-    use debug::PrintTrait;
-
     // Loop through yangs for the trove:
     // 1. redistribute a yang by either:
     //    a. if at least one other trove has deposited that yang, setting the deposit to 0; or
@@ -1303,11 +1301,6 @@ mod Shrine {
             trove_value, pct_value_to_redistribute
         );
 
-        'pct val to redis'.print();
-        pct_value_to_redistribute.print();
-        'trove val to redis'.print();
-        trove_value_to_redistribute.print();
-
         // Keep track of the total debt redistributed for the return value
         let mut redistributed_debt: Wad = WadZeroable::zero();
         let mut trove_yang_balances_copy = trove_yang_balances;
@@ -1326,10 +1319,6 @@ mod Shrine {
                     let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
                         trove_yang_amt, pct_value_to_redistribute
                     );
-                    'trove yang amt'.print();
-                    trove_yang_amt.print();
-                    'yang amt to redis'.print();
-                    yang_amt_to_redistribute.print();
                     let mut updated_trove_yang_balance: Wad = trove_yang_amt
                         - yang_amt_to_redistribute;
 
@@ -1352,22 +1341,31 @@ mod Shrine {
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
                     );
-                    let yang_debt_pct: Ray = wadray::rdiv_ww(
-                        yang_amt_to_redistribute * redistributed_yang_price,
-                        trove_value_to_redistribute
-                    );
-                    'yang debt pct'.print();
-                    yang_debt_pct.print();
-                    let raw_debt_to_distribute = wadray::rmul_rw(
-                        yang_debt_pct, debt_to_redistribute
-                    );
-                    'raw debt'.print();
-                    raw_debt_to_distribute.print();
-                    let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
-                        debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
-                    );
 
-                    redistributed_debt = updated_redistributed_debt;
+                    let mut raw_debt_to_distribute: Wad = WadZeroable::zero();
+                    let mut debt_to_distribute: Wad = WadZeroable::zero();
+
+                    if trove_value_to_redistribute.is_non_zero() {
+                        let yang_debt_pct: Ray = wadray::rdiv_ww(
+                            yang_amt_to_redistribute * redistributed_yang_price,
+                            trove_value_to_redistribute
+                        );
+                        raw_debt_to_distribute =
+                            wadray::rmul_rw(yang_debt_pct, debt_to_redistribute);
+                        let (tmp_debt_to_distribute, updated_redistributed_debt) =
+                            round_distributed_debt(
+                            debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
+                        );
+
+                        redistributed_debt = updated_redistributed_debt;
+                        debt_to_distribute = tmp_debt_to_distribute;
+                    } else {
+                        // If `trove_value_to_redistribute` is zero due to loss of precision,
+                        // redistribute the smallest unit of 1 wei, and terminate after this
+                        // iteration by setting `debt_to_distribute == raw_debt_to_distribute`.
+                        raw_debt_to_distribute = 1_u128.into();
+                        debt_to_distribute = 1_u128.into();
+                    };
 
                     // Adjust debt to distribute by adding the error from the last redistribution
                     let last_error: Wad = get_recent_redistribution_error_for_yang(

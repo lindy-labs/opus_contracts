@@ -358,10 +358,6 @@ mod Purger {
                 let ltv_after_absorption: Ray = wadray::rdiv_ww(
                     debt_after_absorption, value_after_absorption
                 );
-                
-
-                'purger - debt to redis'.print();
-                debt_to_redistribute.print();
 
                 get_percentage_freed(
                     ltv_after_absorption,
@@ -387,8 +383,6 @@ mod Purger {
 
         (yangs, compensations)
     }
-
-    use debug::PrintTrait;
 
     //
     // Internal

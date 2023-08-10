@@ -288,6 +288,21 @@ mod PurgerUtils {
         yang_asset_amts_cases.span()
     }
 
+    // Generate interesting cases for absorber's yin balance based on the 
+    // redistributed trove's debt to test absorption with partial redistribution
+    fn generate_absorber_yin_below_trove_debt_cases(trove_debt: Wad) -> Span<Wad> {
+        let mut absorber_yin_cases: Array<Wad> = Default::default();
+
+        // smallest possible amount of yin in Absorber based on initial shares
+        absorber_yin_cases.append(1000_u128.into());
+        absorber_yin_cases.append((trove_debt.val / 2).into());
+        absorber_yin_cases.append((trove_debt.val - 1000).into());
+        // trove's debt minus the smallest unit of Wad
+        absorber_yin_cases.append((trove_debt.val - 1).into());
+
+        absorber_yin_cases.span()
+    }
+
     //
     // Test setup helpers
     //
@@ -559,13 +574,8 @@ mod PurgerUtils {
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        assert(
-            purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0'
-        );
-        assert(
-            purger.get_max_liquidation_amount(trove_id).is_zero(),
-            'close amount should be 0'
-        );
+        assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
+        assert(purger.get_max_liquidation_amount(trove_id).is_zero(), 'close amount should be 0');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
@@ -606,13 +616,8 @@ mod PurgerUtils {
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
-        assert(
-            purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0'
-        );
-        assert(
-            purger.get_max_absorption_amount(trove_id).is_zero(),
-            'close amount should be 0'
-        );
+        assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
+        assert(purger.get_max_absorption_amount(trove_id).is_zero(), 'close amount should be 0');
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
