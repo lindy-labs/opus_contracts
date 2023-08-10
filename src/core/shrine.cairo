@@ -1403,25 +1403,25 @@ mod Shrine {
                         // Therefore, we need to adjust the remainder yang amount of the redistributed trove according to
                         // this formula below to offset the appreciation from rebasing for the redistributed trove:
                         //
-                        //                                                1
-                        // adjusted_remaining_trove_yang = ---------------------------- * remaining_trove_yang
-                        //                                 (1 + unit_yang_appreciation)
+                        //                                        remaining_trove_yang
+                        // adjusted_remaining_trove_yang = ----------------------------------
+                        //                                 (1 + unit_yang_per_remaining_yang)
                         //
                         // where `unit_yang_per_remaining_yang` is the amount of redistributed yang to be redistributed to
                         // each Wad unit in `redistributed_yang_remaining_pool`: 
                         //
-                        //                               yang_amt_to_redistribute
-                        // unit_yang_appreciation = ---------------------------------
-                        //                          redistributed_yang_remaining_pool
+                        //                                     yang_amt_to_redistribute
+                        // unit_yang_per_remaining_yang = ---------------------------------
+                        //                                redistributed_yang_remaining_pool
 
                         let unit_yang_per_remaining_yang: Ray = wadray::rdiv_ww(
                             yang_amt_to_redistribute, redistributed_yang_remaining_pool
                         );
                         let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         updated_trove_yang_balance =
-                            wadray::rmul_rw(
-                                (RAY_ONE.into() / (RAY_ONE.into() + unit_yang_per_remaining_yang)),
-                                remaining_trove_yang
+                            wadray::rdiv_wr(
+                                remaining_trove_yang,
+                                (RAY_ONE.into() + unit_yang_per_remaining_yang),
                             );
 
                         // Note that the trove's deposit and total supply are updated after this loop.
