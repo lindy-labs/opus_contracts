@@ -19,7 +19,7 @@ mod Shrine {
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
 
     //
@@ -1203,8 +1203,6 @@ mod Shrine {
         }
     }
 
-    use debug::PrintTrait;
-
     // Loop through yangs for the trove:
     // 1. redistribute a yang by either:
     //    a. if at least one other trove has deposited that yang, setting the deposit to 0; or
@@ -1321,6 +1319,8 @@ mod Shrine {
                     let yang_amt_to_redistribute: Wad = wadray::rmul_wr(
                         trove_yang_amt, pct_value_to_redistribute
                     );
+                    let mut updated_trove_yang_balance: Wad = trove_yang_amt
+                        - yang_amt_to_redistribute;
 
                     let redistributed_yang_total_supply: Wad = yang_total::read(
                         yang_id_to_redistribute
@@ -1341,20 +1341,13 @@ mod Shrine {
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
                     );
-                    'calculating yang debt pct'.print();
-                    yang_amt_to_redistribute.print();
-                    trove_value_to_redistribute.print();
                     let yang_debt_pct: Ray = wadray::rdiv_ww(
-                            yang_amt_to_redistribute * redistributed_yang_price,
-                            trove_value_to_redistribute
-                        );
-                    yang_debt_pct.print();
-                    'calculating raw debt'.print();
-                    let raw_debt_to_distribute = wadray::rmul_rw(
-                        yang_debt_pct,
-                        debt_to_redistribute
+                        yang_amt_to_redistribute * redistributed_yang_price,
+                        trove_value_to_redistribute
                     );
-                    raw_debt_to_distribute.print();
+                    let raw_debt_to_distribute = wadray::rmul_rw(
+                        yang_debt_pct, debt_to_redistribute
+                    );
                     let (debt_to_distribute, updated_redistributed_debt) = round_distributed_debt(
                         debt_to_redistribute, raw_debt_to_distribute, redistributed_debt
                     );
@@ -1389,18 +1382,40 @@ mod Shrine {
                         //   in the Gate remains at 100 units.
                         //   1 unit of YANG_1 now corresponds to 1.1111... unit of YANG_1_ASSET.
                         //
-                        // Set trove's deposit to zero as it will be distributed amongst all other troves
-                        // containing this yang, either via rebasing (if there are other troves with the same yang)
-                        // or by reallocating (if there are no other troves with the same yang)
+                        // Therefore, we need to adjust the remainder yang amount of the redistributed trove according to
+                        // this formula below to offset the appreciation from rebasing for the redistributed trove:
                         //
+                        //                                                1
+                        // adjusted_remaining_trove_yang = ---------------------------- * remaining_trove_yang
+                        //                                 (1 + unit_yang_appreciation)
+                        //
+                        // where `unit_yang_appreciation` is the amount of redistributed yang to be redistributed to
+                        // each Wad unit in `redistributed_yang_remaining_pool`: 
+                        //
+                        //                               yang_amt_to_redistribute
+                        // unit_yang_appreciation = ---------------------------------
+                        //                          redistributed_yang_remaining_pool
+
+                        let unit_yang_appreciation: Ray = wadray::rdiv_ww(
+                            yang_amt_to_redistribute, redistributed_yang_remaining_pool
+                        );
+                        let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
+                        updated_trove_yang_balance =
+                            wadray::rmul_rw(
+                                (RAY_ONE.into() / (RAY_ONE.into() + unit_yang)),
+                                remaining_trove_yang
+                            );
+
                         // Note that the trove's deposit and total supply are updated after this loop.
                         // See comment at this array's declaration on why.
+                        let yang_offset: Wad = remaining_trove_yang - updated_trove_yang_balance;
                         new_yang_totals
                             .append(
                                 YangBalance {
                                     yang_id: yang_id_to_redistribute,
                                     amount: redistributed_yang_total_supply
                                         - yang_amt_to_redistribute
+                                        - yang_offset
                                 }
                             );
 
@@ -1567,8 +1582,7 @@ mod Shrine {
                     updated_trove_yang_balances
                         .append(
                             YangBalance {
-                                yang_id: yang_id_to_redistribute,
-                                amount: trove_yang_amt - yang_amt_to_redistribute
+                                yang_id: yang_id_to_redistribute, amount: updated_trove_yang_balance
                             }
                         );
 

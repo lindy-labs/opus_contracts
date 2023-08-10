@@ -256,7 +256,7 @@ mod PurgerUtils {
         // exceptional redistribution because recipient trove does not have
         // WBTC yang but redistributed trove has WBTC yang
         let mut exceptional_case: Array<u128> = Default::default();
-        exceptional_case.append(20 * WAD_ONE); // 20 (Wad) ETH
+        exceptional_case.append(30 * WAD_ONE); // 30 (Wad) ETH
         exceptional_case.append(0_u128); // 0 WBTC
         yang_asset_amts_cases.append(exceptional_case.span());
 

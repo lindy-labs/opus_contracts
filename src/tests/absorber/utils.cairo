@@ -53,7 +53,7 @@ mod AbsorberUtils {
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(10 * WAD_ONE); // 10 (Wad) - ETH
+        asset_amts.append(20 * WAD_ONE); // 10 (Wad) - ETH
         asset_amts.append(100000000); // 1 (10 ** 8) - BTC
         asset_amts.span()
     }

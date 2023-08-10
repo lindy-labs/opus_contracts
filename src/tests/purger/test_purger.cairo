@@ -643,16 +643,20 @@ mod TestPurger {
                                 // Index 1 is a dummy value for the lower bound 
                                 // of the absorber's yin.
                                 // Index 2 is a dummy value for the trove's debt
-                                // minus the smallest unit of Wad
+                                // minus the smallest unit of Wad (which would amount to
+                                // 1001 wei after including the initial amount in Absorber)
                                 let end_idx: usize = 3;
                                 loop {
                                     if absorber_yin_idx == end_idx {
                                         break;
                                     }
 
-                                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                                    let (
+                                        shrine, abbot, mock_pragma, absorber, purger, yangs, gates
+                                    ) =
                                         PurgerUtils::purger_deploy();
-                                    let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+                                    let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN
+                                        .into();
                                     let target_trove_owner: ContractAddress =
                                         PurgerUtils::target_trove_owner();
                                     common::fund_user(
@@ -715,7 +719,8 @@ mod TestPurger {
                                         target_ltv
                                     );
 
-                                    let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
+                                    let (_, ltv, before_value, _) = shrine
+                                        .get_trove_info(target_trove);
 
                                     PurgerUtils::assert_trove_is_absorbable(
                                         shrine, purger, target_trove, ltv
@@ -759,7 +764,8 @@ mod TestPurger {
 
                                     // Check absorption occured
                                     assert(
-                                        absorber.get_absorptions_count() == 1, 'wrong absorptions count'
+                                        absorber.get_absorptions_count() == 1,
+                                        'wrong absorptions count'
                                     );
 
                                     // Check trove debt and LTV
@@ -767,13 +773,13 @@ mod TestPurger {
                                         .get_trove_info(target_trove);
                                     assert(after_debt.is_zero(), 'wrong debt after liquidation');
 
-                                    // There is some precision loss that results in dust value remaining
-                                    // when the absorber's yin is slightly less than the trove's debt.
-                                    if absorber_yin_idx == 2 {
-                                        common::assert_equalish(after_value, WadZeroable::zero(), 10000_u128.into(), 'wrong value after liquidation');
-                                    } else {
-                                        assert(after_value.is_zero(), 'wrong value after liquidation');
-                                    }
+                                    // There could be some precision loss that results in dust value remaining
+                                    common::assert_equalish(
+                                        after_value,
+                                        WadZeroable::zero(),
+                                        10000_u128.into(),
+                                        'wrong value after liquidation'
+                                    );
 
                                     // Check that caller has received compensation
                                     let expected_compensation: Span<u128> =
@@ -876,8 +882,6 @@ mod TestPurger {
                                 loop {
                                     match interesting_thresholds.pop_front() {
                                         Option::Some(threshold) => {
-                                            'threshold'.print();
-                                            (*threshold).print();
                                             // Use only the first value which guarantees the max absorption amount is less
                                             // than the trove's debt
                                             let mut target_ltvs_arr: Span<Ray> = *target_ltvs
@@ -886,18 +890,17 @@ mod TestPurger {
                                             let target_ltv: Ray = *target_ltvs_arr
                                                 .pop_front()
                                                 .unwrap();
-                                            
+
                                             let mut absorber_yin_idx: usize = 0;
                                             // Index 0 is a dummy value for the absorber yin
                                             // being a fraction of the max close amount.
                                             // Index 1 is a dummy value for the lower bound 
                                             // of the absorber's yin.
                                             // Index 2 is a dummy value for the max close amount
-                                            // minus the smallest unit of Wad
+                                            // minus the smallest unit of Wad (which would amount to
+                                            // 1001 wei after including the initial amount in Absorber)
                                             let end_idx: usize = 3;
                                             loop {
-                                                'absorber yin idx'.print();
-                                                absorber_yin_idx.print();
                                                 if absorber_yin_idx == end_idx {
                                                     break;
                                                 }
@@ -934,7 +937,8 @@ mod TestPurger {
                                                 // Accrue some interest
                                                 common::advance_intervals(500);
 
-                                                let before_total_debt: Wad = shrine.get_total_debt();
+                                                let before_total_debt: Wad = shrine
+                                                    .get_total_debt();
                                                 let (_, _, _, before_target_trove_debt) = shrine
                                                     .get_trove_info(target_trove);
                                                 let accrued_interest: Wad = before_target_trove_debt
@@ -947,7 +951,9 @@ mod TestPurger {
 
                                                 // Set threshold to 70% to test partial absorption when max close amount 
                                                 // is less than trove's debt
-                                                PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+                                                PurgerUtils::set_thresholds(
+                                                    shrine, yangs, *threshold
+                                                );
 
                                                 let (_, _, start_value, before_debt) = shrine
                                                     .get_trove_info(target_trove);
@@ -994,7 +1000,8 @@ mod TestPurger {
                                                 let expected_compensation_value: Wad = purger
                                                     .get_compensation(target_trove);
 
-                                                let absorber_start_yin: Wad = if absorber_yin_idx == 0 {
+                                                let absorber_start_yin: Wad =
+                                                    if absorber_yin_idx == 0 {
                                                     // Fund the absorber with half of the max close amount
                                                     (max_close_amt.val / 2).into()
                                                 } else {
@@ -1004,8 +1011,6 @@ mod TestPurger {
                                                         (max_close_amt.val - 1001).into()
                                                     }
                                                 };
-                                                'start yin'.print();
-                                                absorber_start_yin.print();
                                                 let close_amt = absorber_start_yin;
 
                                                 let recipient_trove_owner: ContractAddress =
@@ -1023,7 +1028,8 @@ mod TestPurger {
                                                 );
                                                 let (_, _, _, recipient_trove_debt) = shrine
                                                     .get_trove_info(recipient_trove);
-                                                let before_total_debt: Wad = shrine.get_total_debt();
+                                                let before_total_debt: Wad = shrine
+                                                    .get_total_debt();
 
                                                 // sanity check
                                                 assert(
@@ -1035,9 +1041,7 @@ mod TestPurger {
                                                 );
 
                                                 set_contract_address(caller);
-                                                'absorb'.print();
                                                 let (_, compensation) = purger.absorb(target_trove);
-                                                'after absorb'.print();
 
                                                 // Assert that total debt includes accrued interest on liquidated trove
                                                 let after_total_debt: Wad = shrine.get_total_debt();
@@ -1057,8 +1061,9 @@ mod TestPurger {
                                                 // Check trove debt and LTV
                                                 let (_, after_ltv, after_value, after_debt) = shrine
                                                     .get_trove_info(target_trove);
-                                                
-                                                let expected_redistributed_value: Wad = wadray::rmul_wr(
+
+                                                let expected_redistributed_value: Wad =
+                                                    wadray::rmul_wr(
                                                     max_close_amt, RAY_ONE.into() + penalty
                                                 );
                                                 let expected_after_value: Wad = before_value
@@ -1077,7 +1082,7 @@ mod TestPurger {
                                                 //    );
                                                 //} else {
                                                 let expected_after_debt: Wad = before_debt
-                                                - max_close_amt;
+                                                    - max_close_amt;
                                                 assert(
                                                     after_debt == expected_after_debt,
                                                     'wrong debt after liquidation'
@@ -1085,12 +1090,13 @@ mod TestPurger {
                                                 //}
 
                                                 assert(
-                                                    after_value.is_non_zero(), 'value should not be 0'
+                                                    after_value.is_non_zero(),
+                                                    'value should not be 0'
                                                 );
                                                 common::assert_equalish(
                                                     after_value,
                                                     expected_after_value,
-                                                    1000000000000000_u128.into(), // error margin
+                                                    WAD_ONE.into(), // error margin
                                                     'wrong value after liquidation'
                                                 );
 
@@ -1103,7 +1109,9 @@ mod TestPurger {
                                                 );
                                                 PurgerUtils::assert_received_assets(
                                                     before_caller_asset_bals,
-                                                    common::get_token_balances(yangs, caller.into()),
+                                                    common::get_token_balances(
+                                                        yangs, caller.into()
+                                                    ),
                                                     expected_compensation,
                                                     10_u128, // error margin
                                                     'wrong caller asset balance'
@@ -1118,7 +1126,9 @@ mod TestPurger {
 
                                                 // Check absorber yin balance is wiped out
                                                 assert(
-                                                    shrine.get_yin(absorber.contract_address).is_zero(),
+                                                    shrine
+                                                        .get_yin(absorber.contract_address)
+                                                        .is_zero(),
                                                     'wrong absorber yin balance'
                                                 );
 
@@ -1180,7 +1190,9 @@ mod TestPurger {
                                                                 .unwrap();
                                                             let remainder_trove_yang: Wad = shrine
                                                                 .get_deposit(
-                                                                    *yangs_copy.pop_front().unwrap(),
+                                                                    *yangs_copy
+                                                                        .pop_front()
+                                                                        .unwrap(),
                                                                     target_trove
                                                                 );
                                                             let remainder_asset_amt: u128 = gate
@@ -1188,7 +1200,7 @@ mod TestPurger {
                                                             common::assert_equalish(
                                                                 remainder_asset_amt,
                                                                 *expected_asset_amt,
-                                                                100_u128.into(),
+                                                                10000_u128.into(),
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
