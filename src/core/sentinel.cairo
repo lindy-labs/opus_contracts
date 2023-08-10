@@ -106,17 +106,6 @@ mod Sentinel {
         yang_addresses_count::read()
     }
 
-    #[view]
-    fn get_total_assets(yang: ContractAddress) -> u128 {
-        let gate: IGateDispatcher = yang_to_gate::read(yang);
-
-        if gate.contract_address.is_zero() {
-            return 0_u128.into();
-        }
-
-        gate.get_total_assets()
-    }
-
     // Returns 0 if the yang is invalid, as opposed to `preview_enter` and `preview_exit`
     // Zero value will be handled by the oracle module so as to prevent price updates from failing
     #[view]
