@@ -290,12 +290,12 @@ mod PurgerUtils {
 
     // Generate interesting cases for absorber's yin balance based on the 
     // redistributed trove's debt to test absorption with partial redistribution
-    fn generate_absorber_yin_below_trove_debt_cases(trove_debt: Wad) -> Span<Wad> {
+    fn generate_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         let mut absorber_yin_cases: Array<Wad> = Default::default();
 
         // smallest possible amount of yin in Absorber based on initial shares
         absorber_yin_cases.append(1000_u128.into());
-        absorber_yin_cases.append((trove_debt.val / 2).into());
+        absorber_yin_cases.append((trove_debt.val / 3).into());
         absorber_yin_cases.append((trove_debt.val - 1000).into());
         // trove's debt minus the smallest unit of Wad
         absorber_yin_cases.append((trove_debt.val - 1).into());
