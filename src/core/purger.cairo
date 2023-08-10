@@ -345,22 +345,32 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            let debt_after_absorption: Wad = trove_debt - purge_amt;
-            let value_after_absorption: Wad = wadray::rmul_rw(
-                RAY_ONE.into() - pct_to_purge, value_after_compensation
-            );
-            let ltv_after_absorption: Ray = wadray::rdiv_ww(
-                debt_after_absorption, value_after_absorption
-            );
             let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
 
-            let pct_to_redistribute: Ray = get_percentage_freed(
-                ltv_after_absorption,
-                value_after_absorption,
-                debt_after_absorption,
-                trove_penalty,
-                debt_to_redistribute
-            );
+            let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
+            let pct_to_redistribute: Ray = if redistribute_trove_debt_in_full {
+                RAY_ONE.into()
+            } else {
+                let debt_after_absorption: Wad = trove_debt - purge_amt;
+                let value_after_absorption: Wad = wadray::rmul_rw(
+                    RAY_ONE.into() - pct_to_purge, value_after_compensation
+                );
+                let ltv_after_absorption: Ray = wadray::rdiv_ww(
+                    debt_after_absorption, value_after_absorption
+                );
+                
+
+                'purger - debt to redis'.print();
+                debt_to_redistribute.print();
+
+                get_percentage_freed(
+                    ltv_after_absorption,
+                    value_after_absorption,
+                    debt_after_absorption,
+                    trove_penalty,
+                    debt_to_redistribute
+                )
+            };
 
             shrine.redistribute(trove_id, debt_to_redistribute, pct_to_redistribute);
 
