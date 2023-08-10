@@ -2,7 +2,9 @@ use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution};
+use aura::utils::types::{
+    ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+};
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -19,7 +21,7 @@ trait IShrine {
     fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray;
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
-    fn get_yang_suspension_status(yang: ContractAddress) -> (bool, bool);
+    fn get_yang_suspension_status(yang: ContractAddress) -> YangSuspensionStatus;
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
     fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;

@@ -13,6 +13,7 @@ mod Sentinel {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::serde::SpanSerde;
+    use aura::utils::types::YangSuspensionStatus;
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
@@ -245,8 +246,9 @@ mod Sentinel {
     fn assert_can_enter(yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
         assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
         assert(yang_is_live::read(yang), 'SE: Gate is not live');
-        let (suspended, _) = shrine::read().get_yang_suspension_status(yang);
-        assert(!suspended, 'SE: Yang suspended');
+        let suspension_status: YangSuspensionStatus = shrine::read()
+            .get_yang_suspension_status(yang);
+        assert(suspension_status == YangSuspensionStatus::None(()), 'SE: Yang suspended');
         let current_total: u128 = gate.get_total_assets();
         let max_amt: u128 = yang_asset_max::read(yang);
         assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
