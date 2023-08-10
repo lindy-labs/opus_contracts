@@ -5,7 +5,7 @@ mod TestSentinel {
     use option::OptionTrait;
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::Into;
 
     use aura::core::sentinel::Sentinel;
@@ -16,6 +16,7 @@ mod TestSentinel {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::utils::types::YangSuspensionStatus;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WAD_ONE};
 
@@ -488,20 +489,21 @@ mod TestSentinel {
     fn test_suspend_unsuspend_yang() {
         let (sentinel, shrine, eth, _) = SentinelUtils::deploy_sentinel_with_eth_gate();
         set_contract_address(SentinelUtils::admin());
+        set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
 
-        let (temp, perm) = shrine.get_yang_suspension_status(eth);
-        assert(!temp, 'eth temp suspension 1');
-        assert(!perm, 'eth perm suspension 1');
+        let status = shrine.get_yang_suspension_status(eth);
+        assert(status == YangSuspensionStatus::None(()), 'status 1');
 
         sentinel.suspend_yang(eth);
-        let (temp, perm) = shrine.get_yang_suspension_status(eth);
-        assert(temp, 'eth temp suspension 2');
-        assert(!perm, 'eth perm suspension 2');
+        let status = shrine.get_yang_suspension_status(eth);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 2');
+
+        // move time forward by 1 day
+        set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP + 86400);
 
         sentinel.unsuspend_yang(eth);
-        let (temp, perm) = shrine.get_yang_suspension_status(eth);
-        assert(!temp, 'eth temp suspension 3');
-        assert(!perm, 'eth temp suspension 3');
+        let status = shrine.get_yang_suspension_status(eth);
+        assert(status == YangSuspensionStatus::None(()), 'status 3');
     }
 
     #[test]

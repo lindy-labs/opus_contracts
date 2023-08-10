@@ -15,7 +15,9 @@ mod Shrine {
     use aura::utils::exp::{exp, neg_exp};
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
-    use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution};
+    use aura::utils::types::{
+        ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+    };
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{
@@ -422,18 +424,10 @@ mod Shrine {
         multiplier::read(interval)
     }
 
-    // Returns the suspension status of a yang as 2 booleans,
-    // first indicating if it is currently suspended (potentially reversibly),
-    // second if it is suspended permanently
     #[view]
-    fn get_yang_suspension_status(yang: ContractAddress) -> (bool, bool) {
+    fn get_yang_suspension_status(yang: ContractAddress) -> YangSuspensionStatus {
         let yang_id: u32 = get_valid_yang_id(yang);
-        let suspension_ts: u64 = yang_suspension::read(yang_id);
-        if suspension_ts.is_zero() {
-            (false, false)
-        } else {
-            (true, suspension_ts + SUSPENSION_GRACE_PERIOD <= get_block_timestamp())
-        }
+        get_yang_suspension_status_internal(yang_id)
     }
 
     #[view]
@@ -914,8 +908,10 @@ mod Shrine {
     fn update_yang_suspension(yang: ContractAddress, ts: u64) {
         AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
         assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
-        let (_, permanent) = get_yang_suspension_status(yang);
-        assert(!permanent, 'SH: Permanent suspension');
+        assert(
+            get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
+            'SH: Permanent suspension'
+        );
         let yang_id: u32 = get_valid_yang_id(yang);
         yang_suspension::write(yang_id, ts);
     }
@@ -2156,27 +2152,37 @@ mod Shrine {
         (0_u128.into(), 0_u128.into())
     }
 
+    fn get_yang_suspension_status_internal(yang_id: u32) -> YangSuspensionStatus {
+        let suspension_ts: u64 = yang_suspension::read(yang_id);
+        if suspension_ts.is_zero() {
+            return YangSuspensionStatus::None(());
+        }
+
+        if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
+            return YangSuspensionStatus::Temporary(());
+        }
+
+        YangSuspensionStatus::Permanent(())
+    }
+
     fn get_yang_threshold_internal(yang_id: u32) -> Ray {
         let base_threshold: Ray = thresholds::read(yang_id);
-        let suspension_ts: u64 = yang_suspension::read(yang_id);
-        let current_ts: u64 = get_block_timestamp();
 
-        // not suspended
-        if suspension_ts.is_zero() {
-            return base_threshold;
+        match get_yang_suspension_status_internal(yang_id) {
+            YangSuspensionStatus::None(_) => {
+                base_threshold
+            },
+            YangSuspensionStatus::Temporary(_) => {
+                // linearly decrease the threshold from base_threshold to 0
+                // based on the time passed since suspension started
+                let ts_diff: u64 = get_block_timestamp() - yang_suspension::read(yang_id);
+                let decrease_pct: u128 = (ts_diff / (SUSPENSION_GRACE_PERIOD / 100)).into();
+                base_threshold * (RAY_ONE.into() - (decrease_pct * RAY_PERCENT).into())
+            },
+            YangSuspensionStatus::Permanent(_) => {
+                RayZeroable::zero()
+            },
         }
-
-        // permanently suspended
-        if suspension_ts + SUSPENSION_GRACE_PERIOD <= current_ts {
-            return RayZeroable::zero();
-        }
-
-        // reversible suspension
-        // linearly decrease the threshold from base_threshold to 0
-        // based on the time passed since suspension started
-        let ts_diff: u64 = current_ts - suspension_ts;
-        let decrease_pct: u128 = (ts_diff / (SUSPENSION_GRACE_PERIOD / 100)).into();
-        base_threshold * (RAY_ONE.into() - (decrease_pct * RAY_PERCENT).into())
     }
 
     //

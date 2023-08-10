@@ -17,6 +17,7 @@ mod TestShrine {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
+    use aura::utils::types::YangSuspensionStatus;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{
@@ -1450,16 +1451,12 @@ mod TestShrine {
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine = ShrineUtils::shrine(shrine_addr);
 
-        // TODO: after move to cairo v2.1.0 which has PartialEq on 2-tuples, this can be simplified
-        let (yang1_temp, yang1_perm) = shrine.get_yang_suspension_status(ShrineUtils::yang1_addr());
-        assert(!yang1_temp, 'yang1 temporary suspension');
-        assert(!yang1_perm, 'yang1 permanent suspension');
-        let (yang2_temp, yang2_perm) = shrine.get_yang_suspension_status(ShrineUtils::yang2_addr());
-        assert(!yang2_temp, 'yang2 temporary suspension');
-        assert(!yang2_perm, 'yang2 permanent suspension');
-        let (yang3_temp, yang3_perm) = shrine.get_yang_suspension_status(ShrineUtils::yang3_addr());
-        assert(!yang3_temp, 'yang3 temporary suspension');
-        assert(!yang3_perm, 'yang3 permanent suspension');
+        let status_yang1 = shrine.get_yang_suspension_status(ShrineUtils::yang1_addr());
+        assert(status_yang1 == YangSuspensionStatus::None(()), 'yang1');
+        let status_yang2 = shrine.get_yang_suspension_status(ShrineUtils::yang2_addr());
+        assert(status_yang2 == YangSuspensionStatus::None(()), 'yang2');
+        let status_yang3 = shrine.get_yang_suspension_status(ShrineUtils::yang3_addr());
+        assert(status_yang3 == YangSuspensionStatus::None(()), 'yang3');
     }
 
     #[test]
@@ -1497,9 +1494,8 @@ mod TestShrine {
         shrine.update_yang_suspension(yang, start_ts);
 
         // check suspension status
-        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(temporary, 'temporary suspension 1');
-        assert(!permanent, 'permanent suspension 1');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 1');
 
         // setting block time to a second before the suspension would be permanent
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
@@ -1508,9 +1504,8 @@ mod TestShrine {
         shrine.update_yang_suspension(yang, 0);
 
         // check suspension status
-        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(!temporary, 'temporary suspension 2');
-        assert(!permanent, 'permanent suspension 2');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::None(()), 'status 2');
     }
 
     #[test]
@@ -1543,9 +1538,9 @@ mod TestShrine {
         shrine.update_yang_suspension(yang, start_ts);
 
         // check suspension status
-        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(temporary, 'temporary suspension 1');
-        assert(!permanent, 'permanent suspension 1');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 1');
+
         // check threshold (should be the same at the beginning)
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
@@ -1557,9 +1552,9 @@ mod TestShrine {
         set_block_timestamp(start_ts + one_pct);
 
         // check suspension status
-        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(temporary, 'temporary suspension 2');
-        assert(!permanent, 'permanent suspension 2');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 2');
+
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
@@ -1568,9 +1563,9 @@ mod TestShrine {
         set_block_timestamp(start_ts + one_pct * 20);
 
         // check suspension status
-        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(temporary, 'temporary suspension 3');
-        assert(!permanent, 'permanent suspension 3');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 3');
+
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
@@ -1579,9 +1574,9 @@ mod TestShrine {
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
         // check suspension status
-        let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(temporary, 'temporary suspension 4');
-        assert(!permanent, 'permanent suspension 4');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 4');
+
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
@@ -1590,9 +1585,9 @@ mod TestShrine {
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
 
         // check suspension status
-     let (temporary, permanent) = shrine.get_yang_suspension_status(yang);
-        assert(temporary, 'temporary suspension 5');
-        assert(permanent, 'permanent suspension 5');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Permanent(()), 'status 5');
+
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
         assert(threshold == RayZeroable::zero(), 'threshold 5');
@@ -1614,8 +1609,8 @@ mod TestShrine {
         // mark permanent
         shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_GRACE_PERIOD);
         // sanity check
-        let (_, perm) = shrine.get_yang_suspension_status(yang);
-        assert(perm, 'delisted');
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Permanent(()), 'delisted');
 
         // trying to reset yang suspension status, should fail
         shrine.update_yang_suspension(yang, 0);
