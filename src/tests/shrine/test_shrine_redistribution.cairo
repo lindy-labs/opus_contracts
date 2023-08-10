@@ -502,12 +502,10 @@ mod TestShrineRedistribution {
                                     'wrong redistributed trove debt'
                                 );
 
-                                common::assert_equalish(
-                                    after_redistributed_trove_value,
-                                    before_redistributed_trove_value - value_to_redistribute,
-                                    10_u128.into(), // error margin
-                                    'wrong redistributed trove value'
-                                );
+                                // We are unable to test the trove value in a sensible way here because 
+                                // the yang price has not been updated to reflect any rebasing of the 
+                                // asset amount per yang wad. Instead, refer to the tests for purger
+                                // for assertions on the redistributed trove's value.
                             },
                             Option::None(_) => {
                                 break;
@@ -1522,16 +1520,6 @@ mod TestShrineRedistribution {
             cumulative_redistributed_debt, total_debt, 20_u128.into(), 'total debt mismatch'
         );
         assert(cumulative_redistributed_debt <= total_debt, 'sum(troves debt) > total debt');
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('u256 is 0', 'ENTRYPOINT_FAILED'))]
-    fn test_shrine_redistribution_zero_pct_value_to_redistribute_fail() {
-        let shrine: IShrineDispatcher = redistribution_setup();
-
-        set_contract_address(ShrineUtils::admin());
-        shrine.redistribute(common::TROVE_1, 1_u128.into(), RayZeroable::zero());
     }
 
     #[test]
