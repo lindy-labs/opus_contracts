@@ -70,6 +70,10 @@ mod Shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
+    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 70000000000000000000000000; // 0.7 (ray)
+    // Factor that scales how much thresholds decline during recovery mode
+    const THRESHOLD_DECREASE_FACTOR: u128 = 100000000000000000000000000; // 1 (ray)
+
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
         // (trove_id) -> (Trove)
@@ -420,13 +424,28 @@ mod Shrine {
     #[view]
     fn get_yang_threshold(yang: ContractAddress) -> Ray {
         let yang_id: u32 = get_valid_yang_id(yang);
-        get_yang_threshold_internal(yang_id)
+        scale_threshold_for_recovery_mode(get_yang_threshold_internal(yang_id))
     }
 
     #[view]
     fn get_shrine_threshold_and_value() -> (Ray, Wad) {
         get_shrine_threshold_and_value_internal(now())
     }
+
+    // Returns a tuple of 
+    // 1. The recovery mode threshold
+    // 2. Shrine's threshold
+    // 3. Shrine's LTV
+    #[view]
+    fn get_recovery_mode_threshold() -> (Ray, Ray) {
+        let (liq_threshold, value) = get_shrine_threshold_and_value_internal(now());
+        let debt: Wad = total_debt::read();
+        (
+            liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into(),
+            wadray::rdiv_ww(total_debt, value)
+        )
+    }
+
 
     #[view]
     fn get_redistributions_count() -> u32 {
@@ -1938,7 +1957,7 @@ mod Shrine {
         assert(is_healthy(trove_id), 'SH: Trove LTV is too high');
     }
 
-    // Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value, at a given interval.
+    // Returns a tuple of the trove's threshold (maximum LTV before liquidation) and the total trove value, at a given interval.
     // This function uses historical prices but the currently deposited yang amounts to calculate value.
     // The underlying assumption is that the amount of each yang deposited at `interval` is the same as the amount currently deposited.
     fn get_trove_threshold_and_value_internal(trove_id: u64, interval: u64) -> (Ray, Wad) {
@@ -1968,10 +1987,24 @@ mod Shrine {
         };
 
         if trove_value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold_sum, trove_value), trove_value);
+            let trove_threshold: Ray = wadray::wdiv_rw(weighted_threshold_sum, trove_value);
+            return (scale_threshold_for_recovery_mode(trove_threshold), trove_value);
         }
 
         (0_u128.into(), 0_u128.into())
+    }
+
+    // Helper function for applying the recovery mode threshold decrease to a threshold,
+    // if recovery mode is active
+    fn scale_threshold_for_recovery_mode(mut threshold: Ray) -> Ray {
+        let (recovery_mode_threshold, shrine_ltv) = get_recovery_mode_threshold();
+
+        if shrine_ltv >= recovery_mode_threshold {
+            threshold = threshold
+                * THRESHOLD_DECREASE_FACTOR.into()
+                * (recovery_mode_threshold / shrine_ltv)
+        }
+        threshold
     }
 
     // Helper to manually calculate what a trove's threshold and value at the given interval would be
@@ -2005,7 +2038,8 @@ mod Shrine {
         };
 
         if trove_value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold_sum, trove_value), trove_value);
+            let trove_threshold = wadray::wdiv_rw(weighted_threshold_sum, trove_value);
+            return (scale_threshold_for_recovery_mode(trove_threshold), trove_value);
         }
 
         (RayZeroable::zero(), WadZeroable::zero())

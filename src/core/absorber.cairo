@@ -43,9 +43,6 @@ mod Absorber {
     // First epoch of the Absorber 
     const FIRST_EPOCH: u32 = 1;
 
-    // Lower bound of the Shrine's LTV to threshold that can be set for restricting removals
-    const MIN_LIMIT: u128 = 500000000000000000000000000; // 50 * wadray::RAY_PERCENT = 0.5
-
     // Amount of time, in seconds, that needs to elapse after request is submitted before removal
     const REQUEST_BASE_TIMELOCK: u64 = 60;
 
@@ -919,20 +916,9 @@ mod Absorber {
     // Internal - helpers for remove
     //
 
-    // Returns shrine global LTV divided by the global LTV threshold
-    fn get_shrine_ltv_to_threshold() -> Ray {
-        let shrine = shrine::read();
-        let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        let debt: Wad = shrine.get_total_debt();
-        let ltv: Ray = wadray::rdiv_ww(debt, value);
-        wadray::rdiv(ltv, threshold)
-    }
-
     fn assert_can_remove(request: Request) {
-        let ltv_to_threshold: Ray = get_shrine_ltv_to_threshold();
-        let limit: Ray = removal_limit::read();
-
-        assert(ltv_to_threshold <= limit, 'ABS: Relative LTV above limit');
+        let (recovery_mode_threshold, shrine_ltv) = shrine::read().get_recovery_mode_threshold();
+        assert(shrine_ltv <= recovery_mode_threshold, 'ABS: Recovery mode active');
 
         assert(request.timestamp.is_non_zero(), 'ABS: No request found');
         assert(!request.has_removed, 'ABS: Only 1 removal per request');

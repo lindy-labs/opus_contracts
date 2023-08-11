@@ -54,6 +54,7 @@ trait IShrine {
     fn update_yang_suspension(yang: ContractAddress, ts: u64);
     // view
     fn get_shrine_threshold_and_value() -> (Ray, Wad);
+    fn get_recovery_mode_threshold() -> (Ray, Ray);
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);
     fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad);
     fn get_current_yang_price(yang: ContractAddress) -> (Wad, Wad, u64);
