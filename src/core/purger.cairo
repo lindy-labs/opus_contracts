@@ -353,9 +353,8 @@ mod Purger {
                 RAY_ONE.into()
             } else {
                 let debt_after_absorption: Wad = trove_debt - purge_amt;
-                let value_after_absorption: Wad = value_after_compensation - wadray::rmul_rw(
-                    pct_to_purge, value_after_compensation
-                );
+                let value_after_absorption: Wad = value_after_compensation
+                    - wadray::rmul_rw(pct_to_purge, value_after_compensation);
                 let ltv_after_absorption: Ray = wadray::rdiv_ww(
                     debt_after_absorption, value_after_absorption
                 );
