@@ -851,8 +851,8 @@ mod Shrine {
         // Update the redistribution ID so that it is not possible for the redistributed 
         // trove to receive any of its own exceptional redistribution in the event of a
         // redistribution of an amount less than the trove's debt. 
-        // Note that the trove's last redistribution ID should have been updated to 
-        // `redistribution_id - 1`.
+        // Note that the trove's last redistribution ID needs to be updated to 
+        // `redistribution_id - 1` prior to calling `redistribute`.
         trove_redistribution_id::write(trove_id, redistribution_id);
 
         // Event 
@@ -1204,11 +1204,11 @@ mod Shrine {
     }
 
     // Loop through yangs for the trove:
-    // 1. redistribute a yang by either:
+    // 1. redistribute a yang according to the percentage value to be redistributed by either:
     //    a. if at least one other trove has deposited that yang, decrementing the trove's yang 
-    //       balance by the amount redistributed; or
+    //       balance and total supply by the amount redistributed; or
     //    b. otherwise, redistribute this yang to all other yangs that at least one other trove
-    //       has deposited;
+    //       has deposited, by decrementing the trove's yang balance only;
     // 2. redistribute the proportional debt for that yang:
     //    a. if at least one other trove has deposited that yang, divide the debt by the
     //       remaining amount of yang excluding the initial yang amount and the redistributed trove's
@@ -1238,12 +1238,14 @@ mod Shrine {
         // to `get_shrine_threshold_and_value_internal` which is expensive.
         let mut has_exceptional_redistribution: bool = false;
 
-        // In order to redistribute yangs that are not used by any other troves (which can
-        // be the first yang or the last yang), we need the total yang supply for all yangs
-        // (regardless how they are to be redistributed) to remain constant throughout the
+        // For exceptional redistribution of yangs (i.e. not deposited by any other troves, and
+        // which may be the first yang or the last yang), we need the total yang supply for all 
+        // yangs (regardless how they are to be redistributed) to remain constant throughout the
         // iteration over the yangs deposited in the trove. Therefore, we keep track of the
         // updated total supply and the redistributed trove's remainder amount for each yang, 
-        // and only update them after the loop.
+        // and only update them after the loop. Note that for ordinary redistribution of yangs, 
+        // the remainder yang balance after redistribution will also need to be adjusted if the 
+        // trove's value is not redistributed in full. 
         //
         // For yangs that cannot be redistributed via rebasing because no other troves
         // has deposited that yang, keep track of their yang IDs so that the redistributed 
@@ -1262,10 +1264,13 @@ mod Shrine {
         //    remains unchanged, the total amount of yang3 in other troves is now wrongly
         //    calculated to be the total amount of yang3 in the system.
         //
-        // In addition, we need to keep track of the updated total supply for the redistributed
-        // yang after deducting the error from loss of precision arising from the redistribution
-        // so that we can update it at the end to ensure subsequent redistributions of collateral
-        // and debt can all be attributed to troves.
+        // In addition, we need to keep track of the updated total supply for the redistributed yang:
+        // (1) for ordinary redistributions, if the trove's value is not entirely redistributed, 
+        //     we need to account for the appreciation of the remainder yang amounts of the 
+        //     redistributed trove by decrementing both the trove's yang balance and the total supply;
+        // (2) for exceptional redistributions, we need to deduct the error from loss of precision 
+        //     arising from any exceptional redistribution so that we can update it at the end to ensure subsequent redistributions of collateral
+        //     and debt can all be attributed to troves.
         // This has the side effect of rebasing the asset amount per yang.
 
         // For yangs that can be redistributed via rebasing, the total supply needs to be
