@@ -422,11 +422,9 @@ mod TestShrineRedistribution {
         percentages.append((15 * RAY_PERCENT).into());
         percentages.append((99 * RAY_PERCENT).into());
         percentages.append((100 * RAY_PERCENT).into());
-        let mut pct_value_to_redistribute_arr = percentages.span();
-
-        // Add zero percentage for debt only, as zero percentage for value would revert
-        // due to zero division - see failing test below.
         percentages.append(RayZeroable::zero());
+
+        let mut pct_value_to_redistribute_arr = percentages.span();
         let mut pct_debt_to_redistribute_arr = percentages.span();
 
         loop {
@@ -501,11 +499,10 @@ mod TestShrineRedistribution {
                                         - debt_to_redistribute,
                                     'wrong redistributed trove debt'
                                 );
-
-                                // We are unable to test the trove value in a sensible way here because 
-                                // the yang price has not been updated to reflect any rebasing of the 
-                                // asset amount per yang wad. Instead, refer to the tests for purger
-                                // for assertions on the redistributed trove's value.
+                            // We are unable to test the trove value in a sensible way here because 
+                            // the yang price has not been updated to reflect any rebasing of the 
+                            // asset amount per yang wad. Instead, refer to the tests for purger
+                            // for assertions on the redistributed trove's value.
                             },
                             Option::None(_) => {
                                 break;
@@ -575,7 +572,8 @@ mod TestShrineRedistribution {
         assert(
             shrine
                 .get_redistribution_for_yang(yang2_addr, expected_redistribution_id)
-                .unit_debt.is_zero(),
+                .unit_debt
+                .is_zero(),
             'should be skipped'
         );
 
@@ -717,8 +715,7 @@ mod TestShrineRedistribution {
 
         // Check that troves 2 and 3 receives trove 1's yang1 and yang3
         assert(
-            shrine.get_deposit(yang1_addr, redistributed_trove).is_zero(),
-            'should be 0 yang 1 left'
+            shrine.get_deposit(yang1_addr, redistributed_trove).is_zero(), 'should be 0 yang 1 left'
         );
         let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
         let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(
@@ -758,13 +755,11 @@ mod TestShrineRedistribution {
         );
 
         assert(
-            shrine.get_deposit(yang2_addr, redistributed_trove).is_zero(),
-            'should be 0 yang 2 left'
+            shrine.get_deposit(yang2_addr, redistributed_trove).is_zero(), 'should be 0 yang 2 left'
         );
 
         assert(
-            shrine.get_deposit(yang3_addr, redistributed_trove).is_zero(),
-            'should be 0 yang 3 left'
+            shrine.get_deposit(yang3_addr, redistributed_trove).is_zero(), 'should be 0 yang 3 left'
         );
         let recipient_trove1_yang3_amt: Wad = shrine.get_deposit(yang3_addr, recipient_trove1);
         let expected_recipient_trove1_yang3_amt: Wad = wadray::rmul_wr(
@@ -968,8 +963,7 @@ mod TestShrineRedistribution {
 
         // Check that recipient troves receive trove 1's yang1
         assert(
-            shrine.get_deposit(yang1_addr, redistributed_trove).is_zero(),
-            'should be 0 yang 1 left'
+            shrine.get_deposit(yang1_addr, redistributed_trove).is_zero(), 'should be 0 yang 1 left'
         );
         let recipient_trove1_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove1);
         let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(
@@ -1021,12 +1015,10 @@ mod TestShrineRedistribution {
         );
 
         assert(
-            shrine.get_deposit(yang2_addr, redistributed_trove).is_zero(),
-            'should be 0 yang 2 left'
+            shrine.get_deposit(yang2_addr, redistributed_trove).is_zero(), 'should be 0 yang 2 left'
         );
         assert(
-            shrine.get_deposit(yang3_addr, redistributed_trove).is_zero(),
-            'should be 0 yang 3 left'
+            shrine.get_deposit(yang3_addr, redistributed_trove).is_zero(), 'should be 0 yang 3 left'
         );
 
         //

@@ -756,13 +756,12 @@ mod TestPurger {
                                             'wrong absorptions count'
                                         );
 
-                                        // Check trove debt and LTV
-                                        let (_, after_ltv, after_value, after_debt) = shrine
+                                        // Check trove debt, value and LTV
+                                        let (_, _, after_value, after_debt) = shrine
                                             .get_trove_info(target_trove);
                                         assert(
                                             after_debt.is_zero(), 'wrong debt after liquidation'
                                         );
-
                                         assert(
                                             after_value.is_zero(), 'wrong value after liquidation'
                                         );
@@ -851,7 +850,7 @@ mod TestPurger {
     }
 
     #[test]
-    #[available_gas(200000000000)]
+    #[available_gas(20000000000000000)]
     fn test_partial_absorb_with_redistribution_below_trove_debt_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             PurgerUtils::interesting_yang_amts_for_redistributed_trove();
@@ -1046,7 +1045,7 @@ mod TestPurger {
                                                     'wrong absorptions count'
                                                 );
 
-                                                // Check trove debt and LTV
+                                                // Check trove debt, value and LTV
                                                 let (_, after_ltv, after_value, after_debt) = shrine
                                                     .get_trove_info(target_trove);
 
@@ -1078,6 +1077,10 @@ mod TestPurger {
                                                     // (10 ** 15) error margin
                                                     1000000000000000_u128.into(),
                                                     'wrong value after liquidation'
+                                                );
+
+                                                PurgerUtils::assert_ltv_at_safety_margin(
+                                                    *threshold, after_ltv
                                                 );
 
                                                 // Check that caller has received compensation
@@ -1188,9 +1191,8 @@ mod TestPurger {
                                                             break;
                                                         },
                                                     };
-
-                                                    absorber_yin_idx += 1;
                                                 };
+                                                absorber_yin_idx += 1;
                                             };
                                         },
                                         Option::None(_) => {
