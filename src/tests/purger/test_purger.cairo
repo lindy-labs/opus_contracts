@@ -691,8 +691,6 @@ mod TestPurger {
                                             gates,
                                             *absorber_start_yin,
                                         );
-                                        let (_, _, _, recipient_trove_debt) = shrine
-                                            .get_trove_info(recipient_trove);
                                         let before_total_debt: Wad = shrine.get_total_debt();
 
                                         // Make the target trove absorbable
@@ -710,6 +708,9 @@ mod TestPurger {
 
                                         let (_, ltv, before_value, _) = shrine
                                             .get_trove_info(target_trove);
+                                        let (_, _, recipient_trove_value, recipient_trove_debt) =
+                                            shrine
+                                            .get_trove_info(recipient_trove);
 
                                         PurgerUtils::assert_trove_is_absorbable(
                                             shrine, purger, target_trove, ltv
@@ -816,8 +817,14 @@ mod TestPurger {
                                             'wrong redistributions count'
                                         );
 
-                                        // Check recipient trove's debt
-                                        let (_, _, _, after_recipient_trove_debt) = shrine
+                                        // Check recipient trove's value and debt
+                                        let (
+                                            _,
+                                            _,
+                                            after_recipient_trove_value,
+                                            after_recipient_trove_debt
+                                        ) =
+                                            shrine
                                             .get_trove_info(recipient_trove);
                                         let redistributed_amt: Wad = max_close_amt - close_amt;
                                         let expected_recipient_trove_debt: Wad =
@@ -829,6 +836,20 @@ mod TestPurger {
                                             expected_recipient_trove_debt,
                                             (WAD_ONE / 100).into(), // error margin
                                             'wrong recipient trove debt'
+                                        );
+
+                                        let redistributed_value: Wad = before_value
+                                            - wadray::rmul_wr(close_amt, RAY_ONE.into() + penalty)
+                                            - expected_compensation_value;
+                                        let expected_recipient_trove_value: Wad =
+                                            recipient_trove_value
+                                            + redistributed_value;
+
+                                        common::assert_equalish(
+                                            after_recipient_trove_value,
+                                            expected_recipient_trove_value,
+                                            (WAD_ONE / 100).into(), // error margin
+                                            'wrong recipient trove value'
                                         );
                                     },
                                     Option::None(_) => {
@@ -1013,7 +1034,13 @@ mod TestPurger {
                                                     gates,
                                                     absorber_start_yin,
                                                 );
-                                                let (_, _, _, recipient_trove_debt) = shrine
+                                                let (
+                                                    _,
+                                                    _,
+                                                    recipient_trove_value,
+                                                    recipient_trove_debt
+                                                ) =
+                                                    shrine
                                                     .get_trove_info(recipient_trove);
                                                 let before_total_debt: Wad = shrine
                                                     .get_total_debt();
@@ -1138,18 +1165,40 @@ mod TestPurger {
                                                 );
 
                                                 // Check recipient trove's debt
-                                                let (_, _, _, after_recipient_trove_debt) = shrine
+                                                let (
+                                                    _,
+                                                    _,
+                                                    after_recipient_trove_value,
+                                                    after_recipient_trove_debt
+                                                ) =
+                                                    shrine
                                                     .get_trove_info(recipient_trove);
                                                 let expected_redistributed_amt: Wad = max_close_amt
                                                     - close_amt;
                                                 let expected_recipient_trove_debt: Wad =
                                                     recipient_trove_debt
                                                     + expected_redistributed_amt;
+
                                                 common::assert_equalish(
                                                     after_recipient_trove_debt,
                                                     expected_recipient_trove_debt,
                                                     (WAD_ONE / 100).into(), // error margin
                                                     'wrong recipient trove debt'
+                                                );
+
+                                                let redistributed_value: Wad = wadray::rmul_wr(
+                                                    expected_redistributed_amt,
+                                                    RAY_ONE.into() + penalty
+                                                );
+                                                let expected_recipient_trove_value: Wad =
+                                                    recipient_trove_value
+                                                    + redistributed_value;
+
+                                                common::assert_equalish(
+                                                    after_recipient_trove_value,
+                                                    expected_recipient_trove_value,
+                                                    (WAD_ONE / 100).into(), // error margin
+                                                    'wrong recipient trove value'
                                                 );
 
                                                 // Check remainder yang assets for redistributed trove is correct
@@ -1283,6 +1332,8 @@ mod TestPurger {
                                 );
 
                                 let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
+                                let (_, _, before_recipient_trove_value, _) = shrine
+                                    .get_trove_info(recipient_trove);
 
                                 PurgerUtils::assert_trove_is_absorbable(
                                     shrine, purger, target_trove, ltv
@@ -1347,14 +1398,29 @@ mod TestPurger {
                                     'wrong redistributions count'
                                 );
 
-                                // Check recipient trove's debt
-                                let (_, _, _, recipient_trove_debt) = shrine
+                                // Check recipient trove's value and debt
+                                let (
+                                    _, _, after_recipient_trove_value, after_recipient_trove_debt
+                                ) =
+                                    shrine
                                     .get_trove_info(recipient_trove);
                                 common::assert_equalish(
-                                    recipient_trove_debt,
+                                    after_recipient_trove_debt,
                                     before_target_trove_debt,
                                     (WAD_ONE / 100).into(), // error margin
                                     'wrong recipient trove debt'
+                                );
+
+                                let redistributed_value: Wad = before_value
+                                    - expected_compensation_value;
+                                let expected_recipient_trove_value: Wad =
+                                    before_recipient_trove_value
+                                    + redistributed_value;
+                                common::assert_equalish(
+                                    after_recipient_trove_value,
+                                    expected_recipient_trove_value,
+                                    (WAD_ONE / 100).into(), // error margin
+                                    'wrong recipient trove value'
                                 );
                             },
                             Option::None(_) => {
