@@ -1206,7 +1206,7 @@ mod Shrine {
     // Loop through yangs for the trove:
     // 1. redistribute a yang according to the percentage value to be redistributed by either:
     //    a. if at least one other trove has deposited that yang, decrementing the trove's yang 
-    //       balance and total supply by the amount redistributed; or
+    //       balance and total yang supply by the amount redistributed; or
     //    b. otherwise, redistribute this yang to all other yangs that at least one other trove
     //       has deposited, by decrementing the trove's yang balance only;
     // 2. redistribute the proportional debt for that yang:
@@ -1408,25 +1408,25 @@ mod Shrine {
                         // Therefore, we need to adjust the remainder yang amount of the redistributed trove according to
                         // this formula below to offset the appreciation from rebasing for the redistributed trove:
                         //
-                        //                                        remaining_trove_yang
-                        // adjusted_remaining_trove_yang = ----------------------------------
-                        //                                 (1 + unit_yang_per_remaining_yang)
+                        //                                            remaining_trove_yang
+                        // adjusted_remaining_trove_yang = ---------------------------------------
+                        //                                 (1 + unit_yang_per_recipient_pool_yang)
                         //
-                        // where `unit_yang_per_remaining_yang` is the amount of redistributed yang to be redistributed to
-                        // each Wad unit in `redistributed_yang_recipient_pool`: 
+                        // where `unit_yang_per_recipient_pool_yang` is the amount of redistributed yang to be redistributed 
+                        // to each Wad unit in `redistributed_yang_recipient_pool`: 
                         //
-                        //                                     yang_amt_to_redistribute
-                        // unit_yang_per_remaining_yang = ---------------------------------
-                        //                                redistributed_yang_recipient_pool
+                        //                                          yang_amt_to_redistribute
+                        // unit_yang_per_recipient_pool_yang = ---------------------------------
+                        //                                     redistributed_yang_recipient_pool
 
-                        let unit_yang_per_remaining_yang: Ray = wadray::rdiv_ww(
+                        let unit_yang_per_recipient_pool_yang: Ray = wadray::rdiv_ww(
                             yang_amt_to_redistribute, redistributed_yang_recipient_pool
                         );
                         let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         updated_trove_yang_balance =
                             wadray::rdiv_wr(
                                 remaining_trove_yang,
-                                (RAY_ONE.into() + unit_yang_per_remaining_yang),
+                                (RAY_ONE.into() + unit_yang_per_recipient_pool_yang),
                             );
 
                         // Note that the trove's deposit and total supply are updated after this loop.
@@ -1500,14 +1500,14 @@ mod Shrine {
                                     // redistribution, which excludes
                                     // (1) the redistributed trove's deposit; and
                                     // (2) initial yang amount.
-                                    let recipient_yang_remaining_pool: Wad = yang_total::read(
+                                    let recipient_yang_recipient_pool: Wad = yang_total::read(
                                         *recipient_yang.yang_id
                                     )
                                         - *recipient_yang.amount
                                         - recipient_yang_initial_amt;
 
                                     // Skip to the next yang if no other troves have this yang
-                                    if recipient_yang_remaining_pool.is_zero() {
+                                    if recipient_yang_recipient_pool.is_zero() {
                                         continue;
                                     }
 
@@ -1517,13 +1517,13 @@ mod Shrine {
 
                                     // Note that we include the initial yang amount here to calculate the percentage
                                     // because the total Shrine value will include the initial yang amounts too
-                                    let recipient_yang_remaining_pool_value: Wad =
-                                        (recipient_yang_remaining_pool
+                                    let recipient_yang_recipient_pool_value: Wad =
+                                        (recipient_yang_recipient_pool
                                         + recipient_yang_initial_amt)
                                         * recipient_yang_price;
                                     let pct_to_redistribute_to_recipient_yang: Ray =
                                         wadray::rdiv_ww(
-                                        recipient_yang_remaining_pool_value,
+                                        recipient_yang_recipient_pool_value,
                                         other_troves_total_value
                                     );
 
@@ -1533,10 +1533,10 @@ mod Shrine {
                                         pct_to_redistribute_to_recipient_yang
                                     );
                                     let unit_yang: Wad = partial_yang_amt_to_redistribute
-                                        / recipient_yang_remaining_pool;
+                                        / recipient_yang_recipient_pool;
 
                                     actual_yang_distributed += unit_yang
-                                        * recipient_yang_remaining_pool;
+                                        * recipient_yang_recipient_pool;
 
                                     // Distribute debt to the recipient yang
                                     let partial_adjusted_debt_to_distribute_for_yang: Wad =
@@ -1546,11 +1546,11 @@ mod Shrine {
                                     );
                                     let unit_debt: Wad =
                                         partial_adjusted_debt_to_distribute_for_yang
-                                        / recipient_yang_remaining_pool;
+                                        / recipient_yang_recipient_pool;
 
                                     // Keep track of debt distributed to calculate error at the end
                                     actual_debt_distributed += unit_debt
-                                        * recipient_yang_remaining_pool;
+                                        * recipient_yang_recipient_pool;
 
                                     // Update the distribution of the redistributed yang for the
                                     // current recipient yang
