@@ -1579,7 +1579,9 @@ mod TestShrine {
 
         // check threshold
         let threshold = shrine.get_yang_threshold(yang);
-        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
+        // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
+        // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
+        common::assert_equalish(threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4');
 
         // move time forward to end of temp suspension, start of permanent one
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
