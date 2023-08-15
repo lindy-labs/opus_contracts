@@ -11,6 +11,7 @@ mod PurgerUtils {
     use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
+    use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
     use aura::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
 
@@ -294,7 +295,7 @@ mod PurgerUtils {
         let mut absorber_yin_cases: Array<Wad> = Default::default();
 
         // smallest possible amount of yin in Absorber based on initial shares
-        absorber_yin_cases.append(1000_u128.into());
+        absorber_yin_cases.append(Absorber::MINIMUM_SHARES.into());
         absorber_yin_cases.append((trove_debt.val / 3).into());
         absorber_yin_cases.append((trove_debt.val - 1000).into());
         // trove's debt minus the smallest unit of Wad

@@ -7,6 +7,7 @@ mod TestPurger {
     use traits::Into;
     use zeroable::Zeroable;
 
+    use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
     use aura::core::roles::PurgerRoles;
 
@@ -1015,7 +1016,7 @@ mod TestPurger {
                                                     (max_close_amt.val / 3).into()
                                                 } else {
                                                     if absorber_yin_idx == 1 {
-                                                        1000_u128.into()
+                                                        Absorber::MINIMUM_SHARES.into()
                                                     } else {
                                                         (max_close_amt.val - 1).into()
                                                     }
