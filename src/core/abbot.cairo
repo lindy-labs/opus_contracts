@@ -92,10 +92,9 @@ mod Abbot {
 
     // create a new trove in the system with Yang deposits,
     // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
-    // `amounts` are denominated in asset's decimals
     #[external]
     fn open_trove(
-        forge_amount: Wad, mut yang_assets: Span<AssetBalance>, max_forge_fee_pct: Wad
+        mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
     ) -> u64 {
         assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
 
@@ -160,7 +159,6 @@ mod Abbot {
         TroveClosed(trove_id);
     }
 
-    // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
     #[external]
     fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
         // There is no need to check the yang address is non-zero because the
