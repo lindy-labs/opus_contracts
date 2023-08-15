@@ -251,7 +251,10 @@ mod Shrine {
         let interval: u64 = now();
 
         // Get threshold and trove value
-        let (mut threshold, mut value) = get_trove_threshold_and_value_internal(trove_id, interval);
+        let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
+        let (mut threshold, mut value) = get_trove_threshold_and_value(
+            trove_yang_balances, interval
+        );
 
         let trove: Trove = troves::read(trove_id);
 
@@ -276,13 +279,14 @@ mod Shrine {
         let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt) =
             pull_redistributed_debt_and_yangs(
             trove_id,
+            trove_yang_balances,
             compounded_debt,
             trove_redistribution_id::read(trove_id),
             redistributions_count::read()
         );
 
         if updated_trove_yang_balances.is_some() {
-            let (new_threshold, new_value) = get_simulated_trove_threshold_and_value(
+            let (new_threshold, new_value) = get_trove_threshold_and_value(
                 updated_trove_yang_balances.unwrap(), interval
             );
             threshold = new_threshold;
@@ -302,8 +306,10 @@ mod Shrine {
     //    but not yet pulled to the trove
     #[view]
     fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad) {
+        let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (updated_trove_yang_balances, pulled_debt) = pull_redistributed_debt_and_yangs(
             trove_id,
+            trove_yang_balances,
             WadZeroable::zero(),
             trove_redistribution_id::read(trove_id),
             redistributions_count::read()
@@ -1056,9 +1062,15 @@ mod Shrine {
         // Pull undistributed debt and update state
         let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
         let current_redistribution_id: u32 = redistributions_count::read();
-        let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt, ) =
+
+        let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
+        let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) =
             pull_redistributed_debt_and_yangs(
-            trove_id, compounded_trove_debt, trove_last_redistribution_id, current_redistribution_id
+            trove_id,
+            trove_yang_balances,
+            compounded_trove_debt,
+            trove_last_redistribution_id,
+            current_redistribution_id
         );
 
         // If there was any exceptional redistribution, write updated yang_amts to trove
@@ -1297,7 +1309,7 @@ mod Shrine {
         let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
-        let (_, trove_value) = get_trove_threshold_and_value_internal(trove_id, current_interval);
+        let (_, trove_value) = get_trove_threshold_and_value(trove_yang_balances, current_interval);
         let trove_value_to_redistribute: Wad = wadray::rmul_wr(
             trove_value, pct_value_to_redistribute
         );
@@ -1687,25 +1699,6 @@ mod Shrine {
         (debt_to_distribute, updated_cumulative_redistributed_debt)
     }
 
-    // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
-    // Starts from yang ID 1.
-    fn get_trove_deposits(trove_id: u64) -> Span<YangBalance> {
-        let mut yang_balances: Array<YangBalance> = Default::default();
-
-        let yangs_count: u32 = yangs_count::read();
-        let mut current_yang_id: u32 = START_YANG_IDX;
-        loop {
-            if current_yang_id == yangs_count + START_YANG_IDX {
-                break yang_balances.span();
-            }
-
-            let deposited: Wad = deposits::read((current_yang_id, trove_id));
-            yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
-
-            current_yang_id += 1;
-        }
-    }
-
     // Takes in a value for the trove's debt, and returns the following:
     // 1. `Option::None` if there were no exceptional redistributions.
     //    Otherwise, an ordered array of yang amounts including any exceptional redistributions,
@@ -1713,19 +1706,17 @@ mod Shrine {
     // 2. updated redistributed debt, if any, otherwise it would be equivalent to the trove debt.
     fn pull_redistributed_debt_and_yangs(
         trove_id: u64,
+        mut trove_yang_balances: Span<YangBalance>,
         mut trove_debt: Wad,
         trove_last_redistribution_id: u32,
         current_redistribution_id: u32
     ) -> (Option<Span<YangBalance>>, Wad) {
         let mut has_exceptional_redistributions: bool = false;
 
-        let mut trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         // Early termination if no redistributions since trove was last updated
         if current_redistribution_id == trove_last_redistribution_id {
             return (Option::None(()), trove_debt);
         }
-
-        let yangs_count: u32 = yangs_count::read();
 
         // Outer loop over redistribution IDs.
         // We need to iterate over redistribution IDs, because redistributed collateral from exceptional
@@ -1836,8 +1827,9 @@ mod Shrine {
                             let mut updated_trove_yang_balances: Array<YangBalance> =
                                 Default::default();
                             let mut yang_id: u32 = START_YANG_IDX;
+                            let tmp_loop_end: u32 = yangs_count::read() + START_YANG_IDX;
                             loop {
-                                if yang_id == yangs_count + START_YANG_IDX {
+                                if yang_id == tmp_loop_end {
                                     break;
                                 }
 
@@ -2002,51 +1994,37 @@ mod Shrine {
         assert(is_healthy(trove_id), 'SH: Trove LTV is too high');
     }
 
-    // Returns a tuple of the custom threshold (maximum LTV before liquidation) of a trove and the total trove value, at a given interval.
+    // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
+    // Starts from yang ID 1.
+    fn get_trove_deposits(trove_id: u64) -> Span<YangBalance> {
+        let mut yang_balances: Array<YangBalance> = Default::default();
+
+        let mut current_yang_id: u32 = START_YANG_IDX;
+        let loop_end: u32 = yangs_count::read() + START_YANG_IDX;
+        loop {
+            if current_yang_id == loop_end {
+                break yang_balances.span();
+            }
+
+            let deposited: Wad = deposits::read((current_yang_id, trove_id));
+            yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
+
+            current_yang_id += 1;
+        }
+    }
+
+    // Returns a tuple of:
+    // 1. the custom threshold (maximum LTV before liquidation) of a trove
+    // 2. the total trove value, at a given interval
+    // 
     // This function uses historical prices but the currently deposited yang amounts to calculate value.
     // The underlying assumption is that the amount of each yang deposited at `interval` is the same as the amount currently deposited.
-    fn get_trove_threshold_and_value_internal(trove_id: u64, interval: u64) -> (Ray, Wad) {
-        let mut current_yang_id: u32 = yangs_count::read();
+    fn get_threshold_and_value(mut yang_balances: Span<YangBalance>, interval: u64) -> (Ray, Wad) {
         let mut weighted_threshold_sum: Ray = 0_u128.into();
         let mut trove_value: Wad = 0_u128.into();
 
         loop {
-            if current_yang_id == 0 {
-                break;
-            }
-
-            let deposited: Wad = deposits::read((current_yang_id, trove_id));
-
-            // Update cumulative values only if user has deposited the current yang
-            if deposited.is_non_zero() {
-                let yang_threshold: Ray = thresholds::read(current_yang_id);
-
-                let (price, _, _) = get_recent_price_from(current_yang_id, interval);
-
-                let yang_deposited_value = deposited * price;
-                trove_value += yang_deposited_value;
-                weighted_threshold_sum += wadray::wmul_rw(yang_threshold, yang_deposited_value);
-            }
-
-            current_yang_id -= 1;
-        };
-
-        if trove_value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold_sum, trove_value), trove_value);
-        }
-
-        (0_u128.into(), 0_u128.into())
-    }
-
-    // Helper to manually calculate what a trove's threshold and value at the given interval would be
-    // if its yang balances were equivalent to the `trove_yang_balances` argument.
-    fn get_simulated_trove_threshold_and_value(
-        mut trove_yang_balances: Span<YangBalance>, interval: u64
-    ) -> (Ray, Wad) {
-        let mut trove_value: Wad = WadZeroable::zero();
-        let mut weighted_threshold_sum: Ray = RayZeroable::zero();
-        loop {
-            match trove_yang_balances.pop_front() {
+            match yang_balances.pop_front() {
                 Option::Some(yang_balance) => {
                     // Update cumulative values only if user has deposited the current yang
                     if (*yang_balance.amount).is_non_zero() {
