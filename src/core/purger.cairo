@@ -205,7 +205,7 @@ mod Purger {
         // Free collateral corresponding to the purged amount
         let (yangs, freed_assets_amts) = free(shrine, trove_id, percentage_freed, recipient);
 
-        // Safety check to ensure the new LTV is lower than old LTV 
+        // Safety check to ensure the new LTV is not worse off
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
@@ -233,7 +233,7 @@ mod Purger {
         let (
             trove_penalty,
             max_purge_amt,
-            compensation_pct,
+            pct_value_to_compensate,
             _,
             ltv_after_compensation,
             value_after_compensation
@@ -253,37 +253,41 @@ mod Purger {
         let purge_amt = min(max_purge_amt, absorber_yin_bal);
 
         // Transfer a percentage of the penalty to the caller as compensation
-        let (yangs, compensations) = free(shrine, trove_id, compensation_pct, caller);
+        let (yangs, compensations) = free(shrine, trove_id, pct_value_to_compensate, caller);
 
         // Melt the trove's debt using the absorber's yin directly
         // This needs to be called even if `purge_amt` is 0 so that accrued interest
         // will be charged on the trove before `shrine.redistribute`.
         shrine.melt(absorber.contract_address, trove_id, purge_amt);
 
-        let can_absorb_any: bool = purge_amt.is_non_zero();
+        let can_absorb_some: bool = purge_amt.is_non_zero();
         let is_fully_absorbed: bool = purge_amt == max_purge_amt;
 
-        // Only update the absorber and emit the `Purged` event if Absorber has some yin  
-        // to melt the trove's debt and receive freed trove assets in return
-        if can_absorb_any {
-            let percentage_freed: Ray = get_percentage_freed(
+        let pct_value_to_purge: Ray = if can_absorb_some {
+            get_percentage_freed(
                 ltv_after_compensation,
                 value_after_compensation,
                 trove_debt,
                 trove_penalty,
                 purge_amt
-            );
+            )
+        } else {
+            RayZeroable::zero()
+        };
 
+        // Only update the absorber and emit the `Purged` event if Absorber has some yin  
+        // to melt the trove's debt and receive freed trove assets in return
+        if can_absorb_some {
             // Free collateral corresponding to the purged amount
             let (yangs, absorbed_assets_amts) = free(
-                shrine, trove_id, percentage_freed, absorber.contract_address
+                shrine, trove_id, pct_value_to_purge, absorber.contract_address
             );
 
             absorber.update(yangs, absorbed_assets_amts);
             Purged(
                 trove_id,
                 purge_amt,
-                percentage_freed,
+                pct_value_to_purge,
                 absorber.contract_address,
                 absorber.contract_address,
                 yangs,
@@ -293,14 +297,37 @@ mod Purger {
 
         // If it is not a full absorption, perform redistribution.
         if !is_fully_absorbed {
-            shrine.redistribute(trove_id);
+            // This is guaranteed to be greater than zero.
+            let debt_to_redistribute: Wad = max_purge_amt - purge_amt;
+
+            let redistribute_trove_debt_in_full: bool = max_purge_amt == trove_debt;
+            let pct_value_to_redistribute: Ray = if redistribute_trove_debt_in_full {
+                RAY_ONE.into()
+            } else {
+                let debt_after_absorption: Wad = trove_debt - purge_amt;
+                let value_after_absorption: Wad = value_after_compensation
+                    - wadray::rmul_rw(pct_value_to_purge, value_after_compensation);
+                let ltv_after_absorption: Ray = wadray::rdiv_ww(
+                    debt_after_absorption, value_after_absorption
+                );
+
+                get_percentage_freed(
+                    ltv_after_absorption,
+                    value_after_absorption,
+                    debt_after_absorption,
+                    trove_penalty,
+                    debt_to_redistribute
+                )
+            };
+
+            shrine.redistribute(trove_id, debt_to_redistribute, pct_value_to_redistribute);
 
             // Update yang prices due to an appreciation in ratio of asset to yang from 
             // redistribution
             oracle::read().update_prices();
         }
 
-        // Safety check to ensure the new LTV is lower than old LTV 
+        // Safety check to ensure the new LTV is not worse off
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
