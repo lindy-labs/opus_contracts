@@ -289,9 +289,22 @@ mod PurgerUtils {
         yang_asset_amts_cases.span()
     }
 
+    fn inoperational_absorber_yin_cases() -> Span<Wad> {
+        let mut absorber_yin_cases: Array<Wad> = Default::default();
+
+        // minimum amount that must be provided based on initial shares or
+        // `provide` would revert
+        absorber_yin_cases.append(Absorber::INITIAL_SHARES.into());
+        // largest possible amount of yin in Absorber based on initial shares
+        // for Absorber to be inoperational
+        absorber_yin_cases.append((Absorber::MINIMUM_SHARES - 1).into());
+
+        absorber_yin_cases.span()
+    }
+
     // Generate interesting cases for absorber's yin balance based on the 
     // redistributed trove's debt to test absorption with partial redistribution
-    fn generate_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
+    fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         let mut absorber_yin_cases: Array<Wad> = Default::default();
 
         // smallest possible amount of yin in Absorber based on initial shares
