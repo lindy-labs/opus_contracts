@@ -1079,7 +1079,7 @@ mod Shrine {
             last_rate_era: rates_latest_era::read()
         };
         troves::write(trove_id, updated_trove);
-        trove_redistribution_id::write(trove_id, current_redistribution_id);
+        trove_redistribution_id::write(trove_id, redistributions_count::read());
 
         // Get new system debt
         // This adds the interest charged on the trove's debt to the total debt.
