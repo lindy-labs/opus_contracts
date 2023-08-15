@@ -1998,12 +1998,12 @@ mod Shrine {
     }
 
     // Returns a tuple of:
-    // 1. the custom threshold (maximum LTV before liquidation) of a trove
-    // 2. the total trove value, at a given interval
+    // 1. the custom threshold (maximum LTV before liquidation)
+    // 2. the total value of the yangs, at a given interval
     // based on historical prices and the given yang balances.
     fn get_threshold_and_value(mut yang_balances: Span<YangBalance>, interval: u64) -> (Ray, Wad) {
-        let mut weighted_threshold_sum: Ray = 0_u128.into();
-        let mut trove_value: Wad = 0_u128.into();
+        let mut weighted_threshold_sum: Ray = RayZeroable::zero();
+        let mut trove_value: Wad = WadZeroable::zero();
 
         loop {
             match yang_balances.pop_front() {
@@ -2026,11 +2026,14 @@ mod Shrine {
             };
         };
 
-        if trove_value.is_non_zero() {
-            return (wadray::wdiv_rw(weighted_threshold_sum, trove_value), trove_value);
-        }
+        // Catch division by zero
+        let threshold: Ray = if trove_value.is_non_zero() {
+            wadray::wdiv_rw(weighted_threshold_sum, trove_value)
+        } else {
+            RayZeroable::zero()
+        );
 
-        (RayZeroable::zero(), WadZeroable::zero())
+        (threshold, trove_value)
     }
 
     // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
