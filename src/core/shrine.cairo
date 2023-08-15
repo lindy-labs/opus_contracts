@@ -1240,15 +1240,6 @@ mod Shrine {
     ) {
         let yang_totals: Span<YangBalance> = get_shrine_deposits();
 
-        // Placeholders to be used for exceptional redistributions so that
-        // `get_shrine_threshold_and_value` only needs to be called once
-        let mut shrine_value: Wad = WadZeroable::zero();
-        let mut other_troves_total_value: Wad = WadZeroable::zero();
-        // Boolean flag to keep track of whether the main loop has encountered the first yang
-        // that requires an exceptional redistribution so that we do not make multiple calls
-        // to `get_threshold_and_value` which is expensive.
-        let mut has_exceptional_redistribution: bool = false;
-
         // For exceptional redistribution of yangs (i.e. not deposited by any other troves, and
         // which may be the first yang or the last yang), we need the total yang supply for all 
         // yangs (regardless how they are to be redistributed) to remain constant throughout the
@@ -1312,6 +1303,14 @@ mod Shrine {
         let trove_value_to_redistribute: Wad = wadray::rmul_wr(
             trove_value, pct_value_to_redistribute
         );
+
+        let (_, shrine_value) = get_threshold_and_value(yang_totals, current_interval);
+        // Note the initial yang amount is not excluded from the value of all other troves
+        // here (it will also be more expensive if we want to do so). Therefore, when
+        // calculating a yang's total value as a percentage of the total value of all
+        // other troves, the value of the initial yang amount should be included too.
+        // This value is used only for exceptional redistributions.
+        let mut other_troves_total_value: Wad = shrine_value - trove_value;
 
         // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
         let yang_id_to_array_idx_offset: u32 = 1;
@@ -1471,26 +1470,6 @@ mod Shrine {
                             * redistributed_yang_recipient_pool;
                         debt_error = adjusted_debt_to_distribute_for_yang - actual_debt_distributed;
                     } else {
-                        if !has_exceptional_redistribution {
-                            // This operation is gas-intensive so we only run it when we encounter the first
-                            // yang that cannot be distributed via rebasing, and store the value in the
-                            // placeholders declared at the beginning of this function.
-                            let (_, tmp_shrine_value) = get_threshold_and_value(
-                                yang_totals, current_interval
-                            );
-
-                            shrine_value = tmp_shrine_value;
-                            // Note the initial yang amount is not excluded from the value of all other troves
-                            // here (it will also be more expensive if we want to do so). Therefore, when
-                            // calculating a yang's total value as a percentage of the total value of all
-                            // other troves, the value of the initial yang amount should be included too.
-                            other_troves_total_value = shrine_value - trove_value;
-
-                            // Update boolean flag so that we do not call `get_shrine_threshold_and_value`
-                            // again for any subsequent yangs that require exceptional redistributions.
-                            has_exceptional_redistribution = true;
-                        }
-
                         // Keep track of the actual debt and yang distributed to calculate error at the end
                         // This is necessary for yang so that subsequent redistributions do not accrue to the
                         // earlier redistributed yang amount that cannot be attributed to any troves due to
