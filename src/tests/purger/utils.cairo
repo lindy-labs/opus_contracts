@@ -653,8 +653,6 @@ mod PurgerUtils {
                     let expected_after_asset_bal: u128 = before_asset_bal
                         + *expected_freed_asset.amount;
 
-                    after_asset_bal.print();
-                    expected_after_asset_bal.print();
                     common::assert_equalish(
                         after_asset_bal, expected_after_asset_bal, error_margin, message, 
                     );
