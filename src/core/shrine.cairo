@@ -276,11 +276,7 @@ mod Shrine {
         let compounded_debt: Wad = compound(trove_id, trove, interval);
         let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt) =
             pull_redistributed_debt_and_yangs(
-            trove_id,
-            trove_yang_balances,
-            compounded_debt,
-            trove_redistribution_id::read(trove_id),
-            redistributions_count::read()
+            trove_id, trove_yang_balances, compounded_debt
         );
 
         if updated_trove_yang_balances.is_some() {
@@ -306,11 +302,7 @@ mod Shrine {
     fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad) {
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (updated_trove_yang_balances, pulled_debt) = pull_redistributed_debt_and_yangs(
-            trove_id,
-            trove_yang_balances,
-            WadZeroable::zero(),
-            trove_redistribution_id::read(trove_id),
-            redistributions_count::read()
+            trove_id, trove_yang_balances, WadZeroable::zero()
         );
 
         let mut added_yangs: Array<YangBalance> = Default::default();
@@ -1059,17 +1051,10 @@ mod Shrine {
         let compounded_trove_debt: Wad = compound(trove_id, trove, current_interval);
 
         // Pull undistributed debt and update state
-        let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
-        let current_redistribution_id: u32 = redistributions_count::read();
-
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) =
             pull_redistributed_debt_and_yangs(
-            trove_id,
-            trove_yang_balances,
-            compounded_trove_debt,
-            trove_last_redistribution_id,
-            current_redistribution_id
+            trove_id, trove_yang_balances, compounded_trove_debt
         );
 
         // If there was any exceptional redistribution, write updated yang_amts to trove
@@ -1687,18 +1672,17 @@ mod Shrine {
     //    starting from yang ID 1
     // 2. updated redistributed debt, if any, otherwise it would be equivalent to the trove debt.
     fn pull_redistributed_debt_and_yangs(
-        trove_id: u64,
-        mut trove_yang_balances: Span<YangBalance>,
-        mut trove_debt: Wad,
-        trove_last_redistribution_id: u32,
-        current_redistribution_id: u32
+        trove_id: u64, mut trove_yang_balances: Span<YangBalance>, mut trove_debt: Wad
     ) -> (Option<Span<YangBalance>>, Wad) {
-        let mut has_exceptional_redistributions: bool = false;
+        let trove_last_redistribution_id: u32 = trove_redistribution_id::read(trove_id);
+        let current_redistribution_id: u32 = redistributions_count::read();
 
         // Early termination if no redistributions since trove was last updated
         if current_redistribution_id == trove_last_redistribution_id {
             return (Option::None(()), trove_debt);
         }
+
+        let mut has_exceptional_redistributions: bool = false;
 
         // Outer loop over redistribution IDs.
         // We need to iterate over redistribution IDs, because redistributed collateral from exceptional
@@ -2031,7 +2015,7 @@ mod Shrine {
             wadray::wdiv_rw(weighted_threshold_sum, trove_value)
         } else {
             RayZeroable::zero()
-        );
+        };
 
         (threshold, trove_value)
     }
