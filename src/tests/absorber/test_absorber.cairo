@@ -44,7 +44,7 @@ mod TestAbsorber {
         let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
 
         assert(
-            absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
+            absorber.get_total_shares_for_current_epoch().is_zero(),
             'total shares should be 0'
         );
         assert(absorber.get_current_epoch() == Absorber::FIRST_EPOCH, 'epoch should be 1');
@@ -843,7 +843,7 @@ mod TestAbsorber {
         );
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
-        assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
+        assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
@@ -952,7 +952,7 @@ mod TestAbsorber {
         );
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
-        assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
+        assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == expected_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
@@ -1000,7 +1000,7 @@ mod TestAbsorber {
         let expected_current_epoch: u32 = Absorber::FIRST_EPOCH + 1;
         assert(absorber.get_current_epoch() == expected_current_epoch, 'wrong epoch');
         assert(
-            absorber.get_total_shares_for_current_epoch() == WadZeroable::zero(),
+            absorber.get_total_shares_for_current_epoch().is_zero(),
             'wrong total shares'
         );
 
@@ -1066,7 +1066,7 @@ mod TestAbsorber {
         );
 
         let first_provider_info: Provision = absorber.get_provision(first_provider);
-        assert(first_provider_info.shares == WadZeroable::zero(), 'wrong provider shares');
+        assert(first_provider_info.shares.is_zero(), 'wrong provider shares');
         assert(first_provider_info.epoch == expected_current_epoch, 'wrong provider epoch');
 
         let request: Request = absorber.get_provider_request(first_provider);
