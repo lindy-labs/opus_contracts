@@ -2077,7 +2077,7 @@ mod Shrine {
             current_yang_id += 1;
         }
     }
-    
+
     fn get_yang_suspension_status_internal(yang_id: u32) -> YangSuspensionStatus {
         let suspension_ts: u64 = yang_suspension::read(yang_id);
         if suspension_ts.is_zero() {
