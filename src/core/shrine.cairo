@@ -1,7 +1,8 @@
 #[contract]
 mod Shrine {
+    use debug::PrintTrait;
     use array::{ArrayTrait, SpanTrait};
-    use cmp::min;
+    use cmp::{max, min};
     use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
     use option::OptionTrait;
     use starknet::{get_block_timestamp, get_caller_address};
@@ -55,7 +56,7 @@ mod Shrine {
 
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
-    const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
+    const USE_PREV_BASE_RATE: u128 = 100000000000000000000000001;
 
     // Forge fee function parameters
     const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
@@ -70,7 +71,8 @@ mod Shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 70000000000000000000000000; // 0.7 (ray)
+    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 300000000000000000000000000; // 0.3 (ray)
+
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 100000000000000000000000000; // 1 (ray)
 
@@ -307,7 +309,6 @@ mod Shrine {
         }
 
         let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
-
         (threshold, ltv, value, compounded_debt_with_redistributed_debt)
     }
 
@@ -434,15 +435,15 @@ mod Shrine {
 
     // Returns a tuple of 
     // 1. The recovery mode threshold
-    // 2. Shrine's threshold
-    // 3. Shrine's LTV
+    // 2. Shrine's LTV
     #[view]
     fn get_recovery_mode_threshold() -> (Ray, Ray) {
         let (liq_threshold, value) = get_shrine_threshold_and_value_internal(now());
         let debt: Wad = total_debt::read();
         (
-            liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into(),
-            wadray::rdiv_ww(total_debt, value)
+            liq_threshold
+                + RECOVERY_MODE_THRESHOLD_MULTIPLIER.into() * (RAY_ONE.into() - liq_threshold),
+            wadray::rdiv_ww(debt, value)
         )
     }
 
@@ -802,7 +803,6 @@ mod Shrine {
         trove_info.debt += debt_amount;
         troves::write(trove_id, trove_info);
         assert_healthy(trove_id);
-
         forge_internal(user, amount);
 
         // Events
@@ -1996,13 +1996,18 @@ mod Shrine {
 
     // Helper function for applying the recovery mode threshold decrease to a threshold,
     // if recovery mode is active
+    // The maximum threshold decrease is capped to 50% of the "base threshold"
     fn scale_threshold_for_recovery_mode(mut threshold: Ray) -> Ray {
         let (recovery_mode_threshold, shrine_ltv) = get_recovery_mode_threshold();
 
         if shrine_ltv >= recovery_mode_threshold {
-            threshold = threshold
-                * THRESHOLD_DECREASE_FACTOR.into()
-                * (recovery_mode_threshold / shrine_ltv)
+            threshold =
+                max(
+                    threshold
+                        * THRESHOLD_DECREASE_FACTOR.into()
+                        * (recovery_mode_threshold / shrine_ltv),
+                    (threshold.val / 2_u128).into()
+                )
         }
         threshold
     }

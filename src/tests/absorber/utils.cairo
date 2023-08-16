@@ -302,10 +302,11 @@ mod AbsorberUtils {
     ) -> u64 {
         common::fund_user(provider, yangs, yang_asset_amts);
         // Additional amount for testing subsequent provision
+
         let trove: u64 = common::open_trove_helper(
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
-
+        
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());

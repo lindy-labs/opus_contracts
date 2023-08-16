@@ -182,7 +182,6 @@ fn open_trove_helper(
 
     set_contract_address(user);
     let trove_id: u64 = abbot.open_trove(forge_amt, yangs, yang_asset_amts, 0_u128.into());
-
     set_contract_address(ContractAddressZeroable::zero());
 
     trove_id

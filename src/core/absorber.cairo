@@ -117,8 +117,6 @@ mod Absorber {
         // mapping from a provider and reward token address to its last cumulative amount of that reward
         // per share Wad in the epoch of the provider's Provision struct
         provider_last_reward_cumulative: LegacyMap::<(ContractAddress, ContractAddress), u128>,
-        // Removals are temporarily suspended if the shrine's LTV to threshold exceeds this limit
-        removal_limit: Ray,
         // Mapping from a provider to its latest request for removal
         provider_request: LegacyMap::<ContractAddress, Request>,
     }
@@ -185,7 +183,6 @@ mod Absorber {
         shrine::write(IShrineDispatcher { contract_address: shrine });
         sentinel::write(ISentinelDispatcher { contract_address: sentinel });
         is_live::write(true);
-        set_removal_limit_internal(limit);
         current_epoch::write(FIRST_EPOCH);
     }
 
@@ -265,11 +262,6 @@ mod Absorber {
         provider: ContractAddress, asset: ContractAddress
     ) -> u128 {
         provider_last_reward_cumulative::read((provider, asset))
-    }
-
-    #[view]
-    fn get_removal_limit() -> Ray {
-        removal_limit::read()
     }
 
     #[view]
@@ -363,12 +355,6 @@ mod Absorber {
 
         // Emit event 
         RewardSet(asset, blesser, is_active);
-    }
-
-    #[external]
-    fn set_removal_limit(limit: Ray) {
-        AccessControl::assert_has_role(AbsorberRoles::SET_REMOVAL_LIMIT);
-        set_removal_limit_internal(limit);
     }
 
 
@@ -646,13 +632,6 @@ mod Absorber {
         IERC20Dispatcher { contract_address: shrine::read().contract_address }
     }
 
-    #[inline(always)]
-    fn set_removal_limit_internal(limit: Ray) {
-        assert(MIN_LIMIT <= limit.val, 'ABS: Limit is too low');
-        RemovalLimitUpdated(removal_limit::read(), limit);
-        removal_limit::write(limit);
-    }
-
 
     //
     // Internal - helpers for accounting of shares
@@ -918,7 +897,7 @@ mod Absorber {
 
     fn assert_can_remove(request: Request) {
         let (recovery_mode_threshold, shrine_ltv) = shrine::read().get_recovery_mode_threshold();
-        assert(shrine_ltv <= recovery_mode_threshold, 'ABS: Recovery mode active');
+        assert(shrine_ltv <= recovery_mode_threshold, 'ABS: Recovery Mode active');
 
         assert(request.timestamp.is_non_zero(), 'ABS: No request found');
         assert(!request.has_removed, 'ABS: Only 1 removal per request');
