@@ -87,7 +87,7 @@ mod Gate {
     // deposited yet.
     #[view]
     fn get_asset_amt_per_yang() -> Wad {
-        let amt: u128 = convert_to_assets(WAD_ONE.into());
+        let amt: u128 = convert_to_assets_internal(WAD_ONE.into());
         let decimals: u8 = asset::read().decimals();
 
         if decimals == WAD_DECIMALS {
@@ -97,18 +97,18 @@ mod Gate {
         wadray::fixed_point_to_wad(amt, decimals)
     }
 
-    // Simulates the effects of `enter` at the current on-chain conditions.
+    // This can be used to simulate the effects of `enter` at the current on-chain conditions.
     // `asset_amt` is denoted in the asset's decimals.
     #[view]
-    fn preview_enter(asset_amt: u128) -> Wad {
-        convert_to_yang(asset_amt)
+    fn convert_to_yang(asset_amt: u128) -> Wad {
+        convert_to_yang_internal(asset_amt)
     }
 
-    // Simulates the effects of `exit` at the current on-chain conditions.
+    // This can be used to simulate the effects of `exit` at the current on-chain conditions.
     // The return value is denoted in the asset's decimals.
     #[view]
-    fn preview_exit(yang_amt: Wad) -> u128 {
-        convert_to_assets(yang_amt)
+    fn convert_to_assets(yang_amt: Wad) -> u128 {
+        convert_to_assets_internal(yang_amt)
     }
 
     //
@@ -122,7 +122,7 @@ mod Gate {
     fn enter(user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
         assert_sentinel();
 
-        let yang_amt: Wad = convert_to_yang(asset_amt);
+        let yang_amt: Wad = convert_to_yang_internal(asset_amt);
         if yang_amt.is_zero() {
             return 0_u128.into();
         }
@@ -142,7 +142,7 @@ mod Gate {
     fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
         assert_sentinel();
 
-        let asset_amt: u128 = convert_to_assets(yang_amt);
+        let asset_amt: u128 = convert_to_assets_internal(yang_amt);
         if asset_amt.is_zero() {
             return 0;
         }
@@ -177,7 +177,7 @@ mod Gate {
     // Helper function to calculate the amount of assets corresponding to the given
     // amount of yang.
     // Return value is denominated in the decimals of the asset.
-    fn convert_to_assets(yang_amt: Wad) -> u128 {
+    fn convert_to_assets_internal(yang_amt: Wad) -> u128 {
         let asset: IERC20Dispatcher = asset::read();
         let total_yang: Wad = get_total_yang_internal(asset.contract_address);
 
@@ -195,7 +195,7 @@ mod Gate {
     // Helper function to calculate the amount of yang corresponding to the given
     // amount of assets.
     // `asset_amt` is denominated in the decimals of the asset.
-    fn convert_to_yang(asset_amt: u128) -> Wad {
+    fn convert_to_yang_internal(asset_amt: u128) -> Wad {
         let asset: IERC20Dispatcher = asset::read();
         let total_yang: Wad = get_total_yang_internal(asset.contract_address);
 

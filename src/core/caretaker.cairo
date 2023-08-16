@@ -100,7 +100,7 @@ mod Caretaker {
                     let asset_amt: u128 = if deposited_yang.is_zero() {
                         0
                     } else {
-                        sentinel.preview_exit(*yang, deposited_yang)
+                        sentinel.convert_to_assets(*yang, deposited_yang)
                     };
 
                     releasable_assets.append(AssetBalance { asset: *yang, amount: asset_amt });

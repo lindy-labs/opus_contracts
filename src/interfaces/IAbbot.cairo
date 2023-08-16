@@ -17,8 +17,8 @@ trait IAbbot {
         yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
     ) -> u64;
     fn close_trove(trove_id: u64);
-    fn deposit(yang: ContractAddress, trove_id: u64, amount: u128);
-    fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
+    fn deposit(trove_id: u64, yang_asset: AssetBalance);
+    fn withdraw(trove_id: u64, yang_asset: AssetBalance);
     fn forge(trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
     fn melt(trove_id: u64, amount: Wad);
 }

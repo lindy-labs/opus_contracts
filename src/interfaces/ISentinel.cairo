@@ -14,8 +14,8 @@ trait ISentinel {
     fn get_yang(idx: u64) -> ContractAddress;
     fn get_yang_asset_max(yang: ContractAddress) -> u128;
     fn get_asset_amt_per_yang(yang: ContractAddress) -> Wad;
-    fn preview_enter(yang: ContractAddress, asset_amt: u128) -> Wad;
-    fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128;
+    fn convert_to_yang(yang: ContractAddress, asset_amt: u128) -> Wad;
+    fn convert_to_assets(yang: ContractAddress, yang_amt: Wad) -> u128;
     // External
     fn add_yang(
         yang: ContractAddress,

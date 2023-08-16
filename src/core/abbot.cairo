@@ -113,7 +113,11 @@ mod Abbot {
         loop {
             match yang_assets.pop_front() {
                 Option::Some(yang_asset) => {
-                    deposit_internal(*yang_asset.asset, user, new_trove_id, *yang_asset.amount);
+                    deposit_internal(
+                        new_trove_id,
+                        user,
+                        AssetBalance { asset: *yang_asset.asset, amount: *yang_asset.amount }
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -148,7 +152,7 @@ mod Abbot {
                     if yang_amount.is_zero() {
                         continue;
                     }
-                    withdraw_internal(*yang, user, trove_id, yang_amount);
+                    withdraw_internal(trove_id, user, *yang, yang_amount);
                 },
                 Option::None(_) => {
                     break;
@@ -159,8 +163,9 @@ mod Abbot {
         TroveClosed(trove_id);
     }
 
+    // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
     #[external]
-    fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
+    fn deposit(trove_id: u64, yang_asset: AssetBalance) {
         // There is no need to check the yang address is non-zero because the
         // Sentinel does not allow a zero address yang to be added.
 
@@ -168,19 +173,20 @@ mod Abbot {
         assert(trove_id <= troves_count::read(), 'ABB: Non-existent trove');
         // note that caller does not need to be the trove's owner to deposit
 
-        deposit_internal(yang, get_caller_address(), trove_id, amount);
+        deposit_internal(trove_id, get_caller_address(), yang_asset);
     }
 
     // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
     #[external]
-    fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
+    fn withdraw(trove_id: u64, yang_asset: AssetBalance) {
         // There is no need to check the yang address is non-zero because the
         // Sentinel does not allow a zero address yang to be added.
 
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
-        withdraw_internal(yang, user, trove_id, amount);
+        let yang_amt: Wad = sentinel::read().convert_to_yang(yang_asset.asset, yang_asset.amount);
+        withdraw_internal(trove_id, user, yang_asset.asset, yang_amt);
     }
 
     // create Yin in a trove; `amount` is denominated in WAD_DECIMALS
@@ -208,18 +214,19 @@ mod Abbot {
     }
 
     #[inline(always)]
-    fn deposit_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: u128) {
+    fn deposit_internal(trove_id: u64, user: ContractAddress, yang_asset: AssetBalance) {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
-        let yang_amount: Wad = sentinel::read().enter(yang, user, trove_id, amount);
-        shrine::read().deposit(yang, trove_id, yang_amount);
+        let yang_amt: Wad = sentinel::read()
+            .enter(yang_asset.asset, user, trove_id, yang_asset.amount);
+        shrine::read().deposit(yang_asset.asset, trove_id, yang_amt);
 
         ReentrancyGuard::end();
     }
 
     #[inline(always)]
-    fn withdraw_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: Wad) {
+    fn withdraw_internal(trove_id: u64, user: ContractAddress, yang: ContractAddress, amount: Wad) {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
