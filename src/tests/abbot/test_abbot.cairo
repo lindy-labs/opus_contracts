@@ -151,7 +151,7 @@ mod TestAbbot {
         let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs.span(), yang_amts.span()
         );
-        abbot.open_trove(forge_amt, yang_assets, max_forge_fee_pct);
+        abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod TestAbbot {
         let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
             yangs.span(), yang_amts.span()
         );
-        abbot.open_trove(forge_amt, yang_assets, max_forge_fee_pct);
+        abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
     }
 
     #[test]
@@ -225,7 +225,7 @@ mod TestAbbot {
                     let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
                         deposit_amt, decimals
                     );
-                    abbot.deposit(*yang, trove_id, deposit_amt);
+                    abbot.deposit(trove_id, AssetBalance { asset: *yang, amount: deposit_amt });
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(
                         after_trove_yang == before_trove_yang + expected_deposited_yang,
@@ -233,7 +233,7 @@ mod TestAbbot {
                     );
 
                     // Depositing 0 should pass
-                    abbot.deposit(*yang, trove_id, 0_u128);
+                    abbot.deposit(trove_id, AssetBalance { asset: *yang, amount: 0_u128 });
                     assert(
                         shrine.get_deposit(*yang, trove_id) == after_trove_yang,
                         'wrong yang amount #2'
@@ -263,7 +263,7 @@ mod TestAbbot {
                     );
 
                     set_contract_address(non_owner);
-                    abbot.deposit(*yang, trove_id, deposit_amt);
+                    abbot.deposit(trove_id, AssetBalance { asset: *yang, amount: deposit_amt });
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(
                         after_trove_yang == before_trove_yang + expected_deposited_yang,
@@ -289,7 +289,7 @@ mod TestAbbot {
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.deposit(invalid_yang_addr, trove_id, amount);
+        abbot.deposit(trove_id, AssetBalance { asset: invalid_yang_addr, amount: amount });
     }
 
     #[test]
@@ -304,7 +304,7 @@ mod TestAbbot {
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.deposit(yang_addr, invalid_trove_id, amount);
+        abbot.deposit(invalid_trove_id, AssetBalance { asset: yang_addr, amount: amount });
     }
 
     #[test]
@@ -316,7 +316,7 @@ mod TestAbbot {
 
         let invalid_yang_addr = contract_address_const::<0x0101>();
         set_contract_address(trove_owner);
-        abbot.deposit(invalid_yang_addr, trove_id, 0_u128);
+        abbot.deposit(trove_id, AssetBalance { asset: invalid_yang_addr, amount: 0_u128 });
     }
 
     #[test]
@@ -328,7 +328,7 @@ mod TestAbbot {
 
         let eth_addr: ContractAddress = *yangs.at(0);
         set_contract_address(trove_owner);
-        abbot.deposit(eth_addr, trove_id + 1, 1_u128);
+        abbot.deposit(trove_id + 1, AssetBalance { asset: eth_addr, amount: 1_u128 });
     }
 
     #[test]
@@ -351,7 +351,7 @@ mod TestAbbot {
         sentinel.set_yang_asset_max(eth_addr, new_eth_asset_max);
 
         set_contract_address(trove_owner);
-        abbot.deposit(eth_addr, trove_id, 1_u128);
+        abbot.deposit(trove_id, AssetBalance { asset: eth_addr, amount: 1_u128 });
     }
 
     #[test]
@@ -361,13 +361,15 @@ mod TestAbbot {
             AbbotUtils::deploy_abbot_and_open_trove();
 
         let eth_addr: ContractAddress = *yangs.at(0);
-        let eth_withdraw_amt: Wad = WAD_SCALE.into();
+        let eth_withdraw_asset_amt: u128 = WAD_SCALE;
         set_contract_address(trove_owner);
-        abbot.withdraw(eth_addr, trove_id, eth_withdraw_amt);
+        abbot.withdraw(trove_id, AssetBalance { asset: eth_addr, amount: eth_withdraw_asset_amt });
+
+        let eth_withdraw_yang_amt: Wad = eth_withdraw_asset_amt.into();
 
         assert(
             shrine.get_deposit(eth_addr, trove_id) == AbbotUtils::ETH_DEPOSIT_AMT.into()
-                - eth_withdraw_amt,
+                - eth_withdraw_yang_amt,
             'wrong yang amount'
         );
     }
@@ -381,10 +383,10 @@ mod TestAbbot {
 
         let invalid_yang_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
-        let amount: Wad = 1_u128.into();
+        let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.withdraw(invalid_yang_addr, trove_id, amount);
+        abbot.withdraw(trove_id, AssetBalance { asset: invalid_yang_addr, amount: amount });
     }
 
     #[test]
@@ -396,7 +398,7 @@ mod TestAbbot {
 
         let invalid_yang_addr = contract_address_const::<0x0101>();
         set_contract_address(trove_owner);
-        abbot.withdraw(invalid_yang_addr, trove_id, 0_u128.into());
+        abbot.withdraw(trove_id, AssetBalance { asset: invalid_yang_addr, amount: 0_u128.into() });
     }
 
     #[test]
@@ -408,7 +410,7 @@ mod TestAbbot {
 
         let eth_addr: ContractAddress = *yangs.at(0);
         set_contract_address(common::badguy());
-        abbot.withdraw(eth_addr, trove_id, 0_u128.into());
+        abbot.withdraw(trove_id, AssetBalance { asset: eth_addr, amount: 0_u128.into() });
     }
 
     #[test]

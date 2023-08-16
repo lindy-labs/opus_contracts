@@ -19,7 +19,7 @@ use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::tests::erc20::ERC20;
 use aura::utils::types::{AssetBalance, Reward};
 use aura::utils::wadray;
-use aura::utils::wadray::{Ray, Wad};
+use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
 use aura::tests::sentinel::utils::SentinelUtils;
 
@@ -183,7 +183,7 @@ fn open_trove_helper(
 
     set_contract_address(user);
     let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
-    let trove_id: u64 = abbot.open_trove(forge_amt, yang_assets, 0_u128.into());
+    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
 
     set_contract_address(ContractAddressZeroable::zero());
 

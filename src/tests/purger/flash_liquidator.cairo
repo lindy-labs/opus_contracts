@@ -127,7 +127,7 @@ mod FlashLiquidator {
         // This should revert if the contract did not receive the freed assets
         // from the liquidation.
         abbot::read()
-            .open_trove(amount.try_into().unwrap(), updated_assets.span(), WadZeroable::zero());
+            .open_trove(updated_assets.span(), amount.try_into().unwrap(), WadZeroable::zero());
 
         ON_FLASH_MINT_SUCCESS
     }

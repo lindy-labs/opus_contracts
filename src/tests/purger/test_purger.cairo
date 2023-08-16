@@ -1261,7 +1261,9 @@ mod TestPurger {
                                                                     target_trove
                                                                 );
                                                             let remainder_asset_amt: u128 = gate
-                                                                .preview_exit(remainder_trove_yang);
+                                                                .convert_to_assets(
+                                                                    remainder_trove_yang
+                                                                );
                                                             common::assert_equalish(
                                                                 remainder_asset_amt,
                                                                 *expected_asset_amt,
