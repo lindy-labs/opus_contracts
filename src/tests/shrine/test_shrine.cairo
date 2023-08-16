@@ -78,8 +78,10 @@ mod TestShrine {
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         assert(yang1_price == ShrineUtils::YANG1_START_PRICE.into(), 'wrong yang1 start price');
+        let (rmt, sltv) = shrine.get_recovery_mode_threshold();
+
         assert(
-            shrine.get_yang_threshold(yang1_addr) == ShrineUtils::YANG1_THRESHOLD.into(),
+            shrine.get_raw_yang_threshold(yang1_addr) == ShrineUtils::YANG1_THRESHOLD.into(),
             'wrong yang1 threshold'
         );
         assert(
@@ -91,7 +93,7 @@ mod TestShrine {
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
         assert(yang2_price == ShrineUtils::YANG2_START_PRICE.into(), 'wrong yang2 start price');
         assert(
-            shrine.get_yang_threshold(yang2_addr) == ShrineUtils::YANG2_THRESHOLD.into(),
+            shrine.get_raw_yang_threshold(yang2_addr) == ShrineUtils::YANG2_THRESHOLD.into(),
             'wrong yang2 threshold'
         );
         assert(
@@ -223,7 +225,7 @@ mod TestShrine {
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
         assert(current_yang_price == new_yang_start_price, 'incorrect yang price');
         assert(
-            shrine.get_yang_threshold(new_yang_address) == new_yang_threshold,
+            shrine.get_raw_yang_threshold(new_yang_address) == new_yang_threshold,
             'incorrect yang threshold'
         );
 
@@ -275,7 +277,7 @@ mod TestShrine {
 
         set_contract_address(ShrineUtils::admin());
         shrine.set_threshold(yang1_addr, new_threshold);
-        assert(shrine.get_yang_threshold(yang1_addr) == new_threshold, 'threshold not updated');
+        assert(shrine.get_raw_yang_threshold(yang1_addr) == new_threshold, 'threshold not updated');
     }
 
     #[test]
@@ -1542,7 +1544,7 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 1');
 
         // check threshold (should be the same at the beginning)
-        let threshold = shrine.get_yang_threshold(yang);
+        let threshold = shrine.get_raw_yang_threshold(yang);
         assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
 
         // the threshold should decrease by 1% in this amount of time
@@ -1556,7 +1558,7 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 2');
 
         // check threshold
-        let threshold = shrine.get_yang_threshold(yang);
+        let threshold = shrine.get_raw_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
 
         // move time forward
@@ -1567,7 +1569,7 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 3');
 
         // check threshold
-        let threshold = shrine.get_yang_threshold(yang);
+        let threshold = shrine.get_raw_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
 
         // move time forward to a second before permanent suspension
@@ -1578,7 +1580,7 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 4');
 
         // check threshold
-        let threshold = shrine.get_yang_threshold(yang);
+        let threshold = shrine.get_raw_yang_threshold(yang);
         assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
 
         // move time forward to end of temp suspension, start of permanent one
@@ -1589,7 +1591,7 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Permanent(()), 'status 5');
 
         // check threshold
-        let threshold = shrine.get_yang_threshold(yang);
+        let threshold = shrine.get_raw_yang_threshold(yang);
         assert(threshold == RayZeroable::zero(), 'threshold 5');
     }
 

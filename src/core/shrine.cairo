@@ -56,7 +56,7 @@ mod Shrine {
 
     // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
     // (ray): MAX_YANG_RATE + 1
-    const USE_PREV_BASE_RATE: u128 = 100000000000000000000000001;
+    const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
 
     // Forge fee function parameters
     const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
@@ -429,6 +429,12 @@ mod Shrine {
     }
 
     #[view]
+    fn get_raw_yang_threshold(yang: ContractAddress) -> Ray {
+        let yang_id: u32 = get_valid_yang_id(yang);
+        get_yang_threshold_internal(yang_id)
+    }
+
+    #[view]
     fn get_shrine_threshold_and_value() -> (Ray, Wad) {
         get_shrine_threshold_and_value_internal(now())
     }
@@ -440,11 +446,16 @@ mod Shrine {
     fn get_recovery_mode_threshold() -> (Ray, Ray) {
         let (liq_threshold, value) = get_shrine_threshold_and_value_internal(now());
         let debt: Wad = total_debt::read();
-        (
-            liq_threshold
-                + RECOVERY_MODE_THRESHOLD_MULTIPLIER.into() * (RAY_ONE.into() - liq_threshold),
-            wadray::rdiv_ww(debt, value)
-        )
+        let rm_threshold = liq_threshold
+            + RECOVERY_MODE_THRESHOLD_MULTIPLIER.into() * (RAY_ONE.into() - liq_threshold);
+
+        // If no collateral has been deposited, then shrine's LTV is
+        // returned as the maximum possible value.
+        if value.is_zero() {
+            return (rm_threshold, BoundedRay::max());
+        }
+
+        (rm_threshold, wadray::rdiv_ww(debt, value))
     }
 
 
@@ -1999,7 +2010,6 @@ mod Shrine {
     // The maximum threshold decrease is capped to 50% of the "base threshold"
     fn scale_threshold_for_recovery_mode(mut threshold: Ray) -> Ray {
         let (recovery_mode_threshold, shrine_ltv) = get_recovery_mode_threshold();
-
         if shrine_ltv >= recovery_mode_threshold {
             threshold =
                 max(

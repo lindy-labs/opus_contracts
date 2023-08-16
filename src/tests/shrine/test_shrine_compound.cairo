@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod TestShrineCompound {
+    use debug::PrintTrait;
     use array::{ArrayTrait, SpanTrait};
     use option::OptionTrait;
     use traits::{Into, TryInto};
@@ -586,6 +587,7 @@ mod TestShrineCompound {
     #[available_gas(20000000000)]
     fn test_charge_scenario_7() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+
         ShrineUtils::advance_prices_and_set_multiplier(
             shrine,
             ShrineUtils::FEED_LEN,
@@ -653,7 +655,7 @@ mod TestShrineCompound {
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
         let mut second_rate_history_to_update: Array<Ray> = Default::default();
         let mut third_rate_history_to_compound: Array<Ray> = Default::default();
-
+        
         second_rate_history_to_update.append((RAY_SCALE + 1).into());
         third_rate_history_to_compound.append(yang1_first_rate_update);
 
@@ -725,7 +727,7 @@ mod TestShrineCompound {
         shrine.deposit(yang2_addr, common::TROVE_1, yang2_deposit_amt);
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, common::TROVE_1, forge_amt, 0_u128.into());
-
+        
         let mut yangs_deposited: Array<Wad> = Default::default();
         yangs_deposited.append(yang1_deposit_amt);
         yangs_deposited.append(yang2_deposit_amt);
@@ -754,6 +756,7 @@ mod TestShrineCompound {
             // First, we advance an interval so the last price is not overwritten.
             // Next, Advance the prices by the number of intervals between each base rate update
             ShrineUtils::advance_interval();
+
             ShrineUtils::advance_prices_and_set_multiplier(
                 shrine, BASE_RATE_UPDATE_SPACING, yang1_price, yang2_price, yang3_price
             );
