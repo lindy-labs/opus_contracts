@@ -73,7 +73,7 @@ mod TestShrine {
         // Check yangs
         assert(shrine.get_yangs_count() == 3, 'wrong yangs count');
 
-        let expected_era: u64 = 0;
+        let expected_era: u64 = 1;
 
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
@@ -198,6 +198,7 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_add_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let current_rate_era: u64 = shrine.get_current_rate_era();
         let yangs_count: u32 = shrine.get_yangs_count();
         assert(yangs_count == 3, 'incorrect yangs count');
 
@@ -229,9 +230,8 @@ mod TestShrine {
             'incorrect yang threshold'
         );
 
-        let expected_rate_era: u64 = 0_u64;
         assert(
-            shrine.get_yang_rate(new_yang_address, expected_rate_era) == new_yang_rate,
+            shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate,
             'incorrect yang rate'
         );
     }
@@ -1581,7 +1581,9 @@ mod TestShrine {
 
         // check threshold
         let threshold = shrine.get_raw_yang_threshold(yang);
-        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100).into(), 'threshold 4');
+        // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
+        // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
+        common::assert_equalish(threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4');
 
         // move time forward to end of temp suspension, start of permanent one
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
