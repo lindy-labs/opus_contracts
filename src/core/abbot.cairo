@@ -163,7 +163,7 @@ mod Abbot {
         TroveClosed(trove_id);
     }
 
-    // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
+    // add Yang (an asset) to a trove
     #[external]
     fn deposit(trove_id: u64, yang_asset: AssetBalance) {
         // There is no need to check the yang address is non-zero because the
@@ -176,7 +176,7 @@ mod Abbot {
         deposit_internal(trove_id, get_caller_address(), yang_asset);
     }
 
-    // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
+    // remove Yang (an asset) from a trove
     #[external]
     fn withdraw(trove_id: u64, yang_asset: AssetBalance) {
         // There is no need to check the yang address is non-zero because the
@@ -189,7 +189,7 @@ mod Abbot {
         withdraw_internal(trove_id, user, yang_asset.asset, yang_amt);
     }
 
-    // create Yin in a trove; `amount` is denominated in WAD_DECIMALS
+    // create Yin in a trove
     #[external]
     fn forge(trove_id: u64, amount: Wad, max_forge_fee_pct: Wad) {
         let user = get_caller_address();
@@ -197,7 +197,7 @@ mod Abbot {
         shrine::read().forge(user, trove_id, amount, max_forge_fee_pct);
     }
 
-    // destroy Yin from a trove; `amount` is denominated in WAD_DECIMALS
+    // destroy Yin from a trove
     #[external]
     fn melt(trove_id: u64, amount: Wad) {
         // note that caller does not need to be the trove's owner to melt
