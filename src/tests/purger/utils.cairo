@@ -82,6 +82,13 @@ mod PurgerUtils {
         asset_amts.span()
     }
 
+    fn whale_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(50 * WAD_ONE); // 50 (Wad) ETH
+        asset_amts.append(5000000000_u128); // 50 (10 ** 8) WBTC
+        asset_amts.span()
+    }
+
     fn interesting_thresholds_for_liquidation() -> Span<Ray> {
         let mut thresholds: Array<Ray> = Default::default();
         thresholds.append((70 * RAY_PERCENT).into());
@@ -476,6 +483,16 @@ mod PurgerUtils {
         let deposit_amts: Span<u128> = target_trove_yang_asset_amts();
         common::fund_user(user, yangs, deposit_amts);
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
+    }
+
+    // Creates a trove with a lot of collateral
+    // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
+    fn create_whale_trove(abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>) {
+        let user: ContractAddress = target_trove_owner();
+        let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
+        let yin_amt: Wad = TARGET_TROVE_YIN.into();
+        common::fund_user(user, yangs, deposit_amts);
+        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt);
     }
 
     // Update thresholds for all yangs to the given value

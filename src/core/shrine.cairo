@@ -1,6 +1,5 @@
 #[contract]
 mod Shrine {
-    use debug::PrintTrait;
     use array::{ArrayTrait, SpanTrait};
     use cmp::{max, min};
     use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
@@ -71,7 +70,7 @@ mod Shrine {
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
 
-    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 300000000000000000000000000; // 0.3 (ray)
+    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
     const THRESHOLD_DECREASE_FACTOR: u128 = 100000000000000000000000000; // 1 (ray)
@@ -275,7 +274,6 @@ mod Shrine {
 
         // Get threshold and trove value
         let (mut threshold, mut value) = get_trove_threshold_and_value_internal(trove_id, interval);
-
         let trove: Trove = troves::read(trove_id);
 
         // Catch troves with no value
@@ -455,8 +453,7 @@ mod Shrine {
     fn get_recovery_mode_threshold() -> (Ray, Ray) {
         let (liq_threshold, value) = get_shrine_threshold_and_value_internal(now());
         let debt: Wad = total_debt::read();
-        let rm_threshold = liq_threshold
-            + RECOVERY_MODE_THRESHOLD_MULTIPLIER.into() * (RAY_ONE.into() - liq_threshold);
+        let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
         // If no collateral has been deposited, then shrine's LTV is
         // returned as the maximum possible value.
@@ -2083,13 +2080,10 @@ mod Shrine {
             }
 
             let deposited: Wad = deposits::read((current_yang_id, trove_id));
-
             // Update cumulative values only if user has deposited the current yang
             if deposited.is_non_zero() {
                 let yang_threshold: Ray = get_yang_threshold_internal(current_yang_id);
-
                 let (price, _, _) = get_recent_price_from(current_yang_id, interval);
-
                 let yang_deposited_value = deposited * price;
                 trove_value += yang_deposited_value;
                 weighted_threshold_sum += wadray::wmul_rw(yang_threshold, yang_deposited_value);
@@ -2221,13 +2215,8 @@ mod Shrine {
                 // linearly decrease the threshold from base_threshold to 0
                 // based on the time passed since suspension started
                 let ts_diff: u64 = get_block_timestamp() - yang_suspension::read(yang_id);
-<<<<<<< HEAD
-                let decrease_pct: u128 = (ts_diff / (SUSPENSION_GRACE_PERIOD / 100)).into();
-                base_threshold * (RAY_ONE.into() - (decrease_pct * RAY_PERCENT).into())
-=======
                 base_threshold
                     * ((SUSPENSION_GRACE_PERIOD - ts_diff).into() / SUSPENSION_GRACE_PERIOD.into())
->>>>>>> main
             },
             YangSuspensionStatus::Permanent(_) => {
                 RayZeroable::zero()

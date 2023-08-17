@@ -58,6 +58,8 @@ mod TestPurger {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
+        PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
@@ -114,12 +116,15 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_penalty_scalar_lower_bound() {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
+        
+        PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
-
+        
         // Set thresholds to 90% so we can check the scalar is not applied to the penalty
         let threshold: Ray = (90 * RAY_PERCENT).into();
         PurgerUtils::set_thresholds(shrine, yangs, threshold);
@@ -197,6 +202,9 @@ mod TestPurger {
             PurgerUtils::purger_deploy_with_searcher(
             searcher_start_yin
         );
+
+        PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
         let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, initial_trove_debt
@@ -277,6 +285,9 @@ mod TestPurger {
             PurgerUtils::purger_deploy_with_searcher(
             PurgerUtils::SEARCHER_YIN.into()
         );
+
+        PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -363,6 +374,8 @@ mod TestPurger {
 
                                 // Set thresholds to provided value
                                 PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                                PurgerUtils::create_whale_trove(abbot, yangs, gates);
 
                                 let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
                                 let target_trove: u64 = PurgerUtils::funded_healthy_trove(
@@ -1468,6 +1481,8 @@ mod TestPurger {
                                 // Set thresholds to provided value
                                 PurgerUtils::set_thresholds(shrine, yangs, *threshold);
 
+                                PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
                                 let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
                                 let target_trove: u64 = PurgerUtils::funded_healthy_trove(
                                     abbot, yangs, gates, trove_debt
@@ -1664,6 +1679,8 @@ mod TestPurger {
         );
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
 
+        PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
         let trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(abbot, yangs, gates, trove_debt);
         PurgerUtils::funded_absorber(shrine, abbot, absorber, yangs, gates, trove_debt);
@@ -1701,6 +1718,8 @@ mod TestPurger {
                         PurgerUtils::purger_deploy_with_searcher(
                         searcher_start_yin
                     );
+
+                    PurgerUtils::create_whale_trove(abbot, yangs, gates);
 
                     // Set thresholds to provided value
                     PurgerUtils::set_thresholds(shrine, yangs, *threshold);

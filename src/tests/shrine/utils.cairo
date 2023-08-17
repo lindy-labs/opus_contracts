@@ -188,6 +188,7 @@ mod ShrineUtils {
         set_contract_address(admin());
 
         // Add yangs
+        
         shrine
             .add_yang(
                 yang1_addr(),
