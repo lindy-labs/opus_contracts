@@ -407,8 +407,7 @@ mod Purger {
                         0
                     } else {
                         let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
-                        let exit_amt: u128 = sentinel
-                            .exit(*yang, recipient, trove_id, freed_yang);
+                        let exit_amt: u128 = sentinel.exit(*yang, recipient, trove_id, freed_yang);
                         shrine.seize(*yang, trove_id, freed_yang);
                         exit_amt
                     };
