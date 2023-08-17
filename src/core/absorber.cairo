@@ -1115,12 +1115,11 @@ mod Absorber {
         mut accumulated_assets: Span<AssetBalance>
     ) -> Span<AssetBalance> {
         let mut updated_assets: Array<AssetBalance> = Default::default();
-        let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
         loop {
             match accumulated_assets.pop_front() {
                 Option::Some(accumulated_asset) => {
-                    let reward: Reward = rewards::read(current_rewards_id);
+                    let reward: Reward = rewards::read(reward_id::read(*accumulated_asset.asset));
                     let pending_amt: u128 = reward.blesser.preview_bless();
                     let reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                         (reward.asset, current_epoch)
@@ -1136,12 +1135,10 @@ mod Absorber {
                     updated_assets
                         .append(
                             AssetBalance {
-                                asset: reward.asset,
+                                asset: *accumulated_asset.asset,
                                 amount: *accumulated_asset.amount + provider_pending_amt,
                             }
                         );
-
-                    current_rewards_id += 1;
                 },
                 Option::None(_) => {
                     break;
