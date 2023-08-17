@@ -1094,7 +1094,7 @@ mod Shrine {
             trove_id, trove_yang_balances, compounded_trove_debt
         );
 
-        // If there was any exceptional redistribution, write updated yang_amts to trove
+        // If there was any exceptional redistribution, write updated yang amounts to trove
         if updated_trove_yang_balances.is_some() {
             let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
             loop {
