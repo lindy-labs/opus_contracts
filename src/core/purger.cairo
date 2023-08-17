@@ -407,10 +407,10 @@ mod Purger {
                         0
                     } else {
                         let freed_yang: Wad = wadray::rmul_wr(deposited_yang_amt, percentage_freed);
-                        let freed_asset_amt: u128 = sentinel
+                        let exit_amt: u128 = sentinel
                             .exit(*yang, recipient, trove_id, freed_yang);
                         shrine.seize(*yang, trove_id, freed_yang);
-                        freed_asset_amt
+                        exit_amt
                     };
 
                     freed_assets.append(AssetBalance { asset: *yang, amount: freed_asset_amt });
