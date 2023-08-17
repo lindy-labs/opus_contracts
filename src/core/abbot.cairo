@@ -113,11 +113,7 @@ mod Abbot {
         loop {
             match yang_assets.pop_front() {
                 Option::Some(yang_asset) => {
-                    deposit_internal(
-                        new_trove_id,
-                        user,
-                        AssetBalance { asset: *yang_asset.asset, amount: *yang_asset.amount }
-                    );
+                    deposit_internal(new_trove_id, user, *yang_asset);
                 },
                 Option::None(_) => {
                     break;
@@ -226,12 +222,14 @@ mod Abbot {
     }
 
     #[inline(always)]
-    fn withdraw_internal(trove_id: u64, user: ContractAddress, yang: ContractAddress, amount: Wad) {
+    fn withdraw_internal(
+        trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad
+    ) {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
-        sentinel::read().exit(yang, user, trove_id, amount);
-        shrine::read().withdraw(yang, trove_id, amount);
+        sentinel::read().exit(yang, user, trove_id, yang_amt);
+        shrine::read().withdraw(yang, trove_id, yang_amt);
 
         ReentrancyGuard::end();
     }
