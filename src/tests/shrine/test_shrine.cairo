@@ -1255,6 +1255,11 @@ mod TestShrine {
     fn test_trove_unhealthy() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
+        // Depositing lots of collateral in another trove
+        // to avoid entering recovery mode
+        set_contract_address(ShrineUtils::admin());
+        shrine.deposit(ShrineUtils::yang1_addr(), common::TROVE_2, (50 * WAD_ONE).into());
+
         let deposit_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
         ShrineUtils::trove1_deposit(shrine, deposit_amt);
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
