@@ -23,7 +23,7 @@ const DIFF: u128 = 1000000000;
 
 #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
 struct Wad {
-    val: u128, 
+    val: u128,
 }
 
 #[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
