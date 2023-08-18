@@ -1655,7 +1655,7 @@ mod TestShrine {
         // Checking that trove 1 is healthy before recovery mode
         assert(shrine.is_healthy(common::TROVE_1), 'should be healthy');
 
-        // Drop ETH price by 50%, enough to activate recovery mode
+        // Drop ETH price by 50%, enough to activate recovery mode and make trove 1 unhealthy.
         set_contract_address(ShrineUtils::admin());
         shrine.advance(ShrineUtils::yang1_addr(), (ShrineUtils::YANG1_START_PRICE / 2).into());
 
@@ -1664,6 +1664,7 @@ mod TestShrine {
         assert(eth_threshold2 < eth_threshold1, 'wrong ETH threshold');
 
         // Checking that trove 1 is unhealthy after the price drop
+        assert(!shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
     }
 
 }
