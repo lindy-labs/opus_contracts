@@ -21,12 +21,12 @@ const MAX_CONVERTIBLE_WAD: u128 = 340282366920938463463374607431;
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
 const DIFF: u128 = 1000000000;
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, storage_access::Store)]
 struct Wad {
     val: u128,
 }
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, storage_access::Store)]
 struct Ray {
     val: u128
 }
