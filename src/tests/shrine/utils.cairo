@@ -20,7 +20,7 @@ mod ShrineUtils {
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WAD_ONE, WadZeroable};
 
     use aura::tests::common;
 
@@ -62,6 +62,9 @@ mod ShrineUtils {
     const TROVE1_YANG2_DEPOSIT: u128 = 8000000000000000000; // 8 (Wad)
     const TROVE1_YANG3_DEPOSIT: u128 = 6000000000000000000; // 6 (Wad)
     const TROVE1_FORGE_AMT: u128 = 3000000000000000000000; // 3_000 (Wad)
+
+    const WHALE_TROVE_YANG1_DEPOSIT: u128 = 1000000000000000000000; // 1000 (wad)
+    const WHALE_TROVE_FORGE_AMT: u128 = 1000000000000000000000000; // 1,000,000 (wad)
 
     //
     // Address constants
@@ -558,5 +561,14 @@ mod ShrineUtils {
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+    }
+
+    fn create_whale_trove(shrine: IShrineDispatcher) {
+        set_contract_address(admin());
+        // Deposit 1000 of yang1
+        shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
+        // Mint 1 million yin (50% LTV at yang1's start price)
+        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
+        set_contract_address(ContractAddressZeroable::zero());
     }
 }

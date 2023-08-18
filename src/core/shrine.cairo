@@ -73,7 +73,7 @@ mod Shrine {
     const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
 
     // Factor that scales how much thresholds decline during recovery mode
-    const THRESHOLD_DECREASE_FACTOR: u128 = 100000000000000000000000000; // 1 (ray)
+    const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -2112,8 +2112,9 @@ mod Shrine {
                         * THRESHOLD_DECREASE_FACTOR.into()
                         * (recovery_mode_threshold / shrine_ltv),
                     (threshold.val / 2_u128).into()
-                )
+                );
         }
+
         threshold
     }
 
