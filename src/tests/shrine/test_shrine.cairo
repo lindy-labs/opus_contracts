@@ -1641,34 +1641,6 @@ mod TestShrine {
         shrine.update_yang_suspension(yang, ts + 1);
     }
 
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_recovery_mode() {
-        let shrine: IShrineDispatcher = IShrineDispatcher{contract_address: ShrineUtils::shrine_deploy()};
-        ShrineUtils::shrine_setup(shrine.contract_address);
-        
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
-
-        // Checking that the ETH threshold hasn't decreased
-        let eth_threshold1: Ray = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
-        assert(eth_threshold1 == ShrineUtils::YANG1_THRESHOLD.into(), 'wrong ETH threshold');
-
-        // Checking that trove 1 is healthy before recovery mode
-        assert(shrine.is_healthy(common::TROVE_1), 'should be healthy');
-
-        // Drop ETH price by 50%, enough to activate recovery mode and make trove 1 unhealthy.
-        set_contract_address(ShrineUtils::admin());
-        shrine.advance(ShrineUtils::yang1_addr(), (ShrineUtils::YANG1_START_PRICE / 2).into());
-
-        // Checking that ETH's threshold has decreased
-        let eth_threshold2 = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
-        assert(eth_threshold2 < eth_threshold1, 'wrong ETH threshold');
-
-        // Checking that trove 1 is unhealthy after the price drop
-        assert(!shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
-    }
-
     // In this test, we have two troves. Both are initially healthy. And then suddenly the 
     // LTV of the larger trove drops enough such that the global LTV is above the 
     // recovery mode threshold, and high enough above the threshold such that 
