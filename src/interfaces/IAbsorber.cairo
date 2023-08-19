@@ -15,17 +15,25 @@ trait IAbsorber<TContractState> {
     fn get_provision(self: @TContractState, provider: ContractAddress) -> Provision;
     fn get_provider_last_absorption(self: @TContractState, provider: ContractAddress) -> u32;
     fn get_provider_request(self: @TContractState, provider: ContractAddress) -> Request;
-    fn get_asset_absorption(self: @TContractState, asset: ContractAddress, absorption_id: u32) -> DistributionInfo;
-    fn get_cumulative_reward_amt_by_epoch(self: @TContractState, asset: ContractAddress, epoch: u32) -> DistributionInfo;
+    fn get_asset_absorption(
+        self: @TContractState, asset: ContractAddress, absorption_id: u32
+    ) -> DistributionInfo;
+    fn get_cumulative_reward_amt_by_epoch(
+        self: @TContractState, asset: ContractAddress, epoch: u32
+    ) -> DistributionInfo;
     fn get_provider_last_reward_cumulative(
         self: @TContractState, provider: ContractAddress, asset: ContractAddress
     ) -> u128;
     fn get_removal_limit(self: @TContractState) -> Ray;
     fn get_live(self: @TContractState) -> bool;
     fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
-    fn preview_reap(self: @TContractState, provider: ContractAddress) -> (Span<AssetBalance>, Span<AssetBalance>);
+    fn preview_reap(
+        self: @TContractState, provider: ContractAddress
+    ) -> (Span<AssetBalance>, Span<AssetBalance>);
     // external
-    fn set_reward(ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool);
+    fn set_reward(
+        ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool
+    );
     fn set_removal_limit(ref self: TContractState, limit: Ray);
     fn provide(ref self: TContractState, amount: Wad);
     fn request(ref self: TContractState);
