@@ -36,7 +36,7 @@ trait IAbsorber<TContractState> {
 }
 
 #[starknet::interface]
-trait IBlesser<T> {
+trait IBlesser<TContractState> {
     // If no reward tokens are to be distributed to the absorber, `preview_bless` and `bless`
     // should return 0 instead of reverting.
     fn bless(ref self: TContractState) -> u128;
