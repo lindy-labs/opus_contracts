@@ -1672,25 +1672,11 @@ mod TestShrine {
     // In this test, we have two troves. Both are initially healthy. And then suddenly the 
     // LTV of the larger trove drops enough such that the global LTV is above the 
     // recovery mode threshold, and high enough above the threshold such that 
-    // the second (smaller) trove is now also underwater.
+    // the second (smaller) trove is now underwater.
     #[test]
     #[available_gas(20000000000)]
     fn test_recovery_mode_previously_healthy_trove_now_unhealthy() {
-        let shrine: IShrineDispatcher = IShrineDispatcher{contract_address: ShrineUtils::shrine_deploy()};
-        ShrineUtils::shrine_setup(shrine.contract_address);
-
-        // Setting the debt and collateral ceilings high enough to accomodate a very large trove
-        set_contract_address(ShrineUtils::admin());
-        shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
-
-        // This creates the larger trove
-        ShrineUtils::create_whale_trove(shrine);
-
-        // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
-        let trove1_deposit: Wad = (5 * WAD_ONE).into();
-        let trove1_forge_amt: Wad = (7500 * WAD_ONE).into();
-        ShrineUtils::trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
-        ShrineUtils::trove1_forge(shrine, trove1_forge_amt);
+        let shrine: IShrineDispatcher = ShrineUtils::recovery_mode_test_setup();
 
         // Trove 1 should be healthy
         assert(shrine.is_healthy(common::TROVE_1), 'should be healthy #1');
@@ -1725,14 +1711,14 @@ mod TestShrine {
         // so that trove 1 is underwater
         //
         // z = x + y, where x is from the last equation and y is the additional collateral
-        // value that must be withdrawn. 
+        // value that must be withdrawn to reach the desired threshold reduction. 
         //
         // trove1_ltv - 10^(-24) = (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / (whale_trove_forge_amt / (whale_trove_deposit_value - z))
         // trove1_ltv - 10^(-24) = (whale_trove_deposit_value - z) * (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / whale_trove_forge_amt
         // (whale_trove_deposit_value - z) = (trove1_ltv - 10^(-24)) * whale_trove_forge_amt / (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold)
         // z = whale_trove_deposit_value - ((trove1_ltv - 10^(-24)) * whale_trove_forge_amt) / (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold)
         
-        let trove1_ltv: Ray = wadray::rdiv_ww(trove1_forge_amt, trove1_deposit * ShrineUtils::YANG1_START_PRICE.into()); 
+        let trove1_ltv: Ray = wadray::rdiv_ww(ShrineUtils::RECOVERY_TESTS_TROVE1_FORGE_AMT.into(), ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into()); 
         let trove1_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into(); 
 
         let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
@@ -1743,8 +1729,6 @@ mod TestShrine {
                 wadray::rmul_rw((trove1_ltv - 1000_u128.into()), whale_trove_forge_amt), 
                 trove1_threshold * Shrine::THRESHOLD_DECREASE_FACTOR.into() * rm_threshold
             );
-        
-        // 2,000,000 - (0.75 * 1,000,000) / (0.8 * 0.56)
 
         // y = z - x
         let remaining_collateral_value_to_withdraw = total_collateral_value_to_withdraw - initial_collateral_value_to_withdraw; 
@@ -1753,11 +1737,45 @@ mod TestShrine {
         // Now trove1 should be underwater, while the whale trove should still be healthy. 
         assert(!shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
         assert(shrine.is_healthy(common::WHALE_TROVE), 'should be healthy #3');
-
     }
 
     // Invariant test: scaling the "raw" trove threshold for recovery mode is 
     // the same as scaling each yang threshold individually and only then
     // calculating the trove threshold 
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_recovery_mode_invariant() {
+        let shrine: IShrineDispatcher = ShrineUtils::recovery_mode_test_setup();
+
+        let yang2_deposit: Wad = (2 * WAD_ONE).into();
+        set_contract_address(ShrineUtils::admin());
+        // We deposit some yang2 into trove1 in order to alter its collateral composition,
+        // and subsequently its threshold
+        shrine.deposit(ShrineUtils::yang2_addr(), common::TROVE_1, yang2_deposit);
+
+        // We then withdraw collateral from the whale trove in order to bring up the global LTV
+        // and activate recovery mode
+        shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, (200 * WAD_ONE).into());
+        
+        // Sanity check that recovery mode is active
+        assert(shrine.get_yang_threshold(ShrineUtils::yang1_addr()) < ShrineUtils::YANG1_THRESHOLD.into(), 'recovery mode not active');
+
+        // Getting the trove threshold as calculated by Shrine
+        let (trove_threshold, _, _, _) = shrine.get_trove_info(common::TROVE_1);
+
+        // Getting the trove threshold as calculated by scaling each yang threshold individually
+
+        let yang1_threshold = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let yang2_threshold = shrine.get_yang_threshold(ShrineUtils::yang2_addr());
+
+        let yang1_deposit_value = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into();
+        let yang2_deposit_value = yang2_deposit * ShrineUtils::YANG2_START_PRICE.into();
+
+        let alternative_threshold: Ray = wadray::wdiv_rw(wadray::wmul_wr(yang1_deposit_value, yang1_threshold) + 
+            wadray::wmul_wr(yang2_deposit_value, yang2_threshold), yang1_deposit_value + yang2_deposit_value);
+
+        assert(trove_threshold == alternative_threshold, 'invariant did not hold');
+    }
+
 
 }

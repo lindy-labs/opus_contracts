@@ -66,6 +66,8 @@ mod ShrineUtils {
     const WHALE_TROVE_YANG1_DEPOSIT: u128 = 1000000000000000000000; // 1000 (wad)
     const WHALE_TROVE_FORGE_AMT: u128 = 1000000000000000000000000; // 1,000,000 (wad)
 
+    const RECOVERY_TESTS_TROVE1_FORGE_AMT: u128 = 7500000000000000000000; // 7500 (wad)
+
     //
     // Address constants
     //
@@ -570,5 +572,23 @@ mod ShrineUtils {
         // Mint 1 million yin (50% LTV at yang1's start price)
         shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
         set_contract_address(ContractAddressZeroable::zero());
+    }
+
+    fn recovery_mode_test_setup() -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = IShrineDispatcher{contract_address: shrine_deploy()};
+        shrine_setup(shrine.contract_address);
+
+        // Setting the debt and collateral ceilings high enough to accomodate a very large trove
+        set_contract_address(admin());
+        shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
+
+        // This creates the larger trove
+        create_whale_trove(shrine);
+
+        // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
+        let trove1_deposit: Wad = TROVE1_YANG1_DEPOSIT.into();
+        trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
+        trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
+        shrine
     }
 }
