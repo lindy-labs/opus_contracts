@@ -1332,7 +1332,7 @@ mod Shrine {
         // calculating a yang's total value as a percentage of the total value of all
         // other troves, the value of the initial yang amount should be included too.
         // This value is used only for exceptional redistributions.
-        let mut other_troves_total_value: Wad = shrine_value - trove_value;
+        let other_troves_total_value: Wad = shrine_value - trove_value;
 
         // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
         let yang_id_to_array_idx_offset: u32 = 1;
@@ -1999,7 +1999,7 @@ mod Shrine {
 
     // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
     // Starts from yang ID 1.
-    // Note that zero values should also be added to the return array because downstream
+    // Note that zero values are added to the return array because downstream
     // computation assumes the full array of yangs.
     fn get_trove_deposits(trove_id: u64) -> Span<YangBalance> {
         let mut yang_balances: Array<YangBalance> = Default::default();
@@ -2043,7 +2043,7 @@ mod Shrine {
     // based on historical prices and the given yang balances.
     fn get_threshold_and_value(mut yang_balances: Span<YangBalance>, interval: u64) -> (Ray, Wad) {
         let mut weighted_threshold_sum: Ray = RayZeroable::zero();
-        let mut trove_value: Wad = WadZeroable::zero();
+        let mut total_value: Wad = WadZeroable::zero();
 
         loop {
             match yang_balances.pop_front() {
@@ -2057,7 +2057,7 @@ mod Shrine {
                         let (price, _, _) = get_recent_price_from(*yang_balance.yang_id, interval);
 
                         let yang_deposited_value = *yang_balance.amount * price;
-                        trove_value += yang_deposited_value;
+                        total_value += yang_deposited_value;
                         weighted_threshold_sum +=
                             wadray::wmul_rw(yang_threshold, yang_deposited_value);
                     }
@@ -2069,13 +2069,13 @@ mod Shrine {
         };
 
         // Catch division by zero
-        let threshold: Ray = if trove_value.is_non_zero() {
-            wadray::wdiv_rw(weighted_threshold_sum, trove_value)
+        let threshold: Ray = if total_value.is_non_zero() {
+            wadray::wdiv_rw(weighted_threshold_sum, total_value)
         } else {
             RayZeroable::zero()
         };
 
-        (threshold, trove_value)
+        (threshold, total_value)
     }
 
     fn get_yang_suspension_status_internal(yang_id: u32) -> YangSuspensionStatus {
