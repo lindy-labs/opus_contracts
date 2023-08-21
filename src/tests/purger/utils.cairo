@@ -487,12 +487,12 @@ mod PurgerUtils {
 
     // Creates a trove with a lot of collateral
     // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
-    fn create_whale_trove(abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>) {
+    fn create_whale_trove(abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
         let yin_amt: Wad = TARGET_TROVE_YIN.into();
         common::fund_user(user, yangs, deposit_amts);
-        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt);
+        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
     }
 
     // Update thresholds for all yangs to the given value

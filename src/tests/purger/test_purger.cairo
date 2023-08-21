@@ -961,6 +961,8 @@ mod TestPurger {
                                                 // Accrue some interest
                                                 common::advance_intervals(500);
 
+                                                let whale_trove: u64 = PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
                                                 let (_, _, start_value, before_debt) = shrine
                                                     .get_trove_info(target_trove);
                                                 let accrued_interest: Wad = before_debt
@@ -1047,6 +1049,14 @@ mod TestPurger {
                                                     gates,
                                                     absorber_start_yin,
                                                 );
+                                                set_contract_address(target_trove_owner);
+                                                abbot.close_trove(whale_trove);
+
+                                                let (threshold1, _ ,_, _) = shrine
+                                                    .get_trove_info(target_trove);
+                                                'threshold'.print();
+                                                threshold1.print();
+
                                                 let (
                                                     _,
                                                     _,
