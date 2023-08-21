@@ -1054,8 +1054,6 @@ mod TestPurger {
 
                                                 let (threshold1, _ ,_, _) = shrine
                                                     .get_trove_info(target_trove);
-                                                'threshold'.print();
-                                                threshold1.print();
 
                                                 let (
                                                     _,

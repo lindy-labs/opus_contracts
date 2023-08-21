@@ -1267,8 +1267,6 @@ mod Shrine {
         }
     }
 
-    use debug::PrintTrait;
-
     // Loop through yangs for the trove:
     // 1. redistribute a yang according to the percentage value to be redistributed by either:
     //    a. if at least one other trove has deposited that yang, decrementing the trove's yang
@@ -1425,11 +1423,6 @@ mod Shrine {
                             raw_debt_to_distribute_for_yang,
                             redistributed_debt
                         );
-
-                        'debt to redis for yang'.print();
-                        raw_debt_to_distribute_for_yang.print();
-                        'adjusted'.print();
-                        tmp_debt_to_distribute_for_yang.print();
 
                         redistributed_debt = updated_redistributed_debt;
                         debt_to_distribute_for_yang = tmp_debt_to_distribute_for_yang;
