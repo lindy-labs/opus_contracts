@@ -1052,9 +1052,6 @@ mod TestPurger {
                                                 set_contract_address(target_trove_owner);
                                                 abbot.close_trove(whale_trove);
 
-                                                let (threshold1, _ ,_, _) = shrine
-                                                    .get_trove_info(target_trove);
-
                                                 let (
                                                     _,
                                                     _,
