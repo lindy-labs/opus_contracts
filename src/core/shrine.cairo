@@ -1240,6 +1240,8 @@ mod Shrine {
         }
     }
 
+    use debug::PrintTrait;
+
     // Loop through yangs for the trove:
     // 1. redistribute a yang according to the percentage value to be redistributed by either:
     //    a. if at least one other trove has deposited that yang, decrementing the trove's yang
@@ -1379,6 +1381,8 @@ mod Shrine {
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
                     );
+                    'redis yang price'.print();
+                    redistributed_yang_price.print();
 
                     let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
                     let mut debt_to_distribute_for_yang: Wad = WadZeroable::zero();
@@ -1456,16 +1460,19 @@ mod Shrine {
                         // unit_yang_per_recipient_pool_yang = ---------------------------------
                         //                                     redistributed_yang_recipient_pool
 
-                        let unit_yang_per_recipient_pool_yang: Ray = wadray::rdiv_ww(
-                            yang_amt_to_redistribute, redistributed_yang_recipient_pool
-                        );
+                        let adjusted_redistributed_yang_recipient_pool: Wad = redistributed_yang_recipient_pool + redistributed_yang_initial_amt;
+                        let unit_yang_per_recipient_pool_yang: Wad = 
+                            yang_amt_to_redistribute / adjusted_redistributed_yang_recipient_pool;
+                        'unit yang'.print();
+                        unit_yang_per_recipient_pool_yang.print();
                         let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
-                        updated_trove_yang_balance =
-                            wadray::rdiv_wr(
-                                remaining_trove_yang,
-                                (RAY_ONE.into() + unit_yang_per_recipient_pool_yang),
-                            );
-
+                        updated_trove_yang_balance = 
+                                remaining_trove_yang /
+                                (WAD_ONE.into() + unit_yang_per_recipient_pool_yang);
+                        'trove yang'.print();
+                        trove_yang_amt.print();
+                        'updated trove yang'.print();
+                        updated_trove_yang_balance.print();
                         // Note that the trove's deposit and total supply are updated after this loop.
                         // See comment at this array's declaration on why.
                         let yang_offset: Wad = remaining_trove_yang - updated_trove_yang_balance;
@@ -1494,6 +1501,8 @@ mod Shrine {
                             * redistributed_yang_recipient_pool;
                         debt_error = adjusted_debt_to_distribute_for_yang - actual_debt_distributed;
                     } else {
+                        'exceptional'.print();
+
                         if !has_exceptional_redistribution {
                             // This operation is gas-intensive so we only run it when we encounter the first
                             // yang that cannot be distributed via rebasing, and store the value in the

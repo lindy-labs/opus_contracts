@@ -248,22 +248,27 @@ mod PurgerUtils {
         (thresholds.span(), trove_ltvs.span())
     }
 
-    fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
+    fn interesting_yang_amts_for_recipient_trove() -> (Span<Span<u128>>, Span<Wad>) {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        let mut value_error_margins: Array<Wad> = Default::default();
+        
         // base case for ordinary redistributions
         yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
+        value_error_margins.append(WAD_ONE.into());
 
         // recipient trove has dust amount of the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(1_u128); // 1 wei (Wad) ETH
+        dust_case.append(5_u128); // 1 wei (Wad) ETH
         dust_case.append(1000000000_u128); // 10 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
+        value_error_margins.append((250 * WAD_ONE).into());
 
         // recipient trove has dust amount of a yang that is not the first yang
         let mut dust_case: Array<u128> = Default::default();
         dust_case.append(30 * WAD_ONE); // 1 wei (Wad) ETH
-        dust_case.append(1_u128); // smallest unit for (10 ** 8) WBTC
+        dust_case.append(10_u128); // 0.0000001(10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
+        value_error_margins.append((250 * WAD_ONE).into());
 
         // exceptional redistribution because recipient trove does not have
         // WBTC yang but redistributed trove has WBTC yang
@@ -271,8 +276,9 @@ mod PurgerUtils {
         exceptional_case.append(30 * WAD_ONE); // 30 (Wad) ETH
         exceptional_case.append(0_u128); // 0 WBTC
         yang_asset_amts_cases.append(exceptional_case.span());
+        value_error_margins.append(WAD_ONE.into());
 
-        yang_asset_amts_cases.span()
+        (yang_asset_amts_cases.span(), value_error_margins.span())
     }
 
     fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {

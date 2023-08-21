@@ -201,6 +201,8 @@ mod Pragma {
         YangAdded(index, settings);
     }
 
+    use debug::PrintTrait;
+
     #[external]
     fn update_prices() {
         // check first if an update can happen - under normal circumstances, it means
@@ -238,6 +240,12 @@ mod Pragma {
             // otherwise emit an event about the update being invalid
             if is_valid_price_update(response, asset_amt_per_yang) {
                 has_valid_update = true;
+                'price'.print();
+                price.print();
+                'asset amt per yang'.print();
+                asset_amt_per_yang.print();
+                'new price'.print();
+                (price * asset_amt_per_yang).print();
                 shrine::read().advance(settings.yang, price * asset_amt_per_yang);
             } else {
                 InvalidPriceUpdate(

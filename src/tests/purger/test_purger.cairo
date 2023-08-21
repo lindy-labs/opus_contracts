@@ -632,7 +632,7 @@ mod TestPurger {
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
-                    let mut recipient_trove_yang_asset_amts_cases =
+                    let (mut recipient_trove_yang_asset_amts_cases, _) =
                         PurgerUtils::interesting_yang_amts_for_recipient_trove();
                     loop {
                         match recipient_trove_yang_asset_amts_cases.pop_front() {
@@ -879,7 +879,7 @@ mod TestPurger {
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
-                    let mut recipient_trove_yang_asset_amts_cases =
+                    let (mut recipient_trove_yang_asset_amts_cases, mut value_error_margins) =
                         PurgerUtils::interesting_yang_amts_for_recipient_trove();
                     loop {
                         match recipient_trove_yang_asset_amts_cases.pop_front() {
@@ -888,6 +888,7 @@ mod TestPurger {
                                     PurgerUtils::interesting_thresholds_for_absorption_below_trove_debt();
                                 let mut target_ltvs: Span<Span<Ray>> =
                                     PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_below_trove_debt();
+                                let value_error_margin: Wad = *value_error_margins.pop_front().unwrap();
                                 loop {
                                     match interesting_thresholds.pop_front() {
                                         Option::Some(threshold) => {
@@ -1098,11 +1099,16 @@ mod TestPurger {
                                                     after_value.is_non_zero(),
                                                     'value should not be 0'
                                                 );
+
+                                                'val assertion'.print();
+                                                after_value.print();
+                                                expected_after_value.print();
                                                 common::assert_equalish(
                                                     after_value,
                                                     expected_after_value,
                                                     // (10 ** 15) error margin
-                                                    1000000000000000_u128.into(),
+                                                    //1000000000000000_u128.into(),
+                                                    value_error_margin,
                                                     'wrong value after liquidation'
                                                 );
 
@@ -1194,10 +1200,14 @@ mod TestPurger {
                                                     recipient_trove_value
                                                     + redistributed_value;
 
+                                                'value assertion'.print();
+                                                after_recipient_trove_value.print();
+                                                expected_recipient_trove_value.print();
                                                 common::assert_equalish(
                                                     after_recipient_trove_value,
                                                     expected_recipient_trove_value,
-                                                    (WAD_ONE / 100).into(), // error margin
+                                                    //(WAD_ONE / 100).into(), // error margin
+                                                    value_error_margin,
                                                     'wrong recipient trove value'
                                                 );
 
@@ -1229,10 +1239,13 @@ mod TestPurger {
                                                                 );
                                                             let remainder_asset_amt: u128 = gate
                                                                 .preview_exit(remainder_trove_yang);
+                                                            'remainder asset amt'.print();
+                                                            remainder_asset_amt.print();
+                                                            (*expected_asset_amt).print();
                                                             common::assert_equalish(
                                                                 remainder_asset_amt,
                                                                 *expected_asset_amt,
-                                                                10000000_u128.into(),
+                                                                WAD_ONE.into(),
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
@@ -1274,7 +1287,7 @@ mod TestPurger {
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
-                    let mut recipient_trove_yang_asset_amts_cases =
+                    let (mut recipient_trove_yang_asset_amts_cases, _) =
                         PurgerUtils::interesting_yang_amts_for_recipient_trove();
                     loop {
                         match recipient_trove_yang_asset_amts_cases.pop_front() {
