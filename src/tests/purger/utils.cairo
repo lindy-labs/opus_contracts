@@ -86,7 +86,7 @@ mod PurgerUtils {
     fn recipient_trove_yang_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(30 * WAD_ONE); // 30 (Wad) - ETH
-        asset_amts.append(200000000); // 2 (10 ** 8) - BTC
+        asset_amts.append(500000000); // 5 (10 ** 8) - BTC
         asset_amts.span()
     }
 
@@ -272,19 +272,19 @@ mod PurgerUtils {
         // recipient trove has dust amount of the first yang
         let mut dust_case: Array<u128> = Default::default();
         dust_case.append(100_u128); // 100 wei (Wad) ETH
-        dust_case.append(1000000000_u128); // 10 (10 ** 8) WBTC
+        dust_case.append(2000000000_u128); // 20 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // recipient trove has dust amount of a yang that is not the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(30 * WAD_ONE); // 30 (Wad) ETH
+        dust_case.append(50 * WAD_ONE); // 50 (Wad) ETH
         dust_case.append(100_u128); // 0.00001 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // exceptional redistribution because recipient trove does not have
         // WBTC yang but redistributed trove has WBTC yang
         let mut exceptional_case: Array<u128> = Default::default();
-        exceptional_case.append(30 * WAD_ONE); // 30 (Wad) ETH
+        exceptional_case.append(50 * WAD_ONE); // 50 (Wad) ETH
         exceptional_case.append(0_u128); // 0 WBTC
         yang_asset_amts_cases.append(exceptional_case.span());
 
