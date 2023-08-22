@@ -82,6 +82,14 @@ mod PurgerUtils {
         asset_amts.span()
     }
 
+    #[inline(always)]
+    fn recipient_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(30 * WAD_ONE); // 30 (Wad) - ETH
+        asset_amts.append(200000000); // 2 (10 ** 8) - BTC
+        asset_amts.span()
+    }
+
     fn whale_trove_yang_asset_amts() -> Span<u128> {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(50 * WAD_ONE); // 50 (Wad) ETH
@@ -257,9 +265,9 @@ mod PurgerUtils {
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
-        
+
         // base case for ordinary redistributions
-        yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
+        yang_asset_amts_cases.append(recipient_trove_yang_asset_amts());
 
         // recipient trove has dust amount of the first yang
         let mut dust_case: Array<u128> = Default::default();
@@ -447,9 +455,9 @@ mod PurgerUtils {
         yin_amt: Wad,
     ) {
         let user: ContractAddress = searcher();
-        common::fund_user(user, yangs, AbsorberUtils::provider_asset_amts());
+        common::fund_user(user, yangs, recipient_trove_yang_asset_amts);
         common::open_trove_helper(
-            abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, yin_amt
+            abbot, user, yangs, recipient_trove_yang_asset_amts, gates, yin_amt
         );
     }
 
@@ -467,7 +475,7 @@ mod PurgerUtils {
             absorber,
             AbsorberUtils::provider_1(),
             yangs,
-            AbsorberUtils::provider_asset_amts(),
+            recipient_trove_yang_asset_amts,
             gates,
             amt,
         );
@@ -488,7 +496,9 @@ mod PurgerUtils {
 
     // Creates a trove with a lot of collateral
     // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
-    fn create_whale_trove(abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>) -> u64 {
+    fn create_whale_trove(
+        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
+    ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
         let yin_amt: Wad = TARGET_TROVE_YIN.into();
