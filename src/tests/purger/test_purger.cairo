@@ -1232,7 +1232,7 @@ mod TestPurger {
                                                             common::assert_equalish(
                                                                 remainder_asset_amt,
                                                                 *expected_asset_amt,
-                                                                WAD_ONE.into(),
+                                                                10000000_u128.into(),
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },

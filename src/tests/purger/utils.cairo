@@ -256,14 +256,14 @@ mod PurgerUtils {
 
         // recipient trove has dust amount of the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(5_u128); // 1 wei (Wad) ETH
+        dust_case.append(50_u128); // 50 wei (Wad) ETH
         dust_case.append(1000000000_u128); // 10 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // recipient trove has dust amount of a yang that is not the first yang
         let mut dust_case: Array<u128> = Default::default();
         dust_case.append(30 * WAD_ONE); // 1 wei (Wad) ETH
-        dust_case.append(10_u128); // 0.0000001(10 ** 8) WBTC
+        dust_case.append(50_u128); // 0.000005 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // exceptional redistribution because recipient trove does not have

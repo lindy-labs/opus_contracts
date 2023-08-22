@@ -1802,6 +1802,9 @@ mod Shrine {
                             (*original_yang_balance.yang_id, tmp_redistribution_id)
                         );
                         // If the trove has deposited a yang, check for ordinary redistribution first.
+                        // Note that we cannot skip to the next yang because we still need to check 
+                        // for exceptional redistribution in case the recipient pool amount was below the 
+                        // redistribution threshold.
                         if (*original_yang_balance.amount).is_non_zero() {
                             // Get the amount of debt per yang for the current redistribution
                             if redistribution.unit_debt.is_non_zero() {
@@ -1812,8 +1815,6 @@ mod Shrine {
 
                         // If it is not an exceptional redistribution, and trove does not have this yang
                         // deposited, then skip to the next yang.
-                        // We cannot skip if trove has deposited this yang because it may be an exceptional
-                        // redistribution if recipient pool falls below the redistribution threshold.
                         if !is_exceptional {
                             continue;
                         }
