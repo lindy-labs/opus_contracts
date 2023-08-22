@@ -455,9 +455,9 @@ mod PurgerUtils {
         yin_amt: Wad,
     ) {
         let user: ContractAddress = searcher();
-        common::fund_user(user, yangs, recipient_trove_yang_asset_amts);
+        common::fund_user(user, yangs, recipient_trove_yang_asset_amts());
         common::open_trove_helper(
-            abbot, user, yangs, recipient_trove_yang_asset_amts, gates, yin_amt
+            abbot, user, yangs, recipient_trove_yang_asset_amts(), gates, yin_amt
         );
     }
 
@@ -475,7 +475,7 @@ mod PurgerUtils {
             absorber,
             AbsorberUtils::provider_1(),
             yangs,
-            recipient_trove_yang_asset_amts,
+            recipient_trove_yang_asset_amts(),
             gates,
             amt,
         );
