@@ -4,7 +4,7 @@ use aura::utils::types::AssetBalance;
 use aura::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
-trait IPurger {
+trait IPurger<TContractState> {
     // getter
     fn get_penalty_scalar(self: TContractState) -> Ray;
     // external
