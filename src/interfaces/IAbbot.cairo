@@ -1,7 +1,6 @@
 use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::serde;
 use aura::utils::types::AssetBalance;
 use aura::utils::wadray::Wad;
 
