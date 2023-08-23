@@ -3,3 +3,8 @@ mod IAbsorber;
 mod IAllocator;
 mod ICaretaker;
 mod IGate;
+mod IOracle;
+mod IPragma;
+mod IPurger;
+mod ISentinel;
+mod IShrine;
