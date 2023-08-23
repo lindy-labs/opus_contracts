@@ -531,6 +531,146 @@ mod TestController {
     }
 
     #[test]
+    #[available_gas(200000000000)]
+    fn test_against_ground_truth4() {
+        let (controller, shrine) = ControllerUtils::deploy_controller();
+
+        set_contract_address(ControllerUtils::admin());
+
+        // Updating `i_gain` to match the ground truth simulation
+        controller.set_i_gain(100000000000000000000000000_u128.into()); // 0.1 (ray)
+        controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
+
+        // Loading our ground truth into arrays for comparison
+        let mut prices: Array<Wad> = Default::default();
+        let mut gt_p_terms: Array<SignedRay> = Default::default();
+        let mut gt_i_terms: Array<SignedRay> = Default::default();
+        let mut gt_multipliers: Array<Ray> = Default::default();
+
+        prices.append(1010000000000000000_u128.into());
+        prices.append(1009070214084160000_u128.into());
+        prices.append(1008140856336630000_u128.into());
+        prices.append(1007913464870420000_u128.into());
+        prices.append(1007501969998440000_u128.into());
+        prices.append(1007052728821550000_u128.into());
+        prices.append(1006534504840420000_u128.into());
+        prices.append(1005954136457240000_u128.into());
+        prices.append(1005313382507510000_u128.into());
+        prices.append(1004610965226620000_u128.into());
+        prices.append(1003853817920420000_u128.into());
+        prices.append(1003050483282290000_u128.into());
+        prices.append(1002211038229070000_u128.into());
+        prices.append(1001347832590710000_u128.into());
+        prices.append(1000467142052610000_u128.into());
+        prices.append(999579268159293000_u128.into());
+        prices.append(999876291246443000_u128.into());
+        prices.append(1000170338496500000_u128.into());
+        prices.append(999281991878406000_u128.into());
+        prices.append(999576275080028000_u128.into());
+        prices.append(999875348924666000_u128.into());
+
+
+        gt_p_terms.append(SignedRay{val: 1000000000000000000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 746195479082780000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 539523383476549000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 495564327004449000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 422207524565069000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 350809670272340000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 279021745992780000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 211084503271797000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 150007593859640000000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 98033733163599700000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 57236566790630100000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 28386114337654400000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 10809080591591700000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 2448543705069680000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 101940531609356000000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 74475965338374500000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 1893220914100550000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 4942406121262390000000, sign: true});
+        gt_p_terms.append(SignedRay{val: 370158792771361000000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 76076761869019800000000, sign: false});
+        gt_p_terms.append(SignedRay{val: 1936814769447970000000, sign: false});
+
+        gt_i_terms.append(SignedRay{val: 0, sign: false});
+        gt_i_terms.append(SignedRay{val: 999950003749688000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 1906934104693500000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 2720992763528470000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 3512314473517650000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 4262490363876780000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 4967745706202580000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 5621182239604350000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 6216585331384020000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 6747916081914270000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 7209007702967550000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 7594386633212950000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 7899433542145930000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8120536824601320000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8255319961245460000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8302034161409560000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8259960981062700000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8247590105801630000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8264623955204720000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8192823161553290000000000, sign: true});
+        gt_i_terms.append(SignedRay{val: 8150450673359900000000000, sign: true});
+
+        gt_multipliers.append(200000000000000000000000000_u128.into());
+        gt_multipliers.append(252804570913471000000000000_u128.into());
+        gt_multipliers.append(458569682418758000000000000_u128.into());
+        gt_multipliers.append(501714680232022000000000000_u128.into());
+        gt_multipliers.append(574280160961414000000000000_u128.into());
+        gt_multipliers.append(644927839363783000000000000_u128.into());
+        gt_multipliers.append(716010508301017000000000000_u128.into());
+        gt_multipliers.append(783294314488599000000000000_u128.into());
+        gt_multipliers.append(843775820808976000000000000_u128.into());
+        gt_multipliers.append(895218350754486000000000000_u128.into());
+        gt_multipliers.append(935554425506402000000000000_u128.into());
+        gt_multipliers.append(964019499029133000000000000_u128.into());
+        gt_multipliers.append(981291485866262000000000000_u128.into());
+        gt_multipliers.append(989430919470329000000000000_u128.into());
+        gt_multipliers.append(991642739507145000000000000_u128.into());
+        gt_multipliers.append(991772441803929000000000000_u128.into());
+        gt_multipliers.append(991741932239851000000000000_u128.into());
+        gt_multipliers.append(991747467488077000000000000_u128.into());
+        gt_multipliers.append(992105534837567000000000000_u128.into());
+        gt_multipliers.append(991883253600316000000000000_u128.into());
+        gt_multipliers.append(991851486141410000000000000_u128.into());
+
+        loop {
+            match prices.pop_front() {
+                Option::Some(price) => {
+                    shrine.update_yin_spot_price(price);
+                    controller.update_multiplier();
+                    
+                    assert_equalish( 
+                        controller.get_p_term(),
+                        gt_p_terms.pop_front().unwrap(),
+                        ERROR_MARGIN.into(),
+                        'Wrong p term'
+                    );
+                    assert_equalish(
+                        controller.get_i_term(),
+                        gt_i_terms.pop_front().unwrap(),
+                        ERROR_MARGIN.into(),
+                        'Wrong i term'
+                    );
+                    assert_equalish(
+                        controller.get_current_multiplier(),
+                        gt_multipliers.pop_front().unwrap(),
+                        ERROR_MARGIN.into(),
+                        'Wrong multiplier'
+                    );
+
+                    ControllerUtils::fast_forward_1_hour();
+                }, 
+                Option::None(_) => {
+                    break;
+                }
+            };
+        };
+    }
+
+    #[test]
     #[available_gas(20000000000)]
     fn test_frequent_updates() {
         let (controller, shrine) = ControllerUtils::deploy_controller();

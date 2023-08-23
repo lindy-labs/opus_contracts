@@ -26,11 +26,11 @@ fn sqrt(x: Ray) -> Ray {
 
         // Check if the guess is close enough to the previous guess
         if previous_guess >= guess {
-            if (previous_guess - guess) < EPSILON {
+            if (previous_guess - guess) <= EPSILON {
                 break guess;
             }
         } else {
-            if (guess - previous_guess) < EPSILON {
+            if (guess - previous_guess) <= EPSILON {
                 break guess;
             }
         };

@@ -119,27 +119,24 @@ mod Controller {
     fn get_parameters() -> ((SignedRay, SignedRay), (u8, u8, u8, u8)) {
         (
             (p_gain::read(), i_gain::read()),
-            (alpha_p::read(), beta_p::read(), alpha_i::read(), beta_i::read(), )
+            (alpha_p::read(), beta_p::read(), alpha_i::read(), beta_i::read())
         )
     }
 
     // 
     // External 
     // 
-
     #[external]
     fn update_multiplier() {
         let shrine: IShrineDispatcher = shrine::read();
 
         let i_gain = i_gain::read();
-
         let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal();
 
         // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
         if i_gain.is_non_zero() {
             let new_i_term: SignedRay = get_i_term_internal();
             multiplier += i_gain * new_i_term;
-
             i_term::write(new_i_term);
             i_term_last_updated::write(get_block_timestamp());
         }
