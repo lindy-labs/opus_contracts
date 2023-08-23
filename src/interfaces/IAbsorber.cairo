@@ -5,7 +5,7 @@ use aura::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
 trait IAbsorber<TContractState> {
-    // view
+    // getters
     fn get_rewards_count(self: @TContractState) -> u8;
     fn get_rewards(self: @TContractState) -> Span<Reward>;
     fn get_current_epoch(self: @TContractState) -> u32;
@@ -26,10 +26,6 @@ trait IAbsorber<TContractState> {
     ) -> u128;
     fn get_removal_limit(self: @TContractState) -> Ray;
     fn get_live(self: @TContractState) -> bool;
-    fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
-    fn preview_reap(
-        self: @TContractState, provider: ContractAddress
-    ) -> (Span<AssetBalance>, Span<AssetBalance>);
     // external
     fn set_reward(
         ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool
@@ -41,12 +37,19 @@ trait IAbsorber<TContractState> {
     fn reap(ref self: TContractState);
     fn update(ref self: TContractState, asset_balances: Span<AssetBalance>);
     fn kill(ref self: TContractState);
+    // view
+    fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
+    fn preview_reap(
+        self: @TContractState, provider: ContractAddress
+    ) -> (Span<AssetBalance>, Span<AssetBalance>);
 }
 
 #[starknet::interface]
 trait IBlesser<TContractState> {
+    // external
     // If no reward tokens are to be distributed to the absorber, `preview_bless` and `bless`
     // should return 0 instead of reverting.
     fn bless(ref self: TContractState) -> u128;
+    // view
     fn preview_bless(self: @TContractState) -> u128;
 }
