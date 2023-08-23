@@ -412,7 +412,7 @@ mod Purger {
                         exit_amt
                     };
 
-                    freed_assets.append(AssetBalance { asset: *yang, amount: freed_asset_amt });
+                    freed_assets.append(AssetBalance { address: *yang, amount: freed_asset_amt });
                 },
                 Option::None(_) => {
                     break;

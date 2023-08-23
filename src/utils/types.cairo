@@ -13,7 +13,7 @@ struct YangBalance {
 
 #[derive(Copy, Drop, Serde)]
 struct AssetBalance {
-    asset: ContractAddress, // Address of the ERC-20 asset
+    address: ContractAddress, // Address of the ERC-20 asset
     amount: u128, // Amount of the asset in the asset's decimals
 }
 

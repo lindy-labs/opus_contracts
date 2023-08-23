@@ -112,7 +112,7 @@ mod FlashLiquidator {
                     updated_assets
                         .append(
                             AssetBalance {
-                                asset: *freed_asset.asset,
+                                address: *freed_asset.address,
                                 amount: *freed_asset.amount + *provider_assets.pop_front().unwrap()
                             }
                         );

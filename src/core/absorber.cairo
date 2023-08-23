@@ -717,7 +717,7 @@ mod Absorber {
         }
 
         let last_error: u128 = get_recent_asset_absorption_error(
-            asset_balance.asset, absorption_id
+            asset_balance.address, absorption_id
         );
         let total_amount_to_distribute: u128 = asset_balance.amount + last_error;
 
@@ -730,7 +730,7 @@ mod Absorber {
         let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
         asset_absorption::write(
-            (asset_balance.asset, absorption_id), DistributionInfo { asset_amt_per_share, error }
+            (asset_balance.address, absorption_id), DistributionInfo { asset_amt_per_share, error }
         );
     }
 
@@ -869,7 +869,7 @@ mod Absorber {
                             );
                     };
 
-                    absorbed_assets.append(AssetBalance { asset: *asset, amount: absorbed_amt });
+                    absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
                 },
                 Option::None(_) => {
                     break absorbed_assets.span();
@@ -886,7 +886,7 @@ mod Absorber {
                 Option::Some(asset_balance) => {
                     if (*asset_balance.amount).is_non_zero() {
                         IERC20Dispatcher {
-                            contract_address: *asset_balance.asset
+                            contract_address: *asset_balance.address
                         }.transfer(to, (*asset_balance.amount).into());
                     }
                 },
@@ -958,7 +958,7 @@ mod Absorber {
             }
 
             let blessed_amt = reward.blesser.bless();
-            blessed_assets.append(AssetBalance { asset: reward.asset, amount: blessed_amt });
+            blessed_assets.append(AssetBalance { address: reward.asset, amount: blessed_amt });
 
             if blessed_amt.is_non_zero() {
                 let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
@@ -1047,7 +1047,7 @@ mod Absorber {
             };
 
             accumulated_reward_assets
-                .append(AssetBalance { asset: reward.asset, amount: reward_amt });
+                .append(AssetBalance { address: reward.asset, amount: reward_amt });
 
             current_rewards_id += 1;
         }
@@ -1119,7 +1119,7 @@ mod Absorber {
         loop {
             match accumulated_assets.pop_front() {
                 Option::Some(accumulated_asset) => {
-                    let reward: Reward = rewards::read(reward_id::read(*accumulated_asset.asset));
+                    let reward: Reward = rewards::read(reward_id::read(*accumulated_asset.address));
                     let pending_amt: u128 = reward.blesser.preview_bless();
                     let reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                         (reward.asset, current_epoch)
@@ -1135,7 +1135,7 @@ mod Absorber {
                     updated_assets
                         .append(
                             AssetBalance {
-                                asset: *accumulated_asset.asset,
+                                address: *accumulated_asset.address,
                                 amount: *accumulated_asset.amount + provider_pending_amt,
                             }
                         );
