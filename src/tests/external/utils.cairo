@@ -187,7 +187,7 @@ mod PragmaUtils {
     //
 
     fn convert_price_to_pragma_scale(price: u128) -> u128 {
-        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
         price * pragma_price_scale
     }
 
