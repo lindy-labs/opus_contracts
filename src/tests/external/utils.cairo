@@ -59,6 +59,18 @@ mod PragmaUtils {
     }
 
     //
+    // Helpers
+    //
+
+    #[inline(always)]
+    fn yang_pair_ids() -> Span<u256> {
+        let mut pair_ids: Array<u256> = Default::default();
+        pair_ids.append(ETH_USD_PAIR_ID);
+        pair_ids.append(WBTC_USD_PAIR_ID);
+        pair_ids.span()
+    }
+
+    //
     // Test setup helpers
     //
 
@@ -79,11 +91,12 @@ mod PragmaUtils {
         };
 
         let price_ts: u64 = get_block_timestamp() - 1000;
-        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
-        mock_valid_price_update(mock_pragma, ETH_USD_PAIR_ID, ETH_INIT_PRICE, price_ts);
-
-        let btc_price: u128 = WBTC_INIT_PRICE * pragma_price_scale;
-        mock_valid_price_update(mock_pragma, WBTC_USD_PAIR_ID, WBTC_INIT_PRICE, price_ts);
+        mock_valid_price_update(
+            mock_pragma, ETH_USD_PAIR_ID, convert_price_to_pragma_scale(ETH_INIT_PRICE), price_ts
+        );
+        mock_valid_price_update(
+            mock_pragma, WBTC_USD_PAIR_ID, convert_price_to_pragma_scale(WBTC_INIT_PRICE), price_ts
+        );
 
         mock_pragma
     }
@@ -173,15 +186,17 @@ mod PragmaUtils {
     // Helpers
     //
 
+    fn convert_price_to_pragma_scale(price: u128) -> u128 {
+        let pragma_price_scale: u128 = pow10(PRAGMA_DECIMALS);
+        price * pragma_price_scale
+    }
+
     // Helper function to add a valid price update to the mock Pragma oracle
     // using default values for decimals and number of sources.
     // Note that `price` is the raw integer value without fixed point decimals.
     fn mock_valid_price_update(
         mock_pragma: IMockPragmaDispatcher, pair_id: u256, price: u128, timestamp: u64
     ) {
-        let pragma_price_scale: u128 = pow(10_u128, PRAGMA_DECIMALS);
-
-        let price: u128 = price * pragma_price_scale;
         let response = PricesResponse {
             price: price.into(),
             decimals: PRAGMA_DECIMALS.into(),

@@ -2,7 +2,9 @@ use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution};
+use aura::utils::types::{
+    ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+};
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -20,6 +22,7 @@ trait IShrine {
     fn get_current_rate_era() -> u64;
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
+    fn get_yang_suspension_status(yang: ContractAddress) -> YangSuspensionStatus;
     fn get_yang_threshold(yang: ContractAddress) -> Ray;
     fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;
@@ -46,9 +49,10 @@ trait IShrine {
     fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
     fn melt(user: ContractAddress, trove_id: u64, amount: Wad);
     fn seize(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn redistribute(trove_id: u64);
+    fn redistribute(trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray);
     fn inject(receiver: ContractAddress, amount: Wad);
     fn eject(burner: ContractAddress, amount: Wad);
+    fn update_yang_suspension(yang: ContractAddress, ts: u64);
     // view
     fn get_shrine_threshold_and_value() -> (Ray, Wad);
     fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);
