@@ -1,0 +1,341 @@
+#[starknet::contract]
+mod Shrine {
+    use array::{ArrayTrait, SpanTrait};
+    use cmp::min;
+    use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
+    use option::OptionTrait;
+    use starknet::{get_block_timestamp, get_caller_address};
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
+    use traits::{Into, TryInto};
+    use zeroable::Zeroable;
+
+    //use aura::core::roles::ShrineRoles;
+
+    use aura::interfaces::IShrine::IShrine;
+    use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::exp::{exp, neg_exp};
+    //use aura::utils::storage_access;
+    use aura::utils::types::{
+        ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+    };
+    use aura::utils::wadray;
+    use aura::utils::wadray::{
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE,
+        WAD_SCALE
+    };
+
+    //
+    // Constants
+    //
+
+    // Initial multiplier value to ensure `get_recent_multiplier_from` terminates - (ray): RAY_ONE
+    const INITIAL_MULTIPLIER: u128 = 1000000000000000000000000000;
+    const MAX_MULTIPLIER: u128 = 3000000000000000000000000000; // Max of 3x (ray): 3 * RAY_ONE
+
+    const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
+
+    // If a yang is deemed risky, it can be marked as suspended. During the
+    // SUSPENSION_GRACE_PERIOD, this decision can be reverted and the yang's status
+    // can be changed back to normal. If this does not happen, the yang is
+    // suspended permanently, i.e. can't be used in the system ever again.
+    // The start of a Yang's suspension period is tracked in `yang_suspension`
+    const SUSPENSION_GRACE_PERIOD: u64 = 15768000; // 182.5 days, half a year, in seconds
+
+    // Length of a time interval in seconds
+    const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
+    const TIME_INTERVAL_DIV_YEAR: u128 =
+        57077625570776; // 1 / (48 30-minute intervals per day) / (365 days per year) = 0.000057077625 (wad)
+
+    // Threshold for rounding remaining debt during redistribution (wad): 10**9
+    const ROUNDING_THRESHOLD: u128 = 1000000000;
+
+    // Maximum interest rate a yang can have (ray): RAY_ONE
+    const MAX_YANG_RATE: u128 = 100000000000000000000000000;
+
+    // Flag for setting the yang's new base rate to its previous base rate in `update_rates`
+    // (ray): MAX_YANG_RATE + 1
+    const USE_PREV_BASE_RATE: u128 = 1000000000000000000000000001;
+
+    // Forge fee function parameters
+    const FORGE_FEE_A: u128 = 92103403719761827360719658187; // 92.103403719761827360719658187 (ray)
+    const FORGE_FEE_B: u128 = 55000000000000000; // 0.055 (wad)
+    // The lowest yin spot price where the forge fee will still be zero
+    const MIN_ZERO_FEE_YIN_PRICE: u128 = 995000000000000000; // 0.995 (wad)
+    // The maximum forge fee as a percentage of forge amount
+    const FORGE_FEE_CAP_PCT: u128 = 4000000000000000000; // 400% or 4 (wad)
+    // The maximum deviation before `FORGE_FEE_CAP_PCT` is reached
+    const FORGE_FEE_CAP_PRICE: u128 = 929900000000000000; // 0.9299 (wad)
+
+    // Convenience constant for upward iteration of yangs
+    const START_YANG_IDX: u32 = 1;
+
+    #[storage]
+    struct Storage {
+        // A trove can forge debt up to its threshold depending on the yangs deposited.
+        // (trove_id) -> (Trove)
+        troves: LegacyMap::<u64, Trove>,
+        // Stores the amount of the "yin" (synthetic) each user owns.
+        // (user_address) -> (Yin)
+        yin: LegacyMap::<ContractAddress, Wad>,
+        // Stores information about the total supply for each yang
+        // (yang_id) -> (Total Supply)
+        yang_total: LegacyMap::<u32, Wad>,
+        // Stores information about the initial yang amount minted to the system
+        initial_yang_amts: LegacyMap::<u32, Wad>,
+        // Number of collateral types accepted by the system.
+        // The return value is also the ID of the last added collateral.
+        yangs_count: u32,
+        // Mapping from yang ContractAddress to yang ID.
+        // Yang ID starts at 1.
+        // (yang_address) -> (yang_id)
+        yang_ids: LegacyMap::<ContractAddress, u32>,
+        // Keeps track of how much of each yang has been deposited into each Trove - Wad
+        // (yang_id, trove_id) -> (Amount Deposited)
+        deposits: LegacyMap::<(u32, u64), Wad>,
+        // Total amount of debt accrued
+        total_debt: Wad,
+        // Total amount of synthetic forged
+        total_yin: Wad,
+        // Keeps track of the price history of each Yang
+        // Stores both the actual price and the cumulative price of
+        // the yang at each time interval, both as Wads.
+        // - interval: timestamp divided by TIME_INTERVAL.
+        // (yang_id, interval) -> (price, cumulative_price)
+        yang_prices: LegacyMap::<(u32, u64), (Wad, Wad)>,
+        // Spot price of yin
+        yin_spot_price: Wad,
+        // Maximum amount of debt that can exist at any given time
+        debt_ceiling: Wad,
+        // Global interest rate multiplier
+        // stores both the actual multiplier, and the cumulative multiplier of
+        // the yang at each time interval, both as Rays
+        // (interval) -> (multiplier, cumulative_multiplier)
+        multiplier: LegacyMap::<u64, (Ray, Ray)>,
+        // Keeps track of the most recent rates index.
+        // Rate era starts at 1.
+        // Each index is associated with an update to the interest rates of all yangs.
+        rates_latest_era: u64,
+        // Keeps track of the interval at which the rate update at `era` was made.
+        // (era) -> (interval)
+        rates_intervals: LegacyMap::<u64, u64>,
+        // Keeps track of the interest rate of each yang at each era
+        // (yang_id, era) -> (Interest Rate)
+        yang_rates: LegacyMap::<(u32, u64), Ray>,
+        // Keeps track of when a yang was suspended
+        // 0 means it is not suspended
+        // (yang_id) -> (suspension timestamp)
+        yang_suspension: LegacyMap::<u32, u64>,
+        // Liquidation threshold per yang (as LTV) - Ray
+        // NOTE: don't read the value directly, instead use `get_yang_threshold_internal`
+        //       because a yang might be suspended; the function will return the correct
+        //       threshold value under all circumstances
+        // (yang_id) -> (Liquidation Threshold)
+        thresholds: LegacyMap::<u32, Ray>,
+        // Keeps track of how many redistributions have occurred
+        redistributions_count: u32,
+        // Last redistribution accounted for a trove
+        // (trove_id) -> (Last Redistribution ID)
+        trove_redistribution_id: LegacyMap::<u64, u32>,
+        // Keeps track of whether the redistribution involves at least one yang that
+        // no other troves has deposited.
+        // (redistribution_id) -> (Is exceptional redistribution)
+        is_exceptional_redistribution: LegacyMap::<u32, bool>,
+        // Mapping of yang ID and redistribution ID to
+        // 1. amount of debt in Wad to be redistributed to each Wad unit of yang
+        // 2. amount of debt to be added to the next redistribution to calculate (1)
+        // (yang_id, redistribution_id) -> YangRedistribution{debt_per_wad, debt_to_add_to_next}
+        yang_redistributions: LegacyMap::<(u32, u32), YangRedistribution>,
+        // Mapping of recipient yang ID, redistribution ID and redistributed yang ID to
+        // 1. amount of redistributed yang per Wad unit of recipient yang
+        // 2. amount of debt per Wad unit of recipient yang
+        yang_to_yang_redistribution: LegacyMap::<(u32, u32, u32), ExceptionalYangRedistribution>,
+        // Keeps track of whether shrine is live or killed
+        is_live: bool,
+        // Yin storage
+        yin_name: felt252,
+        yin_symbol: felt252,
+        yin_decimals: u8,
+        // Mapping of user's yin allowance for another user
+        // (user_address, spender_address) -> (Allowance)
+        yin_allowances: LegacyMap::<(ContractAddress, ContractAddress), u256>,
+    }
+
+    //
+    // Events
+    //
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        YangAdded: YangAdded,
+        YangTotalUpdated: YangTotalUpdated,
+        DebtTotalUpdated: DebtTotalUpdated,
+        YangsCountUpdated: YangsCountUpdated,
+        MultiplierUpdated: MultiplierUpdated,
+        YangRatesUpdated: YangRatesUpdated,
+        ThresholdUpdated: ThresholdUpdated,
+        ForgeFeePaid: ForgeFeePaid,
+        TroveUpdated: TroveUpdated,
+        TroveRedistributed: TroveRedistributed,
+        DepositUpdated: DepositUpdated,
+        YangPriceUpdated: YangPriceUpdated,
+        YinPriceUpdated: YinPriceUpdated,
+        DebtCeilingUpdated: DebtCeilingUpdated,
+        Killed: Killed,
+        Transfer: Transfer,
+        Approval: Approval,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YangAdded {
+        yang: ContractAddress,
+        yang_id: u32,
+        start_price: Wad,
+        initial_rate: Ray
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YangTotalUpdated {
+        yang: ContractAddress,
+        total: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct DebtTotalUpdated {
+        total: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YangsCountUpdated {
+        count: u32
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct MultiplierUpdated {
+        multiplier: Ray,
+        cumulative_multiplier: Ray,
+        interval: u64
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YangRatesUpdated {
+        new_rate_idx: u64,
+        current_interval: u64,
+        yangs: Span<ContractAddress>,
+        new_rates: Span<Ray>
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct ThresholdUpdated {
+        yang: ContractAddress,
+        threshold: Ray
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct ForgeFeePaid {
+        trove_id: u64,
+        fee: Wad,
+        fee_pct: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct TroveUpdated {
+        trove_id: u64,
+        trove: Trove
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct TroveRedistributed {
+        redistribution_id: u32,
+        trove_id: u64,
+        debt: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct DepositUpdated {
+        yang: ContractAddress,
+        trove_id: u64,
+        amount: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YangPriceUpdated {
+        yang: ContractAddress,
+        price: Wad,
+        cumulative_price: Wad,
+        interval: u64
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YinPriceUpdated {
+        old_price: Wad,
+        new_price: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct DebtCeilingUpdated {
+        ceiling: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Killed {}
+
+    // ERC20 events
+
+    #[derive(Drop, starknet::Event)]
+    struct Transfer {
+        from: ContractAddress,
+        to: ContractAddress,
+        value: u256
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Approval {
+        owner: ContractAddress,
+        spender: ContractAddress,
+        value: u256
+    }
+
+    //
+    // Public AccessControl functions
+    //
+
+    #[external(v0)]
+    impl ShrineAccessControl of IAccessControl<ContractState> {
+        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
+            AccessControl::get_roles(account)
+        }
+
+        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
+            AccessControl::has_role(role, account)
+        }
+
+        fn get_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_admin()
+        }
+
+        fn get_pending_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_pending_admin()
+        }
+
+        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::grant_role(role, account);
+        }
+
+        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::revoke_role(role, account);
+        }
+
+        fn renounce_role(ref self: ContractState, role: u128) {
+            AccessControl::renounce_role(role);
+        }
+
+        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
+            AccessControl::set_pending_admin(new_admin);
+        }
+
+        fn accept_admin(ref self: ContractState) {
+            AccessControl::accept_admin();
+        }
+    }
+}
