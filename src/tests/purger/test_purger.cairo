@@ -116,7 +116,7 @@ mod TestPurger {
     #[available_gas(20000000000)]
     fn test_penalty_scalar_lower_bound() {
         let (shrine, abbot, mock_pragma, _, purger, yangs, gates) = PurgerUtils::purger_deploy();
-        
+
         PurgerUtils::create_whale_trove(abbot, yangs, gates);
 
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
@@ -124,7 +124,7 @@ mod TestPurger {
         let target_trove: u64 = PurgerUtils::funded_healthy_trove(
             abbot, yangs, gates, PurgerUtils::TARGET_TROVE_YIN.into()
         );
-        
+
         // Set thresholds to 90% so we can check the scalar is not applied to the penalty
         let threshold: Ray = (90 * RAY_PERCENT).into();
         PurgerUtils::set_thresholds(shrine, yangs, threshold);
@@ -961,6 +961,11 @@ mod TestPurger {
                                                 // Accrue some interest
                                                 common::advance_intervals(500);
 
+                                                let whale_trove: u64 =
+                                                    PurgerUtils::create_whale_trove(
+                                                    abbot, yangs, gates
+                                                );
+
                                                 let (_, _, start_value, before_debt) = shrine
                                                     .get_trove_info(target_trove);
                                                 let accrued_interest: Wad = before_debt
@@ -1047,6 +1052,15 @@ mod TestPurger {
                                                     gates,
                                                     absorber_start_yin,
                                                 );
+                                                set_contract_address(target_trove_owner);
+                                                abbot.close_trove(whale_trove);
+
+                                                let (tmp_threshold, _, _, _) = shrine
+                                                    .get_trove_info(target_trove);
+                                                assert(
+                                                    tmp_threshold == *threshold, 'in recovery mode'
+                                                );
+
                                                 let (
                                                     _,
                                                     _,
