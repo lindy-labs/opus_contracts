@@ -50,6 +50,10 @@ mod Shrine {
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
     const ROUNDING_THRESHOLD: u128 = 1000000000;
 
+    // Minimum amount of yang that must be in recipient troves when for ordinary
+    // redistribution of yang to occur to prevent overflow (wad): WAD_ONE
+    const MIN_RECIPIENT_POOL_YANG: u128 = 1000000000000000000;
+
     // Maximum interest rate a yang can have (ray): RAY_ONE
     const MAX_YANG_RATE: u128 = 100000000000000000000000000;
 
@@ -1432,11 +1436,10 @@ mod Shrine {
                     // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
                     //
                     // The minimum remainder amount is required to prevent overflow when calculating 
-                    // `unit_yang_per_recipient_redistributed_yang` below, and to prevent 
-                    // `updated_trove_yang_balance` from being incorrectly zeroed when 
-                    // `unit_yang_per_recipient_redistributed_yang` is a very large value.
+                    // `unit_yang_per_recipient_yang` below, and to prevent `updated_trove_yang_balance` 
+                    // from being incorrectly zeroed when `unit_yang_per_recipient_yang` is a very large value.
                     let is_ordinary_redistribution: bool =
-                        redistributed_yang_recipient_pool >= WAD_ONE
+                        redistributed_yang_recipient_pool >= MIN_RECIPIENT_POOL_YANG
                         .into();
                     if is_ordinary_redistribution {
                         // Since the amount of assets in the Gate remains constant, decrementing the system's yang
@@ -1454,19 +1457,19 @@ mod Shrine {
                         // Therefore, we need to adjust the remainder yang amount of the redistributed trove according to
                         // this formula below to offset the appreciation from rebasing for the redistributed trove:
                         //
-                        //                                            remaining_trove_yang
-                        // adjusted_remaining_trove_yang = ---------------------------------------
-                        //                                 (1 + unit_yang_per_recipient_pool_yang)
+                        //                                        remaining_trove_yang
+                        // adjusted_remaining_trove_yang = ----------------------------------
+                        //                                 (1 + unit_yang_per_recipient_yang)
                         //
-                        // where `unit_yang_per_recipient_pool_yang` is the amount of redistributed yang to be redistributed
+                        // where `unit_yang_per_recipient_yang` is the amount of redistributed yang to be redistributed
                         // to each Wad unit in `redistributed_yang_recipient_pool + redistributed_yang_initial_amt` - note 
                         // that the initial yang amount needs to be included because it also benefits from the rebasing:
                         //
-                        //                                                          yang_amt_to_redistribute
-                        // unit_yang_per_recipient_redistributed_yang = ------------------------------------------------------------------
-                        //                                              redistributed_yang_recipient_pool + redistributed_yang_initial_amt
+                        //                                                      yang_amt_to_redistribute
+                        // unit_yang_per_recipient_yang = ------------------------------------------------------------------
+                        //                                redistributed_yang_recipient_pool + redistributed_yang_initial_amt
 
-                        let unit_yang_per_recipient_redistributed_yang: Ray = wadray::rdiv_ww(
+                        let unit_yang_per_recipient_yang: Ray = wadray::rdiv_ww(
                             yang_amt_to_redistribute,
                             (redistributed_yang_recipient_pool + redistributed_yang_initial_amt)
                         );
@@ -1474,7 +1477,7 @@ mod Shrine {
                         updated_trove_yang_balance =
                             wadray::rdiv_wr(
                                 remaining_trove_yang,
-                                (RAY_ONE.into() + unit_yang_per_recipient_redistributed_yang)
+                                (RAY_ONE.into() + unit_yang_per_recipient_yang)
                             );
 
                         // Note that the trove's deposit and total supply are updated after this loop.
