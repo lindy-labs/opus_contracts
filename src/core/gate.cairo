@@ -152,12 +152,7 @@ mod Gate {
                 .read()
                 .transfer_from(user, get_contract_address(), asset_amt.into());
             assert(success, 'GA: Asset transfer failed');
-            self
-                .emit(
-                    Enter {
-                        user: user, trove_id: trove_id, asset_amt: asset_amt, yang_amt: yang_amt
-                    }
-                );
+            self.emit(Enter { user, trove_id, asset_amt, yang_amt });
 
             yang_amt
         }
@@ -178,12 +173,7 @@ mod Gate {
             let success: bool = self.asset.read().transfer(user, asset_amt.into());
             assert(success, 'GA: Asset transfer failed');
 
-            self
-                .emit(
-                    Exit {
-                        user: user, trove_id: trove_id, asset_amt: asset_amt, yang_amt: yang_amt
-                    }
-                );
+            self.emit(Exit { user, trove_id, asset_amt, yang_amt });
 
             asset_amt
         }
