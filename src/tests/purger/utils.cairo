@@ -21,7 +21,7 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{
         Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
@@ -503,7 +503,7 @@ mod PurgerUtils {
         pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
-        let scale: u128 = pow10(WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
+        let scale: u128 = pow(10_u128, WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
