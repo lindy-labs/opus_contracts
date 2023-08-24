@@ -11,6 +11,7 @@ mod Shrine {
 
     //use aura::core::roles::ShrineRoles;
 
+    use aura::interfaces::IERC20::IERC20;
     use aura::interfaces::IShrine::IShrine;
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::exp::{exp, neg_exp};
@@ -298,11 +299,114 @@ mod Shrine {
     }
 
     //
+    // Public ERC20 functions
+    //
+
+    #[external(v0)]
+    impl IERC20Impl of IERC20<ContractState> {
+        // ERC20 getters
+        fn name(self: @ContractState) -> felt252 {
+            self.yin_name.read()
+        }
+
+        fn symbol(self: @ContractState) -> felt252 {
+            self.yin_symbol.read()
+        }
+
+        fn decimals(self: @ContractState) -> u8 {
+            self.yin_decimals.read()
+        }
+
+        fn total_supply(self: @ContractState) -> u256 {
+            self.total_yin.read().val.into()
+        }
+
+        fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
+            self.yin.read(account).val.into()
+        }
+
+        fn allowance(
+            self: @ContractState, owner: ContractAddress, spender: ContractAddress
+        ) -> u256 {
+            self.yin_allowances.read((owner, spender))
+        }
+
+        // ERC20 public functions
+        fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
+            self.transfer_internal(get_caller_address(), recipient, amount);
+            true
+        }
+
+        fn transfer_from(
+            ref self: ContractState,
+            sender: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256
+        ) -> bool {
+            self.spend_allowance_internal(sender, get_caller_address(), amount);
+            self.transfer_internal(sender, recipient, amount);
+            true
+        }
+
+        fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
+            self.approve_internal(get_caller_address(), spender, amount);
+            true
+        }
+    }
+
+    //
+    // Internal ERC20 functions
+    //
+
+    #[generate_trait]
+    impl ERC20InternalFunctions of ERC20InternalTrait {
+        fn transfer_internal(
+            ref self: ContractState,
+            sender: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256
+        ) {
+            assert(recipient.is_non_zero(), 'SH: No transfer to 0 address');
+
+            let amount_wad: Wad = Wad { val: amount.try_into().unwrap() };
+
+            // Transferring the Yin
+            self.yin.write(sender, self.yin.read(sender) - amount_wad);
+            self.yin.write(recipient, self.yin.read(recipient) + amount_wad);
+
+            self.emit(Transfer { from: sender, to: recipient, value: amount });
+        }
+
+        fn approve_internal(
+            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
+        ) {
+            assert(spender.is_non_zero(), 'SH: No approval of 0 address');
+            assert(owner.is_non_zero(), 'SH: No approval for 0 address');
+
+            self.yin_allowances.write((owner, spender), amount);
+
+            self.emit(Approval { owner: owner, spender: spender, value: amount });
+        }
+
+        fn spend_allowance_internal(
+            ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
+        ) {
+            let current_allowance: u256 = self.yin_allowances.read((owner, spender));
+
+            // if current_allowance is not set to the maximum u256, then
+            // subtract `amount` from spender's allowance.
+            if current_allowance != BoundedU256::max() {
+                self.approve_internal(owner, spender, current_allowance - amount);
+            }
+        }
+    }
+
+    //
     // Public AccessControl functions
     //
 
     #[external(v0)]
-    impl ShrineAccessControl of IAccessControl<ContractState> {
+    impl IAccessControlImpl of IAccessControl<ContractState> {
         fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
             AccessControl::get_roles(account)
         }
