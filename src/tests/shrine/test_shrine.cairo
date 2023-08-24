@@ -21,7 +21,8 @@ mod TestShrine {
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
+        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE,
+        WAD_SCALE
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
@@ -482,9 +483,7 @@ mod TestShrine {
 
         shrine
             .deposit(
-                ShrineUtils::yang1_addr(),
-                common::TROVE_1,
-                ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+                ShrineUtils::yang1_addr(), common::TROVE_1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
             );
     }
 
@@ -586,9 +585,7 @@ mod TestShrine {
 
         shrine
             .withdraw(
-                ShrineUtils::yang1_addr(),
-                common::TROVE_1,
-                ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+                ShrineUtils::yang1_addr(), common::TROVE_1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
             );
     }
 
@@ -641,7 +638,8 @@ mod TestShrine {
         );
         // Amount of yang to be withdrawn to decrease the trove's value to unsafe
         // `WAD_SCALE` is added to account for loss of precision from fixed point division
-        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price + WAD_SCALE.into();
+        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price
+            + WAD_SCALE.into();
         set_contract_address(ShrineUtils::admin());
         shrine.withdraw(ShrineUtils::yang1_addr(), common::TROVE_1, unsafe_withdraw_yang_amt);
     }
@@ -692,7 +690,13 @@ mod TestShrine {
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         set_contract_address(ShrineUtils::admin());
 
-        shrine.forge(ShrineUtils::common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), 0_u128.into());
+        shrine
+            .forge(
+                ShrineUtils::common::trove3_owner_addr(),
+                common::TROVE_3,
+                1_u128.into(),
+                0_u128.into()
+            );
     }
 
     #[test]
@@ -765,7 +769,10 @@ mod TestShrine {
 
         let fee_pct: Wad = shrine.get_forge_fee_pct();
 
-        assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee_pct), 'incorrect max forge amt');
+        assert(
+            after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee_pct),
+            'incorrect max forge amt'
+        );
 
         shrine.forge(trove1_owner, common::TROVE_1, forge_amt, fee_pct);
 
@@ -800,7 +807,10 @@ mod TestShrine {
         shrine.update_yin_spot_price(yin_price2);
 
         // Should revert since the forge fee exceeds the maximum set by the frontend
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct);
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct
+            );
     }
 
     //
@@ -987,7 +997,10 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+            );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
@@ -1010,7 +1023,10 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+            );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
@@ -1032,7 +1048,10 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+            );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
@@ -1098,8 +1117,14 @@ mod TestShrine {
         // Authorizing an address and testing that it can use authorized functions
         set_contract_address(admin);
         shrine_accesscontrol.grant_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
-        assert(shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin), 'role not granted');
-        assert(shrine_accesscontrol.get_roles(new_admin) == ShrineRoles::SET_DEBT_CEILING, 'role not granted');
+        assert(
+            shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin),
+            'role not granted'
+        );
+        assert(
+            shrine_accesscontrol.get_roles(new_admin) == ShrineRoles::SET_DEBT_CEILING,
+            'role not granted'
+        );
 
         set_contract_address(new_admin);
         let new_ceiling: Wad = (WAD_SCALE + 1).into();
@@ -1109,7 +1134,10 @@ mod TestShrine {
         // Revoking an address
         set_contract_address(admin);
         shrine_accesscontrol.revoke_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
-        assert(!shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin), 'role not revoked');
+        assert(
+            !shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin),
+            'role not revoked'
+        );
         assert(shrine_accesscontrol.get_roles(new_admin) == 0, 'role not revoked');
     }
 
@@ -1192,8 +1220,7 @@ mod TestShrine {
         shrine.inject(trove1_owner, inject_amt);
 
         assert(
-            yin.total_supply() == before_total_supply + inject_amt.into(),
-            'incorrect total supply'
+            yin.total_supply() == before_total_supply + inject_amt.into(), 'incorrect total supply'
         );
         assert(
             yin.balance_of(trove1_owner) == before_user_bal + inject_amt.val.into(),
@@ -1428,16 +1455,21 @@ mod TestShrine {
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
         shrine.update_yin_spot_price(second_yin_price);
-        common::assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
+        common::assert_equalish(
+            shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2'
+        );
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
-        common::assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
+        common::assert_equalish(
+            shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3'
+        );
 
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_spot_price(fourth_yin_price);
-        assert(shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4');
-
+        assert(
+            shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4'
+        );
     }
 
     //
