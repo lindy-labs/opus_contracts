@@ -7,6 +7,7 @@ mod TestPurger {
     use traits::Into;
     use zeroable::Zeroable;
 
+    use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
     use aura::core::roles::PurgerRoles;
 
@@ -648,7 +649,7 @@ mod TestPurger {
                             Option::Some(yang_asset_amts) => {
                                 let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
                                 let mut absorber_yin_cases: Span<Wad> =
-                                    PurgerUtils::generate_absorber_yin_cases(
+                                    PurgerUtils::generate_operational_absorber_yin_cases(
                                     initial_trove_debt
                                 );
 
@@ -1033,7 +1034,7 @@ mod TestPurger {
                                                     (max_close_amt.val / 3).into()
                                                 } else {
                                                     if absorber_yin_idx == 1 {
-                                                        1000_u128.into()
+                                                        Absorber::MINIMUM_SHARES.into()
                                                     } else {
                                                         (max_close_amt.val - 1).into()
                                                     }
@@ -1310,153 +1311,219 @@ mod TestPurger {
                     loop {
                         match recipient_trove_yang_asset_amts_cases.pop_front() {
                             Option::Some(yang_asset_amts) => {
-                                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
-                                    PurgerUtils::purger_deploy();
-                                let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
-                                let target_trove_owner: ContractAddress =
-                                    PurgerUtils::target_trove_owner();
-                                common::fund_user(
-                                    target_trove_owner, yangs, *target_trove_yang_asset_amts
-                                );
-                                let target_trove: u64 = common::open_trove_helper(
-                                    abbot,
-                                    target_trove_owner,
-                                    yangs,
-                                    *target_trove_yang_asset_amts,
-                                    gates,
-                                    PurgerUtils::TARGET_TROVE_YIN.into()
-                                );
+                                let mut absorber_yin_cases: Span<Wad> =
+                                    PurgerUtils::inoperational_absorber_yin_cases();
+                                loop {
+                                    match absorber_yin_cases.pop_front() {
+                                        Option::Some(absorber_start_yin) => {
+                                            let (
+                                                shrine,
+                                                abbot,
+                                                mock_pragma,
+                                                absorber,
+                                                purger,
+                                                yangs,
+                                                gates
+                                            ) =
+                                                PurgerUtils::purger_deploy();
+                                            let initial_trove_debt: Wad =
+                                                PurgerUtils::TARGET_TROVE_YIN
+                                                .into();
+                                            let target_trove_owner: ContractAddress =
+                                                PurgerUtils::target_trove_owner();
+                                            common::fund_user(
+                                                target_trove_owner,
+                                                yangs,
+                                                *target_trove_yang_asset_amts
+                                            );
+                                            let target_trove: u64 = common::open_trove_helper(
+                                                abbot,
+                                                target_trove_owner,
+                                                yangs,
+                                                *target_trove_yang_asset_amts,
+                                                gates,
+                                                PurgerUtils::TARGET_TROVE_YIN.into()
+                                            );
 
-                                // Accrue some interest
-                                common::advance_intervals(500);
+                                            // Accrue some interest
+                                            common::advance_intervals(500);
 
-                                let recipient_trove_owner: ContractAddress =
-                                    AbsorberUtils::provider_1();
-                                common::fund_user(recipient_trove_owner, yangs, *yang_asset_amts);
-                                let recipient_trove: u64 = common::open_trove_helper(
-                                    abbot,
-                                    recipient_trove_owner,
-                                    yangs,
-                                    *yang_asset_amts,
-                                    gates,
-                                    WadZeroable::zero()
-                                );
+                                            let (
+                                                _,
+                                                _,
+                                                before_target_trove_value,
+                                                before_target_trove_debt
+                                            ) =
+                                                shrine
+                                                .get_trove_info(target_trove);
+                                            let accrued_interest: Wad = before_target_trove_debt
+                                                - initial_trove_debt;
+                                            // Sanity check that some interest has accrued
+                                            assert(
+                                                accrued_interest.is_non_zero(),
+                                                'no interest accrued'
+                                            );
 
-                                let before_total_debt: Wad = shrine.get_total_debt();
-                                let (_, _, before_target_trove_value, before_target_trove_debt) =
-                                    shrine
-                                    .get_trove_info(target_trove);
-                                let accrued_interest: Wad = before_target_trove_debt
-                                    - initial_trove_debt;
-                                // Sanity check that some interest has accrued
-                                assert(accrued_interest.is_non_zero(), 'no interest accrued');
+                                            let recipient_trove_owner: ContractAddress =
+                                                AbsorberUtils::provider_1();
+                                            let recipient_trove: u64 =
+                                                AbsorberUtils::provide_to_absorber(
+                                                shrine,
+                                                abbot,
+                                                absorber,
+                                                recipient_trove_owner,
+                                                yangs,
+                                                *yang_asset_amts,
+                                                gates,
+                                                *absorber_start_yin,
+                                            );
 
-                                let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
-                                PurgerUtils::adjust_prices_for_trove_ltv(
-                                    shrine,
-                                    mock_pragma,
-                                    yangs,
-                                    yang_pair_ids,
-                                    before_target_trove_value,
-                                    before_target_trove_debt,
-                                    target_ltv
-                                );
+                                            let before_total_debt: Wad = shrine.get_total_debt();
 
-                                let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
-                                let (_, _, before_recipient_trove_value, _) = shrine
-                                    .get_trove_info(recipient_trove);
+                                            let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1)
+                                                .into();
+                                            PurgerUtils::adjust_prices_for_trove_ltv(
+                                                shrine,
+                                                mock_pragma,
+                                                yangs,
+                                                yang_pair_ids,
+                                                before_target_trove_value,
+                                                before_target_trove_debt,
+                                                target_ltv
+                                            );
 
-                                PurgerUtils::assert_trove_is_absorbable(
-                                    shrine, purger, target_trove, ltv
-                                );
+                                            let (_, ltv, before_value, _) = shrine
+                                                .get_trove_info(target_trove);
+                                            let (
+                                                _,
+                                                _,
+                                                before_recipient_trove_value,
+                                                before_recipient_trove_debt
+                                            ) =
+                                                shrine
+                                                .get_trove_info(recipient_trove);
 
-                                let caller: ContractAddress = PurgerUtils::random_user();
-                                let before_caller_asset_bals: Span<Span<u128>> =
-                                    common::get_token_balances(
-                                    yangs, caller.into()
-                                );
-                                let (_, _, expected_compensation_value) = purger
-                                    .preview_absorb(target_trove);
+                                            PurgerUtils::assert_trove_is_absorbable(
+                                                shrine, purger, target_trove, ltv
+                                            );
 
-                                set_contract_address(caller);
-                                let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+                                            let caller: ContractAddress =
+                                                PurgerUtils::random_user();
+                                            let before_caller_asset_bals: Span<Span<u128>> =
+                                                common::get_token_balances(
+                                                yangs, caller.into()
+                                            );
+                                            let (_, _, expected_compensation_value) = purger
+                                                .preview_absorb(target_trove);
 
-                                // Assert that total debt includes accrued interest on liquidated trove
-                                let after_total_debt: Wad = shrine.get_total_debt();
-                                assert(
-                                    after_total_debt == before_total_debt + accrued_interest,
-                                    'wrong total debt'
-                                );
+                                            set_contract_address(caller);
+                                            let compensation: Span<AssetBalance> = purger
+                                                .absorb(target_trove);
 
-                                // Check that caller has received compensation
-                                let expected_compensation_amts: Span<u128> =
-                                    PurgerUtils::get_expected_compensation_assets(
-                                    *target_trove_yang_asset_amts,
-                                    before_value,
-                                    expected_compensation_value
-                                );
-                                let expected_compensation: Span<AssetBalance> =
-                                    common::combine_assets_and_amts(
-                                    yangs, expected_compensation_amts
-                                );
-                                PurgerUtils::assert_received_assets(
-                                    before_caller_asset_bals,
-                                    common::get_token_balances(yangs, caller.into()),
-                                    expected_compensation,
-                                    10_u128, // error margin
-                                    'wrong caller asset balance',
-                                );
+                                            // Assert that total debt includes accrued interest on liquidated trove
+                                            let after_total_debt: Wad = shrine.get_total_debt();
+                                            assert(
+                                                after_total_debt == before_total_debt
+                                                    + accrued_interest,
+                                                'wrong total debt'
+                                            );
 
-                                common::assert_asset_balances_equalish(
-                                    compensation,
-                                    expected_compensation,
-                                    10_u128, // error margin
-                                    'wrong freed asset amount'
-                                );
+                                            // Check that caller has received compensation
+                                            let expected_compensation_amts: Span<u128> =
+                                                PurgerUtils::get_expected_compensation_assets(
+                                                *target_trove_yang_asset_amts,
+                                                before_value,
+                                                expected_compensation_value
+                                            );
+                                            let expected_compensation: Span<AssetBalance> =
+                                                common::combine_assets_and_amts(
+                                                yangs, expected_compensation_amts
+                                            );
+                                            PurgerUtils::assert_received_assets(
+                                                before_caller_asset_bals,
+                                                common::get_token_balances(yangs, caller.into()),
+                                                expected_compensation,
+                                                10_u128, // error margin
+                                                'wrong caller asset balance',
+                                            );
 
-                                let (_, ltv, after_target_trove_value, after_target_trove_debt) =
-                                    shrine
-                                    .get_trove_info(target_trove);
-                                assert(shrine.is_healthy(target_trove), 'should be healthy');
-                                assert(ltv.is_zero(), 'LTV should be 0');
-                                assert(after_target_trove_value.is_zero(), 'value should be 0');
-                                assert(after_target_trove_debt.is_zero(), 'debt should be 0');
+                                            common::assert_asset_balances_equalish(
+                                                compensation,
+                                                expected_compensation,
+                                                10_u128, // error margin
+                                                'wrong freed asset amount'
+                                            );
 
-                                // Check no absorption occured
-                                assert(
-                                    absorber.get_absorptions_count() == 0, 'wrong absorptions count'
-                                );
+                                            let (
+                                                _,
+                                                ltv,
+                                                after_target_trove_value,
+                                                after_target_trove_debt
+                                            ) =
+                                                shrine
+                                                .get_trove_info(target_trove);
+                                            assert(
+                                                shrine.is_healthy(target_trove), 'should be healthy'
+                                            );
+                                            assert(ltv.is_zero(), 'LTV should be 0');
+                                            assert(
+                                                after_target_trove_value.is_zero(),
+                                                'value should be 0'
+                                            );
+                                            assert(
+                                                after_target_trove_debt.is_zero(),
+                                                'debt should be 0'
+                                            );
 
-                                // Check redistribution occured
-                                assert(
-                                    shrine.get_redistributions_count() == 1,
-                                    'wrong redistributions count'
-                                );
+                                            // Check no absorption occured
+                                            assert(
+                                                absorber.get_absorptions_count() == 0,
+                                                'wrong absorptions count'
+                                            );
 
-                                // Check recipient trove's value and debt
-                                let (
-                                    _, _, after_recipient_trove_value, after_recipient_trove_debt
-                                ) =
-                                    shrine
-                                    .get_trove_info(recipient_trove);
-                                common::assert_equalish(
-                                    after_recipient_trove_debt,
-                                    before_target_trove_debt,
-                                    (WAD_ONE / 100).into(), // error margin
-                                    'wrong recipient trove debt'
-                                );
+                                            // Check redistribution occured
+                                            assert(
+                                                shrine.get_redistributions_count() == 1,
+                                                'wrong redistributions count'
+                                            );
 
-                                let redistributed_value: Wad = before_value
-                                    - expected_compensation_value;
-                                let expected_recipient_trove_value: Wad =
-                                    before_recipient_trove_value
-                                    + redistributed_value;
-                                common::assert_equalish(
-                                    after_recipient_trove_value,
-                                    expected_recipient_trove_value,
-                                    (WAD_ONE / 100).into(), // error margin
-                                    'wrong recipient trove value'
-                                );
+                                            // Check recipient trove's value and debt
+                                            let (
+                                                _,
+                                                _,
+                                                after_recipient_trove_value,
+                                                after_recipient_trove_debt
+                                            ) =
+                                                shrine
+                                                .get_trove_info(recipient_trove);
+                                            let expected_recipient_trove_debt: Wad =
+                                                before_recipient_trove_debt
+                                                + before_target_trove_debt;
+
+                                            common::assert_equalish(
+                                                after_recipient_trove_debt,
+                                                expected_recipient_trove_debt,
+                                                (WAD_ONE / 100).into(), // error margin
+                                                'wrong recipient trove debt'
+                                            );
+
+                                            let redistributed_value: Wad = before_value
+                                                - expected_compensation_value;
+                                            let expected_recipient_trove_value: Wad =
+                                                before_recipient_trove_value
+                                                + redistributed_value;
+                                            common::assert_equalish(
+                                                after_recipient_trove_value,
+                                                expected_recipient_trove_value,
+                                                (WAD_ONE / 100).into(), // error margin
+                                                'wrong recipient trove value'
+                                            );
+                                        },
+                                        Option::None(_) => {
+                                            break;
+                                        },
+                                    };
+                                };
                             },
                             Option::None(_) => {
                                 break;

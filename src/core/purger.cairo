@@ -239,11 +239,13 @@ mod Purger {
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
 
-        let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
-
-        // If absorber does not have sufficient yin balance to pay down the trove's debt in full,
-        // cap the amount to pay down to the absorber's balance (including if it is zero).
-        let purge_amt = min(max_purge_amt, absorber_yin_bal);
+        // If the absorber is operational, cap the purge amount to the absorber's balance 
+        // (including if it is zero).
+        let purge_amt = if absorber.is_operational() {
+            min(max_purge_amt, shrine.get_yin(absorber.contract_address))
+        } else {
+            WadZeroable::zero()
+        };
 
         // Transfer a percentage of the penalty to the caller as compensation
         let compensation_assets: Span<AssetBalance> = free(
