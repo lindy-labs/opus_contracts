@@ -239,8 +239,6 @@ mod Purger {
         let caller: ContractAddress = get_caller_address();
         let absorber: IAbsorberDispatcher = absorber::read();
 
-        let absorber_yin_bal: Wad = shrine.get_yin(absorber.contract_address);
-
         // If the absorber is operational, cap the purge amount to the absorber's balance 
         // (including if it is zero).
         let purge_amt = if absorber.is_operational() {
