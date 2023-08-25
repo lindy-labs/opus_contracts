@@ -1,6 +1,7 @@
 use starknet::ContractAddress;
 
 use aura::utils::serde;
+use aura::utils::types::AssetBalance;
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -12,8 +13,6 @@ trait IPurger {
     fn get_penalty_scalar() -> Ray;
     // external
     fn set_penalty_scalar(new_scalar: Ray);
-    fn liquidate(
-        trove_id: u64, amt: Wad, recipient: ContractAddress
-    ) -> (Span<ContractAddress>, Span<u128>);
-    fn absorb(trove_id: u64) -> (Span<ContractAddress>, Span<u128>);
+    fn liquidate(trove_id: u64, amt: Wad, recipient: ContractAddress) -> Span<AssetBalance>;
+    fn absorb(trove_id: u64) -> Span<AssetBalance>;
 }

@@ -21,6 +21,7 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::utils::types::AssetBalance;
     use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{
@@ -628,13 +629,13 @@ mod PurgerUtils {
     fn assert_received_assets(
         mut before_asset_bals: Span<Span<u128>>,
         mut after_asset_bals: Span<Span<u128>>,
-        mut expected_freed_asset_amts: Span<u128>,
+        mut expected_freed_assets: Span<AssetBalance>,
         error_margin: u128,
         message: felt252
     ) {
         loop {
-            match expected_freed_asset_amts.pop_front() {
-                Option::Some(expected_freed_asset_amt) => {
+            match expected_freed_assets.pop_front() {
+                Option::Some(expected_freed_asset) => {
                     let mut before_asset_bal_arr: Span<u128> = *before_asset_bals
                         .pop_front()
                         .unwrap();
@@ -646,7 +647,8 @@ mod PurgerUtils {
                     let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
                     let expected_after_asset_bal: u128 = before_asset_bal
-                        + *expected_freed_asset_amt;
+                        + *expected_freed_asset.amount;
+
                     common::assert_equalish(
                         after_asset_bal, expected_after_asset_bal, error_margin, message, 
                     );
