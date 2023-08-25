@@ -51,7 +51,7 @@ mod Shrine {
     const ROUNDING_THRESHOLD: u128 = 1000000000;
 
     // Minimum amount of yang that must be in recipient troves for ordinary
-    // redistribution of yang to occur to prevent overflow (wad): WAD_ONE
+    // redistribution of yang to occur without overflow (wad): WAD_ONE
     const MIN_RECIPIENT_POOL_YANG: u128 = 1000000000000000000;
 
     // Maximum interest rate a yang can have (ray): RAY_ONE
