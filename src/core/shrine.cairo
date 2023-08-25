@@ -1260,8 +1260,6 @@ mod Shrine {
         pct_value_to_redistribute: Ray,
         current_interval: u64
     ) {
-        let yang_totals: Span<YangBalance> = get_shrine_deposits();
-
         // For exceptional redistribution of yangs (i.e. not deposited by any other troves, and
         // which may be the first yang or the last yang), we need the total yang supply for all
         // yangs (regardless how they are to be redistributed) to remain constant throughout the
@@ -1326,6 +1324,7 @@ mod Shrine {
             trove_value, pct_value_to_redistribute
         );
 
+        let yang_totals: Span<YangBalance> = get_shrine_deposits();
         let (_, shrine_value) = get_threshold_and_value(yang_totals, current_interval);
         // Note the initial yang amount is not excluded from the value of all other troves
         // here (it will also be more expensive if we want to do so). Therefore, when
