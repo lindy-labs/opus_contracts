@@ -50,7 +50,7 @@ mod Shrine {
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
     const ROUNDING_THRESHOLD: u128 = 1000000000;
 
-    // Minimum amount of yang that must be in recipient troves when for ordinary
+    // Minimum amount of yang that must be in recipient troves for ordinary
     // redistribution of yang to occur to prevent overflow (wad): WAD_ONE
     const MIN_RECIPIENT_POOL_YANG: u128 = 1000000000000000000;
 
@@ -1429,15 +1429,16 @@ mod Shrine {
                     let mut debt_error: Wad = WadZeroable::zero();
                     let mut is_exception: bool = false;
 
-                    // If there is some remainder amount of yangs that is at least 1 Wad in other troves
-                    // for redistribution, handle it as an ordinary redistribution by redistributing
-                    //  yangs by rebasing, and reallocating debt to other troves with the same yang. 
+                    // If there is at least `MIN_RECIPIENT_POOL_YANG` amount of yang in other troves,
+                    // handle it as an ordinary redistribution by rebasing the redistributed yang, and 
+                    // reallocating debt to other troves with the same yang. The minimum remainder amount 
+                    // is required to prevent overflow when calculating `unit_yang_per_recipient_yang` below, 
+                    // and to prevent `updated_trove_yang_balance` from being incorrectly zeroed when 
+                    // `unit_yang_per_recipient_yang` is a very large value.
+                    //
                     // This is expected to be the common case.
                     // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
-                    //
-                    // The minimum remainder amount is required to prevent overflow when calculating 
-                    // `unit_yang_per_recipient_yang` below, and to prevent `updated_trove_yang_balance` 
-                    // from being incorrectly zeroed when `unit_yang_per_recipient_yang` is a very large value.
+
                     let is_ordinary_redistribution: bool =
                         redistributed_yang_recipient_pool >= MIN_RECIPIENT_POOL_YANG
                         .into();
@@ -1805,9 +1806,9 @@ mod Shrine {
                             (*original_yang_balance.yang_id, tmp_redistribution_id)
                         );
                         // If the trove has deposited a yang, check for ordinary redistribution first.
-                        // Note that we cannot skip to the next yang because we still need to check 
-                        // for exceptional redistribution in case the recipient pool amount was below the 
-                        // redistribution threshold.
+                        // Note that we cannot skip to the next yang at the end of this `if` block because 
+                        // we still need to check for exceptional redistribution in case the recipient pool 
+                        // amount was below `MIN_RECIPIENT_POOL_YANG`.
                         if (*original_yang_balance.amount).is_non_zero() {
                             // Get the amount of debt per yang for the current redistribution
                             if redistribution.unit_debt.is_non_zero() {
