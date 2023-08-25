@@ -42,6 +42,15 @@ mod CaretakerRoles {
     }
 }
 
+mod ControllerRoles {
+    const TUNE_CONTROLLER: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        TUNE_CONTROLLER
+    }
+}
+
 mod EqualizerRoles {
     const SET_ALLOCATOR: u128 = 1;
 
@@ -84,6 +93,7 @@ mod SentinelRoles {
     const EXIT: u128 = 4;
     const KILL_GATE: u128 = 8;
     const SET_YANG_ASSET_MAX: u128 = 16;
+    const UPDATE_YANG_SUSPENSION: u128 = 32;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -102,7 +112,7 @@ mod SentinelRoles {
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX
+        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX + UPDATE_YANG_SUSPENSION
     }
 }
 
@@ -121,8 +131,9 @@ mod ShrineRoles {
     const SET_MULTIPLIER: u128 = 2048;
     const SET_THRESHOLD: u128 = 4096;
     const UPDATE_RATES: u128 = 8192;
-    const UPDATE_YIN_SPOT_PRICE: u128 = 16384;
-    const WITHDRAW: u128 = 32768;
+    const UPDATE_YANG_SUSPENSION: u128 = 16384;
+    const UPDATE_YIN_SPOT_PRICE: u128 = 32768;
+    const WITHDRAW: u128 = 65536;
 
     #[inline(always)]
     fn abbot() -> u128 {
@@ -151,7 +162,7 @@ mod ShrineRoles {
 
     #[inline(always)]
     fn sentinel() -> u128 {
-        ADD_YANG
+        ADD_YANG + UPDATE_YANG_SUSPENSION
     }
 
     #[cfg(test)]
@@ -171,6 +182,7 @@ mod ShrineRoles {
             + SET_MULTIPLIER
             + SET_THRESHOLD
             + UPDATE_RATES
+            + UPDATE_YANG_SUSPENSION
             + UPDATE_YIN_SPOT_PRICE
             + WITHDRAW
     }
