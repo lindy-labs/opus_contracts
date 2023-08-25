@@ -114,9 +114,9 @@ mod Purger {
 
     // Returns a tuple of:
     // 1. the penalty (Ray)
-    //    Returns 0 if trove is healthy, OR if the trove's LTV > 100% 
-    //    Note that the penalty should not be used as a proxy 
-    //    to determine if a trove is liquidatable or not
+    //    Returns 0 if trove is healthy, OR if the trove's LTV > 100%.
+    //    Note that the penalty should not be used as a proxy to determine if a 
+    //    trove is liquidatable or not.
     // 2. the maximum amount of debt that can be liquidated for the trove (Wad)
     #[view]
     fn preview_liquidate(trove_id: u64) -> (Ray, Wad) {
@@ -127,9 +127,9 @@ mod Purger {
     // Returns a tuple of:
     // 1. the penalty (Ray)
     //    Returns 0 if trove is healthy, OR not absorbable,
-    //    OR if the trove's LTV after compensation is deducted exceeds 100% 
-    //    Note that the penalty should not be used as a proxy 
-    //    to determine if a trove is absorbable or not
+    //    OR if the trove's LTV after compensation is deducted exceeds 100%.
+    //    Note that the penalty should not be used as a proxy to determine if a 
+    //    trove is absorbable or not.
     // 2. the maximum amount of debt that can be absorbed for the trove (Wad)
     // 3. the amount of compensation the caller will receive (Wad)
     #[view]
@@ -480,10 +480,10 @@ mod Purger {
     // Helper function to return the following for a trove:
     // 1. absorption penalty (zero if trove is not absorbable)
     // 2. maximum absorption amount (zero if trove is not absorbable)
-    // 3. compensation as a percentage of the trove's value
+    // 3. compensation as a percentage of the trove's value (zero if trove is not absorbable)
     // 4. amount of compensation due to the caller (zero if trove is not absorbable)
-    // 5. LTV after compensation
-    // 6. value after compensation
+    // 5. LTV after compensation (unchanged if trove is not absorbable)
+    // 6. value after compensation (unchanged if trove is not absorbable)
     fn preview_absorb_internal(
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad
     ) -> (Ray, Wad, Ray, Wad, Ray, Wad) {
@@ -550,8 +550,8 @@ mod Purger {
 
     // Returns:
     // 1. the amount of compensation due to the caller of `absorb` as a percentage of 
-    //    the value of the trove's collateral, capped at 3% of the trove's value or the percentage
-    //    of the trove's value equivalent to `COMPENSATION_CAP`
+    //    the value of the trove's collateral, capped at 3% of the trove's value or the 
+    //    percentage of the trove's value equivalent to `COMPENSATION_CAP`
     // 2. the value of (1) in Wad
     fn get_compensation(trove_value: Wad) -> (Ray, Wad) {
         let default_compensation_pct: Ray = COMPENSATION_PCT.into();
