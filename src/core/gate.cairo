@@ -8,7 +8,7 @@ mod Gate {
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
     use aura::utils::u256_conversions;
@@ -143,7 +143,7 @@ mod Gate {
         assert_sentinel();
 
         let asset_amt: u128 = convert_to_assets(yang_amt);
-        if asset_amt == 0 {
+        if asset_amt.is_zero() {
             return 0;
         }
 
@@ -186,7 +186,7 @@ mod Gate {
             // Scale `yang_amt` down by the difference to match the decimal 
             // precision of the asset. If asset is of `Wad` precision, then 
             // the same value is returned
-            yang_amt.val / pow10(WAD_DECIMALS - decimals)
+            yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
         } else {
             ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
         }

@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod TestShrine {
     use array::{ArrayTrait, SpanTrait};
+    use debug::PrintTrait;
     use integer::BoundedU256;
     use option::OptionTrait;
     use traits::{Default, Into};
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::testing::set_contract_address;
+    use starknet::testing::{set_block_timestamp, set_contract_address};
     use zeroable::Zeroable;
 
     use aura::core::shrine::Shrine;
@@ -16,10 +17,12 @@ mod TestShrine {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::serde;
+    use aura::utils::types::YangSuspensionStatus;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
+        Ray, RayZeroable, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE,
+        WAD_SCALE
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
@@ -71,7 +74,7 @@ mod TestShrine {
         // Check yangs
         assert(shrine.get_yangs_count() == 3, 'wrong yangs count');
 
-        let expected_era: u64 = 0;
+        let expected_era: u64 = 1;
 
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
@@ -99,8 +102,8 @@ mod TestShrine {
 
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
-        assert(threshold == RayZeroable::zero(), 'wrong shrine threshold');
-        assert(value == WadZeroable::zero(), 'wrong shrine value');
+        assert(threshold.is_zero(), 'wrong shrine threshold');
+        assert(value.is_zero(), 'wrong shrine value');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -194,6 +197,7 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_add_yang() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let current_rate_era: u64 = shrine.get_current_rate_era();
         let yangs_count: u32 = shrine.get_yangs_count();
         assert(yangs_count == 3, 'incorrect yangs count');
 
@@ -215,7 +219,7 @@ mod TestShrine {
 
         assert(shrine.get_yangs_count() == yangs_count + 1, 'incorrect yangs count');
         assert(
-            shrine.get_yang_total(new_yang_address) == WadZeroable::zero(), 'incorrect yang total'
+            shrine.get_yang_total(new_yang_address).is_zero(), 'incorrect yang total'
         );
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
@@ -225,9 +229,8 @@ mod TestShrine {
             'incorrect yang threshold'
         );
 
-        let expected_rate_era: u64 = 0_u64;
         assert(
-            shrine.get_yang_rate(new_yang_address, expected_rate_era) == new_yang_rate,
+            shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate,
             'incorrect yang rate'
         );
     }
@@ -480,9 +483,7 @@ mod TestShrine {
 
         shrine
             .deposit(
-                ShrineUtils::yang1_addr(),
-                common::TROVE_1,
-                ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+                ShrineUtils::yang1_addr(), common::TROVE_1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
             );
     }
 
@@ -509,7 +510,7 @@ mod TestShrine {
         );
 
         let (_, ltv, _, _) = shrine.get_trove_info(common::TROVE_1);
-        assert(ltv == RayZeroable::zero(), 'LTV should be zero');
+        assert(ltv.is_zero(), 'LTV should be zero');
 
         assert(shrine.is_healthy(common::TROVE_1), 'trove should be healthy');
 
@@ -584,9 +585,7 @@ mod TestShrine {
 
         shrine
             .withdraw(
-                ShrineUtils::yang1_addr(),
-                common::TROVE_1,
-                ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+                ShrineUtils::yang1_addr(), common::TROVE_1, ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
             );
     }
 
@@ -639,7 +638,8 @@ mod TestShrine {
         );
         // Amount of yang to be withdrawn to decrease the trove's value to unsafe
         // `WAD_SCALE` is added to account for loss of precision from fixed point division
-        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price + WAD_SCALE.into();
+        let unsafe_withdraw_yang_amt: Wad = (trove_value - unsafe_trove_value) / yang1_price
+            + WAD_SCALE.into();
         set_contract_address(ShrineUtils::admin());
         shrine.withdraw(ShrineUtils::yang1_addr(), common::TROVE_1, unsafe_withdraw_yang_amt);
     }
@@ -690,7 +690,13 @@ mod TestShrine {
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         set_contract_address(ShrineUtils::admin());
 
-        shrine.forge(ShrineUtils::common::trove3_owner_addr(), common::TROVE_3, 1_u128.into(), 0_u128.into());
+        shrine
+            .forge(
+                ShrineUtils::common::trove3_owner_addr(),
+                common::TROVE_3,
+                1_u128.into(),
+                0_u128.into()
+            );
     }
 
     #[test]
@@ -763,7 +769,10 @@ mod TestShrine {
 
         let fee_pct: Wad = shrine.get_forge_fee_pct();
 
-        assert(after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee_pct), 'incorrect max forge amt');
+        assert(
+            after_max_forge_amt == before_max_forge_amt / (WAD_ONE.into() + fee_pct),
+            'incorrect max forge amt'
+        );
 
         shrine.forge(trove1_owner, common::TROVE_1, forge_amt, fee_pct);
 
@@ -798,7 +807,10 @@ mod TestShrine {
         shrine.update_yin_spot_price(yin_price2);
 
         // Should revert since the forge fee exceeds the maximum set by the frontend
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct);
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), stale_fee_pct
+            );
     }
 
     //
@@ -894,7 +906,7 @@ mod TestShrine {
 
         yin.transfer(yin_user, 0_u256);
         assert(success, 'yin transfer fail');
-        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
@@ -954,7 +966,7 @@ mod TestShrine {
 
         assert(success, 'yin transfer fail');
 
-        assert(yin.balance_of(trove1_owner) == 0_u256, 'wrong transferor balance');
+        assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
@@ -985,7 +997,10 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+            );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
@@ -1008,7 +1023,10 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+            );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
@@ -1030,7 +1048,10 @@ mod TestShrine {
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+            );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
@@ -1096,8 +1117,14 @@ mod TestShrine {
         // Authorizing an address and testing that it can use authorized functions
         set_contract_address(admin);
         shrine_accesscontrol.grant_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
-        assert(shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin), 'role not granted');
-        assert(shrine_accesscontrol.get_roles(new_admin) == ShrineRoles::SET_DEBT_CEILING, 'role not granted');
+        assert(
+            shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin),
+            'role not granted'
+        );
+        assert(
+            shrine_accesscontrol.get_roles(new_admin) == ShrineRoles::SET_DEBT_CEILING,
+            'role not granted'
+        );
 
         set_contract_address(new_admin);
         let new_ceiling: Wad = (WAD_SCALE + 1).into();
@@ -1107,7 +1134,10 @@ mod TestShrine {
         // Revoking an address
         set_contract_address(admin);
         shrine_accesscontrol.revoke_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
-        assert(!shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin), 'role not revoked');
+        assert(
+            !shrine_accesscontrol.has_role(ShrineRoles::SET_DEBT_CEILING, new_admin),
+            'role not revoked'
+        );
         assert(shrine_accesscontrol.get_roles(new_admin) == 0, 'role not revoked');
     }
 
@@ -1190,8 +1220,7 @@ mod TestShrine {
         shrine.inject(trove1_owner, inject_amt);
 
         assert(
-            yin.total_supply() == before_total_supply + inject_amt.into(),
-            'incorrect total supply'
+            yin.total_supply() == before_total_supply + inject_amt.into(), 'incorrect total supply'
         );
         assert(
             yin.balance_of(trove1_owner) == before_user_bal + inject_amt.val.into(),
@@ -1332,10 +1361,10 @@ mod TestShrine {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
         let (threshold, ltv, value, debt) = shrine.get_trove_info(common::TROVE_3);
-        assert(threshold == RayZeroable::zero(), 'threshold should be 0');
-        assert(ltv == RayZeroable::zero(), 'LTV should be 0');
-        assert(value == WadZeroable::zero(), 'value should be 0');
-        assert(debt == WadZeroable::zero(), 'debt should be 0');
+        assert(threshold.is_zero(), 'threshold should be 0');
+        assert(ltv.is_zero(), 'LTV should be 0');
+        assert(value.is_zero(), 'value should be 0');
+        assert(debt.is_zero(), 'debt should be 0');
     }
 
     //
@@ -1426,15 +1455,214 @@ mod TestShrine {
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
         shrine.update_yin_spot_price(second_yin_price);
-        common::assert_equalish(shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2');
+        common::assert_equalish(
+            shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2'
+        );
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
-        common::assert_equalish(shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3');
+        common::assert_equalish(
+            shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3'
+        );
 
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_spot_price(fourth_yin_price);
-        assert(shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4');
+        assert(
+            shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4'
+        );
+    }
 
+    //
+    // Tests - yang suspension
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_get_yang_suspension_status_basic() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let status_yang1 = shrine.get_yang_suspension_status(ShrineUtils::yang1_addr());
+        assert(status_yang1 == YangSuspensionStatus::None(()), 'yang1');
+        let status_yang2 = shrine.get_yang_suspension_status(ShrineUtils::yang2_addr());
+        assert(status_yang2 == YangSuspensionStatus::None(()), 'yang2');
+        let status_yang3 = shrine.get_yang_suspension_status(ShrineUtils::yang3_addr());
+        assert(status_yang3 == YangSuspensionStatus::None(()), 'yang3');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_get_yang_suspension_status_nonexisting_yang() {
+        let shrine = ShrineUtils::shrine(ShrineUtils::shrine_deploy());
+        shrine.get_yang_suspension_status(ShrineUtils::invalid_yang_addr());
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Yang does not exist', 'ENTRYPOINT_FAILED'))]
+    fn test_set_yang_suspension_status_non_existing_yang() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        set_contract_address(ShrineUtils::admin());
+        shrine.update_yang_suspension(ShrineUtils::invalid_yang_addr(), 0);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_suspension_set_and_unset() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+
+        // initiate yang's suspension, starting now
+        shrine.update_yang_suspension(yang, start_ts);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 1');
+
+        // setting block time to a second before the suspension would be permanent
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
+
+        // reset the suspension by setting yang's ts to 0
+        shrine.update_yang_suspension(yang, 0);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::None(()), 'status 2');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
+    fn test_set_suspension_status_not_authorized() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+        set_contract_address(common::badguy());
+
+        shrine.update_yang_suspension(yang, 42);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_yang_suspension_progress_temp_to_permanent() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+
+        // initiate yang's suspension, starting now
+        shrine.update_yang_suspension(yang, start_ts);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 1');
+
+        // check threshold (should be the same at the beginning)
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
+
+        // the threshold should decrease by 1% in this amount of time
+        let one_pct = Shrine::SUSPENSION_GRACE_PERIOD / 100;
+
+        // move time forward
+        set_block_timestamp(start_ts + one_pct);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 2');
+
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
+
+        // move time forward
+        set_block_timestamp(start_ts + one_pct * 20);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 3');
+
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
+
+        // move time forward to a second before permanent suspension
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Temporary(()), 'status 4');
+
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
+        // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
+        common::assert_equalish(threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4');
+
+        // move time forward to end of temp suspension, start of permanent one
+        set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
+
+        // check suspension status
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Permanent(()), 'status 5');
+
+        // check threshold
+        let threshold = shrine.get_yang_threshold(yang);
+        assert(threshold == RayZeroable::zero(), 'threshold 5');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Permanent suspension', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_suspension_cannot_reset_after_permanent() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+
+        let yang = ShrineUtils::yang1_addr();
+        let start_ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(start_ts);
+        set_contract_address(ShrineUtils::admin());
+        // mark permanent
+        shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_GRACE_PERIOD);
+        // sanity check
+        let status = shrine.get_yang_suspension_status(yang);
+        assert(status == YangSuspensionStatus::Permanent(()), 'delisted');
+
+        // trying to reset yang suspension status, should fail
+        shrine.update_yang_suspension(yang, 0);
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('SH: Invalid timestamp', 'ENTRYPOINT_FAILED'))]
+    fn test_yang_set_suspension_ts_to_future() {
+        let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
+        ShrineUtils::shrine_setup(shrine_addr);
+        let shrine = ShrineUtils::shrine(shrine_addr);
+        let yang = ShrineUtils::yang1_addr();
+        let ts = ShrineUtils::DEPLOYMENT_TIMESTAMP;
+
+        set_block_timestamp(ts);
+        set_contract_address(ShrineUtils::admin());
+
+        shrine.update_yang_suspension(yang, ts + 1);
     }
 }

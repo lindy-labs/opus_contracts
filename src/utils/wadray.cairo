@@ -1,11 +1,12 @@
 use debug::PrintTrait;
-use integer::{Felt252TryIntoU128, U128IntoFelt252};
+use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
+use math::Oneable;
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
-use aura::utils::pow::pow10;
+use aura::utils::math::pow;
 use aura::utils::storage_access;
 use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
@@ -18,7 +19,8 @@ const WAD_PERCENT: u128 = 10000000000000000;
 const RAY_PERCENT: u128 = 10000000000000000000000000;
 
 // Largest Wad that can be converted into a Ray without overflowing
-const MAX_CONVERTIBLE_WAD: u128 = 99999999999999999999999999999;
+// 2 ** 128 // DIFF
+const MAX_CONVERTIBLE_WAD: u128 = 340282366920938463463374607431;
 
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
 const DIFF: u128 = 1000000000;
@@ -97,7 +99,7 @@ fn rdiv_ww(lhs: Wad, rhs: Wad) -> Ray {
 }
 
 //
-// Internal helpers 
+// Internal helpers
 //
 
 #[inline(always)]
@@ -268,17 +270,17 @@ impl RayIntoWad of Into<Ray, Wad> {
     }
 }
 
-impl U128IntoWad of Into<u128, Wad> {
+impl TIntoWad<T, impl TIntoU128: Into<T, u128>> of Into<T, Wad> {
     #[inline(always)]
-    fn into(self: u128) -> Wad {
-        Wad { val: self }
+    fn into(self: T) -> Wad {
+        Wad { val: self.into() }
     }
 }
 
-impl U128IntoRay of Into<u128, Ray> {
+impl TIntoRay<T, impl TIntoU128: Into<T, u128>> of Into<T, Ray> {
     #[inline(always)]
-    fn into(self: u128) -> Ray {
-        Ray { val: self }
+    fn into(self: T) -> Ray {
+        Ray { val: self.into() }
     }
 }
 
@@ -356,6 +358,31 @@ impl RayPartialOrd of PartialOrd<Ray> {
     }
 }
 
+// Bounded
+impl BoundedWad of BoundedInt<Wad> {
+    #[inline(always)]
+    fn min() -> Wad nopanic {
+        Wad { val: 0 }
+    }
+
+    #[inline(always)]
+    fn max() -> Wad nopanic {
+        Wad { val: integer::BoundedU128::max() }
+    }
+}
+
+impl BoundedRay of BoundedInt<Ray> {
+    #[inline(always)]
+    fn min() -> Ray nopanic {
+        Ray { val: 0 }
+    }
+
+    #[inline(always)]
+    fn max() -> Ray nopanic {
+        Ray { val: integer::BoundedU128::max() }
+    }
+}
+
 // Zeroable
 impl WadZeroable of Zeroable<Wad> {
     #[inline(always)]
@@ -391,6 +418,42 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
+// Oneable 
+
+impl WadOneable of Oneable<Wad> {
+    #[inline(always)]
+    fn one() -> Wad {
+        Wad { val: WAD_ONE }
+    }
+
+    #[inline(always)]
+    fn is_one(self: Wad) -> bool {
+        self.val == WAD_ONE
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: Wad) -> bool {
+        self.val != WAD_ONE
+    }
+}
+
+impl RayOneable of Oneable<Ray> {
+    #[inline(always)]
+    fn one() -> Ray {
+        Ray { val: RAY_ONE }
+    }
+
+    #[inline(always)]
+    fn is_one(self: Ray) -> bool {
+        self.val == RAY_ONE
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: Ray) -> bool {
+        self.val != RAY_ONE
+    }
+}
+
 // Debug print
 impl WadPrintImpl of PrintTrait<Wad> {
     fn print(self: Wad) {
@@ -410,6 +473,6 @@ impl RayPrintImpl of PrintTrait<Ray> {
 
 fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
-    let scale: u128 = pow10(WAD_DECIMALS - decimals);
+    let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
     (n * scale).into()
 }

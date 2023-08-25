@@ -4,7 +4,7 @@ mod PurgerUtils {
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        SyscallResultTrait
+        get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -17,14 +17,21 @@ mod PurgerUtils {
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::utils::math::pow;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE};
+    use aura::utils::wadray::{
+        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
+    };
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
+    use aura::tests::external::mock_pragma::{
+        IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
+    };
     use aura::tests::external::utils::PragmaUtils;
     use aura::tests::purger::flash_liquidator::{
         FlashLiquidator, IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
@@ -149,9 +156,9 @@ mod PurgerUtils {
 
         // Fourth threshold of 78.74% (Ray)
         let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
-        // 85.93% (Ray) - LTV at which maximum penalty of 12.5% is reached
-        ltvs_for_first_threshold.append(859300000000000000000000000_u128.into());
-        ltvs_for_third_threshold.append(max_possible_penalty_ltv);
+        // 86.2203% (Ray) - LTV at which maximum penalty of 12.5% is reached
+        ltvs_for_fourth_threshold.append(862203000000000000000000000_u128.into());
+        ltvs_for_fourth_threshold.append(862222200000000000000000000_u128.into());
         trove_ltvs.append(ltvs_for_fourth_threshold.span());
 
         trove_ltvs.span()
@@ -183,7 +190,7 @@ mod PurgerUtils {
 
         // Third threshold of 90% (Ray)
         let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
-        // 92.09% (Ray) - LTV at which maximum penalty is reached
+        // 92.1% (Ray) - LTV at which maximum penalty is reached
         ltvs_for_third_threshold.append(921000000000000000000000000_u128.into());
         ltvs_for_third_threshold.append(ninety_nine_pct);
         ltvs_for_third_threshold.append(exceed_hundred_pct);
@@ -243,17 +250,58 @@ mod PurgerUtils {
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        
         // base case for ordinary redistributions
         yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
+
+        // recipient trove has dust amount of the first yang
+        let mut dust_case: Array<u128> = Default::default();
+        dust_case.append(100_u128); // 100 wei (Wad) ETH
+        dust_case.append(1000000000_u128); // 10 (10 ** 8) WBTC
+        yang_asset_amts_cases.append(dust_case.span());
+
+        // recipient trove has dust amount of a yang that is not the first yang
+        let mut dust_case: Array<u128> = Default::default();
+        dust_case.append(30 * WAD_ONE); // 30 (Wad) ETH
+        dust_case.append(100_u128); // 0.00001 (10 ** 8) WBTC
+        yang_asset_amts_cases.append(dust_case.span());
 
         // exceptional redistribution because recipient trove does not have
         // WBTC yang but redistributed trove has WBTC yang
         let mut exceptional_case: Array<u128> = Default::default();
-        exceptional_case.append(20 * WAD_ONE); // 20 (Wad) ETH
+        exceptional_case.append(30 * WAD_ONE); // 30 (Wad) ETH
         exceptional_case.append(0_u128); // 0 WBTC
         yang_asset_amts_cases.append(exceptional_case.span());
 
         yang_asset_amts_cases.span()
+    }
+
+    fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
+        let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        yang_asset_amts_cases.append(target_trove_yang_asset_amts());
+
+        // Dust yang case
+        let mut dust_yang_case: Array<u128> = Default::default();
+        dust_yang_case.append((20 * WAD_ONE).into()); // 10 (Wad) ETH
+        dust_yang_case.append(100_u128.into()); // 5E-8 (WBTC decimals) WBTC
+        yang_asset_amts_cases.append(dust_yang_case.span());
+
+        yang_asset_amts_cases.span()
+    }
+
+    // Generate interesting cases for absorber's yin balance based on the 
+    // redistributed trove's debt to test absorption with partial redistribution
+    fn generate_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
+        let mut absorber_yin_cases: Array<Wad> = Default::default();
+
+        // smallest possible amount of yin in Absorber based on initial shares
+        absorber_yin_cases.append(1000_u128.into());
+        absorber_yin_cases.append((trove_debt.val / 3).into());
+        absorber_yin_cases.append((trove_debt.val - 1000).into());
+        // trove's debt minus the smallest unit of Wad
+        absorber_yin_cases.append((trove_debt.val - 1).into());
+
+        absorber_yin_cases.span()
     }
 
     //
@@ -263,6 +311,7 @@ mod PurgerUtils {
     fn purger_deploy() -> (
         IShrineDispatcher,
         IAbbotDispatcher,
+        IMockPragmaDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
@@ -276,10 +325,26 @@ mod PurgerUtils {
             absorber, reward_tokens, reward_amts_per_blessing
         );
 
-        let (_, oracle, _, _) = PragmaUtils::pragma_deploy_with_shrine(
+        let (_, oracle, _, mock_pragma) = PragmaUtils::pragma_deploy_with_shrine(
             sentinel, shrine.contract_address
         );
         PragmaUtils::add_yangs_to_pragma(oracle, yangs);
+
+        // Seed initial prices for ETH and WBTC in Pragma
+        let current_ts = get_block_timestamp();
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE),
+            current_ts
+        );
+        PragmaUtils::mock_valid_price_update(
+            mock_pragma,
+            PragmaUtils::WBTC_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::WBTC_INIT_PRICE),
+            current_ts
+        );
+        IOracleDispatcher { contract_address: oracle.contract_address }.update_prices();
 
         let admin: ContractAddress = admin();
 
@@ -324,7 +389,7 @@ mod PurgerUtils {
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        (shrine, abbot, absorber, purger, yangs, gates)
+        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
     }
 
     fn purger_deploy_with_searcher(
@@ -332,15 +397,16 @@ mod PurgerUtils {
     ) -> (
         IShrineDispatcher,
         IAbbotDispatcher,
+        IMockPragmaDispatcher,
         IAbsorberDispatcher,
         IPurgerDispatcher,
         Span<ContractAddress>,
         Span<IGateDispatcher>,
     ) {
-        let (shrine, abbot, absorber, purger, yangs, gates) = purger_deploy();
+        let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) = purger_deploy();
         funded_searcher(abbot, yangs, gates, searcher_yin_amt);
 
-        (shrine, abbot, absorber, purger, yangs, gates)
+        (shrine, abbot, mock_pragma, absorber, purger, yangs, gates)
     }
 
     fn flash_liquidator_deploy(
@@ -431,8 +497,14 @@ mod PurgerUtils {
 
     // Helper function to decrease yang prices by the given percentage
     fn decrease_yang_prices_by_pct(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, pct_decrease: Ray, 
+        shrine: IShrineDispatcher,
+        mock_pragma: IMockPragmaDispatcher,
+        mut yangs: Span<ContractAddress>,
+        mut yang_pair_ids: Span<u256>,
+        pct_decrease: Ray,
     ) {
+        let current_ts = get_block_timestamp();
+        let scale: u128 = pow(10_u128, WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
@@ -441,7 +513,19 @@ mod PurgerUtils {
                     let new_price: Wad = wadray::rmul_wr(
                         yang_price, (RAY_ONE.into() - pct_decrease)
                     );
+                    let new_pragma_price: u128 = new_price.val / scale;
+                    // Note that `new_price` is more precise than `new_pragma_price` so 
+                    // the `new_pragma_price` is a rounded down value of `new_price`.
+                    // `new_price` is used so that there is more control over the precision of 
+                    // the target LTV. 
                     shrine.advance(*yang, new_price);
+
+                    PragmaUtils::mock_valid_price_update(
+                        mock_pragma,
+                        *yang_pair_ids.pop_front().unwrap(),
+                        new_pragma_price,
+                        current_ts
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -455,14 +539,16 @@ mod PurgerUtils {
     // yang prices
     fn adjust_prices_for_trove_ltv(
         shrine: IShrineDispatcher,
+        mock_pragma: IMockPragmaDispatcher,
         yangs: Span<ContractAddress>,
+        yang_pair_ids: Span<u256>,
         value: Wad,
         debt: Wad,
         target_ltv: Ray,
     ) {
         let unhealthy_value: Wad = wadray::rmul_wr(debt, (RAY_ONE.into() / target_ltv));
         let decrease_pct: Ray = wadray::rdiv_ww((value - unhealthy_value), value);
-        decrease_yang_prices_by_pct(shrine, yangs, decrease_pct);
+        decrease_yang_prices_by_pct(shrine, mock_pragma, yangs, yang_pair_ids, decrease_pct);
     }
 
     //
@@ -532,7 +618,7 @@ mod PurgerUtils {
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
         let expected_ltv: Ray = Purger::THRESHOLD_SAFETY_MARGIN.into() * threshold;
-        let error_margin: Ray = (RAY_PERCENT / 100).into(); // 0.01%
+        let error_margin: Ray = (RAY_PERCENT / 10).into(); // 0.1%
         common::assert_equalish(ltv, expected_ltv, error_margin, 'LTV not within safety margin');
     }
 

@@ -1,6 +1,8 @@
 mod ShrineUtils {
     use array::{ArrayTrait, SpanTrait};
-    use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
+    use integer::{
+        U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
+    };
     use option::OptionTrait;
     use traits::{Default, Into, TryInto};
     use starknet::{
@@ -168,7 +170,9 @@ mod ShrineUtils {
 
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         set_contract_address(admin());
-        IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(ShrineRoles::all_roles(), user);
+        IAccessControlDispatcher {
+            contract_address: shrine_addr
+        }.grant_role(ShrineRoles::all_roles(), user);
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -319,7 +323,9 @@ mod ShrineUtils {
     //
 
     fn consume_first_bit(ref hash: u128) -> bool {
-        let (reduced_hash, remainder) = u128_safe_divmod(hash, u128_try_as_non_zero(2_u128).unwrap());
+        let (reduced_hash, remainder) = u128_safe_divmod(
+            hash, u128_try_as_non_zero(2_u128).unwrap()
+        );
         hash = reduced_hash;
         remainder != 0_u128
     }
@@ -334,10 +340,10 @@ mod ShrineUtils {
         let price_hash: felt252 = hash::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
             U128sFromFelt252Result::Narrow(i) => {
-               i
+                i
             },
             U128sFromFelt252Result::Wide((i, j)) => {
-               i
+                i
             },
         };
 
@@ -444,7 +450,10 @@ mod ShrineUtils {
         mut debt: Wad
     ) -> Wad {
         // Sanity check on input array lengths
-        assert(yang_base_rates_history.len() == yang_rate_update_intervals.len(), 'array length mismatch');
+        assert(
+            yang_base_rates_history.len() == yang_rate_update_intervals.len(),
+            'array length mismatch'
+        );
         assert(yang_base_rates_history.len() == yang_avg_prices.len(), 'array length mismatch');
         assert(yang_base_rates_history.len() == avg_multipliers.len(), 'array length mismatch');
         assert((*yang_base_rates_history.at(0)).len() == yang_amts.len(), 'array length mismatch');
@@ -453,7 +462,12 @@ mod ShrineUtils {
         loop {
             match yang_base_rates_history_copy.pop_front() {
                 Option::Some(base_rates_history) => {
-                    assert((*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(), 'array length mismatch');
+                    assert(
+                        (*base_rates_history)
+                            .len() == (*yang_avg_prices_copy.pop_front().unwrap())
+                            .len(),
+                        'array length mismatch'
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -521,11 +535,7 @@ mod ShrineUtils {
 
     // Compound function for a single yang, within a single era
     fn compound_for_single_yang(
-        base_rate: Ray,
-        avg_multiplier: Ray,
-        start_interval: u64,
-        end_interval: u64,
-        debt: Wad,
+        base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad, 
     ) -> Wad {
         let intervals: u128 = (end_interval - start_interval).into();
         let t: Wad = (intervals * Shrine::TIME_INTERVAL_DIV_YEAR).into();

@@ -22,7 +22,7 @@ mod TestPragma {
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::types::Pragma::PricesResponse;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
@@ -311,7 +311,7 @@ mod TestPragma {
         let (_, pragma, _, mock_pragma, _, _) = PragmaUtils::pragma_with_yangs();
 
         let price_ts: u256 = (get_block_timestamp() - 1000).into();
-        let pragma_price_scale: u128 = pow10(PragmaUtils::PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PragmaUtils::PRAGMA_DECIMALS);
 
         let pepe_price: u128 = 1000000 * pragma_price_scale; // random price
         let invalid_decimals: u256 = (WAD_DECIMALS + 1).into();
@@ -347,20 +347,29 @@ mod TestPragma {
 
         // Perform a price update with starting exchange rate of 1 yang to 1 asset
         let first_ts = get_block_timestamp() + 1;
+        let mut raw_eth_price: u128 = PragmaUtils::ETH_INIT_PRICE;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE, first_ts
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_eth_price),
+            first_ts
         );
+
+        let mut raw_wbtc_price: u128 = PragmaUtils::WBTC_INIT_PRICE;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, PragmaUtils::WBTC_INIT_PRICE, first_ts
+            mock_pragma,
+            PragmaUtils::WBTC_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_wbtc_price),
+            first_ts
         );
 
         pragma_oracle.update_prices();
 
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
-        assert(eth_price == (PragmaUtils::ETH_INIT_PRICE * WAD_SCALE).into(), 'wrong ETH price');
+        assert(eth_price == (raw_eth_price * WAD_SCALE).into(), 'wrong ETH price');
 
         let (wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
-        assert(wbtc_price == (PragmaUtils::WBTC_INIT_PRICE * WAD_SCALE).into(), 'wrong WBTC price');
+        assert(wbtc_price == (raw_wbtc_price * WAD_SCALE).into(), 'wrong WBTC price');
 
         let gate_eth_bal: u128 = eth_gate.get_total_assets();
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
@@ -375,21 +384,33 @@ mod TestPragma {
 
         let next_ts = first_ts + Shrine::TIME_INTERVAL;
         set_block_timestamp(next_ts);
-        let new_eth_price = PragmaUtils::ETH_INIT_PRICE + 10;
+        raw_eth_price += 10;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, new_eth_price, next_ts
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_eth_price),
+            next_ts
         );
-        let new_wbtc_price = PragmaUtils::WBTC_INIT_PRICE + 10;
+        raw_wbtc_price += 10;
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::WBTC_USD_PAIR_ID, new_wbtc_price, next_ts
+            mock_pragma,
+            PragmaUtils::WBTC_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(raw_wbtc_price),
+            next_ts
         );
         pragma_oracle.update_prices();
 
         let (eth_price, _, _) = shrine.get_current_yang_price(eth_addr);
-        assert(eth_price == (new_eth_price * 2 * WAD_SCALE).into(), 'wrong rebased ETH price');
+        assert(
+            eth_price == (raw_eth_price * rebase_multiplier * WAD_SCALE).into(),
+            'wrong rebased ETH price'
+        );
 
         let (wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_addr);
-        assert(wbtc_price == (new_wbtc_price * 2 * WAD_SCALE).into(), 'wrong rebased WBTC price');
+        assert(
+            wbtc_price == (raw_wbtc_price * rebase_multiplier * WAD_SCALE).into(),
+            'wrong rebased WBTC price'
+        );
     }
 
     #[test]
@@ -410,14 +431,16 @@ mod TestPragma {
         let pragma_oracle = IOracleDispatcher { contract_address: pragma.contract_address };
 
         let mut new_ts: u64 = get_block_timestamp() + 1;
-        let mut price: u128 = PragmaUtils::ETH_INIT_PRICE + 10;
+        let mut price: u128 = PragmaUtils::convert_price_to_pragma_scale(
+            PragmaUtils::ETH_INIT_PRICE + 10
+        );
         set_block_timestamp(new_ts);
         PragmaUtils::mock_valid_price_update(
             mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, price, new_ts
         );
         pragma_oracle.update_prices();
 
-        price += 10;
+        price += PragmaUtils::convert_price_to_pragma_scale(10);
         new_ts += Pragma::LOWER_UPDATE_FREQUENCY_BOUND - 1;
         set_block_timestamp(new_ts);
         PragmaUtils::mock_valid_price_update(
@@ -438,7 +461,7 @@ mod TestPragma {
         let (before_eth_price, _, _) = shrine.get_current_yang_price(eth_token_addr);
         let (before_wbtc_price, _, _) = shrine.get_current_yang_price(wbtc_token_addr);
 
-        let pragma_price_scale: u128 = pow10(PragmaUtils::PRAGMA_DECIMALS);
+        let pragma_price_scale: u128 = pow(10_u128, PragmaUtils::PRAGMA_DECIMALS);
 
         let price: u128 = PragmaUtils::ETH_INIT_PRICE * pragma_price_scale;
         let invalid_num_sources: u64 = Pragma::LOWER_SOURCES_BOUND - 1;
@@ -468,8 +491,7 @@ mod TestPragma {
         assert(before_wbtc_price == after_wbtc_price, 'price should not be updated #2');
 
         assert(!pragma.probe_task(), 'should not be ready');
-
-        // TODO: check that `PricesUpdated` event is not emitted
+    // TODO: check that `PricesUpdated` event is not emitted
     }
 
     // TODO: This can only be completed when we are able to test if an event is emitted
@@ -490,7 +512,10 @@ mod TestPragma {
         let new_ts: u64 = get_block_timestamp() + 1;
         set_block_timestamp(new_ts);
         PragmaUtils::mock_valid_price_update(
-            mock_pragma, PragmaUtils::ETH_USD_PAIR_ID, PragmaUtils::ETH_INIT_PRICE + 10, new_ts
+            mock_pragma,
+            PragmaUtils::ETH_USD_PAIR_ID,
+            PragmaUtils::convert_price_to_pragma_scale(PragmaUtils::ETH_INIT_PRICE + 10),
+            new_ts
         );
         pragma_oracle.update_prices();
 
