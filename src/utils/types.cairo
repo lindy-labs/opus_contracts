@@ -18,6 +18,12 @@ struct YangBalance {
     amount: Wad, // Amount of yang in Wad
 }
 
+#[derive(Copy, Drop, Serde)]
+struct AssetBalance {
+    address: ContractAddress, // Address of the ERC-20 asset
+    amount: u128, // Amount of the asset in the asset's decimals
+}
+
 #[derive(Copy, Drop, PartialEq, Serde, storage_access::StorageAccess)]
 struct Trove {
     charge_from: u64, // Time ID (timestamp // TIME_ID_INTERVAL) for start of next accumulated interest calculation

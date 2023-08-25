@@ -1,11 +1,12 @@
 use debug::PrintTrait;
 use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
+use math::Oneable;
 use option::OptionTrait;
 use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
-use aura::utils::pow::pow10;
+use aura::utils::math::pow;
 use aura::utils::storage_access;
 use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
@@ -417,6 +418,42 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
+// Oneable 
+
+impl WadOneable of Oneable<Wad> {
+    #[inline(always)]
+    fn one() -> Wad {
+        Wad { val: WAD_ONE }
+    }
+
+    #[inline(always)]
+    fn is_one(self: Wad) -> bool {
+        self.val == WAD_ONE
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: Wad) -> bool {
+        self.val != WAD_ONE
+    }
+}
+
+impl RayOneable of Oneable<Ray> {
+    #[inline(always)]
+    fn one() -> Ray {
+        Ray { val: RAY_ONE }
+    }
+
+    #[inline(always)]
+    fn is_one(self: Ray) -> bool {
+        self.val == RAY_ONE
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: Ray) -> bool {
+        self.val != RAY_ONE
+    }
+}
+
 // Debug print
 impl WadPrintImpl of PrintTrait<Wad> {
     fn print(self: Wad) {
@@ -436,6 +473,6 @@ impl RayPrintImpl of PrintTrait<Ray> {
 
 fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
-    let scale: u128 = pow10(WAD_DECIMALS - decimals);
+    let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
     (n * scale).into()
 }

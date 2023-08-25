@@ -16,6 +16,7 @@ mod TestPurger {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{
         BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
@@ -84,7 +85,7 @@ mod TestPurger {
 
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #1');
 
-        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove);
         let expected_penalty: Ray = 41000000000000000000000000_u128.into(); // 4.1%
         let error_margin: Ray = (RAY_PERCENT / 100).into(); // 0.01%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #1');
@@ -95,7 +96,7 @@ mod TestPurger {
 
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #2');
 
-        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove);
         let expected_penalty: Ray = 10700000000000000000000000_u128.into(); // 1.07%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #2');
 
@@ -105,7 +106,7 @@ mod TestPurger {
 
         assert(purger.get_penalty_scalar() == penalty_scalar, 'wrong penalty scalar #3');
 
-        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove);
         let expected_penalty: Ray = 54300000000000000000000000_u128.into(); // 5.43%
         common::assert_equalish(penalty, expected_penalty, error_margin, 'wrong scalar penalty #3');
     }
@@ -142,7 +143,7 @@ mod TestPurger {
         let error_margin: Ray = 100000000_u128.into();
         common::assert_equalish(ltv, target_ltv, error_margin, 'LTV sanity check');
 
-        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove);
         let expected_penalty: Ray = RayZeroable::zero();
         assert(penalty.is_zero(), 'should not be absorbable #1');
 
@@ -151,7 +152,7 @@ mod TestPurger {
         let penalty_scalar: Ray = Purger::MAX_PENALTY_SCALAR.into();
         purger.set_penalty_scalar(penalty_scalar);
 
-        let penalty: Ray = purger.get_absorption_penalty(target_trove);
+        let (penalty, _, _) = purger.preview_absorb(target_trove);
         assert(penalty.is_zero(), 'should not be absorbable #2');
     }
 
@@ -221,8 +222,7 @@ mod TestPurger {
         let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
         PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
 
-        let penalty: Ray = purger.get_liquidation_penalty(target_trove);
-        let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
+        let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
         let searcher: ContractAddress = PurgerUtils::searcher();
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -230,7 +230,8 @@ mod TestPurger {
         );
 
         set_contract_address(searcher);
-        let (_, freed_amts) = purger.liquidate(target_trove, BoundedWad::max(), searcher);
+        let freed_assets: Span<AssetBalance> = purger
+            .liquidate(target_trove, BoundedWad::max(), searcher);
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
@@ -254,18 +255,21 @@ mod TestPurger {
         let expected_freed_amts: Span<u128> = PurgerUtils::get_expected_liquidation_assets(
             PurgerUtils::target_trove_yang_asset_amts(), before_value, max_close_amt, penalty
         );
+        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, expected_freed_amts
+        );
 
         // Check that searcher has received collateral
         PurgerUtils::assert_received_assets(
             before_searcher_asset_bals,
             common::get_token_balances(yangs, searcher.into()),
-            expected_freed_amts,
+            expected_freed_assets,
             10_u128, // error margin
             'wrong searcher asset balance',
         );
 
-        common::assert_spans_equalish(
-            freed_amts, expected_freed_amts, 10_u128, // error margin
+        common::assert_asset_balances_equalish(
+            freed_assets, expected_freed_assets, 10_u128, // error margin
              'wrong freed asset amount'
         );
     }
@@ -308,7 +312,7 @@ mod TestPurger {
         // Sanity check that LTV is at the target liquidation LTV
         let (_, ltv, before_value, before_debt) = shrine.get_trove_info(target_trove);
         PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
-        let max_close_amt: Wad = purger.get_max_liquidation_amount(target_trove);
+        let (_, max_close_amt) = purger.preview_liquidate(target_trove);
 
         let searcher: ContractAddress = PurgerUtils::searcher();
         set_contract_address(searcher);
@@ -384,9 +388,8 @@ mod TestPurger {
                                     *target_ltv
                                 );
 
-                                let penalty: Ray = purger.get_liquidation_penalty(target_trove);
-                                let max_close_amt: Wad = purger
-                                    .get_max_liquidation_amount(target_trove);
+                                let (penalty, max_close_amt) = purger
+                                    .preview_liquidate(target_trove);
 
                                 let searcher: ContractAddress = PurgerUtils::searcher();
                                 set_contract_address(searcher);
@@ -553,8 +556,8 @@ mod TestPurger {
         let (_, ltv, before_value, _) = shrine.get_trove_info(target_trove);
         PurgerUtils::assert_trove_is_absorbable(shrine, purger, target_trove, ltv);
 
-        let penalty: Ray = purger.get_absorption_penalty(target_trove);
-        let max_close_amt: Wad = purger.get_max_absorption_amount(target_trove);
+        let (penalty, max_close_amt, expected_compensation_value) = purger
+            .preview_absorb(target_trove);
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
@@ -563,10 +566,9 @@ mod TestPurger {
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
             yangs, absorber.contract_address.into()
         );
-        let expected_compensation_value: Wad = purger.get_compensation(target_trove);
 
         set_contract_address(caller);
-        let (_, compensation) = purger.absorb(target_trove);
+        let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
         // Assert that total debt includes accrued interest on liquidated trove
         let after_total_debt: Wad = shrine.get_total_debt();
@@ -589,8 +591,11 @@ mod TestPurger {
 
         // Check that caller has received compensation
         let target_trove_yang_asset_amts: Span<u128> = PurgerUtils::target_trove_yang_asset_amts();
-        let expected_compensation: Span<u128> = PurgerUtils::get_expected_compensation_assets(
+        let expected_compensation_amts: Span<u128> = PurgerUtils::get_expected_compensation_assets(
             target_trove_yang_asset_amts, before_value, expected_compensation_value
+        );
+        let expected_compensation: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, expected_compensation_amts
         );
         PurgerUtils::assert_received_assets(
             before_caller_asset_bals,
@@ -600,7 +605,7 @@ mod TestPurger {
             'wrong caller asset balance',
         );
 
-        common::assert_spans_equalish(
+        common::assert_asset_balances_equalish(
             compensation, expected_compensation, 10_u128, // error margin
              'wrong freed asset amount'
         );
@@ -612,12 +617,16 @@ mod TestPurger {
         );
 
         // Check that absorber has received collateral
+        let expected_freed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs,
+            PurgerUtils::get_expected_liquidation_assets(
+                target_trove_yang_asset_amts, before_value, max_close_amt, penalty
+            )
+        );
         PurgerUtils::assert_received_assets(
             before_absorber_asset_bals,
             common::get_token_balances(yangs, absorber.contract_address.into()),
-            PurgerUtils::get_expected_liquidation_assets(
-                target_trove_yang_asset_amts, before_value, max_close_amt, penalty
-            ),
+            expected_freed_assets,
             10_u128, // error margin
             'wrong absorber asset balance',
         );
@@ -716,10 +725,9 @@ mod TestPurger {
                                             shrine, purger, target_trove, ltv
                                         );
 
-                                        let penalty: Ray = purger
-                                            .get_absorption_penalty(target_trove);
-                                        let max_close_amt: Wad = purger
-                                            .get_max_absorption_amount(target_trove);
+                                        let (penalty, max_close_amt, expected_compensation_value) =
+                                            purger
+                                            .preview_absorb(target_trove);
                                         let close_amt: Wad = *absorber_start_yin;
 
                                         // Sanity check 
@@ -739,11 +747,10 @@ mod TestPurger {
                                             common::get_token_balances(
                                             yangs, absorber.contract_address.into()
                                         );
-                                        let expected_compensation_value: Wad = purger
-                                            .get_compensation(target_trove);
 
                                         set_contract_address(caller);
-                                        let (_, compensation) = purger.absorb(target_trove);
+                                        let compensation: Span<AssetBalance> = purger
+                                            .absorb(target_trove);
 
                                         let after_total_debt: Wad = shrine.get_total_debt();
                                         assert(
@@ -768,11 +775,15 @@ mod TestPurger {
                                         );
 
                                         // Check that caller has received compensation
-                                        let expected_compensation: Span<u128> =
+                                        let expected_compensation_amts: Span<u128> =
                                             PurgerUtils::get_expected_compensation_assets(
                                             *target_trove_yang_asset_amts,
                                             before_value,
                                             expected_compensation_value
+                                        );
+                                        let expected_compensation: Span<AssetBalance> =
+                                            common::combine_assets_and_amts(
+                                            yangs, expected_compensation_amts
                                         );
                                         PurgerUtils::assert_received_assets(
                                             before_caller_asset_bals,
@@ -782,7 +793,7 @@ mod TestPurger {
                                             'wrong caller asset balance',
                                         );
 
-                                        common::assert_spans_equalish(
+                                        common::assert_asset_balances_equalish(
                                             compensation,
                                             expected_compensation,
                                             10_u128, // error margin
@@ -796,17 +807,22 @@ mod TestPurger {
                                         );
 
                                         // Check that absorber has received proportionate share of collateral
-                                        PurgerUtils::assert_received_assets(
-                                            before_absorber_asset_bals,
-                                            common::get_token_balances(
-                                                yangs, absorber.contract_address.into()
-                                            ),
+                                        let expected_freed_assets: Span<AssetBalance> =
+                                            common::combine_assets_and_amts(
+                                            yangs,
                                             PurgerUtils::get_expected_liquidation_assets(
                                                 *target_trove_yang_asset_amts,
                                                 before_value,
                                                 close_amt,
                                                 penalty
+                                            )
+                                        );
+                                        PurgerUtils::assert_received_assets(
+                                            before_absorber_asset_bals,
+                                            common::get_token_balances(
+                                                yangs, absorber.contract_address.into()
                                             ),
+                                            expected_freed_assets,
                                             100_u128, // error margin
                                             'wrong absorber asset balance',
                                         );
@@ -985,10 +1001,14 @@ mod TestPurger {
                                                     shrine, purger, target_trove, ltv
                                                 );
 
-                                                let penalty: Ray = purger
-                                                    .get_absorption_penalty(target_trove);
-                                                let max_close_amt: Wad = purger
-                                                    .get_max_absorption_amount(target_trove);
+                                                let (
+                                                    penalty,
+                                                    max_close_amt,
+                                                    expected_compensation_value
+                                                ) =
+                                                    purger
+                                                    .preview_absorb(target_trove);
+
                                                 // sanity check
                                                 assert(
                                                     max_close_amt < before_debt,
@@ -1006,8 +1026,6 @@ mod TestPurger {
                                                     common::get_token_balances(
                                                     yangs, absorber.contract_address.into()
                                                 );
-                                                let expected_compensation_value: Wad = purger
-                                                    .get_compensation(target_trove);
 
                                                 let absorber_start_yin: Wad =
                                                     if absorber_yin_idx == 0 {
@@ -1055,7 +1073,8 @@ mod TestPurger {
                                                 );
 
                                                 set_contract_address(caller);
-                                                let (_, compensation) = purger.absorb(target_trove);
+                                                let compensation: Span<AssetBalance> = purger
+                                                    .absorb(target_trove);
 
                                                 // Assert that total debt includes accrued interest on liquidated trove
                                                 let after_total_debt: Wad = shrine.get_total_debt();
@@ -1111,11 +1130,15 @@ mod TestPurger {
                                                 );
 
                                                 // Check that caller has received compensation
-                                                let expected_compensation: Span<u128> =
+                                                let expected_compensation_amts: Span<u128> =
                                                     PurgerUtils::get_expected_compensation_assets(
                                                     *target_trove_yang_asset_amts,
                                                     before_value,
                                                     expected_compensation_value
+                                                );
+                                                let expected_compensation: Span<AssetBalance> =
+                                                    common::combine_assets_and_amts(
+                                                    yangs, expected_compensation_amts
                                                 );
                                                 PurgerUtils::assert_received_assets(
                                                     before_caller_asset_bals,
@@ -1127,7 +1150,7 @@ mod TestPurger {
                                                     'wrong caller asset balance'
                                                 );
 
-                                                common::assert_spans_equalish(
+                                                common::assert_asset_balances_equalish(
                                                     compensation,
                                                     expected_compensation,
                                                     10_u128, // error margin
@@ -1143,17 +1166,23 @@ mod TestPurger {
                                                 );
 
                                                 // Check that absorber has received proportionate share of collateral
+                                                let expected_freed_amts: Span<u128> =
+                                                    PurgerUtils::get_expected_liquidation_assets(
+                                                    *target_trove_yang_asset_amts,
+                                                    before_value,
+                                                    close_amt,
+                                                    penalty
+                                                );
+                                                let expected_freed_assets: Span<AssetBalance> =
+                                                    common::combine_assets_and_amts(
+                                                    yangs, expected_freed_amts
+                                                );
                                                 PurgerUtils::assert_received_assets(
                                                     before_absorber_asset_bals,
                                                     common::get_token_balances(
                                                         yangs, absorber.contract_address.into()
                                                     ),
-                                                    PurgerUtils::get_expected_liquidation_assets(
-                                                        *target_trove_yang_asset_amts,
-                                                        before_value,
-                                                        close_amt,
-                                                        penalty
-                                                    ),
+                                                    expected_freed_assets,
                                                     100_u128, // error margin
                                                     'wrong absorber asset balance'
                                                 );
@@ -1228,7 +1257,9 @@ mod TestPurger {
                                                                     target_trove
                                                                 );
                                                             let remainder_asset_amt: u128 = gate
-                                                                .preview_exit(remainder_trove_yang);
+                                                                .convert_to_assets(
+                                                                    remainder_trove_yang
+                                                                );
                                                             common::assert_equalish(
                                                                 remainder_asset_amt,
                                                                 *expected_asset_amt,
@@ -1344,11 +1375,11 @@ mod TestPurger {
                                     common::get_token_balances(
                                     yangs, caller.into()
                                 );
-                                let expected_compensation_value: Wad = purger
-                                    .get_compensation(target_trove);
+                                let (_, _, expected_compensation_value) = purger
+                                    .preview_absorb(target_trove);
 
                                 set_contract_address(caller);
-                                let (_, compensation) = purger.absorb(target_trove);
+                                let compensation: Span<AssetBalance> = purger.absorb(target_trove);
 
                                 // Assert that total debt includes accrued interest on liquidated trove
                                 let after_total_debt: Wad = shrine.get_total_debt();
@@ -1358,11 +1389,15 @@ mod TestPurger {
                                 );
 
                                 // Check that caller has received compensation
-                                let expected_compensation: Span<u128> =
+                                let expected_compensation_amts: Span<u128> =
                                     PurgerUtils::get_expected_compensation_assets(
                                     *target_trove_yang_asset_amts,
                                     before_value,
                                     expected_compensation_value
+                                );
+                                let expected_compensation: Span<AssetBalance> =
+                                    common::combine_assets_and_amts(
+                                    yangs, expected_compensation_amts
                                 );
                                 PurgerUtils::assert_received_assets(
                                     before_caller_asset_bals,
@@ -1372,7 +1407,7 @@ mod TestPurger {
                                     'wrong caller asset balance',
                                 );
 
-                                common::assert_spans_equalish(
+                                common::assert_asset_balances_equalish(
                                     compensation,
                                     expected_compensation,
                                     10_u128, // error margin
@@ -1507,8 +1542,7 @@ mod TestPurger {
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let max_close_amt: Wad = purger
-                                    .get_max_absorption_amount(target_trove);
+                                let (_, max_close_amt, _) = purger.preview_absorb(target_trove);
                                 assert(max_close_amt < before_debt, 'close amount == debt');
 
                                 set_contract_address(PurgerUtils::random_user());
@@ -1607,8 +1641,7 @@ mod TestPurger {
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let max_close_amt: Wad = purger
-                                    .get_max_absorption_amount(target_trove);
+                                let (_, max_close_amt, _) = purger.preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
 
                                 set_contract_address(PurgerUtils::random_user());
