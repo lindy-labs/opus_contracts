@@ -21,7 +21,7 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{
         Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
@@ -250,19 +250,20 @@ mod PurgerUtils {
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        
         // base case for ordinary redistributions
         yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
 
         // recipient trove has dust amount of the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(1_u128); // 1 wei (Wad) ETH
+        dust_case.append(100_u128); // 100 wei (Wad) ETH
         dust_case.append(1000000000_u128); // 10 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // recipient trove has dust amount of a yang that is not the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(30 * WAD_ONE); // 1 wei (Wad) ETH
-        dust_case.append(1_u128); // smallest unit for (10 ** 8) WBTC
+        dust_case.append(30 * WAD_ONE); // 30 (Wad) ETH
+        dust_case.append(100_u128); // 0.00001 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // exceptional redistribution because recipient trove does not have
@@ -503,7 +504,7 @@ mod PurgerUtils {
         pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
-        let scale: u128 = pow10(WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
+        let scale: u128 = pow(10_u128, WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
