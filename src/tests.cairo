@@ -2,6 +2,7 @@ mod abbot;
 mod absorber;
 mod caretaker;
 mod common;
+mod controller;
 mod erc20;
 mod equalizer;
 mod external;

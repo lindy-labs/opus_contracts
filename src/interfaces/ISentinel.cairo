@@ -14,8 +14,8 @@ trait ISentinel {
     fn get_yang(idx: u64) -> ContractAddress;
     fn get_yang_asset_max(yang: ContractAddress) -> u128;
     fn get_asset_amt_per_yang(yang: ContractAddress) -> Wad;
-    fn preview_enter(yang: ContractAddress, asset_amt: u128) -> Wad;
-    fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128;
+    fn convert_to_yang(yang: ContractAddress, asset_amt: u128) -> Wad;
+    fn convert_to_assets(yang: ContractAddress, yang_amt: Wad) -> u128;
     // External
     fn add_yang(
         yang: ContractAddress,
@@ -29,4 +29,6 @@ trait ISentinel {
     fn enter(yang: ContractAddress, user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad;
     fn exit(yang: ContractAddress, user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128;
     fn kill_gate(yang: ContractAddress);
+    fn suspend_yang(yang: ContractAddress);
+    fn unsuspend_yang(yang: ContractAddress);
 }

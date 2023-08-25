@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 use aura::utils::serde;
-use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
+use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
 use aura::utils::wadray::{Ray, Wad};
 
 #[abi]
@@ -25,9 +25,7 @@ trait IAbsorber {
     fn get_live() -> bool;
     fn is_operational() -> bool;
     fn preview_remove(provider: ContractAddress) -> Wad;
-    fn preview_reap(
-        provider: ContractAddress
-    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>);
+    fn preview_reap(provider: ContractAddress) -> (Span<AssetBalance>, Span<AssetBalance>);
     // external
     fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool);
     fn set_removal_limit(limit: Ray);
@@ -35,7 +33,7 @@ trait IAbsorber {
     fn request();
     fn remove(amount: Wad);
     fn reap();
-    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>);
+    fn update(asset_balances: Span<AssetBalance>);
     fn kill();
 }
 

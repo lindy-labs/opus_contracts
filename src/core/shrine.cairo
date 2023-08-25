@@ -4,7 +4,7 @@ mod Shrine {
     use cmp::min;
     use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
     use option::OptionTrait;
-    use starknet::get_caller_address;
+    use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
@@ -15,11 +15,14 @@ mod Shrine {
     use aura::utils::exp::{exp, neg_exp};
     use aura::utils::serde::SpanSerde;
     use aura::utils::storage_access;
-    use aura::utils::types::{ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution};
+    use aura::utils::types::{
+        ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
+    };
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE,
+        WAD_SCALE
     };
 
     //
@@ -32,6 +35,13 @@ mod Shrine {
 
     const MAX_THRESHOLD: u128 = 1000000000000000000000000000; // (ray): RAY_ONE
 
+    // If a yang is deemed risky, it can be marked as suspended. During the
+    // SUSPENSION_GRACE_PERIOD, this decision can be reverted and the yang's status
+    // can be changed back to normal. If this does not happen, the yang is
+    // suspended permanently, i.e. can't be used in the system ever again.
+    // The start of a Yang's suspension period is tracked in `yang_suspension`
+    const SUSPENSION_GRACE_PERIOD: u64 = 15768000; // 182.5 days, half a year, in seconds
+
     // Length of a time interval in seconds
     const TIME_INTERVAL: u64 = 1800; // 30 minutes * 60 seconds per minute
     const TIME_INTERVAL_DIV_YEAR: u128 =
@@ -39,6 +49,10 @@ mod Shrine {
 
     // Threshold for rounding remaining debt during redistribution (wad): 10**9
     const ROUNDING_THRESHOLD: u128 = 1000000000;
+
+    // Minimum amount of yang that must be in recipient troves for ordinary
+    // redistribution of yang to occur without overflow (wad): WAD_ONE
+    const MIN_RECIPIENT_POOL_YANG: u128 = 1000000000000000000;
 
     // Maximum interest rate a yang can have (ray): RAY_ONE
     const MAX_YANG_RATE: u128 = 100000000000000000000000000;
@@ -111,7 +125,14 @@ mod Shrine {
         // Keeps track of the interest rate of each yang at each era
         // (yang_id, era) -> (Interest Rate)
         yang_rates: LegacyMap::<(u32, u64), Ray>,
+        // Keeps track of when a yang was suspended
+        // 0 means it is not suspended
+        // (yang_id) -> (suspension timestamp)
+        yang_suspension: LegacyMap::<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
+        // NOTE: don't read the value directly, instead use `get_yang_threshold_internal`
+        //       because a yang might be suspended; the function will return the correct
+        //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
         thresholds: LegacyMap::<u32, Ray>,
         // Keeps track of how many redistributions have occurred
@@ -404,9 +425,15 @@ mod Shrine {
     }
 
     #[view]
+    fn get_yang_suspension_status(yang: ContractAddress) -> YangSuspensionStatus {
+        let yang_id: u32 = get_valid_yang_id(yang);
+        get_yang_suspension_status_internal(yang_id)
+    }
+
+    #[view]
     fn get_yang_threshold(yang: ContractAddress) -> Ray {
         let yang_id: u32 = get_valid_yang_id(yang);
-        thresholds::read(yang_id)
+        get_yang_threshold_internal(yang_id)
     }
 
     #[view]
@@ -848,14 +875,14 @@ mod Shrine {
         trove.debt -= debt_to_redistribute;
         troves::write(trove_id, trove);
 
-        // Update the redistribution ID so that it is not possible for the redistributed 
+        // Update the redistribution ID so that it is not possible for the redistributed
         // trove to receive any of its own exceptional redistribution in the event of a
-        // redistribution of an amount less than the trove's debt. 
-        // Note that the trove's last redistribution ID needs to be updated to 
+        // redistribution of an amount less than the trove's debt.
+        // Note that the trove's last redistribution ID needs to be updated to
         // `redistribution_id - 1` prior to calling `redistribute`.
         trove_redistribution_id::write(trove_id, redistribution_id);
 
-        // Event 
+        // Event
         TroveRedistributed(redistribution_id, trove_id, debt_to_redistribute);
     }
 
@@ -873,6 +900,20 @@ mod Shrine {
     fn eject(burner: ContractAddress, amount: Wad) {
         AccessControl::assert_has_role(ShrineRoles::EJECT);
         melt_internal(burner, amount);
+    }
+
+    // Set the timestamp when a Yang's suspension period started
+    // Setting to 0 means the Yang is not suspended (i.e. it's deemed safe)
+    #[external]
+    fn update_yang_suspension(yang: ContractAddress, ts: u64) {
+        AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
+        assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
+        assert(
+            get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
+            'SH: Permanent suspension'
+        );
+        let yang_id: u32 = get_valid_yang_id(yang);
+        yang_suspension::write(yang_id, ts);
     }
 
 
@@ -1205,7 +1246,7 @@ mod Shrine {
 
     // Loop through yangs for the trove:
     // 1. redistribute a yang according to the percentage value to be redistributed by either:
-    //    a. if at least one other trove has deposited that yang, decrementing the trove's yang 
+    //    a. if at least one other trove has deposited that yang, decrementing the trove's yang
     //       balance and total yang supply by the amount redistributed; or
     //    b. otherwise, redistribute this yang to all other yangs that at least one other trove
     //       has deposited, by decrementing the trove's yang balance only;
@@ -1217,8 +1258,8 @@ mod Shrine {
     //       deposited excluding the initial yang amount;
     //    and in both cases, store the fixed point division error, and write to storage.
     //
-    // Note that this internal function will revert if `pct_value_to_redistribute` exceeds 
-    // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from 
+    // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
+    // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from
     // the trove.
     fn redistribute_internal(
         redistribution_id: u32,
@@ -1239,18 +1280,18 @@ mod Shrine {
         let mut has_exceptional_redistribution: bool = false;
 
         // For exceptional redistribution of yangs (i.e. not deposited by any other troves, and
-        // which may be the first yang or the last yang), we need the total yang supply for all 
+        // which may be the first yang or the last yang), we need the total yang supply for all
         // yangs (regardless how they are to be redistributed) to remain constant throughout the
         // iteration over the yangs deposited in the trove. Therefore, we keep track of the
-        // updated total supply and the redistributed trove's remainder amount for each yang, 
-        // and only update them after the loop. Note that for ordinary redistribution of yangs, 
-        // the remainder yang balance after redistribution will also need to be adjusted if the 
-        // trove's value is not redistributed in full. 
+        // updated total supply and the redistributed trove's remainder amount for each yang,
+        // and only update them after the loop. Note that for ordinary redistribution of yangs,
+        // the remainder yang balance after redistribution will also need to be adjusted if the
+        // trove's value is not redistributed in full.
         //
         // For yangs that cannot be redistributed via rebasing because no other troves
-        // have deposited that yang, keep track of their yang IDs so that the redistributed 
+        // have deposited that yang, keep track of their yang IDs so that the redistributed
         // trove's yang amount can be updated after the main loop. The troves' yang amount
-        // cannot be modified while in the main loop for such yangs because it would result 
+        // cannot be modified while in the main loop for such yangs because it would result
         // in the amount of yangs for other troves to be calculated wrongly.
         //
         // For example, assuming the redistributed trove has yang1, yang2 and yang3, but the
@@ -1265,10 +1306,10 @@ mod Shrine {
         //    calculated to be the total amount of yang3 in the system.
         //
         // In addition, we need to keep track of the updated total supply for the redistributed yang:
-        // (1) for ordinary redistributions, if the trove's value is not entirely redistributed, 
-        //     we need to account for the appreciation of the remainder yang amounts of the 
+        // (1) for ordinary redistributions, if the trove's value is not entirely redistributed,
+        //     we need to account for the appreciation of the remainder yang amounts of the
         //     redistributed trove by decrementing both the trove's yang balance and the total supply;
-        // (2) for exceptional redistributions, we need to deduct the error from loss of precision 
+        // (2) for exceptional redistributions, we need to deduct the error from loss of precision
         //     arising from any exceptional redistribution so that we can update it at the end to ensure subsequent redistributions of collateral
         //     and debt can all be attributed to troves.
         // This has the side effect of rebasing the asset amount per yang.
@@ -1337,7 +1378,7 @@ mod Shrine {
                         - trove_yang_amt
                         - redistributed_yang_initial_amt;
 
-                    // Calculate the actual amount of debt that should be redistributed, including any 
+                    // Calculate the actual amount of debt that should be redistributed, including any
                     // rounding of dust amounts of debt.
                     let (redistributed_yang_price, _, _) = get_recent_price_from(
                         yang_id_to_redistribute, current_interval
@@ -1364,14 +1405,14 @@ mod Shrine {
                         debt_to_distribute_for_yang = tmp_debt_to_distribute_for_yang;
                     } else {
                         // If `trove_value_to_redistribute` is zero due to loss of precision,
-                        // redistribute all of `debt_to_redistribute` to the first yang that the trove 
+                        // redistribute all of `debt_to_redistribute` to the first yang that the trove
                         // has deposited. Note that `redistributed_debt` does not need to be updated because
                         // setting `debt_to_distribute_for_yang` to a non-zero value would terminate the loop
-                        // after this iteration at 
+                        // after this iteration at
                         // `debt_to_distribute_for_yang != raw_debt_to_distribute_for_yang` (i.e. `1 != 0`).
                         //
-                        // At worst, `debt_to_redistribute` will accrue to the error and 
-                        // no yang is decremented from the redistributed trove, but redistribution should 
+                        // At worst, `debt_to_redistribute` will accrue to the error and
+                        // no yang is decremented from the redistributed trove, but redistribution should
                         // not revert.
                         debt_to_distribute_for_yang = debt_to_redistribute;
                     };
@@ -1388,11 +1429,20 @@ mod Shrine {
                     let mut debt_error: Wad = WadZeroable::zero();
                     let mut is_exception: bool = false;
 
-                    // If there is some remainder amount of yangs in other troves for redistribution,
-                    // redistribute yangs by rebasing, and reallocate debt to other troves with the same yang.
+                    // If there is at least `MIN_RECIPIENT_POOL_YANG` amount of yang in other troves,
+                    // handle it as an ordinary redistribution by rebasing the redistributed yang, and 
+                    // reallocating debt to other troves with the same yang. The minimum remainder amount 
+                    // is required to prevent overflow when calculating `unit_yang_per_recipient_yang` below, 
+                    // and to prevent `updated_trove_yang_balance` from being incorrectly zeroed when 
+                    // `unit_yang_per_recipient_yang` is a very large value.
+                    //
                     // This is expected to be the common case.
                     // Otherwise, redistribute by reallocating the yangs and debt to all other yangs.
-                    if redistributed_yang_recipient_pool.is_non_zero() {
+
+                    let is_ordinary_redistribution: bool =
+                        redistributed_yang_recipient_pool >= MIN_RECIPIENT_POOL_YANG
+                        .into();
+                    if is_ordinary_redistribution {
                         // Since the amount of assets in the Gate remains constant, decrementing the system's yang
                         // balance by the amount deposited in the trove has the effect of rebasing (i.e. appreciating)
                         // the ratio of asset to yang for the remaining amount of that yang.
@@ -1408,25 +1458,27 @@ mod Shrine {
                         // Therefore, we need to adjust the remainder yang amount of the redistributed trove according to
                         // this formula below to offset the appreciation from rebasing for the redistributed trove:
                         //
-                        //                                            remaining_trove_yang
-                        // adjusted_remaining_trove_yang = ---------------------------------------
-                        //                                 (1 + unit_yang_per_recipient_pool_yang)
+                        //                                        remaining_trove_yang
+                        // adjusted_remaining_trove_yang = ----------------------------------
+                        //                                 (1 + unit_yang_per_recipient_yang)
                         //
-                        // where `unit_yang_per_recipient_pool_yang` is the amount of redistributed yang to be redistributed 
-                        // to each Wad unit in `redistributed_yang_recipient_pool`: 
+                        // where `unit_yang_per_recipient_yang` is the amount of redistributed yang to be redistributed
+                        // to each Wad unit in `redistributed_yang_recipient_pool + redistributed_yang_initial_amt` - note 
+                        // that the initial yang amount needs to be included because it also benefits from the rebasing:
                         //
-                        //                                          yang_amt_to_redistribute
-                        // unit_yang_per_recipient_pool_yang = ---------------------------------
-                        //                                     redistributed_yang_recipient_pool
+                        //                                                      yang_amt_to_redistribute
+                        // unit_yang_per_recipient_yang = ------------------------------------------------------------------
+                        //                                redistributed_yang_recipient_pool + redistributed_yang_initial_amt
 
-                        let unit_yang_per_recipient_pool_yang: Ray = wadray::rdiv_ww(
-                            yang_amt_to_redistribute, redistributed_yang_recipient_pool
+                        let unit_yang_per_recipient_yang: Ray = wadray::rdiv_ww(
+                            yang_amt_to_redistribute,
+                            (redistributed_yang_recipient_pool + redistributed_yang_initial_amt)
                         );
                         let remaining_trove_yang: Wad = trove_yang_amt - yang_amt_to_redistribute;
                         updated_trove_yang_balance =
                             wadray::rdiv_wr(
                                 remaining_trove_yang,
-                                (RAY_ONE.into() + unit_yang_per_recipient_pool_yang),
+                                (RAY_ONE.into() + unit_yang_per_recipient_yang)
                             );
 
                         // Note that the trove's deposit and total supply are updated after this loop.
@@ -1753,14 +1805,16 @@ mod Shrine {
                         let redistribution: YangRedistribution = yang_redistributions::read(
                             (*original_yang_balance.yang_id, tmp_redistribution_id)
                         );
-                        // If the trove has deposited a yang, then it will be a normal redistribution.
+                        // If the trove has deposited a yang, check for ordinary redistribution first.
+                        // Note that we cannot skip to the next yang at the end of this `if` block because 
+                        // we still need to check for exceptional redistribution in case the recipient pool 
+                        // amount was below `MIN_RECIPIENT_POOL_YANG`.
                         if (*original_yang_balance.amount).is_non_zero() {
                             // Get the amount of debt per yang for the current redistribution
                             if redistribution.unit_debt.is_non_zero() {
                                 trove_debt += redistribution.unit_debt
                                     * *original_yang_balance.amount;
                             }
-                            continue;
                         }
 
                         // If it is not an exceptional redistribution, and trove does not have this yang
@@ -2019,7 +2073,7 @@ mod Shrine {
 
             // Update cumulative values only if user has deposited the current yang
             if deposited.is_non_zero() {
-                let yang_threshold: Ray = thresholds::read(current_yang_id);
+                let yang_threshold: Ray = get_yang_threshold_internal(current_yang_id);
 
                 let (price, _, _) = get_recent_price_from(current_yang_id, interval);
 
@@ -2050,7 +2104,9 @@ mod Shrine {
                 Option::Some(yang_balance) => {
                     // Update cumulative values only if user has deposited the current yang
                     if (*yang_balance.amount).is_non_zero() {
-                        let yang_threshold: Ray = thresholds::read(*yang_balance.yang_id);
+                        let yang_threshold: Ray = get_yang_threshold_internal(
+                            *yang_balance.yang_id
+                        );
 
                         let (price, _, _) = get_recent_price_from(*yang_balance.yang_id, interval);
 
@@ -2090,7 +2146,7 @@ mod Shrine {
 
             // Update cumulative values only if current yang has been deposited
             if deposited.is_non_zero() {
-                let yang_threshold: Ray = thresholds::read(current_yang_id);
+                let yang_threshold: Ray = get_yang_threshold_internal(current_yang_id);
 
                 let (price, _, _) = get_recent_price_from(current_yang_id, current_interval);
 
@@ -2109,6 +2165,38 @@ mod Shrine {
         (0_u128.into(), 0_u128.into())
     }
 
+    fn get_yang_suspension_status_internal(yang_id: u32) -> YangSuspensionStatus {
+        let suspension_ts: u64 = yang_suspension::read(yang_id);
+        if suspension_ts.is_zero() {
+            return YangSuspensionStatus::None(());
+        }
+
+        if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
+            return YangSuspensionStatus::Temporary(());
+        }
+
+        YangSuspensionStatus::Permanent(())
+    }
+
+    fn get_yang_threshold_internal(yang_id: u32) -> Ray {
+        let base_threshold: Ray = thresholds::read(yang_id);
+
+        match get_yang_suspension_status_internal(yang_id) {
+            YangSuspensionStatus::None(_) => {
+                base_threshold
+            },
+            YangSuspensionStatus::Temporary(_) => {
+                // linearly decrease the threshold from base_threshold to 0
+                // based on the time passed since suspension started
+                let ts_diff: u64 = get_block_timestamp() - yang_suspension::read(yang_id);
+                base_threshold
+                    * ((SUSPENSION_GRACE_PERIOD - ts_diff).into() / SUSPENSION_GRACE_PERIOD.into())
+            },
+            YangSuspensionStatus::Permanent(_) => {
+                RayZeroable::zero()
+            },
+        }
+    }
 
     //
     // Internal ERC20 functions

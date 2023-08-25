@@ -5,10 +5,23 @@ use aura::interfaces::IAbsorber::IBlesserDispatcher;
 use aura::utils::serde::IBlesserDispatcherSerde;
 use aura::utils::wadray::{Ray, Wad};
 
+#[derive(Copy, Drop, PartialEq, Serde)]
+enum YangSuspensionStatus {
+    None: (),
+    Temporary: (),
+    Permanent: ()
+}
+
 #[derive(Copy, Drop, Serde)]
 struct YangBalance {
     yang_id: u32, //  ID of yang in Shrine
     amount: Wad, // Amount of yang in Wad
+}
+
+#[derive(Copy, Drop, Serde)]
+struct AssetBalance {
+    address: ContractAddress, // Address of the ERC-20 asset
+    amount: u128, // Amount of the asset in the asset's decimals
 }
 
 #[derive(Copy, Drop, PartialEq, Serde, storage_access::StorageAccess)]

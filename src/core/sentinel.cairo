@@ -1,7 +1,7 @@
 #[contract]
 mod Sentinel {
     use array::{ArrayTrait, SpanTrait};
-    use starknet::get_caller_address;
+    use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Default, Into};
     use zeroable::Zeroable;
@@ -13,11 +13,12 @@ mod Sentinel {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::serde::SpanSerde;
+    use aura::utils::types::YangSuspensionStatus;
     use aura::utils::u256_conversions::U128IntoU256;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
-    // Helper constant to set the starting index for iterating over the 
+    // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
     const LOOP_START: u64 = 1;
 
@@ -65,7 +66,7 @@ mod Sentinel {
 
     //
     // View Functions
-    // 
+    //
 
     #[view]
     fn get_gate_address(yang: ContractAddress) -> ContractAddress {
@@ -106,7 +107,7 @@ mod Sentinel {
         yang_addresses_count::read()
     }
 
-    // Returns 0 if the yang is invalid, as opposed to `preview_enter` and `preview_exit`
+    // Returns 0 if the yang is invalid, as opposed to `convert_to_yang` and `convert_to_assets`
     // Zero value will be handled by the oracle module so as to prevent price updates from failing
     #[view]
     fn get_asset_amt_per_yang(yang: ContractAddress) -> Wad {
@@ -119,23 +120,25 @@ mod Sentinel {
         gate.get_asset_amt_per_yang()
     }
 
+    // This can be used to simulate the effects of `enter`.
     #[view]
-    fn preview_enter(yang: ContractAddress, asset_amt: u128) -> Wad {
+    fn convert_to_yang(yang: ContractAddress, asset_amt: u128) -> Wad {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert_can_enter(yang, gate, asset_amt);
-        gate.preview_enter(asset_amt)
+        gate.convert_to_yang(asset_amt)
     }
 
+    // This can be used to simulate the effects of `exit`.
     #[view]
-    fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128 {
+    fn convert_to_assets(yang: ContractAddress, yang_amt: Wad) -> u128 {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
-        gate.preview_exit(yang_amt)
+        gate.convert_to_assets(yang_amt)
     }
 
     //
     // External functions
-    // 
+    //
 
     #[external]
     fn add_yang(
@@ -223,6 +226,18 @@ mod Sentinel {
         GateKilled(yang, yang_to_gate::read(yang).contract_address);
     }
 
+    #[external]
+    fn suspend_yang(yang: ContractAddress) {
+        AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+        shrine::read().update_yang_suspension(yang, get_block_timestamp());
+    }
+
+    #[external]
+    fn unsuspend_yang(yang: ContractAddress) {
+        AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+        shrine::read().update_yang_suspension(yang, 0);
+    }
+
     //
     // Internal
     //
@@ -233,6 +248,9 @@ mod Sentinel {
     fn assert_can_enter(yang: ContractAddress, gate: IGateDispatcher, enter_amt: u128) {
         assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
         assert(yang_is_live::read(yang), 'SE: Gate is not live');
+        let suspension_status: YangSuspensionStatus = shrine::read()
+            .get_yang_suspension_status(yang);
+        assert(suspension_status == YangSuspensionStatus::None(()), 'SE: Yang suspended');
         let current_total: u128 = gate.get_total_assets();
         let max_amt: u128 = yang_asset_max::read(yang);
         assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');
