@@ -953,7 +953,7 @@ mod Shrine {
             let yin_price: Wad = self.yin_spot_price.read();
 
             if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
-                return 0_u128.into();
+                return WadZeroable::zero();
             } else if yin_price < FORGE_FEE_CAP_PRICE.into() {
                 return FORGE_FEE_CAP_PCT.into();
             }
@@ -986,7 +986,7 @@ mod Shrine {
                 return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
             }
 
-            0_u128.into()
+            WadZeroable::zero()
         }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
@@ -1133,7 +1133,7 @@ mod Shrine {
             self: @ContractState, yang_id: u32, redistribution_id: u32
         ) -> Wad {
             if redistribution_id == 0 {
-                return 0_u128.into();
+                return WadZeroable::zero();
             }
 
             let redistribution: YangRedistribution = self
@@ -1413,7 +1413,7 @@ mod Shrine {
             // Saves gas and prevents bugs for troves with no yangs deposited
             // Implicit assumption is that a trove with non-zero debt must have non-zero yangs
             if trove.debt.is_zero() {
-                return 0_u128.into();
+                return WadZeroable::zero();
             }
 
             let latest_rate_era: u64 = self.rates_latest_era.read();
@@ -1475,12 +1475,12 @@ mod Shrine {
             end_interval: u64,
             rate_era: u64
         ) -> Ray {
-            let mut cumulative_weighted_sum: Ray = 0_u128.into();
-            let mut cumulative_yang_value: Wad = 0_u128.into();
+            let mut cumulative_weighted_sum: Ray = RayZeroable::zero();
+            let mut cumulative_yang_value: Wad = WadZeroable::zero();
 
             let mut current_yang_id: u32 = self.yangs_count.read();
 
-            let mut avg_rate: Ray = 0_u128.into();
+            let mut avg_rate: Ray = RayZeroable::zero();
 
             loop {
                 // If all yangs have been iterated over, return the average rate
