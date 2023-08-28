@@ -100,13 +100,14 @@ fn deploy_token(
     initial_supply: u256,
     recipient: ContractAddress,
 ) -> ContractAddress {
-    let mut calldata: Array<felt252> = Default::default();
-    calldata.append(name);
-    calldata.append(symbol);
-    calldata.append(decimals);
-    calldata.append(initial_supply.low.into()); // u256.low
-    calldata.append(initial_supply.high.into()); // u256.high
-    calldata.append(contract_address_to_felt252(recipient));
+    let mut calldata: Array<felt252> = array![
+        name,
+        symbol,
+        decimals,
+        initial_supply.low.into(), // u256.low
+        initial_supply.high.into(), // u256.high
+        contract_address_to_felt252(recipient),
+    ];
 
     let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
     let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
@@ -264,12 +265,13 @@ fn assert_asset_balances_equalish(
 fn combine_assets_and_amts(
     mut assets: Span<ContractAddress>, mut amts: Span<u128>
 ) -> Span<AssetBalance> {
+    assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = Default::default();
     loop {
         match assets.pop_front() {
-            Option::Some(assets) => {
+            Option::Some(asset) => {
                 asset_balances
-                    .append(AssetBalance { asset: *assets, amount: *amts.pop_front().unwrap(), });
+                    .append(AssetBalance { asset: *asset, amount: *amts.pop_front().unwrap(), });
             },
             Option::None(_) => {
                 break;
