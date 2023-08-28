@@ -362,6 +362,10 @@ mod Shrine {
         self.yin_decimals.write(WAD_DECIMALS);
     }
 
+    //
+    // External Shrine functions
+    //
+
     #[external(v0)]
     impl IShrineImpl of IShrine<ContractState> {
         //
@@ -1069,12 +1073,28 @@ mod Shrine {
         }
     }
 
+    //
+    // Internal Shrine functions
+    //
+
     #[generate_trait]
     impl ShrineInternalFunctions of ShrineInternalFunctionsTrait {
+        //
+        // Helpers for assertions
+        //
+
         // Check that system is live
         fn assert_live(self: @ContractState) {
             assert(self.is_live.read(), 'SH: System is not live');
         }
+
+        fn assert_healthy(self: @ContractState, trove_id: u64) {
+            assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
+        }
+
+        //
+        // Helpers for getters and view functions
+        //
 
         // Helper function to get the yang ID given a yang address, and throw an error if
         // yang address has not been added (i.e. yang ID = 0)
@@ -1084,6 +1104,175 @@ mod Shrine {
             yang_id
         }
 
+        // Returns the price for `yang_id` at `interval` if it is non-zero.
+        // Otherwise, check `interval` - 1 recursively for the last available price.
+        fn get_recent_price_from(
+            self: @ContractState, yang_id: u32, interval: u64
+        ) -> (Wad, Wad, u64) {
+            let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
+
+            if price.is_non_zero() {
+                return (price, cumulative_price, interval);
+            }
+            self.get_recent_price_from(yang_id, interval - 1)
+        }
+
+        // Returns the multiplier at `interval` if it is non-zero.
+        // Otherwise, check `interval` - 1 recursively for the last available value.
+        fn get_recent_multiplier_from(self: @ContractState, interval: u64) -> (Ray, Ray, u64) {
+            let (multiplier, cumulative_multiplier) = self.multiplier.read(interval);
+            if multiplier.is_non_zero() {
+                return (multiplier, cumulative_multiplier, interval);
+            }
+            self.get_recent_multiplier_from(interval - 1)
+        }
+
+        // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.
+        // Otherwise, check `redistribution_id` - 1 recursively for the last error.
+        fn get_recent_redistribution_error_for_yang(
+            self: @ContractState, yang_id: u32, redistribution_id: u32
+        ) -> Wad {
+            if redistribution_id == 0 {
+                return 0_u128.into();
+            }
+
+            let redistribution: YangRedistribution = self
+                .yang_redistributions
+                .read((yang_id, redistribution_id));
+
+            // If redistribution unit-debt is non-zero or the error is non-zero, return the error
+            // This catches both the case where the unit debt is non-zero and the error is zero, and the case
+            // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
+            if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
+                return redistribution.error;
+            }
+
+            self.get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
+        }
+
+        fn get_yang_suspension_status_internal(
+            self: @ContractState, yang_id: u32
+        ) -> YangSuspensionStatus {
+            let suspension_ts: u64 = self.yang_suspension.read(yang_id);
+            if suspension_ts.is_zero() {
+                return YangSuspensionStatus::None(());
+            }
+
+            if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
+                return YangSuspensionStatus::Temporary(());
+            }
+
+            YangSuspensionStatus::Permanent(())
+        }
+
+        fn get_yang_threshold_internal(self: @ContractState, yang_id: u32) -> Ray {
+            let base_threshold: Ray = self.thresholds.read(yang_id);
+
+            match self.get_yang_suspension_status_internal(yang_id) {
+                YangSuspensionStatus::None(_) => {
+                    base_threshold
+                },
+                YangSuspensionStatus::Temporary(_) => {
+                    // linearly decrease the threshold from base_threshold to 0
+                    // based on the time passed since suspension started
+                    let ts_diff: u64 = get_block_timestamp() - self.yang_suspension.read(yang_id);
+                    base_threshold
+                        * ((SUSPENSION_GRACE_PERIOD - ts_diff).into()
+                            / SUSPENSION_GRACE_PERIOD.into())
+                },
+                YangSuspensionStatus::Permanent(_) => {
+                    RayZeroable::zero()
+                },
+            }
+        }
+
+        // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
+        // Starts from yang ID 1.
+        // Note that zero values are added to the return array because downstream
+        // computation assumes the full array of yangs.
+        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
+            let mut yang_balances: Array<YangBalance> = Default::default();
+
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break yang_balances.span();
+                }
+
+                let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
+                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
+
+                current_yang_id += 1;
+            }
+        }
+
+        // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
+        // Starts from yang ID 1.
+        fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
+            let mut yang_balances: Array<YangBalance> = Default::default();
+
+            let mut current_yang_id: u32 = START_YANG_IDX;
+            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
+            loop {
+                if current_yang_id == loop_end {
+                    break yang_balances.span();
+                }
+
+                let yang_total: Wad = self.yang_total.read(current_yang_id);
+                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: yang_total });
+
+                current_yang_id += 1;
+            }
+        }
+
+        // Returns a tuple of:
+        // 1. the custom threshold (maximum LTV before liquidation)
+        // 2. the total value of the yangs, at a given interval
+        // based on historical prices and the given yang balances.
+        fn get_threshold_and_value(
+            self: @ContractState, mut yang_balances: Span<YangBalance>, interval: u64
+        ) -> (Ray, Wad) {
+            let mut weighted_threshold_sum: Ray = RayZeroable::zero();
+            let mut total_value: Wad = WadZeroable::zero();
+
+            loop {
+                match yang_balances.pop_front() {
+                    Option::Some(yang_balance) => {
+                        // Update cumulative values only if the yang balance is greater than 0
+                        if (*yang_balance.amount).is_non_zero() {
+                            let yang_threshold: Ray = self
+                                .get_yang_threshold_internal(*yang_balance.yang_id);
+
+                            let (price, _, _) = self
+                                .get_recent_price_from(*yang_balance.yang_id, interval);
+
+                            let yang_deposited_value = *yang_balance.amount * price;
+                            total_value += yang_deposited_value;
+                            weighted_threshold_sum +=
+                                wadray::wmul_rw(yang_threshold, yang_deposited_value);
+                        }
+                    },
+                    Option::None(_) => {
+                        break;
+                    },
+                };
+            };
+
+            // Catch division by zero
+            let threshold: Ray = if total_value.is_non_zero() {
+                wadray::wdiv_rw(weighted_threshold_sum, total_value)
+            } else {
+                RayZeroable::zero()
+            };
+
+            (threshold, total_value)
+        }
+
+        //
+        // Helpers for setters
+        //
+
         fn set_threshold_internal(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
             assert(threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
             self.thresholds.write(self.get_valid_yang_id(yang), threshold);
@@ -1091,6 +1280,10 @@ mod Shrine {
             // Event emission
             self.emit(ThresholdUpdated { yang: yang, threshold: threshold });
         }
+
+        //
+        // Helpers for core functions
+        //
 
         fn forge_internal(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) + amount);
@@ -1312,6 +1505,99 @@ mod Shrine {
                 }
                 current_yang_id -= 1;
             }
+        }
+
+        // Returns the average price for a yang between two intervals, including `end_interval` but NOT including `start_interval`
+        // - If `start_interval` is the same as `end_interval`, return the price at that interval.
+        // - If `start_interval` is different from `end_interval`, return the average price.
+        fn get_avg_price(
+            self: @ContractState, yang_id: u32, start_interval: u64, end_interval: u64
+        ) -> Wad {
+            let (start_yang_price, start_cumulative_yang_price, available_start_interval) = self
+                .get_recent_price_from(yang_id, start_interval);
+            let (end_yang_price, end_cumulative_yang_price, available_end_interval) = self
+                .get_recent_price_from(yang_id, end_interval);
+
+            // If the last available price for both start and end intervals are the same,
+            // return that last available price
+            // This also catches `start_interval == end_interval`
+            if available_start_interval == available_end_interval {
+                return start_yang_price;
+            }
+
+            let mut cumulative_diff: Wad = end_cumulative_yang_price - start_cumulative_yang_price;
+
+            // Early termination if `start_interval` and `end_interval` are updated
+            if (start_interval == available_start_interval)
+                & (end_interval == available_end_interval) {
+                return (cumulative_diff.val / (end_interval - start_interval).into()).into();
+            }
+
+            // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
+            // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
+            if start_interval != available_start_interval {
+                let cumulative_offset = Wad {
+                    val: (start_interval - available_start_interval).into() * start_yang_price.val
+                };
+                cumulative_diff -= cumulative_offset;
+            }
+
+            // If the end interval is not updated, adjust the cumulative difference by adding
+            // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
+            if end_interval != available_end_interval {
+                let cumulative_offset = Wad {
+                    val: (end_interval - available_end_interval).into() * end_yang_price.val
+                };
+                cumulative_diff += cumulative_offset;
+            }
+
+            (cumulative_diff.val / (end_interval - start_interval).into()).into()
+        }
+
+        // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
+        // - If `start_interval` is the same as `end_interval`, return the multiplier value at that interval.
+        // - If `start_interval` is different from `end_interval`, return the average.
+        // Return value is a tuple so that function can be modified as an external view for testing
+        fn get_avg_multiplier(self: @ContractState, start_interval: u64, end_interval: u64) -> Ray {
+            let (start_multiplier, start_cumulative_multiplier, available_start_interval) = self
+                .get_recent_multiplier_from(start_interval);
+            let (end_multiplier, end_cumulative_multiplier, available_end_interval) = self
+                .get_recent_multiplier_from(end_interval);
+
+            // If the last available multiplier for both start and end intervals are the same,
+            // return that last available multiplier
+            // This also catches `start_interval == end_interval`
+            if available_start_interval == available_end_interval {
+                return start_multiplier;
+            }
+
+            let mut cumulative_diff: Ray = end_cumulative_multiplier - start_cumulative_multiplier;
+
+            // Early termination if `start_interval` and `end_interval` are updated
+            if (start_interval == available_start_interval)
+                & (end_interval == available_end_interval) {
+                return (cumulative_diff.val / (end_interval - start_interval).into()).into();
+            }
+
+            // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
+            // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
+            if start_interval != available_start_interval {
+                let cumulative_offset = Ray {
+                    val: (start_interval - available_start_interval).into() * start_multiplier.val
+                };
+                cumulative_diff -= cumulative_offset;
+            }
+
+            // If the end interval is not updated, adjust the cumulative difference by adding
+            // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
+            if (end_interval != available_end_interval) {
+                let cumulative_offset = Ray {
+                    val: (end_interval - available_end_interval).into() * end_multiplier.val
+                };
+                cumulative_diff += cumulative_offset;
+            }
+
+            (cumulative_diff.val / (end_interval - start_interval).into()).into()
         }
 
         // Loop through yangs for the trove:
@@ -1776,29 +2062,6 @@ mod Shrine {
             };
         }
 
-        // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.
-        // Otherwise, check `redistribution_id` - 1 recursively for the last error.
-        fn get_recent_redistribution_error_for_yang(
-            self: @ContractState, yang_id: u32, redistribution_id: u32
-        ) -> Wad {
-            if redistribution_id == 0 {
-                return 0_u128.into();
-            }
-
-            let redistribution: YangRedistribution = self
-                .yang_redistributions
-                .read((yang_id, redistribution_id));
-
-            // If redistribution unit-debt is non-zero or the error is non-zero, return the error
-            // This catches both the case where the unit debt is non-zero and the error is zero, and the case
-            // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
-            if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
-                return redistribution.error;
-            }
-
-            self.get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
-        }
-
         // Takes in a value for the trove's debt, and returns the following:
         // 1. `Option::None` if there were no exceptional redistributions.
         //    Otherwise, an ordered array of yang amounts including any exceptional redistributions,
@@ -1979,254 +2242,11 @@ mod Shrine {
                 (Option::None(()), trove_debt)
             }
         }
-
-        // Returns the price for `yang_id` at `interval` if it is non-zero.
-        // Otherwise, check `interval` - 1 recursively for the last available price.
-        fn get_recent_price_from(
-            self: @ContractState, yang_id: u32, interval: u64
-        ) -> (Wad, Wad, u64) {
-            let (price, cumulative_price) = self.yang_prices.read((yang_id, interval));
-
-            if price.is_non_zero() {
-                return (price, cumulative_price, interval);
-            }
-            self.get_recent_price_from(yang_id, interval - 1)
-        }
-
-        // Returns the average price for a yang between two intervals, including `end_interval` but NOT including `start_interval`
-        // - If `start_interval` is the same as `end_interval`, return the price at that interval.
-        // - If `start_interval` is different from `end_interval`, return the average price.
-        fn get_avg_price(
-            self: @ContractState, yang_id: u32, start_interval: u64, end_interval: u64
-        ) -> Wad {
-            let (start_yang_price, start_cumulative_yang_price, available_start_interval) = self
-                .get_recent_price_from(yang_id, start_interval);
-            let (end_yang_price, end_cumulative_yang_price, available_end_interval) = self
-                .get_recent_price_from(yang_id, end_interval);
-
-            // If the last available price for both start and end intervals are the same,
-            // return that last available price
-            // This also catches `start_interval == end_interval`
-            if available_start_interval == available_end_interval {
-                return start_yang_price;
-            }
-
-            let mut cumulative_diff: Wad = end_cumulative_yang_price - start_cumulative_yang_price;
-
-            // Early termination if `start_interval` and `end_interval` are updated
-            if (start_interval == available_start_interval)
-                & (end_interval == available_end_interval) {
-                return (cumulative_diff.val / (end_interval - start_interval).into()).into();
-            }
-
-            // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
-            // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
-            if start_interval != available_start_interval {
-                let cumulative_offset = Wad {
-                    val: (start_interval - available_start_interval).into() * start_yang_price.val
-                };
-                cumulative_diff -= cumulative_offset;
-            }
-
-            // If the end interval is not updated, adjust the cumulative difference by adding
-            // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
-            if end_interval != available_end_interval {
-                let cumulative_offset = Wad {
-                    val: (end_interval - available_end_interval).into() * end_yang_price.val
-                };
-                cumulative_diff += cumulative_offset;
-            }
-
-            (cumulative_diff.val / (end_interval - start_interval).into()).into()
-        }
-
-        // Returns the multiplier at `interval` if it is non-zero.
-        // Otherwise, check `interval` - 1 recursively for the last available value.
-        fn get_recent_multiplier_from(self: @ContractState, interval: u64) -> (Ray, Ray, u64) {
-            let (multiplier, cumulative_multiplier) = self.multiplier.read(interval);
-            if multiplier.is_non_zero() {
-                return (multiplier, cumulative_multiplier, interval);
-            }
-            self.get_recent_multiplier_from(interval - 1)
-        }
-
-        // Returns the average multiplier over the specified time period, including `end_interval` but NOT including `start_interval`
-        // - If `start_interval` is the same as `end_interval`, return the multiplier value at that interval.
-        // - If `start_interval` is different from `end_interval`, return the average.
-        // Return value is a tuple so that function can be modified as an external view for testing
-        fn get_avg_multiplier(self: @ContractState, start_interval: u64, end_interval: u64) -> Ray {
-            let (start_multiplier, start_cumulative_multiplier, available_start_interval) = self
-                .get_recent_multiplier_from(start_interval);
-            let (end_multiplier, end_cumulative_multiplier, available_end_interval) = self
-                .get_recent_multiplier_from(end_interval);
-
-            // If the last available multiplier for both start and end intervals are the same,
-            // return that last available multiplier
-            // This also catches `start_interval == end_interval`
-            if available_start_interval == available_end_interval {
-                return start_multiplier;
-            }
-
-            let mut cumulative_diff: Ray = end_cumulative_multiplier - start_cumulative_multiplier;
-
-            // Early termination if `start_interval` and `end_interval` are updated
-            if (start_interval == available_start_interval)
-                & (end_interval == available_end_interval) {
-                return (cumulative_diff.val / (end_interval - start_interval).into()).into();
-            }
-
-            // If the start interval is not updated, adjust the cumulative difference (see `advance`) by deducting
-            // (number of intervals missed from `available_start_interval` to `start_interval` * start price).
-            if start_interval != available_start_interval {
-                let cumulative_offset = Ray {
-                    val: (start_interval - available_start_interval).into() * start_multiplier.val
-                };
-                cumulative_diff -= cumulative_offset;
-            }
-
-            // If the end interval is not updated, adjust the cumulative difference by adding
-            // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
-            if (end_interval != available_end_interval) {
-                let cumulative_offset = Ray {
-                    val: (end_interval - available_end_interval).into() * end_multiplier.val
-                };
-                cumulative_diff += cumulative_offset;
-            }
-
-            (cumulative_diff.val / (end_interval - start_interval).into()).into()
-        }
-
-        //
-        // Trove health internal functions
-        //
-
-        fn assert_healthy(self: @ContractState, trove_id: u64) {
-            assert(self.is_healthy(trove_id), 'SH: Trove LTV is too high');
-        }
-
-        // Returns an ordered array of the `YangBalance` struct for a trove's deposits.
-        // Starts from yang ID 1.
-        // Note that zero values are added to the return array because downstream
-        // computation assumes the full array of yangs.
-        fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = Default::default();
-
-            let mut current_yang_id: u32 = START_YANG_IDX;
-            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
-            loop {
-                if current_yang_id == loop_end {
-                    break yang_balances.span();
-                }
-
-                let deposited: Wad = self.deposits.read((current_yang_id, trove_id));
-                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: deposited });
-
-                current_yang_id += 1;
-            }
-        }
-
-        // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
-        // Starts from yang ID 1.
-        fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = Default::default();
-
-            let mut current_yang_id: u32 = START_YANG_IDX;
-            let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
-            loop {
-                if current_yang_id == loop_end {
-                    break yang_balances.span();
-                }
-
-                let yang_total: Wad = self.yang_total.read(current_yang_id);
-                yang_balances.append(YangBalance { yang_id: current_yang_id, amount: yang_total });
-
-                current_yang_id += 1;
-            }
-        }
-
-        // Returns a tuple of:
-        // 1. the custom threshold (maximum LTV before liquidation)
-        // 2. the total value of the yangs, at a given interval
-        // based on historical prices and the given yang balances.
-        fn get_threshold_and_value(
-            self: @ContractState, mut yang_balances: Span<YangBalance>, interval: u64
-        ) -> (Ray, Wad) {
-            let mut weighted_threshold_sum: Ray = RayZeroable::zero();
-            let mut total_value: Wad = WadZeroable::zero();
-
-            loop {
-                match yang_balances.pop_front() {
-                    Option::Some(yang_balance) => {
-                        // Update cumulative values only if the yang balance is greater than 0
-                        if (*yang_balance.amount).is_non_zero() {
-                            let yang_threshold: Ray = self
-                                .get_yang_threshold_internal(*yang_balance.yang_id);
-
-                            let (price, _, _) = self
-                                .get_recent_price_from(*yang_balance.yang_id, interval);
-
-                            let yang_deposited_value = *yang_balance.amount * price;
-                            total_value += yang_deposited_value;
-                            weighted_threshold_sum +=
-                                wadray::wmul_rw(yang_threshold, yang_deposited_value);
-                        }
-                    },
-                    Option::None(_) => {
-                        break;
-                    },
-                };
-            };
-
-            // Catch division by zero
-            let threshold: Ray = if total_value.is_non_zero() {
-                wadray::wdiv_rw(weighted_threshold_sum, total_value)
-            } else {
-                RayZeroable::zero()
-            };
-
-            (threshold, total_value)
-        }
-
-        fn get_yang_suspension_status_internal(
-            self: @ContractState, yang_id: u32
-        ) -> YangSuspensionStatus {
-            let suspension_ts: u64 = self.yang_suspension.read(yang_id);
-            if suspension_ts.is_zero() {
-                return YangSuspensionStatus::None(());
-            }
-
-            if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
-                return YangSuspensionStatus::Temporary(());
-            }
-
-            YangSuspensionStatus::Permanent(())
-        }
-
-        fn get_yang_threshold_internal(self: @ContractState, yang_id: u32) -> Ray {
-            let base_threshold: Ray = self.thresholds.read(yang_id);
-
-            match self.get_yang_suspension_status_internal(yang_id) {
-                YangSuspensionStatus::None(_) => {
-                    base_threshold
-                },
-                YangSuspensionStatus::Temporary(_) => {
-                    // linearly decrease the threshold from base_threshold to 0
-                    // based on the time passed since suspension started
-                    let ts_diff: u64 = get_block_timestamp() - self.yang_suspension.read(yang_id);
-                    base_threshold
-                        * ((SUSPENSION_GRACE_PERIOD - ts_diff).into()
-                            / SUSPENSION_GRACE_PERIOD.into())
-                },
-                YangSuspensionStatus::Permanent(_) => {
-                    RayZeroable::zero()
-                },
-            }
-        }
     }
 
 
     //
-    // Internal view functions for Shrine
+    // Internal functions for Shrine that do not access storage
     // 
 
     #[inline(always)]
