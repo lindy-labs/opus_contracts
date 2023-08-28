@@ -377,6 +377,11 @@ mod Shrine {
             self.total_yin.read()
         }
 
+        // Get yin spot price
+        fn get_yin_spot_price(self: @ContractState) -> Wad {
+            self.yin_spot_price.read()
+        }
+
         fn get_yang_total(self: @ContractState, yang: ContractAddress) -> Wad {
             let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_total.read(yang_id)
@@ -469,7 +474,7 @@ mod Shrine {
         }
 
         //
-        // External
+        // Setters - External
         //
 
         // `initial_yang_amt` is passed as an argument from upstream to address the issue of
@@ -539,102 +544,23 @@ mod Shrine {
             self.emit(YangTotalUpdated { yang: yang, total: initial_yang_amt });
         }
 
-        fn set_debt_ceiling(ref self: ContractState, new_ceiling: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
-            self.debt_ceiling.write(new_ceiling);
-
-            //Event emission
-            self.emit(DebtCeilingUpdated { ceiling: new_ceiling });
-        }
-
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
             AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
             self.set_threshold_internal(yang, new_threshold);
         }
 
-        fn kill(ref self: ContractState) {
-            AccessControl::assert_has_role(ShrineRoles::KILL);
-            self.is_live.write(false);
-
-            // Event emission
-            self.emit(Killed {});
-        }
-
-        //
-        // Core Functions - External
-        //
-
-        // Set the price of the specified Yang for the current interval interval
-        fn advance(ref self: ContractState, yang: ContractAddress, price: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::ADVANCE);
-
-            assert(price.is_non_zero(), 'SH: Price cannot be 0');
-
-            let interval: u64 = now();
+        // Set the timestamp when a Yang's suspension period started
+        // Setting to 0 means the Yang is not suspended (i.e. it's deemed safe)
+        fn update_yang_suspension(ref self: ContractState, yang: ContractAddress, ts: u64) {
+            AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
+            assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
+            assert(
+                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
+                'SH: Permanent suspension'
+            );
             let yang_id: u32 = self.get_valid_yang_id(yang);
-
-            // Calculating the new cumulative price
-            // To do this, we get the interval of the last price update, find the number of
-            // intervals BETWEEN the current interval and the last_interval (non-inclusive), multiply that by
-            // the last price, and add it to the last cumulative price. Then we add the new price, `price`,
-            // for the current interval.
-            let (last_price, last_cumulative_price, last_interval) = self
-                .get_recent_price_from(yang_id, interval - 1);
-
-            let new_cumulative: Wad = last_cumulative_price
-                + (last_price.val * (interval - last_interval - 1).into()).into()
-                + price;
-
-            self.yang_prices.write((yang_id, interval), (price, new_cumulative));
-
-            self
-                .emit(
-                    YangPriceUpdated {
-                        yang: yang,
-                        price: price,
-                        cumulative_price: new_cumulative,
-                        interval: interval
-                    }
-                );
-        }
-
-        // Sets the multiplier for the current interval
-        fn set_multiplier(ref self: ContractState, new_multiplier: Ray) {
-            AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
-
-            // TODO: Should this be here? Maybe multiplier should be able to go to zero
-            assert(new_multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
-            assert(new_multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
-
-            let interval: u64 = now();
-            let (last_multiplier, last_cumulative_multiplier, last_interval) = self
-                .get_recent_multiplier_from(interval - 1);
-
-            let new_cumulative_multiplier = last_cumulative_multiplier
-                + ((interval - last_interval - 1).into() * last_multiplier.val).into()
-                + new_multiplier;
-            self.multiplier.write(interval, (new_multiplier, new_cumulative_multiplier));
-
-            self
-                .emit(
-                    MultiplierUpdated {
-                        multiplier: new_multiplier,
-                        cumulative_multiplier: new_cumulative_multiplier,
-                        interval: interval
-                    }
-                );
-        }
-
-        // Updates spot price of yin
-        //
-        // Shrine denominates all prices (including that of yin) in yin, meaning yin's peg/target price is 1 (wad).
-        // Therefore, it's expected that the spot price is denominated in yin, in order to
-        // get the true deviation of the spot price from the peg/target price.
-        fn update_yin_spot_price(ref self: ContractState, new_price: Wad) {
-            AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE);
-            self.emit(YinPriceUpdated { old_price: self.yin_spot_price.read(), new_price });
-            self.yin_spot_price.write(new_price);
+            self.yang_suspension.write(yang_id, ts);
         }
 
         // Update the base rates of all yangs
@@ -726,6 +652,98 @@ mod Shrine {
                     }
                 );
         }
+
+        // Set the price of the specified Yang for the current interval interval
+        fn advance(ref self: ContractState, yang: ContractAddress, price: Wad) {
+            AccessControl::assert_has_role(ShrineRoles::ADVANCE);
+
+            assert(price.is_non_zero(), 'SH: Price cannot be 0');
+
+            let interval: u64 = now();
+            let yang_id: u32 = self.get_valid_yang_id(yang);
+
+            // Calculating the new cumulative price
+            // To do this, we get the interval of the last price update, find the number of
+            // intervals BETWEEN the current interval and the last_interval (non-inclusive), multiply that by
+            // the last price, and add it to the last cumulative price. Then we add the new price, `price`,
+            // for the current interval.
+            let (last_price, last_cumulative_price, last_interval) = self
+                .get_recent_price_from(yang_id, interval - 1);
+
+            let new_cumulative: Wad = last_cumulative_price
+                + (last_price.val * (interval - last_interval - 1).into()).into()
+                + price;
+
+            self.yang_prices.write((yang_id, interval), (price, new_cumulative));
+
+            self
+                .emit(
+                    YangPriceUpdated {
+                        yang: yang,
+                        price: price,
+                        cumulative_price: new_cumulative,
+                        interval: interval
+                    }
+                );
+        }
+
+        // Sets the multiplier for the current interval
+        fn set_multiplier(ref self: ContractState, new_multiplier: Ray) {
+            AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
+
+            // TODO: Should this be here? Maybe multiplier should be able to go to zero
+            assert(new_multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
+            assert(new_multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
+
+            let interval: u64 = now();
+            let (last_multiplier, last_cumulative_multiplier, last_interval) = self
+                .get_recent_multiplier_from(interval - 1);
+
+            let new_cumulative_multiplier = last_cumulative_multiplier
+                + ((interval - last_interval - 1).into() * last_multiplier.val).into()
+                + new_multiplier;
+            self.multiplier.write(interval, (new_multiplier, new_cumulative_multiplier));
+
+            self
+                .emit(
+                    MultiplierUpdated {
+                        multiplier: new_multiplier,
+                        cumulative_multiplier: new_cumulative_multiplier,
+                        interval: interval
+                    }
+                );
+        }
+
+        fn set_debt_ceiling(ref self: ContractState, new_ceiling: Wad) {
+            AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
+            self.debt_ceiling.write(new_ceiling);
+
+            //Event emission
+            self.emit(DebtCeilingUpdated { ceiling: new_ceiling });
+        }
+
+        // Updates spot price of yin
+        //
+        // Shrine denominates all prices (including that of yin) in yin, meaning yin's peg/target price is 1 (wad).
+        // Therefore, it's expected that the spot price is denominated in yin, in order to
+        // get the true deviation of the spot price from the peg/target price.
+        fn update_yin_spot_price(ref self: ContractState, new_price: Wad) {
+            AccessControl::assert_has_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE);
+            self.emit(YinPriceUpdated { old_price: self.yin_spot_price.read(), new_price });
+            self.yin_spot_price.write(new_price);
+        }
+
+        fn kill(ref self: ContractState) {
+            AccessControl::assert_has_role(ShrineRoles::KILL);
+            self.is_live.write(false);
+
+            // Event emission
+            self.emit(Killed {});
+        }
+
+        //
+        // Core Functions - External
+        //
 
         // Deposit a specified amount of a Yang into a Trove
         fn deposit(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
@@ -903,22 +921,63 @@ mod Shrine {
             self.melt_internal(burner, amount);
         }
 
-        // Set the timestamp when a Yang's suspension period started
-        // Setting to 0 means the Yang is not suspended (i.e. it's deemed safe)
-        fn update_yang_suspension(ref self: ContractState, yang: ContractAddress, ts: u64) {
-            AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
-            assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
-            assert(
-                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
-                'SH: Permanent suspension'
-            );
-            let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.yang_suspension.write(yang_id, ts);
-        }
-
         //
         // Core Functions - View
         //
+
+        // Get the last updated price for a yang
+        fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
+            self.get_recent_price_from(self.get_valid_yang_id(yang), now())
+        }
+
+        // Gets last updated multiplier value
+        fn get_current_multiplier(self: @ContractState) -> (Ray, Ray, u64) {
+            self.get_recent_multiplier_from(now())
+        }
+
+        // Returns the current forge fee
+        // `forge_fee_pct` is a Wad and not Ray because the `exp` function
+        // only returns Wads.
+        #[inline(always)]
+        fn get_forge_fee_pct(self: @ContractState) -> Wad {
+            let yin_price: Wad = self.yin_spot_price.read();
+
+            if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
+                return 0_u128.into();
+            } else if yin_price < FORGE_FEE_CAP_PRICE.into() {
+                return FORGE_FEE_CAP_PCT.into();
+            }
+
+            // Won't underflow since yin_price < WAD_ONE
+            let deviation: Wad = WAD_ONE.into() - yin_price;
+
+            // This is a workaround since we don't yet have negative numbers
+            if deviation >= FORGE_FEE_B.into() {
+                exp(wadray::rmul_rw(FORGE_FEE_A.into(), deviation - FORGE_FEE_B.into()))
+            } else {
+                // `neg_exp` calculates e^(-x) given x.
+                neg_exp(wadray::rmul_rw(FORGE_FEE_A.into(), FORGE_FEE_B.into() - deviation))
+            }
+        }
+
+        // Returns a bool indicating whether the given trove is healthy or not
+        fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
+            let (threshold, ltv, _, _) = self.get_trove_info(trove_id);
+            ltv <= threshold
+        }
+
+        fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
+            let (threshold, _, value, debt) = self.get_trove_info(trove_id);
+
+            let forge_fee_pct: Wad = self.get_forge_fee_pct();
+            let max_debt: Wad = wadray::rmul_rw(threshold, value);
+
+            if debt < max_debt {
+                return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
+            }
+
+            0_u128.into()
+        }
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
         fn get_trove_info(self: @ContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad) {
@@ -1001,65 +1060,6 @@ mod Shrine {
             }
 
             (added_yangs.span(), pulled_debt)
-        }
-
-        // Get the last updated price for a yang
-        fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
-            self.get_recent_price_from(self.get_valid_yang_id(yang), now())
-        }
-
-        // Gets last updated multiplier value
-        fn get_current_multiplier(self: @ContractState) -> (Ray, Ray, u64) {
-            self.get_recent_multiplier_from(now())
-        }
-
-        // Get yin spot price
-        fn get_yin_spot_price(self: @ContractState) -> Wad {
-            self.yin_spot_price.read()
-        }
-
-        // Returns the current forge fee
-        // `forge_fee_pct` is a Wad and not Ray because the `exp` function
-        // only returns Wads.
-        #[inline(always)]
-        fn get_forge_fee_pct(self: @ContractState) -> Wad {
-            let yin_price: Wad = self.yin_spot_price.read();
-
-            if yin_price >= MIN_ZERO_FEE_YIN_PRICE.into() {
-                return 0_u128.into();
-            } else if yin_price < FORGE_FEE_CAP_PRICE.into() {
-                return FORGE_FEE_CAP_PCT.into();
-            }
-
-            // Won't underflow since yin_price < WAD_ONE
-            let deviation: Wad = WAD_ONE.into() - yin_price;
-
-            // This is a workaround since we don't yet have negative numbers
-            if deviation >= FORGE_FEE_B.into() {
-                exp(wadray::rmul_rw(FORGE_FEE_A.into(), deviation - FORGE_FEE_B.into()))
-            } else {
-                // `neg_exp` calculates e^(-x) given x.
-                neg_exp(wadray::rmul_rw(FORGE_FEE_A.into(), FORGE_FEE_B.into() - deviation))
-            }
-        }
-
-        // Returns a bool indicating whether the given trove is healthy or not
-        fn is_healthy(self: @ContractState, trove_id: u64) -> bool {
-            let (threshold, ltv, _, _) = self.get_trove_info(trove_id);
-            ltv <= threshold
-        }
-
-        fn get_max_forge(self: @ContractState, trove_id: u64) -> Wad {
-            let (threshold, _, value, debt) = self.get_trove_info(trove_id);
-
-            let forge_fee_pct: Wad = self.get_forge_fee_pct();
-            let max_debt: Wad = wadray::rmul_rw(threshold, value);
-
-            if debt < max_debt {
-                return (max_debt - debt) / (WAD_ONE.into() + forge_fee_pct);
-            }
-
-            0_u128.into()
         }
     }
 
@@ -2021,7 +2021,7 @@ mod Shrine {
 
             // If the end interval is not updated, adjust the cumulative difference by adding
             // (number of intervals missed from `available_end_interval` to `end_interval` * end price).
-            if (end_interval != available_end_interval) {
+            if end_interval != available_end_interval {
                 let cumulative_offset = Wad {
                     val: (end_interval - available_end_interval).into() * end_yang_price.val
                 };
