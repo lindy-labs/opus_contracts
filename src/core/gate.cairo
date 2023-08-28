@@ -1,15 +1,13 @@
 #[starknet::contract]
 mod Gate {
-    use integer::u128_try_from_felt252;
     use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGate, IGateDispatcher, IGateDispatcherTrait};
+    use aura::interfaces::IGate::IGate;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
 
@@ -148,7 +146,7 @@ mod Gate {
 
             let yang_amt: Wad = self.convert_to_yang_internal(asset_amt);
             if yang_amt.is_zero() {
-                return 0_u128.into();
+                return WadZeroable::zero();
             }
 
             let success: bool = self
@@ -211,7 +209,7 @@ mod Gate {
                 // Scale `yang_amt` down by the difference to match the decimal 
                 // precision of the asset. If asset is of `Wad` precision, then 
                 // the same value is returned
-                yang_amt.val / pow10(WAD_DECIMALS - decimals)
+                yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
             } else {
                 ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
             }

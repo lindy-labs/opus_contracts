@@ -1,3 +1,3 @@
-mod pow;
+mod math;
 mod types;
 mod wadray;
