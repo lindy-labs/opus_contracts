@@ -544,7 +544,7 @@ mod Shrine {
                     }
                 );
             self.emit(YangsCountUpdated { count: yang_id });
-            self.emit(YangTotalUpdated { yang: yang, total: initial_yang_amt });
+            self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
         }
 
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
@@ -769,10 +769,9 @@ mod Shrine {
             self.deposits.write((yang_id, trove_id), new_trove_balance);
 
             // Events
-            self.emit(YangTotalUpdated { yang: yang, total: new_total });
-            self.emit(DepositUpdated { yang: yang, trove_id: trove_id, amount: new_trove_balance });
+            self.emit(YangTotalUpdated { yang, total: new_total });
+            self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
-
 
         // Withdraw a specified amount of a Yang from a Trove with trove safety check
         fn withdraw(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
@@ -816,9 +815,9 @@ mod Shrine {
             self.forge_internal(user, amount);
 
             // Events
-            self.emit(ForgeFeePaid { trove_id: trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
+            self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             self.emit(DebtTotalUpdated { total: new_system_debt });
-            self.emit(TroveUpdated { trove_id: trove_id, trove: trove_info });
+            self.emit(TroveUpdated { trove_id, trove: trove_info });
         }
 
         // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -1278,7 +1277,7 @@ mod Shrine {
             self.thresholds.write(self.get_valid_yang_id(yang), threshold);
 
             // Event emission
-            self.emit(ThresholdUpdated { yang: yang, threshold: threshold });
+            self.emit(ThresholdUpdated { yang, threshold });
         }
 
         //
@@ -1325,11 +1324,8 @@ mod Shrine {
             self.deposits.write((yang_id, trove_id), trove_yang_balance);
 
             // Emit events
-            self.emit(YangTotalUpdated { yang: yang, total: total_yang });
-            self
-                .emit(
-                    DepositUpdated { yang: yang, trove_id: trove_id, amount: trove_yang_balance }
-                );
+            self.emit(YangTotalUpdated { yang, total: total_yang });
+            self.emit(DepositUpdated { yang, trove_id, amount: trove_yang_balance });
         }
 
         // Adds the accumulated interest as debt to the trove
@@ -1395,10 +1391,9 @@ mod Shrine {
 
             // Emit only if there is a change in the `Trove` struct
             if updated_trove != trove {
-                self.emit(TroveUpdated { trove_id: trove_id, trove: updated_trove });
+                self.emit(TroveUpdated { trove_id, trove: updated_trove });
             }
         }
-
 
         // Returns the amount of debt owed by trove after having interest charged over a given time period
         // Assumes the trove hasn't minted or paid back any additional debt during the given time period
@@ -2243,7 +2238,6 @@ mod Shrine {
             }
         }
     }
-
 
     //
     // Internal functions for Shrine that do not access storage
