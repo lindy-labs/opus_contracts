@@ -190,6 +190,7 @@ mod Shrine {
 
     #[derive(Drop, starknet::Event)]
     struct YangAdded {
+        #[key]
         yang: ContractAddress,
         yang_id: u32,
         start_price: Wad,
@@ -198,6 +199,7 @@ mod Shrine {
 
     #[derive(Drop, starknet::Event)]
     struct YangTotalUpdated {
+        #[key]
         yang: ContractAddress,
         total: Wad
     }
@@ -216,11 +218,13 @@ mod Shrine {
     struct MultiplierUpdated {
         multiplier: Ray,
         cumulative_multiplier: Ray,
+        #[key]
         interval: u64
     }
 
     #[derive(Drop, starknet::Event)]
     struct YangRatesUpdated {
+        #[key]
         new_rate_idx: u64,
         current_interval: u64,
         yangs: Span<ContractAddress>,
@@ -229,12 +233,14 @@ mod Shrine {
 
     #[derive(Drop, starknet::Event)]
     struct ThresholdUpdated {
+        #[key]
         yang: ContractAddress,
         threshold: Ray
     }
 
     #[derive(Drop, starknet::Event)]
     struct ForgeFeePaid {
+        #[key]
         trove_id: u64,
         fee: Wad,
         fee_pct: Wad
@@ -242,29 +248,36 @@ mod Shrine {
 
     #[derive(Drop, starknet::Event)]
     struct TroveUpdated {
+        #[key]
         trove_id: u64,
         trove: Trove
     }
 
     #[derive(Drop, starknet::Event)]
     struct TroveRedistributed {
+        #[key]
         redistribution_id: u32,
+        #[key]
         trove_id: u64,
         debt: Wad
     }
 
     #[derive(Drop, starknet::Event)]
     struct DepositUpdated {
+        #[key]
         yang: ContractAddress,
+        #[key]
         trove_id: u64,
         amount: Wad
     }
 
     #[derive(Drop, starknet::Event)]
     struct YangPriceUpdated {
+        #[key]
         yang: ContractAddress,
         price: Wad,
         cumulative_price: Wad,
+        #[key]
         interval: u64
     }
 
@@ -286,14 +299,18 @@ mod Shrine {
 
     #[derive(Drop, starknet::Event)]
     struct Transfer {
+        #[key]
         from: ContractAddress,
+        #[key]
         to: ContractAddress,
         value: u256
     }
 
     #[derive(Drop, starknet::Event)]
     struct Approval {
+        #[key]
         owner: ContractAddress,
+        #[key]
         spender: ContractAddress,
         value: u256
     }
