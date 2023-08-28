@@ -9,7 +9,7 @@ mod Shrine {
     use traits::{Into, TryInto};
     use zeroable::Zeroable;
 
-    //use aura::core::roles::ShrineRoles;
+    use aura::core::roles::ShrineRoles;
 
     use aura::interfaces::IERC20::IERC20;
     use aura::interfaces::IShrine::IShrine;
@@ -313,6 +313,59 @@ mod Shrine {
         #[key]
         spender: ContractAddress,
         value: u256
+    }
+
+    //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(
+        ref self: ContractState, admin: ContractAddress, name: felt252, symbol: felt252
+    ) {
+        AccessControl::initializer(admin);
+
+        // Grant admin permission
+        AccessControl::grant_role_internal(ShrineRoles::default_admin_role(), admin);
+
+        self.is_live.write(true);
+
+        // Seeding initial multiplier to the previous interval to ensure `get_recent_multiplier_from` terminates
+        // otherwise, the next multiplier update will run into an endless loop of `get_recent_multiplier_from`
+        // since it wouldn't find the initial multiplier
+        let prev_interval: u64 = now() - 1;
+        let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
+        self.multiplier.write(prev_interval, (init_multiplier, init_multiplier));
+
+        // Setting initial rate era to 1
+        self.rates_latest_era.write(1);
+
+        // Setting initial yin spot price to 1
+        self.yin_spot_price.write(WAD_ONE.into());
+
+        // Emit event
+        self
+            .emit(
+                MultiplierUpdated {
+                    multiplier: init_multiplier,
+                    cumulative_multiplier: init_multiplier,
+                    interval: prev_interval
+                }
+            );
+
+        // ERC20
+        self.yin_name.write(name);
+        self.yin_symbol.write(symbol);
+        self.yin_decimals.write(WAD_DECIMALS);
+    }
+
+    //
+    // Internal view functions
+    // 
+
+    #[inline(always)]
+    fn now() -> u64 {
+        starknet::get_block_timestamp() / TIME_INTERVAL
     }
 
     //
