@@ -600,10 +600,12 @@ mod Shrine {
             // yang's rate isn't being updated, and so we get the previous value.
             let mut yangs_copy = yangs;
             let mut new_rates_copy = new_rates;
+            // TODO: temporary workaround for issue with borrowing snapshots in loops
+            let self_snap = @self;
             loop {
                 match new_rates_copy.pop_front() {
                     Option::Some(rate) => {
-                        let current_yang_id: u32 = self
+                        let current_yang_id: u32 = self_snap
                             .get_valid_yang_id(*yangs_copy.pop_front().unwrap());
                         if *rate.val == USE_PREV_BASE_RATE {
                             // Setting new era rate to the previous era's rate
@@ -611,7 +613,7 @@ mod Shrine {
                                 .yang_rates
                                 .write(
                                     (current_yang_id, new_era),
-                                    self.yang_rates.read((current_yang_id, new_era - 1))
+                                    self_snap.yang_rates.read((current_yang_id, new_era - 1))
                                 );
                         } else {
                             assert_rate_is_valid(*rate);
@@ -1333,6 +1335,9 @@ mod Shrine {
             pct_value_to_redistribute: Ray,
             current_interval: u64
         ) {
+            // TODO: temporary workaround for issue with borrowing snapshots in loops
+            let self_snap = @self;
+
             // For exceptional redistribution of yangs (i.e. not deposited by any other troves, and
             // which may be the first yang or the last yang), we need the total yang supply for all
             // yangs (regardless how they are to be redistributed) to remain constant throughout the
@@ -1447,7 +1452,7 @@ mod Shrine {
 
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
-                        let (redistributed_yang_price, _, _) = self
+                        let (redistributed_yang_price, _, _) = self_snap
                             .get_recent_price_from(yang_id_to_redistribute, current_interval);
 
                         let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
@@ -1484,7 +1489,7 @@ mod Shrine {
                         };
 
                         // Adjust debt to distribute by adding the error from the last redistribution
-                        let last_error: Wad = self
+                        let last_error: Wad = self_snap
                             .get_recent_redistribution_error_for_yang(
                                 yang_id_to_redistribute, redistribution_id - 1
                             );
@@ -1617,7 +1622,7 @@ mod Shrine {
                                             continue;
                                         }
 
-                                        let (recipient_yang_price, _, _) = self
+                                        let (recipient_yang_price, _, _) = self_snap
                                             .get_recent_price_from(
                                                 *recipient_yang.yang_id, current_interval
                                             );
