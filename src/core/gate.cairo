@@ -40,7 +40,9 @@ mod Gate {
 
     #[derive(Drop, starknet::Event)]
     struct Enter {
+        #[key]
         user: ContractAddress,
+        #[key]
         trove_id: u64,
         asset_amt: u128,
         yang_amt: Wad
@@ -48,7 +50,9 @@ mod Gate {
 
     #[derive(Drop, starknet::Event)]
     struct Exit {
+        #[key]
         user: ContractAddress,
+        #[key]
         trove_id: u64,
         asset_amt: u128,
         yang_amt: Wad
