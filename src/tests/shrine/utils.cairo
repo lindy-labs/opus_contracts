@@ -137,27 +137,23 @@ mod ShrineUtils {
     // and terminates at yang ID 0. This affects which yang receives any rounding of
     // debt that falls below the rounding threshold.
     fn two_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang2_addr());
-        yang_addrs.append(yang1_addr());
+        let mut yang_addrs: Array<ContractAddress> = array![yang2_addr(), yang1_addr(),];
         yang_addrs.span()
     }
 
     fn three_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang3_addr());
-        yang_addrs.append(yang2_addr());
-        yang_addrs.append(yang1_addr());
+        let mut yang_addrs: Array<ContractAddress> = array![
+            yang3_addr(), yang2_addr(), yang1_addr(),
+        ];
         yang_addrs.span()
     }
 
     fn shrine_deploy() -> ContractAddress {
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
-        let mut calldata: Array<felt252> = Default::default();
-        calldata.append(contract_address_to_felt252(admin()));
-        calldata.append(YIN_NAME);
-        calldata.append(YIN_SYMBOL);
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,
+        ];
 
         let shrine_class_hash: ClassHash = class_hash_try_from_felt252(Shrine::TEST_CLASS_HASH)
             .unwrap();
@@ -236,15 +232,9 @@ mod ShrineUtils {
         let yang3_addr: ContractAddress = yang3_addr();
         let yang3_feed: Span<Wad> = generate_yang_feed(yang3_start_price);
 
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang1_addr);
-        yang_addrs.append(yang2_addr);
-        yang_addrs.append(yang3_addr);
+        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr, yang2_addr, yang3_addr,];
 
-        let mut yang_feeds: Array<Span<Wad>> = Default::default();
-        yang_feeds.append(yang1_feed);
-        yang_feeds.append(yang2_feed);
-        yang_feeds.append(yang3_feed);
+        let mut yang_feeds: Array<Span<Wad>> = array![yang1_feed, yang2_feed, yang3_feed];
 
         let mut idx: u32 = 0;
         set_contract_address(admin());

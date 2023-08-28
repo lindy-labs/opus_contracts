@@ -123,10 +123,12 @@ mod TestShrine {
 
         let shrine = ShrineUtils::shrine(shrine_addr);
 
-        let mut exp_start_cumulative_prices: Array<Wad> = Default::default();
-        exp_start_cumulative_prices.append(ShrineUtils::YANG1_START_PRICE.into());
-        exp_start_cumulative_prices.append(ShrineUtils::YANG2_START_PRICE.into());
-        exp_start_cumulative_prices.append(ShrineUtils::YANG3_START_PRICE.into());
+        let mut exp_start_cumulative_prices: Array<Wad> = array![
+            ShrineUtils::YANG1_START_PRICE.into(),
+            ShrineUtils::YANG2_START_PRICE.into(),
+            ShrineUtils::YANG3_START_PRICE.into(),
+        ];
+
         let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
 
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);
@@ -440,14 +442,9 @@ mod TestShrine {
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
 
-        let mut yang_prices: Array<Wad> = Default::default();
-        yang_prices.append(yang1_price);
-
-        let mut yang_amts: Array<Wad> = Default::default();
-        yang_amts.append(ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-
-        let mut yang_thresholds: Array<Ray> = Default::default();
-        yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
+        let mut yang_prices: Array<Wad> = array![yang1_price];
+        let mut yang_amts: Array<Wad> = array![ShrineUtils::TROVE1_YANG1_DEPOSIT.into()];
+        let mut yang_thresholds: Array<Ray> = array![ShrineUtils::YANG1_THRESHOLD.into()];
 
         let expected_max_forge: Wad = ShrineUtils::calculate_max_forge(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
@@ -513,14 +510,9 @@ mod TestShrine {
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
 
-        let mut yang_prices: Array<Wad> = Default::default();
-        yang_prices.append(yang1_price);
-
-        let mut yang_amts: Array<Wad> = Default::default();
-        yang_amts.append(remaining_amt);
-
-        let mut yang_thresholds: Array<Ray> = Default::default();
-        yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
+        let mut yang_prices: Array<Wad> = array![yang1_price];
+        let mut yang_amts: Array<Wad> = array![remaining_amt];
+        let mut yang_thresholds: Array<Ray> = array![ShrineUtils::YANG1_THRESHOLD.into()];
 
         let expected_max_forge: Wad = ShrineUtils::calculate_max_forge(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
@@ -1298,23 +1290,18 @@ mod TestShrine {
     fn test_get_trove_info() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        let mut yangs: Array<ContractAddress> = Default::default();
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
 
-        yangs.append(yang1_addr);
-        yangs.append(yang2_addr);
-
-        let mut yang_amts: Array<Wad> = Default::default();
-        yang_amts.append(ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        yang_amts.append(ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
+        let mut yangs: Array<ContractAddress> = array![yang1_addr, yang2_addr];
+        let mut yang_amts: Array<Wad> = array![
+            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), ShrineUtils::TROVE1_YANG2_DEPOSIT.into(),
+        ];
 
         // Manually set the prices
-        let mut yang_prices: Array<Wad> = Default::default();
         let yang1_price: Wad = 2500000000000000000000_u128.into(); // 2_500 (Wad)
         let yang2_price: Wad = 625000000000000000000_u128.into(); // 625 (Wad)
-        yang_prices.append(yang1_price);
-        yang_prices.append(yang2_price);
+        let mut yang_prices: Array<Wad> = array![yang1_price, yang2_price];
 
         let mut yang_amts_copy: Span<Wad> = yang_amts.span();
         let mut yangs_copy: Span<ContractAddress> = yangs.span();
@@ -1334,9 +1321,9 @@ mod TestShrine {
                 }
             };
         };
-        let mut yang_thresholds: Array<Ray> = Default::default();
-        yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
-        yang_thresholds.append(ShrineUtils::YANG2_THRESHOLD.into());
+        let mut yang_thresholds: Array<Ray> = array![
+            ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG2_THRESHOLD.into(),
+        ];
 
         let (expected_threshold, expected_value) = ShrineUtils::calculate_trove_threshold_and_value(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
@@ -1372,23 +1359,19 @@ mod TestShrine {
     fn test_get_shrine_info() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
-        let mut yangs: Array<ContractAddress> = Default::default();
         let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
 
-        yangs.append(yang1_addr);
-        yangs.append(yang2_addr);
+        let mut yangs: Array<ContractAddress> = array![yang1_addr, yang2_addr];
 
-        let mut yang_amts: Array<Wad> = Default::default();
-        yang_amts.append(ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        yang_amts.append(ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
+        let mut yang_amts: Array<Wad> = array![
+            ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), ShrineUtils::TROVE1_YANG2_DEPOSIT.into(),
+        ];
 
         // Manually set the prices
-        let mut yang_prices: Array<Wad> = Default::default();
         let yang1_price: Wad = 2500000000000000000000_u128.into(); // 2_500 (Wad)
         let yang2_price: Wad = 625000000000000000000_u128.into(); // 625 (Wad)
-        yang_prices.append(yang1_price);
-        yang_prices.append(yang2_price);
+        let mut yang_prices: Array<Wad> = array![yang1_price, yang2_price];
 
         let mut yang_amts_copy: Span<Wad> = yang_amts.span();
         let mut yangs_copy: Span<ContractAddress> = yangs.span();
@@ -1414,13 +1397,14 @@ mod TestShrine {
         };
 
         // Update the amounts with the total amount deposited into troves 1 and 2
-        let mut yang_amts: Array<Wad> = Default::default();
-        yang_amts.append((ShrineUtils::TROVE1_YANG1_DEPOSIT * 3).into());
-        yang_amts.append((ShrineUtils::TROVE1_YANG2_DEPOSIT * 3).into());
+        let mut yang_amts: Array<Wad> = array![
+            (ShrineUtils::TROVE1_YANG1_DEPOSIT * 3).into(),
+            (ShrineUtils::TROVE1_YANG2_DEPOSIT * 3).into(),
+        ];
 
-        let mut yang_thresholds: Array<Ray> = Default::default();
-        yang_thresholds.append(ShrineUtils::YANG1_THRESHOLD.into());
-        yang_thresholds.append(ShrineUtils::YANG2_THRESHOLD.into());
+        let mut yang_thresholds: Array<Ray> = array![
+            ShrineUtils::YANG1_THRESHOLD.into(), ShrineUtils::YANG2_THRESHOLD.into(),
+        ];
 
         let (expected_threshold, expected_value) = ShrineUtils::calculate_trove_threshold_and_value(
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
