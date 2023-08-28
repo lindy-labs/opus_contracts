@@ -219,25 +219,6 @@ fn assert_equalish<
     }
 }
 
-fn assert_spans_equalish<
-    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl CopyT: Copy<T>, impl DropT: Drop<T>
->(
-    mut a: Span<T>, mut b: Span<T>, error: T, message: felt252
-) {
-    assert(a.len() == b.len(), message);
-
-    loop {
-        match a.pop_front() {
-            Option::Some(a) => {
-                assert_equalish(*a, *b.pop_front().unwrap(), error, message);
-            },
-            Option::None(_) => {
-                break;
-            }
-        };
-    };
-}
-
 fn assert_asset_balances_equalish(
     mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
 ) {
@@ -256,7 +237,6 @@ fn assert_asset_balances_equalish(
         };
     };
 }
-
 
 //
 // Helpers - Array functions
