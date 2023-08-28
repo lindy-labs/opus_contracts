@@ -47,11 +47,10 @@ mod TestShrine {
         let (multiplier, _, _) = shrine.get_current_multiplier();
         assert(multiplier == RAY_ONE.into(), 'wrong multiplier');
 
-        let admin: ContractAddress = ShrineUtils::admin();
         let shrine_accesscontrol: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine_addr
         };
-        assert(shrine_accesscontrol.get_admin() == admin, 'wrong admin');
+        assert(shrine_accesscontrol.get_admin() == ShrineUtils::admin(), 'wrong admin');
     }
 
     // Checks the following functions
