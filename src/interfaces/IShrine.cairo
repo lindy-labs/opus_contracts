@@ -10,12 +10,12 @@ use aura::utils::wadray::{Ray, Wad};
 trait IShrine<TContractState> {
     // getters
     fn get_yin(self: @TContractState, user: ContractAddress) -> Wad;
+    fn get_total_yin(self: @TContractState) -> Wad;
     fn get_yang_total(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_total_debt(self: @TContractState) -> Wad;
-    fn get_total_yin(self: @TContractState) -> Wad;
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(self: @TContractState, yang: ContractAddress, idx: u64) -> Ray;
     fn get_current_rate_era(self: @TContractState) -> u64;
@@ -42,7 +42,7 @@ trait IShrine<TContractState> {
         ref self: TContractState,
         yang: ContractAddress,
         threshold: Ray,
-        price: Wad,
+        initial_price: Wad,
         initial_rate: Ray,
         initial_yang_amt: Wad
     );
@@ -52,7 +52,7 @@ trait IShrine<TContractState> {
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
     fn set_multiplier(ref self: TContractState, new_multiplier: Ray);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
-    fn update_rates(ref self: TContractState, yang: Span<ContractAddress>, new_rate: Span<Ray>);
+    fn update_rates(ref self: TContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
     fn deposit(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn forge(
@@ -74,7 +74,7 @@ trait IShrine<TContractState> {
     fn eject(ref self: TContractState, burner: ContractAddress, amount: Wad);
     fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
     // view
-    fn get_shrine_threshold_and_value(self: @TContractState) -> (Ray, Wad);
+    //fn get_shrine_threshold_and_value(self: @TContractState) -> (Ray, Wad);
     fn get_trove_info(self: @TContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad);
     fn get_redistributions_attributed_to_trove(
         self: @TContractState, trove_id: u64
