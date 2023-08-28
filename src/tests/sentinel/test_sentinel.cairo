@@ -268,7 +268,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        let preview_yang_amt: Wad = sentinel.preview_enter(eth, deposit_amt.val);
+        let preview_yang_amt: Wad = sentinel.convert_to_yang(eth, deposit_amt.val);
         let yang_amt: Wad = sentinel.enter(eth, user, common::TROVE_1, deposit_amt.val);
         shrine.deposit(eth, common::TROVE_1, yang_amt);
 
@@ -284,7 +284,7 @@ mod TestSentinel {
         );
         assert(shrine.get_deposit(eth, common::TROVE_1) == yang_amt, 'Wrong yang bal in shrine');
 
-        let preview_eth_amt: u128 = sentinel.preview_exit(eth, WAD_ONE.into());
+        let preview_eth_amt: u128 = sentinel.convert_to_assets(eth, WAD_ONE.into());
         let eth_amt: u128 = sentinel.exit(eth, user, common::TROVE_1, WAD_ONE.into());
         shrine.withdraw(eth, common::TROVE_1, WAD_ONE.into());
 
@@ -481,7 +481,7 @@ mod TestSentinel {
 
         // Attempt to enter a killed gate should fail
         set_contract_address(SentinelUtils::mock_abbot());
-        sentinel.preview_enter(eth, deposit_amt.val);
+        sentinel.convert_to_yang(eth, deposit_amt.val);
     }
 
     #[test]

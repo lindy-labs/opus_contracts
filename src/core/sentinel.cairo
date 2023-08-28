@@ -107,7 +107,7 @@ mod Sentinel {
         yang_addresses_count::read()
     }
 
-    // Returns 0 if the yang is invalid, as opposed to `preview_enter` and `preview_exit`
+    // Returns 0 if the yang is invalid, as opposed to `convert_to_yang` and `convert_to_assets`
     // Zero value will be handled by the oracle module so as to prevent price updates from failing
     #[view]
     fn get_asset_amt_per_yang(yang: ContractAddress) -> Wad {
@@ -120,18 +120,20 @@ mod Sentinel {
         gate.get_asset_amt_per_yang()
     }
 
+    // This can be used to simulate the effects of `enter`.
     #[view]
-    fn preview_enter(yang: ContractAddress, asset_amt: u128) -> Wad {
+    fn convert_to_yang(yang: ContractAddress, asset_amt: u128) -> Wad {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert_can_enter(yang, gate, asset_amt);
-        gate.preview_enter(asset_amt)
+        gate.convert_to_yang(asset_amt)
     }
 
+    // This can be used to simulate the effects of `exit`.
     #[view]
-    fn preview_exit(yang: ContractAddress, yang_amt: Wad) -> u128 {
+    fn convert_to_assets(yang: ContractAddress, yang_amt: Wad) -> u128 {
         let gate: IGateDispatcher = yang_to_gate::read(yang);
         assert(gate.contract_address.is_non_zero(), 'SE: Yang not added');
-        gate.preview_exit(yang_amt)
+        gate.convert_to_assets(yang_amt)
     }
 
     //

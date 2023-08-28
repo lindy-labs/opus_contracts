@@ -11,6 +11,7 @@ mod PurgerUtils {
     use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
+    use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
     use aura::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
 
@@ -21,7 +22,8 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::pow::pow10;
+    use aura::utils::types::AssetBalance;
+    use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{
         Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
@@ -265,7 +267,7 @@ mod PurgerUtils {
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
-
+        
         // base case for ordinary redistributions
         yang_asset_amts_cases.append(recipient_trove_yang_asset_amts());
 
@@ -304,13 +306,26 @@ mod PurgerUtils {
         yang_asset_amts_cases.span()
     }
 
+    fn inoperational_absorber_yin_cases() -> Span<Wad> {
+        let mut absorber_yin_cases: Array<Wad> = Default::default();
+
+        // minimum amount that must be provided based on initial shares or
+        // `provide` would revert
+        absorber_yin_cases.append(Absorber::INITIAL_SHARES.into());
+        // largest possible amount of yin in Absorber based on initial shares
+        // for Absorber to be inoperational
+        absorber_yin_cases.append((Absorber::MINIMUM_SHARES - 1).into());
+
+        absorber_yin_cases.span()
+    }
+
     // Generate interesting cases for absorber's yin balance based on the 
     // redistributed trove's debt to test absorption with partial redistribution
-    fn generate_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
+    fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         let mut absorber_yin_cases: Array<Wad> = Default::default();
 
         // smallest possible amount of yin in Absorber based on initial shares
-        absorber_yin_cases.append(1000_u128.into());
+        absorber_yin_cases.append(Absorber::MINIMUM_SHARES.into());
         absorber_yin_cases.append((trove_debt.val / 3).into());
         absorber_yin_cases.append((trove_debt.val - 1000).into());
         // trove's debt minus the smallest unit of Wad
@@ -531,7 +546,7 @@ mod PurgerUtils {
         pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
-        let scale: u128 = pow10(WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
+        let scale: u128 = pow(10_u128, WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
@@ -602,8 +617,9 @@ mod PurgerUtils {
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
-        assert(purger.get_max_liquidation_amount(trove_id).is_zero(), 'close amount should be 0');
+        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
+        assert(penalty.is_zero(), 'penalty should be 0');
+        assert(max_liquidation_amt.is_zero(), 'close amount should be 0');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
@@ -612,16 +628,12 @@ mod PurgerUtils {
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
 
-        assert(
-            purger.get_max_liquidation_amount(trove_id).is_non_zero(),
-            'close amount should not be 0'
-        );
+        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
+        assert(penalty.is_non_zero(), 'close amount should not be 0');
         if ltv < RAY_ONE.into() {
-            assert(
-                purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0'
-            );
+            assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
-            assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
+            assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
@@ -631,21 +643,19 @@ mod PurgerUtils {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        assert(
-            purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0'
-        );
+        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
+        assert(max_absorption_amt.is_non_zero(), 'close amount should not be 0');
         if ltv < (RAY_ONE - Purger::COMPENSATION_PCT).into() {
-            assert(
-                purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0'
-            );
+            assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
-            assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
+            assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
-        assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
-        assert(purger.get_max_absorption_amount(trove_id).is_zero(), 'close amount should be 0');
+        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
+        assert(penalty.is_zero(), 'penalty should be 0');
+        assert(max_absorption_amt.is_zero(), 'close amount should be 0');
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
@@ -660,13 +670,13 @@ mod PurgerUtils {
     fn assert_received_assets(
         mut before_asset_bals: Span<Span<u128>>,
         mut after_asset_bals: Span<Span<u128>>,
-        mut expected_freed_asset_amts: Span<u128>,
+        mut expected_freed_assets: Span<AssetBalance>,
         error_margin: u128,
         message: felt252
     ) {
         loop {
-            match expected_freed_asset_amts.pop_front() {
-                Option::Some(expected_freed_asset_amt) => {
+            match expected_freed_assets.pop_front() {
+                Option::Some(expected_freed_asset) => {
                     let mut before_asset_bal_arr: Span<u128> = *before_asset_bals
                         .pop_front()
                         .unwrap();
@@ -678,7 +688,8 @@ mod PurgerUtils {
                     let after_asset_bal: u128 = *after_asset_bal_arr.pop_front().unwrap();
 
                     let expected_after_asset_bal: u128 = before_asset_bal
-                        + *expected_freed_asset_amt;
+                        + *expected_freed_asset.amount;
+
                     common::assert_equalish(
                         after_asset_bal, expected_after_asset_bal, error_margin, message, 
                     );

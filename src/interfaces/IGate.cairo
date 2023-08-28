@@ -15,6 +15,6 @@ trait IGate {
     fn enter(user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad;
     fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128;
     // view
-    fn preview_enter(asset_amt: u128) -> Wad;
-    fn preview_exit(yang_amt: Wad) -> u128;
+    fn convert_to_yang(asset_amt: u128) -> Wad;
+    fn convert_to_assets(yang_amt: Wad) -> u128;
 }

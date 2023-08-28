@@ -27,7 +27,7 @@ mod AbsorberUtils {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{DistributionInfo, Reward};
+    use aura::utils::types::{AssetBalance, DistributionInfo, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
@@ -374,7 +374,10 @@ mod AbsorberUtils {
 
         // Simulate transfer of "freed" assets to absorber
         set_contract_address(mock_purger());
-        absorber.update(yangs, yang_asset_amts);
+        let absorbed_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, yang_asset_amts
+        );
+        absorber.update(absorbed_assets);
 
         loop {
             match yangs.pop_front() {
@@ -405,49 +408,46 @@ mod AbsorberUtils {
     // - `absorber` - Deployed Absorber instance.
     //
     // - `provider` - Address of the provider.
-    //  
-    // - `asset_addresses` = Ordered list of the absorbed asset token addresses.
     //
     // - `absorbed_amts` - Ordered list of the amount of assets absorbed.
     // 
     // - `before_balances` - Ordered list of the provider's absorbed asset token balances before 
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
     // 
-    // - `preview_amts` - Ordered list of the expected amount of absorbed assets the provider is entitled to 
-    //    withdraw based on `preview_reap`, in the token's decimal precision.
+    // - `preview_absorbed_assets` - Ordered list of `AssetBalance` struct representing the expected 
+    //    amount of absorbed assets the provider is entitled to withdraw based on `preview_reap`, 
+    //    in the token's decimal precision.
     //
     // - `error_margin` - Acceptable error margin
     // 
     fn assert_provider_received_absorbed_assets(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
-        mut asset_addresses: Span<ContractAddress>,
         mut absorbed_amts: Span<u128>,
         mut before_balances: Span<Span<u128>>,
-        mut preview_amts: Span<u128>,
-        error_margin: Wad,
+        mut preview_absorbed_assets: Span<AssetBalance>,
+        error_margin: u128,
     ) {
         loop {
-            match asset_addresses.pop_front() {
+            match preview_absorbed_assets.pop_front() {
                 Option::Some(asset) => {
                     // Check provider has received correct amount of reward tokens
                     // Convert to Wad for fixed point operations
-                    let absorbed_amt: Wad = (*absorbed_amts.pop_front().unwrap()).into();
-                    let after_provider_bal: Wad = IERC20Dispatcher {
-                        contract_address: *asset
+                    let absorbed_amt: u128 = *absorbed_amts.pop_front().unwrap();
+                    let after_provider_bal: u128 = IERC20Dispatcher {
+                        contract_address: *asset.address
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let before_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into();
-                    let expected_bal: Wad = before_bal + absorbed_amt;
+                    let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
+                    let expected_bal: u128 = before_bal + absorbed_amt;
 
                     common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong absorbed balance'
                     );
 
                     // Check preview amounts are equal
-                    let preview_amt = *preview_amts.pop_front().unwrap();
                     common::assert_equalish(
-                        absorbed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
+                        absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
                     );
                 },
                 Option::None(_) => {
@@ -467,15 +467,13 @@ mod AbsorberUtils {
     //
     // - `provider` - Address of the provider.
     // 
-    // - `asset_addresses` = Ordered list of the reward tokens contracts.
-    //
     // - `reward_amts_per_blessing` - Ordered list of the reward token amount transferred to the absorber per blessing
     // 
     // - `before_balances` - Ordered list of the provider's reward token balances before receiving the rewards
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
     // 
-    // - `preview_amts` - Ordered list of the expected amount of reward tokens the provider is entitled to 
-    //    withdraw based on `preview_reap`, in the token's decimal precision.
+    // - `preview_rewarded_assets` - Ordered list of `AssetBalance` struct representing the expected amount of reward 
+    //    tokens the provider is entitled to withdraw based on `preview_reap`, in the token's decimal precision.
     //
     // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
     //    amount the provider should receive.
@@ -485,35 +483,36 @@ mod AbsorberUtils {
     fn assert_provider_received_rewards(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
-        mut asset_addresses: Span<ContractAddress>,
         mut reward_amts_per_blessing: Span<u128>,
         mut before_balances: Span<Span<u128>>,
-        mut preview_amts: Span<u128>,
+        mut preview_rewarded_assets: Span<AssetBalance>,
         blessings_multiplier: Ray,
-        error_margin: Wad,
+        error_margin: u128,
     ) {
         loop {
-            match asset_addresses.pop_front() {
+            match preview_rewarded_assets.pop_front() {
                 Option::Some(asset) => {
                     // Check provider has received correct amount of reward tokens
                     // Convert to Wad for fixed point operations
                     let reward_amt: Wad = (*reward_amts_per_blessing.pop_front().unwrap()).into();
                     let blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
-                    let after_provider_bal: Wad = IERC20Dispatcher {
-                        contract_address: *asset
+                    let after_provider_bal: u128 = IERC20Dispatcher {
+                        contract_address: *asset.address
                     }.balance_of(provider).try_into().unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
-                    let expected_bal: Wad = (*before_bal_arr.pop_front().unwrap()).into()
-                        + blessed_amt.into();
+                    let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into()
+                        + blessed_amt.val;
 
                     common::assert_equalish(
                         after_provider_bal, expected_bal, error_margin, 'wrong reward balance'
                     );
 
                     // Check preview amounts are equal
-                    let preview_amt = *preview_amts.pop_front().unwrap();
                     common::assert_equalish(
-                        blessed_amt, preview_amt.into(), error_margin, 'wrong preview amount'
+                        blessed_amt.val,
+                        *asset.amount,
+                        error_margin,
+                        'wrong preview rewarded amount'
                     );
                 },
                 Option::None(_) => {
@@ -597,7 +596,7 @@ mod AbsorberUtils {
                     let expected_blessed_amt: Wad = wadray::rmul_wr(
                         reward_amt, blessings_multiplier
                     );
-                    let expected_amt_per_share: Wad = expected_blessed_amt / total_shares;
+                    let expected_amt_per_share: Wad = expected_blessed_amt / (total_shares - Absorber::INITIAL_SHARES.into());
 
                     assert(
                         reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
@@ -671,7 +670,7 @@ mod AbsorberUtils {
                     // Convert to Wad for fixed point operations
                     let asset_amt: Wad = (*yang_asset_amts.pop_front().unwrap()).into();
                     let expected_asset_amt_per_share: u128 = ((asset_amt + prev_error)
-                        / total_shares)
+                        / (total_shares - Absorber::INITIAL_SHARES.into()))
                         .val;
 
                     // Check asset amt per share is correct
@@ -682,7 +681,7 @@ mod AbsorberUtils {
 
                     // Check update amount = (total_shares * asset_amt per share) - prev_error + error
                     // Convert to Wad for fixed point operations
-                    let distributed_amt: Wad = (total_shares
+                    let distributed_amt: Wad = ((total_shares - Absorber::INITIAL_SHARES.into())
                         * actual_distribution.asset_amt_per_share.into())
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');

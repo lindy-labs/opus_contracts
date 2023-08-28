@@ -22,10 +22,10 @@ mod Absorber {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::AccessControl;
     use aura::utils::serde;
-    use aura::utils::types::{DistributionInfo, Provision, Request, Reward};
+    use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use aura::utils::wadray::{Ray, RAY_ONE, Wad, WAD_ONE};
 
     //
     // Constants
@@ -39,6 +39,11 @@ mod Absorber {
 
     // Shares to be minted without a provider to avoid first provider front-running
     const INITIAL_SHARES: u128 = 1000; // 10 ** 3 (Wad);
+
+    // Minimum total shares, including the initial shares, for each epoch
+    // to prevent overflows in fixed point operations when the divisor (total shares)
+    // is a very small number
+    const MINIMUM_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
 
     // First epoch of the Absorber 
     const FIRST_EPOCH: u32 = 1;
@@ -147,25 +152,15 @@ mod Absorber {
     #[event]
     fn Reap(
         provider: ContractAddress,
-        absorbed_assets: Span<ContractAddress>,
-        absorbed_asset_amts: Span<u128>,
-        reward_assets: Span<ContractAddress>,
-        reward_amts: Span<u128>,
+        absorbed_assets: Span<AssetBalance>,
+        reward_assets: Span<AssetBalance>,
     ) {}
 
     #[event]
-    fn Gain(
-        assets: Span<ContractAddress>,
-        asset_amts: Span<u128>,
-        total_shares: Wad,
-        epoch: u32,
-        absorption_id: u32,
-    ) {}
+    fn Gain(assets: Span<AssetBalance>, total_shares: Wad, epoch: u32, absorption_id: u32, ) {}
 
     #[event]
-    fn Bestow(
-        assets: Span<ContractAddress>, asset_amts: Span<u128>, total_shares: Wad, epoch: u32, 
-    ) {}
+    fn Bestow(assets: Span<AssetBalance>, total_shares: Wad, epoch: u32, ) {}
 
     #[event]
     fn Killed() {}
@@ -274,6 +269,13 @@ mod Absorber {
     // View
     //
 
+    // Returns true if the total shares in current epoch is at least `MINIMUM_SHARES`, so as 
+    // to prevent underflows when distributing absorbed assets and rewards.
+    #[view]
+    fn is_operational() -> bool {
+        is_operational_internal(total_shares::read())
+    }
+
     // Returns the maximum amount of yin removable by a provider.
     #[view]
     fn preview_remove(provider: ContractAddress) -> Wad {
@@ -290,13 +292,10 @@ mod Absorber {
     // Function for calculating the absorbed assets and rewards owed to a provider 
     // without modifying state.
     #[view]
-    fn preview_reap(
-        provider: ContractAddress
-    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>) {
+    fn preview_reap(provider: ContractAddress) -> (Span<AssetBalance>, Span<AssetBalance>) {
         let provision: Provision = provisions::read(provider);
         let current_epoch: u32 = current_epoch::read();
-        let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
-            get_absorbed_and_rewarded_assets_for_provider(
+        let (absorbed_assets, rewarded_assets) = get_absorbed_and_rewarded_assets_for_provider(
             provider, provision
         );
 
@@ -307,17 +306,22 @@ mod Absorber {
         );
 
         // Early return if we do not expect rewards to be distributed when the user calls `reap`
-        if total_shares.is_zero() | current_provider_shares.is_zero() {
-            return (absorbed_assets, absorbed_amts, reward_assets, reward_amts);
+        if !is_operational_internal(total_shares) | current_provider_shares.is_zero() {
+            return (absorbed_assets, rewarded_assets);
         }
 
-        let updated_reward_amts: Span<u128> = get_provider_pending_rewards(
-            provider, current_provider_shares, total_shares, current_epoch, reward_amts
+        let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
+        let updated_rewarded_assets: Span<AssetBalance> = get_provider_pending_rewards(
+            provider,
+            current_provider_shares,
+            total_recipient_shares,
+            current_epoch,
+            rewarded_assets
         );
 
         // NOTE: both absorbed assets and rewarded assets will be empty arrays 
         // if `provision.shares` is zero.
-        (absorbed_assets, absorbed_amts, reward_assets, updated_reward_amts)
+        (absorbed_assets, updated_rewarded_assets)
     }
 
 
@@ -389,8 +393,7 @@ mod Absorber {
         provisions::write(provider, Provision { epoch: current_epoch, shares: new_shares });
 
         // Update total shares for current epoch
-        let new_total_shares: Wad = total_shares::read() + issued_shares;
-        total_shares::write(new_total_shares);
+        total_shares::write(total_shares::read() + issued_shares);
 
         // Perform transfer of yin
         let absorber: ContractAddress = get_contract_address();
@@ -529,7 +532,7 @@ mod Absorber {
 
     // Update assets received after an absorption
     #[external]
-    fn update(assets: Span<ContractAddress>, asset_amts: Span<u128>) {
+    fn update(asset_balances: Span<AssetBalance>) {
         AccessControl::assert_has_role(AbsorberRoles::UPDATE);
 
         let current_epoch: u32 = current_epoch::read();
@@ -544,15 +547,17 @@ mod Absorber {
         // Update epoch for absorption ID
         absorption_epoch::write(current_absorption_id, current_epoch);
 
+        // Exclude initial shares from the total amount of shares receiving absorbed assets
         let total_shares: Wad = total_shares::read();
+        let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
 
-        let mut assets_copy = assets;
-        let mut asset_amts_copy = asset_amts;
+        let mut asset_balances_copy = asset_balances;
         loop {
-            match assets_copy.pop_front() {
-                Option::Some(asset) => {
-                    let asset_amt: u128 = *asset_amts_copy.pop_front().unwrap();
-                    update_absorbed_asset(current_absorption_id, total_shares, *asset, asset_amt);
+            match asset_balances_copy.pop_front() {
+                Option::Some(asset_balance) => {
+                    update_absorbed_asset(
+                        current_absorption_id, total_recipient_shares, *asset_balance
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -579,7 +584,7 @@ mod Absorber {
             // of yin that cannot be removed in the next epoch.
             if INITIAL_SHARES < yin_balance.val {
                 let epoch_share_conversion_rate: Ray = wadray::rdiv_ww(
-                    yin_balance - INITIAL_SHARES.into(), total_shares
+                    yin_balance - INITIAL_SHARES.into(), total_recipient_shares
                 );
 
                 epoch_share_conversion_rate::write(current_epoch, epoch_share_conversion_rate);
@@ -602,7 +607,7 @@ mod Absorber {
             propagate_reward_errors(current_epoch);
         }
 
-        Gain(assets, asset_amts, total_shares, current_epoch, current_absorption_id);
+        Gain(asset_balances, total_shares, current_epoch, current_absorption_id);
     }
 
     #[external]
@@ -624,6 +629,11 @@ mod Absorber {
     #[inline(always)]
     fn assert_live() {
         assert(is_live::read(), 'ABS: Not live');
+    }
+
+    #[inline(always)]
+    fn is_operational_internal(total_shares: Wad) -> bool {
+        total_shares >= MINIMUM_SHARES.into()
     }
 
     // Helper function to return a Yin ERC20 contract
@@ -691,7 +701,6 @@ mod Absorber {
         }
 
         let epoch_conversion_rate: Ray = epoch_share_conversion_rate::read(start_epoch);
-
         let new_shares: Wad = wadray::rmul_wr(start_shares, epoch_conversion_rate);
 
         convert_epoch_shares(start_epoch + 1, end_epoch, new_shares)
@@ -703,25 +712,27 @@ mod Absorber {
 
     // Helper function to update each provider's entitlement of an absorbed asset
     fn update_absorbed_asset(
-        absorption_id: u32, total_shares: Wad, asset: ContractAddress, amount: u128
+        absorption_id: u32, total_recipient_shares: Wad, asset_balance: AssetBalance
     ) {
-        if amount.is_zero() {
+        if asset_balance.amount.is_zero() {
             return;
         }
 
-        let last_error: u128 = get_recent_asset_absorption_error(asset, absorption_id);
-        let total_amount_to_distribute: u128 = amount + last_error;
+        let last_error: u128 = get_recent_asset_absorption_error(
+            asset_balance.address, absorption_id
+        );
+        let total_amount_to_distribute: u128 = asset_balance.amount + last_error;
 
         let asset_amt_per_share: u128 = wadray::wdiv_internal(
-            total_amount_to_distribute, total_shares.val
+            total_amount_to_distribute, total_recipient_shares.val
         );
         let actual_amount_distributed: u128 = wadray::wmul_internal(
-            asset_amt_per_share, total_shares.val
+            asset_amt_per_share, total_recipient_shares.val
         );
         let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
         asset_absorption::write(
-            (asset, absorption_id), DistributionInfo { asset_amt_per_share, error }
+            (asset_balance.address, absorption_id), DistributionInfo { asset_amt_per_share, error }
         );
     }
 
@@ -754,13 +765,15 @@ mod Absorber {
     // `reap_internal`
     fn get_absorbed_and_rewarded_assets_for_provider(
         provider: ContractAddress, provision: Provision
-    ) -> (Span<ContractAddress>, Span<u128>, Span<ContractAddress>, Span<u128>) {
-        let (absorbed_assets, absorbed_amts) = get_absorbed_assets_for_provider_internal(
+    ) -> (Span<AssetBalance>, Span<AssetBalance>) {
+        let absorbed_assets: Span<AssetBalance> = get_absorbed_assets_for_provider_internal(
             provider, provision
         );
-        let (reward_assets, reward_amts) = get_provider_accumulated_rewards(provider, provision);
+        let rewarded_assets: Span<AssetBalance> = get_provider_accumulated_rewards(
+            provider, provision
+        );
 
-        (absorbed_assets, absorbed_amts, reward_assets, reward_amts)
+        (absorbed_assets, rewarded_assets)
     }
 
     // Internal function to be called whenever a provider takes an action to ensure absorbed assets
@@ -771,8 +784,7 @@ mod Absorber {
 
         // NOTE: both absorbed assets and rewarded assets will be empty arrays 
         // if `provision.shares` is zero.
-        let (absorbed_assets, absorbed_amts, reward_assets, reward_amts) =
-            get_absorbed_and_rewarded_assets_for_provider(
+        let (absorbed_assets, rewarded_assets) = get_absorbed_and_rewarded_assets_for_provider(
             provider, provision
         );
 
@@ -780,8 +792,8 @@ mod Absorber {
         provider_last_absorption::write(provider, absorptions_count::read());
 
         // Loop over absorbed and rewarded assets and transfer
-        transfer_assets(provider, absorbed_assets, absorbed_amts);
-        transfer_assets(provider, reward_assets, reward_amts);
+        transfer_assets(provider, absorbed_assets);
+        transfer_assets(provider, rewarded_assets);
 
         // NOTE: it is very important that this function is called, even for a new provider. 
         // If a new provider's cumulative rewards are not updated to the current epoch,
@@ -799,15 +811,15 @@ mod Absorber {
         // transferring rewards during a `reap_internal` call.
         update_provider_cumulative_rewards(provider);
 
-        Reap(provider, absorbed_assets, absorbed_amts, reward_assets, reward_amts);
+        Reap(provider, absorbed_assets, rewarded_assets);
     }
 
     // Internal function to calculate the absorbed assets that a provider is entitled to
     // Returns a tuple of an array of assets and an array of amounts of each asset
     fn get_absorbed_assets_for_provider_internal(
         provider: ContractAddress, provision: Provision, 
-    ) -> (Span<ContractAddress>, Span<u128>) {
-        let mut asset_amts: Array<u128> = Default::default();
+    ) -> Span<AssetBalance> {
+        let mut absorbed_assets: Array<AssetBalance> = Default::default();
 
         let current_absorption_id: u32 = absorptions_count::read();
         let provided_absorption_id: u32 = provider_last_absorption::read(provider);
@@ -815,8 +827,7 @@ mod Absorber {
         // Early termination by returning empty arrays
 
         if provision.shares.is_zero() | current_absorption_id == provided_absorption_id {
-            let empty_assets: Array<ContractAddress> = Default::default();
-            return (empty_assets.span(), asset_amts.span());
+            return absorbed_assets.span();
         }
 
         let assets: Span<ContractAddress> = sentinel::read().get_yang_addresses();
@@ -860,10 +871,10 @@ mod Absorber {
                             );
                     };
 
-                    asset_amts.append(absorbed_amt);
+                    absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
                 },
                 Option::None(_) => {
-                    break (assets, asset_amts.span());
+                    break absorbed_assets.span();
                 }
             };
         }
@@ -871,16 +882,14 @@ mod Absorber {
 
 
     // Helper function to iterate over an array of assets to transfer to an address
-    fn transfer_assets(
-        to: ContractAddress, mut assets: Span<ContractAddress>, mut asset_amts: Span<u128>
-    ) {
+    fn transfer_assets(to: ContractAddress, mut asset_balances: Span<AssetBalance>) {
         loop {
-            match assets.pop_front() {
-                Option::Some(asset) => {
-                    let asset_amt: u128 = *asset_amts.pop_front().unwrap();
-                    if asset_amt.is_non_zero() {
-                        let asset_amt: u256 = asset_amt.into();
-                        IERC20Dispatcher { contract_address: *asset }.transfer(to, asset_amt);
+            match asset_balances.pop_front() {
+                Option::Some(asset_balance) => {
+                    if (*asset_balance.amount).is_non_zero() {
+                        IERC20Dispatcher {
+                            contract_address: *asset_balance.address
+                        }.transfer(to, (*asset_balance.amount).into());
                     }
                 },
                 Option::None(_) => {
@@ -918,14 +927,15 @@ mod Absorber {
     fn bestow() {
         // Defer rewards until at least one provider deposits
         let total_shares: Wad = total_shares::read();
-        if total_shares.is_zero() {
+        if !is_operational_internal(total_shares) {
             return;
         }
 
         // Trigger issuance of active rewards
+        let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
+
         let epoch: u32 = current_epoch::read();
-        let mut rewards: Array<ContractAddress> = Default::default();
-        let mut blessed_amts: Array<u128> = Default::default();
+        let mut blessed_assets: Array<AssetBalance> = Default::default();
         let mut current_rewards_id: u8 = 0;
 
         let loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
@@ -940,10 +950,8 @@ mod Absorber {
                 continue;
             }
 
-            rewards.append(reward.asset);
-
             let blessed_amt = reward.blesser.bless();
-            blessed_amts.append(blessed_amt);
+            blessed_assets.append(AssetBalance { address: reward.asset, amount: blessed_amt });
 
             if blessed_amt.is_non_zero() {
                 let epoch_reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
@@ -952,10 +960,10 @@ mod Absorber {
                 let total_amount_to_distribute: u128 = blessed_amt + epoch_reward_info.error;
 
                 let asset_amt_per_share: u128 = wadray::wdiv_internal(
-                    total_amount_to_distribute, total_shares.val
+                    total_amount_to_distribute, total_recipient_shares.val
                 );
                 let actual_amount_distributed: u128 = wadray::wmul_internal(
-                    asset_amt_per_share, total_shares.val
+                    asset_amt_per_share, total_recipient_shares.val
                 );
                 let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
@@ -973,30 +981,29 @@ mod Absorber {
             current_rewards_id += 1;
         };
 
-        if rewards.len().is_non_zero() {
-            Bestow(rewards.span(), blessed_amts.span(), total_shares, epoch);
+        if blessed_assets.len().is_non_zero() {
+            Bestow(blessed_assets.span(), total_recipient_shares, epoch);
         }
     }
 
     // Helper function to loop over all rewards and calculate the accumulated amounts for a provider.
-    // It also returns a tuple of ordered arrays of the asset address and accumulated amounts for rewards.
+    // Returns an array of `AssetBalance` struct for accumulated rewards.
     fn get_provider_accumulated_rewards(
         provider: ContractAddress, provision: Provision
-    ) -> (Span<ContractAddress>, Span<u128>) {
-        let mut rewards: Array<ContractAddress> = Default::default();
-        let mut reward_amts: Array<u128> = Default::default();
+    ) -> Span<AssetBalance> {
+        let mut accumulated_reward_assets: Array<AssetBalance> = Default::default();
         let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
         // Return empty arrays if the provider has no shares
         if provision.shares.is_zero() {
-            return (rewards.span(), reward_amts.span());
+            return accumulated_reward_assets.span();
         }
 
         let outer_loop_end: u8 = rewards_count::read() + REWARDS_LOOP_START;
         let inner_loop_end: u32 = current_epoch::read() + 1;
         loop {
             if current_rewards_id == outer_loop_end {
-                break (rewards.span(), reward_amts.span());
+                break accumulated_reward_assets.span();
             }
 
             let reward: Reward = rewards::read(current_rewards_id);
@@ -1032,8 +1039,8 @@ mod Absorber {
                 epoch += 1;
             };
 
-            rewards.append(reward.asset);
-            reward_amts.append(reward_amt);
+            accumulated_reward_assets
+                .append(AssetBalance { address: reward.asset, amount: reward_amt });
 
             current_rewards_id += 1;
         }
@@ -1096,30 +1103,35 @@ mod Absorber {
     fn get_provider_pending_rewards(
         provider: ContractAddress,
         current_provider_shares: Wad,
-        total_shares: Wad,
+        total_recipient_shares: Wad,
         current_epoch: u32,
-        mut accumulated_asset_amts: Span<u128>
-    ) -> Span<u128> {
-        let mut updated_asset_amts: Array<u128> = Default::default();
-        let mut current_rewards_id: u8 = REWARDS_LOOP_START;
+        mut accumulated_assets: Span<AssetBalance>
+    ) -> Span<AssetBalance> {
+        let mut updated_assets: Array<AssetBalance> = Default::default();
 
         loop {
-            match accumulated_asset_amts.pop_front() {
-                Option::Some(accumulated_amt) => {
-                    let reward: Reward = rewards::read(current_rewards_id);
+            match accumulated_assets.pop_front() {
+                Option::Some(accumulated_asset) => {
+                    let reward: Reward = rewards::read(reward_id::read(*accumulated_asset.address));
                     let pending_amt: u128 = reward.blesser.preview_bless();
                     let reward_info: DistributionInfo = cumulative_reward_amt_by_epoch::read(
                         (reward.asset, current_epoch)
                     );
 
                     let pending_amt_per_share: u128 = wadray::wdiv_internal(
-                        pending_amt + reward_info.error, total_shares.val
+                        pending_amt + reward_info.error, total_recipient_shares.val
                     );
                     let provider_pending_amt: u128 = wadray::wmul_internal(
                         pending_amt_per_share, current_provider_shares.val
                     );
-                    updated_asset_amts.append(*accumulated_amt + provider_pending_amt);
-                    current_rewards_id += 1;
+
+                    updated_assets
+                        .append(
+                            AssetBalance {
+                                address: *accumulated_asset.address,
+                                amount: *accumulated_asset.amount + provider_pending_amt,
+                            }
+                        );
                 },
                 Option::None(_) => {
                     break;
@@ -1127,7 +1139,7 @@ mod Absorber {
             };
         };
 
-        updated_asset_amts.span()
+        updated_assets.span()
     }
 
     //

@@ -10,6 +10,7 @@ mod Abbot {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::serde;
+    use aura::utils::types::AssetBalance;
     use aura::utils::wadray::{BoundedWad, Wad};
 
     struct Storage {
@@ -91,16 +92,11 @@ mod Abbot {
 
     // create a new trove in the system with Yang deposits,
     // optionally forging Yin in the same operation (if `forge_amount` is 0, no Yin is created)
-    // `amounts` are denominated in asset's decimals
     #[external]
     fn open_trove(
-        forge_amount: Wad,
-        mut yangs: Span<ContractAddress>,
-        mut amounts: Span<u128>,
-        max_forge_fee_pct: Wad
+        mut yang_assets: Span<AssetBalance>, forge_amount: Wad, max_forge_fee_pct: Wad
     ) -> u64 {
-        assert(yangs.len().is_non_zero(), 'ABB: No yangs');
-        assert(yangs.len() == amounts.len(), 'ABB: Array lengths mismatch');
+        assert(yang_assets.len().is_non_zero(), 'ABB: No yangs');
 
         let troves_count: u64 = troves_count::read();
         troves_count::write(troves_count + 1);
@@ -115,10 +111,9 @@ mod Abbot {
 
         // deposit all requested Yangs into the system
         loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let amount: u128 = *amounts.pop_front().unwrap();
-                    deposit_internal(*yang, user, new_trove_id, amount);
+            match yang_assets.pop_front() {
+                Option::Some(yang_asset) => {
+                    deposit_internal(new_trove_id, user, *yang_asset);
                 },
                 Option::None(_) => {
                     break;
@@ -153,7 +148,7 @@ mod Abbot {
                     if yang_amount.is_zero() {
                         continue;
                     }
-                    withdraw_internal(*yang, user, trove_id, yang_amount);
+                    withdraw_internal(trove_id, user, *yang, yang_amount);
                 },
                 Option::None(_) => {
                     break;
@@ -164,9 +159,9 @@ mod Abbot {
         TroveClosed(trove_id);
     }
 
-    // add Yang (an asset) to a trove; `amount` is denominated in asset's decimals
+    // add Yang (an asset) to a trove
     #[external]
-    fn deposit(yang: ContractAddress, trove_id: u64, amount: u128) {
+    fn deposit(trove_id: u64, yang_asset: AssetBalance) {
         // There is no need to check the yang address is non-zero because the
         // Sentinel does not allow a zero address yang to be added.
 
@@ -174,22 +169,23 @@ mod Abbot {
         assert(trove_id <= troves_count::read(), 'ABB: Non-existent trove');
         // note that caller does not need to be the trove's owner to deposit
 
-        deposit_internal(yang, get_caller_address(), trove_id, amount);
+        deposit_internal(trove_id, get_caller_address(), yang_asset);
     }
 
-    // remove Yang (an asset) from a trove; `amount` is denominated in WAD_DECIMALS
+    // remove Yang (an asset) from a trove
     #[external]
-    fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad) {
+    fn withdraw(trove_id: u64, yang_asset: AssetBalance) {
         // There is no need to check the yang address is non-zero because the
         // Sentinel does not allow a zero address yang to be added.
 
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
-        withdraw_internal(yang, user, trove_id, amount);
+        let yang_amt: Wad = sentinel::read().convert_to_yang(yang_asset.address, yang_asset.amount);
+        withdraw_internal(trove_id, user, yang_asset.address, yang_amt);
     }
 
-    // create Yin in a trove; `amount` is denominated in WAD_DECIMALS
+    // create Yin in a trove
     #[external]
     fn forge(trove_id: u64, amount: Wad, max_forge_fee_pct: Wad) {
         let user = get_caller_address();
@@ -197,7 +193,7 @@ mod Abbot {
         shrine::read().forge(user, trove_id, amount, max_forge_fee_pct);
     }
 
-    // destroy Yin from a trove; `amount` is denominated in WAD_DECIMALS
+    // destroy Yin from a trove
     #[external]
     fn melt(trove_id: u64, amount: Wad) {
         // note that caller does not need to be the trove's owner to melt
@@ -214,23 +210,26 @@ mod Abbot {
     }
 
     #[inline(always)]
-    fn deposit_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: u128) {
+    fn deposit_internal(trove_id: u64, user: ContractAddress, yang_asset: AssetBalance) {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
-        let yang_amount: Wad = sentinel::read().enter(yang, user, trove_id, amount);
-        shrine::read().deposit(yang, trove_id, yang_amount);
+        let yang_amt: Wad = sentinel::read()
+            .enter(yang_asset.address, user, trove_id, yang_asset.amount);
+        shrine::read().deposit(yang_asset.address, trove_id, yang_amt);
 
         ReentrancyGuard::end();
     }
 
     #[inline(always)]
-    fn withdraw_internal(yang: ContractAddress, user: ContractAddress, trove_id: u64, amount: Wad) {
+    fn withdraw_internal(
+        trove_id: u64, user: ContractAddress, yang: ContractAddress, yang_amt: Wad
+    ) {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
 
-        sentinel::read().exit(yang, user, trove_id, amount);
-        shrine::read().withdraw(yang, trove_id, amount);
+        sentinel::read().exit(yang, user, trove_id, yang_amt);
+        shrine::read().withdraw(yang, trove_id, yang_amt);
 
         ReentrancyGuard::end();
     }
