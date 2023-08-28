@@ -432,15 +432,15 @@ mod Shrine {
         get_yang_suspension_status_internal(yang_id)
     }
 
+    // Returns a tuple of 
+    // 1. The "raw yang threshold"
+    // 2. The "scaled yang threshold" for recovery mode
+    // 1 and 2 will be the same if recovery mode is not in effect
     #[view]
-    fn get_yang_threshold(yang: ContractAddress) -> Ray {
-        scale_threshold_for_recovery_mode(get_raw_yang_threshold(yang))
-    }
-
-    #[view]
-    fn get_raw_yang_threshold(yang: ContractAddress) -> Ray {
+    fn get_yang_threshold(yang: ContractAddress) -> (Ray, Ray) {
         let yang_id: u32 = get_valid_yang_id(yang);
-        get_yang_threshold_internal(yang_id)
+        let threshold = get_yang_threshold_internal(yang_id);
+        (threshold, scale_threshold_for_recovery_mode(threshold))
     }
 
     #[view]

@@ -21,7 +21,7 @@ mod TestShrine {
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
@@ -80,8 +80,9 @@ mod TestShrine {
         assert(yang1_price == ShrineUtils::YANG1_START_PRICE.into(), 'wrong yang1 start price');
         let (rmt, sltv) = shrine.get_recovery_mode_threshold();
 
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang1_addr);
         assert(
-            shrine.get_raw_yang_threshold(yang1_addr) == ShrineUtils::YANG1_THRESHOLD.into(),
+            raw_threshold == ShrineUtils::YANG1_THRESHOLD.into(),
             'wrong yang1 threshold'
         );
         assert(
@@ -91,9 +92,10 @@ mod TestShrine {
 
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang2_addr);
         assert(yang2_price == ShrineUtils::YANG2_START_PRICE.into(), 'wrong yang2 start price');
         assert(
-            shrine.get_raw_yang_threshold(yang2_addr) == ShrineUtils::YANG2_THRESHOLD.into(),
+            raw_threshold == ShrineUtils::YANG2_THRESHOLD.into(),
             'wrong yang2 threshold'
         );
         assert(
@@ -225,8 +227,9 @@ mod TestShrine {
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
         assert(current_yang_price == new_yang_start_price, 'incorrect yang price');
+        let (raw_threshold, _) = shrine.get_yang_threshold(new_yang_address);
         assert(
-            shrine.get_raw_yang_threshold(new_yang_address) == new_yang_threshold,
+            raw_threshold == new_yang_threshold,
             'incorrect yang threshold'
         );
 
@@ -277,7 +280,8 @@ mod TestShrine {
 
         set_contract_address(ShrineUtils::admin());
         shrine.set_threshold(yang1_addr, new_threshold);
-        assert(shrine.get_raw_yang_threshold(yang1_addr) == new_threshold, 'threshold not updated');
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang1_addr);
+        assert(raw_threshold == new_threshold, 'threshold not updated');
     }
 
     #[test]
@@ -1580,8 +1584,8 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 1');
 
         // check threshold (should be the same at the beginning)
-        let threshold = shrine.get_raw_yang_threshold(yang);
-        assert(threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+        assert(raw_threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'threshold 1');
 
         // the threshold should decrease by 1% in this amount of time
         let one_pct = Shrine::SUSPENSION_GRACE_PERIOD / 100;
@@ -1594,8 +1598,8 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 2');
 
         // check threshold
-        let threshold = shrine.get_raw_yang_threshold(yang);
-        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+        assert(raw_threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 99).into(), 'threshold 2');
 
         // move time forward
         set_block_timestamp(start_ts + one_pct * 20);
@@ -1605,8 +1609,8 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 3');
 
         // check threshold
-        let threshold = shrine.get_raw_yang_threshold(yang);
-        assert(threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+        assert(raw_threshold == (ShrineUtils::YANG1_THRESHOLD / 100 * 80).into(), 'threshold 3');
 
         // move time forward to a second before permanent suspension
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
@@ -1616,10 +1620,10 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Temporary(()), 'status 4');
 
         // check threshold
-        let threshold = shrine.get_raw_yang_threshold(yang);
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
         // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
         // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
-        common::assert_equalish(threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4');
+        common::assert_equalish(raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4');
 
         // move time forward to end of temp suspension, start of permanent one
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
@@ -1629,8 +1633,8 @@ mod TestShrine {
         assert(status == YangSuspensionStatus::Permanent(()), 'status 5');
 
         // check threshold
-        let threshold = shrine.get_raw_yang_threshold(yang);
-        assert(threshold == RayZeroable::zero(), 'threshold 5');
+        let (raw_threshold, _) = shrine.get_yang_threshold(yang);
+        assert(raw_threshold == RayZeroable::zero(), 'threshold 5');
     }
 
     #[test]
@@ -1702,12 +1706,13 @@ mod TestShrine {
         
         set_contract_address(ShrineUtils::admin());
 
-        let prev_yang1_threshold: Ray = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let (prev_yang1_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
         shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, initial_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into());
 
         // At this point, recovery mode should be activated but trove 1 should still be healthy,
         // since the liquidation threshold decrease is gradual
-        assert(shrine.get_yang_threshold(ShrineUtils::yang1_addr()) < prev_yang1_threshold, 'recovery mode not active');
+        let (current_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        assert(current_threshold < prev_yang1_threshold, 'recovery mode not active');
         assert(shrine.is_healthy(common::TROVE_1), 'should be healthy #2');
 
         // Now we withdraw just enough collateral from the whale trove
@@ -1761,15 +1766,16 @@ mod TestShrine {
         shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, (200 * WAD_ONE).into());
         
         // Sanity check that recovery mode is active
-        assert(shrine.get_yang_threshold(ShrineUtils::yang1_addr()) < ShrineUtils::YANG1_THRESHOLD.into(), 'recovery mode not active');
+        let (threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        assert(threshold < ShrineUtils::YANG1_THRESHOLD.into(), 'recovery mode not active');
 
         // Getting the trove threshold as calculated by Shrine
         let (trove_threshold, _, _, _) = shrine.get_trove_info(common::TROVE_1);
 
         // Getting the trove threshold as calculated by scaling each yang threshold individually
 
-        let yang1_threshold = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
-        let yang2_threshold = shrine.get_yang_threshold(ShrineUtils::yang2_addr());
+        let (yang1_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let (yang2_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang2_addr());
 
         let yang1_deposit_value = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into();
         let yang2_deposit_value = yang2_deposit * ShrineUtils::YANG2_START_PRICE.into();
@@ -1778,6 +1784,18 @@ mod TestShrine {
             wadray::wmul_wr(yang2_deposit_value, yang2_threshold), yang1_deposit_value + yang2_deposit_value);
 
         assert(trove_threshold == alternative_threshold, 'invariant did not hold');
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_get_recovery_mode_threshold_after_deployment() {
+        let shrine: IShrineDispatcher = IShrineDispatcher{ contract_address: ShrineUtils::shrine_deploy()};
+        ShrineUtils::shrine_setup(shrine.contract_address);
+
+        let (recovery_mode_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
+
+        assert(recovery_mode_threshold.is_zero(), 'wrong recovery mode threshold');
+        assert(shrine_ltv == BoundedRay::max(), 'wrong shrine LTV');
     }
 
 

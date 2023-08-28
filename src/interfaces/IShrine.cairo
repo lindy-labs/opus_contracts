@@ -23,8 +23,7 @@ trait IShrine {
     fn get_debt_ceiling() -> Wad;
     fn get_multiplier(interval: u64) -> (Ray, Ray);
     fn get_yang_suspension_status(yang: ContractAddress) -> YangSuspensionStatus;
-    fn get_yang_threshold(yang: ContractAddress) -> Ray;
-    fn get_raw_yang_threshold(yang: ContractAddress) -> Ray;
+    fn get_yang_threshold(yang: ContractAddress) -> (Ray, Ray);
     fn get_redistributions_count() -> u32;
     fn get_trove_redistribution_id(trove_id: u64) -> u32;
     fn get_redistribution_for_yang(
