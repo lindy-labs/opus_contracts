@@ -927,6 +927,11 @@ mod Shrine {
         // Core Functions - View
         //
 
+        fn get_shrine_threshold_and_value(self: @ContractState) -> (Ray, Wad) {
+            let yang_totals: Span<YangBalance> = self.get_shrine_deposits();
+            self.get_threshold_and_value(yang_totals, now())
+        }
+
         // Get the last updated price for a yang
         fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
             self.get_recent_price_from(self.get_valid_yang_id(yang), now())
