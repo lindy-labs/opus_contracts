@@ -21,6 +21,7 @@ mod FlashMint {
     use traits::{Into, TryInto};
 
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
+    use aura::interfaces::IFlashMint::IFlashmint;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::wadray::Wad;
@@ -59,68 +60,70 @@ mod FlashMint {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
-    //
-    // View Functions
-    //
 
+    
     #[external(v0)]
-    fn max_flash_loan(self: @ContractState, token: ContractAddress) -> u256 {
-        let shrine: IShrineDispatcher = self.shrine.read();
+    impl IFlashMintImpl of IFlashMint<ContractState> {
+        //
+        // View Functions
+        //
+        fn max_flash_loan(self: @ContractState, token: ContractAddress) -> u256 {
+            let shrine: IShrineDispatcher = self.shrine.read();
 
-        // Can only flash mint our own synthetic
-        if token == shrine.contract_address {
-            let supply: Wad = shrine.get_total_yin();
-            return (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val.into();
+            // Can only flash mint our own synthetic
+            if token == shrine.contract_address {
+                let supply: Wad = shrine.get_total_yin();
+                return (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val.into();
+            }
+
+            0_u256
         }
 
-        0_u256
+        fn flash_fee(self: @ContractState, token: ContractAddress, amount: u256) -> u256 {
+            // as per EIP3156, if a token is not supported, this function must revert
+            // and we only support flash minting of our own synthetic
+            assert(self.shrine.read().contract_address == token, 'FM: Unsupported token');
+
+            FLASH_FEE
+        }
+
+        //
+        // External Functions
+        //
+
+        fn flash_loan(self: @ContractState, 
+            receiver: ContractAddress, token: ContractAddress, amount: u256, call_data: Span<felt252>
+        ) -> bool {
+            // prevents looping which would lead to excessive minting
+            // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
+            // yin to be minted, as per spec
+            ReentrancyGuard::start();
+
+            assert(amount <= max_flash_loan(token), 'FM: amount exceeds maximum');
+
+            let shrine = self.shrine.read();
+
+            let amount_wad = Wad { val: amount.try_into().unwrap() };
+
+            shrine.inject(receiver, amount_wad);
+
+            let initiator: ContractAddress = starknet::get_caller_address();
+
+            let borrower_resp: u256 = IFlashBorrowerDispatcher {
+                contract_address: receiver
+            }.on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
+
+            assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
+
+            // This function in Shrine takes care of balance validation
+            shrine.eject(receiver, amount_wad);
+
+            self.emit(FlashMint { initiator: initiator, receiver:  receiver, token:  token, amount:  amount });
+
+            ReentrancyGuard::end();
+
+            true
+        }
     }
 
-    #[external(v0)]
-    fn flash_fee(self: @ContractState, token: ContractAddress, amount: u256) -> u256 {
-        // as per EIP3156, if a token is not supported, this function must revert
-        // and we only support flash minting of our own synthetic
-        assert(self.shrine.read().contract_address == token, 'FM: Unsupported token');
-
-        FLASH_FEE
-    }
-
-    //
-    // External Functions
-    //
-
-    #[external(v0)]
-    fn flash_loan(self: @ContractState, 
-        receiver: ContractAddress, token: ContractAddress, amount: u256, call_data: Span<felt252>
-    ) -> bool {
-        // prevents looping which would lead to excessive minting
-        // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
-        // yin to be minted, as per spec
-        ReentrancyGuard::start();
-
-        assert(amount <= max_flash_loan(token), 'FM: amount exceeds maximum');
-
-        let shrine = self.shrine.read();
-
-        let amount_wad = Wad { val: amount.try_into().unwrap() };
-
-        shrine.inject(receiver, amount_wad);
-
-        let initiator: ContractAddress = starknet::get_caller_address();
-
-        let borrower_resp: u256 = IFlashBorrowerDispatcher {
-            contract_address: receiver
-        }.on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
-
-        assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
-
-        // This function in Shrine takes care of balance validation
-        shrine.eject(receiver, amount_wad);
-
-        self.emit(FlashMint { initiator: initiator, receiver:  receiver, token:  token, amount:  amount });
-
-        ReentrancyGuard::end();
-
-        true
-    }
 }

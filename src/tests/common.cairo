@@ -2,9 +2,11 @@
 // Helpers - Assertions
 //
 
-fn assert_equalish<
-    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
->(
+fn assert_equalish<T,
+impl TPartialOrd: PartialOrd<T>,
+impl TSub: Sub<T>,
+impl TCopy: Copy<T>,
+impl TDrop: Drop<T>>(
     a: T, b: T, error: T, message: felt252
 ) {
     if a >= b {
