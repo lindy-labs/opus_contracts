@@ -682,7 +682,7 @@ mod TestShrine {
                 ShrineUtils::common::trove3_owner_addr(),
                 common::TROVE_3,
                 1_u128.into(),
-                0_u128.into()
+                WadZeroable::zero()
             );
     }
 
@@ -697,7 +697,10 @@ mod TestShrine {
         let unsafe_forge_amt: Wad = (max_forge_amt.val + 1).into();
 
         set_contract_address(ShrineUtils::admin());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, 0_u128.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(), common::TROVE_1, unsafe_forge_amt, WadZeroable::zero()
+            );
     }
 
     #[test]
@@ -715,7 +718,7 @@ mod TestShrine {
         shrine.deposit(ShrineUtils::yang1_addr(), common::TROVE_1, additional_yang1_amt);
 
         let unsafe_amt: Wad = (ShrineUtils::TROVE1_FORGE_AMT * 10).into();
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_amt, 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, unsafe_amt, WadZeroable::zero());
     }
 
     #[test]
@@ -732,7 +735,7 @@ mod TestShrine {
                 common::trove1_owner_addr(),
                 common::TROVE_1,
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
-                0_u128.into(),
+                WadZeroable::zero(),
             );
     }
 
@@ -986,7 +989,10 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
         shrine
             .forge(
-                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+                trove1_owner,
+                common::TROVE_1,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                WadZeroable::zero()
             );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -1012,7 +1018,10 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
         shrine
             .forge(
-                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+                trove1_owner,
+                common::TROVE_1,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                WadZeroable::zero()
             );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
@@ -1037,7 +1046,10 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
         shrine
             .forge(
-                trove1_owner, common::TROVE_1, ShrineUtils::TROVE1_FORGE_AMT.into(), 0_u128.into()
+                trove1_owner,
+                common::TROVE_1,
+                ShrineUtils::TROVE1_FORGE_AMT.into(),
+                WadZeroable::zero()
             );
 
         let yin = ShrineUtils::yin(shrine.contract_address);
