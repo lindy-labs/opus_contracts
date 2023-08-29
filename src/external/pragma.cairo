@@ -8,7 +8,6 @@
 #[starknet::contract]
 mod Pragma {
     use array::ArrayTrait;
-    use box::BoxTrait;
     use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use traits::TryInto;
@@ -35,11 +34,13 @@ mod Pragma {
     // be set outside of this hardcoded range
     // the range is [lower, upper]
     const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
-    const UPPER_FRESHNESS_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
+    const UPPER_FRESHNESS_BOUND: u64 =
+        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
     const LOWER_SOURCES_BOUND: u64 = 3;
     const UPPER_SOURCES_BOUND: u64 = 13;
     const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
-    const UPPER_UPDATE_FREQUENCY_BOUND: u64 = 14400; // 60 * 60 * 4 = 4 hours
+    const UPPER_UPDATE_FREQUENCY_BOUND: u64 =
+        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
 
     #[storage]
     struct Storage {
@@ -146,10 +147,10 @@ mod Pragma {
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
         self.update_frequency.write(update_frequency);
-        let pvt = PriceValidityThresholds {
+        let new_thresholds = PriceValidityThresholds {
             freshness: freshness_threshold, sources: sources_threshold
         };
-        self.price_validity_thresholds.write(pvt);
+        self.price_validity_thresholds.write(new_thresholds);
 
         // emit events
         self.emit(OracleAddressUpdated { old_address: Zeroable::zero(), new_address: oracle });
@@ -158,7 +159,7 @@ mod Pragma {
             .emit(
                 PriceValidityThresholdsUpdated {
                     old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
-                    new_thresholds: pvt
+                    new_thresholds
                 }
             );
     }
@@ -195,16 +196,11 @@ mod Pragma {
                 'PGM: Sources out of bounds'
             );
 
-            let old_pvt: PriceValidityThresholds = self.price_validity_thresholds.read();
-            let new_pvt = PriceValidityThresholds { freshness, sources };
-            self.price_validity_thresholds.write(new_pvt);
+            let old_thresholds: PriceValidityThresholds = self.price_validity_thresholds.read();
+            let new_thresholds = PriceValidityThresholds { freshness, sources };
+            self.price_validity_thresholds.write(new_thresholds);
 
-            self
-                .emit(
-                    PriceValidityThresholdsUpdated {
-                        old_thresholds: old_pvt, new_thresholds: new_pvt
-                    }
-                );
+            self.emit(PriceValidityThresholdsUpdated { old_thresholds, new_thresholds });
         }
 
         fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
@@ -217,12 +213,7 @@ mod Pragma {
 
             let old_frequency: u64 = self.update_frequency.read();
             self.update_frequency.write(new_frequency);
-            self
-                .emit(
-                    UpdateFrequencyUpdated {
-                        old_frequency: old_frequency, new_frequency: new_frequency
-                    }
-                );
+            self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
         }
 
         fn add_yang(ref self: ContractState, pair_id: u256, yang: ContractAddress) {
@@ -246,7 +237,7 @@ mod Pragma {
             self.yang_settings.write(index, settings);
             self.yangs_count.write(index);
 
-            self.emit(YangAdded { index: index, settings: settings });
+            self.emit(YangAdded { index, settings });
         }
 
         //
