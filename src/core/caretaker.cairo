@@ -15,7 +15,7 @@ mod Caretaker {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::AccessControl;
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
@@ -281,10 +281,7 @@ mod Caretaker {
                 };
             };
 
-            self
-                .emit(
-                    Release { user: trove_owner, trove_id: trove_id, assets: released_assets.span }
-                );
+            self.emit(Release { user: trove_owner, trove_id, assets: released_assets.span() });
 
             ReentrancyGuard::end();
             released_assets.span()
@@ -319,7 +316,7 @@ mod Caretaker {
             // Calculate amount of collateral corresponding to amount of yin reclaimed.
             // This needs to be done before burning the reclaimed yin amount from the caller
             // or the total supply would be incorrect.
-            let reclaimable_assets: Span<AssetBalance> = preview_reclaim(yin);
+            let reclaimable_assets: Span<AssetBalance> = self.preview_reclaim(yin);
 
             // This call will revert if `yin` is greater than the caller's balance.
             shrine.eject(caller, yin);
