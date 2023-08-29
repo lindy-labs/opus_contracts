@@ -278,9 +278,8 @@ mod Shrine {
 
         // Get threshold and trove value
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
-        let (mut threshold, mut value) = get_threshold_and_value(
-            trove_yang_balances, interval, true
-        );
+        let (mut threshold, mut value) = get_threshold_and_value(trove_yang_balances, interval);
+        threshold = scale_threshold_for_recovery_mode(threshold);
 
         let trove: Trove = troves::read(trove_id);
 
@@ -308,10 +307,8 @@ mod Shrine {
         );
 
         if updated_trove_yang_balances.is_some() {
-            let (new_threshold, new_value) = get_threshold_and_value(
-                updated_trove_yang_balances.unwrap(), interval, true
-            );
-            threshold = new_threshold;
+            let (new_threshold, new_value) = get_threshold_and_value(updated_trove_yang_balances.unwrap(), interval);
+            threshold = scale_threshold_for_recovery_mode(new_threshold);
             value = new_value;
         }
 
@@ -446,7 +443,7 @@ mod Shrine {
     #[view]
     fn get_shrine_threshold_and_value() -> (Ray, Wad) {
         let yang_totals: Span<YangBalance> = get_shrine_deposits();
-        get_threshold_and_value(yang_totals, now(), false)
+        get_threshold_and_value(yang_totals, now())
     }
 
     // Returns a tuple of 
@@ -454,7 +451,10 @@ mod Shrine {
     // 2. Shrine's LTV
     #[view]
     fn get_recovery_mode_threshold() -> (Ray, Ray) {
-        let (liq_threshold, value) = get_threshold_and_value(get_shrine_deposits(), now(), false);
+        // Note: if `get_threshold_and_value` is called with `true` for `apply_recovery_mode` here, it will
+        result in endless recursion since `get_threshold_and_value` calls `scale_threshold_for_recovery_mode`
+        // which calls `get_recovery_mode_threshold`.
+        let (liq_threshold, value) = get_threshold_and_value(get_shrine_deposits(), now());
         let debt: Wad = total_debt::read();
         let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
@@ -1353,15 +1353,14 @@ mod Shrine {
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         // `apply_recovery_mode` can be `false` here since we are only interested in the trove value
-        let (_, trove_value) = get_threshold_and_value(
-            trove_yang_balances, current_interval, false
-        );
+        let (_, trove_value) = get_threshold_and_value(trove_yang_balances, current_interval);
+
         let trove_value_to_redistribute: Wad = wadray::rmul_wr(
             trove_value, pct_value_to_redistribute
         );
 
         let yang_totals: Span<YangBalance> = get_shrine_deposits();
-        let (_, shrine_value) = get_threshold_and_value(yang_totals, current_interval, false);
+        let (_, shrine_value) = get_threshold_and_value(yang_totals, current_interval);
         // Note the initial yang amount is not excluded from the value of all other troves
         // here (it will also be more expensive if we want to do so). Therefore, when
         // calculating a yang's total value as a percentage of the total value of all
@@ -2108,7 +2107,7 @@ mod Shrine {
     // 2. the total value of the yangs, at a given interval
     // based on historical prices and the given yang balances.
     fn get_threshold_and_value(
-        mut yang_balances: Span<YangBalance>, interval: u64, apply_recovery_mode: bool
+        mut yang_balances: Span<YangBalance>, interval: u64
     ) -> (Ray, Wad) {
         let mut weighted_threshold_sum: Ray = RayZeroable::zero();
         let mut total_value: Wad = WadZeroable::zero();
@@ -2137,15 +2136,11 @@ mod Shrine {
         };
 
         // Catch division by zero
-        let mut threshold: Ray = if total_value.is_non_zero() {
+        let threshold: Ray = if total_value.is_non_zero() {
             wadray::wdiv_rw(weighted_threshold_sum, total_value)
         } else {
             RayZeroable::zero()
         };
-
-        if apply_recovery_mode {
-            threshold = scale_threshold_for_recovery_mode(threshold);
-        }
 
         (threshold, total_value)
     }

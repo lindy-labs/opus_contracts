@@ -107,6 +107,12 @@ mod TestShrine {
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
         assert(threshold.is_zero(), 'wrong shrine threshold');
         assert(value.is_zero(), 'wrong shrine value');
+
+        // Check that initial recovery mode values are correct
+        let (recovery_mode_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
+
+        assert(recovery_mode_threshold.is_zero(), 'wrong recovery mode threshold');
+        assert(shrine_ltv == BoundedRay::max(), 'wrong shrine LTV');
     }
 
     // Checks `advance` and `set_multiplier`, and their cumulative values
@@ -1785,18 +1791,4 @@ mod TestShrine {
 
         assert(trove_threshold == alternative_threshold, 'invariant did not hold');
     }
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_get_recovery_mode_threshold_after_deployment() {
-        let shrine: IShrineDispatcher = IShrineDispatcher{ contract_address: ShrineUtils::shrine_deploy()};
-        ShrineUtils::shrine_setup(shrine.contract_address);
-
-        let (recovery_mode_threshold, shrine_ltv) = shrine.get_recovery_mode_threshold();
-
-        assert(recovery_mode_threshold.is_zero(), 'wrong recovery mode threshold');
-        assert(shrine_ltv == BoundedRay::max(), 'wrong shrine LTV');
-    }
-
-
 }
