@@ -14,7 +14,7 @@ mod Sentinel {
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::types::YangSuspensionStatus;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     // Helper constant to set the starting index for iterating over the
     // yangs in the order they were added
@@ -132,7 +132,7 @@ mod Sentinel {
             let gate: IGateDispatcher = self.yang_to_gate.read(yang);
 
             if gate.contract_address.is_zero() {
-                return 0_u128.into();
+                return WadZeroable::zero();
             }
 
             gate.get_asset_amt_per_yang()
@@ -203,8 +203,8 @@ mod Sentinel {
             shrine.add_yang(yang, yang_threshold, yang_price, yang_rate, initial_yang_amt);
 
             // Events
-            self.emit(YangAdded { yang: yang, gate: gate.contract_address });
-            self.emit(YangAssetMaxUpdated { yang: yang, old_max: 0, new_max: yang_asset_max });
+            self.emit(YangAdded { yang, gate: gate.contract_address });
+            self.emit(YangAssetMaxUpdated { yang, old_max: 0, new_max: yang_asset_max });
         }
 
         fn set_yang_asset_max(ref self: ContractState, yang: ContractAddress, new_asset_max: u128) {
@@ -216,12 +216,7 @@ mod Sentinel {
             let old_asset_max: u128 = self.yang_asset_max.read(yang);
             self.yang_asset_max.write(yang, new_asset_max);
 
-            self
-                .emit(
-                    YangAssetMaxUpdated {
-                        yang: yang, old_max: old_asset_max, new_max: new_asset_max
-                    }
-                );
+            self.emit(YangAssetMaxUpdated { yang, old_max: old_asset_max, new_max: new_asset_max });
         }
 
         fn enter(

@@ -4,8 +4,8 @@ mod SentinelUtils {
     use integer::BoundedU256;
     use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::info::get_caller_address;
@@ -31,17 +31,17 @@ mod SentinelUtils {
 
     #[inline(always)]
     fn admin() -> ContractAddress {
-        contract_address_const::<0x80085>()
+        contract_address_try_from_felt252('sentinel admin').unwrap()
     }
 
     #[inline(always)]
     fn mock_abbot() -> ContractAddress {
-        contract_address_const::<0xABB07>()
+        contract_address_try_from_felt252('mock abbot').unwrap()
     }
 
     #[inline(always)]
     fn invalid_yang_addr() -> ContractAddress {
-        contract_address_const::<0xf00>()
+        contract_address_try_from_felt252('invalid yang').unwrap()
     }
 
     //
