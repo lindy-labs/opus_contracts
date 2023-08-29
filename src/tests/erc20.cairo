@@ -115,7 +115,7 @@ mod ERC20 {
     #[external(v0)]
     impl IMintableImpl of IMintable<ContractState> {
         fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
-            self.supply.write(supply::read() + amount);
+            self.total_supply.write(self.total_supply.read() + amount);
             let balance = self.balances.read(recipient);
             self.balances.write(recipient, balance + amount);
             self
