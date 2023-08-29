@@ -1,3 +1,4 @@
+mod abbot;
 mod gate;
 mod allocator;
 mod caretaker;
