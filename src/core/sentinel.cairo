@@ -4,7 +4,6 @@ mod Sentinel {
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::roles::SentinelRoles;
 
