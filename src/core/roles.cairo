@@ -7,6 +7,15 @@ mod AllocatorRoles {
     }
 }
 
+mod CaretakerRoles {
+    const SHUT: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SHUT
+    }
+}
+
 mod EqualizerRoles {
     const SET_ALLOCATOR: u128 = 1;
 
