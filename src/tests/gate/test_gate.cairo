@@ -172,11 +172,11 @@ mod TestGate {
         let enter2_amt = 30_u128 * WAD_SCALE;
 
         GateUtils::approve_gate_for_token(gate.contract_address, eth.contract_address, user1);
-        'check0'.print();
+
         // fund user1
         set_contract_address(GateUtils::eth_hoarder());
         eth.transfer(user1, (enter1_amt + enter2_amt).into());
-        'check01'.print();
+
         //
         // first deposit to trove1
         //
@@ -189,7 +189,7 @@ mod TestGate {
         ShrineUtils::make_root(shrine.contract_address, ShrineUtils::admin());
         set_contract_address(ShrineUtils::admin());
         shrine.deposit(eth.contract_address, trove1, enter1_yang_amt);
-        'check02'.print();
+
         //
         // rebase
         //
@@ -197,7 +197,6 @@ mod TestGate {
         let rebase1_amt = 5_u128 * WAD_SCALE;
         GateUtils::rebase(gate.contract_address, eth.contract_address, rebase1_amt);
 
-        'check03'.print();
         // mark values before second deposit
         let before_user_yang: Wad = shrine.get_deposit(eth.contract_address, trove1);
         let before_total_yang: Wad = gate.get_total_yang();
@@ -208,7 +207,7 @@ mod TestGate {
         //
         // second deposit to trove1
         //
-        'check04'.print();
+
         // simulate sentinel calling enter
         set_contract_address(GateUtils::mock_sentinel());
         let enter2_yang_amt = gate.enter(user1, trove1, enter2_amt);
@@ -216,7 +215,7 @@ mod TestGate {
         // simulate depositing
         set_contract_address(ShrineUtils::admin());
         shrine.deposit(eth.contract_address, trove1, enter2_yang_amt);
-        'check1'.print();
+
         //
         // checks
         //
@@ -290,7 +289,7 @@ mod TestGate {
         //
 
         let before_asset_amt_per_yang = gate.get_asset_amt_per_yang();
-        'check2'.print();
+
         // simulate sentinel calling enter
         set_contract_address(GateUtils::mock_sentinel());
         let enter4_yang_amt = gate.enter(user2, trove2, enter4_amt);

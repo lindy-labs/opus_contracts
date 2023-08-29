@@ -4,8 +4,8 @@ mod GateUtils {
     use integer::BoundedInt;
     use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -38,15 +38,15 @@ mod GateUtils {
     //
 
     fn mock_sentinel() -> ContractAddress {
-        contract_address_const::<0x1234>()
+        contract_address_try_from_felt252('mock sentinel').unwrap()
     }
 
     fn eth_hoarder() -> ContractAddress {
-        contract_address_const::<0xeee>()
+        contract_address_try_from_felt252('eth hoarder').unwrap()
     }
 
     fn wbtc_hoarder() -> ContractAddress {
-        contract_address_const::<0xb1c>()
+        contract_address_try_from_felt252('wbtc hoarder').unwrap()
     }
 
 
@@ -96,9 +96,6 @@ mod GateUtils {
     }
 
     fn add_eth_as_yang(shrine: ContractAddress, eth: ContractAddress) {
-        // TODO: eventually do add_yang via a fn in ShrineUtils
-        //       but one that takes `eth` as input because we need a "real mock"
-        //       contract deployed for the tests to run
         set_contract_address(ShrineUtils::admin());
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
@@ -114,9 +111,6 @@ mod GateUtils {
     }
 
     fn add_wbtc_as_yang(shrine: ContractAddress, wbtc: ContractAddress) {
-        // TODO: eventually do add_yang via a fn in ShrineUtils
-        //       but one that takes `wbtc` as input because we need a "real mock"
-        //       contract deployed for the tests to run
         set_contract_address(ShrineUtils::admin());
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
@@ -141,8 +135,6 @@ mod GateUtils {
     }
 
     fn rebase(gate: ContractAddress, token: ContractAddress, amount: u128) {
-        'here'.print();
         IMintableDispatcher { contract_address: token }.mint(gate, amount.into());
-        'there'.print();
     }
 }
