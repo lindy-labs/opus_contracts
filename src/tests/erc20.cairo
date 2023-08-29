@@ -1,10 +1,9 @@
 #[starknet::contract]
 mod ERC20 {
     use starknet::get_caller_address;
-    use starknet::contract_address_const;
-    use starknet::ContractAddress;
+    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use aura::interfaces::IERC20::IERC20;
+    use aura::interfaces::IERC20::{IERC20, IMintable};
 
     #[storage]
     struct Storage {
@@ -54,7 +53,7 @@ mod ERC20 {
             .emit(
                 Event::Transfer(
                     Transfer {
-                        from: contract_address_const::<0>(), to: recipient, value: initial_supply
+                        from: ContractAddressZeroable::zero(), to: recipient, value: initial_supply
                     }
                 )
             );
@@ -109,6 +108,20 @@ mod ERC20 {
         fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
             let caller = get_caller_address();
             self.approve_helper(caller, spender, amount);
+            true
+        }
+    }
+
+    #[external(v0)]
+    impl IMintableImpl of IMintable<ContractState> {
+        fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
+            self.supply.write(supply::read() + amount);
+            let balance = self.balances.read(recipient);
+            self.balances.write(recipient, balance + amount);
+            self
+                .emit(
+                    Transfer { from: ContractAddressZeroable::zero(), to: recipient, value: amount }
+                );
             true
         }
     }
