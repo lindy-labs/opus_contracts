@@ -5,7 +5,6 @@ mod Caretaker {
     use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::roles::CaretakerRoles;
 
