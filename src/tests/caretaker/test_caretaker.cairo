@@ -9,8 +9,7 @@ mod TestCaretaker {
     use option::OptionTrait;
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
+    use traits::{Into, TryInto};
 
     use aura::core::roles::{CaretakerRoles, ShrineRoles};
 
@@ -21,7 +20,7 @@ mod TestCaretaker {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_ONE, Ray, Wad};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::caretaker::utils::CaretakerUtils;
@@ -71,7 +70,7 @@ mod TestCaretaker {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_shut_by_badguy_throws() {
         let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
-        set_contract_address(CaretakerUtils::badguy());
+        set_contract_address(common::badguy());
         caretaker.shut();
     }
 
@@ -421,10 +420,10 @@ mod TestCaretaker {
         let ct_yang1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
 
         common::assert_equalish(
-            gate0_after_balance, 0_u128.into(), tolerance, 'gate0 after balance'
+            gate0_after_balance, WadZeroable::zero(), tolerance, 'gate0 after balance'
         );
         common::assert_equalish(
-            gate1_after_balance, 0_u128.into(), tolerance, 'gate1 after balance'
+            gate1_after_balance, WadZeroable::zero(), tolerance, 'gate1 after balance'
         );
         common::assert_equalish(
             ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance'

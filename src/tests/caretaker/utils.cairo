@@ -27,9 +27,6 @@ mod CaretakerUtils {
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('caretaker admin').unwrap()
     }
-    fn badguy() -> ContractAddress {
-        contract_address_try_from_felt252('caretaker bad guy').unwrap()
-    }
 
     // returns the addrs of caretaker, shrine, abbot, sentinel, [yangs addrs], [gate dispatchers]
     fn caretaker_deploy() -> (
