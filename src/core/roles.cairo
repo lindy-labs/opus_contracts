@@ -1,3 +1,12 @@
+mod ControllerRoles {
+    const TUNE_CONTROLLER: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        TUNE_CONTROLLER
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;

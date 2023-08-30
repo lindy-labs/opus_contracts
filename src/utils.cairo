@@ -4,3 +4,4 @@ mod math;
 mod reentrancy_guard;
 mod types;
 mod wadray;
+mod wadray_signed;
