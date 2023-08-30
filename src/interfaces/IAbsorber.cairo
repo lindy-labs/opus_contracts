@@ -26,6 +26,11 @@ trait IAbsorber<TContractState> {
     ) -> u128;
     fn get_removal_limit(self: @TContractState) -> Ray;
     fn get_live(self: @TContractState) -> bool;
+    fn is_operational(self: @TContractState) -> bool;
+    fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
+    fn preview_reap(
+        self: @TContractState, provider: ContractAddress
+    ) -> (Span<AssetBalance>, Span<AssetBalance>);
     // external
     fn set_reward(
         ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool
@@ -37,11 +42,6 @@ trait IAbsorber<TContractState> {
     fn reap(ref self: TContractState);
     fn update(ref self: TContractState, asset_balances: Span<AssetBalance>);
     fn kill(ref self: TContractState);
-    // view
-    fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
-    fn preview_reap(
-        self: @TContractState, provider: ContractAddress
-    ) -> (Span<AssetBalance>, Span<AssetBalance>);
 }
 
 #[starknet::interface]

@@ -1,3 +1,20 @@
+mod AbsorberRoles {
+    const KILL: u128 = 1;
+    const SET_REMOVAL_LIMIT: u128 = 2;
+    const SET_REWARD: u128 = 4;
+    const UPDATE: u128 = 8;
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REMOVAL_LIMIT + SET_REWARD
+    }
+}
+
 mod SentinelRoles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
