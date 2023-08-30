@@ -150,7 +150,7 @@ mod Allocator {
 
                         idx += 1;
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };

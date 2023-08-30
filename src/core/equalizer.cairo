@@ -124,7 +124,7 @@ mod Equalizer {
                         shrine.inject(*recipient, amount);
                         minted_surplus += amount;
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
