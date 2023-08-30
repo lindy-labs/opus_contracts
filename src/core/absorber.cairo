@@ -53,7 +53,7 @@ mod Absorber {
 
     // Upper bound of time, in seconds, that needs to elapse after request is submitted before removal
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    const REQUEST_MAX_TIMELOCK: u64 = 604800; // 7 * 24 * 60 * 60
+    const REQUEST_MAX_TIMELOCK: u64 = consteval_int!(7 * 24 * 60 * 60);
 
     // Multiplier for each request's timelock from the last value if a new request is submitted
     // before the cooldown of the previous request has elapsed
@@ -61,12 +61,12 @@ mod Absorber {
 
     // Amount of time, in seconds, for which a request is valid, starting from expiry of the timelock
     // 60 minutes * 60 seconds per minute
-    const REQUEST_VALIDITY_PERIOD: u64 = 3600; // 60 * 60
+    const REQUEST_VALIDITY_PERIOD: u64 = consteval_int!(60 * 60);
 
     // Amount of time that needs to elapse after a request is submitted before the timelock
     // for the next request is reset to the base value.
     // 7 days * 24 hours per day * 60 minutes per hour * 60 seconds per minute
-    const REQUEST_COOLDOWN: u64 = 604800; // 7 * 24 * 60 * 60
+    const REQUEST_COOLDOWN: u64 = consteval_int!(7 * 24 * 60 * 60);
 
     // Helper constant to set the starting index for iterating over the Rewards
     // in the order they were added
@@ -409,7 +409,7 @@ mod Absorber {
             }
 
             // Emit event 
-            self.emit(RewardSet { asset: asset, blesser: blesser, is_active: is_active });
+            self.emit(RewardSet { asset, blesser, is_active });
         }
 
         fn set_removal_limit(ref self: ContractState, limit: Ray) {
@@ -455,7 +455,7 @@ mod Absorber {
             assert(success, 'ABS: Transfer failed');
 
             // Event emission
-            self.emit(Provide { provider: provider, epoch: current_epoch, yin: amount });
+            self.emit(Provide { provider, epoch: current_epoch, yin: amount });
         }
 
 
@@ -492,7 +492,7 @@ mod Absorber {
             self
                 .emit(
                     RequestSubmitted {
-                        provider: provider, timestamp: current_timestamp, timelock: capped_timelock
+                        provider, timestamp: current_timestamp, timelock: capped_timelock
                     }
                 );
         }
@@ -537,12 +537,7 @@ mod Absorber {
                     );
 
                 // Event emission
-                self
-                    .emit(
-                        Remove {
-                            provider: provider, epoch: current_epoch, yin: WadZeroable::zero()
-                        }
-                    );
+                self.emit(Remove { provider, epoch: current_epoch, yin: WadZeroable::zero() });
             } else {
                 // Calculations for yin need to be performed before updating total shares.
                 // Cap `amount` to maximum removable for provider, then derive the number of shares.
@@ -583,7 +578,7 @@ mod Absorber {
                 assert(success, 'ABS: Transfer failed');
 
                 // Event emission
-                self.emit(Remove { provider: provider, epoch: current_epoch, yin: yin_amt });
+                self.emit(Remove { provider, epoch: current_epoch, yin: yin_amt });
             }
         }
 
@@ -681,7 +676,7 @@ mod Absorber {
                     self.total_shares.write(WadZeroable::zero());
                 }
 
-                self.emit(EpochChanged { old_epoch: current_epoch, new_epoch: new_epoch });
+                self.emit(EpochChanged { old_epoch: current_epoch, new_epoch });
 
                 // Transfer reward errors of current epoch to the next epoch
                 self.propagate_reward_errors(current_epoch);
@@ -907,14 +902,7 @@ mod Absorber {
             // transferring rewards during a `reap_internal` call.
             self.update_provider_cumulative_rewards(provider);
 
-            self
-                .emit(
-                    Reap {
-                        provider: provider,
-                        absorbed_assets: absorbed_assets,
-                        reward_assets: rewarded_assets
-                    }
-                );
+            self.emit(Reap { provider, absorbed_assets, reward_assets: rewarded_assets });
         }
 
         // Internal function to calculate the absorbed assets that a provider is entitled to
@@ -1094,7 +1082,7 @@ mod Absorber {
                         .write(
                             (reward.asset, epoch),
                             DistributionInfo {
-                                asset_amt_per_share: updated_asset_amt_per_share, error: error
+                                asset_amt_per_share: updated_asset_amt_per_share, error
                             }
                         );
                 }
@@ -1108,7 +1096,7 @@ mod Absorber {
                         Bestow {
                             assets: blessed_assets.span(),
                             total_shares: total_recipient_shares,
-                            epoch: epoch
+                            epoch
                         }
                     );
             }
