@@ -696,7 +696,6 @@ mod Shrine {
         fn set_multiplier(ref self: ContractState, new_multiplier: Ray) {
             AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
 
-            // TODO: Should this be here? Maybe multiplier should be able to go to zero
             assert(new_multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
             assert(new_multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
 
