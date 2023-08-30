@@ -1,10 +1,12 @@
 use debug::PrintTrait;
 use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
+use math::Oneable;
 use option::OptionTrait;
+use starknet::StorageBaseAddress;
 use traits::{Into, PartialEq, PartialOrd, TryInto};
 use zeroable::Zeroable;
 
-use aura::utils::pow::pow10;
+use aura::utils::math::pow;
 
 const WAD_DECIMALS: u8 = 18;
 const WAD_SCALE: u128 = 1000000000000000000;
@@ -40,6 +42,7 @@ fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
 
 #[inline(always)]
 fn wmul(lhs: Wad, rhs: Wad) -> Wad {
+    let (lhs_u256, rhs_u256) = cast_to_u256(lhs.val, rhs.val);
     Wad { val: wmul_internal(lhs.val, rhs.val) }
 }
 
@@ -291,6 +294,13 @@ impl WadIntoU256 of Into<Wad, u256> {
     }
 }
 
+impl RayIntoU256 of Into<Ray, u256> {
+    #[inline(always)]
+    fn into(self: Ray) -> u256 {
+        self.val.into()
+    }
+}
+
 impl U256TryIntoWad of TryInto<u256, Wad> {
     #[inline(always)]
     fn try_into(self: u256) -> Option<Wad> {
@@ -315,10 +325,12 @@ impl WadPartialEq of PartialEq<Wad> {
 }
 
 impl RayPartialEq of PartialEq<Ray> {
+    #[inline(always)]
     fn eq(lhs: @Ray, rhs: @Ray) -> bool {
         *lhs.val == *rhs.val
     }
 
+    #[inline(always)]
     fn ne(lhs: @Ray, rhs: @Ray) -> bool {
         *lhs.val != *rhs.val
     }
@@ -420,6 +432,42 @@ impl RayZeroable of Zeroable<Ray> {
     }
 }
 
+// Oneable 
+
+impl WadOneable of Oneable<Wad> {
+    #[inline(always)]
+    fn one() -> Wad {
+        Wad { val: WAD_ONE }
+    }
+
+    #[inline(always)]
+    fn is_one(self: Wad) -> bool {
+        self.val == WAD_ONE
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: Wad) -> bool {
+        self.val != WAD_ONE
+    }
+}
+
+impl RayOneable of Oneable<Ray> {
+    #[inline(always)]
+    fn one() -> Ray {
+        Ray { val: RAY_ONE }
+    }
+
+    #[inline(always)]
+    fn is_one(self: Ray) -> bool {
+        self.val == RAY_ONE
+    }
+
+    #[inline(always)]
+    fn is_non_one(self: Ray) -> bool {
+        self.val != RAY_ONE
+    }
+}
+
 // Debug print
 impl WadPrintImpl of PrintTrait<Wad> {
     fn print(self: Wad) {
@@ -433,13 +481,12 @@ impl RayPrintImpl of PrintTrait<Ray> {
     }
 }
 
-
 //
 // Other functions
 //
 
 fn fixed_point_to_wad(n: u128, decimals: u8) -> Wad {
     assert(decimals <= WAD_DECIMALS, 'More than 18 decimals');
-    let scale: u128 = pow10(WAD_DECIMALS - decimals);
+    let scale: u128 = pow(10_u128, WAD_DECIMALS - decimals);
     (n * scale).into()
 }

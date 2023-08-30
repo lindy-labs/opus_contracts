@@ -226,10 +226,10 @@ fn assert_asset_balances_equalish(
 
     loop {
         match a.pop_front() {
-            Option::Some(a_element) => {
-                let b_element: AssetBalance = *b.pop_front().unwrap();
-                assert(*a_element.asset == b_element.asset, 'wrong asset address');
-                assert_equalish(*a_element.amount, b_element.amount, error, message);
+            Option::Some(a) => {
+                let b: AssetBalance = *b.pop_front().unwrap();
+                assert(*a.address == b.address, 'wrong asset address');
+                assert_equalish(*a.amount, b.amount, error, message);
             },
             Option::None(_) => {
                 break;
@@ -251,7 +251,7 @@ fn combine_assets_and_amts(
         match assets.pop_front() {
             Option::Some(asset) => {
                 asset_balances
-                    .append(AssetBalance { asset: *asset, amount: *amts.pop_front().unwrap(), });
+                    .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
             Option::None(_) => {
                 break;
