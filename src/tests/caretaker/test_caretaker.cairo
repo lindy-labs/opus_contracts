@@ -227,8 +227,8 @@ mod TestCaretaker {
         );
 
         // assert all deposits were released and assets are back in user's account
-        assert(*released_assets.at(0).asset == *yangs[0], 'yang 1 not released #1');
-        assert(*released_assets.at(1).asset == *yangs[1], 'yang 2 not released #1');
+        assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #1');
+        assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #1');
         assert(
             user1_yang0_after_balance == user1_yang0_before_balance
                 + (*released_assets.at(0).amount).into(),
@@ -247,8 +247,8 @@ mod TestCaretaker {
         // sanity check that for user with only one yang, release reports a 0 asset amount
         set_contract_address(user2);
         let released_assets: Span<AssetBalance> = caretaker.release(trove2_id);
-        assert(*released_assets.at(0).asset == *yangs[0], 'yang 1 not released #2');
-        assert(*released_assets.at(1).asset == *yangs[1], 'yang 2 not released #2');
+        assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #2');
+        assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
         assert((*released_assets.at(1).amount).is_zero(), 'incorrect release');
     }
 

@@ -119,7 +119,8 @@ mod Caretaker {
                             sentinel.convert_to_assets(*yang, deposited_yang)
                         };
 
-                        releasable_assets.append(AssetBalance { asset: *yang, amount: asset_amt });
+                        releasable_assets
+                            .append(AssetBalance { address: *yang, amount: asset_amt });
                     },
                     Option::None(_) => {
                         break releasable_assets.span();
@@ -156,7 +157,7 @@ mod Caretaker {
                             pct_to_reclaim, caretaker_balance.into()
                         );
                         reclaimable_assets
-                            .append(AssetBalance { asset: *yang, amount: asset_amt.val });
+                            .append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },
                     Option::None(_) => {
                         break reclaimable_assets.span();
@@ -272,7 +273,7 @@ mod Caretaker {
                             shrine.seize(*yang, trove_id, deposited_yang);
                             exit_amt
                         };
-                        released_assets.append(AssetBalance { asset: *yang, amount: asset_amt });
+                        released_assets.append(AssetBalance { address: *yang, amount: asset_amt });
                     },
                     Option::None(_) => {
                         break;
@@ -331,7 +332,7 @@ mod Caretaker {
                         }
 
                         let success: bool = IERC20Dispatcher {
-                            contract_address: *reclaimable_asset.asset
+                            contract_address: *reclaimable_asset.address
                         }
                             .transfer(caller, (*reclaimable_asset.amount).into());
                         assert(success, 'CA: Asset transfer failed');
