@@ -195,8 +195,8 @@ mod Abbot {
             let yang_amt: Wad = self
                 .sentinel
                 .read()
-                .convert_to_yang(yang_asset.asset, yang_asset.amount);
-            self.withdraw_internal(trove_id, user, yang_asset.asset, yang_amt);
+                .convert_to_yang(yang_asset.address, yang_asset.amount);
+            self.withdraw_internal(trove_id, user, yang_asset.address, yang_amt);
         }
 
         // create Yin in a trove
@@ -234,8 +234,8 @@ mod Abbot {
             let yang_amt: Wad = self
                 .sentinel
                 .read()
-                .enter(yang_asset.asset, user, trove_id, yang_asset.amount);
-            self.shrine.read().deposit(yang_asset.asset, trove_id, yang_amt);
+                .enter(yang_asset.address, user, trove_id, yang_asset.amount);
+            self.shrine.read().deposit(yang_asset.address, trove_id, yang_amt);
 
             ReentrancyGuard::end();
         }
