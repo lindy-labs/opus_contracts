@@ -307,7 +307,9 @@ mod Shrine {
         );
 
         if updated_trove_yang_balances.is_some() {
-            let (new_threshold, new_value) = get_threshold_and_value(updated_trove_yang_balances.unwrap(), interval);
+            let (new_threshold, new_value) = get_threshold_and_value(
+                updated_trove_yang_balances.unwrap(), interval
+            );
             threshold = scale_threshold_for_recovery_mode(new_threshold);
             value = new_value;
         }
@@ -451,9 +453,6 @@ mod Shrine {
     // 2. Shrine's LTV
     #[view]
     fn get_recovery_mode_threshold() -> (Ray, Ray) {
-        // Note: if `get_threshold_and_value` is called with `true` for `apply_recovery_mode` here, it will
-        result in endless recursion since `get_threshold_and_value` calls `scale_threshold_for_recovery_mode`
-        // which calls `get_recovery_mode_threshold`.
         let (liq_threshold, value) = get_threshold_and_value(get_shrine_deposits(), now());
         let debt: Wad = total_debt::read();
         let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
@@ -1352,7 +1351,6 @@ mod Shrine {
         let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
-        // `apply_recovery_mode` can be `false` here since we are only interested in the trove value
         let (_, trove_value) = get_threshold_and_value(trove_yang_balances, current_interval);
 
         let trove_value_to_redistribute: Wad = wadray::rmul_wr(
@@ -2106,9 +2104,7 @@ mod Shrine {
     // 1. the custom threshold (maximum LTV before liquidation)
     // 2. the total value of the yangs, at a given interval
     // based on historical prices and the given yang balances.
-    fn get_threshold_and_value(
-        mut yang_balances: Span<YangBalance>, interval: u64
-    ) -> (Ray, Wad) {
+    fn get_threshold_and_value(mut yang_balances: Span<YangBalance>, interval: u64) -> (Ray, Wad) {
         let mut weighted_threshold_sum: Ray = RayZeroable::zero();
         let mut total_value: Wad = WadZeroable::zero();
 
