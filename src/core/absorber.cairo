@@ -8,11 +8,10 @@
 mod Absorber {
     use array::{ArrayTrait, SpanTrait};
     use cmp::min;
-    use integer::{u256_safe_divmod, U256TryIntoNonZero};
+    use integer::u256_safe_divmod;
     use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
+    use traits::{Into, TryInto};
 
     use aura::core::roles::AbsorberRoles;
 
