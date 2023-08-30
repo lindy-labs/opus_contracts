@@ -23,7 +23,7 @@ const DIFF: u128 = 1000000000;
 
 #[derive(Copy, Drop, Serde, starknet::Store)]
 struct Wad {
-    val: u128, 
+    val: u128,
 }
 
 #[derive(Copy, Drop, Serde, starknet::Store)]

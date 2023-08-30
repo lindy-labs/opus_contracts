@@ -1,2 +1,4 @@
 mod common;
+mod erc20;
+mod flashmint;
 mod utils;

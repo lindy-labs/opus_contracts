@@ -2,7 +2,7 @@ mod ReentrancyGuard {
     use starknet::{
         ContractAddress, get_caller_address, Felt252TryIntoContractAddress, SyscallResultTrait
     };
-    use starknet::storage_access::StorageAccessBool;
+    use starknet::storage_access::StoreBool;
 
     use traits::{Into, TryInto};
 
@@ -13,12 +13,12 @@ mod ReentrancyGuard {
     #[inline(always)]
     fn write_guard(entered: bool) {
         let base = starknet::storage_base_address_from_felt252(GUARD_STORAGE_BASE_ADDR);
-        StorageAccessBool::write(0, base, entered).unwrap_syscall();
+        StoreBool::write(0, base, entered).unwrap_syscall();
     }
 
     fn start() {
         let base = starknet::storage_base_address_from_felt252(GUARD_STORAGE_BASE_ADDR);
-        let has_entered: bool = StorageAccessBool::read(0, base).unwrap_syscall();
+        let has_entered: bool = StoreBool::read(0, base).unwrap_syscall();
 
         assert(!has_entered, 'RG: reentrant call');
         write_guard(true);

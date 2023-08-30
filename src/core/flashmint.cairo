@@ -21,7 +21,7 @@ mod FlashMint {
     use traits::{Into, TryInto};
 
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
-    use aura::interfaces::IFlashMint::IFlashmint;
+    use aura::interfaces::IFlashMint::IFlashMint;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::wadray::Wad;
@@ -35,25 +35,25 @@ mod FlashMint {
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
     const FLASH_FEE: u256 = 0_u256;
 
-	#[storage]
-	struct Storage {
-        shrine: IShrineDispatcher, 
+    #[storage]
+    struct Storage {
+        shrine: IShrineDispatcher,
     }
 
 
-	#[event]
-	#[derive(Drop, starknet::Event)]
-	enum Event {
-		FlashMint: FlashMint,
-	}
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        FlashMint: FlashMint,
+    }
 
-	#[derive(Drop, starknet::Event)]
-	struct FlashMint {
-		initiator: ContractAddress,
-		receiver: ContractAddress,
-		token: ContractAddress,
-		amount: u256 
-	}
+    #[derive(Drop, starknet::Event)]
+    struct FlashMint {
+        initiator: ContractAddress,
+        receiver: ContractAddress,
+        token: ContractAddress,
+        amount: u256
+    }
 
     #[constructor]
     fn constructor(ref self: ContractState, shrine: ContractAddress) {
@@ -61,7 +61,6 @@ mod FlashMint {
     }
 
 
-    
     #[external(v0)]
     impl IFlashMintImpl of IFlashMint<ContractState> {
         //
@@ -91,15 +90,19 @@ mod FlashMint {
         // External Functions
         //
 
-        fn flash_loan(self: @ContractState, 
-            receiver: ContractAddress, token: ContractAddress, amount: u256, call_data: Span<felt252>
+        fn flash_loan(
+            ref self: ContractState,
+            receiver: ContractAddress,
+            token: ContractAddress,
+            amount: u256,
+            call_data: Span<felt252>
         ) -> bool {
             // prevents looping which would lead to excessive minting
             // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
             // yin to be minted, as per spec
             ReentrancyGuard::start();
 
-            assert(amount <= max_flash_loan(token), 'FM: amount exceeds maximum');
+            assert(amount <= self.max_flash_loan(token), 'FM: amount exceeds maximum');
 
             let shrine = self.shrine.read();
 
@@ -109,21 +112,24 @@ mod FlashMint {
 
             let initiator: ContractAddress = starknet::get_caller_address();
 
-            let borrower_resp: u256 = IFlashBorrowerDispatcher {
-                contract_address: receiver
-            }.on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
+            let borrower_resp: u256 = IFlashBorrowerDispatcher { contract_address: receiver }
+                .on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
 
             assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
 
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
 
-            self.emit(FlashMint { initiator: initiator, receiver:  receiver, token:  token, amount:  amount });
+            self
+                .emit(
+                    FlashMint {
+                        initiator: initiator, receiver: receiver, token: token, amount: amount
+                    }
+                );
 
             ReentrancyGuard::end();
 
             true
         }
     }
-
 }
