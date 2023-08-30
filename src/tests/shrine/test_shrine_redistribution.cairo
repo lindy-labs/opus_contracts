@@ -336,6 +336,9 @@ mod TestShrineRedistribution {
             shrine.get_trove_redistribution_id(common::TROVE_2) == expected_redistribution_id,
             'wrong id'
         );
+
+        let yangs: Array<ContractAddress> = array![*yang_addrs.at(1), *yang_addrs.at(0)];
+        ShrineUtils::assert_yang_invariant(shrine, yangs.span(), 2);
     }
 
     #[test]

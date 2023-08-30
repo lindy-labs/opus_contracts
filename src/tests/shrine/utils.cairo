@@ -560,4 +560,68 @@ mod ShrineUtils {
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
     }
+
+    //
+    // Invariant helpers
+    //
+
+    fn assert_yang_invariant(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64
+    ) {
+        let troves_loop_end: u64 = troves_count + 1;
+
+        let mut yangs_copy = yangs;
+        let mut yang_id: u32 = 1;
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    let total: Wad = shrine.get_yang_total(*yang);
+
+                    let initial_amt: Wad = shrine.get_initial_yang_amt(*yang);
+
+                    let mut trove_id: u64 = 1;
+                    let mut troves_cumulative_amt: Wad = WadZeroable::zero();
+                    loop {
+                        if trove_id == troves_loop_end {
+                            break;
+                        }
+
+                        let mut trove_amt: Wad = shrine.get_deposit(*yang, trove_id);
+                        let (mut redistributed_yangs, _) = shrine
+                            .get_redistributions_attributed_to_trove(trove_id);
+
+                        loop {
+                            match redistributed_yangs.pop_front() {
+                                Option::Some(redistributed_yang) => {
+                                    if *redistributed_yang.yang_id == yang_id {
+                                        'adding redis'.print();
+                                        trove_amt += *redistributed_yang.amount;
+                                    }
+                                },
+                                Option::None => {
+                                    break;
+                                },
+                            };
+                        };
+                        'trove amt'.print();
+                        trove_amt.print();
+                        troves_cumulative_amt += trove_amt;
+
+                        trove_id += 1;
+                    };
+
+                    total.print();
+                    (troves_cumulative_amt + initial_amt).print();
+                    assert(total == troves_cumulative_amt + initial_amt, 'yang invariant failed');
+
+                    yang_id += 1;
+                },
+                Option::None => {
+                    break;
+                },
+            };
+        };
+    }
+
+    use debug::PrintTrait;
 }
