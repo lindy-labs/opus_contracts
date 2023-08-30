@@ -623,7 +623,7 @@ mod Shrine {
                             self.yang_rates.write((current_yang_id, new_era), *rate);
                         }
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
@@ -1060,7 +1060,7 @@ mod Shrine {
                                     );
                             }
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         },
                     };
@@ -1251,7 +1251,7 @@ mod Shrine {
                                 wadray::wmul_rw(yang_threshold, yang_deposited_value);
                         }
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     },
                 };
@@ -1360,7 +1360,7 @@ mod Shrine {
                                 .deposits
                                 .write((*yang_balance.yang_id, trove_id), *yang_balance.amount);
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         },
                     };
@@ -1964,7 +1964,7 @@ mod Shrine {
                                                 exc_yang_redistribution
                                             );
                                     },
-                                    Option::None(_) => {
+                                    Option::None => {
                                         break;
                                     },
                                 };
@@ -2020,7 +2020,7 @@ mod Shrine {
                             break;
                         }
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     },
                 };
@@ -2047,7 +2047,7 @@ mod Shrine {
                             .yang_total
                             .write(*total_yang_balance.yang_id, *total_yang_balance.amount);
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     },
                 };
@@ -2170,7 +2170,7 @@ mod Shrine {
 
                                             trove_debt += debt_increment.try_into().unwrap();
                                         },
-                                        Option::None(_) => {
+                                        Option::None => {
                                             break;
                                         },
                                     };
@@ -2219,7 +2219,7 @@ mod Shrine {
                                 trove_yang_balances = updated_trove_yang_balances.span();
                             }
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         },
                     };
