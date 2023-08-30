@@ -220,7 +220,7 @@ mod TestAbbot {
                     let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
                         deposit_amt, decimals
                     );
-                    abbot.deposit(trove_id, AssetBalance { asset: *yang, amount: deposit_amt });
+                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(
                         after_trove_yang == before_trove_yang + expected_deposited_yang,
@@ -228,7 +228,7 @@ mod TestAbbot {
                     );
 
                     // Depositing 0 should pass
-                    abbot.deposit(trove_id, AssetBalance { asset: *yang, amount: 0_u128 });
+                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: 0_u128 });
                     assert(
                         shrine.get_deposit(*yang, trove_id) == after_trove_yang,
                         'wrong yang amount #2'
@@ -258,7 +258,7 @@ mod TestAbbot {
                     );
 
                     set_contract_address(non_owner);
-                    abbot.deposit(trove_id, AssetBalance { asset: *yang, amount: deposit_amt });
+                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
                     let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
                     assert(
                         after_trove_yang == before_trove_yang + expected_deposited_yang,
@@ -279,12 +279,12 @@ mod TestAbbot {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset = ContractAddressZeroable::zero();
+        let asset_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.deposit(trove_id, AssetBalance { asset, amount });
+        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -294,12 +294,12 @@ mod TestAbbot {
         let (_, _, abbot, yangs, _) = AbbotUtils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
-        let asset = *yangs.at(0);
+        let asset_addr = *yangs.at(0);
         let invalid_trove_id: u64 = 0;
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.deposit(invalid_trove_id, AssetBalance { asset, amount });
+        abbot.deposit(invalid_trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -309,11 +309,11 @@ mod TestAbbot {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset = SentinelUtils::invalid_yang_addr();
+        let asset_addr = SentinelUtils::invalid_yang_addr();
         let amount: u128 = 0;
 
         set_contract_address(trove_owner);
-        abbot.deposit(trove_id, AssetBalance { asset, amount });
+        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -323,11 +323,11 @@ mod TestAbbot {
         let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset: ContractAddress = *yangs.at(0);
+        let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.deposit(trove_id + 1, AssetBalance { asset, amount });
+        abbot.deposit(trove_id + 1, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -339,17 +339,17 @@ mod TestAbbot {
         let (_, sentinel, abbot, yangs, gates, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset: ContractAddress = *yangs.at(0);
+        let asset_addr: ContractAddress = *yangs.at(0);
         let gate_addr: ContractAddress = *gates.at(0).contract_address;
-        let gate_bal = IERC20Dispatcher { contract_address: asset }.balance_of(gate_addr);
+        let gate_bal = IERC20Dispatcher { contract_address: asset_addr }.balance_of(gate_addr);
 
         set_contract_address(SentinelUtils::admin());
         let new_asset_max: u128 = gate_bal.try_into().unwrap();
-        sentinel.set_yang_asset_max(asset, new_asset_max);
+        sentinel.set_yang_asset_max(asset_addr, new_asset_max);
 
         let amount: u128 = 1;
         set_contract_address(trove_owner);
-        abbot.deposit(trove_id, AssetBalance { asset, amount });
+        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -358,13 +358,15 @@ mod TestAbbot {
         let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset: ContractAddress = *yangs.at(0);
+        let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = WAD_SCALE;
         set_contract_address(trove_owner);
-        abbot.withdraw(trove_id, AssetBalance { asset, amount });
+        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
 
         assert(
-            shrine.get_deposit(asset, trove_id) == (AbbotUtils::ETH_DEPOSIT_AMT - amount).into(),
+            shrine
+                .get_deposit(asset_addr, trove_id) == (AbbotUtils::ETH_DEPOSIT_AMT - amount)
+                .into(),
             'wrong yang amount'
         );
     }
@@ -376,12 +378,12 @@ mod TestAbbot {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset = ContractAddressZeroable::zero();
+        let asset_addr = ContractAddressZeroable::zero();
         let trove_id: u64 = common::TROVE_1;
         let amount: u128 = 1;
 
         set_contract_address(trove_owner);
-        abbot.withdraw(trove_id, AssetBalance { asset, amount });
+        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -391,11 +393,11 @@ mod TestAbbot {
         let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset = SentinelUtils::invalid_yang_addr();
+        let asset_addr = SentinelUtils::invalid_yang_addr();
         let amount: u128 = 0;
 
         set_contract_address(trove_owner);
-        abbot.withdraw(trove_id, AssetBalance { asset, amount });
+        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
@@ -405,11 +407,11 @@ mod TestAbbot {
         let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
             AbbotUtils::deploy_abbot_and_open_trove();
 
-        let asset: ContractAddress = *yangs.at(0);
+        let asset_addr: ContractAddress = *yangs.at(0);
         let amount: u128 = 0;
 
         set_contract_address(common::badguy());
-        abbot.withdraw(trove_id, AssetBalance { asset, amount });
+        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
     }
 
     #[test]
