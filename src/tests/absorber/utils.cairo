@@ -10,8 +10,7 @@ mod AbsorberUtils {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
+    use traits::{Into, TryInto};
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -52,25 +51,28 @@ mod AbsorberUtils {
 
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(20 * WAD_ONE); // 10 (Wad) - ETH
-        asset_amts.append(100000000); // 1 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![
+            20 * WAD_ONE, // 10 (Wad) - ETH
+             100000000, // 1 (10 ** 8) - BTC
+        ];
         asset_amts.span()
     }
 
     #[inline(always)]
     fn first_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(1230000000000000000); // 1.23 (Wad) - ETH
-        asset_amts.append(23700000); // 0.237 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![
+            1230000000000000000, // 1.23 (Wad) - ETH
+             23700000, // 0.237 (10 ** 8) - BTC
+        ];
         asset_amts.span()
     }
 
     #[inline(always)]
     fn second_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(572000000000000000); // 0.572 (Wad) - ETH
-        asset_amts.append(65400000); // 0.654 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![
+            572000000000000000, // 0.572 (Wad) - ETH
+             65400000, // 0.654 (10 ** 8) - BTC
+        ];
         asset_amts.span()
     }
 
@@ -110,11 +112,12 @@ mod AbsorberUtils {
 
         let admin: ContractAddress = admin();
 
-        let mut calldata: Array<felt252> = Default::default();
-        calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(shrine.contract_address));
-        calldata.append(contract_address_to_felt252(sentinel.contract_address));
-        calldata.append(REMOVAL_LIMIT.into());
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin),
+            contract_address_to_felt252(shrine.contract_address),
+            contract_address_to_felt252(sentinel.contract_address),
+            REMOVAL_LIMIT.into(),
+        ];
 
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(Absorber::TEST_CLASS_HASH)
             .unwrap();
@@ -140,17 +143,15 @@ mod AbsorberUtils {
 
     // Convenience fixture for reward token addresses constants
     fn reward_tokens_deploy() -> Span<ContractAddress> {
-        let mut reward_tokens: Array<ContractAddress> = Default::default();
-        reward_tokens.append(aura_token_deploy());
-        reward_tokens.append(veaura_token_deploy());
+        let mut reward_tokens: Array<ContractAddress> = array![
+            aura_token_deploy(), veaura_token_deploy(),
+        ];
         reward_tokens.span()
     }
 
     // Convenience fixture for reward amounts
     fn reward_amts_per_blessing() -> Span<u128> {
-        let mut bless_amts: Array<u128> = Default::default();
-        bless_amts.append(AURA_BLESS_AMT);
-        bless_amts.append(VEAURA_BLESS_AMT);
+        let mut bless_amts: Array<u128> = array![AURA_BLESS_AMT, VEAURA_BLESS_AMT,];
         bless_amts.span()
     }
 
@@ -162,11 +163,12 @@ mod AbsorberUtils {
         bless_amt: u128,
         mint_to_blesser: bool
     ) -> ContractAddress {
-        let mut calldata: Array<felt252> = Default::default();
-        calldata.append(contract_address_to_felt252(admin()));
-        calldata.append(contract_address_to_felt252(asset));
-        calldata.append(contract_address_to_felt252(absorber.contract_address));
-        calldata.append(bless_amt.into());
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()),
+            contract_address_to_felt252(asset),
+            contract_address_to_felt252(absorber.contract_address),
+            bless_amt.into(),
+        ];
 
         let mock_blesser_class_hash: ClassHash = class_hash_try_from_felt252(
             MockBlesser::TEST_CLASS_HASH

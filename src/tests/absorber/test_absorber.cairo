@@ -10,7 +10,6 @@ mod TestAbsorber {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
     use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -125,8 +124,7 @@ mod TestAbsorber {
             blesser: IBlesserDispatcher { contract_address: aura_blesser },
             is_active: true
         };
-        let mut expected_rewards: Array<Reward> = Default::default();
-        expected_rewards.append(aura_reward);
+        let mut expected_rewards: Array<Reward> = array![aura_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
@@ -154,9 +152,7 @@ mod TestAbsorber {
         aura_reward.blesser = IBlesserDispatcher { contract_address: new_aura_blesser };
         absorber.set_reward(aura_token, new_aura_blesser, false);
 
-        let mut expected_rewards: Array<Reward> = Default::default();
-        expected_rewards.append(aura_reward);
-        expected_rewards.append(veaura_reward);
+        let mut expected_rewards: Array<Reward> = array![aura_reward, veaura_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
     }
@@ -249,18 +245,17 @@ mod TestAbsorber {
     fn test_update_and_subsequent_provider_action() {
         // Parametrization so that the second provider action is performed
         // for each percentage
-        let mut percentages_to_drain: Array<Ray> = Default::default();
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
-
-        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
-
-        percentages_to_drain.append(439210000000000000000000000_u128.into()); // 43.291% (Ray)
-        percentages_to_drain.append(RAY_ONE.into()); // 100% (Ray)
-        percentages_to_drain.append(21745231600000000000000000_u128.into()); // 2.17452316% (Ray)
+        let mut percentages_to_drain: Array<Ray> = array![
+            21745231600000000000000000_u128.into(), // 2.17452316% (Ray)
+            439210000000000000000000000_u128.into(), // 43.291% (Ray)
+            RAY_ONE.into(), // 100% (Ray)
+            RAY_ONE.into(), // 100% (Ray)
+            21745231600000000000000000_u128.into(), // 2.17452316% (Ray)
+            439210000000000000000000000_u128.into(), // 43.291% (Ray)
+            439210000000000000000000000_u128.into(), // 43.291% (Ray)
+            RAY_ONE.into(), // 100% (Ray)
+            21745231600000000000000000_u128.into(), // 2.17452316% (Ray)
+        ];
 
         let mut percentages_to_drain = percentages_to_drain.span();
 
@@ -1138,11 +1133,12 @@ mod TestAbsorber {
     #[test]
     #[available_gas(20000000000)]
     fn test_after_threshold_absorption_between_initial_and_minimum_shares() {
-        let mut remaining_yin_amts: Array<Wad> = Default::default();
-        // lower bound for remaining yin without total shares being zeroed
-        remaining_yin_amts.append((Absorber::INITIAL_SHARES + 1).into());
-        // upper bound for remaining yin before rewards are distributed
-        remaining_yin_amts.append((Absorber::MINIMUM_SHARES - 1).into());
+        let mut remaining_yin_amts: Array<Wad> = array![
+            // lower bound for remaining yin without total shares being zeroed
+            (Absorber::INITIAL_SHARES + 1)
+                .into(), // upper bound for remaining yin before rewards are distributed
+            (Absorber::MINIMUM_SHARES - 1).into(),
+        ];
         let mut remaining_yin_amts = remaining_yin_amts.span();
 
         loop {
@@ -1790,9 +1786,7 @@ mod TestAbsorber {
             absorber, veaura_addr, AbsorberUtils::AURA_BLESS_AMT, true
         );
 
-        let mut blessers: Array<ContractAddress> = Default::default();
-        blessers.append(aura_blesser_addr);
-        blessers.append(veaura_blesser_addr);
+        let mut blessers: Array<ContractAddress> = array![aura_blesser_addr, veaura_blesser_addr];
 
         AbsorberUtils::add_rewards_to_absorber(absorber, reward_tokens, blessers.span());
 
