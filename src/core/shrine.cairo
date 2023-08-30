@@ -1660,9 +1660,7 @@ mod Shrine {
 
             // For yangs that can be redistributed via rebasing, the total supply needs to be
             // unchanged to ensure that the shrine's total value remains unchanged when looping over
-            // the yangs. This allows the gas-intensive `get_shrine_threshold_and_value`
-            // in the exceptional flow to be called only when needed and still return the correct
-            // value regardless of the order of the yang that is to be redistributed exceptionally.
+            // the yangs.
             //
             // For example, assuming the redistributed trove has yang1, yang2 and yang3, and the
             // only other recipient trove has yang2 and yang3.
