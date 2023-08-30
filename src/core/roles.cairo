@@ -15,6 +15,16 @@ mod AbsorberRoles {
     }
 }
 
+mod BlesserRoles {
+    const BLESS: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        BLESS
+    }
+}
+
+
 mod SentinelRoles {
     const ADD_YANG: u128 = 1;
     const ENTER: u128 = 2;
