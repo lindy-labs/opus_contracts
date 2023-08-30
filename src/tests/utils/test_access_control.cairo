@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use starknet::{contract_address_const, ContractAddress};
-    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::contract_address::{
+        ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
+    };
     use starknet::testing::set_caller_address;
 
     use aura::utils::access_control::AccessControl;
+
+    use aura::tests::common;
 
     // mock roles
     const R1: u128 = 1_u128;
@@ -13,15 +16,11 @@ mod tests {
     const R4: u128 = 256_u128;
 
     fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
+        contract_address_try_from_felt252('access control admin').unwrap()
     }
 
     fn user() -> ContractAddress {
-        contract_address_const::<0xc1>()
-    }
-
-    fn badguy() -> ContractAddress {
-        contract_address_const::<0x123>()
+        contract_address_try_from_felt252('user').unwrap()
     }
 
     fn setup(caller: ContractAddress) {
@@ -63,8 +62,8 @@ mod tests {
     #[available_gas(10000000)]
     #[should_panic(expected: ('Caller not admin',))]
     fn test_grant_role_not_admin() {
-        setup(badguy());
-        AccessControl::grant_role(R2, badguy());
+        setup(common::badguy());
+        AccessControl::grant_role(R2, common::badguy());
     }
 
     #[test]
@@ -74,7 +73,7 @@ mod tests {
         default_grant();
 
         let u = user();
-        let u2 = contract_address_const::<0xbaba>();
+        let u2 = contract_address_try_from_felt252('user 2').unwrap();
         AccessControl::grant_role(R2 + R3 + R4, u2);
         assert(AccessControl::get_roles(u) == R1 + R2, 'wrong roles for u');
         assert(AccessControl::get_roles(u2) == R2 + R3 + R4, 'wrong roles for u2');
@@ -98,7 +97,7 @@ mod tests {
     #[should_panic(expected: ('Caller not admin',))]
     fn test_revoke_role_not_admin() {
         setup(admin());
-        set_caller_address(badguy());
+        set_caller_address(common::badguy());
         AccessControl::revoke_role(R1, user());
     }
 
@@ -131,8 +130,8 @@ mod tests {
     #[should_panic(expected: ('Caller not admin',))]
     fn test_set_pending_admin_not_admin() {
         setup(admin());
-        set_caller_address(badguy());
-        AccessControl::set_pending_admin(badguy());
+        set_caller_address(common::badguy());
+        AccessControl::set_pending_admin(common::badguy());
     }
 
     #[test]
@@ -164,7 +163,7 @@ mod tests {
         let pending_admin = user();
         set_pending_admin(current_admin, pending_admin);
 
-        set_caller_address(badguy());
+        set_caller_address(common::badguy());
         AccessControl::accept_admin();
     }
 
