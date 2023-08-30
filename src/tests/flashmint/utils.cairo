@@ -41,10 +41,10 @@ mod FlashmintUtils {
 
         let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(
             FlashMint::TEST_CLASS_HASH
-        )
-            .unwrap();
-        let (flashmint_addr, _) = deploy_syscall(flashmint_class_hash, 0, calldata.span(), false)
-            .unwrap_syscall();
+        ).unwrap();
+        let (flashmint_addr, _) = deploy_syscall(
+            flashmint_class_hash, 0, calldata.span(), false
+        ).unwrap_syscall();
         let flashmint = IFlashMintDispatcher { contract_address: flashmint_addr };
 
         // Grant flashmint contract the FLASHMINT role 
@@ -63,7 +63,11 @@ mod FlashmintUtils {
 
         ShrineUtils::shrine_setup(shrine);
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()
+            shrine_dispatcher,
+            3,
+            (1000 * WAD_ONE).into(),
+            (10000 * WAD_ONE).into(),
+            (500 * WAD_ONE).into()
         );
 
         // Mint some yin in shrine 
@@ -78,12 +82,10 @@ mod FlashmintUtils {
 
         let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(
             FlashBorrower::TEST_CLASS_HASH
-        )
-            .unwrap();
+        ).unwrap();
         let (flash_borrower_addr, _) = deploy_syscall(
             flash_borrower_class_hash, 0, calldata.span(), false
-        )
-            .unwrap_syscall();
+        ).unwrap_syscall();
         flash_borrower_addr
     }
 
