@@ -1712,12 +1712,12 @@ mod TestShrine {
         
         set_contract_address(ShrineUtils::admin());
 
-        let (prev_yang1_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let (_, prev_yang1_threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
         shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, initial_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into());
 
         // At this point, recovery mode should be activated but trove 1 should still be healthy,
         // since the liquidation threshold decrease is gradual
-        let (current_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let (_, current_threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
         assert(current_threshold < prev_yang1_threshold, 'recovery mode not active');
         assert(shrine.is_healthy(common::TROVE_1), 'should be healthy #2');
 
@@ -1772,7 +1772,7 @@ mod TestShrine {
         shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, (200 * WAD_ONE).into());
         
         // Sanity check that recovery mode is active
-        let (threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let (_, threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
         assert(threshold < ShrineUtils::YANG1_THRESHOLD.into(), 'recovery mode not active');
 
         // Getting the trove threshold as calculated by Shrine
@@ -1780,8 +1780,8 @@ mod TestShrine {
 
         // Getting the trove threshold as calculated by scaling each yang threshold individually
 
-        let (yang1_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
-        let (yang2_threshold, _) = shrine.get_yang_threshold(ShrineUtils::yang2_addr());
+        let (_, yang1_threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
+        let (_, yang2_threshold) = shrine.get_yang_threshold(ShrineUtils::yang2_addr());
 
         let yang1_deposit_value = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into();
         let yang2_deposit_value = yang2_deposit * ShrineUtils::YANG2_START_PRICE.into();
@@ -1789,6 +1789,8 @@ mod TestShrine {
         let alternative_threshold: Ray = wadray::wdiv_rw(wadray::wmul_wr(yang1_deposit_value, yang1_threshold) + 
             wadray::wmul_wr(yang2_deposit_value, yang2_threshold), yang1_deposit_value + yang2_deposit_value);
 
+        trove_threshold.val.print();
+        alternative_threshold.val.print();
         assert(trove_threshold == alternative_threshold, 'invariant did not hold');
     }
 }
