@@ -339,7 +339,7 @@ mod TestShrineRedistribution {
 
         // Arrange yangs according to when they were added
         let yangs: Array<ContractAddress> = array![*yang_addrs.at(1), *yang_addrs.at(0)];
-        ShrineUtils::assert_yang_invariant(shrine, yangs.span(), 3);
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     #[test]

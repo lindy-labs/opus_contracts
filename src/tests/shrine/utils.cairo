@@ -25,6 +25,8 @@ mod ShrineUtils {
 
     use aura::tests::common;
 
+    use debug::PrintTrait;
+
     //
     // Constants
     //
@@ -565,7 +567,10 @@ mod ShrineUtils {
     // Invariant helpers
     //
 
-    fn assert_yang_invariant(
+    // Asserts that for each yang, the total yang amount is equal to the sum of all troves'
+    // deposited amount, including any unpulled exceptional redistributions, and the initial 
+    // yang amount.
+    fn assert_total_yang_invariant(
         shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64
     ) {
         let troves_loop_end: u64 = troves_count + 1;
@@ -594,7 +599,6 @@ mod ShrineUtils {
                             match redistributed_yangs.pop_front() {
                                 Option::Some(redistributed_yang) => {
                                     if *redistributed_yang.yang_id == yang_id {
-                                        'adding redis'.print();
                                         trove_amt += *redistributed_yang.amount;
                                     }
                                 },
@@ -603,15 +607,11 @@ mod ShrineUtils {
                                 },
                             };
                         };
-                        'trove amt'.print();
-                        trove_amt.print();
                         troves_cumulative_amt += trove_amt;
 
                         trove_id += 1;
                     };
 
-                    total.print();
-                    (troves_cumulative_amt + initial_amt).print();
                     assert(total == troves_cumulative_amt + initial_amt, 'yang invariant failed');
 
                     yang_id += 1;
@@ -623,5 +623,29 @@ mod ShrineUtils {
         };
     }
 
-    use debug::PrintTrait;
+    // Asserts that the total system debt is equal to the sum of all troves' debt, including
+    // all unpulled redistributions.
+    fn assert_total_debt_invariant(shrine: IShrineDispatcher, troves_count: u64) {
+        let troves_loop_end: u64 = troves_count + 1;
+
+        let mut total: Wad = WadZeroable::zero();
+        let mut trove_id: u64 = 1;
+        loop {
+            if trove_id == troves_loop_end {
+                break;
+            }
+
+            let (_, _, _, trove_debt) = shrine.get_trove_info(trove_id);
+            total += trove_debt;
+        };
+
+        assert(shrine.get_total_debt() == total, 'debt invariant failed');
+    }
+
+    fn assert_shrine_invariants(
+        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64
+    ) {
+        assert_total_yang_invariant(shrine, yangs, troves_count);
+        assert_total_debt_invariant(shrine, troves_count);
+    }
 }
