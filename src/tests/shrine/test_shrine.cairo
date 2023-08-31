@@ -1789,8 +1789,6 @@ mod TestShrine {
         let alternative_threshold: Ray = wadray::wdiv_rw(wadray::wmul_wr(yang1_deposit_value, yang1_threshold) + 
             wadray::wmul_wr(yang2_deposit_value, yang2_threshold), yang1_deposit_value + yang2_deposit_value);
 
-        trove_threshold.val.print();
-        alternative_threshold.val.print();
         assert(trove_threshold == alternative_threshold, 'invariant did not hold');
     }
 }
