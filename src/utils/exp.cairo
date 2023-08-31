@@ -1,4 +1,3 @@
-use array::ArrayTrait;
 use option::OptionTrait;
 use traits::{Into, TryInto};
 
