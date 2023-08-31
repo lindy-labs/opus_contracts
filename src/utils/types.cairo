@@ -1,8 +1,7 @@
 use starknet::ContractAddress;
-use starknet::StorageBaseAddress;
 
 use aura::interfaces::IAbsorber::IBlesserDispatcher;
-use aura::utils::wadray::{Ray, Wad};
+use aura::utils::wadray::Wad;
 
 #[derive(Copy, Drop, PartialEq, Serde)]
 enum YangSuspensionStatus {
@@ -81,8 +80,6 @@ struct Request {
 //
 
 mod Pragma {
-    use starknet::StorageBaseAddress;
-
     #[derive(Copy, Drop, Serde)]
     enum DataType {
         Spot: u256,
