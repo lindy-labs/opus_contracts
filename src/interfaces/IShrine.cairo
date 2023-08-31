@@ -43,7 +43,7 @@ trait IShrine<TContractState> {
         ref self: TContractState,
         yang: ContractAddress,
         threshold: Ray,
-        initial_price: Wad,
+        start_price: Wad,
         initial_rate: Ray,
         initial_yang_amt: Wad
     );
@@ -51,8 +51,8 @@ trait IShrine<TContractState> {
     fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
     fn update_rates(ref self: TContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
-    fn set_multiplier(ref self: TContractState, new_multiplier: Ray);
-    fn set_debt_ceiling(ref self: TContractState, new_ceiling: Wad);
+    fn set_multiplier(ref self: TContractState, multiplier: Ray);
+    fn set_debt_ceiling(ref self: TContractState, ceiling: Wad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
     fn kill(ref self: TContractState);
     // external core functions
