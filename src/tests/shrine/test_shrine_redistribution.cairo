@@ -1,11 +1,7 @@
 #[cfg(test)]
 mod TestShrineRedistribution {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Default, Into};
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
-    use zeroable::Zeroable;
 
     use aura::core::shrine::Shrine;
 

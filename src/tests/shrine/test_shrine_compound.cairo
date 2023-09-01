@@ -1,8 +1,5 @@
 #[cfg(test)]
 mod TestShrineCompound {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Into, TryInto};
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};

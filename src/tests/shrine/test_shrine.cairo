@@ -1,10 +1,7 @@
 #[cfg(test)]
 mod TestShrine {
-    use array::{ArrayTrait, SpanTrait};
     use debug::PrintTrait;
     use integer::BoundedU256;
-    use option::OptionTrait;
-    use traits::{Default, Into};
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};

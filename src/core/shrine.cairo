@@ -1,12 +1,9 @@
 #[starknet::contract]
 mod Shrine {
-    use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
-    use option::OptionTrait;
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use traits::{Into, TryInto};
 
     use aura::core::roles::ShrineRoles;
 
