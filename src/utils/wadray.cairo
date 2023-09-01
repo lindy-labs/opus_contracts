@@ -1,9 +1,6 @@
 use debug::PrintTrait;
 use integer::BoundedInt;
 use math::Oneable;
-use option::OptionTrait;
-use traits::{Into, PartialEq, PartialOrd, TryInto};
-use zeroable::Zeroable;
 
 use aura::utils::math::pow;
 

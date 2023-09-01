@@ -14,16 +14,13 @@ trait IAccessControl<TContractState> {
 }
 
 mod AccessControl {
-    use array::{ArrayTrait, SpanTrait};
     use integer::U128BitNot;
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::storage_access::{
         StoreContractAddress, StoreU128, StorageBaseAddress, storage_base_address_from_felt252,
         storage_base_address_const
     };
-    use traits::{Into, TryInto};
 
     fn initializer(admin: ContractAddress) {
         set_admin_internal(admin);
