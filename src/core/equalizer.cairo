@@ -98,10 +98,11 @@ mod Equalizer {
         let mut minted_surplus: Wad = WadZeroable::zero();
 
         let mut recipients_copy = recipients;
+        let mut percentages_copy = percentages;
         loop {
             match recipients_copy.pop_front() {
                 Option::Some(recipient) => {
-                    let amount: Wad = rmul_wr(surplus, *(percentages.pop_front().unwrap()));
+                    let amount: Wad = rmul_wr(surplus, *(percentages_copy.pop_front().unwrap()));
 
                     shrine.inject(*recipient, amount);
                     minted_surplus += amount;
