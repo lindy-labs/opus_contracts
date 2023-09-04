@@ -3,9 +3,9 @@ mod ShrineUtils {
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        get_block_timestamp, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+        SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -66,11 +66,11 @@ mod ShrineUtils {
     //
 
     fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
+        contract_address_try_from_felt252('shrine admin').unwrap()
     }
 
     fn yin_user_addr() -> ContractAddress {
-        contract_address_const::<0x0004>()
+        contract_address_try_from_felt252('yin user').unwrap()
     }
 
     fn yang1_addr() -> ContractAddress {
@@ -86,7 +86,7 @@ mod ShrineUtils {
     }
 
     fn invalid_yang_addr() -> ContractAddress {
-        contract_address_const::<0xabcd>()
+        contract_address_try_from_felt252('invalid yang').unwrap()
     }
 
     //

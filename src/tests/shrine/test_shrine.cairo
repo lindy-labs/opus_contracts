@@ -2,8 +2,9 @@
 mod TestShrine {
     use debug::PrintTrait;
     use integer::BoundedU256;
-    use starknet::{contract_address_const, ContractAddress};
-    use starknet::contract_address::ContractAddressZeroable;
+    use starknet::contract_address::{
+        ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
+    };
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
@@ -196,7 +197,8 @@ mod TestShrine {
         let yangs_count: u32 = shrine.get_yangs_count();
         assert(yangs_count == 3, 'incorrect yangs count');
 
-        let new_yang_address: ContractAddress = contract_address_const::<0x9870>();
+        let new_yang_address: ContractAddress = contract_address_try_from_felt252('new yang')
+            .unwrap();
         let new_yang_threshold: Ray = 600000000000000000000000000_u128.into(); // 60% (Ray)
         let new_yang_start_price: Wad = 5000000000000000000_u128.into(); // 5 (Wad)
         let new_yang_rate: Ray = 60000000000000000000000000_u128.into(); // 6% (Ray)
@@ -1105,7 +1107,8 @@ mod TestShrine {
         };
 
         let admin: ContractAddress = ShrineUtils::admin();
-        let new_admin: ContractAddress = contract_address_const::<0xdada>();
+        let new_admin: ContractAddress = contract_address_try_from_felt252('new shrine admin')
+            .unwrap();
 
         assert(shrine_accesscontrol.get_admin() == admin, 'wrong admin');
 
@@ -1147,7 +1150,8 @@ mod TestShrine {
         };
 
         let admin: ContractAddress = ShrineUtils::admin();
-        let new_admin: ContractAddress = contract_address_const::<0xdada>();
+        let new_admin: ContractAddress = contract_address_try_from_felt252('new shrine admin')
+            .unwrap();
 
         set_contract_address(admin);
         shrine_accesscontrol.grant_role(ShrineRoles::SET_DEBT_CEILING, new_admin);
