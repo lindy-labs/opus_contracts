@@ -21,7 +21,7 @@ use aura::utils::types::{AssetBalance, Reward};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
-//use aura::tests::sentinel::utils::SentinelUtils;
+use aura::tests::sentinel::utils::SentinelUtils;
 
 //
 // Constants
@@ -130,39 +130,39 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
     };
 }
 
-// Helper function to approve Gates to transfer tokens from user, and to open a trove
-//fn open_trove_helper(
-//    abbot: IAbbotDispatcher,
-//    user: ContractAddress,
-//    yangs: Span<ContractAddress>,
-//    yang_asset_amts: Span<u128>,
-//    mut gates: Span<IGateDispatcher>,
-//    forge_amt: Wad
-//) -> u64 {
-//    set_contract_address(user);
-//    let mut yangs_copy = yangs;
-//    loop {
-//        match yangs_copy.pop_front() {
-//            Option::Some(yang) => {
-//                // Approve Gate to transfer from user
-//                let gate: IGateDispatcher = *gates.pop_front().unwrap();
-//                SentinelUtils::approve_max(gate, *yang, user);
-//            },
-//            Option::None => {
-//                break;
-//            }
-//        };
-//    };
-//
-//    set_contract_address(user);
-//    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
-//    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-//
-//    set_contract_address(ContractAddressZeroable::zero());
-//
-//    trove_id
-//}
-//
+//Helper function to approve Gates to transfer tokens from user, and to open a trove
+fn open_trove_helper(
+    abbot: IAbbotDispatcher,
+    user: ContractAddress,
+    yangs: Span<ContractAddress>,
+    yang_asset_amts: Span<u128>,
+    mut gates: Span<IGateDispatcher>,
+    forge_amt: Wad
+) -> u64 {
+    set_contract_address(user);
+    let mut yangs_copy = yangs;
+    loop {
+        match yangs_copy.pop_front() {
+            Option::Some(yang) => {
+                // Approve Gate to transfer from user
+                let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                SentinelUtils::approve_max(gate, *yang, user);
+            },
+            Option::None => {
+                break;
+            }
+        };
+    };
+
+    set_contract_address(user);
+    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
+    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
+
+    set_contract_address(ContractAddressZeroable::zero());
+
+    trove_id
+}
+
 
 // Helpers - Convenience getters
 

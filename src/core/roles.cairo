@@ -1,3 +1,85 @@
+mod AbsorberRoles {
+    const KILL: u128 = 1;
+    const SET_REMOVAL_LIMIT: u128 = 2;
+    const SET_REWARD: u128 = 4;
+    const UPDATE: u128 = 8;
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REMOVAL_LIMIT + SET_REWARD
+    }
+}
+
+mod BlesserRoles {
+    const BLESS: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        BLESS
+    }
+}
+
+mod PragmaRoles {
+    const ADD_YANG: u128 = 1;
+    const SET_ORACLE_ADDRESS: u128 = 2;
+    const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
+    const SET_UPDATE_FREQUENCY: u128 = 8;
+    const UPDATE_PRICES: u128 = 16;
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE_PRICES
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
+    }
+}
+
+mod PurgerRoles {
+    const SET_PENALTY_SCALAR: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_PENALTY_SCALAR
+    }
+}
+
+mod SentinelRoles {
+    const ADD_YANG: u128 = 1;
+    const ENTER: u128 = 2;
+    const EXIT: u128 = 4;
+    const KILL_GATE: u128 = 8;
+    const SET_YANG_ASSET_MAX: u128 = 16;
+    const UPDATE_YANG_SUSPENSION: u128 = 32;
+
+    #[inline(always)]
+    fn abbot() -> u128 {
+        ENTER + EXIT
+    }
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        EXIT
+    }
+
+    #[inline(always)]
+    fn caretaker() -> u128 {
+        EXIT
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + KILL_GATE + SET_YANG_ASSET_MAX + UPDATE_YANG_SUSPENSION
+    }
+}
+
 mod ShrineRoles {
     const ADD_YANG: u128 = 1;
     const ADVANCE: u128 = 2;
