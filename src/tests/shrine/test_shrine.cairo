@@ -177,7 +177,7 @@ mod TestShrine {
                         idx += 1;
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break ();
                 }
             };
@@ -1323,7 +1323,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None(_) => {
+                Option::None => {
                     break ();
                 }
             };
@@ -1397,7 +1397,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None(_) => {
+                Option::None => {
                     break ();
                 }
             };

@@ -123,7 +123,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
                 IMintableDispatcher { contract_address: *yang }
                     .mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
@@ -148,7 +148,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
 //                let gate: IGateDispatcher = *gates.pop_front().unwrap();
 //                SentinelUtils::approve_max(gate, *yang, user);
 //            },
-//            Option::None(_) => {
+//            Option::None => {
 //                break;
 //            }
 //        };
@@ -189,14 +189,14 @@ fn get_token_balances(
                             let bal: u128 = token.balance_of(*address).try_into().unwrap();
                             yang_balances.append(bal);
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         }
                     };
                 };
                 balances.append(yang_balances.span());
             },
-            Option::None(_) => {
+            Option::None => {
                 break balances.span();
             }
         };
@@ -231,7 +231,7 @@ fn assert_asset_balances_equalish(
                 assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
@@ -253,7 +253,7 @@ fn combine_assets_and_amts(
                 asset_balances
                     .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
@@ -272,7 +272,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
                 let asset_amt: Wad = (*asset_amt).into();
                 split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
@@ -293,7 +293,7 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
                 // Convert to Wad for fixed point operations
                 combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };

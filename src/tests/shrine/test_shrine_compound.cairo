@@ -806,7 +806,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break ();
                         },
                     };

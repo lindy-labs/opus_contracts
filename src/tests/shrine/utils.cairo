@@ -387,7 +387,7 @@ mod ShrineUtils {
                     cumulative_value += value;
                     cumulative_threshold += wadray::wmul_wr(value, threshold);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break (
                         wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value
                     );
@@ -458,7 +458,7 @@ mod ShrineUtils {
                         'array length mismatch'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
