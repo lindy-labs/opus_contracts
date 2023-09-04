@@ -1,7 +1,7 @@
 #[starknet::contract]
 mod Shrine {
     use cmp::min;
-    use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
+    use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
@@ -2119,7 +2119,7 @@ mod Shrine {
                                             yang_increment += *recipient_yang_balance.amount
                                                 * exc_yang_redistribution.unit_yang;
 
-                                            let (debt_increment, r, _) = u256_safe_divmod(
+                                            let (debt_increment, r) = u256_safe_div_rem(
                                                 (*recipient_yang_balance.amount).into()
                                                     * exc_yang_redistribution.unit_debt.into(),
                                                 wad_scale_divisor
