@@ -93,7 +93,7 @@ mod Equalizer {
         }
 
         let allocator: IAllocatorDispatcher = allocator::read();
-        let (mut recipients, mut percentages) = allocator.get_allocation();
+        let (recipients, percentages) = allocator.get_allocation();
 
         let mut minted_surplus: Wad = WadZeroable::zero();
 
