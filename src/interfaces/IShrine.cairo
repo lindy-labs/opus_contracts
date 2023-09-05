@@ -1,4 +1,3 @@
-use array::SpanTrait;
 use starknet::ContractAddress;
 
 use aura::types::{

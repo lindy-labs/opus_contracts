@@ -1,5 +1,3 @@
-use array::SpanTrait;
-
 use aura::types::AssetBalance;
 use aura::utils::wadray::Wad;
 
