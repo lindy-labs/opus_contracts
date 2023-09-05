@@ -1,10 +1,7 @@
 #[starknet::contract]
 mod Abbot {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
+    use array::ArrayTrait;
     use starknet::{ContractAddress, get_caller_address};
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::interfaces::IAbbot::IAbbot;
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};

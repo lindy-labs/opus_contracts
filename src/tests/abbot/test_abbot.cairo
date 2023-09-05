@@ -1,11 +1,8 @@
 #[cfg(test)]
 mod TestAbbot {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
+    use array::ArrayTrait;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::sentinel::Sentinel;
 
