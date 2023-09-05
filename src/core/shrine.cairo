@@ -1,6 +1,6 @@
 #[starknet::contract]
 mod Shrine {
-    use cmp::min;
+    use cmp::{max, min};
     use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
@@ -68,6 +68,11 @@ mod Shrine {
 
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
+
+    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
+
+    // Factor that scales how much thresholds decline during recovery mode
+    const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
     #[storage]
     struct Storage {
@@ -434,9 +439,32 @@ mod Shrine {
             self.get_yang_suspension_status_internal(yang_id)
         }
 
-        fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> Ray {
+        // Returns a tuple of 
+        // 1. The "raw yang threshold"
+        // 2. The "scaled yang threshold" for recovery mode
+        // 1 and 2 will be the same if recovery mode is not in effect
+        fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> (Ray, Ray) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.get_yang_threshold_internal(yang_id)
+            let threshold = self.get_yang_threshold_internal(yang_id);
+            (threshold, self.scale_threshold_for_recovery_mode(threshold))
+        }
+
+        // Returns a tuple of 
+        // 1. The recovery mode threshold
+        // 2. Shrine's LTV
+        fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
+            let (liq_threshold, value) = self
+                .get_threshold_and_value(self.get_shrine_deposits(), now());
+            let debt: Wad = self.total_debt.read();
+            let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+
+            // If no collateral has been deposited, then shrine's LTV is
+            // returned as the maximum possible value.
+            if value.is_zero() {
+                return (rm_threshold, BoundedRay::max());
+            }
+
+            (rm_threshold, wadray::rdiv_ww(debt, value))
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
@@ -955,6 +983,7 @@ mod Shrine {
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (mut threshold, mut value) = self
                 .get_threshold_and_value(trove_yang_balances, interval);
+            threshold = self.scale_threshold_for_recovery_mode(threshold);
 
             let trove: Trove = self.troves.read(trove_id);
 
@@ -982,7 +1011,7 @@ mod Shrine {
             if updated_trove_yang_balances.is_some() {
                 let (new_threshold, new_value) = self
                     .get_threshold_and_value(updated_trove_yang_balances.unwrap(), interval);
-                threshold = new_threshold;
+                threshold = self.scale_threshold_for_recovery_mode(new_threshold);
                 value = new_value;
             }
 
@@ -1083,6 +1112,23 @@ mod Shrine {
                 return (multiplier, cumulative_multiplier, interval);
             }
             self.get_recent_multiplier_from(interval - 1)
+        }
+
+        // Helper function for applying the recovery mode threshold decrease to a threshold,
+        // if recovery mode is active
+        // The maximum threshold decrease is capped to 50% of the "base threshold"
+        fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
+            let (recovery_mode_threshold, shrine_ltv) = self.get_recovery_mode_threshold();
+            if shrine_ltv >= recovery_mode_threshold {
+                return max(
+                    threshold
+                        * THRESHOLD_DECREASE_FACTOR.into()
+                        * (recovery_mode_threshold / shrine_ltv),
+                    (threshold.val / 2_u128).into()
+                );
+            }
+
+            threshold
         }
 
         // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.

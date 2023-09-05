@@ -14,12 +14,14 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
 use aura::utils::types::{AssetBalance, Reward};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
 //use aura::tests::sentinel::utils::SentinelUtils;
+use aura::tests::shrine::utils::ShrineUtils;
 
 //
 // Constants
@@ -31,6 +33,7 @@ const WBTC_DECIMALS: u8 = 8;
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
+const WHALE_TROVE: u64 = 0xb17b01;
 
 //
 // Constant addresses
