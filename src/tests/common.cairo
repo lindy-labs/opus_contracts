@@ -16,7 +16,7 @@ use aura::interfaces::IERC20::{
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
-use aura::utils::types::{AssetBalance, Reward};
+use aura::types::{AssetBalance, Reward};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 

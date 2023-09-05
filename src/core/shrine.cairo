@@ -9,11 +9,11 @@ mod Shrine {
 
     use aura::interfaces::IERC20::IERC20;
     use aura::interfaces::IShrine::IShrine;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::exp::{exp, neg_exp};
-    use aura::utils::types::{
+    use aura::types::{
         ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
     };
+    use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::exp::{exp, neg_exp};
     use aura::utils::wadray;
     use aura::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE

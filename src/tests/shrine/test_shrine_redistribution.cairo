@@ -6,7 +6,7 @@ mod TestShrineRedistribution {
     use aura::core::shrine::Shrine;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::types::{ExceptionalYangRedistribution, YangRedistribution};
+    use aura::types::{ExceptionalYangRedistribution, YangRedistribution};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
