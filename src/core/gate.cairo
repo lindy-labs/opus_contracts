@@ -1,8 +1,6 @@
 #[starknet::contract]
 mod Gate {
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use traits::{Into, TryInto};
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IGate::IGate;
