@@ -1,7 +1,6 @@
-use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::types::{
+use aura::types::{
     ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
 };
 use aura::utils::wadray::{Ray, Wad};
@@ -25,7 +24,8 @@ trait IShrine<TContractState> {
     fn get_yang_suspension_status(
         self: @TContractState, yang: ContractAddress
     ) -> YangSuspensionStatus;
-    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> Ray;
+    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> (Ray, Ray);
+    fn get_recovery_mode_threshold(self: @TContractState) -> (Ray, Ray);
     fn get_redistributions_count(self: @TContractState) -> u32;
     fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
     fn get_redistribution_for_yang(
@@ -43,7 +43,7 @@ trait IShrine<TContractState> {
         ref self: TContractState,
         yang: ContractAddress,
         threshold: Ray,
-        initial_price: Wad,
+        start_price: Wad,
         initial_rate: Ray,
         initial_yang_amt: Wad
     );
@@ -51,8 +51,8 @@ trait IShrine<TContractState> {
     fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
     fn update_rates(ref self: TContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
-    fn set_multiplier(ref self: TContractState, new_multiplier: Ray);
-    fn set_debt_ceiling(ref self: TContractState, new_ceiling: Wad);
+    fn set_multiplier(ref self: TContractState, multiplier: Ray);
+    fn set_debt_ceiling(ref self: TContractState, ceiling: Wad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
     fn kill(ref self: TContractState);
     // external core functions
