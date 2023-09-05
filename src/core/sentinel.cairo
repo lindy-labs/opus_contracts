@@ -1,9 +1,8 @@
 #[starknet::contract]
 mod Sentinel {
-    use array::{ArrayTrait, SpanTrait};
+    use array::ArrayTrait;
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use traits::{Default, Into};
 
     use aura::core::roles::SentinelRoles;
 

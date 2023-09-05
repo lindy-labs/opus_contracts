@@ -1,12 +1,9 @@
 #[cfg(test)]
 mod TestSentinel {
-    use array::SpanTrait;
     use debug::PrintTrait;
-    use option::OptionTrait;
     use starknet::{contract_address_const, ContractAddress};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::Into;
 
     use aura::core::sentinel::Sentinel;
     use aura::core::roles::SentinelRoles;
