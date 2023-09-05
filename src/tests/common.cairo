@@ -36,7 +36,7 @@ const WBTC_DECIMALS: u8 = 8;
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
-const WHALE_TROVE: u64 = 0xb19b01;
+const WHALE_TROVE: u64 = 0xb17b01;
 
 //
 // Constant addresses

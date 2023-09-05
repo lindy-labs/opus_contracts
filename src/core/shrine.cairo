@@ -2069,13 +2069,12 @@ mod Shrine {
     fn scale_threshold_for_recovery_mode(mut threshold: Ray) -> Ray {
         let (recovery_mode_threshold, shrine_ltv) = get_recovery_mode_threshold();
         if shrine_ltv >= recovery_mode_threshold {
-            threshold =
-                max(
-                    threshold
-                        * THRESHOLD_DECREASE_FACTOR.into()
-                        * (recovery_mode_threshold / shrine_ltv),
-                    (threshold.val / 2_u128).into()
-                );
+            return max(
+                threshold
+                    * THRESHOLD_DECREASE_FACTOR.into()
+                    * (recovery_mode_threshold / shrine_ltv),
+                (threshold.val / 2_u128).into()
+            );
         }
 
         threshold
