@@ -1,7 +1,7 @@
 use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::types::{
+use aura::types::{
     ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
 };
 use aura::utils::wadray::{Ray, Wad};
