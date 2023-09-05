@@ -1,7 +1,7 @@
 #[contract]
 mod Shrine {
     use array::{ArrayTrait, SpanTrait};
-    use cmp::min;
+    use cmp::{max, min};
     use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
     use option::OptionTrait;
     use starknet::{get_block_timestamp, get_caller_address};
@@ -73,6 +73,11 @@ mod Shrine {
 
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
+
+    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
+
+    // Factor that scales how much thresholds decline during recovery mode
+    const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
     struct Storage {
         // A trove can forge debt up to its threshold depending on the yangs deposited.
@@ -274,6 +279,7 @@ mod Shrine {
         // Get threshold and trove value
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (mut threshold, mut value) = get_threshold_and_value(trove_yang_balances, interval);
+        threshold = scale_threshold_for_recovery_mode(threshold);
 
         let trove: Trove = troves::read(trove_id);
 
@@ -304,12 +310,11 @@ mod Shrine {
             let (new_threshold, new_value) = get_threshold_and_value(
                 updated_trove_yang_balances.unwrap(), interval
             );
-            threshold = new_threshold;
+            threshold = scale_threshold_for_recovery_mode(new_threshold);
             value = new_value;
         }
 
         let ltv: Ray = wadray::rdiv_ww(compounded_debt_with_redistributed_debt, value);
-
         (threshold, ltv, value, compounded_debt_with_redistributed_debt)
     }
 
@@ -426,10 +431,15 @@ mod Shrine {
         get_yang_suspension_status_internal(yang_id)
     }
 
+    // Returns a tuple of 
+    // 1. The "raw yang threshold"
+    // 2. The "scaled yang threshold" for recovery mode
+    // 1 and 2 will be the same if recovery mode is not in effect
     #[view]
-    fn get_yang_threshold(yang: ContractAddress) -> Ray {
+    fn get_yang_threshold(yang: ContractAddress) -> (Ray, Ray) {
         let yang_id: u32 = get_valid_yang_id(yang);
-        get_yang_threshold_internal(yang_id)
+        let threshold = get_yang_threshold_internal(yang_id);
+        (threshold, scale_threshold_for_recovery_mode(threshold))
     }
 
     #[view]
@@ -437,6 +447,25 @@ mod Shrine {
         let yang_totals: Span<YangBalance> = get_shrine_deposits();
         get_threshold_and_value(yang_totals, now())
     }
+
+    // Returns a tuple of 
+    // 1. The recovery mode threshold
+    // 2. Shrine's LTV
+    #[view]
+    fn get_recovery_mode_threshold() -> (Ray, Ray) {
+        let (liq_threshold, value) = get_threshold_and_value(get_shrine_deposits(), now());
+        let debt: Wad = total_debt::read();
+        let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+
+        // If no collateral has been deposited, then shrine's LTV is
+        // returned as the maximum possible value.
+        if value.is_zero() {
+            return (rm_threshold, BoundedRay::max());
+        }
+
+        (rm_threshold, wadray::rdiv_ww(debt, value))
+    }
+
 
     #[view]
     fn get_redistributions_count() -> u32 {
@@ -793,7 +822,6 @@ mod Shrine {
         trove_info.debt += debt_amount;
         troves::write(trove_id, trove_info);
         assert_healthy(trove_id);
-
         forge_internal(user, amount);
 
         // Events
@@ -1322,6 +1350,7 @@ mod Shrine {
 
         let trove_yang_balances: Span<YangBalance> = get_trove_deposits(trove_id);
         let (_, trove_value) = get_threshold_and_value(trove_yang_balances, current_interval);
+
         let trove_value_to_redistribute: Wad = wadray::rmul_wr(
             trove_value, pct_value_to_redistribute
         );
@@ -2030,6 +2059,23 @@ mod Shrine {
 
             current_yang_id += 1;
         }
+    }
+
+    // Helper function for applying the recovery mode threshold decrease to a threshold,
+    // if recovery mode is active
+    // The maximum threshold decrease is capped to 50% of the "base threshold"
+    fn scale_threshold_for_recovery_mode(mut threshold: Ray) -> Ray {
+        let (recovery_mode_threshold, shrine_ltv) = get_recovery_mode_threshold();
+        if shrine_ltv >= recovery_mode_threshold {
+            return max(
+                threshold
+                    * THRESHOLD_DECREASE_FACTOR.into()
+                    * (recovery_mode_threshold / shrine_ltv),
+                (threshold.val / 2_u128).into()
+            );
+        }
+
+        threshold
     }
 
     // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
