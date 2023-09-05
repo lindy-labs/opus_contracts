@@ -18,7 +18,7 @@ mod FlashLiquidator {
     use integer::BoundedInt;
     use option::OptionTrait;
     use starknet::{get_contract_address, ContractAddress};
-    use traits::{Default, Into, TryInto};
+    use traits::{Into, TryInto};
 
     use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
 
@@ -83,8 +83,7 @@ mod FlashLiquidator {
 
             let purger: IPurgerDispatcher = self.purger.read();
             let max_close_amt: Wad = purger.get_max_liquidation_amount(trove_id);
-            let mut call_data: Array<felt252> = Default::default();
-            call_data.append(trove_id.into());
+            let mut call_data: Array<felt252> = array![trove_id.into()];
 
             self
                 .flashmint
@@ -122,7 +121,7 @@ mod FlashLiquidator {
                 .liquidate(trove_id, amount.try_into().unwrap(), flash_liquidator);
 
             let mut provider_assets: Span<u128> = AbsorberUtils::provider_asset_amts();
-            let mut updated_assets: Array<AssetBalance> = Default::default();
+            let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut freed_assets_copy = freed_assets;
             loop {
                 match freed_assets_copy.pop_front() {
@@ -130,7 +129,7 @@ mod FlashLiquidator {
                         updated_assets
                             .append(
                                 AssetBalance {
-                                    asset: *freed_asset.asset,
+                                    address: *freed_asset.address,
                                     amount: *freed_asset.amount
                                         + *provider_assets.pop_front().unwrap()
                                 }

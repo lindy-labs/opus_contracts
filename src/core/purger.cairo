@@ -15,7 +15,7 @@ mod Purger {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 
-    use aura::utils::access_control::AccessControl;
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
     use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
@@ -120,7 +120,7 @@ mod Purger {
         self.oracle.write(IOracleDispatcher { contract_address: oracle });
 
         self.penalty_scalar.write(RAY_ONE.into());
-        self.emit(PenaltyScalarUpdated { new_scalar: RAY_ONE.into });
+        self.emit(PenaltyScalarUpdated { new_scalar: RAY_ONE.into() });
     }
 
     #[external(v0)]
@@ -133,7 +133,7 @@ mod Purger {
         // Returns 0 if trove is healthy, OR if the trove's LTV > 100% 
         // NOTE: this function should not be used as a proxy 
         // to determine if a trove is liquidatable or not
-        fn get_liquidation_penalty(ref self: ContractState, trove_id: u64) -> Ray {
+        fn get_liquidation_penalty(self: @ContractState, trove_id: u64) -> Ray {
             let (threshold, ltv, _, _) = self.shrine.read().get_trove_info(trove_id);
             match get_liquidation_penalty_internal(threshold, ltv) {
                 Option::Some(penalty) => penalty,
@@ -212,7 +212,7 @@ mod Purger {
         fn set_penalty_scalar(ref self: ContractState, new_scalar: Ray) {
             AccessControl::assert_has_role(PurgerRoles::SET_PENALTY_SCALAR);
             assert(
-                MIN_PENALTY_SCALAR.into() <= new_scalar & new_scalar <= MAX_PENALTY_SCALAR.into(),
+                MIN_PENALTY_SCALAR.into() <= new_scalar && new_scalar <= MAX_PENALTY_SCALAR.into(),
                 'PU: Invalid scalar'
             );
 
@@ -254,9 +254,8 @@ mod Purger {
             shrine.melt(funder, trove_id, purge_amt);
 
             // Free collateral corresponding to the purged amount
-            let freed_assets: Span<AssetBalance> = free(
-                shrine, trove_id, percentage_freed, recipient
-            );
+            let freed_assets: Span<AssetBalance> = self
+                .free(shrine, trove_id, percentage_freed, recipient);
 
             // Safety check to ensure the new LTV is not worse off
             let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
@@ -288,9 +287,8 @@ mod Purger {
             let (pct_value_to_compensate, ltv_after_compensation) = get_compensation_pct(
                 trove_value, trove_ltv
             );
-            let trove_penalty: Ray = get_absorption_penalty_internal(
-                trove_threshold, trove_ltv, ltv_after_compensation
-            )
+            let trove_penalty: Ray = self
+                .get_absorption_penalty_internal(trove_threshold, trove_ltv, ltv_after_compensation)
                 .expect('PU: Not absorbable');
 
             let caller: ContractAddress = get_caller_address();
@@ -314,9 +312,8 @@ mod Purger {
             let purge_amt = min(max_purge_amt, absorber_yin_bal);
 
             // Transfer a percentage of the penalty to the caller as compensation
-            let compensation_assets: Span<AssetBalance> = free(
-                shrine, trove_id, pct_value_to_compensate, caller
-            );
+            let compensation_assets: Span<AssetBalance> = self
+                .free(shrine, trove_id, pct_value_to_compensate, caller);
 
             // Melt the trove's debt using the absorber's yin directly
             // This needs to be called even if `purge_amt` is 0 so that accrued interest
@@ -342,19 +339,21 @@ mod Purger {
             // to melt the trove's debt and receive freed trove assets in return
             if can_absorb_some {
                 // Free collateral corresponding to the purged amount
-                let absorbed_assets: Span<AssetBalance> = free(
-                    shrine, trove_id, pct_value_to_purge, absorber.contract_address
-                );
+                let absorbed_assets: Span<AssetBalance> = self
+                    .free(shrine, trove_id, pct_value_to_purge, absorber.contract_address);
 
                 absorber.update(absorbed_assets);
-                Purged(
-                    trove_id,
-                    purge_amt,
-                    pct_value_to_purge,
-                    absorber.contract_address,
-                    absorber.contract_address,
-                    absorbed_assets
-                );
+                self
+                    .emit(
+                        Purged {
+                            trove_id: trove_id,
+                            purge_amt: purge_amt,
+                            percentage_freed: pct_value_to_purge,
+                            funder: absorber.contract_address,
+                            recipient: absorber.contract_address,
+                            freed_assets: absorbed_assets
+                        }
+                    );
             }
 
             // If it is not a full absorption, perform redistribution.
@@ -442,7 +441,8 @@ mod Purger {
                             exit_amt
                         };
 
-                        freed_assets.append(AssetBalance { asset: *yang, amount: freed_asset_amt });
+                        freed_assets
+                            .append(AssetBalance { address: *yang, amount: freed_asset_amt });
                     },
                     Option::None(_) => {
                         break;

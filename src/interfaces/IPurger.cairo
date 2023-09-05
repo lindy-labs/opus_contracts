@@ -6,7 +6,7 @@ use aura::utils::wadray::{Ray, Wad};
 #[starknet::interface]
 trait IPurger<TContractState> {
     // getter
-    fn get_penalty_scalar(self: TContractState) -> Ray;
+    fn get_penalty_scalar(self: @TContractState) -> Ray;
     // external
     fn set_penalty_scalar(ref self: TContractState, new_scalar: Ray);
     fn liquidate(

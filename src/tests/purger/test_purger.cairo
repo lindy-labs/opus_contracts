@@ -227,7 +227,7 @@ mod TestPurger {
         let searcher: ContractAddress = PurgerUtils::searcher();
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, searcher.into()
+            yangs, array![searcher].span()
         );
 
         set_contract_address(searcher);
@@ -263,7 +263,7 @@ mod TestPurger {
         // Check that searcher has received collateral
         PurgerUtils::assert_received_assets(
             before_searcher_asset_bals,
-            common::get_token_balances(yangs, searcher.into()),
+            common::get_token_balances(yangs, array![searcher].span()),
             expected_freed_assets,
             10_u128, // error margin
             'wrong searcher asset balance',
@@ -565,10 +565,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, caller.into()
+            yangs, array![caller].span()
         );
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, absorber.contract_address.into()
+            yangs, array![absorber.contract_address].span()
         );
         let expected_compensation_value: Wad = purger.get_compensation(target_trove);
 
@@ -604,7 +604,7 @@ mod TestPurger {
         );
         PurgerUtils::assert_received_assets(
             before_caller_asset_bals,
-            common::get_token_balances(yangs, caller.into()),
+            common::get_token_balances(yangs, array![caller].span()),
             expected_compensation,
             10_u128, // error margin
             'wrong caller asset balance',
@@ -630,7 +630,7 @@ mod TestPurger {
         );
         PurgerUtils::assert_received_assets(
             before_absorber_asset_bals,
-            common::get_token_balances(yangs, absorber.contract_address.into()),
+            common::get_token_balances(yangs, array![absorber.contract_address].span()),
             expected_freed_assets,
             10_u128, // error margin
             'wrong absorber asset balance',
@@ -747,11 +747,11 @@ mod TestPurger {
 
                                         let before_caller_asset_bals: Span<Span<u128>> =
                                             common::get_token_balances(
-                                            yangs, caller.into()
+                                            yangs, array![caller].span()
                                         );
                                         let before_absorber_asset_bals: Span<Span<u128>> =
                                             common::get_token_balances(
-                                            yangs, absorber.contract_address.into()
+                                            yangs, array![absorber.contract_address].span()
                                         );
                                         let expected_compensation_value: Wad = purger
                                             .get_compensation(target_trove);
@@ -795,7 +795,9 @@ mod TestPurger {
                                         );
                                         PurgerUtils::assert_received_assets(
                                             before_caller_asset_bals,
-                                            common::get_token_balances(yangs, caller.into()),
+                                            common::get_token_balances(
+                                                yangs, array![caller].span()
+                                            ),
                                             expected_compensation,
                                             10_u128, // error margin
                                             'wrong caller asset balance',
@@ -828,7 +830,7 @@ mod TestPurger {
                                         PurgerUtils::assert_received_assets(
                                             before_absorber_asset_bals,
                                             common::get_token_balances(
-                                                yangs, absorber.contract_address.into()
+                                                yangs, array![absorber.contract_address].span()
                                             ),
                                             expected_freed_assets,
                                             100_u128, // error margin
@@ -1024,11 +1026,11 @@ mod TestPurger {
 
                                                 let before_caller_asset_bals: Span<Span<u128>> =
                                                     common::get_token_balances(
-                                                    yangs, caller.into()
+                                                    yangs, array![caller].span()
                                                 );
                                                 let before_absorber_asset_bals: Span<Span<u128>> =
                                                     common::get_token_balances(
-                                                    yangs, absorber.contract_address.into()
+                                                    yangs, array![absorber.contract_address].span()
                                                 );
                                                 let expected_compensation_value: Wad = purger
                                                     .get_compensation(target_trove);
@@ -1149,7 +1151,7 @@ mod TestPurger {
                                                 PurgerUtils::assert_received_assets(
                                                     before_caller_asset_bals,
                                                     common::get_token_balances(
-                                                        yangs, caller.into()
+                                                        yangs, array![caller].span()
                                                     ),
                                                     expected_compensation,
                                                     10_u128, // error margin
@@ -1186,7 +1188,8 @@ mod TestPurger {
                                                 PurgerUtils::assert_received_assets(
                                                     before_absorber_asset_bals,
                                                     common::get_token_balances(
-                                                        yangs, absorber.contract_address.into()
+                                                        yangs,
+                                                        array![absorber.contract_address].span()
                                                     ),
                                                     expected_freed_assets,
                                                     100_u128, // error margin
@@ -1379,7 +1382,7 @@ mod TestPurger {
                                 let caller: ContractAddress = PurgerUtils::random_user();
                                 let before_caller_asset_bals: Span<Span<u128>> =
                                     common::get_token_balances(
-                                    yangs, caller.into()
+                                    yangs, array![caller].span()
                                 );
                                 let expected_compensation_value: Wad = purger
                                     .get_compensation(target_trove);
@@ -1407,7 +1410,7 @@ mod TestPurger {
                                 );
                                 PurgerUtils::assert_received_assets(
                                     before_caller_asset_bals,
-                                    common::get_token_balances(yangs, caller.into()),
+                                    common::get_token_balances(yangs, array![caller].span()),
                                     expected_compensation,
                                     10_u128, // error margin
                                     'wrong caller asset balance',
