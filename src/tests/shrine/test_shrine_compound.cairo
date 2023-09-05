@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod TestShrineCompound {
     use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
