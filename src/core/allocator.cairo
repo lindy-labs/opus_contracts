@@ -1,10 +1,7 @@
 #[starknet::contract]
 mod Allocator {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
+    use array::ArrayTrait;
     use starknet::ContractAddress;
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::roles::AllocatorRoles;
 

@@ -1,7 +1,5 @@
 mod EqualizerUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Default, Into};
+    use array::ArrayTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait

@@ -1,10 +1,6 @@
 #[starknet::contract]
 mod Equalizer {
-    use array::{SpanTrait};
-    use option::OptionTrait;
     use starknet::ContractAddress;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::roles::EqualizerRoles;
 
@@ -12,7 +8,8 @@ mod Equalizer {
     use aura::interfaces::IEqualizer::IEqualizer;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     #[storage]
     struct Storage {
@@ -119,7 +116,9 @@ mod Equalizer {
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
-                        let amount: Wad = rmul_wr(surplus, *(percentages.pop_front().unwrap()));
+                        let amount: Wad = wadray::rmul_wr(
+                            surplus, *(percentages.pop_front().unwrap())
+                        );
 
                         shrine.inject(*recipient, amount);
                         minted_surplus += amount;
