@@ -7,7 +7,6 @@ mod Allocator {
 
     use aura::interfaces::IAllocator::IAllocator;
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     // Helper constant to set the starting index for iterating over the recipients

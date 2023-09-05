@@ -15,7 +15,6 @@ mod EqualizerUtils {
     use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
     use aura::utils::wadray::Ray;
 
     use aura::tests::shrine::utils::ShrineUtils;
