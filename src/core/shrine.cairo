@@ -1,27 +1,22 @@
 #[starknet::contract]
 mod Shrine {
-    use array::{ArrayTrait, SpanTrait};
-    use cmp::min;
-    use integer::{BoundedU256, U256Zeroable, u256_safe_divmod};
-    use option::OptionTrait;
+    use cmp::{max, min};
+    use integer::{BoundedU256, U256Zeroable, u256_safe_div_rem};
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::roles::ShrineRoles;
 
     use aura::interfaces::IERC20::IERC20;
     use aura::interfaces::IShrine::IShrine;
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::exp::{exp, neg_exp};
-    use aura::utils::types::{
+    use aura::types::{
         ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
     };
+    use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::exp::{exp, neg_exp};
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE,
-        WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
 
     //
@@ -73,6 +68,11 @@ mod Shrine {
 
     // Convenience constant for upward iteration of yangs
     const START_YANG_IDX: u32 = 1;
+
+    const RECOVERY_MODE_THRESHOLD_MULTIPLIER: u128 = 700000000000000000000000000; // 0.7 (ray)
+
+    // Factor that scales how much thresholds decline during recovery mode
+    const THRESHOLD_DECREASE_FACTOR: u128 = 1000000000000000000000000000; // 1 (ray)
 
     #[storage]
     struct Storage {
@@ -228,7 +228,7 @@ mod Shrine {
     #[derive(Drop, starknet::Event)]
     struct YangRatesUpdated {
         #[key]
-        new_rate_idx: u64,
+        rate_era: u64,
         current_interval: u64,
         yangs: Span<ContractAddress>,
         new_rates: Span<Ray>
@@ -439,9 +439,32 @@ mod Shrine {
             self.get_yang_suspension_status_internal(yang_id)
         }
 
-        fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> Ray {
+        // Returns a tuple of 
+        // 1. The "raw yang threshold"
+        // 2. The "scaled yang threshold" for recovery mode
+        // 1 and 2 will be the same if recovery mode is not in effect
+        fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> (Ray, Ray) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.get_yang_threshold_internal(yang_id)
+            let threshold = self.get_yang_threshold_internal(yang_id);
+            (threshold, self.scale_threshold_for_recovery_mode(threshold))
+        }
+
+        // Returns a tuple of 
+        // 1. The recovery mode threshold
+        // 2. Shrine's LTV
+        fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
+            let (liq_threshold, value) = self
+                .get_threshold_and_value(self.get_shrine_deposits(), now());
+            let debt: Wad = self.total_debt.read();
+            let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
+
+            // If no collateral has been deposited, then shrine's LTV is
+            // returned as the maximum possible value.
+            if value.is_zero() {
+                return (rm_threshold, BoundedRay::max());
+            }
+
+            (rm_threshold, wadray::rdiv_ww(debt, value))
         }
 
         fn get_redistributions_count(self: @ContractState) -> u32 {
@@ -487,7 +510,7 @@ mod Shrine {
             ref self: ContractState,
             yang: ContractAddress,
             threshold: Ray,
-            initial_price: Wad,
+            start_price: Wad,
             initial_rate: Ray,
             initial_yang_amt: Wad
         ) {
@@ -512,7 +535,7 @@ mod Shrine {
             self.yang_total.write(yang_id, initial_yang_amt);
             self.initial_yang_amts.write(yang_id, initial_yang_amt);
 
-            // Since `initial_price` is the first price in the price history, the cumulative price is also set to `initial_price`
+            // Since `start_price` is the first price in the price history, the cumulative price is also set to `start_price`
 
             let prev_interval: u64 = now() - 1;
             // seeding initial price to the previous interval to ensure `get_recent_price_from` terminates
@@ -521,7 +544,7 @@ mod Shrine {
             // update a price still in the current interval (as oracle update times are independent of
             // Shrine's intervals, a price can be updated multiple times in a single interval) which would
             // result in an endless loop of `get_recent_price_from` since it wouldn't find the initial price
-            self.yang_prices.write((yang_id, prev_interval), (initial_price, initial_price));
+            self.yang_prices.write((yang_id, prev_interval), (start_price, start_price));
 
             // Setting the base rate for the new yang
 
@@ -534,15 +557,7 @@ mod Shrine {
             self.yang_rates.write((yang_id, latest_era), initial_rate);
 
             // Event emissions
-            self
-                .emit(
-                    YangAdded {
-                        yang: yang,
-                        yang_id: yang_id,
-                        start_price: initial_price,
-                        initial_rate: initial_rate
-                    }
-                );
+            self.emit(YangAdded { yang, yang_id, start_price, initial_rate });
             self.emit(YangsCountUpdated { count: yang_id });
             self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
         }
@@ -584,19 +599,19 @@ mod Shrine {
                 'SH: yangs.len != new_rates.len'
             );
 
-            let latest_era: u64 = self.rates_latest_era.read();
-            let latest_era_interval: u64 = self.rates_intervals.read(latest_era);
+            let latest_rate_era: u64 = self.rates_latest_era.read();
+            let latest_rate_era_interval: u64 = self.rates_intervals.read(latest_rate_era);
             let current_interval: u64 = now();
 
             // If the interest rates were already updated in the current interval, don't increment the era
             // Otherwise, increment the era
             // This way, there is at most one set of base rate updates in every interval
-            let mut new_era = latest_era;
+            let mut rate_era = latest_rate_era;
 
-            if latest_era_interval != current_interval {
-                new_era += 1;
-                self.rates_latest_era.write(new_era);
-                self.rates_intervals.write(new_era, current_interval);
+            if latest_rate_era_interval != current_interval {
+                rate_era += 1;
+                self.rates_latest_era.write(rate_era);
+                self.rates_intervals.write(rate_era, current_interval);
             }
 
             // ALL yangs must have a new rate value. A new rate value of `USE_PREV_BASE_RATE` means the
@@ -615,15 +630,15 @@ mod Shrine {
                             self
                                 .yang_rates
                                 .write(
-                                    (current_yang_id, new_era),
-                                    self_snap.yang_rates.read((current_yang_id, new_era - 1))
+                                    (current_yang_id, rate_era),
+                                    self_snap.yang_rates.read((current_yang_id, rate_era - 1))
                                 );
                         } else {
                             assert_rate_is_valid(*rate);
-                            self.yang_rates.write((current_yang_id, new_era), *rate);
+                            self.yang_rates.write((current_yang_id, rate_era), *rate);
                         }
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
@@ -642,20 +657,12 @@ mod Shrine {
                     break ();
                 }
                 assert(
-                    self.yang_rates.read((idx, new_era)).is_non_zero(), 'SH: Incorrect rate update'
+                    self.yang_rates.read((idx, rate_era)).is_non_zero(), 'SH: Incorrect rate update'
                 );
                 idx -= 1;
             };
 
-            self
-                .emit(
-                    YangRatesUpdated {
-                        new_rate_idx: new_era,
-                        current_interval: current_interval,
-                        yangs: yangs,
-                        new_rates: new_rates
-                    }
-                );
+            self.emit(YangRatesUpdated { rate_era, current_interval, yangs, new_rates });
         }
 
         // Set the price of the specified Yang for the current interval interval
@@ -675,56 +682,40 @@ mod Shrine {
             let (last_price, last_cumulative_price, last_interval) = self
                 .get_recent_price_from(yang_id, interval - 1);
 
-            let new_cumulative: Wad = last_cumulative_price
+            let cumulative_price: Wad = last_cumulative_price
                 + (last_price.val * (interval - last_interval - 1).into()).into()
                 + price;
 
-            self.yang_prices.write((yang_id, interval), (price, new_cumulative));
+            self.yang_prices.write((yang_id, interval), (price, cumulative_price));
 
-            self
-                .emit(
-                    YangPriceUpdated {
-                        yang: yang,
-                        price: price,
-                        cumulative_price: new_cumulative,
-                        interval: interval
-                    }
-                );
+            self.emit(YangPriceUpdated { yang, price, cumulative_price, interval });
         }
 
         // Sets the multiplier for the current interval
-        fn set_multiplier(ref self: ContractState, new_multiplier: Ray) {
+        fn set_multiplier(ref self: ContractState, multiplier: Ray) {
             AccessControl::assert_has_role(ShrineRoles::SET_MULTIPLIER);
 
-            // TODO: Should this be here? Maybe multiplier should be able to go to zero
-            assert(new_multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
-            assert(new_multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
+            assert(multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
+            assert(multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
 
             let interval: u64 = now();
             let (last_multiplier, last_cumulative_multiplier, last_interval) = self
                 .get_recent_multiplier_from(interval - 1);
 
-            let new_cumulative_multiplier = last_cumulative_multiplier
+            let cumulative_multiplier = last_cumulative_multiplier
                 + ((interval - last_interval - 1).into() * last_multiplier.val).into()
-                + new_multiplier;
-            self.multiplier.write(interval, (new_multiplier, new_cumulative_multiplier));
+                + multiplier;
+            self.multiplier.write(interval, (multiplier, cumulative_multiplier));
 
-            self
-                .emit(
-                    MultiplierUpdated {
-                        multiplier: new_multiplier,
-                        cumulative_multiplier: new_cumulative_multiplier,
-                        interval: interval
-                    }
-                );
+            self.emit(MultiplierUpdated { multiplier, cumulative_multiplier, interval });
         }
 
-        fn set_debt_ceiling(ref self: ContractState, new_ceiling: Wad) {
+        fn set_debt_ceiling(ref self: ContractState, ceiling: Wad) {
             AccessControl::assert_has_role(ShrineRoles::SET_DEBT_CEILING);
-            self.debt_ceiling.write(new_ceiling);
+            self.debt_ceiling.write(ceiling);
 
             //Event emission
-            self.emit(DebtCeilingUpdated { ceiling: new_ceiling });
+            self.emit(DebtCeilingUpdated { ceiling });
         }
 
         // Updates spot price of yin
@@ -807,9 +798,9 @@ mod Shrine {
             self.total_debt.write(new_system_debt);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
-            let mut trove_info: Trove = self.troves.read(trove_id);
-            trove_info.debt += debt_amount;
-            self.troves.write(trove_id, trove_info);
+            let mut trove: Trove = self.troves.read(trove_id);
+            trove.debt += debt_amount;
+            self.troves.write(trove_id, trove);
             self.assert_healthy(trove_id);
 
             self.forge_internal(user, amount);
@@ -817,7 +808,7 @@ mod Shrine {
             // Events
             self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
             self.emit(DebtTotalUpdated { total: new_system_debt });
-            self.emit(TroveUpdated { trove_id, trove: trove_info });
+            self.emit(TroveUpdated { trove_id, trove });
         }
 
         // Repay a specified amount of synthetic and deattribute the debt from a Trove
@@ -830,25 +821,25 @@ mod Shrine {
             // Charge interest
             self.charge(trove_id);
 
-            let mut trove_info: Trove = self.troves.read(trove_id);
+            let mut trove: Trove = self.troves.read(trove_id);
 
-            // If `amount` exceeds `trove_info.debt`, then melt all the debt.
+            // If `amount` exceeds `trove.debt`, then melt all the debt.
             // This is nice for UX so that maximum debt can be melted without knowing the exact
             // of debt in the trove down to the 10**-18.
-            let melt_amt: Wad = min(trove_info.debt, amount);
+            let melt_amt: Wad = min(trove.debt, amount);
             let new_system_debt: Wad = self.total_debt.read() - melt_amt;
             self.total_debt.write(new_system_debt);
 
             // `Trove.charge_from` and `Trove.last_rate_era` were already updated in `charge`.
-            trove_info.debt -= melt_amt;
-            self.troves.write(trove_id, trove_info);
+            trove.debt -= melt_amt;
+            self.troves.write(trove_id, trove);
 
             // Update user balance
             self.melt_internal(user, melt_amt);
 
             // Events
             self.emit(DebtTotalUpdated { total: new_system_debt });
-            self.emit(TroveUpdated { trove_id: trove_id, trove: trove_info });
+            self.emit(TroveUpdated { trove_id, trove });
         }
 
         // Withdraw a specified amount of a Yang from a Trove without trove safety check.
@@ -903,11 +894,7 @@ mod Shrine {
             // Event
             self
                 .emit(
-                    TroveRedistributed {
-                        redistribution_id: redistribution_id,
-                        trove_id: trove_id,
-                        debt: debt_to_redistribute
-                    }
+                    TroveRedistributed { redistribution_id, trove_id, debt: debt_to_redistribute }
                 );
         }
 
@@ -996,6 +983,7 @@ mod Shrine {
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (mut threshold, mut value) = self
                 .get_threshold_and_value(trove_yang_balances, interval);
+            threshold = self.scale_threshold_for_recovery_mode(threshold);
 
             let trove: Trove = self.troves.read(trove_id);
 
@@ -1023,7 +1011,7 @@ mod Shrine {
             if updated_trove_yang_balances.is_some() {
                 let (new_threshold, new_value) = self
                     .get_threshold_and_value(updated_trove_yang_balances.unwrap(), interval);
-                threshold = new_threshold;
+                threshold = self.scale_threshold_for_recovery_mode(new_threshold);
                 value = new_value;
             }
 
@@ -1061,7 +1049,7 @@ mod Shrine {
                                     );
                             }
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         },
                     };
@@ -1124,6 +1112,23 @@ mod Shrine {
                 return (multiplier, cumulative_multiplier, interval);
             }
             self.get_recent_multiplier_from(interval - 1)
+        }
+
+        // Helper function for applying the recovery mode threshold decrease to a threshold,
+        // if recovery mode is active
+        // The maximum threshold decrease is capped to 50% of the "base threshold"
+        fn scale_threshold_for_recovery_mode(self: @ContractState, mut threshold: Ray) -> Ray {
+            let (recovery_mode_threshold, shrine_ltv) = self.get_recovery_mode_threshold();
+            if shrine_ltv >= recovery_mode_threshold {
+                return max(
+                    threshold
+                        * THRESHOLD_DECREASE_FACTOR.into()
+                        * (recovery_mode_threshold / shrine_ltv),
+                    (threshold.val / 2_u128).into()
+                );
+            }
+
+            threshold
         }
 
         // Returns the last error for `yang_id` at a given `redistribution_id` if the error is non-zero.
@@ -1252,7 +1257,7 @@ mod Shrine {
                                 wadray::wmul_rw(yang_threshold, yang_deposited_value);
                         }
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     },
                 };
@@ -1315,17 +1320,17 @@ mod Shrine {
             let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Fails if amount > amount of yang deposited in the given trove
-            let trove_yang_balance: Wad = self.deposits.read((yang_id, trove_id)) - amount;
-            let total_yang: Wad = self.yang_total.read(yang_id) - amount;
+            let new_trove_balance: Wad = self.deposits.read((yang_id, trove_id)) - amount;
+            let new_total: Wad = self.yang_total.read(yang_id) - amount;
 
             self.charge(trove_id);
 
-            self.yang_total.write(yang_id, total_yang);
-            self.deposits.write((yang_id, trove_id), trove_yang_balance);
+            self.yang_total.write(yang_id, new_total);
+            self.deposits.write((yang_id, trove_id), new_trove_balance);
 
             // Emit events
-            self.emit(YangTotalUpdated { yang, total: total_yang });
-            self.emit(DepositUpdated { yang, trove_id, amount: trove_yang_balance });
+            self.emit(YangTotalUpdated { yang, total: new_total });
+            self.emit(DepositUpdated { yang, trove_id, amount: new_trove_balance });
         }
 
         // Adds the accumulated interest as debt to the trove
@@ -1361,7 +1366,7 @@ mod Shrine {
                                 .deposits
                                 .write((*yang_balance.yang_id, trove_id), *yang_balance.amount);
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         },
                     };
@@ -1965,7 +1970,7 @@ mod Shrine {
                                                 exc_yang_redistribution
                                             );
                                     },
-                                    Option::None(_) => {
+                                    Option::None => {
                                         break;
                                     },
                                 };
@@ -2021,7 +2026,7 @@ mod Shrine {
                             break;
                         }
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     },
                 };
@@ -2048,7 +2053,7 @@ mod Shrine {
                             .yang_total
                             .write(*total_yang_balance.yang_id, *total_yang_balance.amount);
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     },
                 };
@@ -2160,7 +2165,7 @@ mod Shrine {
                                             yang_increment += *recipient_yang_balance.amount
                                                 * exc_yang_redistribution.unit_yang;
 
-                                            let (debt_increment, r, _) = u256_safe_divmod(
+                                            let (debt_increment, r) = u256_safe_div_rem(
                                                 (*recipient_yang_balance.amount).into()
                                                     * exc_yang_redistribution.unit_debt.into(),
                                                 wad_scale_divisor
@@ -2171,7 +2176,7 @@ mod Shrine {
 
                                             trove_debt += debt_increment.try_into().unwrap();
                                         },
-                                        Option::None(_) => {
+                                        Option::None => {
                                             break;
                                         },
                                     };
@@ -2202,9 +2207,7 @@ mod Shrine {
                                     if yang_id == *original_yang_balance.yang_id {
                                         updated_trove_yang_balances
                                             .append(
-                                                YangBalance {
-                                                    yang_id: yang_id, amount: yang_increment
-                                                }
+                                                YangBalance { yang_id, amount: yang_increment }
                                             );
                                     } else {
                                         updated_trove_yang_balances
@@ -2220,7 +2223,7 @@ mod Shrine {
                                 trove_yang_balances = updated_trove_yang_balances.span();
                             }
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         },
                     };
@@ -2358,7 +2361,7 @@ mod Shrine {
 
             self.yin_allowances.write((owner, spender), amount);
 
-            self.emit(Approval { owner: owner, spender: spender, value: amount });
+            self.emit(Approval { owner, spender, value: amount });
         }
 
         fn spend_allowance_internal(
