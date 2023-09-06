@@ -10,7 +10,7 @@ mod TestShrineCompound {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
 
-    use aura::tests::shrine::utils::ShrineUtils;
+    use aura::tests::shrine::utils::ShrineTestUtils;
     use aura::tests::common;
 
     //
@@ -23,40 +23,40 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_compound_and_charge_scenario_1() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
 
         // Advance one interval to avoid overwriting the last price
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineTestUtils::trove1_forge(shrine, ShrineTestUtils::TROVE1_FORGE_AMT.into());
 
-        let start_interval: u64 = ShrineUtils::current_interval();
+        let start_interval: u64 = ShrineTestUtils::current_interval();
 
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
         // Note that this is the price at `start_interval - 1` because we advanced one interval
         // after the last price update
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         // technically not needed since we only use yang1 here but we do so to simplify the helper
-        let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang2_addr());
-        let (yang3_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang3_addr());
+        let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineTestUtils::yang2_addr());
+        let (yang3_price, _, _) = shrine.get_current_yang_price(ShrineTestUtils::yang3_addr());
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
-        ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, ShrineUtils::FEED_LEN, yang1_price, yang2_price, yang3_price
+        ShrineTestUtils::advance_prices_and_set_multiplier(
+            shrine, ShrineTestUtils::FEED_LEN, yang1_price, yang2_price, yang3_price
         );
 
         // Offset by 1 because `advance_prices_and_set_multiplier` updates `start_interval`.
-        let end_interval: u64 = start_interval + ShrineUtils::FEED_LEN - 1;
+        let end_interval: u64 = start_interval + ShrineTestUtils::FEED_LEN - 1;
         // commented out because of gas usage error
         assert(
-            ShrineUtils::current_interval() == end_interval, 'wrong end interval'
+            ShrineTestUtils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             expected_avg_multiplier,
             start_interval,
             end_interval,
@@ -67,7 +67,7 @@ mod TestShrineCompound {
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
         // Trigger charge and check interest is accrued
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.melt(common::trove1_owner_addr(), common::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -81,19 +81,19 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_1b() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
 
         // Advance one interval to avoid overwriting the last price
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        ShrineUtils::trove1_forge(shrine, ShrineUtils::TROVE1_FORGE_AMT.into());
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineTestUtils::trove1_forge(shrine, ShrineTestUtils::TROVE1_FORGE_AMT.into());
 
-        let start_interval: u64 = ShrineUtils::current_interval();
+        let start_interval: u64 = ShrineTestUtils::current_interval();
 
-        let yang1_addr = ShrineUtils::yang1_addr();
-        let yang2_addr = ShrineUtils::yang2_addr();
-        let yang3_addr = ShrineUtils::yang3_addr();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
+        let yang2_addr = ShrineTestUtils::yang2_addr();
+        let yang3_addr = ShrineTestUtils::yang3_addr();
         // Note that this is the price at `start_interval - 1` because we advanced one interval
         // after the last price update
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
@@ -103,7 +103,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
         let num_intervals_before_skip: u64 = 5;
-        ShrineUtils::advance_prices_and_set_multiplier(
+        ShrineTestUtils::advance_prices_and_set_multiplier(
             shrine, num_intervals_before_skip, yang1_price, yang2_price, yang3_price
         );
 
@@ -111,8 +111,8 @@ mod TestShrineCompound {
 
         // Skip to the next interval after the last price update, and then skip this interval
         // to mock no price update
-        ShrineUtils::advance_interval();
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
         let num_intervals_after_skip: u64 = 4;
 
@@ -120,7 +120,7 @@ mod TestShrineCompound {
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
         let (yang3_price, _, _) = shrine.get_current_yang_price(yang3_addr);
 
-        ShrineUtils::advance_prices_and_set_multiplier(
+        ShrineTestUtils::advance_prices_and_set_multiplier(
             shrine, num_intervals_after_skip, yang1_price, yang2_price, yang3_price
         );
 
@@ -138,16 +138,16 @@ mod TestShrineCompound {
             + (num_intervals_before_skip + num_intervals_after_skip);
         // commented out because of gas usage error
         assert(
-            ShrineUtils::current_interval() == end_interval, 'wrong end interval'
+            ShrineTestUtils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
-        let expected_avg_price: Wad = ShrineUtils::get_avg_yang_price(
+        let expected_avg_price: Wad = ShrineTestUtils::get_avg_yang_price(
             shrine, yang1_addr, start_interval, end_interval
         );
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             expected_avg_multiplier,
             start_interval,
             end_interval,
@@ -157,7 +157,7 @@ mod TestShrineCompound {
         assert(estimated_debt == expected_debt, 'wrong compounded debt');
 
         // Trigger charge and check interest is accrued
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.melt(common::trove1_owner_addr(), common::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -171,16 +171,16 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_2() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
 
         // Advance one interval to avoid overwriting the last price
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        ShrineUtils::trove1_forge(shrine, forge_amt);
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = ShrineTestUtils::TROVE1_FORGE_AMT.into();
+        ShrineTestUtils::trove1_forge(shrine, forge_amt);
 
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
 
         // Advance timestamp by 2 intervals and set price for interval - `T+LAST_UPDATED`
         let time_to_skip: u64 = 2 * Shrine::TIME_INTERVAL;
@@ -188,7 +188,7 @@ mod TestShrineCompound {
         set_block_timestamp(last_updated_timestamp);
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
@@ -197,7 +197,7 @@ mod TestShrineCompound {
         let intervals_after_last_update: u64 = 3;
         let time_to_skip: u64 = intervals_after_last_update * Shrine::TIME_INTERVAL;
         let start_timestamp: u64 = last_updated_timestamp + time_to_skip;
-        let start_interval: u64 = ShrineUtils::get_interval(start_timestamp);
+        let start_interval: u64 = ShrineTestUtils::get_interval(start_timestamp);
         set_block_timestamp(start_timestamp);
 
         shrine.deposit(yang1_addr, common::TROVE_1, WadZeroable::zero());
@@ -221,8 +221,8 @@ mod TestShrineCompound {
 
         // As the price and multiplier have not been updated since `T+LAST_UPDATED`, we expect the 
         // average values to be that at `T+LAST_UPDATED`.
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             start_multiplier,
             start_interval,
             end_interval,
@@ -245,25 +245,25 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_3() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
 
         // Advance one interval to avoid overwriting the last price
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        ShrineUtils::trove1_forge(shrine, forge_amt);
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = ShrineTestUtils::TROVE1_FORGE_AMT.into();
+        ShrineTestUtils::trove1_forge(shrine, forge_amt);
 
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
 
         // Advance timestamp by 2 intervals and set price for interval - `T+LAST_UPDATED`
         let time_to_skip: u64 = 2 * Shrine::TIME_INTERVAL;
         let start_timestamp: u64 = get_block_timestamp() + time_to_skip;
-        let start_interval: u64 = ShrineUtils::get_interval(start_timestamp);
+        let start_interval: u64 = ShrineTestUtils::get_interval(start_timestamp);
         set_block_timestamp(start_timestamp);
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
@@ -284,15 +284,15 @@ mod TestShrineCompound {
         let end_interval: u64 = start_interval + intervals_after_last_update;
         set_block_timestamp(end_timestamp);
         assert(
-            ShrineUtils::current_interval() == end_interval, 'wrong end interval'
+            ShrineTestUtils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
         shrine.withdraw(yang1_addr, common::TROVE_1, WadZeroable::zero());
 
         // As the price and multiplier have not been updated since `T+START/LAST_UPDATED`, we expect the 
         // average values to be that at `T+START/LAST_UPDATED`.
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             start_multiplier,
             start_interval,
             end_interval,
@@ -319,28 +319,28 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_4() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        ShrineUtils::trove1_forge(shrine, forge_amt);
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = ShrineTestUtils::TROVE1_FORGE_AMT.into();
+        ShrineTestUtils::trove1_forge(shrine, forge_amt);
 
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
-        let start_interval: u64 = ShrineUtils::current_interval();
+        let start_interval: u64 = ShrineTestUtils::current_interval();
 
         // Advance one interval to avoid overwriting the last price
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED`
         let intervals_to_skip: u64 = 5;
-        ShrineUtils::advance_prices_and_set_multiplier(
+        ShrineTestUtils::advance_prices_and_set_multiplier(
             shrine,
             intervals_to_skip,
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into(),
+            ShrineTestUtils::YANG1_START_PRICE.into(),
+            ShrineTestUtils::YANG2_START_PRICE.into(),
+            ShrineTestUtils::YANG3_START_PRICE.into(),
         );
         // Offset by 1 because of a single call to `advance_prices_and_set_multiplier`
         let last_updated_interval: u64 = start_interval + intervals_to_skip - 1;
@@ -354,10 +354,10 @@ mod TestShrineCompound {
         let end_interval: u64 = start_interval + intervals_to_skip + intervals_after_last_update;
         set_block_timestamp(end_timestamp);
         assert(
-            ShrineUtils::current_interval() == end_interval, 'wrong end interval'
+            ShrineTestUtils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.withdraw(yang1_addr, common::TROVE_1, WadZeroable::zero());
 
         // Manually calculate the average since end interval does not have a cumulative value
@@ -372,8 +372,8 @@ mod TestShrineCompound {
             .into();
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             expected_avg_multiplier,
             start_interval,
             end_interval,
@@ -383,7 +383,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine
             .forge(
                 common::trove1_owner_addr(), common::TROVE_1, WadZeroable::zero(), 0_u128.into()
@@ -401,33 +401,33 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_5() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
 
         // Advance one interval to avoid overwriting the last price
-        ShrineUtils::advance_interval();
+        ShrineTestUtils::advance_interval();
 
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
-        let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang2_addr());
-        let (yang3_price, _, _) = shrine.get_current_yang_price(ShrineUtils::yang3_addr());
+        let (yang2_price, _, _) = shrine.get_current_yang_price(ShrineTestUtils::yang2_addr());
+        let (yang3_price, _, _) = shrine.get_current_yang_price(ShrineTestUtils::yang3_addr());
 
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`'
         let intervals_to_skip: u64 = 5;
-        ShrineUtils::advance_prices_and_set_multiplier(
+        ShrineTestUtils::advance_prices_and_set_multiplier(
             shrine, intervals_to_skip, yang1_price, yang2_price, yang3_price,
         );
-        let last_updated_interval_before_start: u64 = ShrineUtils::current_interval();
+        let last_updated_interval_before_start: u64 = ShrineTestUtils::current_interval();
 
         // Advance timestamp to `T+START`.
         let intervals_without_update_before_start: u64 = 10;
         let time_to_skip: u64 = intervals_without_update_before_start * Shrine::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(timestamp);
-        let start_interval: u64 = ShrineUtils::current_interval();
+        let start_interval: u64 = ShrineTestUtils::current_interval();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        ShrineUtils::trove1_forge(shrine, forge_amt);
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = ShrineTestUtils::TROVE1_FORGE_AMT.into();
+        ShrineTestUtils::trove1_forge(shrine, forge_amt);
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
@@ -436,11 +436,11 @@ mod TestShrineCompound {
         let time_to_skip: u64 = intervals_to_last_update_after_start * Shrine::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(timestamp);
-        let last_updated_interval_after_start: u64 = ShrineUtils::current_interval();
+        let last_updated_interval_after_start: u64 = ShrineTestUtils::current_interval();
 
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
@@ -453,7 +453,7 @@ mod TestShrineCompound {
             + intervals_to_last_update_after_start
             + intervals_from_last_update_to_end;
         assert(
-            ShrineUtils::current_interval() == end_interval, 'wrong end interval'
+            ShrineTestUtils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
         shrine.withdraw(yang1_addr, common::TROVE_1, WadZeroable::zero());
@@ -487,8 +487,8 @@ mod TestShrineCompound {
             .into();
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             expected_avg_multiplier,
             start_interval,
             end_interval,
@@ -515,19 +515,19 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn setup_charge_scenario_6() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
+        let yang1_addr = ShrineTestUtils::yang1_addr();
 
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED`
         let intervals_to_skip: u64 = 5;
         let time_to_skip: u64 = intervals_to_skip * Shrine::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(timestamp);
-        let last_updated_interval: u64 = ShrineUtils::current_interval();
+        let last_updated_interval: u64 = ShrineTestUtils::current_interval();
 
         let start_price: Wad = 2222000000000000000000_u128.into(); // 2_222 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
@@ -536,11 +536,11 @@ mod TestShrineCompound {
         let time_to_skip: u64 = intervals_after_last_update_to_start * Shrine::TIME_INTERVAL;
         let timestamp: u64 = get_block_timestamp() + time_to_skip;
         set_block_timestamp(timestamp);
-        let start_interval: u64 = ShrineUtils::current_interval();
+        let start_interval: u64 = ShrineTestUtils::current_interval();
 
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        ShrineUtils::trove1_forge(shrine, forge_amt);
+        ShrineTestUtils::trove1_deposit(shrine, ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into());
+        let forge_amt: Wad = ShrineTestUtils::TROVE1_FORGE_AMT.into();
+        ShrineTestUtils::trove1_forge(shrine, forge_amt);
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
@@ -551,12 +551,12 @@ mod TestShrineCompound {
         set_block_timestamp(timestamp);
         let end_interval: u64 = start_interval + intervals_from_start_to_end;
         assert(
-            ShrineUtils::current_interval() == end_interval, 'wrong end interval'
+            ShrineTestUtils::current_interval() == end_interval, 'wrong end interval'
         ); // sanity check
 
         let end_price: Wad = 2333000000000000000000_u128.into(); // 2_333 (Wad)
         let start_multiplier: Ray = RAY_SCALE.into();
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.advance(yang1_addr, start_price);
         shrine.set_multiplier(start_multiplier);
 
@@ -578,8 +578,8 @@ mod TestShrineCompound {
             .into();
         let expected_avg_multiplier: Ray = RAY_SCALE.into();
 
-        let expected_debt: Wad = ShrineUtils::compound_for_single_yang(
-            ShrineUtils::YANG1_BASE_RATE.into(),
+        let expected_debt: Wad = ShrineTestUtils::compound_for_single_yang(
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
             expected_avg_multiplier,
             start_interval,
             end_interval,
@@ -589,7 +589,7 @@ mod TestShrineCompound {
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
         assert(expected_debt == debt, 'wrong compounded debt');
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.deposit(yang1_addr, common::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }
@@ -599,19 +599,19 @@ mod TestShrineCompound {
     #[test]
     #[available_gas(20000000000)]
     fn test_charge_scenario_7() {
-        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        ShrineUtils::advance_prices_and_set_multiplier(
+        let shrine: IShrineDispatcher = ShrineTestUtils::shrine_setup_with_feed();
+        ShrineTestUtils::advance_prices_and_set_multiplier(
             shrine,
-            ShrineUtils::FEED_LEN,
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into(),
+            ShrineTestUtils::FEED_LEN,
+            ShrineTestUtils::YANG1_START_PRICE.into(),
+            ShrineTestUtils::YANG2_START_PRICE.into(),
+            ShrineTestUtils::YANG3_START_PRICE.into(),
         );
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
-        let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
-        let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
-        let yang3_addr: ContractAddress = ShrineUtils::yang3_addr();
+        let yang1_addr: ContractAddress = ShrineTestUtils::yang1_addr();
+        let yang2_addr: ContractAddress = ShrineTestUtils::yang2_addr();
+        let yang3_addr: ContractAddress = ShrineTestUtils::yang3_addr();
 
         let mut yang_addrs: Array<ContractAddress> = array![yang1_addr, yang2_addr, yang3_addr];
 
@@ -637,9 +637,9 @@ mod TestShrineCompound {
 
         // Add initial base rates for rates history to calculate compound interest
         let mut first_rate_history_to_compound: Array<Ray> = array![
-            ShrineUtils::YANG1_BASE_RATE.into(),
-            ShrineUtils::YANG2_BASE_RATE.into(),
-            ShrineUtils::YANG3_BASE_RATE.into(),
+            ShrineTestUtils::YANG1_BASE_RATE.into(),
+            ShrineTestUtils::YANG2_BASE_RATE.into(),
+            ShrineTestUtils::YANG3_BASE_RATE.into(),
         ];
 
         // For first rate update, yang 1 is updated and yang 2 uses previous base rate
@@ -649,8 +649,8 @@ mod TestShrineCompound {
         ];
         let mut second_rate_history_to_compound: Array<Ray> = array![
             yang1_first_rate_update,
-            ShrineUtils::YANG2_BASE_RATE.into(),
-            ShrineUtils::YANG3_BASE_RATE.into(),
+            ShrineTestUtils::YANG2_BASE_RATE.into(),
+            ShrineTestUtils::YANG3_BASE_RATE.into(),
         ];
 
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
@@ -659,7 +659,9 @@ mod TestShrineCompound {
             (RAY_SCALE + 1).into(), yang2_second_rate_update, (RAY_SCALE + 1).into(),
         ];
         let mut third_rate_history_to_compound: Array<Ray> = array![
-            yang1_first_rate_update, yang2_second_rate_update, ShrineUtils::YANG3_BASE_RATE.into(),
+            yang1_first_rate_update,
+            yang2_second_rate_update,
+            ShrineTestUtils::YANG3_BASE_RATE.into(),
         ];
 
         // For third rate update, yang 1 is updated and yang 2 uses previous base rate
@@ -668,7 +670,9 @@ mod TestShrineCompound {
             yang1_third_rate_update, (RAY_SCALE + 1).into(), (RAY_SCALE + 1).into(),
         ];
         let mut fourth_rate_history_to_compound: Array<Ray> = array![
-            yang1_third_rate_update, yang2_second_rate_update, ShrineUtils::YANG3_BASE_RATE.into(),
+            yang1_third_rate_update,
+            yang2_second_rate_update,
+            ShrineTestUtils::YANG3_BASE_RATE.into(),
         ];
 
         let mut yang_base_rates_history_to_update: Array<Span<Ray>> = array![
@@ -694,7 +698,7 @@ mod TestShrineCompound {
         // the base rates set in `add_yang` and the first base rate update
         let num_eras: u64 = num_base_rate_updates + 1;
         let current_timestamp: u64 = get_block_timestamp();
-        let start_interval: u64 = ShrineUtils::current_interval();
+        let start_interval: u64 = ShrineTestUtils::current_interval();
         let end_interval: u64 = start_interval + BASE_RATE_UPDATE_SPACING * num_eras;
         let charging_period: u64 = end_interval - start_interval;
 
@@ -716,12 +720,12 @@ mod TestShrineCompound {
         let mut avg_yang_prices_by_era: Array<Span<Wad>> = Default::default();
 
         // Deposit yangs into trove and forge debt
-        set_contract_address(ShrineUtils::admin());
-        let yang1_deposit_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
+        set_contract_address(ShrineTestUtils::admin());
+        let yang1_deposit_amt: Wad = ShrineTestUtils::TROVE1_YANG1_DEPOSIT.into();
         shrine.deposit(yang1_addr, common::TROVE_1, yang1_deposit_amt);
-        let yang2_deposit_amt: Wad = ShrineUtils::TROVE1_YANG2_DEPOSIT.into();
+        let yang2_deposit_amt: Wad = ShrineTestUtils::TROVE1_YANG2_DEPOSIT.into();
         shrine.deposit(yang2_addr, common::TROVE_1, yang2_deposit_amt);
-        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
+        let forge_amt: Wad = ShrineTestUtils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, common::TROVE_1, forge_amt, 0_u128.into());
 
         let mut yangs_deposited: Array<Wad> = array![
@@ -751,8 +755,8 @@ mod TestShrineCompound {
 
             // First, we advance an interval so the last price is not overwritten.
             // Next, Advance the prices by the number of intervals between each base rate update
-            ShrineUtils::advance_interval();
-            ShrineUtils::advance_prices_and_set_multiplier(
+            ShrineTestUtils::advance_interval();
+            ShrineTestUtils::advance_prices_and_set_multiplier(
                 shrine, BASE_RATE_UPDATE_SPACING, yang1_price, yang2_price, yang3_price
             );
 
@@ -760,17 +764,17 @@ mod TestShrineCompound {
 
             // Calculate average price of yangs over the era for calculating the compounded interest
             let mut avg_yang_prices_for_era: Array<Wad> = Default::default();
-            let yang1_avg_price: Wad = ShrineUtils::get_avg_yang_price(
+            let yang1_avg_price: Wad = ShrineTestUtils::get_avg_yang_price(
                 shrine, yang1_addr, era_start_interval, era_end_interval
             );
             avg_yang_prices_for_era.append(yang1_avg_price);
 
-            let yang2_avg_price: Wad = ShrineUtils::get_avg_yang_price(
+            let yang2_avg_price: Wad = ShrineTestUtils::get_avg_yang_price(
                 shrine, yang2_addr, era_start_interval, era_end_interval
             );
             avg_yang_prices_for_era.append(yang2_avg_price);
 
-            let yang3_avg_price: Wad = ShrineUtils::get_avg_yang_price(
+            let yang3_avg_price: Wad = ShrineTestUtils::get_avg_yang_price(
                 shrine, yang3_addr, era_start_interval, era_end_interval
             );
             avg_yang_prices_for_era.append(yang3_avg_price);
@@ -787,7 +791,7 @@ mod TestShrineCompound {
                     .pop_front()
                     .unwrap();
 
-                set_contract_address(ShrineUtils::admin());
+                set_contract_address(ShrineTestUtils::admin());
                 shrine.update_rates(yang_addrs.span(), yang_base_rates_to_update);
                 let expected_era: u64 = i + 2;
                 assert(shrine.get_current_rate_era() == expected_era, 'wrong rate era');
@@ -821,7 +825,7 @@ mod TestShrineCompound {
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
 
-        let expected_debt: Wad = ShrineUtils::compound(
+        let expected_debt: Wad = ShrineTestUtils::compound(
             yang_base_rates_history_to_compound.span(),
             rate_update_intervals.span(),
             yangs_deposited.span(),
@@ -834,7 +838,7 @@ mod TestShrineCompound {
 
         assert(debt == expected_debt, 'wrong compounded debt');
 
-        set_contract_address(ShrineUtils::admin());
+        set_contract_address(ShrineTestUtils::admin());
         shrine.withdraw(yang1_addr, common::TROVE_1, WadZeroable::zero());
         assert(shrine.get_total_debt() == expected_debt, 'debt not updated');
     }

@@ -1,4 +1,4 @@
-mod ShrineUtils {
+mod ShrineTestUtils {
     use integer::{
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
