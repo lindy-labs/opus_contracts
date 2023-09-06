@@ -14,12 +14,10 @@ trait IAccessControl<TContractState> {
 }
 
 mod AccessControl {
-    use integer::U128BitNot;
     use starknet::{ContractAddress, get_caller_address, SyscallResultTrait};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::storage_access::{
         StoreContractAddress, StoreU128, StorageBaseAddress, storage_base_address_from_felt252,
-        storage_base_address_const
     };
 
     fn initializer(admin: ContractAddress) {
@@ -119,9 +117,7 @@ mod AccessControl {
 
     fn revoke_role_internal(role: u128, account: ContractAddress) {
         let roles = read_roles(account);
-        // once ~ works as bitnot, use it instead of the long version
-        // let updated_roles = roles & (~role);
-        let updated_roles = roles & (U128BitNot::bitnot(role));
+        let updated_roles = roles & (~role);
         write_roles(account, updated_roles);
         emit_role_revoked(role, account);
     }
@@ -132,18 +128,14 @@ mod AccessControl {
 
     // the read/write via syscalls can go away once we have contract composability in C1
 
-    // get_storage_var_address('__accesscontrol_roles')
-    const ROLES_STORAGE_BASE_ADDR: felt252 =
-        0x2eab78cbab284277f4538b0eec4126e90517b4be096f191d28577583f4b6046;
+    const ROLES_STORAGE_BASE_ADDR: felt252 = selector!("__accesscontrol_roles");
 
-    // get_storage_var_address('__accesscontrol_admin')
     fn admin_storage_base_addr() -> StorageBaseAddress {
-        storage_base_address_const::<0x35dbc6d52d4cf954e68fe9f892062e268d9521a19861f1259bafa16de069420>()
+        storage_base_address_from_felt252(selector!("__accesscontrol_admin"))
     }
 
-    // get_storage_var_address('__accesscontrol_pending_admin')
     fn pending_admin_storage_base_addr() -> StorageBaseAddress {
-        storage_base_address_const::<0x24ad2cfdcaf266992a1f4ef0c3913021bd49409632edab775649f6ee7f650a9>()
+        storage_base_address_from_felt252(selector!("__accesscontrol_pending_admin"))
     }
 
     fn read_admin() -> ContractAddress {
@@ -180,21 +172,10 @@ mod AccessControl {
     // events
     //
 
-    // get_selector_from_name('AdminChanged')
-    const ADMIN_CHANGED_EVENT_KEY: felt252 =
-        0x120650e571756796b93f65826a80b3511d4f3a06808e82cb37407903b09d995;
-
-    // get_selector_from_name('NewPendingAdmin')
-    const NEW_PENDING_ADMIN_EVENT_KEY: felt252 =
-        0x11de12079842d5a0cd483671a1213f7854d77513656c5619ed523787f9bb992;
-
-    // get_selector_from_name('RoleGranted')
-    const ROLE_GRANTED_EVENT_KEY: felt252 =
-        0x9d4a59b844ac9d98627ddba326ab3707a7d7e105fd03c777569d0f61a91f1e;
-
-    // get_selector_from_name('RoleRevoked')
-    const ROLE_REVOKED_EVENT_KEY: felt252 =
-        0x2842fd3b01bb0858fef6a2da51cdd9f995c7d36d7625fb68dd5d69fcc0a6d76;
+    const ADMIN_CHANGED_EVENT_KEY: felt252 = selector!("AdminChanged");
+    const NEW_PENDING_ADMIN_EVENT_KEY: felt252 = selector!("NewPendingAdmin");
+    const ROLE_GRANTED_EVENT_KEY: felt252 = selector!("RoleGranted");
+    const ROLE_REVOKED_EVENT_KEY: felt252 = selector!("RoleRevoked");
 
     // all of the events emitted from this module take up to 2 data values
     // so we pass them separately into `emit`
