@@ -237,7 +237,6 @@ mod PurgerUtils {
 
         // recipient trove has dust amount of the first yang
         // 1 wei (Wad) ETH, 10 (10 ** 8) WBTC
-
         yang_asset_amts_cases.append(array![1_u128, 1000000000_u128].span());
 
         // recipient trove has dust amount of a yang that is not the first yang
@@ -256,7 +255,7 @@ mod PurgerUtils {
         yang_asset_amts_cases.append(target_trove_yang_asset_amts());
 
         // Dust yang case
-        // 10 (Wad) ETH, 5E-8 (WBTC decimals) WBTC
+        // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
         yang_asset_amts_cases.append(array![20 * WAD_ONE, 100_u128].span());
 
         yang_asset_amts_cases.span()

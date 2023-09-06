@@ -287,6 +287,7 @@ mod Purger {
             let (pct_value_to_compensate, ltv_after_compensation) = get_compensation_pct(
                 trove_value, trove_ltv
             );
+
             let trove_penalty: Ray = self
                 .get_absorption_penalty_internal(trove_threshold, trove_ltv, ltv_after_compensation)
                 .expect('PU: Not absorbable');
@@ -299,6 +300,7 @@ mod Purger {
             let value_after_compensation = wadray::rmul_rw(
                 RAY_ONE.into() - pct_value_to_compensate, trove_value
             );
+
             let max_purge_amt: Wad = get_max_close_amount_internal(
                 trove_threshold,
                 ltv_after_compensation,
@@ -341,7 +343,6 @@ mod Purger {
                 // Free collateral corresponding to the purged amount
                 let absorbed_assets: Span<AssetBalance> = self
                     .free(shrine, trove_id, pct_value_to_purge, absorber.contract_address);
-
                 absorber.update(absorbed_assets);
                 self
                     .emit(
@@ -387,7 +388,6 @@ mod Purger {
                 // redistribution
                 self.oracle.read().update_prices();
             }
-
             // Safety check to ensure the new LTV is not worse off
             let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
             assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');

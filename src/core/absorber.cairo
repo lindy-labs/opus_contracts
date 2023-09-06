@@ -815,9 +815,11 @@ mod Absorber {
             let asset_amt_per_share: u128 = wadray::wdiv_internal(
                 total_amount_to_distribute, total_recipient_shares.val
             );
+
             let actual_amount_distributed: u128 = wadray::wmul_internal(
                 asset_amt_per_share, total_recipient_shares.val
             );
+
             let error: u128 = total_amount_to_distribute - actual_amount_distributed;
 
             self

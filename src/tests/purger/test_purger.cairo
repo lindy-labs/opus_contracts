@@ -637,12 +637,82 @@ mod TestPurger {
         );
     }
 
+    // interesting_yang_amts_for_redistributed_trove - 2 = array![20 * WAD_ONE, 100_u128].span()
+    // interesting_yang_amts_for_recipient_trove - 1 = AbsorberUtils::provider_asset_amts()[0] = 20 * WAD_ONE
+    //
+    //
+    // absorber_start_yin = 20 * WAD_ONE
+    // yang_amts_for_redistributed_trove = [20 * WAD_ONE, 100_u128] (20 ETH, 0.00..01 BTC)
+    // yang_amts_for_recipient_trove = [20 * WAD_ONE, 10^8] (20ETH, 1BTC)
+    //
+
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized_isolated() {
+        let mut target_trove_yang_asset_amts: Span<u128> = array![20 * WAD_ONE, 100_u128].span();
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+        let yang_asset_amts: Span<u128> = AbsorberUtils::provider_asset_amts();
+
+        let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+        let mut absorber_yin_cases: Span<Wad> = PurgerUtils::generate_absorber_yin_cases(
+            initial_trove_debt
+        );
+
+        match absorber_yin_cases.pop_front() {
+            Option::Some(absorber_start_yin) => {
+                let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                    PurgerUtils::purger_deploy();
+                let initial_trove_debt: Wad = PurgerUtils::TARGET_TROVE_YIN.into();
+                let target_trove_owner: ContractAddress = PurgerUtils::target_trove_owner();
+                common::fund_user(target_trove_owner, yangs, target_trove_yang_asset_amts);
+                let target_trove: u64 = common::open_trove_helper(
+                    abbot,
+                    target_trove_owner,
+                    yangs,
+                    target_trove_yang_asset_amts,
+                    gates,
+                    initial_trove_debt
+                );
+
+                // Skip interest accrual to facilitate parametrization of 
+                // absorber's yin balance based on target trove's debt
+                //common::advance_intervals(500);
+
+                let (_, _, start_value, before_debt) = shrine.get_trove_info(target_trove);
+
+                let recipient_trove_owner: ContractAddress = AbsorberUtils::provider_1();
+                let recipient_trove: u64 = AbsorberUtils::provide_to_absorber(
+                    shrine,
+                    abbot,
+                    absorber,
+                    recipient_trove_owner,
+                    yangs,
+                    yang_asset_amts,
+                    gates,
+                    *absorber_start_yin,
+                );
+
+                // Make the target trove absorbable
+                let target_ltv: Ray = (Purger::ABSORPTION_THRESHOLD + 1).into();
+                PurgerUtils::adjust_prices_for_trove_ltv(
+                    shrine, mock_pragma, yangs, yang_pair_ids, start_value, before_debt, target_ltv
+                );
+
+                let caller: ContractAddress = PurgerUtils::random_user();
+                set_contract_address(caller);
+                let compensation: Span<AssetBalance> = purger.absorb(target_trove);
+            },
+            Option::None(_) => {},
+        };
+    }
+
     #[test]
     #[available_gas(20000000000)]
     fn test_partial_absorb_with_redistribution_entire_trove_debt_parametrized() {
         let mut target_trove_yang_asset_amts_cases =
             PurgerUtils::interesting_yang_amts_for_redistributed_trove();
         let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
         loop {
             match target_trove_yang_asset_amts_cases.pop_front() {
                 Option::Some(target_trove_yang_asset_amts) => {
@@ -705,6 +775,7 @@ mod TestPurger {
                                             gates,
                                             *absorber_start_yin,
                                         );
+
                                         let before_total_debt: Wad = shrine.get_total_debt();
 
                                         // Make the target trove absorbable
@@ -749,10 +820,12 @@ mod TestPurger {
                                             common::get_token_balances(
                                             yangs, array![caller].span()
                                         );
+
                                         let before_absorber_asset_bals: Span<Span<u128>> =
                                             common::get_token_balances(
                                             yangs, array![absorber.contract_address].span()
                                         );
+
                                         let expected_compensation_value: Wad = purger
                                             .get_compensation(target_trove);
 
