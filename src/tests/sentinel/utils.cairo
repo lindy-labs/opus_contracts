@@ -24,8 +24,8 @@ mod SentinelUtils {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
-    const ETH_ASSET_MAX: u128 = 100000000000000000000; // 100 (wad)
-    const WBTC_ASSET_MAX: u128 = 10000000000; // 100 * 10**8
+    const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
+    const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
 
     #[inline(always)]
     fn admin() -> ContractAddress {

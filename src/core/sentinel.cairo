@@ -10,8 +10,8 @@ mod Sentinel {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::ISentinel;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::YangSuspensionStatus;
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::types::YangSuspensionStatus;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable};
 

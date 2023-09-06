@@ -13,7 +13,7 @@ mod TestSentinel {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::YangSuspensionStatus;
+    use aura::types::YangSuspensionStatus;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WAD_ONE};
 
@@ -87,14 +87,11 @@ mod TestSentinel {
         assert(eth_price == ShrineUtils::YANG1_START_PRICE.into(), 'Wrong yang price #1');
         assert(wbtc_price == ShrineUtils::YANG2_START_PRICE.into(), 'Wrong yang price #2');
 
-        assert(
-            shrine.get_yang_threshold(eth) == ShrineUtils::YANG1_THRESHOLD.into(),
-            'Wrong yang threshold #1'
-        );
-        assert(
-            shrine.get_yang_threshold(wbtc) == ShrineUtils::YANG2_THRESHOLD.into(),
-            'Wrong yang threshold #2'
-        );
+        let (eth_threshold, _) = shrine.get_yang_threshold(eth);
+        assert(eth_threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'Wrong yang threshold #1');
+
+        let (wbtc_threshold, _) = shrine.get_yang_threshold(wbtc);
+        assert(wbtc_threshold == ShrineUtils::YANG2_THRESHOLD.into(), 'Wrong yang threshold #2');
 
         let expected_era: u64 = 1;
         assert(
