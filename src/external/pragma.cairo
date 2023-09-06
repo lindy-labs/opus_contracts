@@ -8,10 +8,7 @@
 #[starknet::contract]
 mod Pragma {
     use array::ArrayTrait;
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use traits::TryInto;
-    use zeroable::Zeroable;
 
     use aura::core::roles::PragmaRoles;
 
@@ -20,10 +17,8 @@ mod Pragma {
     use aura::interfaces::IPragma::IPragma;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::types::Pragma::{
-        DataType, PricesResponse, PriceValidityThresholds, YangSettings
-    };
     use aura::utils::wadray::{fixed_point_to_wad, Wad};
 
     // Helper constant to set the starting index for iterating over the yangs

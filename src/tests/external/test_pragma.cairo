@@ -1,15 +1,13 @@
 #[cfg(test)]
 mod TestPragma {
-    use array::{ArrayTrait, SpanTrait};
+    use array::ArrayTrait;
     use integer::U256Zeroable;
-    use option::OptionTrait;
     use starknet::{
         ContractAddress, contract_address_const, contract_address_try_from_felt252,
         get_block_timestamp
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
 
     use aura::core::roles::PragmaRoles;
     use aura::core::shrine::Shrine;
@@ -21,9 +19,9 @@ mod TestPragma {
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::Pragma::PricesResponse;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::math::pow;
-    use aura::utils::types::Pragma::PricesResponse;
     use aura::utils::wadray;
     use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
 
