@@ -1,7 +1,6 @@
-use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::types::{
+use aura::types::{
     ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
 };
 use aura::utils::wadray::{Ray, Wad};
@@ -10,13 +9,12 @@ use aura::utils::wadray::{Ray, Wad};
 trait IShrine<TContractState> {
     // getters
     fn get_yin(self: @TContractState, user: ContractAddress) -> Wad;
-    fn get_total_yin(self: @TContractState) -> Wad;
-    fn get_yin_spot_price(self: @TContractState) -> Wad;
     fn get_yang_total(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
     fn get_yangs_count(self: @TContractState) -> u32;
     fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
     fn get_total_debt(self: @TContractState) -> Wad;
+    fn get_total_yin(self: @TContractState) -> Wad;
     fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
     fn get_yang_rate(self: @TContractState, yang: ContractAddress, idx: u64) -> Ray;
     fn get_current_rate_era(self: @TContractState) -> u64;
@@ -38,24 +36,22 @@ trait IShrine<TContractState> {
         redistributed_yang: ContractAddress
     ) -> ExceptionalYangRedistribution;
     fn get_live(self: @TContractState) -> bool;
-    // external setters
+    // external
     fn add_yang(
         ref self: TContractState,
         yang: ContractAddress,
         threshold: Ray,
-        initial_price: Wad,
+        price: Wad,
         initial_rate: Ray,
         initial_yang_amt: Wad
     );
+    fn set_debt_ceiling(ref self: TContractState, new_ceiling: Wad);
     fn set_threshold(ref self: TContractState, yang: ContractAddress, new_threshold: Ray);
-    fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
-    fn update_rates(ref self: TContractState, yangs: Span<ContractAddress>, new_rates: Span<Ray>);
+    fn kill(ref self: TContractState);
     fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
     fn set_multiplier(ref self: TContractState, new_multiplier: Ray);
-    fn set_debt_ceiling(ref self: TContractState, new_ceiling: Wad);
     fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
-    fn kill(ref self: TContractState);
-    // external core functions
+    fn update_rates(ref self: TContractState, yang: Span<ContractAddress>, new_rate: Span<Ray>);
     fn deposit(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn withdraw(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
     fn forge(
@@ -75,15 +71,17 @@ trait IShrine<TContractState> {
     );
     fn inject(ref self: TContractState, receiver: ContractAddress, amount: Wad);
     fn eject(ref self: TContractState, burner: ContractAddress, amount: Wad);
+    fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
     // view
     fn get_shrine_threshold_and_value(self: @TContractState) -> (Ray, Wad);
-    fn get_current_yang_price(self: @TContractState, yang: ContractAddress) -> (Wad, Wad, u64);
-    fn get_current_multiplier(self: @TContractState) -> (Ray, Ray, u64);
-    fn get_forge_fee_pct(self: @TContractState) -> Wad;
-    fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
-    fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
     fn get_trove_info(self: @TContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad);
     fn get_redistributions_attributed_to_trove(
         self: @TContractState, trove_id: u64
     ) -> (Span<YangBalance>, Wad);
+    fn get_current_yang_price(self: @TContractState, yang: ContractAddress) -> (Wad, Wad, u64);
+    fn get_current_multiplier(self: @TContractState) -> (Ray, Ray, u64);
+    fn get_yin_spot_price(self: @TContractState) -> Wad;
+    fn get_forge_fee_pct(self: @TContractState) -> Wad;
+    fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
+    fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
 }
