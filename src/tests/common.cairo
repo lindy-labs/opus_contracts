@@ -21,7 +21,7 @@ use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
 //use aura::tests::sentinel::utils::SentinelUtils;
-use aura::tests::shrine::utils::ShrineTestUtils;
+use aura::tests::shrine::utils::ShrineUtils;
 
 //
 // Constants
