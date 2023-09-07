@@ -131,7 +131,7 @@ mod Shrine {
         // (yang_id) -> (suspension timestamp)
         yang_suspension: LegacyMap::<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
-        // NOTE: don't read the value directly, instead use `get_yang_threshold_helper`
+        // NOTE: don't read the value directly, instead use `get_yang_threshold_internal`
         //       because a yang might be suspended; the function will return the correct
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
@@ -336,7 +336,7 @@ mod Shrine {
         // Seeding initial multiplier to the previous interval to ensure `get_recent_multiplier_from` terminates
         // otherwise, the next multiplier update will run into an endless loop of `get_recent_multiplier_from`
         // since it wouldn't find the initial multiplier
-        let prev_interval: u64 = ShrineUtils::now() - 1;
+        let prev_interval: u64 = now() - 1;
         let init_multiplier: Ray = INITIAL_MULTIPLIER.into();
         self.multiplier.write(prev_interval, (init_multiplier, init_multiplier));
 
@@ -386,12 +386,12 @@ mod Shrine {
         }
 
         fn get_yang_total(self: @ContractState, yang: ContractAddress) -> Wad {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_total.read(yang_id)
         }
 
         fn get_initial_yang_amt(self: @ContractState, yang: ContractAddress) -> Wad {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.initial_yang_amts.read(yang_id)
         }
 
@@ -400,7 +400,7 @@ mod Shrine {
         }
 
         fn get_deposit(self: @ContractState, yang: ContractAddress, trove_id: u64) -> Wad {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.deposits.read((yang_id, trove_id))
         }
 
@@ -411,12 +411,12 @@ mod Shrine {
         fn get_yang_price(
             self: @ContractState, yang: ContractAddress, interval: u64
         ) -> (Wad, Wad) {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_prices.read((yang_id, interval))
         }
 
         fn get_yang_rate(self: @ContractState, yang: ContractAddress, idx: u64) -> Ray {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_rates.read((yang_id, idx))
         }
 
@@ -435,8 +435,8 @@ mod Shrine {
         fn get_yang_suspension_status(
             self: @ContractState, yang: ContractAddress
         ) -> YangSuspensionStatus {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
-            ShrineHelpers::get_yang_suspension_status_helper(self, yang_id)
+            let yang_id: u32 = self.get_valid_yang_id(yang);
+            self.get_yang_suspension_status_internal(yang_id)
         }
 
         // Returns a tuple of 
@@ -444,18 +444,17 @@ mod Shrine {
         // 2. The "scaled yang threshold" for recovery mode
         // 1 and 2 will be the same if recovery mode is not in effect
         fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> (Ray, Ray) {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
-            let threshold = ShrineHelpers::get_yang_threshold_helper(self, yang_id);
-            (threshold, ShrineHelpers::scale_threshold_for_recovery_mode(self, threshold))
+            let yang_id: u32 = self.get_valid_yang_id(yang);
+            let threshold = self.get_yang_threshold_internal(yang_id);
+            (threshold, self.scale_threshold_for_recovery_mode(threshold))
         }
 
         // Returns a tuple of 
         // 1. The recovery mode threshold
         // 2. Shrine's LTV
         fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
-            let (liq_threshold, value) = ShrineHelpers::get_threshold_and_value(
-                self, ShrineHelpers::get_shrine_deposits(self), ShrineUtils::now()
-            );
+            let (liq_threshold, value) = self
+                .get_threshold_and_value(self.get_shrine_deposits(), now());
             let debt: Wad = self.total_debt.read();
             let rm_threshold = liq_threshold * RECOVERY_MODE_THRESHOLD_MULTIPLIER.into();
 
@@ -479,7 +478,7 @@ mod Shrine {
         fn get_redistribution_for_yang(
             self: @ContractState, yang: ContractAddress, redistribution_id: u32
         ) -> YangRedistribution {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_redistributions.read((yang_id, redistribution_id))
         }
 
@@ -489,10 +488,8 @@ mod Shrine {
             redistribution_id: u32,
             redistributed_yang: ContractAddress
         ) -> ExceptionalYangRedistribution {
-            let recipient_yang_id: u32 = ShrineHelpers::get_valid_yang_id(self, recipient_yang);
-            let redistributed_yang_id: u32 = ShrineHelpers::get_valid_yang_id(
-                self, redistributed_yang
-            );
+            let recipient_yang_id: u32 = self.get_valid_yang_id(recipient_yang);
+            let redistributed_yang_id: u32 = self.get_valid_yang_id(redistributed_yang);
             self
                 .yang_to_yang_redistribution
                 .read((recipient_yang_id, redistribution_id, redistributed_yang_id))
@@ -521,7 +518,7 @@ mod Shrine {
 
             assert(self.yang_ids.read(yang) == 0, 'SH: Yang already exists');
 
-            ShrineUtils::assert_rate_is_valid(initial_rate);
+            assert_rate_is_valid(initial_rate);
 
             // Assign new ID to yang and add yang struct
             let yang_id: u32 = self.yangs_count.read() + 1;
@@ -531,7 +528,7 @@ mod Shrine {
             self.yangs_count.write(yang_id);
 
             // Set threshold
-            ShrineHelpers::set_threshold_helper(ref self, yang, threshold);
+            self.set_threshold_internal(yang, threshold);
 
             // Update initial yang supply
             // Used upstream to prevent first depositor front running
@@ -540,10 +537,10 @@ mod Shrine {
 
             // Since `start_price` is the first price in the price history, the cumulative price is also set to `start_price`
 
-            let prev_interval: u64 = ShrineUtils::now() - 1;
+            let prev_interval: u64 = now() - 1;
             // seeding initial price to the previous interval to ensure `get_recent_price_from` terminates
             // new prices are pushed to Shrine from an oracle via `advance` and are always set on the current
-            // interval (`ShrineUtils::now()`); if we wouldn't set this initial price to `ShrineUtils::now() - 1` and oracle could
+            // interval (`now()`); if we wouldn't set this initial price to `now() - 1` and oracle could
             // update a price still in the current interval (as oracle update times are independent of
             // Shrine's intervals, a price can be updated multiple times in a single interval) which would
             // result in an endless loop of `get_recent_price_from` since it wouldn't find the initial price
@@ -552,7 +549,7 @@ mod Shrine {
             // Setting the base rate for the new yang
 
             // NOTE: Eras are not incremented when a new yang is added, and the era that is being set
-            // for this base rate will have an interval that is <= ShrineUtils::now(). This would be a problem
+            // for this base rate will have an interval that is <= now(). This would be a problem
             // if there could be a trove containing the newly-added with `trove.last_rate_era < latest_era`.
             // Luckily, this isn't possible because `charge` is called in `deposit`, so a trove's `last_rate_era`
             // will always be updated to `latest_era` immediately before the newly-added yang is deposited.
@@ -568,7 +565,7 @@ mod Shrine {
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
             AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
-            ShrineHelpers::set_threshold_helper(ref self, yang, new_threshold);
+            self.set_threshold_internal(yang, new_threshold);
         }
 
         // Set the timestamp when a Yang's suspension period started
@@ -576,14 +573,11 @@ mod Shrine {
         fn update_yang_suspension(ref self: ContractState, yang: ContractAddress, ts: u64) {
             AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
             assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
-
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(@self, yang);
             assert(
-                ShrineHelpers::get_yang_suspension_status_helper(
-                    @self, yang_id
-                ) != YangSuspensionStatus::Permanent(()),
+                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
                 'SH: Permanent suspension'
             );
+            let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_suspension.write(yang_id, ts);
         }
 
@@ -607,7 +601,7 @@ mod Shrine {
 
             let latest_rate_era: u64 = self.rates_latest_era.read();
             let latest_rate_era_interval: u64 = self.rates_intervals.read(latest_rate_era);
-            let current_interval: u64 = ShrineUtils::now();
+            let current_interval: u64 = now();
 
             // If the interest rates were already updated in the current interval, don't increment the era
             // Otherwise, increment the era
@@ -629,9 +623,8 @@ mod Shrine {
             loop {
                 match new_rates_copy.pop_front() {
                     Option::Some(rate) => {
-                        let current_yang_id: u32 = ShrineHelpers::get_valid_yang_id(
-                            self_snap, *yangs_copy.pop_front().unwrap()
-                        );
+                        let current_yang_id: u32 = self_snap
+                            .get_valid_yang_id(*yangs_copy.pop_front().unwrap());
                         if *rate.val == USE_PREV_BASE_RATE {
                             // Setting new era rate to the previous era's rate
                             self
@@ -641,7 +634,7 @@ mod Shrine {
                                     self_snap.yang_rates.read((current_yang_id, rate_era - 1))
                                 );
                         } else {
-                            ShrineUtils::assert_rate_is_valid(*rate);
+                            assert_rate_is_valid(*rate);
                             self.yang_rates.write((current_yang_id, rate_era), *rate);
                         }
                     },
@@ -678,18 +671,16 @@ mod Shrine {
 
             assert(price.is_non_zero(), 'SH: Price cannot be 0');
 
-            let interval: u64 = ShrineUtils::now();
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(@self, yang);
+            let interval: u64 = now();
+            let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Calculating the new cumulative price
             // To do this, we get the interval of the last price update, find the number of
             // intervals BETWEEN the current interval and the last_interval (non-inclusive), multiply that by
             // the last price, and add it to the last cumulative price. Then we add the new price, `price`,
             // for the current interval.
-            let (last_price, last_cumulative_price, last_interval) =
-                ShrineHelpers::get_recent_price_from(
-                @self, yang_id, interval - 1
-            );
+            let (last_price, last_cumulative_price, last_interval) = self
+                .get_recent_price_from(yang_id, interval - 1);
 
             let cumulative_price: Wad = last_cumulative_price
                 + (last_price.val * (interval - last_interval - 1).into()).into()
@@ -707,11 +698,9 @@ mod Shrine {
             assert(multiplier.is_non_zero(), 'SH: Multiplier cannot be 0');
             assert(multiplier.val <= MAX_MULTIPLIER, 'SH: Multiplier exceeds maximum');
 
-            let interval: u64 = ShrineUtils::now();
-            let (last_multiplier, last_cumulative_multiplier, last_interval) =
-                ShrineHelpers::get_recent_multiplier_from(
-                @self, interval - 1
-            );
+            let interval: u64 = now();
+            let (last_multiplier, last_cumulative_multiplier, last_interval) = self
+                .get_recent_multiplier_from(interval - 1);
 
             let cumulative_multiplier = last_cumulative_multiplier
                 + ((interval - last_interval - 1).into() * last_multiplier.val).into()
@@ -756,11 +745,11 @@ mod Shrine {
         fn deposit(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::DEPOSIT);
 
-            ShrineHelpers::assert_live(@self);
+            self.assert_live();
 
-            ShrineHelpers::charge(ref self, trove_id);
+            self.charge(trove_id);
 
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(@self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Update yang balance of system
             let new_total: Wad = self.yang_total.read(yang_id) + amount;
@@ -780,9 +769,9 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::WITHDRAW);
             // In the event the Shrine is killed, trove users can no longer withdraw yang
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
-            ShrineHelpers::assert_live(@self);
-            ShrineHelpers::withdraw_helper(ref self, yang, trove_id, amount);
-            ShrineHelpers::assert_healthy(@self, trove_id);
+            self.assert_live();
+            self.withdraw_internal(yang, trove_id, amount);
+            self.assert_healthy(trove_id);
         }
 
         // Mint a specified amount of synthetic and attribute the debt to a Trove
@@ -794,9 +783,9 @@ mod Shrine {
             max_forge_fee_pct: Wad
         ) {
             AccessControl::assert_has_role(ShrineRoles::FORGE);
-            ShrineHelpers::assert_live(@self);
+            self.assert_live();
 
-            ShrineHelpers::charge(ref self, trove_id);
+            self.charge(trove_id);
 
             let forge_fee_pct: Wad = self.get_forge_fee_pct();
             assert(forge_fee_pct <= max_forge_fee_pct, 'SH: forge_fee% > max_forge_fee%');
@@ -812,9 +801,9 @@ mod Shrine {
             let mut trove: Trove = self.troves.read(trove_id);
             trove.debt += debt_amount;
             self.troves.write(trove_id, trove);
-            ShrineHelpers::assert_healthy(@self, trove_id);
+            self.assert_healthy(trove_id);
 
-            ShrineHelpers::forge_helper(ref self, user, amount);
+            self.forge_internal(user, amount);
 
             // Events
             self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
@@ -827,10 +816,10 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::MELT);
             // In the event the Shrine is killed, trove users can no longer repay their debt.
             // This also blocks liquidations by Purger.
-            ShrineHelpers::assert_live(@self);
+            self.assert_live();
 
             // Charge interest
-            ShrineHelpers::charge(ref self, trove_id);
+            self.charge(trove_id);
 
             let mut trove: Trove = self.troves.read(trove_id);
 
@@ -846,7 +835,7 @@ mod Shrine {
             self.troves.write(trove_id, trove);
 
             // Update user balance
-            ShrineHelpers::melt_helper(ref self, user, melt_amt);
+            self.melt_internal(user, melt_amt);
 
             // Events
             self.emit(DebtTotalUpdated { total: new_system_debt });
@@ -858,7 +847,7 @@ mod Shrine {
         // even if the trove is still unsafe.
         fn seize(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::SEIZE);
-            ShrineHelpers::withdraw_helper(ref self, yang, trove_id, amount);
+            self.withdraw_internal(yang, trove_id, amount);
         }
 
         fn redistribute(
@@ -869,7 +858,7 @@ mod Shrine {
         ) {
             AccessControl::assert_has_role(ShrineRoles::REDISTRIBUTE);
 
-            let current_interval: u64 = ShrineUtils::now();
+            let current_interval: u64 = now();
 
             // Trove's debt should have been updated to the current interval via `melt` in `Purger.purge`.
             // The trove's debt is used instead of estimated debt from `get_trove_info` to ensure that
@@ -881,14 +870,14 @@ mod Shrine {
             self.redistributions_count.write(redistribution_id);
 
             // Perform redistribution
-            ShrineHelpers::redistribute_helper(
-                ref self,
-                redistribution_id,
-                trove_id,
-                debt_to_redistribute,
-                pct_value_to_redistribute,
-                current_interval
-            );
+            self
+                .redistribute_internal(
+                    redistribution_id,
+                    trove_id,
+                    debt_to_redistribute,
+                    pct_value_to_redistribute,
+                    current_interval
+                );
 
             trove.charge_from = current_interval;
             // Note that this will revert if `debt_to_redistribute` exceeds the trove's debt.
@@ -913,14 +902,14 @@ mod Shrine {
         fn inject(ref self: ContractState, receiver: ContractAddress, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
-            ShrineHelpers::assert_live(@self);
-            ShrineHelpers::forge_helper(ref self, receiver, amount);
+            self.assert_live();
+            self.forge_internal(receiver, amount);
         }
 
         // Repay a specified amount of synthetic without deattributing the debt from a Trove
         fn eject(ref self: ContractState, burner: ContractAddress, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::EJECT);
-            ShrineHelpers::melt_helper(ref self, burner, amount);
+            self.melt_internal(burner, amount);
         }
 
         //
@@ -928,20 +917,18 @@ mod Shrine {
         //
 
         fn get_shrine_threshold_and_value(self: @ContractState) -> (Ray, Wad) {
-            let yang_totals: Span<YangBalance> = ShrineHelpers::get_shrine_deposits(self);
-            ShrineHelpers::get_threshold_and_value(self, yang_totals, ShrineUtils::now())
+            let yang_totals: Span<YangBalance> = self.get_shrine_deposits();
+            self.get_threshold_and_value(yang_totals, now())
         }
 
         // Get the last updated price for a yang
         fn get_current_yang_price(self: @ContractState, yang: ContractAddress) -> (Wad, Wad, u64) {
-            ShrineHelpers::get_recent_price_from(
-                self, ShrineHelpers::get_valid_yang_id(self, yang), ShrineUtils::now()
-            )
+            self.get_recent_price_from(self.get_valid_yang_id(yang), now())
         }
 
         // Gets last updated multiplier value
         fn get_current_multiplier(self: @ContractState) -> (Ray, Ray, u64) {
-            ShrineHelpers::get_recent_multiplier_from(self, ShrineUtils::now())
+            self.get_recent_multiplier_from(now())
         }
 
         // Returns the current forge fee
@@ -990,16 +977,13 @@ mod Shrine {
 
         // Returns a tuple of a trove's threshold, LTV based on compounded debt, trove value and compounded debt
         fn get_trove_info(self: @ContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad) {
-            let interval: u64 = ShrineUtils::now();
+            let interval: u64 = now();
 
             // Get threshold and trove value
-            let trove_yang_balances: Span<YangBalance> = ShrineHelpers::get_trove_deposits(
-                self, trove_id
-            );
-            let (mut threshold, mut value) = ShrineHelpers::get_threshold_and_value(
-                self, trove_yang_balances, interval
-            );
-            threshold = ShrineHelpers::scale_threshold_for_recovery_mode(self, threshold);
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+            let (mut threshold, mut value) = self
+                .get_threshold_and_value(trove_yang_balances, interval);
+            threshold = self.scale_threshold_for_recovery_mode(threshold);
 
             let trove: Trove = self.troves.read(trove_id);
 
@@ -1020,17 +1004,14 @@ mod Shrine {
             }
 
             // Calculate debt
-            let compounded_debt: Wad = ShrineHelpers::compound(self, trove_id, trove, interval);
-            let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt) =
-                ShrineHelpers::pull_redistributed_debt_and_yangs(
-                self, trove_id, trove_yang_balances, compounded_debt
-            );
+            let compounded_debt: Wad = self.compound(trove_id, trove, interval);
+            let (updated_trove_yang_balances, compounded_debt_with_redistributed_debt) = self
+                .pull_redistributed_debt_and_yangs(trove_id, trove_yang_balances, compounded_debt);
 
             if updated_trove_yang_balances.is_some() {
-                let (new_threshold, new_value) = ShrineHelpers::get_threshold_and_value(
-                    self, updated_trove_yang_balances.unwrap(), interval
-                );
-                threshold = ShrineHelpers::scale_threshold_for_recovery_mode(self, new_threshold);
+                let (new_threshold, new_value) = self
+                    .get_threshold_and_value(updated_trove_yang_balances.unwrap(), interval);
+                threshold = self.scale_threshold_for_recovery_mode(new_threshold);
                 value = new_value;
             }
 
@@ -1042,13 +1023,11 @@ mod Shrine {
         fn get_redistributions_attributed_to_trove(
             self: @ContractState, trove_id: u64
         ) -> (Span<YangBalance>, Wad) {
-            let trove_yang_balances: Span<YangBalance> = ShrineHelpers::get_trove_deposits(
-                self, trove_id
-            );
-            let (updated_trove_yang_balances, pulled_debt) =
-                ShrineHelpers::pull_redistributed_debt_and_yangs(
-                self, trove_id, trove_yang_balances, WadZeroable::zero()
-            );
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+            let (updated_trove_yang_balances, pulled_debt) = self
+                .pull_redistributed_debt_and_yangs(
+                    trove_id, trove_yang_balances, WadZeroable::zero()
+                );
 
             let mut added_yangs: Array<YangBalance> = Default::default();
             if updated_trove_yang_balances.is_some() {
@@ -1086,7 +1065,7 @@ mod Shrine {
     //
 
     #[generate_trait]
-    impl ShrineHelpers of ShrineHelpersTrait {
+    impl ShrineInternalFunctions of ShrineInternalFunctionsTrait {
         //
         // Helpers for assertions
         //
@@ -1122,7 +1101,7 @@ mod Shrine {
             if price.is_non_zero() {
                 return (price, cumulative_price, interval);
             }
-            ShrineHelpers::get_recent_price_from(self, yang_id, interval - 1)
+            self.get_recent_price_from(yang_id, interval - 1)
         }
 
         // Returns the multiplier at `interval` if it is non-zero.
@@ -1132,7 +1111,7 @@ mod Shrine {
             if multiplier.is_non_zero() {
                 return (multiplier, cumulative_multiplier, interval);
             }
-            ShrineHelpers::get_recent_multiplier_from(self, interval - 1)
+            self.get_recent_multiplier_from(interval - 1)
         }
 
         // Helper function for applying the recovery mode threshold decrease to a threshold,
@@ -1172,12 +1151,10 @@ mod Shrine {
                 return redistribution.error;
             }
 
-            ShrineHelpers::get_recent_redistribution_error_for_yang(
-                self, yang_id, redistribution_id - 1
-            )
+            self.get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
         }
 
-        fn get_yang_suspension_status_helper(
+        fn get_yang_suspension_status_internal(
             self: @ContractState, yang_id: u32
         ) -> YangSuspensionStatus {
             let suspension_ts: u64 = self.yang_suspension.read(yang_id);
@@ -1192,10 +1169,10 @@ mod Shrine {
             YangSuspensionStatus::Permanent(())
         }
 
-        fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
+        fn get_yang_threshold_internal(self: @ContractState, yang_id: u32) -> Ray {
             let base_threshold: Ray = self.thresholds.read(yang_id);
 
-            match ShrineHelpers::get_yang_suspension_status_helper(self, yang_id) {
+            match self.get_yang_suspension_status_internal(yang_id) {
                 YangSuspensionStatus::None(_) => {
                     base_threshold
                 },
@@ -1268,13 +1245,11 @@ mod Shrine {
                     Option::Some(yang_balance) => {
                         // Update cumulative values only if the yang balance is greater than 0
                         if (*yang_balance.amount).is_non_zero() {
-                            let yang_threshold: Ray = ShrineHelpers::get_yang_threshold_helper(
-                                self, *yang_balance.yang_id
-                            );
+                            let yang_threshold: Ray = self
+                                .get_yang_threshold_internal(*yang_balance.yang_id);
 
-                            let (price, _, _) = ShrineHelpers::get_recent_price_from(
-                                self, *yang_balance.yang_id, interval
-                            );
+                            let (price, _, _) = self
+                                .get_recent_price_from(*yang_balance.yang_id, interval);
 
                             let yang_deposited_value = *yang_balance.amount * price;
                             total_value += yang_deposited_value;
@@ -1302,9 +1277,9 @@ mod Shrine {
         // Helpers for setters
         //
 
-        fn set_threshold_helper(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
+        fn set_threshold_internal(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
             assert(threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
-            self.thresholds.write(ShrineHelpers::get_valid_yang_id(@self, yang), threshold);
+            self.thresholds.write(self.get_valid_yang_id(yang), threshold);
 
             // Event emission
             self.emit(ThresholdUpdated { yang, threshold });
@@ -1314,7 +1289,7 @@ mod Shrine {
         // Helpers for core functions
         //
 
-        fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
+        fn forge_internal(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) + amount);
             self.total_yin.write(self.total_yin.read() + amount);
 
@@ -1326,7 +1301,7 @@ mod Shrine {
                 );
         }
 
-        fn melt_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
+        fn melt_internal(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) - amount);
             self.total_yin.write(self.total_yin.read() - amount);
 
@@ -1339,16 +1314,16 @@ mod Shrine {
         }
 
         // Withdraw a specified amount of a Yang from a Trove
-        fn withdraw_helper(
+        fn withdraw_internal(
             ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad
         ) {
-            let yang_id: u32 = ShrineHelpers::get_valid_yang_id(@self, yang);
+            let yang_id: u32 = self.get_valid_yang_id(yang);
 
             // Fails if amount > amount of yang deposited in the given trove
             let new_trove_balance: Wad = self.deposits.read((yang_id, trove_id)) - amount;
             let new_total: Wad = self.yang_total.read(yang_id) - amount;
 
-            ShrineHelpers::charge(ref self, trove_id);
+            self.charge(trove_id);
 
             self.yang_total.write(yang_id, new_total);
             self.deposits.write((yang_id, trove_id), new_trove_balance);
@@ -1369,21 +1344,17 @@ mod Shrine {
             let trove: Trove = self.troves.read(trove_id);
 
             // Get current interval and yang count
-            let current_interval: u64 = ShrineUtils::now();
+            let current_interval: u64 = now();
 
             // Get new debt amount
-            let compounded_trove_debt: Wad = ShrineHelpers::compound(
-                @self, trove_id, trove, current_interval
-            );
+            let compounded_trove_debt: Wad = self.compound(trove_id, trove, current_interval);
 
             // Pull undistributed debt and update state
-            let trove_yang_balances: Span<YangBalance> = ShrineHelpers::get_trove_deposits(
-                @self, trove_id
-            );
-            let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) =
-                ShrineHelpers::pull_redistributed_debt_and_yangs(
-                @self, trove_id, trove_yang_balances, compounded_trove_debt
-            );
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+            let (updated_trove_yang_balances, compounded_trove_debt_with_redistributed_debt) = self
+                .pull_redistributed_debt_and_yangs(
+                    trove_id, trove_yang_balances, compounded_trove_debt
+                );
 
             // If there was any exceptional redistribution, write updated yang amounts to trove
             if updated_trove_yang_balances.is_some() {
@@ -1454,12 +1425,13 @@ mod Shrine {
             loop {
                 // `trove_last_rate_era` should always be less than or equal to `latest_rate_era`
                 if trove_last_rate_era == latest_rate_era {
-                    let avg_base_rate: Ray = ShrineHelpers::get_avg_rate_over_era(
-                        self, trove_id, start_interval, end_interval, latest_rate_era
-                    );
+                    let avg_base_rate: Ray = self
+                        .get_avg_rate_over_era(
+                            trove_id, start_interval, end_interval, latest_rate_era
+                        );
 
                     let avg_rate: Ray = avg_base_rate
-                        * ShrineHelpers::get_avg_multiplier(self, start_interval, end_interval);
+                        * self.get_avg_multiplier(start_interval, end_interval);
 
                     // represents `t` in the compound interest formula
                     let t: Wad = Wad {
@@ -1472,17 +1444,12 @@ mod Shrine {
                 let next_rate_update_era = trove_last_rate_era + 1;
                 let next_rate_update_era_interval = self.rates_intervals.read(next_rate_update_era);
 
-                let avg_base_rate: Ray = ShrineHelpers::get_avg_rate_over_era(
-                    self,
-                    trove_id,
-                    start_interval,
-                    next_rate_update_era_interval,
-                    trove_last_rate_era
-                );
-                let avg_rate: Ray = avg_base_rate
-                    * ShrineHelpers::get_avg_multiplier(
-                        self, start_interval, next_rate_update_era_interval
+                let avg_base_rate: Ray = self
+                    .get_avg_rate_over_era(
+                        trove_id, start_interval, next_rate_update_era_interval, trove_last_rate_era
                     );
+                let avg_rate: Ray = avg_base_rate
+                    * self.get_avg_multiplier(start_interval, next_rate_update_era_interval);
 
                 let t: Wad = Wad {
                     val: (next_rate_update_era_interval - start_interval).into()
@@ -1528,9 +1495,8 @@ mod Shrine {
                 // Update cumulative values only if this yang has been deposited in the trove
                 if yang_deposited.is_non_zero() {
                     let yang_rate: Ray = self.yang_rates.read((current_yang_id, rate_era));
-                    let avg_price: Wad = ShrineHelpers::get_avg_price(
-                        self, current_yang_id, start_interval, end_interval
-                    );
+                    let avg_price: Wad = self
+                        .get_avg_price(current_yang_id, start_interval, end_interval);
                     let yang_value: Wad = yang_deposited * avg_price;
                     let weighted_rate: Ray = wadray::wmul_wr(yang_value, yang_rate);
 
@@ -1547,14 +1513,10 @@ mod Shrine {
         fn get_avg_price(
             self: @ContractState, yang_id: u32, start_interval: u64, end_interval: u64
         ) -> Wad {
-            let (start_yang_price, start_cumulative_yang_price, available_start_interval) =
-                ShrineHelpers::get_recent_price_from(
-                self, yang_id, start_interval
-            );
-            let (end_yang_price, end_cumulative_yang_price, available_end_interval) =
-                ShrineHelpers::get_recent_price_from(
-                self, yang_id, end_interval
-            );
+            let (start_yang_price, start_cumulative_yang_price, available_start_interval) = self
+                .get_recent_price_from(yang_id, start_interval);
+            let (end_yang_price, end_cumulative_yang_price, available_end_interval) = self
+                .get_recent_price_from(yang_id, end_interval);
 
             // If the last available price for both start and end intervals are the same,
             // return that last available price
@@ -1597,14 +1559,10 @@ mod Shrine {
         // - If `start_interval` is different from `end_interval`, return the average.
         // Return value is a tuple so that function can be modified as an external view for testing
         fn get_avg_multiplier(self: @ContractState, start_interval: u64, end_interval: u64) -> Ray {
-            let (start_multiplier, start_cumulative_multiplier, available_start_interval) =
-                ShrineHelpers::get_recent_multiplier_from(
-                self, start_interval
-            );
-            let (end_multiplier, end_cumulative_multiplier, available_end_interval) =
-                ShrineHelpers::get_recent_multiplier_from(
-                self, end_interval
-            );
+            let (start_multiplier, start_cumulative_multiplier, available_start_interval) = self
+                .get_recent_multiplier_from(start_interval);
+            let (end_multiplier, end_cumulative_multiplier, available_end_interval) = self
+                .get_recent_multiplier_from(end_interval);
 
             // If the last available multiplier for both start and end intervals are the same,
             // return that last available multiplier
@@ -1659,7 +1617,7 @@ mod Shrine {
         // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
         // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from
         // the trove.
-        fn redistribute_helper(
+        fn redistribute_internal(
             ref self: ContractState,
             redistribution_id: u32,
             trove_id: u64,
@@ -1726,20 +1684,15 @@ mod Shrine {
             let mut new_yang_totals: Array<YangBalance> = Default::default();
             let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
 
-            let trove_yang_balances: Span<YangBalance> = ShrineHelpers::get_trove_deposits(
-                self_snap, trove_id
-            );
-            let (_, trove_value) = ShrineHelpers::get_threshold_and_value(
-                self_snap, trove_yang_balances, current_interval
-            );
+            let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
+            let (_, trove_value) = self
+                .get_threshold_and_value(trove_yang_balances, current_interval);
             let trove_value_to_redistribute: Wad = wadray::rmul_wr(
                 trove_value, pct_value_to_redistribute
             );
 
-            let yang_totals: Span<YangBalance> = ShrineHelpers::get_shrine_deposits(@self);
-            let (_, shrine_value) = ShrineHelpers::get_threshold_and_value(
-                self_snap, yang_totals, current_interval
-            );
+            let yang_totals: Span<YangBalance> = self.get_shrine_deposits();
+            let (_, shrine_value) = self.get_threshold_and_value(yang_totals, current_interval);
             // Note the initial yang amount is not excluded from the value of all other troves
             // here (it will also be more expensive if we want to do so). Therefore, when
             // calculating a yang's total value as a percentage of the total value of all
@@ -1787,9 +1740,8 @@ mod Shrine {
 
                         // Calculate the actual amount of debt that should be redistributed, including any
                         // rounding of dust amounts of debt.
-                        let (redistributed_yang_price, _, _) = ShrineHelpers::get_recent_price_from(
-                            self_snap, yang_id_to_redistribute, current_interval
-                        );
+                        let (redistributed_yang_price, _, _) = self_snap
+                            .get_recent_price_from(yang_id_to_redistribute, current_interval);
 
                         let mut raw_debt_to_distribute_for_yang: Wad = WadZeroable::zero();
                         let mut debt_to_distribute_for_yang: Wad = WadZeroable::zero();
@@ -1802,7 +1754,7 @@ mod Shrine {
                             raw_debt_to_distribute_for_yang =
                                 wadray::rmul_rw(yang_debt_pct, debt_to_redistribute);
                             let (tmp_debt_to_distribute_for_yang, updated_redistributed_debt) =
-                                ShrineUtils::round_distributed_debt(
+                                round_distributed_debt(
                                 debt_to_redistribute,
                                 raw_debt_to_distribute_for_yang,
                                 redistributed_debt
@@ -1825,10 +1777,10 @@ mod Shrine {
                         };
 
                         // Adjust debt to distribute by adding the error from the last redistribution
-                        let last_error: Wad =
-                            ShrineHelpers::get_recent_redistribution_error_for_yang(
-                            self_snap, yang_id_to_redistribute, redistribution_id - 1
-                        );
+                        let last_error: Wad = self_snap
+                            .get_recent_redistribution_error_for_yang(
+                                yang_id_to_redistribute, redistribution_id - 1
+                            );
                         let adjusted_debt_to_distribute_for_yang: Wad = debt_to_distribute_for_yang
                             + last_error;
 
@@ -1958,10 +1910,10 @@ mod Shrine {
                                             continue;
                                         }
 
-                                        let (recipient_yang_price, _, _) =
-                                            ShrineHelpers::get_recent_price_from(
-                                            self_snap, *recipient_yang.yang_id, current_interval
-                                        );
+                                        let (recipient_yang_price, _, _) = self_snap
+                                            .get_recent_price_from(
+                                                *recipient_yang.yang_id, current_interval
+                                            );
 
                                         // Note that we include the initial yang amount here to calculate the percentage
                                         // because the total Shrine value will include the initial yang amounts too
@@ -2292,40 +2244,34 @@ mod Shrine {
     // Internal functions for Shrine that do not access storage
     // 
 
-    #[generate_trait]
-    impl ShrineUtils of ShrineUtilsTrait {
-        #[inline(always)]
-        fn now() -> u64 {
-            starknet::get_block_timestamp() / TIME_INTERVAL
+    #[inline(always)]
+    fn now() -> u64 {
+        starknet::get_block_timestamp() / TIME_INTERVAL
+    }
+
+    // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
+    fn assert_rate_is_valid(rate: Ray) {
+        assert((0 < rate.val) & (rate.val <= MAX_YANG_RATE), 'SH: Rate out of bounds');
+    }
+
+    // Helper function to round up the debt to be redistributed for a yang if the remaining debt
+    // falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
+    // of debt redistributed is equal to amount intended to be redistributed
+    fn round_distributed_debt(
+        total_debt_to_distribute: Wad, debt_to_distribute: Wad, cumulative_redistributed_debt: Wad
+    ) -> (Wad, Wad) {
+        let updated_cumulative_redistributed_debt = cumulative_redistributed_debt
+            + debt_to_distribute;
+        let remaining_debt: Wad = total_debt_to_distribute - updated_cumulative_redistributed_debt;
+
+        if remaining_debt.val <= ROUNDING_THRESHOLD {
+            return (
+                debt_to_distribute + remaining_debt,
+                updated_cumulative_redistributed_debt + remaining_debt
+            );
         }
 
-        // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
-        fn assert_rate_is_valid(rate: Ray) {
-            assert((0 < rate.val) & (rate.val <= MAX_YANG_RATE), 'SH: Rate out of bounds');
-        }
-
-        // Helper function to round up the debt to be redistributed for a yang if the remaining debt
-        // falls below the defined threshold, so as to avoid rounding errors and ensure that the amount
-        // of debt redistributed is equal to amount intended to be redistributed
-        fn round_distributed_debt(
-            total_debt_to_distribute: Wad,
-            debt_to_distribute: Wad,
-            cumulative_redistributed_debt: Wad
-        ) -> (Wad, Wad) {
-            let updated_cumulative_redistributed_debt = cumulative_redistributed_debt
-                + debt_to_distribute;
-            let remaining_debt: Wad = total_debt_to_distribute
-                - updated_cumulative_redistributed_debt;
-
-            if remaining_debt.val <= ROUNDING_THRESHOLD {
-                return (
-                    debt_to_distribute + remaining_debt,
-                    updated_cumulative_redistributed_debt + remaining_debt
-                );
-            }
-
-            (debt_to_distribute, updated_cumulative_redistributed_debt)
-        }
+        (debt_to_distribute, updated_cumulative_redistributed_debt)
     }
 
     //
@@ -2363,7 +2309,7 @@ mod Shrine {
 
         // ERC20 public functions
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
-            ERC20Helpers::transfer_helper(ref self, get_caller_address(), recipient, amount);
+            self.transfer_internal(get_caller_address(), recipient, amount);
             true
         }
 
@@ -2373,13 +2319,13 @@ mod Shrine {
             recipient: ContractAddress,
             amount: u256
         ) -> bool {
-            ERC20Helpers::spend_allowance_helper(ref self, sender, get_caller_address(), amount);
-            ERC20Helpers::transfer_helper(ref self, sender, recipient, amount);
+            self.spend_allowance_internal(sender, get_caller_address(), amount);
+            self.transfer_internal(sender, recipient, amount);
             true
         }
 
         fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
-            ERC20Helpers::approve_helper(ref self, get_caller_address(), spender, amount);
+            self.approve_internal(get_caller_address(), spender, amount);
             true
         }
     }
@@ -2389,8 +2335,8 @@ mod Shrine {
     //
 
     #[generate_trait]
-    impl ERC20Helpers of ERC20HelpersTrait {
-        fn transfer_helper(
+    impl ERC20InternalFunctions of ERC20InternalTrait {
+        fn transfer_internal(
             ref self: ContractState,
             sender: ContractAddress,
             recipient: ContractAddress,
@@ -2407,7 +2353,7 @@ mod Shrine {
             self.emit(Transfer { from: sender, to: recipient, value: amount });
         }
 
-        fn approve_helper(
+        fn approve_internal(
             ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
         ) {
             assert(spender.is_non_zero(), 'SH: No approval of 0 address');
@@ -2418,7 +2364,7 @@ mod Shrine {
             self.emit(Approval { owner, spender, value: amount });
         }
 
-        fn spend_allowance_helper(
+        fn spend_allowance_internal(
             ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
         ) {
             let current_allowance: u256 = self.yin_allowances.read((owner, spender));
@@ -2426,7 +2372,7 @@ mod Shrine {
             // if current_allowance is not set to the maximum u256, then
             // subtract `amount` from spender's allowance.
             if current_allowance != BoundedU256::max() {
-                ERC20Helpers::approve_helper(ref self, owner, spender, current_allowance - amount);
+                self.approve_internal(owner, spender, current_allowance - amount);
             }
         }
     }
