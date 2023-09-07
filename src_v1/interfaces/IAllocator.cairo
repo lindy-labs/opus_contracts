@@ -1,13 +1,13 @@
+use array::SpanTrait;
 use starknet::ContractAddress;
 
+use aura::utils::serde::SpanSerde;
 use aura::utils::wadray::Ray;
 
-#[starknet::interface]
-trait IAllocator<TContractState> {
+#[abi]
+trait IAllocator {
     // getter
-    fn get_allocation(self: @TContractState) -> (Span<ContractAddress>, Span<Ray>);
+    fn get_allocation() -> (Span<ContractAddress>, Span<Ray>);
     // external
-    fn set_allocation(
-        ref self: TContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>
-    );
+    fn set_allocation(recipients: Span<ContractAddress>, percentages: Span<Ray>);
 }
