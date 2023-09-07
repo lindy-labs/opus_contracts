@@ -131,7 +131,7 @@ mod Shrine {
         // (yang_id) -> (suspension timestamp)
         yang_suspension: LegacyMap::<u32, u64>,
         // Liquidation threshold per yang (as LTV) - Ray
-        // NOTE: don't read the value directly, instead use `get_yang_threshold_internal`
+        // NOTE: don't read the value directly, instead use `get_yang_threshold_helper`
         //       because a yang might be suspended; the function will return the correct
         //       threshold value under all circumstances
         // (yang_id) -> (Liquidation Threshold)
@@ -329,7 +329,7 @@ mod Shrine {
         AccessControl::initializer(admin);
 
         // Grant admin permission
-        AccessControl::grant_role_internal(ShrineRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(ShrineRoles::default_admin_role(), admin);
 
         self.is_live.write(true);
 
@@ -436,7 +436,7 @@ mod Shrine {
             self: @ContractState, yang: ContractAddress
         ) -> YangSuspensionStatus {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.get_yang_suspension_status_internal(yang_id)
+            self.get_yang_suspension_status_helper(yang_id)
         }
 
         // Returns a tuple of 
@@ -445,7 +445,7 @@ mod Shrine {
         // 1 and 2 will be the same if recovery mode is not in effect
         fn get_yang_threshold(self: @ContractState, yang: ContractAddress) -> (Ray, Ray) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            let threshold = self.get_yang_threshold_internal(yang_id);
+            let threshold = self.get_yang_threshold_helper(yang_id);
             (threshold, self.scale_threshold_for_recovery_mode(threshold))
         }
 
@@ -528,7 +528,7 @@ mod Shrine {
             self.yangs_count.write(yang_id);
 
             // Set threshold
-            self.set_threshold_internal(yang, threshold);
+            self.set_threshold_helper(yang, threshold);
 
             // Update initial yang supply
             // Used upstream to prevent first depositor front running
@@ -565,7 +565,7 @@ mod Shrine {
         fn set_threshold(ref self: ContractState, yang: ContractAddress, new_threshold: Ray) {
             AccessControl::assert_has_role(ShrineRoles::SET_THRESHOLD);
 
-            self.set_threshold_internal(yang, new_threshold);
+            self.set_threshold_helper(yang, new_threshold);
         }
 
         // Set the timestamp when a Yang's suspension period started
@@ -770,7 +770,7 @@ mod Shrine {
             // In the event the Shrine is killed, trove users can no longer withdraw yang
             // via the Abbot. Withdrawal of excess yang will be via the Caretaker instead.
             self.assert_live();
-            self.withdraw_internal(yang, trove_id, amount);
+            self.withdraw_helper(yang, trove_id, amount);
             self.assert_healthy(trove_id);
         }
 
@@ -803,7 +803,7 @@ mod Shrine {
             self.troves.write(trove_id, trove);
             self.assert_healthy(trove_id);
 
-            self.forge_internal(user, amount);
+            self.forge_helper(user, amount);
 
             // Events
             self.emit(ForgeFeePaid { trove_id, fee: forge_fee, fee_pct: forge_fee_pct });
@@ -835,7 +835,7 @@ mod Shrine {
             self.troves.write(trove_id, trove);
 
             // Update user balance
-            self.melt_internal(user, melt_amt);
+            self.melt_helper(user, melt_amt);
 
             // Events
             self.emit(DebtTotalUpdated { total: new_system_debt });
@@ -847,7 +847,7 @@ mod Shrine {
         // even if the trove is still unsafe.
         fn seize(ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::SEIZE);
-            self.withdraw_internal(yang, trove_id, amount);
+            self.withdraw_helper(yang, trove_id, amount);
         }
 
         fn redistribute(
@@ -871,7 +871,7 @@ mod Shrine {
 
             // Perform redistribution
             self
-                .redistribute_internal(
+                .redistribute_helper(
                     redistribution_id,
                     trove_id,
                     debt_to_redistribute,
@@ -903,13 +903,13 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::INJECT);
             // Prevent any debt creation, including via flash mints, once the Shrine is killed
             self.assert_live();
-            self.forge_internal(receiver, amount);
+            self.forge_helper(receiver, amount);
         }
 
         // Repay a specified amount of synthetic without deattributing the debt from a Trove
         fn eject(ref self: ContractState, burner: ContractAddress, amount: Wad) {
             AccessControl::assert_has_role(ShrineRoles::EJECT);
-            self.melt_internal(burner, amount);
+            self.melt_helper(burner, amount);
         }
 
         //
@@ -1154,7 +1154,7 @@ mod Shrine {
             self.get_recent_redistribution_error_for_yang(yang_id, redistribution_id - 1)
         }
 
-        fn get_yang_suspension_status_internal(
+        fn get_yang_suspension_status_helper(
             self: @ContractState, yang_id: u32
         ) -> YangSuspensionStatus {
             let suspension_ts: u64 = self.yang_suspension.read(yang_id);
@@ -1169,10 +1169,10 @@ mod Shrine {
             YangSuspensionStatus::Permanent(())
         }
 
-        fn get_yang_threshold_internal(self: @ContractState, yang_id: u32) -> Ray {
+        fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
             let base_threshold: Ray = self.thresholds.read(yang_id);
 
-            match self.get_yang_suspension_status_internal(yang_id) {
+            match self.get_yang_suspension_status_helper(yang_id) {
                 YangSuspensionStatus::None(_) => {
                     base_threshold
                 },
@@ -1246,7 +1246,7 @@ mod Shrine {
                         // Update cumulative values only if the yang balance is greater than 0
                         if (*yang_balance.amount).is_non_zero() {
                             let yang_threshold: Ray = self
-                                .get_yang_threshold_internal(*yang_balance.yang_id);
+                                .get_yang_threshold_helper(*yang_balance.yang_id);
 
                             let (price, _, _) = self
                                 .get_recent_price_from(*yang_balance.yang_id, interval);
@@ -1277,7 +1277,7 @@ mod Shrine {
         // Helpers for setters
         //
 
-        fn set_threshold_internal(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
+        fn set_threshold_helper(ref self: ContractState, yang: ContractAddress, threshold: Ray) {
             assert(threshold.val <= MAX_THRESHOLD, 'SH: Threshold > max');
             self.thresholds.write(self.get_valid_yang_id(yang), threshold);
 
@@ -1289,7 +1289,7 @@ mod Shrine {
         // Helpers for core functions
         //
 
-        fn forge_internal(ref self: ContractState, user: ContractAddress, amount: Wad) {
+        fn forge_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) + amount);
             self.total_yin.write(self.total_yin.read() + amount);
 
@@ -1301,7 +1301,7 @@ mod Shrine {
                 );
         }
 
-        fn melt_internal(ref self: ContractState, user: ContractAddress, amount: Wad) {
+        fn melt_helper(ref self: ContractState, user: ContractAddress, amount: Wad) {
             self.yin.write(user, self.yin.read(user) - amount);
             self.total_yin.write(self.total_yin.read() - amount);
 
@@ -1314,7 +1314,7 @@ mod Shrine {
         }
 
         // Withdraw a specified amount of a Yang from a Trove
-        fn withdraw_internal(
+        fn withdraw_helper(
             ref self: ContractState, yang: ContractAddress, trove_id: u64, amount: Wad
         ) {
             let yang_id: u32 = self.get_valid_yang_id(yang);
@@ -1617,7 +1617,7 @@ mod Shrine {
         // Note that this internal function will revert if `pct_value_to_redistribute` exceeds
         // one Ray (100%), due to an overflow when deducting the redistributed amount of yang from
         // the trove.
-        fn redistribute_internal(
+        fn redistribute_helper(
             ref self: ContractState,
             redistribution_id: u32,
             trove_id: u64,
@@ -2309,7 +2309,7 @@ mod Shrine {
 
         // ERC20 public functions
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
-            self.transfer_internal(get_caller_address(), recipient, amount);
+            self.transfer_helper(get_caller_address(), recipient, amount);
             true
         }
 
@@ -2319,13 +2319,13 @@ mod Shrine {
             recipient: ContractAddress,
             amount: u256
         ) -> bool {
-            self.spend_allowance_internal(sender, get_caller_address(), amount);
-            self.transfer_internal(sender, recipient, amount);
+            self.spend_allowance_helper(sender, get_caller_address(), amount);
+            self.transfer_helper(sender, recipient, amount);
             true
         }
 
         fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
-            self.approve_internal(get_caller_address(), spender, amount);
+            self.approve_helper(get_caller_address(), spender, amount);
             true
         }
     }
@@ -2336,7 +2336,7 @@ mod Shrine {
 
     #[generate_trait]
     impl ERC20InternalFunctions of ERC20InternalTrait {
-        fn transfer_internal(
+        fn transfer_helper(
             ref self: ContractState,
             sender: ContractAddress,
             recipient: ContractAddress,
@@ -2353,7 +2353,7 @@ mod Shrine {
             self.emit(Transfer { from: sender, to: recipient, value: amount });
         }
 
-        fn approve_internal(
+        fn approve_helper(
             ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
         ) {
             assert(spender.is_non_zero(), 'SH: No approval of 0 address');
@@ -2364,7 +2364,7 @@ mod Shrine {
             self.emit(Approval { owner, spender, value: amount });
         }
 
-        fn spend_allowance_internal(
+        fn spend_allowance_helper(
             ref self: ContractState, owner: ContractAddress, spender: ContractAddress, amount: u256
         ) {
             let current_allowance: u256 = self.yin_allowances.read((owner, spender));
@@ -2372,7 +2372,7 @@ mod Shrine {
             // if current_allowance is not set to the maximum u256, then
             // subtract `amount` from spender's allowance.
             if current_allowance != BoundedU256::max() {
-                self.approve_internal(owner, spender, current_allowance - amount);
+                self.approve_helper(owner, spender, current_allowance - amount);
             }
         }
     }
