@@ -1,11 +1,10 @@
-use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::serde::SpanSerde;
-
-#[abi]
-trait IFlashBorrower {
+#[starknet::interface]
+trait IFlashBorrower<TContractState> {
+    // external
     fn on_flash_loan(
+        ref self: TContractState,
         initiator: ContractAddress,
         token: ContractAddress,
         amount: u256,

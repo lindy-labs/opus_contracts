@@ -1,45 +1,55 @@
 use starknet::ContractAddress;
 
-use aura::utils::serde;
-use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
 use aura::utils::wadray::{Ray, Wad};
 
-#[abi]
-trait IAbsorber {
-    // view
-    fn get_rewards_count() -> u8;
-    fn get_rewards() -> Span<Reward>;
-    fn get_current_epoch() -> u32;
-    fn get_absorptions_count() -> u32;
-    fn get_absorption_epoch(absorption_id: u32) -> u32;
-    fn get_total_shares_for_current_epoch() -> Wad;
-    fn get_provision(provider: ContractAddress) -> Provision;
-    fn get_provider_last_absorption(provider: ContractAddress) -> u32;
-    fn get_provider_request(provider: ContractAddress) -> Request;
-    fn get_asset_absorption(asset: ContractAddress, absorption_id: u32) -> DistributionInfo;
-    fn get_cumulative_reward_amt_by_epoch(asset: ContractAddress, epoch: u32) -> DistributionInfo;
+#[starknet::interface]
+trait IAbsorber<TContractState> {
+    // getters
+    fn get_rewards_count(self: @TContractState) -> u8;
+    fn get_rewards(self: @TContractState) -> Span<Reward>;
+    fn get_current_epoch(self: @TContractState) -> u32;
+    fn get_absorptions_count(self: @TContractState) -> u32;
+    fn get_absorption_epoch(self: @TContractState, absorption_id: u32) -> u32;
+    fn get_total_shares_for_current_epoch(self: @TContractState) -> Wad;
+    fn get_provision(self: @TContractState, provider: ContractAddress) -> Provision;
+    fn get_provider_last_absorption(self: @TContractState, provider: ContractAddress) -> u32;
+    fn get_provider_request(self: @TContractState, provider: ContractAddress) -> Request;
+    fn get_asset_absorption(
+        self: @TContractState, asset: ContractAddress, absorption_id: u32
+    ) -> DistributionInfo;
+    fn get_cumulative_reward_amt_by_epoch(
+        self: @TContractState, asset: ContractAddress, epoch: u32
+    ) -> DistributionInfo;
     fn get_provider_last_reward_cumulative(
-        provider: ContractAddress, asset: ContractAddress
+        self: @TContractState, provider: ContractAddress, asset: ContractAddress
     ) -> u128;
-    fn get_removal_limit() -> Ray;
-    fn get_live() -> bool;
-    fn preview_remove(provider: ContractAddress) -> Wad;
-    fn preview_reap(provider: ContractAddress) -> (Span<AssetBalance>, Span<AssetBalance>);
+    fn get_removal_limit(self: @TContractState) -> Ray;
+    fn get_live(self: @TContractState) -> bool;
     // external
-    fn set_reward(asset: ContractAddress, blesser: ContractAddress, is_active: bool);
-    fn set_removal_limit(limit: Ray);
-    fn provide(amount: Wad);
-    fn request();
-    fn remove(amount: Wad);
-    fn reap();
-    fn update(asset_balances: Span<AssetBalance>);
-    fn kill();
+    fn set_reward(
+        ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool
+    );
+    fn set_removal_limit(ref self: TContractState, limit: Ray);
+    fn provide(ref self: TContractState, amount: Wad);
+    fn request(ref self: TContractState);
+    fn remove(ref self: TContractState, amount: Wad);
+    fn reap(ref self: TContractState);
+    fn update(ref self: TContractState, asset_balances: Span<AssetBalance>);
+    fn kill(ref self: TContractState);
+    // view
+    fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
+    fn preview_reap(
+        self: @TContractState, provider: ContractAddress
+    ) -> (Span<AssetBalance>, Span<AssetBalance>);
 }
 
-#[abi]
-trait IBlesser {
+#[starknet::interface]
+trait IBlesser<TContractState> {
+    // external
     // If no reward tokens are to be distributed to the absorber, `preview_bless` and `bless`
     // should return 0 instead of reverting.
-    fn bless() -> u128;
-    fn preview_bless() -> u128;
+    fn bless(ref self: TContractState) -> u128;
+    // view
+    fn preview_bless(self: @TContractState) -> u128;
 }

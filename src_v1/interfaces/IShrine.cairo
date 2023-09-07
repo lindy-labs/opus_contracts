@@ -1,66 +1,87 @@
-use array::SpanTrait;
 use starknet::ContractAddress;
 
-use aura::utils::serde;
-use aura::utils::types::{
+use aura::types::{
     ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
 };
 use aura::utils::wadray::{Ray, Wad};
 
-#[abi]
-trait IShrine {
+#[starknet::interface]
+trait IShrine<TContractState> {
     // getters
-    fn get_yin(user: ContractAddress) -> Wad;
-    fn get_yang_total(yang: ContractAddress) -> Wad;
-    fn get_initial_yang_amt(yang: ContractAddress) -> Wad;
-    fn get_yangs_count() -> u32;
-    fn get_deposit(yang: ContractAddress, trove_id: u64) -> Wad;
-    fn get_total_debt() -> Wad;
-    fn get_total_yin() -> Wad;
-    fn get_yang_price(yang: ContractAddress, interval: u64) -> (Wad, Wad);
-    fn get_yang_rate(yang: ContractAddress, idx: u64) -> Ray;
-    fn get_current_rate_era() -> u64;
-    fn get_debt_ceiling() -> Wad;
-    fn get_multiplier(interval: u64) -> (Ray, Ray);
-    fn get_yang_suspension_status(yang: ContractAddress) -> YangSuspensionStatus;
-    fn get_yang_threshold(yang: ContractAddress) -> Ray;
-    fn get_redistributions_count() -> u32;
-    fn get_trove_redistribution_id(trove_id: u64) -> u32;
+    fn get_yin(self: @TContractState, user: ContractAddress) -> Wad;
+    fn get_yang_total(self: @TContractState, yang: ContractAddress) -> Wad;
+    fn get_initial_yang_amt(self: @TContractState, yang: ContractAddress) -> Wad;
+    fn get_yangs_count(self: @TContractState) -> u32;
+    fn get_deposit(self: @TContractState, yang: ContractAddress, trove_id: u64) -> Wad;
+    fn get_total_debt(self: @TContractState) -> Wad;
+    fn get_total_yin(self: @TContractState) -> Wad;
+    fn get_yang_price(self: @TContractState, yang: ContractAddress, interval: u64) -> (Wad, Wad);
+    fn get_yang_rate(self: @TContractState, yang: ContractAddress, idx: u64) -> Ray;
+    fn get_current_rate_era(self: @TContractState) -> u64;
+    fn get_debt_ceiling(self: @TContractState) -> Wad;
+    fn get_multiplier(self: @TContractState, interval: u64) -> (Ray, Ray);
+    fn get_yang_suspension_status(
+        self: @TContractState, yang: ContractAddress
+    ) -> YangSuspensionStatus;
+    fn get_yang_threshold(self: @TContractState, yang: ContractAddress) -> Ray;
+    fn get_redistributions_count(self: @TContractState) -> u32;
+    fn get_trove_redistribution_id(self: @TContractState, trove_id: u64) -> u32;
     fn get_redistribution_for_yang(
-        yang: ContractAddress, redistribution_id: u32
+        self: @TContractState, yang: ContractAddress, redistribution_id: u32
     ) -> YangRedistribution;
     fn get_exceptional_redistribution_for_yang_to_yang(
-        recipient_yang: ContractAddress, redistribution_id: u32, redistributed_yang: ContractAddress
+        self: @TContractState,
+        recipient_yang: ContractAddress,
+        redistribution_id: u32,
+        redistributed_yang: ContractAddress
     ) -> ExceptionalYangRedistribution;
-    fn get_live() -> bool;
+    fn get_live(self: @TContractState) -> bool;
     // external
     fn add_yang(
-        yang: ContractAddress, threshold: Ray, price: Wad, initial_rate: Ray, initial_yang_amt: Wad
+        ref self: TContractState,
+        yang: ContractAddress,
+        threshold: Ray,
+        price: Wad,
+        initial_rate: Ray,
+        initial_yang_amt: Wad
     );
-    fn set_debt_ceiling(new_ceiling: Wad);
-    fn set_threshold(yang: ContractAddress, new_threshold: Ray);
-    fn kill();
-    fn advance(yang: ContractAddress, price: Wad);
-    fn set_multiplier(new_multiplier: Ray);
-    fn update_yin_spot_price(new_price: Wad);
-    fn update_rates(yang: Span<ContractAddress>, new_rate: Span<Ray>);
-    fn deposit(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn withdraw(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn forge(user: ContractAddress, trove_id: u64, amount: Wad, max_forge_fee_pct: Wad);
-    fn melt(user: ContractAddress, trove_id: u64, amount: Wad);
-    fn seize(yang: ContractAddress, trove_id: u64, amount: Wad);
-    fn redistribute(trove_id: u64, debt_to_redistribute: Wad, pct_value_to_redistribute: Ray);
-    fn inject(receiver: ContractAddress, amount: Wad);
-    fn eject(burner: ContractAddress, amount: Wad);
-    fn update_yang_suspension(yang: ContractAddress, ts: u64);
+    fn set_debt_ceiling(ref self: TContractState, new_ceiling: Wad);
+    fn set_threshold(ref self: TContractState, yang: ContractAddress, new_threshold: Ray);
+    fn kill(ref self: TContractState);
+    fn advance(ref self: TContractState, yang: ContractAddress, price: Wad);
+    fn set_multiplier(ref self: TContractState, new_multiplier: Ray);
+    fn update_yin_spot_price(ref self: TContractState, new_price: Wad);
+    fn update_rates(ref self: TContractState, yang: Span<ContractAddress>, new_rate: Span<Ray>);
+    fn deposit(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
+    fn withdraw(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
+    fn forge(
+        ref self: TContractState,
+        user: ContractAddress,
+        trove_id: u64,
+        amount: Wad,
+        max_forge_fee_pct: Wad
+    );
+    fn melt(ref self: TContractState, user: ContractAddress, trove_id: u64, amount: Wad);
+    fn seize(ref self: TContractState, yang: ContractAddress, trove_id: u64, amount: Wad);
+    fn redistribute(
+        ref self: TContractState,
+        trove_id: u64,
+        debt_to_redistribute: Wad,
+        pct_value_to_redistribute: Ray
+    );
+    fn inject(ref self: TContractState, receiver: ContractAddress, amount: Wad);
+    fn eject(ref self: TContractState, burner: ContractAddress, amount: Wad);
+    fn update_yang_suspension(ref self: TContractState, yang: ContractAddress, ts: u64);
     // view
-    fn get_shrine_threshold_and_value() -> (Ray, Wad);
-    fn get_trove_info(trove_id: u64) -> (Ray, Ray, Wad, Wad);
-    fn get_redistributions_attributed_to_trove(trove_id: u64) -> (Span<YangBalance>, Wad);
-    fn get_current_yang_price(yang: ContractAddress) -> (Wad, Wad, u64);
-    fn get_current_multiplier() -> (Ray, Ray, u64);
-    fn get_yin_spot_price() -> Wad;
-    fn get_forge_fee_pct() -> Wad;
-    fn is_healthy(trove_id: u64) -> bool;
-    fn get_max_forge(trove_id: u64) -> Wad;
+    fn get_shrine_threshold_and_value(self: @TContractState) -> (Ray, Wad);
+    fn get_trove_info(self: @TContractState, trove_id: u64) -> (Ray, Ray, Wad, Wad);
+    fn get_redistributions_attributed_to_trove(
+        self: @TContractState, trove_id: u64
+    ) -> (Span<YangBalance>, Wad);
+    fn get_current_yang_price(self: @TContractState, yang: ContractAddress) -> (Wad, Wad, u64);
+    fn get_current_multiplier(self: @TContractState) -> (Ray, Ray, u64);
+    fn get_yin_spot_price(self: @TContractState) -> Wad;
+    fn get_forge_fee_pct(self: @TContractState) -> Wad;
+    fn is_healthy(self: @TContractState, trove_id: u64) -> bool;
+    fn get_max_forge(self: @TContractState, trove_id: u64) -> Wad;
 }

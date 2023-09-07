@@ -1,6 +1,5 @@
-mod core;
-mod external;
 mod interfaces;
+mod types;
 mod utils;
 
 #[cfg(test)]

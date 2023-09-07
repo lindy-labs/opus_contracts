@@ -1,16 +1,13 @@
-use array::SpanTrait;
-
-use aura::utils::serde;
-use aura::utils::types::AssetBalance;
+use aura::types::AssetBalance;
 use aura::utils::wadray::Wad;
 
-#[abi]
-trait ICaretaker {
-    // getter
-    fn preview_release(trove_id: u64) -> Span<AssetBalance>;
-    fn preview_reclaim(yin: Wad) -> Span<AssetBalance>;
+#[starknet::interface]
+trait ICaretaker<TContractState> {
     // external
-    fn shut();
-    fn release(trove_id: u64) -> Span<AssetBalance>;
-    fn reclaim(yin: Wad) -> Span<AssetBalance>;
+    fn shut(ref self: TContractState);
+    fn release(ref self: TContractState, trove_id: u64) -> Span<AssetBalance>;
+    fn reclaim(ref self: TContractState, yin: Wad) -> Span<AssetBalance>;
+    // view
+    fn preview_release(self: @TContractState, trove_id: u64) -> Span<AssetBalance>;
+    fn preview_reclaim(self: @TContractState, yin: Wad) -> Span<AssetBalance>;
 }
