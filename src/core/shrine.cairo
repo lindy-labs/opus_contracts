@@ -1065,7 +1065,7 @@ mod Shrine {
     //
 
     #[generate_trait]
-    impl ShrineInternalFunctions of ShrineInternalFunctionsTrait {
+    impl ShrineHelpers of ShrineHelpersTrait {
         //
         // Helpers for assertions
         //
@@ -2335,7 +2335,7 @@ mod Shrine {
     //
 
     #[generate_trait]
-    impl ERC20InternalFunctions of ERC20InternalTrait {
+    impl ERC20Helpers of ERC20HelpersTrait {
         fn transfer_helper(
             ref self: ContractState,
             sender: ContractAddress,
