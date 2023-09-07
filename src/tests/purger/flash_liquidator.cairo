@@ -82,7 +82,7 @@ mod FlashLiquidator {
             };
 
             let purger: IPurgerDispatcher = self.purger.read();
-            let max_close_amt: Wad = purger.get_max_liquidation_amount(trove_id);
+            let (_, max_close_amt) = purger.preview_liquidate(trove_id);
             let mut call_data: Array<felt252> = array![trove_id.into()];
 
             self
