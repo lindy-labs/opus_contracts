@@ -235,7 +235,7 @@ mod Gate {
     }
 
     //
-    // Internal functions for Gate that do not access storage
+    // Internal functions for Gate that do not access Gate's storage
     //
 
     #[inline(always)]
