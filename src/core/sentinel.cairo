@@ -38,6 +38,9 @@ mod Sentinel {
         yang_is_live: LegacyMap::<ContractAddress, bool>,
     }
 
+    //
+    // Events
+    //
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -66,11 +69,6 @@ mod Sentinel {
         gate: ContractAddress
     }
 
-
-    //
-    // Events
-    //
-
     //
     // Constructor
     //
@@ -83,7 +81,7 @@ mod Sentinel {
     }
 
     //
-    // View Functions
+    // External Sentinel functions
     //
 
     #[external(v0)]
@@ -138,7 +136,7 @@ mod Sentinel {
         }
 
         //
-        // View
+        // View functions
         //
 
         // This can be used to simulate the effects of `enter`.
@@ -156,7 +154,7 @@ mod Sentinel {
         }
 
         //
-        // External functions
+        // Setters
         //
 
         fn add_yang(
@@ -218,6 +216,28 @@ mod Sentinel {
             self.emit(YangAssetMaxUpdated { yang, old_max: old_asset_max, new_max: new_asset_max });
         }
 
+        fn kill_gate(ref self: ContractState, yang: ContractAddress) {
+            AccessControl::assert_has_role(SentinelRoles::KILL_GATE);
+
+            self.yang_is_live.write(yang, false);
+
+            self.emit(GateKilled { yang, gate: self.yang_to_gate.read(yang).contract_address });
+        }
+
+        fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
+            AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+            self.shrine.read().update_yang_suspension(yang, get_block_timestamp());
+        }
+
+        fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
+            AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
+            self.shrine.read().update_yang_suspension(yang, 0);
+        }
+
+        //
+        // Core functions
+        //
+
         fn enter(
             ref self: ContractState,
             yang: ContractAddress,
@@ -246,28 +266,10 @@ mod Sentinel {
 
             gate.exit(user, trove_id, yang_amt)
         }
-
-        fn kill_gate(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(SentinelRoles::KILL_GATE);
-
-            self.yang_is_live.write(yang, false);
-
-            self.emit(GateKilled { yang, gate: self.yang_to_gate.read(yang).contract_address });
-        }
-
-        fn suspend_yang(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
-            self.shrine.read().update_yang_suspension(yang, get_block_timestamp());
-        }
-
-        fn unsuspend_yang(ref self: ContractState, yang: ContractAddress) {
-            AccessControl::assert_has_role(SentinelRoles::UPDATE_YANG_SUSPENSION);
-            self.shrine.read().update_yang_suspension(yang, 0);
-        }
     }
 
     //
-    // Internal
+    // Internal Sentinel functions
     //
 
     #[generate_trait]
