@@ -27,8 +27,7 @@ mod FlashmintUtils {
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
     fn build_calldata(should_return_correct: bool, usage: felt252) -> Span<felt252> {
-        let mut calldata = array![should_return_correct.into(), usage];
-        calldata.span()
+        array![should_return_correct.into(), usage].span()
     }
 
     fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
