@@ -1,13 +1,11 @@
 mod FlashmintUtils {
     use array::ArrayTrait;
-    use option::OptionTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::Into;
 
     use aura::core::flashmint::FlashMint;
     use aura::core::roles::ShrineRoles;
@@ -22,7 +20,7 @@ mod FlashmintUtils {
     use aura::tests::shrine::utils::ShrineUtils;
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
-    const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000_u256; // 500 * WAD_ONE
+    const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]

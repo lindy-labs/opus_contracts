@@ -4,9 +4,6 @@ mod ReentrancyGuard {
     };
     use starknet::storage_access::StoreBool;
 
-    use traits::{Into, TryInto};
-
-
     const GUARD_STORAGE_BASE_ADDR: felt252 = selector!("__reentrancyguard_entered");
 
     #[inline(always)]

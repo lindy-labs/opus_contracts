@@ -16,9 +16,7 @@
 
 #[starknet::contract]
 mod FlashMint {
-    use option::OptionTrait;
-    use starknet::ContractAddress;
-    use traits::{Into, TryInto};
+    use starknet::{ContractAddress, get_caller_address};
 
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::IFlashMint;
@@ -33,7 +31,7 @@ mod FlashMint {
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
-    const FLASH_FEE: u256 = 0_u256;
+    const FLASH_FEE: u256 = 0;
 
     #[storage]
     struct Storage {
@@ -72,7 +70,7 @@ mod FlashMint {
             // Can only flash mint our own synthetic
             if token == shrine.contract_address {
                 let supply: Wad = shrine.get_total_yin();
-                return (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val.into();
+                return (supply * FLASH_MINT_AMOUNT_PCT.into()).val.into();
             }
 
             0_u256
@@ -106,11 +104,11 @@ mod FlashMint {
 
             let shrine = self.shrine.read();
 
-            let amount_wad = Wad { val: amount.try_into().unwrap() };
+            let amount_wad: Wad = amount.try_into().unwrap();
 
             shrine.inject(receiver, amount_wad);
 
-            let initiator: ContractAddress = starknet::get_caller_address();
+            let initiator: ContractAddress = get_caller_address();
 
             let borrower_resp: u256 = IFlashBorrowerDispatcher { contract_address: receiver }
                 .on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
@@ -120,12 +118,7 @@ mod FlashMint {
             // This function in Shrine takes care of balance validation
             shrine.eject(receiver, amount_wad);
 
-            self
-                .emit(
-                    FlashMint {
-                        initiator: initiator, receiver: receiver, token: token, amount: amount
-                    }
-                );
+            self.emit(FlashMint { initiator, receiver, token, amount });
 
             ReentrancyGuard::end();
 
