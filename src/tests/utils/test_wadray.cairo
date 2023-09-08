@@ -1,10 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use option::OptionTrait;
-    use traits::Into;
-    use traits::TryInto;
-    use zeroable::Zeroable;
-
     use aura::utils::wadray;
     use aura::utils::wadray::{
         DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,
