@@ -181,8 +181,8 @@ mod Abbot {
         let user = get_caller_address();
         assert_trove_owner(user, trove_id);
 
-        let yang_amt: Wad = sentinel::read().convert_to_yang(yang_asset.asset, yang_asset.amount);
-        withdraw_internal(trove_id, user, yang_asset.asset, yang_amt);
+        let yang_amt: Wad = sentinel::read().convert_to_yang(yang_asset.address, yang_asset.amount);
+        withdraw_internal(trove_id, user, yang_asset.address, yang_amt);
     }
 
     // create Yin in a trove
@@ -215,8 +215,8 @@ mod Abbot {
         ReentrancyGuard::start();
 
         let yang_amt: Wad = sentinel::read()
-            .enter(yang_asset.asset, user, trove_id, yang_asset.amount);
-        shrine::read().deposit(yang_asset.asset, trove_id, yang_amt);
+            .enter(yang_asset.address, user, trove_id, yang_asset.amount);
+        shrine::read().deposit(yang_asset.address, trove_id, yang_amt);
 
         ReentrancyGuard::end();
     }

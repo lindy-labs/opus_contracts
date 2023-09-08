@@ -1,5 +1,5 @@
 mod common;
 mod erc20;
-mod flashmint;
+mod gate;
 mod shrine;
 mod utils;

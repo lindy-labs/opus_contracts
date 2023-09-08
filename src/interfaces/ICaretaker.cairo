@@ -1,6 +1,4 @@
-use array::SpanTrait;
-
-use aura::utils::types::AssetBalance;
+use aura::types::AssetBalance;
 use aura::utils::wadray::Wad;
 
 #[starknet::interface]
