@@ -26,6 +26,9 @@ mod Gate {
         sentinel: ContractAddress,
     }
 
+    //
+    // Events
+    //
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -54,11 +57,6 @@ mod Gate {
         yang_amt: Wad
     }
 
-
-    //
-    // Events
-    //
-
     //
     // Constructor
     //
@@ -76,11 +74,15 @@ mod Gate {
     }
 
     //
-    // Getters
+    // External Gate functions
     //
 
     #[external(v0)]
     impl IGateImpl of IGate<ContractState> {
+        //
+        // Getters
+        //
+
         fn get_shrine(self: @ContractState) -> ContractAddress {
             self.shrine.read().contract_address
         }
@@ -131,7 +133,7 @@ mod Gate {
         }
 
         //
-        // External
+        // Core Functions - External
         //
 
         // Transfers the stipulated amount of assets, in the asset's decimals, from the given 
@@ -180,7 +182,7 @@ mod Gate {
     }
 
     //
-    // Internal
+    // Internal Gate functions
     //
 
     #[generate_trait]
@@ -231,6 +233,10 @@ mod Gate {
             }
         }
     }
+
+    //
+    // Internal functions for Gate that do not access storage
+    //
 
     #[inline(always)]
     fn get_total_assets_internal(asset: IERC20Dispatcher) -> u128 {
