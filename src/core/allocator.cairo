@@ -95,7 +95,7 @@ mod Allocator {
         }
 
         //
-        // Core Functions - External
+        // Setters
         //
 
         // Update the recipients and their respective percentage share of newly minted surplus debt
@@ -154,7 +154,7 @@ mod Allocator {
 
             self.recipients_count.write(recipients_len);
 
-            self.emit(AllocationUpdated { recipients: recipients, percentages: percentages });
+            self.emit(AllocationUpdated { recipients, percentages });
         }
     }
 
