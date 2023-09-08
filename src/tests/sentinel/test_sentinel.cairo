@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestSentinel {
     use debug::PrintTrait;
     use starknet::ContractAddress;
