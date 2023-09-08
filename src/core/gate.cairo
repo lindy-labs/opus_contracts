@@ -80,7 +80,7 @@ mod Gate {
     //
 
     #[external(v0)]
-    impl Gate of IGate<ContractState> {
+    impl IGateImpl of IGate<ContractState> {
         fn get_shrine(self: @ContractState) -> ContractAddress {
             self.shrine.read().contract_address
         }
@@ -184,7 +184,7 @@ mod Gate {
     //
 
     #[generate_trait]
-    impl InternalFunctions of InternalFunctionsTrait {
+    impl GateHelpers of GateHelpersTrait {
         #[inline(always)]
         fn assert_sentinel(self: @ContractState) {
             assert(get_caller_address() == self.sentinel.read(), 'GA: Caller is not authorized');
