@@ -108,16 +108,17 @@ mod Equalizer {
             }
 
             let allocator: IAllocatorDispatcher = self.allocator.read();
-            let (mut recipients, mut percentages) = allocator.get_allocation();
+            let (recipients, percentages) = allocator.get_allocation();
 
             let mut minted_surplus: Wad = WadZeroable::zero();
 
             let mut recipients_copy = recipients;
+            let mut percentages_copy = percentages;
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
                         let amount: Wad = wadray::rmul_wr(
-                            surplus, *(percentages.pop_front().unwrap())
+                            surplus, *(percentages_copy.pop_front().unwrap())
                         );
 
                         shrine.inject(*recipient, amount);
