@@ -87,7 +87,7 @@ mod EqualizerUtils {
                 Option::Some(recipient) => {
                     calldata.append(contract_address_to_felt252(*recipient));
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -100,7 +100,7 @@ mod EqualizerUtils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
