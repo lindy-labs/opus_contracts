@@ -96,11 +96,11 @@ mod Gate {
         }
 
         fn get_total_assets(self: @ContractState) -> u128 {
-            get_total_assets_internal(self.asset.read())
+            get_total_assets_helper(self.asset.read())
         }
 
         fn get_total_yang(self: @ContractState) -> Wad {
-            self.get_total_yang_internal(self.asset.read().contract_address)
+            self.get_total_yang_helper(self.asset.read().contract_address)
         }
 
         // Returns the amount of assets in Wad that corresponds to per Wad unit of yang.
@@ -110,7 +110,7 @@ mod Gate {
         // so that the yang price can be properly calculated by the oracle even if no assets have been 
         // deposited yet.
         fn get_asset_amt_per_yang(self: @ContractState) -> Wad {
-            let amt: u128 = self.convert_to_assets_internal(WAD_ONE.into());
+            let amt: u128 = self.convert_to_assets_helper(WAD_ONE.into());
             let decimals: u8 = self.asset.read().decimals();
 
             if decimals == WAD_DECIMALS {
@@ -123,13 +123,13 @@ mod Gate {
         // This can be used to simulate the effects of `enter` at the current on-chain conditions.
         // `asset_amt` is denoted in the asset's decimals.
         fn convert_to_yang(self: @ContractState, asset_amt: u128) -> Wad {
-            self.convert_to_yang_internal(asset_amt)
+            self.convert_to_yang_helper(asset_amt)
         }
 
         // This can be used to simulate the effects of `exit` at the current on-chain conditions.
         // The return value is denoted in the asset's decimals.
         fn convert_to_assets(self: @ContractState, yang_amt: Wad) -> u128 {
-            self.convert_to_assets_internal(yang_amt)
+            self.convert_to_assets_helper(yang_amt)
         }
 
         //
@@ -144,7 +144,7 @@ mod Gate {
         ) -> Wad {
             self.assert_sentinel();
 
-            let yang_amt: Wad = self.convert_to_yang_internal(asset_amt);
+            let yang_amt: Wad = self.convert_to_yang_helper(asset_amt);
             if yang_amt.is_zero() {
                 return WadZeroable::zero();
             }
@@ -167,7 +167,7 @@ mod Gate {
         ) -> u128 {
             self.assert_sentinel();
 
-            let asset_amt: u128 = self.convert_to_assets_internal(yang_amt);
+            let asset_amt: u128 = self.convert_to_assets_helper(yang_amt);
             if asset_amt.is_zero() {
                 return 0;
             }
@@ -193,16 +193,16 @@ mod Gate {
         }
 
         #[inline(always)]
-        fn get_total_yang_internal(self: @ContractState, asset: ContractAddress) -> Wad {
+        fn get_total_yang_helper(self: @ContractState, asset: ContractAddress) -> Wad {
             self.shrine.read().get_yang_total(asset)
         }
 
         // Helper function to calculate the amount of assets corresponding to the given
         // amount of yang.
         // Return value is denominated in the decimals of the asset.
-        fn convert_to_assets_internal(self: @ContractState, yang_amt: Wad) -> u128 {
+        fn convert_to_assets_helper(self: @ContractState, yang_amt: Wad) -> u128 {
             let asset: IERC20Dispatcher = self.asset.read();
-            let total_yang: Wad = self.get_total_yang_internal(asset.contract_address);
+            let total_yang: Wad = self.get_total_yang_helper(asset.contract_address);
 
             if total_yang.is_zero() {
                 let decimals: u8 = asset.decimals();
@@ -211,16 +211,16 @@ mod Gate {
                 // the same value is returned
                 yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
             } else {
-                ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
+                ((yang_amt * get_total_assets_helper(asset).into()) / total_yang).val
             }
         }
 
         // Helper function to calculate the amount of yang corresponding to the given
         // amount of assets.
         // `asset_amt` is denominated in the decimals of the asset.
-        fn convert_to_yang_internal(self: @ContractState, asset_amt: u128) -> Wad {
+        fn convert_to_yang_helper(self: @ContractState, asset_amt: u128) -> Wad {
             let asset: IERC20Dispatcher = self.asset.read();
-            let total_yang: Wad = self.get_total_yang_internal(asset.contract_address);
+            let total_yang: Wad = self.get_total_yang_helper(asset.contract_address);
 
             if total_yang.is_zero() {
                 let decimals: u8 = asset.decimals();
@@ -229,7 +229,7 @@ mod Gate {
                 // value is returned
                 wadray::fixed_point_to_wad(asset_amt, decimals)
             } else {
-                (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
+                (asset_amt.into() * total_yang) / get_total_assets_helper(asset).into()
             }
         }
     }
@@ -239,7 +239,7 @@ mod Gate {
     //
 
     #[inline(always)]
-    fn get_total_assets_internal(asset: IERC20Dispatcher) -> u128 {
+    fn get_total_assets_helper(asset: IERC20Dispatcher) -> u128 {
         asset.balance_of(get_contract_address()).try_into().unwrap()
     }
 }
