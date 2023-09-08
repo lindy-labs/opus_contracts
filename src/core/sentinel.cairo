@@ -273,7 +273,7 @@ mod Sentinel {
     //
 
     #[generate_trait]
-    impl SentinelInternalFunctions of SentinelInternalFunctionsTrait {
+    impl SentinelHelpers of SentinelHelpersTrait {
         // Helper function to check that `enter` is a valid operation at the current
         // on-chain conditions
         #[inline(always)]
