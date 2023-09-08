@@ -21,13 +21,28 @@ mod tests {
         );
 
         let res = exp(Wad { val: WAD_PERCENT * 2 });
-        assert_equalish(res, Wad { val: 1020201340026755810 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
+        assert_equalish(
+            res,
+            Wad { val: 1020201340026755810 },
+            ACCEPTABLE_ERROR.into(),
+            'exp-test: error exceeds bounds'
+        );
 
         let res = exp(Wad { val: WAD_ONE * 10 });
-        assert_equalish(res, Wad { val: 22026465794806716516957 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
+        assert_equalish(
+            res,
+            Wad { val: 22026465794806716516957 },
+            ACCEPTABLE_ERROR.into(),
+            'exp-test: error exceeds bounds'
+        );
 
         let res = exp(Wad { val: WAD_ONE * 20 });
-        assert_equalish(res, Wad { val: 485165195409790277969106830 }, ACCEPTABLE_ERROR.into(), 'exp-test: error exceeds bounds');
+        assert_equalish(
+            res,
+            Wad { val: 485165195409790277969106830 },
+            ACCEPTABLE_ERROR.into(),
+            'exp-test: error exceeds bounds'
+        );
 
         // Highest possible value the function will accept
         exp(Wad { val: 42600000000000000000 });

@@ -1,5 +1,4 @@
 mod access_control;
 mod exp;
-mod pow;
-mod types;
+mod math;
 mod wadray;

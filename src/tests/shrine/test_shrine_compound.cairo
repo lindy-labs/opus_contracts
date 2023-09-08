@@ -1,10 +1,6 @@
 #[cfg(test)]
 mod TestShrineCompound {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Into, TryInto};
     use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
@@ -809,7 +805,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break ();
                         },
                     };
