@@ -11,6 +11,7 @@ mod PurgerUtils {
     use traits::{Default, Into, TryInto};
     use zeroable::Zeroable;
 
+    use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
     use aura::core::roles::{AbsorberRoles, PragmaRoles, SentinelRoles, ShrineRoles};
 
@@ -22,7 +23,7 @@ mod PurgerUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::types::AssetBalance;
-    use aura::utils::pow::pow10;
+    use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{
         Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
@@ -80,6 +81,21 @@ mod PurgerUtils {
         let mut asset_amts: Array<u128> = Default::default();
         asset_amts.append(TARGET_TROVE_ETH_DEPOSIT_AMT);
         asset_amts.append(TARGET_TROVE_WBTC_DEPOSIT_AMT);
+        asset_amts.span()
+    }
+
+    #[inline(always)]
+    fn recipient_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(30 * WAD_ONE); // 30 (Wad) - ETH
+        asset_amts.append(500000000); // 5 (10 ** 8) - BTC
+        asset_amts.span()
+    }
+
+    fn whale_trove_yang_asset_amts() -> Span<u128> {
+        let mut asset_amts: Array<u128> = Default::default();
+        asset_amts.append(50 * WAD_ONE); // 50 (Wad) ETH
+        asset_amts.append(5000000000_u128); // 50 (10 ** 8) WBTC
         asset_amts.span()
     }
 
@@ -251,25 +267,26 @@ mod PurgerUtils {
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
+        
         // base case for ordinary redistributions
-        yang_asset_amts_cases.append(AbsorberUtils::provider_asset_amts());
+        yang_asset_amts_cases.append(recipient_trove_yang_asset_amts());
 
         // recipient trove has dust amount of the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(1_u128); // 1 wei (Wad) ETH
-        dust_case.append(1000000000_u128); // 10 (10 ** 8) WBTC
+        dust_case.append(100_u128); // 100 wei (Wad) ETH
+        dust_case.append(2000000000_u128); // 20 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // recipient trove has dust amount of a yang that is not the first yang
         let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(30 * WAD_ONE); // 1 wei (Wad) ETH
-        dust_case.append(1_u128); // smallest unit for (10 ** 8) WBTC
+        dust_case.append(50 * WAD_ONE); // 50 (Wad) ETH
+        dust_case.append(100_u128); // 0.00001 (10 ** 8) WBTC
         yang_asset_amts_cases.append(dust_case.span());
 
         // exceptional redistribution because recipient trove does not have
         // WBTC yang but redistributed trove has WBTC yang
         let mut exceptional_case: Array<u128> = Default::default();
-        exceptional_case.append(30 * WAD_ONE); // 30 (Wad) ETH
+        exceptional_case.append(50 * WAD_ONE); // 50 (Wad) ETH
         exceptional_case.append(0_u128); // 0 WBTC
         yang_asset_amts_cases.append(exceptional_case.span());
 
@@ -289,13 +306,26 @@ mod PurgerUtils {
         yang_asset_amts_cases.span()
     }
 
+    fn inoperational_absorber_yin_cases() -> Span<Wad> {
+        let mut absorber_yin_cases: Array<Wad> = Default::default();
+
+        // minimum amount that must be provided based on initial shares or
+        // `provide` would revert
+        absorber_yin_cases.append(Absorber::INITIAL_SHARES.into());
+        // largest possible amount of yin in Absorber based on initial shares
+        // for Absorber to be inoperational
+        absorber_yin_cases.append((Absorber::MINIMUM_SHARES - 1).into());
+
+        absorber_yin_cases.span()
+    }
+
     // Generate interesting cases for absorber's yin balance based on the 
     // redistributed trove's debt to test absorption with partial redistribution
-    fn generate_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
+    fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
         let mut absorber_yin_cases: Array<Wad> = Default::default();
 
         // smallest possible amount of yin in Absorber based on initial shares
-        absorber_yin_cases.append(1000_u128.into());
+        absorber_yin_cases.append(Absorber::MINIMUM_SHARES.into());
         absorber_yin_cases.append((trove_debt.val / 3).into());
         absorber_yin_cases.append((trove_debt.val - 1000).into());
         // trove's debt minus the smallest unit of Wad
@@ -440,9 +470,9 @@ mod PurgerUtils {
         yin_amt: Wad,
     ) {
         let user: ContractAddress = searcher();
-        common::fund_user(user, yangs, AbsorberUtils::provider_asset_amts());
+        common::fund_user(user, yangs, recipient_trove_yang_asset_amts());
         common::open_trove_helper(
-            abbot, user, yangs, AbsorberUtils::provider_asset_amts(), gates, yin_amt
+            abbot, user, yangs, recipient_trove_yang_asset_amts(), gates, yin_amt
         );
     }
 
@@ -460,7 +490,7 @@ mod PurgerUtils {
             absorber,
             AbsorberUtils::provider_1(),
             yangs,
-            AbsorberUtils::provider_asset_amts(),
+            recipient_trove_yang_asset_amts(),
             gates,
             amt,
         );
@@ -475,6 +505,18 @@ mod PurgerUtils {
     ) -> u64 {
         let user: ContractAddress = target_trove_owner();
         let deposit_amts: Span<u128> = target_trove_yang_asset_amts();
+        common::fund_user(user, yangs, deposit_amts);
+        common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
+    }
+
+    // Creates a trove with a lot of collateral
+    // This is used to ensure the system doesn't unintentionally enter recovery mode during tests
+    fn create_whale_trove(
+        abbot: IAbbotDispatcher, yangs: Span<ContractAddress>, gates: Span<IGateDispatcher>
+    ) -> u64 {
+        let user: ContractAddress = target_trove_owner();
+        let deposit_amts: Span<u128> = whale_trove_yang_asset_amts();
+        let yin_amt: Wad = TARGET_TROVE_YIN.into();
         common::fund_user(user, yangs, deposit_amts);
         common::open_trove_helper(abbot, user, yangs, deposit_amts, gates, yin_amt)
     }
@@ -504,7 +546,7 @@ mod PurgerUtils {
         pct_decrease: Ray,
     ) {
         let current_ts = get_block_timestamp();
-        let scale: u128 = pow10(WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
+        let scale: u128 = pow(10_u128, WAD_DECIMALS - PragmaUtils::PRAGMA_DECIMALS);
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
@@ -575,8 +617,9 @@ mod PurgerUtils {
     ) {
         assert(shrine.is_healthy(trove_id), 'should be healthy');
 
-        assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
-        assert(purger.get_max_liquidation_amount(trove_id).is_zero(), 'close amount should be 0');
+        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
+        assert(penalty.is_zero(), 'penalty should be 0');
+        assert(max_liquidation_amt.is_zero(), 'close amount should be 0');
         assert_trove_is_not_absorbable(purger, trove_id);
     }
 
@@ -585,16 +628,12 @@ mod PurgerUtils {
     ) {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
 
-        assert(
-            purger.get_max_liquidation_amount(trove_id).is_non_zero(),
-            'close amount should not be 0'
-        );
+        let (penalty, max_liquidation_amt) = purger.preview_liquidate(trove_id);
+        assert(penalty.is_non_zero(), 'close amount should not be 0');
         if ltv < RAY_ONE.into() {
-            assert(
-                purger.get_liquidation_penalty(trove_id).is_non_zero(), 'penalty should not be 0'
-            );
+            assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
-            assert(purger.get_liquidation_penalty(trove_id).is_zero(), 'penalty should be 0');
+            assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
@@ -604,21 +643,19 @@ mod PurgerUtils {
         assert(!shrine.is_healthy(trove_id), 'should not be healthy');
         assert(purger.is_absorbable(trove_id), 'should be absorbable');
 
-        assert(
-            purger.get_max_absorption_amount(trove_id).is_non_zero(), 'close amount should not be 0'
-        );
+        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
+        assert(max_absorption_amt.is_non_zero(), 'close amount should not be 0');
         if ltv < (RAY_ONE - Purger::COMPENSATION_PCT).into() {
-            assert(
-                purger.get_absorption_penalty(trove_id).is_non_zero(), 'penalty should not be 0'
-            );
+            assert(penalty.is_non_zero(), 'penalty should not be 0');
         } else {
-            assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
+            assert(penalty.is_zero(), 'penalty should be 0');
         }
     }
 
     fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
-        assert(purger.get_absorption_penalty(trove_id).is_zero(), 'penalty should be 0');
-        assert(purger.get_max_absorption_amount(trove_id).is_zero(), 'close amount should be 0');
+        let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
+        assert(penalty.is_zero(), 'penalty should be 0');
+        assert(max_absorption_amt.is_zero(), 'close amount should be 0');
     }
 
     fn assert_ltv_at_safety_margin(threshold: Ray, ltv: Ray) {
