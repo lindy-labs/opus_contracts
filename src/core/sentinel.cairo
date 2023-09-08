@@ -52,12 +52,14 @@ mod Sentinel {
 
     #[derive(Drop, starknet::Event)]
     struct YangAdded {
+        #[key]
         yang: ContractAddress,
         gate: ContractAddress
     }
 
     #[derive(Drop, starknet::Event)]
     struct YangAssetMaxUpdated {
+        #[key]
         yang: ContractAddress,
         old_max: u128,
         new_max: u128
@@ -65,6 +67,7 @@ mod Sentinel {
 
     #[derive(Drop, starknet::Event)]
     struct GateKilled {
+        #[key]
         yang: ContractAddress,
         gate: ContractAddress
     }
