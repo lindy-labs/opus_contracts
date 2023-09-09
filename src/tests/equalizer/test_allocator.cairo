@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestAllocator {
     use array::ArrayTrait;
     use starknet::ContractAddress;

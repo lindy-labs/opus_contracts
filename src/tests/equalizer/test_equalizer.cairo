@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestEqualizer {
     use array::ArrayTrait;
     use starknet::{ContractAddress, get_block_timestamp};
