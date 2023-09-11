@@ -90,12 +90,15 @@ mod TestSentinel {
         assert(eth_price == ShrineUtils::YANG1_START_PRICE.into(), 'Wrong yang price #1');
         assert(wbtc_price == ShrineUtils::YANG2_START_PRICE.into(), 'Wrong yang price #2');
 
+        let (eth_threshold, _) = shrine.get_yang_threshold(eth);
         assert(
-            shrine.get_yang_threshold(eth) == ShrineUtils::YANG1_THRESHOLD.into(),
+            eth_threshold == ShrineUtils::YANG1_THRESHOLD.into(),
             'Wrong yang threshold #1'
         );
+
+        let (wbtc_threshold, _) = shrine.get_yang_threshold(wbtc);
         assert(
-            shrine.get_yang_threshold(wbtc) == ShrineUtils::YANG2_THRESHOLD.into(),
+            wbtc_threshold == ShrineUtils::YANG2_THRESHOLD.into(),
             'Wrong yang threshold #2'
         );
 

@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::utils::types::AssetBalance;
+use aura::types::AssetBalance;
 use aura::utils::wadray::Wad;
 
 

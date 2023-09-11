@@ -1,5 +1,6 @@
 mod abbot;
 mod common;
+mod equalizer;
 mod erc20;
 mod gate;
 mod sentinel;
