@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Sentinel {
-    use array::ArrayTrait;
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
@@ -89,7 +88,7 @@ mod Sentinel {
 
     #[external(v0)]
     impl ISentinelImpl of ISentinel<ContractState> {
-        // 
+        //
         // Getters
         //
 
@@ -114,16 +113,16 @@ mod Sentinel {
             }
         }
 
+        fn get_yang_addresses_count(self: @ContractState) -> u64 {
+            self.yang_addresses_count.read()
+        }
+
         fn get_yang(self: @ContractState, idx: u64) -> ContractAddress {
             self.yang_addresses.read(idx)
         }
 
         fn get_yang_asset_max(self: @ContractState, yang: ContractAddress) -> u128 {
             self.yang_asset_max.read(yang)
-        }
-
-        fn get_yang_addresses_count(self: @ContractState) -> u64 {
-            self.yang_addresses_count.read()
         }
 
         // Returns 0 if the yang is invalid, as opposed to `convert_to_yang` and `convert_to_assets`
