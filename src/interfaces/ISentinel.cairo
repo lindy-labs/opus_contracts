@@ -11,6 +11,7 @@ trait ISentinel<TContractState> {
     fn get_yang_addresses_count(self: @TContractState,) -> u64;
     fn get_yang(self: @TContractState, idx: u64) -> ContractAddress;
     fn get_yang_asset_max(self: @TContractState, yang: ContractAddress) -> u128;
+    fn get_asset_amt_per_yang(self: @TContractState, yang: ContractAddress) -> Wad;
     // external
     fn add_yang(
         ref self: TContractState,
@@ -40,7 +41,6 @@ trait ISentinel<TContractState> {
     fn suspend_yang(ref self: TContractState, yang: ContractAddress);
     fn unsuspend_yang(ref self: TContractState, yang: ContractAddress);
     // view
-    fn get_asset_amt_per_yang(self: @TContractState, yang: ContractAddress) -> Wad;
     fn convert_to_yang(self: @TContractState, yang: ContractAddress, asset_amt: u128) -> Wad;
     fn convert_to_assets(self: @TContractState, yang: ContractAddress, yang_amt: Wad) -> u128;
 }
