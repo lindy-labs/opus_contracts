@@ -19,7 +19,8 @@ mod Pragma {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray::{fixed_point_to_wad, Wad};
+    use aura::utils::wadray;
+    use aura::utils::wadray::Wad;
 
     // Helper constant to set the starting index for iterating over the yangs
     // in the order they were added
@@ -292,7 +293,7 @@ mod Pragma {
 
                 // convert price value to Wad
                 // this will revert if the decimals is greater than 18 (wad)
-                let price: Wad = fixed_point_to_wad(
+                let price: Wad = wadray::fixed_point_to_wad(
                     response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
                 );
                 let asset_amt_per_yang: Wad = self

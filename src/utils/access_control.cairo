@@ -187,7 +187,7 @@ mod AccessControl {
             Option::Some(i) => {
                 data.append(i);
             },
-            Option::None(_) => {},
+            Option::None => {},
         };
 
         let mut keys: Array<felt252> = Default::default();

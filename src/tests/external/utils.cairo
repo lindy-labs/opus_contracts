@@ -20,7 +20,7 @@ mod PragmaUtils {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::math::pow;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
+    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
@@ -32,9 +32,9 @@ mod PragmaUtils {
     // Constants
     //
 
-    const FRESHNESS_THRESHOLD: u64 = 1800; // 30 minutes * 60 seconds
+    const FRESHNESS_THRESHOLD: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds
     const SOURCES_THRESHOLD: u64 = 3;
-    const UPDATE_FREQUENCY: u64 = 600; // 10 minutes * 60 seconds
+    const UPDATE_FREQUENCY: u64 = consteval_int!(10 * 60); // 10 minutes * 60 seconds
 
     const DEFAULT_NUM_SOURCES: u256 = 5;
 

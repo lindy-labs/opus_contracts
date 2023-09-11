@@ -2,10 +2,7 @@
 mod TestPragma {
     use array::ArrayTrait;
     use integer::U256Zeroable;
-    use starknet::{
-        ContractAddress, contract_address_const, contract_address_try_from_felt252,
-        get_block_timestamp
-    };
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
@@ -23,7 +20,7 @@ mod TestPragma {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::math::pow;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
+    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
     use aura::tests::common;
     use aura::tests::external::mock_pragma::{
@@ -69,7 +66,7 @@ mod TestPragma {
     fn test_set_price_validity_thresholds_pass() {
         let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
-        let new_freshness: u64 = 300; // 5 minutes * 60 seconds
+        let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
 
         set_contract_address(PragmaUtils::admin());
@@ -146,7 +143,7 @@ mod TestPragma {
     fn test_set_oracle_address_pass() {
         let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
-        let new_address: ContractAddress = contract_address_const::<0x9999>();
+        let new_address: ContractAddress = common::non_zero_address();
 
         set_contract_address(PragmaUtils::admin());
         pragma.set_oracle(new_address);
@@ -168,7 +165,7 @@ mod TestPragma {
     fn test_set_oracle_address_unauthorized_fail() {
         let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
-        let new_address: ContractAddress = contract_address_const::<0x9999>();
+        let new_address: ContractAddress = common::non_zero_address();
 
         set_contract_address(common::badguy());
         pragma.set_oracle(new_address);
