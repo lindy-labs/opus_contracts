@@ -135,7 +135,7 @@ mod Pragma {
         sources_threshold: u64
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(PragmaRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(PragmaRoles::default_admin_role(), admin);
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
@@ -165,6 +165,10 @@ mod Pragma {
 
     #[external(v0)]
     impl IPragmaImpl of IPragma<ContractState> {
+        //
+        // Setters
+        //
+
         fn set_oracle(ref self: ContractState, new_oracle: ContractAddress) {
             AccessControl::assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
             assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');

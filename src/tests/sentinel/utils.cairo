@@ -38,8 +38,13 @@ mod SentinelUtils {
     }
 
     #[inline(always)]
-    fn invalid_yang_addr() -> ContractAddress {
-        contract_address_try_from_felt252('invalid yang').unwrap()
+    fn dummy_yang_addr() -> ContractAddress {
+        contract_address_try_from_felt252('dummy yang').unwrap()
+    }
+
+    #[inline(always)]
+    fn dummy_yang_gate_addr() -> ContractAddress {
+        contract_address_try_from_felt252('dummy yang token').unwrap()
     }
 
     //

@@ -21,7 +21,7 @@ mod AccessControl {
     };
 
     fn initializer(admin: ContractAddress) {
-        set_admin_internal(admin);
+        set_admin_helper(admin);
     }
 
     //
@@ -66,21 +66,21 @@ mod AccessControl {
 
     fn grant_role(role: u128, account: ContractAddress) {
         assert_admin();
-        grant_role_internal(role, account);
+        grant_role_helper(role, account);
     }
 
     fn revoke_role(role: u128, account: ContractAddress) {
         assert_admin();
-        revoke_role_internal(role, account);
+        revoke_role_helper(role, account);
     }
 
     fn renounce_role(role: u128) {
-        revoke_role_internal(role, get_caller_address());
+        revoke_role_helper(role, get_caller_address());
     }
 
     fn set_pending_admin(new_admin: ContractAddress) {
         assert_admin();
-        set_pending_admin_internal(new_admin);
+        set_pending_admin_helper(new_admin);
     }
 
     //
@@ -90,7 +90,7 @@ mod AccessControl {
     fn accept_admin() {
         let caller: ContractAddress = get_caller_address();
         assert(get_pending_admin() == caller, 'Caller not pending admin');
-        set_admin_internal(caller);
+        set_admin_helper(caller);
         write_pending_admin(ContractAddressZeroable::zero());
     }
 
@@ -98,24 +98,24 @@ mod AccessControl {
     // internal
     //
 
-    fn set_admin_internal(new_admin: ContractAddress) {
+    fn set_admin_helper(new_admin: ContractAddress) {
         let prev_admin = get_admin();
         write_admin(new_admin);
         emit_admin_changed(prev_admin, new_admin);
     }
 
-    fn set_pending_admin_internal(new_admin: ContractAddress) {
+    fn set_pending_admin_helper(new_admin: ContractAddress) {
         write_pending_admin(new_admin);
         emit_new_pending_admin(new_admin);
     }
 
-    fn grant_role_internal(role: u128, account: ContractAddress) {
+    fn grant_role_helper(role: u128, account: ContractAddress) {
         let roles = read_roles(account);
         write_roles(account, roles | role);
         emit_role_granted(role, account);
     }
 
-    fn revoke_role_internal(role: u128, account: ContractAddress) {
+    fn revoke_role_helper(role: u128, account: ContractAddress) {
         let roles = read_roles(account);
         let updated_roles = roles & (~role);
         write_roles(account, updated_roles);

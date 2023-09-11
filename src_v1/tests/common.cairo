@@ -1,3 +1,4 @@
+use debug::PrintTrait;
 use array::{ArrayTrait, SpanTrait};
 use option::OptionTrait;
 use starknet::{
@@ -16,12 +17,14 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
 use aura::utils::types::{AssetBalance, Reward};
 use aura::utils::wadray;
-use aura::utils::wadray::{Ray, Wad, WadZeroable};
+use aura::utils::wadray::{Ray, Wad, WAD_ONE, WadZeroable};
 
 use aura::tests::sentinel::utils::SentinelUtils;
+use aura::tests::shrine::utils::ShrineUtils;
 
 //
 // Constants
@@ -33,6 +36,7 @@ const WBTC_DECIMALS: u8 = 8;
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
+const WHALE_TROVE: u64 = 0xb17b01;
 
 //
 // Constant addresses
@@ -274,7 +278,7 @@ fn assert_asset_balances_equalish(
         match a.pop_front() {
             Option::Some(a) => {
                 let b: AssetBalance = *b.pop_front().unwrap();
-                assert(*a.asset == b.asset, 'wrong asset address');
+                assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
             Option::None(_) => {
@@ -297,7 +301,9 @@ fn combine_assets_and_amts(
         match assets.pop_front() {
             Option::Some(assets) => {
                 asset_balances
-                    .append(AssetBalance { asset: *assets, amount: *amts.pop_front().unwrap(),  });
+                    .append(
+                        AssetBalance { address: *assets, amount: *amts.pop_front().unwrap(),  }
+                    );
             },
             Option::None(_) => {
                 break;

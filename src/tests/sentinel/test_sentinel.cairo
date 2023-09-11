@@ -1,7 +1,6 @@
-#[cfg(test)]
 mod TestSentinel {
     use debug::PrintTrait;
-    use starknet::{contract_address_const, ContractAddress};
+    use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
@@ -124,12 +123,12 @@ mod TestSentinel {
 
         sentinel
             .add_yang(
-                contract_address_const::<0xf00>(),
+                SentinelUtils::dummy_yang_addr(),
                 SentinelUtils::ETH_ASSET_MAX,
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                contract_address_const::<0xf00d>()
+                SentinelUtils::dummy_yang_gate_addr()
             );
     }
 
@@ -146,7 +145,7 @@ mod TestSentinel {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                contract_address_const::<0xf00d>()
+                SentinelUtils::dummy_yang_gate_addr()
             );
     }
 
@@ -158,7 +157,7 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::admin());
         sentinel
             .add_yang(
-                contract_address_const::<0xf00>(),
+                SentinelUtils::dummy_yang_addr(),
                 SentinelUtils::ETH_ASSET_MAX,
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
@@ -235,8 +234,7 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         set_contract_address(SentinelUtils::admin());
-        sentinel
-            .set_yang_asset_max(SentinelUtils::invalid_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
+        sentinel.set_yang_asset_max(SentinelUtils::dummy_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
     }
 
     #[test]
@@ -317,7 +315,7 @@ mod TestSentinel {
         set_contract_address(user);
         eth_erc20
             .transfer(
-                contract_address_const::<0xf00>(),
+                common::non_zero_address(),
                 eth_erc20.balance_of(user) - (deposit_amt.val - 1).into()
             );
 
@@ -337,7 +335,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(contract_address_const::<0xf00>(), user, common::TROVE_1, deposit_amt.val);
+        sentinel.enter(SentinelUtils::dummy_yang_addr(), user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -365,7 +363,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(contract_address_const::<0xf00>(), user, common::TROVE_1, WAD_ONE.into());
+        sentinel.exit(SentinelUtils::dummy_yang_addr(), user, common::TROVE_1, WAD_ONE.into());
     }
 
     #[test]

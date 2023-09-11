@@ -1,5 +1,6 @@
 mod common;
 mod erc20;
+mod equalizer;
 mod external;
 mod gate;
 mod sentinel;
