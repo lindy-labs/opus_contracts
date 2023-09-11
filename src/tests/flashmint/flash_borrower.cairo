@@ -1,7 +1,5 @@
 #[starknet::contract]
 mod FlashBorrower {
-    use array::SpanTrait;
-    use option::OptionTrait;
     use starknet::{contract_address_const, get_contract_address, ContractAddress};
 
     use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
