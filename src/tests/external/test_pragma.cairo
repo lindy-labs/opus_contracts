@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestPragma {
     use array::ArrayTrait;
     use integer::U256Zeroable;
