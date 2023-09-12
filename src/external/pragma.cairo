@@ -187,11 +187,11 @@ mod Pragma {
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
             AccessControl::assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
-                (LOWER_FRESHNESS_BOUND <= freshness) & (freshness <= UPPER_FRESHNESS_BOUND),
+                (LOWER_FRESHNESS_BOUND <= freshness) && (freshness <= UPPER_FRESHNESS_BOUND),
                 'PGM: Freshness out of bounds'
             );
             assert(
-                (LOWER_SOURCES_BOUND <= sources) & (sources <= UPPER_SOURCES_BOUND),
+                (LOWER_SOURCES_BOUND <= sources) && (sources <= UPPER_SOURCES_BOUND),
                 'PGM: Sources out of bounds'
             );
 
@@ -206,7 +206,7 @@ mod Pragma {
             AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
             assert(
                 (LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency)
-                    & (new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND),
+                    && (new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND),
                 'PGM: Frequency out of bounds'
             );
 
@@ -229,7 +229,7 @@ mod Pragma {
                 .get_data_median(DataType::Spot(pair_id));
             // Pragma returns 0 decimals for an unknown pair ID
             assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
-            assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
+            assert(response.decimals <= 18, 'PGM: Too many decimals');
 
             let index: u32 = self.yangs_count.read() + 1;
             let settings = YangSettings { pair_id, yang };
@@ -394,7 +394,7 @@ mod Pragma {
             // the result of the first argument `block_timestamp - last_updated_ts` can never be negative if the code reaches here
             let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
-            has_enough_sources & is_fresh
+            has_enough_sources && is_fresh
         }
     }
 
