@@ -1,3 +1,4 @@
+mod abbot;
 mod allocator;
 mod equalizer;
 mod gate;
