@@ -2,6 +2,7 @@ mod IAbbot;
 mod IAbsorber;
 mod IAllocator;
 mod ICaretaker;
+mod IController;
 mod IEqualizer;
 mod IERC20;
 mod IFlashBorrower;

@@ -72,7 +72,7 @@ mod Controller {
         beta_i: u8,
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(ControllerRoles::TUNE_CONTROLLER, admin);
+        AccessControl::grant_role_helper(ControllerRoles::TUNE_CONTROLLER, admin);
 
         // Setting `i_term_last_updated` to the current timestamp to 
         // ensure that the integral term is correctly updated

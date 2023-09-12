@@ -1,6 +1,10 @@
+mod abbot;
 mod common;
 mod controller;
+mod equalizer;
 mod erc20;
 mod flashmint;
+mod gate;
+mod sentinel;
 mod shrine;
 mod utils;

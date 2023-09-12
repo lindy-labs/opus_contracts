@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use traits::Into;
-
     use aura::utils::exp::exp;
     use aura::utils::wadray;
     use aura::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};
