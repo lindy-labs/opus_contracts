@@ -1,15 +1,11 @@
-#[cfg(test)]
 mod TestAbsorber {
-    use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use integer::BoundedU256;
-    use option::OptionTrait;
     use starknet::{
         ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -20,8 +16,8 @@ mod TestAbsorber {
     };
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{
         BoundedWad, Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
@@ -457,7 +453,7 @@ mod TestAbsorber {
                         );
                     }
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1224,13 +1220,13 @@ mod TestAbsorber {
                                     (*reward_asset.amount).is_zero(), 'expected rewards should be 0'
                                 );
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             }
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

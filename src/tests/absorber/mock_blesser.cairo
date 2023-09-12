@@ -1,8 +1,6 @@
 #[starknet::contract]
 mod MockBlesser {
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_contract_address};
-    use traits::{Into, TryInto};
 
     use aura::core::roles::BlesserRoles;
 
@@ -26,7 +24,7 @@ mod MockBlesser {
         bless_amt: u128
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(BlesserRoles::default_admin_role(), absorber);
+        AccessControl::grant_role_helper(BlesserRoles::default_admin_role(), absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });
         self.absorber.write(absorber);
