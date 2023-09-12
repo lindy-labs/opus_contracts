@@ -2,9 +2,8 @@ mod AbsorberUtils {
     use cmp::min;
     use integer::BoundedU256;
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -43,8 +42,6 @@ mod AbsorberUtils {
 
     const AURA_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
     const VEAURA_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
-
-    const REMOVAL_LIMIT: u128 = 900000000000000000000000000; // 90% (Ray)
 
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
@@ -113,7 +110,6 @@ mod AbsorberUtils {
             contract_address_to_felt252(admin),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
-            REMOVAL_LIMIT.into(),
         ];
 
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(Absorber::TEST_CLASS_HASH)
