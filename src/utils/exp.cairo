@@ -1,7 +1,3 @@
-use array::ArrayTrait;
-use option::OptionTrait;
-use traits::{Into, TryInto};
-
 use aura::utils::wadray::{Wad, WAD_ONE, TIntoWad};
 
 // PORTED FROM: https://github.com/balancer/balancer-v2-monorepo/blob/master/pkg/solidity-utils/contracts/math/LogExpMath.sol

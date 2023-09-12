@@ -1,8 +1,7 @@
 mod SentinelUtils {
-    use array::{ArrayTrait, SpanTrait};
+    use array::ArrayTrait;
     use debug::PrintTrait;
     use integer::BoundedU256;
-    use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
@@ -10,7 +9,6 @@ mod SentinelUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::info::get_caller_address;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::core::roles::{SentinelRoles, ShrineRoles};
     use aura::core::sentinel::Sentinel;
@@ -26,8 +24,8 @@ mod SentinelUtils {
     use aura::tests::gate::utils::GateUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
-    const ETH_ASSET_MAX: u128 = 100000000000000000000; // 100 (wad)
-    const WBTC_ASSET_MAX: u128 = 10000000000; // 100 * 10**8
+    const ETH_ASSET_MAX: u128 = 200000000000000000000; // 200 (wad)
+    const WBTC_ASSET_MAX: u128 = 20000000000; // 200 * 10**8
 
     #[inline(always)]
     fn admin() -> ContractAddress {
@@ -40,8 +38,13 @@ mod SentinelUtils {
     }
 
     #[inline(always)]
-    fn invalid_yang_addr() -> ContractAddress {
-        contract_address_try_from_felt252('invalid yang').unwrap()
+    fn dummy_yang_addr() -> ContractAddress {
+        contract_address_try_from_felt252('dummy yang').unwrap()
+    }
+
+    #[inline(always)]
+    fn dummy_yang_gate_addr() -> ContractAddress {
+        contract_address_try_from_felt252('dummy yang token').unwrap()
     }
 
     //

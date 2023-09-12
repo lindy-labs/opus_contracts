@@ -1,6 +1,4 @@
 use math::Oneable;
-use traits::Into;
-use zeroable::Zeroable;
 
 use aura::utils::wadray;
 use aura::utils::wadray::Ray;
