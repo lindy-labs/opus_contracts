@@ -7,7 +7,6 @@
 
 #[starknet::contract]
 mod Pragma {
-    use array::ArrayTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     use aura::core::roles::PragmaRoles;

@@ -1,5 +1,4 @@
 mod TestPragma {
-    use array::ArrayTrait;
     use integer::U256Zeroable;
     use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
