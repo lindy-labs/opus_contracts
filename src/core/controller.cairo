@@ -1,9 +1,6 @@
 #[starknet::contract]
 mod Controller {
-    use option::OptionTrait;
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::roles::ControllerRoles;
 
@@ -49,6 +46,7 @@ mod Controller {
 
     #[derive(Drop, starknet::Event)]
     struct ParameterUpdated {
+        #[key]
         name: felt252,
         value: u8
     }
