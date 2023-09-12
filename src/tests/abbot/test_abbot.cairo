@@ -1,5 +1,4 @@
 mod TestAbbot {
-    use array::ArrayTrait;
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::testing::set_contract_address;
 

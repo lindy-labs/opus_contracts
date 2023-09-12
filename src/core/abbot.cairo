@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Abbot {
-    use array::ArrayTrait;
     use starknet::{ContractAddress, get_caller_address};
 
     use aura::interfaces::IAbbot::IAbbot;
