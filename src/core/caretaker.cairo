@@ -87,6 +87,10 @@ mod Caretaker {
         self.equalizer.write(IEqualizerDispatcher { contract_address: equalizer });
     }
 
+    //
+    // External Caretaker functions
+    //
+
     #[external(v0)]
     impl ICaretakerImpl of ICaretaker<ContractState> {
         //
@@ -164,7 +168,7 @@ mod Caretaker {
         }
 
         //
-        // External
+        // Core functions
         //
 
         // Admin will initially have access to `shut`.

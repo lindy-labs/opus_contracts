@@ -2,7 +2,6 @@
 //       various shut scenarios (?) - enough collateral, not enough collateral
 //       release; release when system is live; release when not trove owner
 //       reclaim; reclaim when system is live; reclaim not enough yin
-#[cft(test)]
 mod TestCaretaker {
     use debug::PrintTrait;
     use starknet::{ContractAddress};
