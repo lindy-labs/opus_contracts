@@ -203,11 +203,12 @@ mod Caretaker {
             // Since yang assets are transferred out of the Gate and the total number of yang
             // is not updated in Shrine, the asset amount per yang in Gate will decrease.
             let sentinel: ISentinelDispatcher = self.sentinel.read();
-            let mut yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
+            let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
             let caretaker = get_contract_address();
 
+            let mut yangs_copy = yangs;
             loop {
-                match yangs.pop_front() {
+                match yangs_copy.pop_front() {
                     Option::Some(yang) => {
                         let backed_yang: Wad = wadray::rmul_rw(
                             capped_backing_pct, shrine.get_yang_total(*yang)
