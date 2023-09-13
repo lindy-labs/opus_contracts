@@ -187,11 +187,11 @@ mod Pragma {
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
             AccessControl::assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
-                (LOWER_FRESHNESS_BOUND <= freshness) && (freshness <= UPPER_FRESHNESS_BOUND),
+                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
                 'PGM: Freshness out of bounds'
             );
             assert(
-                (LOWER_SOURCES_BOUND <= sources) && (sources <= UPPER_SOURCES_BOUND),
+                LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND,
                 'PGM: Sources out of bounds'
             );
 
@@ -205,8 +205,8 @@ mod Pragma {
         fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
             AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
             assert(
-                (LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency)
-                    && (new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND),
+                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
+                    && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
                 'PGM: Frequency out of bounds'
             );
 

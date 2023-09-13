@@ -31,7 +31,7 @@ mod TestPragma {
     // Constants
     //
 
-    const PEPE_USD_PAIR_ID: u256 = 5784117554504356676; // str_to_felt("PEPE/USD")     
+    const PEPE_USD_PAIR_ID: u256 = 'PEPE/USD';
 
     //
     // Address constants
