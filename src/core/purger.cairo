@@ -73,6 +73,7 @@ mod Purger {
 
     #[derive(Drop, starknet::Event)]
     struct Purged {
+        #[key]
         trove_id: u64,
         purge_amt: Wad,
         percentage_freed: Ray,
@@ -360,7 +361,7 @@ mod Purger {
     //
 
     #[generate_trait]
-    impl PurgerInternalFunctions of PurgerInternalFunctionsTrait {
+    impl PurgerHelpers of PurgerHelpersTrait {
         // Internal function to transfer the given percentage of a trove's collateral to the given
         // recipient address.
         // Returns an array of `AssetBalance` struct.
