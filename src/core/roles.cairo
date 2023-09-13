@@ -1,3 +1,28 @@
+mod AbsorberRoles {
+    const KILL: u128 = 1;
+    const SET_REWARD: u128 = 2;
+    const UPDATE: u128 = 4;
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REWARD
+    }
+}
+
+mod BlesserRoles {
+    const BLESS: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        BLESS
+    }
+}
+
 mod AllocatorRoles {
     const SET_ALLOCATION: u128 = 1;
 
