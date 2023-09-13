@@ -1,0 +1,49 @@
+use aura::types::Pragma::PricesResponse;
+
+#[starknet::interface]
+trait IMockPragma<TContractState> {
+    // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
+    fn next_get_data_median(
+        ref self: TContractState, pair_id: u256, price_response: PricesResponse
+    );
+}
+
+#[starknet::contract]
+mod MockPragma {
+    use aura::interfaces::external::IPragmaOracle;
+    use aura::types::Pragma::{DataType, PricesResponse};
+
+    use super::IMockPragma;
+
+    #[storage]
+    struct Storage {
+        // Mapping from pair ID to price response data struct
+        price_response: LegacyMap::<u256, PricesResponse>,
+    }
+
+    #[external(v0)]
+    impl IMockPragmaImpl of IMockPragma<ContractState> {
+        fn next_get_data_median(
+            ref self: ContractState, pair_id: u256, price_response: PricesResponse
+        ) {
+            self.price_response.write(pair_id, price_response);
+        }
+    }
+
+    #[external(v0)]
+    impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
+        fn get_data_median(self: @ContractState, data_type: DataType) -> PricesResponse {
+            match data_type {
+                DataType::Spot(pair_id) => {
+                    self.price_response.read(pair_id)
+                },
+                DataType::Future(pair_id) => {
+                    self.price_response.read(pair_id)
+                },
+                DataType::Generic(pair_id) => {
+                    self.price_response.read(pair_id)
+                }
+            }
+        }
+    }
+}
