@@ -53,13 +53,16 @@ mod Caretaker {
 
     #[derive(Drop, starknet::Event)]
     struct Release {
+        #[key]
         user: ContractAddress,
+        #[key]
         trove_id: u64,
         assets: Span<AssetBalance>
     }
 
     #[derive(Drop, starknet::Event)]
     struct Reclaim {
+        #[key]
         user: ContractAddress,
         yin_amt: Wad,
         assets: Span<AssetBalance>
