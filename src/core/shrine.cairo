@@ -175,7 +175,6 @@ mod Shrine {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         DebtTotalUpdated: DebtTotalUpdated,
-        YangsCountUpdated: YangsCountUpdated,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
         ThresholdUpdated: ThresholdUpdated,
@@ -210,11 +209,6 @@ mod Shrine {
     #[derive(Drop, starknet::Event)]
     struct DebtTotalUpdated {
         total: Wad
-    }
-
-    #[derive(Drop, starknet::Event)]
-    struct YangsCountUpdated {
-        count: u32
     }
 
     #[derive(Drop, starknet::Event)]
@@ -558,7 +552,6 @@ mod Shrine {
 
             // Event emissions
             self.emit(YangAdded { yang, yang_id, start_price, initial_rate });
-            self.emit(YangsCountUpdated { count: yang_id });
             self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
         }
 
