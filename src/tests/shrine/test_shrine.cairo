@@ -5,7 +5,7 @@ mod TestShrine {
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
-    use starknet::testing::{set_block_timestamp, set_contract_address};
+    use starknet::testing::{pop_log, set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
@@ -49,6 +49,20 @@ mod TestShrine {
             contract_address: shrine_addr
         };
         assert(shrine_accesscontrol.get_admin() == ShrineUtils::admin(), 'wrong admin');
+
+        // Drop `AdminChanged` and `RoleGranted` events from access control library
+        common::drop_events(shrine_addr, 2);
+        let event: Shrine::Event = pop_log(shrine_addr).unwrap();
+        assert(
+            event == Shrine::Event::MultiplierUpdated(
+                Shrine::MultiplierUpdated {
+                    multiplier: Shrine::INITIAL_MULTIPLIER.into(),
+                    cumulative_multiplier: Shrine::INITIAL_MULTIPLIER.into(),
+                    interval: ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP) - 1,
+                }
+            ),
+            'wrong event'
+        );
     }
 
     // Checks the following functions
@@ -61,6 +75,10 @@ mod TestShrine {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
 
+        // Drop `AdminChanged` and `RoleGranted` events from access control library,
+        // and `MultiplierUpdated` from Shrine's constructor
+        common::drop_events(shrine_addr, 3);
+
         // Check debt ceiling
         let shrine = ShrineUtils::shrine(shrine_addr);
         assert(shrine.get_debt_ceiling() == ShrineUtils::DEBT_CEILING.into(), 'wrong debt ceiling');
@@ -70,27 +88,68 @@ mod TestShrine {
 
         let expected_era: u64 = 1;
 
-        let yang1_addr: ContractAddress = ShrineUtils::yang1_addr();
-        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
-        assert(yang1_price == ShrineUtils::YANG1_START_PRICE.into(), 'wrong yang1 start price');
-        let (rmt, sltv) = shrine.get_recovery_mode_threshold();
+        let mut yang_addrs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
+        let mut start_prices: Array<Wad> = array![
+            ShrineUtils::YANG1_START_PRICE.into(),
+            ShrineUtils::YANG2_START_PRICE.into(),
+            ShrineUtils::YANG3_START_PRICE.into(),
+        ];
+        let mut thresholds: Array<Ray> = array![
+            ShrineUtils::YANG1_THRESHOLD.into(),
+            ShrineUtils::YANG2_THRESHOLD.into(),
+            ShrineUtils::YANG3_THRESHOLD.into(),
+        ];
+        let mut base_rates: Array<Ray> = array![
+            ShrineUtils::YANG1_BASE_RATE.into(),
+            ShrineUtils::YANG2_BASE_RATE.into(),
+            ShrineUtils::YANG3_BASE_RATE.into(),
+        ];
 
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang1_addr);
-        assert(raw_threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'wrong yang1 threshold');
-        assert(
-            shrine.get_yang_rate(yang1_addr, expected_era) == ShrineUtils::YANG1_BASE_RATE.into(),
-            'wrong yang1 base rate'
-        );
+        let mut start_prices = start_prices.span();
+        let mut thresholds = thresholds.span();
+        let mut base_rates = base_rates.span();
+        let mut yang_id = 1;
+        loop {
+            match yang_addrs.pop_front() {
+                Option::Some(yang_addr) => {
+                    'loop'.print();
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang_addr);
+                    let expected_yang_price = *start_prices.pop_front().unwrap();
+                    assert(yang_price == expected_yang_price, 'wrong yang start price');
 
-        let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
-        let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
-        assert(yang2_price == ShrineUtils::YANG2_START_PRICE.into(), 'wrong yang2 start price');
-        let (raw_threshold, _) = shrine.get_yang_threshold(yang2_addr);
-        assert(raw_threshold == ShrineUtils::YANG2_THRESHOLD.into(), 'wrong yang2 threshold');
-        assert(
-            shrine.get_yang_rate(yang2_addr, expected_era) == ShrineUtils::YANG2_BASE_RATE.into(),
-            'wrong yang2 base rate'
-        );
+                    let (raw_threshold, _) = shrine.get_yang_threshold(*yang_addr);
+                    assert(
+                        raw_threshold == *thresholds.pop_front().unwrap(), 'wrong yang threshold'
+                    );
+
+                    let expected_rate = *base_rates.pop_front().unwrap();
+                    assert(
+                        shrine.get_yang_rate(*yang_addr, expected_era) == expected_rate,
+                        'wrong yang base rate'
+                    );
+
+                    let event: Shrine::Event = pop_log(shrine_addr).unwrap();
+                    assert(
+                        event == Shrine::Event::YangAdded(
+                            Shrine::YangAdded {
+                                yang: *yang_addr,
+                                yang_id: yang_id,
+                                start_price: expected_yang_price,
+                                initial_rate: expected_rate
+                            }
+                        ),
+                        'wrong YangAdded event'
+                    );
+
+                    //common::drop_events(shrine_addr, 2);
+
+                    yang_id += 1;
+                },
+                Option::None => {
+                    break;
+                }
+            };
+        };
 
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();

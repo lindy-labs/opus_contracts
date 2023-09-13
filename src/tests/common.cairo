@@ -5,7 +5,7 @@ use starknet::{
     SyscallResultTrait
 };
 use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{set_block_timestamp, set_contract_address};
+use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
 
 use aura::core::shrine::Shrine;
 
@@ -301,4 +301,25 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     };
 
     combined_asset_amts.span()
+}
+
+//
+// Helpers for events
+// From https://github.com/OpenZeppelin/cairo-contracts/blob/cairo-2/src/tests/utils.cairo
+//
+
+fn assert_no_events_left(address: ContractAddress) {
+    assert(pop_log_raw(address).is_none(), 'Events remaining on queue');
+}
+
+fn drop_events(address: ContractAddress, count: u8) {
+    let mut idx = 0;
+    loop {
+        if idx == count {
+            break;
+        }
+        pop_log_raw(address);
+
+        idx += 1;
+    };
 }

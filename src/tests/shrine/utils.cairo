@@ -138,12 +138,19 @@ mod ShrineUtils {
     // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID
     // and terminates at yang ID 0. This affects which yang receives any rounding of
     // debt that falls below the rounding threshold.
-    fn two_yang_addrs() -> Span<ContractAddress> {
+    fn two_yang_addrs_reversed() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = array![yang2_addr(), yang1_addr(),];
         yang_addrs.span()
     }
 
     fn three_yang_addrs() -> Span<ContractAddress> {
+        let mut yang_addrs: Array<ContractAddress> = array![
+            yang1_addr(), yang2_addr(), yang3_addr()
+        ];
+        yang_addrs.span()
+    }
+
+    fn three_yang_addrs_reversed() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = array![
             yang3_addr(), yang2_addr(), yang1_addr(),
         ];
