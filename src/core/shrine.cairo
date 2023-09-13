@@ -1173,7 +1173,7 @@ mod Shrine {
             let base_threshold: Ray = self.thresholds.read(yang_id);
 
             match self.get_yang_suspension_status_helper(yang_id) {
-                YangSuspensionStatus::None(_) => {
+                YangSuspensionStatus::None => {
                     base_threshold
                 },
                 YangSuspensionStatus::Temporary(_) => {
