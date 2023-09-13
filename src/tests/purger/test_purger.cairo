@@ -1,11 +1,7 @@
 #[cfg(test)]
 mod TestPurger {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;

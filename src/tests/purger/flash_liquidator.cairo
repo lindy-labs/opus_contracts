@@ -14,11 +14,8 @@ trait IFlashLiquidator<TContractState> {
 
 #[starknet::contract]
 mod FlashLiquidator {
-    use array::{ArrayTrait, SpanTrait};
     use integer::BoundedInt;
-    use option::OptionTrait;
     use starknet::{get_contract_address, ContractAddress};
-    use traits::{Into, TryInto};
 
     use aura::core::flashmint::FlashMint::ON_FLASH_MINT_SUCCESS;
 

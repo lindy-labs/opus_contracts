@@ -1,6 +1,4 @@
 mod PurgerUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
         ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
@@ -8,8 +6,6 @@ mod PurgerUtils {
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
