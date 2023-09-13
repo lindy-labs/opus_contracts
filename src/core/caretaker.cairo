@@ -1,10 +1,7 @@
 #[starknet::contract]
 mod Caretaker {
-    use array::{ArrayTrait, SpanTrait};
     use cmp::min;
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use traits::{Default, Into, TryInto};
 
     use aura::core::roles::CaretakerRoles;
 
@@ -14,9 +11,9 @@ mod Caretaker {
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::AssetBalance;
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RAY_ONE, Wad};
 
@@ -82,7 +79,7 @@ mod Caretaker {
         equalizer: ContractAddress
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(CaretakerRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(CaretakerRoles::default_admin_role(), admin);
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });

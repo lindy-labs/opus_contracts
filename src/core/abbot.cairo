@@ -1,16 +1,12 @@
 #[starknet::contract]
 mod Abbot {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address};
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::interfaces::IAbbot::IAbbot;
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::AssetBalance;
     use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::types::AssetBalance;
     use aura::utils::wadray::{BoundedWad, Wad};
 
     #[storage]
@@ -70,6 +66,10 @@ mod Abbot {
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
     }
 
+    //
+    // External Abbot functions
+    //
+
     #[external(v0)]
     impl IAbbotImpl of IAbbot<ContractState> {
         //
@@ -99,7 +99,7 @@ mod Abbot {
         }
 
         //
-        // External functions
+        // Core functions
         //
 
         // create a new trove in the system with Yang deposits,
@@ -127,9 +127,9 @@ mod Abbot {
             loop {
                 match yang_assets.pop_front() {
                     Option::Some(yang_asset) => {
-                        self.deposit_internal(new_trove_id, user, *yang_asset);
+                        self.deposit_helper(new_trove_id, user, *yang_asset);
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
@@ -138,7 +138,7 @@ mod Abbot {
             // forge Yin
             self.shrine.read().forge(user, new_trove_id, forge_amount, max_forge_fee_pct);
 
-            self.emit(TroveOpened { user: user, trove_id: new_trove_id });
+            self.emit(TroveOpened { user, trove_id: new_trove_id });
 
             new_trove_id
         }
@@ -161,15 +161,15 @@ mod Abbot {
                         if yang_amount.is_zero() {
                             continue;
                         }
-                        self.withdraw_internal(trove_id, user, *yang, yang_amount);
+                        self.withdraw_helper(trove_id, user, *yang, yang_amount);
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
             };
 
-            self.emit(TroveClosed { trove_id: trove_id });
+            self.emit(TroveClosed { trove_id });
         }
 
         // add Yang (an asset) to a trove
@@ -181,7 +181,7 @@ mod Abbot {
             assert(trove_id <= self.troves_count.read(), 'ABB: Non-existent trove');
             // note that caller does not need to be the trove's owner to deposit
 
-            self.deposit_internal(trove_id, get_caller_address(), yang_asset);
+            self.deposit_helper(trove_id, get_caller_address(), yang_asset);
         }
 
         // remove Yang (an asset) from a trove
@@ -196,7 +196,7 @@ mod Abbot {
                 .sentinel
                 .read()
                 .convert_to_yang(yang_asset.address, yang_asset.amount);
-            self.withdraw_internal(trove_id, user, yang_asset.address, yang_amt);
+            self.withdraw_helper(trove_id, user, yang_asset.address, yang_amt);
         }
 
         // create Yin in a trove
@@ -214,18 +214,18 @@ mod Abbot {
     }
 
     //
-    // Internal functions
+    // Internal Abbot functions
     //
 
     #[generate_trait]
-    impl AbbotInternalFunctions of AbbotInternalFunctionsTrait {
+    impl AbbotHelpers of AbbotHelpersTrait {
         #[inline(always)]
         fn assert_trove_owner(self: @ContractState, user: ContractAddress, trove_id: u64) {
             assert(user == self.trove_owner.read(trove_id), 'ABB: Not trove owner')
         }
 
         #[inline(always)]
-        fn deposit_internal(
+        fn deposit_helper(
             ref self: ContractState, trove_id: u64, user: ContractAddress, yang_asset: AssetBalance
         ) {
             // reentrancy guard is used as a precaution
@@ -241,7 +241,7 @@ mod Abbot {
         }
 
         #[inline(always)]
-        fn withdraw_internal(
+        fn withdraw_helper(
             ref self: ContractState,
             trove_id: u64,
             user: ContractAddress,

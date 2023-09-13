@@ -1,10 +1,6 @@
 #[starknet::contract]
 mod Equalizer {
-    use array::{SpanTrait};
-    use option::OptionTrait;
     use starknet::ContractAddress;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::roles::EqualizerRoles;
 
@@ -12,7 +8,8 @@ mod Equalizer {
     use aura::interfaces::IEqualizer::IEqualizer;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     #[storage]
     struct Storage {
@@ -59,11 +56,15 @@ mod Equalizer {
         allocator: ContractAddress
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(EqualizerRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(EqualizerRoles::default_admin_role(), admin);
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
     }
+
+    //
+    // External Equalizer functions
+    //
 
     #[external(v0)]
     impl IEqualizerImpl of IEqualizer<ContractState> {
@@ -82,7 +83,7 @@ mod Equalizer {
         }
 
         //
-        // External
+        // Setters
         //
 
         // Update the Allocator's address
@@ -92,8 +93,12 @@ mod Equalizer {
             let old_address: ContractAddress = self.allocator.read().contract_address;
             self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
 
-            self.emit(AllocatorUpdated { old_address: old_address, new_address: allocator });
+            self.emit(AllocatorUpdated { old_address, new_address: allocator });
         }
+
+        //
+        // Core functions - External
+        //
 
         // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
         // according to their respective percentage share.
@@ -111,20 +116,23 @@ mod Equalizer {
             }
 
             let allocator: IAllocatorDispatcher = self.allocator.read();
-            let (mut recipients, mut percentages) = allocator.get_allocation();
+            let (recipients, percentages) = allocator.get_allocation();
 
             let mut minted_surplus: Wad = WadZeroable::zero();
 
             let mut recipients_copy = recipients;
+            let mut percentages_copy = percentages;
             loop {
                 match recipients_copy.pop_front() {
                     Option::Some(recipient) => {
-                        let amount: Wad = rmul_wr(surplus, *(percentages.pop_front().unwrap()));
+                        let amount: Wad = wadray::rmul_wr(
+                            surplus, *(percentages_copy.pop_front().unwrap())
+                        );
 
                         shrine.inject(*recipient, amount);
                         minted_surplus += amount;
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
@@ -135,19 +143,14 @@ mod Equalizer {
             let updated_total_yin: Wad = shrine.get_total_yin();
             assert(updated_total_yin <= total_debt, 'EQ: Yin exceeds debt');
 
-            self
-                .emit(
-                    Equalize {
-                        recipients: recipients, percentages: percentages, amount: minted_surplus
-                    }
-                );
+            self.emit(Equalize { recipients, percentages, amount: minted_surplus });
 
             minted_surplus
         }
     }
 
     //
-    // Internal
+    // Internal functions for Equalizer that do not access Equalizer's storage
     //
 
     // Helper function to return a tuple of the Shrine's total debt and the surplus

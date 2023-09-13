@@ -1,10 +1,6 @@
 use debug::PrintTrait;
-use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
+use integer::BoundedInt;
 use math::Oneable;
-use option::OptionTrait;
-use starknet::StorageBaseAddress;
-use traits::{Into, PartialEq, PartialOrd, TryInto};
-use zeroable::Zeroable;
 
 use aura::utils::math::pow;
 
@@ -306,7 +302,7 @@ impl U256TryIntoWad of TryInto<u256, Wad> {
     fn try_into(self: u256) -> Option<Wad> {
         match self.try_into() {
             Option::Some(val) => Option::Some(Wad { val }),
-            Option::None(_) => Option::None(()),
+            Option::None => Option::None(()),
         }
     }
 }

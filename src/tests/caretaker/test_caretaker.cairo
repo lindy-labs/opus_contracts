@@ -4,12 +4,9 @@
 //       reclaim; reclaim when system is live; reclaim not enough yin
 #[cft(test)]
 mod TestCaretaker {
-    use array::{ArrayTrait, SpanTrait};
     use debug::PrintTrait;
-    use option::OptionTrait;
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
-    use traits::{Into, TryInto};
 
     use aura::core::roles::{CaretakerRoles, ShrineRoles};
 
@@ -17,8 +14,8 @@ mod TestCaretaker {
     use aura::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::AssetBalance;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 

@@ -1,9 +1,34 @@
+mod AbsorberRoles {
+    const KILL: u128 = 1;
+    const SET_REWARD: u128 = 2;
+    const UPDATE: u128 = 4;
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        KILL + SET_REWARD
+    }
+}
+
 mod AllocatorRoles {
     const SET_ALLOCATION: u128 = 1;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_ALLOCATION
+    }
+}
+
+mod BlesserRoles {
+    const BLESS: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        BLESS
     }
 }
 
@@ -22,6 +47,24 @@ mod EqualizerRoles {
     #[inline(always)]
     fn default_admin_role() -> u128 {
         SET_ALLOCATOR
+    }
+}
+
+mod PragmaRoles {
+    const ADD_YANG: u128 = 1;
+    const SET_ORACLE_ADDRESS: u128 = 2;
+    const SET_PRICE_VALIDITY_THRESHOLDS: u128 = 4;
+    const SET_UPDATE_FREQUENCY: u128 = 8;
+    const UPDATE_PRICES: u128 = 16;
+
+    #[inline(always)]
+    fn purger() -> u128 {
+        UPDATE_PRICES
+    }
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        ADD_YANG + SET_ORACLE_ADDRESS + SET_PRICE_VALIDITY_THRESHOLDS + SET_UPDATE_FREQUENCY
     }
 }
 

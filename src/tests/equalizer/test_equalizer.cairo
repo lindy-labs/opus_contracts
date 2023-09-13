@@ -1,10 +1,7 @@
-#[cfg(test)]
 mod TestEqualizer {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
+    use array::ArrayTrait;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::Into;
 
     use aura::core::roles::EqualizerRoles;
     use aura::core::shrine::Shrine;
@@ -97,7 +94,7 @@ mod TestEqualizer {
 
                     minted_surplus += expected_increment;
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

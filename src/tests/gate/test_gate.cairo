@@ -6,7 +6,6 @@ mod TestGate {
     use debug::PrintTrait;
     use starknet::{ContractAddress, contract_address_try_from_felt252};
     use starknet::testing::set_contract_address;
-    use traits::Into;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};

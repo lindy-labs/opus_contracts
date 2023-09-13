@@ -1,7 +1,5 @@
 mod EqualizerUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Default, Into};
+    use array::ArrayTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
@@ -17,7 +15,6 @@ mod EqualizerUtils {
     use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
     use aura::utils::wadray::Ray;
 
     use aura::tests::shrine::utils::ShrineUtils;
@@ -90,7 +87,7 @@ mod EqualizerUtils {
                 Option::Some(recipient) => {
                     calldata.append(contract_address_to_felt252(*recipient));
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -103,7 +100,7 @@ mod EqualizerUtils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

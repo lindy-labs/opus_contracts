@@ -1,14 +1,9 @@
 mod ReentrancyGuard {
-    use starknet::{
-        ContractAddress, get_caller_address, Felt252TryIntoContractAddress, SyscallResultTrait
-    };
+    use starknet::SyscallResultTrait;
+
     use starknet::storage_access::StoreBool;
 
-    use traits::{Into, TryInto};
-
-    // get_storage_var_address('__reentrancyguard_entered')
-    const GUARD_STORAGE_BASE_ADDR: felt252 =
-        0x380125a0565a0f8085b5cc6540da297573e83173fadf00aa7ca010e2f45e41a;
+    const GUARD_STORAGE_BASE_ADDR: felt252 = selector!("__reentrancyguard_entered");
 
     #[inline(always)]
     fn write_guard(entered: bool) {

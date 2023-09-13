@@ -1,8 +1,9 @@
 mod abbot;
-mod gate;
+mod absorber;
 mod allocator;
 mod caretaker;
 mod equalizer;
+mod gate;
 mod roles;
 mod sentinel;
 mod shrine;

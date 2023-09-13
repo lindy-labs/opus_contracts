@@ -1,16 +1,12 @@
 #[starknet::contract]
 mod Allocator {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
+    use array::ArrayTrait;
     use starknet::ContractAddress;
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::roles::AllocatorRoles;
 
     use aura::interfaces::IAllocator::IAllocator;
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE};
 
     // Helper constant to set the starting index for iterating over the recipients
@@ -33,6 +29,9 @@ mod Allocator {
         percentages: LegacyMap::<ContractAddress, Ray>,
     }
 
+    //
+    // Events
+    //
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -46,11 +45,6 @@ mod Allocator {
         percentages: Span<Ray>
     }
 
-
-    //
-    // Events
-    //
-
     //
     // Constructor
     //
@@ -63,13 +57,13 @@ mod Allocator {
         percentages: Span<Ray>
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(AllocatorRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(AllocatorRoles::default_admin_role(), admin);
 
-        self.set_allocation_internal(recipients, percentages);
+        self.set_allocation_helper(recipients, percentages);
     }
 
     //
-    // External functions
+    // External Allocator functions
     //
 
     #[external(v0)]
@@ -101,7 +95,7 @@ mod Allocator {
         }
 
         //
-        // External
+        // Setters
         //
 
         // Update the recipients and their respective percentage share of newly minted surplus debt
@@ -111,22 +105,22 @@ mod Allocator {
         ) {
             AccessControl::assert_has_role(AllocatorRoles::SET_ALLOCATION);
 
-            self.set_allocation_internal(recipients, percentages);
+            self.set_allocation_helper(recipients, percentages);
         }
     }
 
     //
-    // Internal functions
+    // Internal Allocator functions
     //
 
     #[generate_trait]
-    impl AllocatorInternalFunctions of AllocatorInternalFunctionsTrait {
+    impl AllocatorHelpers of AllocatorHelpersTrait {
         // Helper function to update the allocation.
         // Ensures the following:
         // - both arrays of recipient addresses and percentages are of equal length;
         // - there is at least one recipient;
         // - the percentages add up to one Ray.
-        fn set_allocation_internal(
+        fn set_allocation_helper(
             ref self: ContractState, recipients: Span<ContractAddress>, percentages: Span<Ray>
         ) {
             let recipients_len: u32 = recipients.len();
@@ -150,7 +144,7 @@ mod Allocator {
 
                         idx += 1;
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
@@ -160,7 +154,7 @@ mod Allocator {
 
             self.recipients_count.write(recipients_len);
 
-            self.emit(AllocationUpdated { recipients: recipients, percentages: percentages });
+            self.emit(AllocationUpdated { recipients, percentages });
         }
     }
 
