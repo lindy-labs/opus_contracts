@@ -15,7 +15,7 @@ mod Controller {
 
     // Time intervals between updates are scaled down by this factor 
     // to prevent the integral term from getting too large
-    const TIME_SCALE: u128 = 3600; // 60 mins * 60 seconds = 1 hour
+    const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
@@ -53,6 +53,7 @@ mod Controller {
 
     #[derive(Drop, starknet::Event)]
     struct GainUpdated {
+        #[key]
         name: felt252,
         value: Ray
     }

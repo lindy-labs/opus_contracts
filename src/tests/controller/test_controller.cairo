@@ -1,9 +1,6 @@
 mod TestController {
-    use array::ArrayTrait;
     use debug::PrintTrait;
-    use option::OptionTrait;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
@@ -12,14 +9,14 @@ mod TestController {
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad};
 
-    use aura::tests::common::assert_equalish;
+    use aura::tests::common::{assert_equalish, badguy};
     use aura::tests::controller::utils::ControllerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad 
     const YIN_PRICE2: u128 = 999879000000000000; // wad
 
-    const ERROR_MARGIN: u128 = 1000000000000000_u128; // 10^-12 (ray)
+    const ERROR_MARGIN: u128 = 1000000000000000; // 10^-12 (ray)
 
     #[test]
     #[available_gas(20000000000)]
@@ -65,7 +62,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_p_gain_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::bad_guy());
+        set_contract_address(badguy());
         controller.set_p_gain(1_u128.into());
     }
 
@@ -74,7 +71,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_i_gain_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::bad_guy());
+        set_contract_address(badguy());
         controller.set_i_gain(1_u128.into());
     }
 
@@ -83,7 +80,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_alpha_p_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::bad_guy());
+        set_contract_address(badguy());
         controller.set_alpha_p(1);
     }
 
@@ -92,7 +89,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_alpha_i_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::bad_guy());
+        set_contract_address(badguy());
         controller.set_alpha_i(1);
     }
 
@@ -101,7 +98,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_beta_p_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::bad_guy());
+        set_contract_address(badguy());
         controller.set_beta_p(1);
     }
 
@@ -110,7 +107,7 @@ mod TestController {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_set_beta_i_unauthorized() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
-        set_contract_address(ControllerUtils::bad_guy());
+        set_contract_address(badguy());
         controller.set_beta_i(1);
     }
 
@@ -420,7 +417,7 @@ mod TestController {
 
                     ControllerUtils::fast_forward_1_hour();
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -485,9 +482,7 @@ mod TestController {
             1126799991300090000000000000_u128.into(),
             1127299985050210000000000000_u128.into()
         ];
-        let mut gt_update_intervals: Array<u64> = array![
-            1_u64.into(), 4_u64.into(), 6_u64.into(), 7_u64.into(), 9_u64.into()
-        ];
+        let mut gt_update_intervals: Array<u64> = array![1, 4, 6, 7, 9];
 
         let mut current_interval: u64 = 1;
         let end_interval: u64 = 10;
@@ -669,7 +664,7 @@ mod TestController {
 
                     ControllerUtils::fast_forward_1_hour();
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

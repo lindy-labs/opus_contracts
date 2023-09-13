@@ -1,16 +1,11 @@
 mod ControllerUtils {
     use debug::PrintTrait;
-    use array::ArrayTrait;
-    use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
-        get_block_timestamp, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::controller::Controller;
     use aura::core::roles::ShrineRoles;
@@ -26,7 +21,7 @@ mod ControllerUtils {
     use aura::tests::shrine::utils::ShrineUtils;
 
     // Controller update interval 
-    const ONE_HOUR: u64 = 3600; // 1 hour
+    const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
 
     // Default controller parameters
     const P_GAIN: u128 = 100000000000000000000000000000; // 100 * RAY_ONE
@@ -42,12 +37,6 @@ mod ControllerUtils {
     fn admin() -> ContractAddress {
         contract_address_try_from_felt252('controller admin').unwrap()
     }
-
-    #[inline(always)]
-    fn bad_guy() -> ContractAddress {
-        contract_address_try_from_felt252('bad guy').unwrap()
-    }
-
 
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
