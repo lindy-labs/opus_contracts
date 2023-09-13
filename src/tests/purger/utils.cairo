@@ -22,7 +22,7 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::AssetBalance;
+    use aura::types::AssetBalance;
     use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{

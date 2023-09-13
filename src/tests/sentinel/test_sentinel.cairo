@@ -1,12 +1,8 @@
-#[cfg(test)]
 mod TestSentinel {
-    use array::SpanTrait;
     use debug::PrintTrait;
-    use option::OptionTrait;
-    use starknet::{contract_address_const, ContractAddress};
+    use starknet::ContractAddress;
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::Into;
 
     use aura::core::sentinel::Sentinel;
     use aura::core::roles::SentinelRoles;
@@ -16,7 +12,7 @@ mod TestSentinel {
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::YangSuspensionStatus;
+    use aura::types::YangSuspensionStatus;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WAD_ONE};
 
@@ -90,14 +86,11 @@ mod TestSentinel {
         assert(eth_price == ShrineUtils::YANG1_START_PRICE.into(), 'Wrong yang price #1');
         assert(wbtc_price == ShrineUtils::YANG2_START_PRICE.into(), 'Wrong yang price #2');
 
-        assert(
-            shrine.get_yang_threshold(eth) == ShrineUtils::YANG1_THRESHOLD.into(),
-            'Wrong yang threshold #1'
-        );
-        assert(
-            shrine.get_yang_threshold(wbtc) == ShrineUtils::YANG2_THRESHOLD.into(),
-            'Wrong yang threshold #2'
-        );
+        let (eth_threshold, _) = shrine.get_yang_threshold(eth);
+        assert(eth_threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'Wrong yang threshold #1');
+
+        let (wbtc_threshold, _) = shrine.get_yang_threshold(wbtc);
+        assert(wbtc_threshold == ShrineUtils::YANG2_THRESHOLD.into(), 'Wrong yang threshold #2');
 
         let expected_era: u64 = 1;
         assert(
@@ -130,12 +123,12 @@ mod TestSentinel {
 
         sentinel
             .add_yang(
-                contract_address_const::<0xf00>(),
+                SentinelUtils::dummy_yang_addr(),
                 SentinelUtils::ETH_ASSET_MAX,
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                contract_address_const::<0xf00d>()
+                SentinelUtils::dummy_yang_gate_addr()
             );
     }
 
@@ -152,7 +145,7 @@ mod TestSentinel {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                contract_address_const::<0xf00d>()
+                SentinelUtils::dummy_yang_gate_addr()
             );
     }
 
@@ -164,7 +157,7 @@ mod TestSentinel {
         set_contract_address(SentinelUtils::admin());
         sentinel
             .add_yang(
-                contract_address_const::<0xf00>(),
+                SentinelUtils::dummy_yang_addr(),
                 SentinelUtils::ETH_ASSET_MAX,
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
@@ -241,8 +234,7 @@ mod TestSentinel {
         let (sentinel, shrine, eth, eth_gate) = SentinelUtils::deploy_sentinel_with_eth_gate();
 
         set_contract_address(SentinelUtils::admin());
-        sentinel
-            .set_yang_asset_max(SentinelUtils::invalid_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
+        sentinel.set_yang_asset_max(SentinelUtils::dummy_yang_addr(), SentinelUtils::ETH_ASSET_MAX);
     }
 
     #[test]
@@ -323,7 +315,7 @@ mod TestSentinel {
         set_contract_address(user);
         eth_erc20
             .transfer(
-                contract_address_const::<0xf00>(),
+                common::non_zero_address(),
                 eth_erc20.balance_of(user) - (deposit_amt.val - 1).into()
             );
 
@@ -343,7 +335,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.enter(contract_address_const::<0xf00>(), user, common::TROVE_1, deposit_amt.val);
+        sentinel.enter(SentinelUtils::dummy_yang_addr(), user, common::TROVE_1, deposit_amt.val);
     }
 
     #[test]
@@ -371,7 +363,7 @@ mod TestSentinel {
 
         set_contract_address(SentinelUtils::mock_abbot());
 
-        sentinel.exit(contract_address_const::<0xf00>(), user, common::TROVE_1, WAD_ONE.into());
+        sentinel.exit(SentinelUtils::dummy_yang_addr(), user, common::TROVE_1, WAD_ONE.into());
     }
 
     #[test]

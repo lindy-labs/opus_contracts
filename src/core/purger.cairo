@@ -17,7 +17,7 @@ mod Purger {
 
     use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::types::AssetBalance;
+    use aura::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
@@ -112,7 +112,7 @@ mod Purger {
         AccessControl::initializer(admin);
 
         // Grant admin permission
-        AccessControl::grant_role_internal(PurgerRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(PurgerRoles::default_admin_role(), admin);
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });

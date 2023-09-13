@@ -1,7 +1,9 @@
 mod abbot;
 mod absorber;
 mod common;
+mod controller;
 mod erc20;
+mod equalizer;
 mod external;
 mod flashmint;
 mod gate;

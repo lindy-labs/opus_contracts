@@ -1,538 +1,443 @@
-#[cfg(test)]
-mod TestAbbot {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
-    use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
+// NOTE: make sure the data feed coming from the oracle is denominated in the same
+//       asset as the synthetic in Shrine; typically, feeds are in USD, but if the
+//       synth is denominated in something else than USD and there's no feed for it,
+//       this module cannot be used as-is, since the price coming from the oracle
+//       would need to be divided by the synthetic's USD denominated peg price in
+//       order to get ASSET/SYN
 
-    use aura::core::sentinel::Sentinel;
+#[starknet::contract]
+mod Pragma {
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::core::roles::PragmaRoles;
+
+    use aura::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
+    use aura::interfaces::IOracle::IOracle;
+    use aura::interfaces::IPragma::IPragma;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::types::AssetBalance;
+    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
+    use aura::utils::wadray::Wad;
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    // Helper constant to set the starting index for iterating over the yangs
+    // in the order they were added
+    const LOOP_START: u32 = 1;
 
-    use debug::PrintTrait;
+    // there are sanity bounds for settable values, i.e. they can never
+    // be set outside of this hardcoded range
+    // the range is [lower, upper]
+    const LOWER_FRESHNESS_BOUND: u64 = 60; // 1 minute
+    const UPPER_FRESHNESS_BOUND: u64 =
+        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+    const LOWER_SOURCES_BOUND: u64 = 3;
+    const UPPER_SOURCES_BOUND: u64 = 13;
+    const LOWER_UPDATE_FREQUENCY_BOUND: u64 = 15; // seconds (approx. Starknet block prod goal)
+    const UPPER_UPDATE_FREQUENCY_BOUND: u64 =
+        consteval_int!(4 * 60 * 60); // 4 hours * 60 minutes * 60 seconds
+
+    #[storage]
+    struct Storage {
+        // interface to the Pragma oracle contract
+        oracle: IPragmaOracleDispatcher,
+        // Shrine associated with this module
+        // this is where a valid price update is posted to
+        shrine: IShrineDispatcher,
+        // Sentinel associated with this module
+        // a Sentinel module is necessary to verify a price update
+        sentinel: ISentinelDispatcher,
+        // the minimal time difference in seconds of how often we
+        // want to fetch from the oracle
+        update_frequency: u64,
+        // block timestamp of the last `update_prices` call
+        last_update_prices_call_timestamp: u64,
+        // values used to determine if we consider a price update fresh or stale:
+        // `freshness` is the maximum number of seconds between block timestamp and
+        // the last update timestamp (as reported by Pragma) for which we consider a
+        // price update valid
+        // `sources` is the minimum number of data publishers used to aggregate the
+        // price value
+        price_validity_thresholds: PriceValidityThresholds,
+        // number of yangs in `yang_settings` "array"
+        yangs_count: u32,
+        // a 1-based "array" of values used to get the Yang prices from Pragma
+        yang_settings: LegacyMap::<u32, YangSettings>
+    }
 
     //
-    // Tests
+    // Events
     //
 
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_open_trove_pass() {
-        let (
-            shrine, _, abbot, mut yangs, gates, trove_owner, trove_id, mut deposited_amts, forge_amt
-        ) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        InvalidPriceUpdate: InvalidPriceUpdate,
+        OracleAddressUpdated: OracleAddressUpdated,
+        PricesUpdated: PricesUpdated,
+        PriceValidityThresholdsUpdated: PriceValidityThresholdsUpdated,
+        UpdateFrequencyUpdated: UpdateFrequencyUpdated,
+        YangAdded: YangAdded,
+    }
 
-        // Check trove ID
-        let expected_trove_id: u64 = 1;
-        assert(trove_id == expected_trove_id, 'wrong trove ID');
-        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
-        assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
+    #[derive(Drop, starknet::Event)]
+    struct InvalidPriceUpdate {
+        yang: ContractAddress,
+        price: Wad,
+        pragma_last_updated_ts: u256,
+        pragma_num_sources: u256,
+        asset_amt_per_yang: Wad
+    }
 
-        let mut expected_user_trove_ids: Array<u64> = array![expected_trove_id];
-        assert(
-            abbot.get_user_trove_ids(trove_owner) == expected_user_trove_ids.span(),
-            'wrong user trove ids'
-        );
+    #[derive(Drop, starknet::Event)]
+    struct OracleAddressUpdated {
+        old_address: ContractAddress,
+        new_address: ContractAddress
+    }
 
-        let mut yangs_total: Array<Wad> = Default::default();
-        // Check yangs
-        let mut yangs_copy = yangs;
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
-                    let expected_initial_yang: Wad = wadray::fixed_point_to_wad(
-                        Sentinel::INITIAL_DEPOSIT_AMT, decimals
-                    );
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
-                        *deposited_amts.pop_front().unwrap(), decimals
-                    );
-                    let expected_yang_total: Wad = expected_initial_yang + expected_deposited_yang;
-                    assert(
-                        shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #1'
-                    );
-                    yangs_total.append(expected_yang_total);
+    #[derive(Drop, starknet::Event)]
+    struct PricesUpdated {
+        timestamp: u64,
+        caller: ContractAddress
+    }
 
-                    assert(
-                        shrine.get_deposit(*yang, trove_id) == expected_deposited_yang,
-                        'wrong trove yang balance #1'
-                    );
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
+    #[derive(Drop, starknet::Event)]
+    struct PriceValidityThresholdsUpdated {
+        old_thresholds: PriceValidityThresholds,
+        new_thresholds: PriceValidityThresholds
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpdateFrequencyUpdated {
+        old_frequency: u64,
+        new_frequency: u64
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct YangAdded {
+        index: u32,
+        settings: YangSettings
+    }
+
+    //
+    // Constructor
+    //
+
+    #[constructor]
+    fn constructor(
+        ref self: ContractState,
+        admin: ContractAddress,
+        oracle: ContractAddress,
+        shrine: ContractAddress,
+        sentinel: ContractAddress,
+        update_frequency: u64,
+        freshness_threshold: u64,
+        sources_threshold: u64
+    ) {
+        AccessControl::initializer(admin);
+        AccessControl::grant_role_helper(PragmaRoles::default_admin_role(), admin);
+
+        // init storage
+        self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });
+        self.update_frequency.write(update_frequency);
+        let new_thresholds = PriceValidityThresholds {
+            freshness: freshness_threshold, sources: sources_threshold
         };
+        self.price_validity_thresholds.write(new_thresholds);
 
-        // Check trove's debt
-        let (_, _, _, debt) = shrine.get_trove_info(expected_trove_id);
-        assert(debt == forge_amt, 'wrong trove debt');
+        // emit events
+        self.emit(OracleAddressUpdated { old_address: Zeroable::zero(), new_address: oracle });
+        self.emit(UpdateFrequencyUpdated { old_frequency: 0, new_frequency: update_frequency });
+        self
+            .emit(
+                PriceValidityThresholdsUpdated {
+                    old_thresholds: PriceValidityThresholds { freshness: 0, sources: 0 },
+                    new_thresholds
+                }
+            );
+    }
 
-        assert(shrine.get_total_debt() == forge_amt, 'wrong total debt');
+    //
+    // External Pragma functions
+    //
 
-        // User opens another trove
-        let second_forge_amt: Wad = 1666000000000000000000_u128.into();
-        let mut second_deposit_amts = AbbotUtils::subsequent_deposit_amts();
-        let second_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner, yangs, second_deposit_amts, gates, second_forge_amt
-        );
+    #[external(v0)]
+    impl IPragmaImpl of IPragma<ContractState> {
+        //
+        // Setters
+        //
 
-        let expected_trove_id: u64 = 2;
-        assert(second_trove_id == expected_trove_id, 'wrong trove ID');
-        assert(abbot.get_trove_owner(expected_trove_id) == trove_owner, 'wrong trove owner');
-        assert(abbot.get_troves_count() == expected_trove_id, 'wrong troves count');
+        fn set_oracle(ref self: ContractState, new_oracle: ContractAddress) {
+            AccessControl::assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
+            assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');
 
-        expected_user_trove_ids.append(expected_trove_id);
-        assert(
-            abbot.get_user_trove_ids(trove_owner) == expected_user_trove_ids.span(),
-            'wrong user trove ids'
-        );
+            let old_oracle: IPragmaOracleDispatcher = self.oracle.read();
+            self.oracle.write(IPragmaOracleDispatcher { contract_address: new_oracle });
 
-        // Check yangs
-        let mut yangs_total = yangs_total.span();
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
-                    let before_yang_total: Wad = *yangs_total.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
-                        *second_deposit_amts.pop_front().unwrap(), decimals
-                    );
-                    let expected_yang_total: Wad = before_yang_total + expected_deposited_yang;
-                    assert(
-                        shrine.get_yang_total(*yang) == expected_yang_total, 'wrong yang total #2'
-                    );
+            self
+                .emit(
+                    OracleAddressUpdated {
+                        old_address: old_oracle.contract_address, new_address: new_oracle
+                    }
+                );
+        }
 
-                    assert(
-                        shrine.get_deposit(*yang, second_trove_id) == expected_deposited_yang,
-                        'wrong trove yang balance #2'
-                    );
-                },
-                Option::None(_) => {
+        fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
+            AccessControl::assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
+            assert(
+                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
+                'PGM: Freshness out of bounds'
+            );
+            assert(
+                LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND,
+                'PGM: Sources out of bounds'
+            );
+
+            let old_thresholds: PriceValidityThresholds = self.price_validity_thresholds.read();
+            let new_thresholds = PriceValidityThresholds { freshness, sources };
+            self.price_validity_thresholds.write(new_thresholds);
+
+            self.emit(PriceValidityThresholdsUpdated { old_thresholds, new_thresholds });
+        }
+
+        fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
+            AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
+            assert(
+                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
+                    && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
+                'PGM: Frequency out of bounds'
+            );
+
+            let old_frequency: u64 = self.update_frequency.read();
+            self.update_frequency.write(new_frequency);
+            self.emit(UpdateFrequencyUpdated { old_frequency, new_frequency });
+        }
+
+        fn add_yang(ref self: ContractState, pair_id: u256, yang: ContractAddress) {
+            AccessControl::assert_has_role(PragmaRoles::ADD_YANG);
+            assert(pair_id != 0, 'PGM: Invalid pair ID');
+            assert(yang.is_non_zero(), 'PGM: Invalid yang address');
+            self.assert_new_yang(pair_id, yang);
+
+            // doing a sanity check if Pragma actually offers a price feed
+            // of the requested asset and if it's suitable for our needs
+            let response: PricesResponse = self
+                .oracle
+                .read()
+                .get_data_median(DataType::Spot(pair_id));
+            // Pragma returns 0 decimals for an unknown pair ID
+            assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
+            assert(response.decimals <= 18, 'PGM: Too many decimals');
+
+            let index: u32 = self.yangs_count.read() + 1;
+            let settings = YangSettings { pair_id, yang };
+            self.yang_settings.write(index, settings);
+            self.yangs_count.write(index);
+
+            self.emit(YangAdded { index, settings });
+        }
+
+        //
+        // Yagi keepers
+        // TODO: check their Cairo 1 API
+        //
+
+        #[inline(always)]
+        fn probe_task(self: @ContractState) -> bool {
+            let seconds_since_last_update: u64 = get_block_timestamp()
+                - self.last_update_prices_call_timestamp.read();
+            self.update_frequency.read() <= seconds_since_last_update
+        }
+
+        fn execute_task(ref self: ContractState) {
+            self.update_prices();
+        }
+    }
+
+    //
+    // External oracle functions
+    //
+
+    #[external(v0)]
+    impl IOracleImpl of IOracle<ContractState> {
+        fn update_prices(ref self: ContractState) {
+            // check first if an update can happen - under normal circumstances, it means
+            // if the minimal time delay between the last update and now has passed
+            // but the caller can have a specialized role in which case they can
+            // force an update to happen immediatelly
+            let mut can_update: bool = self.probe_task();
+            if !can_update {
+                can_update =
+                    AccessControl::has_role(PragmaRoles::UPDATE_PRICES, get_caller_address());
+            }
+            assert(can_update, 'PGM: Too soon to update prices');
+
+            let block_timestamp: u64 = get_block_timestamp();
+            let mut idx: u32 = LOOP_START;
+            let loop_end: u32 = self.yangs_count.read() + LOOP_START;
+            let mut has_valid_update: bool = false;
+
+            loop {
+                if idx == loop_end {
                     break;
-                },
+                }
+
+                let settings: YangSettings = self.yang_settings.read(idx);
+                let response: PricesResponse = self
+                    .oracle
+                    .read()
+                    .get_data_median(DataType::Spot(settings.pair_id));
+
+                // convert price value to Wad
+                // this will revert if the decimals is greater than 18 (wad)
+                let price: Wad = wadray::fixed_point_to_wad(
+                    response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
+                );
+                let asset_amt_per_yang: Wad = self
+                    .sentinel
+                    .read()
+                    .get_asset_amt_per_yang(settings.yang);
+
+                // if we receive what we consider a valid price from the oracle, record it in the Shrine,
+                // otherwise emit an event about the update being invalid
+                if self.is_valid_price_update(response, asset_amt_per_yang) {
+                    has_valid_update = true;
+                    self.shrine.read().advance(settings.yang, price * asset_amt_per_yang);
+                } else {
+                    self
+                        .emit(
+                            InvalidPriceUpdate {
+                                yang: settings.yang,
+                                price,
+                                pragma_last_updated_ts: response.last_updated_timestamp,
+                                pragma_num_sources: response.num_sources_aggregated,
+                                asset_amt_per_yang
+                            }
+                        );
+                }
+
+                idx += 1;
             };
-        };
 
-        assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
+            // Record the timestamp for the last `update_prices` call 
+            self.last_update_prices_call_timestamp.write(block_timestamp);
+            // Emit the event only if at least one price update is valid
+            if has_valid_update {
+                self
+                    .emit(
+                        PricesUpdated { timestamp: block_timestamp, caller: get_caller_address() }
+                    );
+            }
+        }
     }
 
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: No yangs', 'ENTRYPOINT_FAILED'))]
-    fn test_open_trove_no_yangs_fail() {
-        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
+    //
+    // Internal functions
+    //
 
-        let yangs: Array<ContractAddress> = Default::default();
-        let yang_amts: Array<u128> = Default::default();
-        let forge_amt: Wad = 1_u128.into();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
+    #[generate_trait]
+    impl PragmaInternalFunctions of PragmaInternalFunctionsTrait {
+        fn assert_new_yang(self: @ContractState, pair_id: u256, yang: ContractAddress) {
+            let mut idx: u32 = LOOP_START;
+            let loop_end: u32 = self.yangs_count.read() + LOOP_START;
 
-        set_contract_address(trove_owner);
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs.span(), yang_amts.span()
-        );
-        abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
-    fn test_open_trove_invalid_yang_fail() {
-        let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
-
-        let invalid_yang: ContractAddress = SentinelUtils::invalid_yang_addr();
-        let mut yangs: Array<ContractAddress> = array![invalid_yang];
-        let mut yang_amts: Array<u128> = array![WAD_SCALE];
-        let forge_amt: Wad = 1_u128.into();
-        let max_forge_fee_pct: Wad = WadZeroable::zero();
-
-        let yang_assets: Span<AssetBalance> = common::combine_assets_and_amts(
-            yangs.span(), yang_amts.span()
-        );
-        abbot.open_trove(yang_assets, forge_amt, max_forge_fee_pct);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_close_trove_pass() {
-        let (shrine, _, abbot, mut yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        set_contract_address(trove_owner);
-        abbot.close_trove(trove_id);
-
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
-                },
-                Option::None(_) => {
+            loop {
+                if idx == loop_end {
                     break;
-                },
+                }
+
+                let settings: YangSettings = self.yang_settings.read(idx);
+                assert(settings.yang != yang, 'PGM: Yang already present');
+                assert(settings.pair_id != pair_id, 'PGM: Pair ID already present');
+                idx += 1;
             };
-        };
+        }
 
-        let (_, _, _, debt) = shrine.get_trove_info(trove_id);
-        assert(debt.is_zero(), 'wrong trove debt');
+        fn is_valid_price_update(
+            self: @ContractState, update: PricesResponse, asset_amt_per_yang: Wad
+        ) -> bool {
+            if asset_amt_per_yang.is_zero() {
+                // can happen when e.g. the yang is invalid or gate is not added to sentinel
+                return false;
+            }
+
+            let required: PriceValidityThresholds = self.price_validity_thresholds.read();
+
+            // check if the update is from enough sources
+            let has_enough_sources = required
+                .sources <= update
+                .num_sources_aggregated
+                .try_into()
+                .unwrap();
+
+            // it is possible that the last_updated_ts is greater than the block_timestamp (in other words,
+            // it is from the future from the chain's perspective), because the update timestamp is coming
+            // from a data publisher while the block timestamp from the sequencer, they can be out of sync
+            //
+            // in such a case, we base the whole validity check only on the number of sources and we trust
+            // Pragma with regards to data freshness - they have a check in place where they discard
+            // updates that are too far in the future
+            //
+            // we considered having our own "too far in the future" check but that could lead to us
+            // discarding updates in cases where just a single publisher would push updates with future
+            // timestamp; that could be disastrous as we would have stale prices
+            let block_timestamp = get_block_timestamp();
+            let last_updated_timestamp: u64 = update.last_updated_timestamp.try_into().unwrap();
+
+            let is_from_future = block_timestamp <= last_updated_timestamp;
+            if is_from_future {
+                return has_enough_sources;
+            }
+
+            // the result of the first argument `block_timestamp - last_updated_ts` can never be negative if the code reaches here
+            let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
+
+            has_enough_sources && is_fresh
+        }
     }
 
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
-    fn test_close_non_owner_fail() {
-        let (_, _, abbot, _, _, _, trove_id, _, _) = AbbotUtils::deploy_abbot_and_open_trove();
+    //
+    // Public AccessControl functions
+    //
 
-        set_contract_address(common::badguy());
-        abbot.close_trove(trove_id);
-    }
+    #[external(v0)]
+    impl IAccessControlImpl of IAccessControl<ContractState> {
+        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
+            AccessControl::get_roles(account)
+        }
 
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_deposit_pass() {
-        let (shrine, _, abbot, mut yangs, mut gates, trove_owner, trove_id, mut deposited_amts, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
+        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
+            AccessControl::has_role(role, account)
+        }
 
-        set_contract_address(trove_owner);
-        let mut yangs_copy = yangs;
-        loop {
-            match yangs_copy.pop_front() {
-                Option::Some(yang) => {
-                    let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
-                    let deposit_amt: u128 = *deposited_amts.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
-                        deposit_amt, decimals
-                    );
-                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
-                    let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    assert(
-                        after_trove_yang == before_trove_yang + expected_deposited_yang,
-                        'wrong yang amount #1'
-                    );
+        fn get_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_admin()
+        }
 
-                    // Depositing 0 should pass
-                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: 0_u128 });
-                    assert(
-                        shrine.get_deposit(*yang, trove_id) == after_trove_yang,
-                        'wrong yang amount #2'
-                    );
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
-        };
+        fn get_pending_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_pending_admin()
+        }
 
-        // Check that non-owner can deposit to trove
-        let non_owner: ContractAddress = common::trove2_owner_addr();
-        let mut non_owner_deposit_amts: Span<u128> = AbbotUtils::subsequent_deposit_amts();
-        common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
+        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::grant_role(role, account);
+        }
 
-        loop {
-            match yangs.pop_front() {
-                Option::Some(yang) => {
-                    SentinelUtils::approve_max(*gates.pop_front().unwrap(), *yang, non_owner);
+        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::revoke_role(role, account);
+        }
 
-                    let before_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    let decimals: u8 = IERC20Dispatcher { contract_address: *yang }.decimals();
-                    let deposit_amt: u128 = *non_owner_deposit_amts.pop_front().unwrap();
-                    let expected_deposited_yang: Wad = wadray::fixed_point_to_wad(
-                        deposit_amt, decimals
-                    );
+        fn renounce_role(ref self: ContractState, role: u128) {
+            AccessControl::renounce_role(role);
+        }
 
-                    set_contract_address(non_owner);
-                    abbot.deposit(trove_id, AssetBalance { address: *yang, amount: deposit_amt });
-                    let after_trove_yang: Wad = shrine.get_deposit(*yang, trove_id);
-                    assert(
-                        after_trove_yang == before_trove_yang + expected_deposited_yang,
-                        'wrong yang amount #3'
-                    );
-                },
-                Option::None(_) => {
-                    break;
-                },
-            };
-        };
-    }
+        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
+            AccessControl::set_pending_admin(new_admin);
+        }
 
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_zero_address_yang_fail() {
-        let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = common::TROVE_1;
-        let amount: u128 = 1;
-
-        set_contract_address(trove_owner);
-        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Trove ID cannot be 0', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_zero_trove_id_fail() {
-        let (_, _, abbot, yangs, _) = AbbotUtils::abbot_deploy();
-        let trove_owner: ContractAddress = common::trove1_owner_addr();
-
-        let asset_addr = *yangs.at(0);
-        let invalid_trove_id: u64 = 0;
-        let amount: u128 = 1;
-
-        set_contract_address(trove_owner);
-        abbot.deposit(invalid_trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_invalid_yang_fail() {
-        let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr = SentinelUtils::invalid_yang_addr();
-        let amount: u128 = 0;
-
-        set_contract_address(trove_owner);
-        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Non-existent trove', 'ENTRYPOINT_FAILED'))]
-    fn test_deposit_non_existent_trove_fail() {
-        let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr: ContractAddress = *yangs.at(0);
-        let amount: u128 = 1;
-
-        set_contract_address(trove_owner);
-        abbot.deposit(trove_id + 1, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(
-        expected: ('SE: Exceeds max amount allowed', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
-    )]
-    fn test_deposit_exceeds_asset_cap_fail() {
-        let (_, sentinel, abbot, yangs, gates, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr: ContractAddress = *yangs.at(0);
-        let gate_addr: ContractAddress = *gates.at(0).contract_address;
-        let gate_bal = IERC20Dispatcher { contract_address: asset_addr }.balance_of(gate_addr);
-
-        set_contract_address(SentinelUtils::admin());
-        let new_asset_max: u128 = gate_bal.try_into().unwrap();
-        sentinel.set_yang_asset_max(asset_addr, new_asset_max);
-
-        let amount: u128 = 1;
-        set_contract_address(trove_owner);
-        abbot.deposit(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_withdraw_pass() {
-        let (shrine, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr: ContractAddress = *yangs.at(0);
-        let amount: u128 = WAD_SCALE;
-        set_contract_address(trove_owner);
-        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
-
-        assert(
-            shrine
-                .get_deposit(asset_addr, trove_id) == (AbbotUtils::ETH_DEPOSIT_AMT - amount)
-                .into(),
-            'wrong yang amount'
-        );
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
-    fn test_withdraw_zero_address_yang_fail() {
-        let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr = ContractAddressZeroable::zero();
-        let trove_id: u64 = common::TROVE_1;
-        let amount: u128 = 1;
-
-        set_contract_address(trove_owner);
-        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('SE: Yang not added', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED'))]
-    fn test_withdraw_invalid_yang_fail() {
-        let (_, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr = SentinelUtils::invalid_yang_addr();
-        let amount: u128 = 0;
-
-        set_contract_address(trove_owner);
-        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
-    fn test_withdraw_non_owner_fail() {
-        let (_, _, abbot, yangs, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let asset_addr: ContractAddress = *yangs.at(0);
-        let amount: u128 = 0;
-
-        set_contract_address(common::badguy());
-        abbot.withdraw(trove_id, AssetBalance { address: asset_addr, amount });
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_forge_pass() {
-        let (shrine, _, abbot, _, _, trove_owner, trove_id, _, forge_amt) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let additional_forge_amt: Wad = AbbotUtils::OPEN_TROVE_FORGE_AMT.into();
-        set_contract_address(trove_owner);
-        abbot.forge(trove_id, additional_forge_amt, WadZeroable::zero());
-
-        let (_, _, _, after_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(after_trove_debt == forge_amt + additional_forge_amt, 'wrong trove debt');
-        assert(
-            shrine.get_yin(trove_owner) == forge_amt + additional_forge_amt, 'wrong yin balance'
-        );
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(
-        expected: ('SH: Trove LTV is too high', 'ENTRYPOINT_FAILED', 'ENTRYPOINT_FAILED')
-    )]
-    fn test_forge_ltv_unsafe_fail() {
-        let (shrine, _, abbot, _, _, trove_owner, trove_id, _, _) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let unsafe_forge_amt: Wad = shrine.get_max_forge(trove_id) + 2_u128.into();
-        set_contract_address(trove_owner);
-        abbot.forge(trove_id, unsafe_forge_amt, WadZeroable::zero());
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABB: Not trove owner', 'ENTRYPOINT_FAILED'))]
-    fn test_forge_non_owner_fail() {
-        let (_, _, abbot, _, _, _, trove_id, _, _) = AbbotUtils::deploy_abbot_and_open_trove();
-
-        set_contract_address(common::badguy());
-        abbot.forge(trove_id, WadZeroable::zero(), WadZeroable::zero());
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_melt_pass() {
-        let (shrine, _, abbot, yangs, gates, trove_owner, trove_id, _, start_forge_amt) =
-            AbbotUtils::deploy_abbot_and_open_trove();
-
-        let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
-        let before_yin: Wad = shrine.get_yin(trove_owner);
-
-        let melt_amt: Wad = (before_yin.val / 2).into();
-        set_contract_address(trove_owner);
-        abbot.melt(trove_id, melt_amt);
-
-        let (_, _, _, after_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(after_trove_debt == before_trove_debt - melt_amt, 'wrong trove debt');
-        assert(shrine.get_yin(trove_owner) == before_yin - melt_amt, 'wrong yin balance');
-
-        // Test non-owner melting
-        let non_owner: ContractAddress = common::trove2_owner_addr();
-        common::fund_user(non_owner, yangs, AbbotUtils::initial_asset_amts());
-        let non_owner_forge_amt = start_forge_amt;
-        common::open_trove_helper(
-            abbot,
-            non_owner,
-            yangs,
-            AbbotUtils::open_trove_yang_asset_amts(),
-            gates,
-            non_owner_forge_amt
-        );
-
-        set_contract_address(non_owner);
-        abbot.melt(trove_id, after_trove_debt);
-
-        let (_, _, _, final_trove_debt) = shrine.get_trove_info(trove_id);
-        assert(final_trove_debt.is_zero(), 'wrong trove debt');
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_get_user_trove_ids() {
-        let (_, _, abbot, yangs, gates) = AbbotUtils::abbot_deploy();
-        let trove_owner1: ContractAddress = common::trove1_owner_addr();
-        let trove_owner2: ContractAddress = common::trove2_owner_addr();
-
-        let forge_amt: Wad = AbbotUtils::OPEN_TROVE_FORGE_AMT.into();
-        common::fund_user(trove_owner1, yangs, AbbotUtils::initial_asset_amts());
-        common::fund_user(trove_owner2, yangs, AbbotUtils::initial_asset_amts());
-
-        let first_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
-        );
-        let second_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner2, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
-        );
-        let third_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
-        );
-        let fourth_trove_id: u64 = common::open_trove_helper(
-            abbot, trove_owner2, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, forge_amt
-        );
-
-        let mut expected_owner1_trove_ids: Array<u64> = array![first_trove_id, third_trove_id];
-        let mut expected_owner2_trove_ids: Array<u64> = array![second_trove_id, fourth_trove_id];
-        let empty_user_trove_ids: Span<u64> = Default::default().span();
-
-        assert(
-            abbot.get_user_trove_ids(trove_owner1) == expected_owner1_trove_ids.span(),
-            'wrong user trove IDs'
-        );
-        assert(
-            abbot.get_user_trove_ids(trove_owner2) == expected_owner2_trove_ids.span(),
-            'wrong user trove IDs'
-        );
-        assert(abbot.get_troves_count() == 4, 'wrong troves count');
-
-        let non_user: ContractAddress = common::trove3_owner_addr();
-        assert(
-            abbot.get_user_trove_ids(non_user) == empty_user_trove_ids, 'wrong non user trove IDs'
-        );
+        fn accept_admin(ref self: ContractState) {
+            AccessControl::accept_admin();
+        }
     }
 }

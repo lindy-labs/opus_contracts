@@ -29,7 +29,7 @@ mod FlashLiquidator {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::types::AssetBalance;
+    use aura::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable};
 

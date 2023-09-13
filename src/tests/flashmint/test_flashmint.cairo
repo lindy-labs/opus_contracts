@@ -1,7 +1,5 @@
 mod TestFlashmint {
     use starknet::ContractAddress;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::flashmint::FlashMint;
 

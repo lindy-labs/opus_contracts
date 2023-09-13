@@ -1,6 +1,8 @@
 mod ShrineUtils {
     use array::{ArrayTrait, SpanTrait};
-    use integer::{U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero};
+    use integer::{
+        U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
+    };
     use option::OptionTrait;
     use traits::{Default, Into, TryInto};
     use starknet::{
@@ -20,7 +22,7 @@ mod ShrineUtils {
     use aura::utils::serde;
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WAD_ONE, WadZeroable};
 
     use aura::tests::common;
 
@@ -62,6 +64,11 @@ mod ShrineUtils {
     const TROVE1_YANG2_DEPOSIT: u128 = 8000000000000000000; // 8 (Wad)
     const TROVE1_YANG3_DEPOSIT: u128 = 6000000000000000000; // 6 (Wad)
     const TROVE1_FORGE_AMT: u128 = 3000000000000000000000; // 3_000 (Wad)
+
+    const WHALE_TROVE_YANG1_DEPOSIT: u128 = 1000000000000000000000; // 1000 (wad)
+    const WHALE_TROVE_FORGE_AMT: u128 = 1000000000000000000000000; // 1,000,000 (wad)
+
+    const RECOVERY_TESTS_TROVE1_FORGE_AMT: u128 = 7500000000000000000000; // 7500 (wad)
 
     //
     // Address constants
@@ -168,7 +175,9 @@ mod ShrineUtils {
 
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         set_contract_address(admin());
-        IAccessControlDispatcher { contract_address: shrine_addr }.grant_role(ShrineRoles::all_roles(), user);
+        IAccessControlDispatcher {
+            contract_address: shrine_addr
+        }.grant_role(ShrineRoles::all_roles(), user);
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -188,6 +197,7 @@ mod ShrineUtils {
         set_contract_address(admin());
 
         // Add yangs
+        
         shrine
             .add_yang(
                 yang1_addr(),
@@ -319,7 +329,9 @@ mod ShrineUtils {
     //
 
     fn consume_first_bit(ref hash: u128) -> bool {
-        let (reduced_hash, remainder) = u128_safe_divmod(hash, u128_try_as_non_zero(2_u128).unwrap());
+        let (reduced_hash, remainder) = u128_safe_divmod(
+            hash, u128_try_as_non_zero(2_u128).unwrap()
+        );
         hash = reduced_hash;
         remainder != 0_u128
     }
@@ -334,10 +346,10 @@ mod ShrineUtils {
         let price_hash: felt252 = hash::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
             U128sFromFelt252Result::Narrow(i) => {
-               i
+                i
             },
             U128sFromFelt252Result::Wide((i, j)) => {
-               i
+                i
             },
         };
 
@@ -444,7 +456,10 @@ mod ShrineUtils {
         mut debt: Wad
     ) -> Wad {
         // Sanity check on input array lengths
-        assert(yang_base_rates_history.len() == yang_rate_update_intervals.len(), 'array length mismatch');
+        assert(
+            yang_base_rates_history.len() == yang_rate_update_intervals.len(),
+            'array length mismatch'
+        );
         assert(yang_base_rates_history.len() == yang_avg_prices.len(), 'array length mismatch');
         assert(yang_base_rates_history.len() == avg_multipliers.len(), 'array length mismatch');
         assert((*yang_base_rates_history.at(0)).len() == yang_amts.len(), 'array length mismatch');
@@ -453,7 +468,12 @@ mod ShrineUtils {
         loop {
             match yang_base_rates_history_copy.pop_front() {
                 Option::Some(base_rates_history) => {
-                    assert((*base_rates_history).len() == (*yang_avg_prices_copy.pop_front().unwrap()).len(), 'array length mismatch');
+                    assert(
+                        (*base_rates_history)
+                            .len() == (*yang_avg_prices_copy.pop_front().unwrap())
+                            .len(),
+                        'array length mismatch'
+                    );
                 },
                 Option::None(_) => {
                     break;
@@ -521,11 +541,7 @@ mod ShrineUtils {
 
     // Compound function for a single yang, within a single era
     fn compound_for_single_yang(
-        base_rate: Ray,
-        avg_multiplier: Ray,
-        start_interval: u64,
-        end_interval: u64,
-        debt: Wad,
+        base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad, 
     ) -> Wad {
         let intervals: u128 = (end_interval - start_interval).into();
         let t: Wad = (intervals * Shrine::TIME_INTERVAL_DIV_YEAR).into();
@@ -557,5 +573,32 @@ mod ShrineUtils {
         let (_, end_cumulative_multiplier) = shrine.get_multiplier(end_interval);
 
         ((end_cumulative_multiplier - start_cumulative_multiplier).val / feed_len).into()
+    }
+
+    fn create_whale_trove(shrine: IShrineDispatcher) {
+        set_contract_address(admin());
+        // Deposit 1000 of yang1
+        shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
+        // Mint 1 million yin (50% LTV at yang1's start price)
+        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
+        set_contract_address(ContractAddressZeroable::zero());
+    }
+
+    fn recovery_mode_test_setup() -> IShrineDispatcher {
+        let shrine: IShrineDispatcher = IShrineDispatcher{contract_address: shrine_deploy()};
+        shrine_setup(shrine.contract_address);
+
+        // Setting the debt and collateral ceilings high enough to accomodate a very large trove
+        set_contract_address(admin());
+        shrine.set_debt_ceiling((2000000 * WAD_ONE).into());
+
+        // This creates the larger trove
+        create_whale_trove(shrine);
+
+        // Next, we create a trove with a 75% LTV (yang1's liquidation threshold is 80%)
+        let trove1_deposit: Wad = TROVE1_YANG1_DEPOSIT.into();
+        trove1_deposit(shrine, trove1_deposit); // yang1 price is 2000 (wad)
+        trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
+        shrine
     }
 }

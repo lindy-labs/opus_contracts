@@ -7,11 +7,7 @@
 
 #[starknet::contract]
 mod Pragma {
-    use array::ArrayTrait;
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use traits::TryInto;
-    use zeroable::Zeroable;
 
     use aura::core::roles::PragmaRoles;
 
@@ -20,11 +16,10 @@ mod Pragma {
     use aura::interfaces::IPragma::IPragma;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use aura::types::Pragma::{DataType, PricesResponse, PriceValidityThresholds, YangSettings};
     use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::types::Pragma::{
-        DataType, PricesResponse, PriceValidityThresholds, YangSettings
-    };
-    use aura::utils::wadray::{fixed_point_to_wad, Wad};
+    use aura::utils::wadray;
+    use aura::utils::wadray::Wad;
 
     // Helper constant to set the starting index for iterating over the yangs
     // in the order they were added
@@ -140,7 +135,7 @@ mod Pragma {
         sources_threshold: u64
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(PragmaRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(PragmaRoles::default_admin_role(), admin);
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
@@ -170,6 +165,10 @@ mod Pragma {
 
     #[external(v0)]
     impl IPragmaImpl of IPragma<ContractState> {
+        //
+        // Setters
+        //
+
         fn set_oracle(ref self: ContractState, new_oracle: ContractAddress) {
             AccessControl::assert_has_role(PragmaRoles::SET_ORACLE_ADDRESS);
             assert(new_oracle.is_non_zero(), 'PGM: Address cannot be zero');
@@ -188,11 +187,11 @@ mod Pragma {
         fn set_price_validity_thresholds(ref self: ContractState, freshness: u64, sources: u64) {
             AccessControl::assert_has_role(PragmaRoles::SET_PRICE_VALIDITY_THRESHOLDS);
             assert(
-                (LOWER_FRESHNESS_BOUND <= freshness) & (freshness <= UPPER_FRESHNESS_BOUND),
+                LOWER_FRESHNESS_BOUND <= freshness && freshness <= UPPER_FRESHNESS_BOUND,
                 'PGM: Freshness out of bounds'
             );
             assert(
-                (LOWER_SOURCES_BOUND <= sources) & (sources <= UPPER_SOURCES_BOUND),
+                LOWER_SOURCES_BOUND <= sources && sources <= UPPER_SOURCES_BOUND,
                 'PGM: Sources out of bounds'
             );
 
@@ -206,8 +205,8 @@ mod Pragma {
         fn set_update_frequency(ref self: ContractState, new_frequency: u64) {
             AccessControl::assert_has_role(PragmaRoles::SET_UPDATE_FREQUENCY);
             assert(
-                (LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency)
-                    & (new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND),
+                LOWER_UPDATE_FREQUENCY_BOUND <= new_frequency
+                    && new_frequency <= UPPER_UPDATE_FREQUENCY_BOUND,
                 'PGM: Frequency out of bounds'
             );
 
@@ -230,7 +229,7 @@ mod Pragma {
                 .get_data_median(DataType::Spot(pair_id));
             // Pragma returns 0 decimals for an unknown pair ID
             assert(response.decimals.is_non_zero(), 'PGM: Unknown pair ID');
-            assert(response.decimals <= 18_u256, 'PGM: Too many decimals');
+            assert(response.decimals <= 18, 'PGM: Too many decimals');
 
             let index: u32 = self.yangs_count.read() + 1;
             let settings = YangSettings { pair_id, yang };
@@ -293,7 +292,7 @@ mod Pragma {
 
                 // convert price value to Wad
                 // this will revert if the decimals is greater than 18 (wad)
-                let price: Wad = fixed_point_to_wad(
+                let price: Wad = wadray::fixed_point_to_wad(
                     response.price.try_into().unwrap(), response.decimals.try_into().unwrap()
                 );
                 let asset_amt_per_yang: Wad = self
@@ -395,7 +394,7 @@ mod Pragma {
             // the result of the first argument `block_timestamp - last_updated_ts` can never be negative if the code reaches here
             let is_fresh = (block_timestamp - last_updated_timestamp) <= required.freshness;
 
-            has_enough_sources & is_fresh
+            has_enough_sources && is_fresh
         }
     }
 

@@ -1,15 +1,11 @@
-#[cfg(test)]
 mod TestAbsorber {
-    use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use integer::BoundedU256;
-    use option::OptionTrait;
     use starknet::{
         ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -20,8 +16,8 @@ mod TestAbsorber {
     };
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{
         BoundedWad, Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
@@ -47,7 +43,6 @@ mod TestAbsorber {
         assert(absorber.get_current_epoch() == Absorber::FIRST_EPOCH, 'epoch should be 1');
         assert(absorber.get_absorptions_count() == 0, 'absorptions count should be 0');
         assert(absorber.get_rewards_count() == 0, 'rewards should be 0');
-        assert(absorber.get_removal_limit() == AbsorberUtils::REMOVAL_LIMIT.into(), 'wrong limit');
         assert(absorber.get_live(), 'should be live');
         assert(!absorber.is_operational(), 'should not be operational');
 
@@ -61,43 +56,6 @@ mod TestAbsorber {
     //
     // Tests - Setters
     //
-
-    #[test]
-    #[available_gas(20000000000)]
-    fn test_set_removal_limit_pass() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
-
-        set_contract_address(AbsorberUtils::admin());
-
-        let new_limit: Ray = (75 * RAY_PERCENT).into();
-        absorber.set_removal_limit(new_limit);
-
-        assert(absorber.get_removal_limit() == new_limit, 'limit not updated');
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABS: Limit is too low', 'ENTRYPOINT_FAILED'))]
-    fn test_set_removal_limit_too_low_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
-
-        set_contract_address(AbsorberUtils::admin());
-
-        let invalid_limit: Ray = (Absorber::MIN_LIMIT - 1).into();
-        absorber.set_removal_limit(invalid_limit);
-    }
-
-    #[test]
-    #[available_gas(20000000000)]
-    #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
-    fn test_set_removal_limit_unauthorized_fail() {
-        let (_, _, _, absorber, _, _) = AbsorberUtils::absorber_deploy();
-
-        set_contract_address(common::badguy());
-
-        let new_limit: Ray = (75 * RAY_PERCENT).into();
-        absorber.set_removal_limit(new_limit);
-    }
 
     #[test]
     #[available_gas(20000000000)]
@@ -457,7 +415,7 @@ mod TestAbsorber {
                         );
                     }
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1224,13 +1182,13 @@ mod TestAbsorber {
                                     (*reward_asset.amount).is_zero(), 'expected rewards should be 0'
                                 );
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             }
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -1508,7 +1466,7 @@ mod TestAbsorber {
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('ABS: Relative LTV above limit', 'ENTRYPOINT_FAILED'))]
+    #[should_panic(expected: ('ABS: Recovery Mode active', 'ENTRYPOINT_FAILED'))]
     fn test_remove_exceeds_limit_fail() {
         let (shrine, _, absorber, yangs, _, _, _, _, provider, provided_amt) =
             AbsorberUtils::absorber_with_rewards_and_first_provider();
@@ -1523,9 +1481,9 @@ mod TestAbsorber {
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
         let debt: Wad = shrine.get_total_debt();
         let ltv: Ray = wadray::rdiv_ww(debt, value);
-        let ltv_to_threshold: Ray = wadray::rdiv(ltv, threshold);
-        let limit: Ray = absorber.get_removal_limit();
-        assert(ltv_to_threshold > limit, 'sanity check for limit');
+        let (recovery_mode_threshold, _) = shrine.get_recovery_mode_threshold();
+
+        assert(ltv > recovery_mode_threshold, 'sanity check for RM threshold');
 
         set_contract_address(provider);
         absorber.request();

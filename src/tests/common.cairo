@@ -1,6 +1,4 @@
-use array::{ArrayTrait, SpanTrait};
-use debug::PrintTrait;
-use option::OptionTrait;
+use array::ArrayTrait;
 use starknet::{
     deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
     contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
@@ -8,7 +6,6 @@ use starknet::{
 };
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{set_block_timestamp, set_contract_address};
-use traits::{Into, TryInto};
 
 use aura::core::shrine::Shrine;
 
@@ -17,12 +14,14 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
-use aura::utils::types::{AssetBalance, Reward};
+use aura::types::{AssetBalance, Reward};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
 use aura::tests::sentinel::utils::SentinelUtils;
+use aura::tests::shrine::utils::ShrineUtils;
 
 //
 // Constants
@@ -34,6 +33,7 @@ const WBTC_DECIMALS: u8 = 8;
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
+const WHALE_TROVE: u64 = 0xb17b01;
 
 //
 // Constant addresses
@@ -131,7 +131,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
     };
 }
 
-//Helper function to approve Gates to transfer tokens from user, and to open a trove
+// Helper function to approve Gates to transfer tokens from user, and to open a trove
 fn open_trove_helper(
     abbot: IAbbotDispatcher,
     user: ContractAddress,
@@ -301,35 +301,4 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     };
 
     combined_asset_amts.span()
-}
-
-impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
-    fn print(self: Span<T>) {
-        let mut copy = self;
-
-        '['.print();
-        loop {
-            match copy.pop_front() {
-                Option::Some(item) => {
-                    (*item).print();
-                    if copy.len() > 0 {
-                        ', '.print();
-                    }
-                },
-                Option::None => {
-                    break;
-                }
-            };
-        };
-        ']'.print();
-    }
-}
-
-impl ArrayPrintImpl<
-    T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
-> of PrintTrait<Array<T>> {
-    fn print(self: Array<T>) {
-        let copy: Span<T> = self.span();
-        copy.print();
-    }
 }

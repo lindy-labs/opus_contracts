@@ -1,16 +1,12 @@
 mod AbsorberUtils {
-    use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use integer::BoundedU256;
-    use option::OptionTrait;
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Into, TryInto};
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -25,8 +21,8 @@ mod AbsorberUtils {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::{AssetBalance, DistributionInfo, Reward};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{AssetBalance, DistributionInfo, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
@@ -46,8 +42,6 @@ mod AbsorberUtils {
 
     const AURA_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
     const VEAURA_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
-
-    const REMOVAL_LIMIT: u128 = 900000000000000000000000000; // 90% (Ray)
 
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
@@ -116,7 +110,6 @@ mod AbsorberUtils {
             contract_address_to_felt252(admin),
             contract_address_to_felt252(shrine.contract_address),
             contract_address_to_felt252(sentinel.contract_address),
-            REMOVAL_LIMIT.into(),
         ];
 
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(Absorber::TEST_CLASS_HASH)
@@ -202,7 +195,7 @@ mod AbsorberUtils {
                     );
                     blessers.append(blesser);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -223,7 +216,7 @@ mod AbsorberUtils {
                 Option::Some(token) => {
                     absorber.set_reward(*token, *blessers.pop_front().unwrap(), true);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -387,7 +380,7 @@ mod AbsorberUtils {
                     let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
                     yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -454,7 +447,7 @@ mod AbsorberUtils {
                         absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -522,7 +515,7 @@ mod AbsorberUtils {
                         'wrong preview rewarded amount'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -560,7 +553,7 @@ mod AbsorberUtils {
                         'wrong provider cumulative'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -611,7 +604,7 @@ mod AbsorberUtils {
                         'wrong reward cumulative'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -651,7 +644,7 @@ mod AbsorberUtils {
                         'wrong start reward cumulative'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -694,7 +687,7 @@ mod AbsorberUtils {
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

@@ -1,13 +1,10 @@
 mod PragmaUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::core::roles::ShrineRoles;
     use aura::external::pragma::Pragma;
@@ -18,11 +15,11 @@ mod PragmaUtils {
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::Pragma::PricesResponse;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::math::pow;
-    use aura::utils::types::Pragma::PricesResponse;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
+    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
@@ -34,9 +31,9 @@ mod PragmaUtils {
     // Constants
     //
 
-    const FRESHNESS_THRESHOLD: u64 = 1800; // 30 minutes * 60 seconds
+    const FRESHNESS_THRESHOLD: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds
     const SOURCES_THRESHOLD: u64 = 3;
-    const UPDATE_FREQUENCY: u64 = 600; // 10 minutes * 60 seconds
+    const UPDATE_FREQUENCY: u64 = consteval_int!(10 * 60); // 10 minutes * 60 seconds
 
     const DEFAULT_NUM_SOURCES: u256 = 5;
 

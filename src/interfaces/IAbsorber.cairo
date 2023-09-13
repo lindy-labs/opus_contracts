@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::utils::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
+use aura::types::{AssetBalance, DistributionInfo, Provision, Request, Reward};
 use aura::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
@@ -24,7 +24,6 @@ trait IAbsorber<TContractState> {
     fn get_provider_last_reward_cumulative(
         self: @TContractState, provider: ContractAddress, asset: ContractAddress
     ) -> u128;
-    fn get_removal_limit(self: @TContractState) -> Ray;
     fn get_live(self: @TContractState) -> bool;
     fn is_operational(self: @TContractState) -> bool;
     fn preview_remove(self: @TContractState, provider: ContractAddress) -> Wad;
@@ -35,7 +34,6 @@ trait IAbsorber<TContractState> {
     fn set_reward(
         ref self: TContractState, asset: ContractAddress, blesser: ContractAddress, is_active: bool
     );
-    fn set_removal_limit(ref self: TContractState, limit: Ray);
     fn provide(ref self: TContractState, amount: Wad);
     fn request(ref self: TContractState);
     fn remove(ref self: TContractState, amount: Wad);
