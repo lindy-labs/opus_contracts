@@ -14,6 +14,15 @@ mod AbsorberRoles {
     }
 }
 
+mod AllocatorRoles {
+    const SET_ALLOCATION: u128 = 1;
+
+    #[inline(always)]
+    fn default_admin_role() -> u128 {
+        SET_ALLOCATION
+    }
+}
+
 mod BlesserRoles {
     const BLESS: u128 = 1;
 
@@ -23,12 +32,12 @@ mod BlesserRoles {
     }
 }
 
-mod AllocatorRoles {
-    const SET_ALLOCATION: u128 = 1;
+mod CaretakerRoles {
+    const SHUT: u128 = 1;
 
     #[inline(always)]
     fn default_admin_role() -> u128 {
-        SET_ALLOCATION
+        SHUT
     }
 }
 
