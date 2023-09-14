@@ -211,7 +211,7 @@ mod Shrine {
         total: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Drop, starknet::Event, PartialEq)]
     struct MultiplierUpdated {
         multiplier: Ray,
         cumulative_multiplier: Ray,
