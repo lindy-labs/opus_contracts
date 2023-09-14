@@ -12,7 +12,7 @@ mod TestShrine {
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::YangSuspensionStatus;
+    use aura::types::{Trove, YangSuspensionStatus};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
     use aura::utils::wadray::{
@@ -61,7 +61,7 @@ mod TestShrine {
                     interval: ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP) - 1,
                 }
             ),
-            'wrong event'
+            'wrong MultiplierUpdated event'
         );
     }
 
@@ -87,7 +87,7 @@ mod TestShrine {
                     interval: ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP) - 1,
                 }
             ),
-            'wrong event'
+            'wrong MultiplierUpdated event'
         );
 
         // Drop `RoleGranted` event from `make_root`
@@ -98,7 +98,7 @@ mod TestShrine {
             event == Shrine::Event::DebtCeilingUpdated(
                 Shrine::DebtCeilingUpdated { ceiling: ShrineUtils::DEBT_CEILING.into() }
             ),
-            'wrong event'
+            'wrong DebtCeilingUpdated event'
         );
 
         // Check debt ceiling
@@ -577,22 +577,26 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_shrine_deposit_pass() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+        ShrineUtils::drop_events_for_shrine_setup_with_feed(shrine.contract_address);
+        common::assert_no_events_left(shrine.contract_address);
 
-        let yang1_addr = ShrineUtils::yang1_addr();
+        let deposit_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
+        ShrineUtils::trove1_deposit(shrine, deposit_amt);
+
+        let trove_id = common::TROVE_1;
+        let yang = ShrineUtils::yang1_addr();
+
         assert(
-            shrine.get_yang_total(yang1_addr) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into(),
+            shrine.get_yang_total(yang) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into(),
             'incorrect yang total'
         );
         assert(
-            shrine
-                .get_deposit(yang1_addr, common::TROVE_1) == ShrineUtils::TROVE1_YANG1_DEPOSIT
-                .into(),
+            shrine.get_deposit(yang, trove_id) == ShrineUtils::TROVE1_YANG1_DEPOSIT.into(),
             'incorrect yang deposit'
         );
 
-        let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
-        let max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
+        let (yang1_price, _, _) = shrine.get_current_yang_price(yang);
+        let max_forge_amt: Wad = shrine.get_max_forge(trove_id);
 
         let mut yang_prices: Array<Wad> = array![yang1_price];
         let mut yang_amts: Array<Wad> = array![ShrineUtils::TROVE1_YANG1_DEPOSIT.into()];
@@ -602,6 +606,38 @@ mod TestShrine {
             yang_prices.span(), yang_amts.span(), yang_thresholds.span()
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
+
+        let event: Shrine::Event = pop_log(shrine.contract_address).unwrap();
+        assert(
+            event == Shrine::Event::TroveUpdated(
+                Shrine::TroveUpdated {
+                    trove_id: trove_id,
+                    trove: Trove {
+                        charge_from: ShrineUtils::current_interval(),
+                        debt: WadZeroable::zero(),
+                        last_rate_era: 1
+                    },
+                }
+            ),
+            'wrong TroveUpdated event'
+        );
+
+        let event: Shrine::Event = pop_log(shrine.contract_address).unwrap();
+        assert(
+            event == Shrine::Event::YangTotalUpdated(
+                Shrine::YangTotalUpdated { yang, total: deposit_amt, }
+            ),
+            'wrong YangTotalUpdated event'
+        );
+
+        let event: Shrine::Event = pop_log(shrine.contract_address).unwrap();
+        assert(
+            event == Shrine::Event::DepositUpdated(
+                Shrine::DepositUpdated { yang, trove_id, amount: deposit_amt, }
+            ),
+            'wrong YangTotalUpdated event'
+        );
+        common::assert_no_events_left(shrine.contract_address);
     }
 
     #[test]

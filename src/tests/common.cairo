@@ -312,7 +312,7 @@ fn assert_no_events_left(address: ContractAddress) {
     assert(pop_log_raw(address).is_none(), 'Events remaining on queue');
 }
 
-fn drop_events(address: ContractAddress, count: u8) {
+fn drop_events(address: ContractAddress, count: u64) {
     let mut idx = 0;
     loop {
         if idx == count {
