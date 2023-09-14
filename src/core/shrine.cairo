@@ -175,7 +175,6 @@ mod Shrine {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
         DebtTotalUpdated: DebtTotalUpdated,
-        YangsCountUpdated: YangsCountUpdated,
         MultiplierUpdated: MultiplierUpdated,
         YangRatesUpdated: YangRatesUpdated,
         ThresholdUpdated: ThresholdUpdated,
@@ -212,12 +211,7 @@ mod Shrine {
         total: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
-    struct YangsCountUpdated {
-        count: u32
-    }
-
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Drop, starknet::Event)]
     struct MultiplierUpdated {
         multiplier: Ray,
         cumulative_multiplier: Ray,
@@ -558,7 +552,6 @@ mod Shrine {
 
             // Event emissions
             self.emit(YangAdded { yang, yang_id, start_price, initial_rate });
-            self.emit(YangsCountUpdated { count: yang_id });
             self.emit(YangTotalUpdated { yang, total: initial_yang_amt });
         }
 
@@ -1173,7 +1166,7 @@ mod Shrine {
             let base_threshold: Ray = self.thresholds.read(yang_id);
 
             match self.get_yang_suspension_status_helper(yang_id) {
-                YangSuspensionStatus::None(_) => {
+                YangSuspensionStatus::None => {
                     base_threshold
                 },
                 YangSuspensionStatus::Temporary(_) => {

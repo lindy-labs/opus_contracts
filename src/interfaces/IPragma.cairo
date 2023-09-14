@@ -7,4 +7,5 @@ trait IPragma<TContractState> {
     fn set_update_frequency(ref self: TContractState, new_frequency: u64);
     fn add_yang(ref self: TContractState, pair_id: u256, yang: ContractAddress);
     fn probe_task(self: @TContractState) -> bool;
+    fn execute_task(ref self: TContractState);
 }
