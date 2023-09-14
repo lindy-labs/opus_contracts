@@ -57,6 +57,9 @@ mod Purger {
         penalty_scalar: Ray,
     }
 
+    //
+    // Events
+    //
 
     #[event]
     #[derive(Drop, starknet::Event)]
@@ -77,21 +80,19 @@ mod Purger {
         trove_id: u64,
         purge_amt: Wad,
         percentage_freed: Ray,
+        #[key]
         funder: ContractAddress,
+        #[key]
         recipient: ContractAddress,
         freed_assets: Span<AssetBalance>
     }
 
     #[derive(Drop, starknet::Event)]
     struct Compensate {
+        #[key]
         recipient: ContractAddress,
         compensation: Span<AssetBalance>
     }
-
-
-    //
-    // Events
-    //
 
     //
     // Constructor
@@ -174,7 +175,7 @@ mod Purger {
             );
 
             self.penalty_scalar.write(new_scalar);
-            self.emit(PenaltyScalarUpdated { new_scalar: new_scalar });
+            self.emit(PenaltyScalarUpdated { new_scalar });
         }
 
         // Performs searcher liquidations that requires the caller address to supply the amount of debt to repay
@@ -219,12 +220,7 @@ mod Purger {
             self
                 .emit(
                     Purged {
-                        trove_id: trove_id,
-                        purge_amt: purge_amt,
-                        percentage_freed: percentage_freed,
-                        funder: funder,
-                        recipient: recipient,
-                        freed_assets: freed_assets
+                        trove_id, purge_amt, percentage_freed, funder, recipient, freed_assets
                     }
                 );
 
@@ -303,8 +299,8 @@ mod Purger {
                 self
                     .emit(
                         Purged {
-                            trove_id: trove_id,
-                            purge_amt: purge_amt,
+                            trove_id,
+                            purge_amt,
                             percentage_freed: pct_value_to_purge,
                             funder: absorber.contract_address,
                             recipient: absorber.contract_address,
@@ -402,7 +398,7 @@ mod Purger {
                         freed_assets
                             .append(AssetBalance { address: *yang, amount: freed_asset_amt });
                     },
-                    Option::None(_) => {
+                    Option::None => {
                         break;
                     }
                 };
@@ -426,7 +422,7 @@ mod Purger {
             self: @ContractState, threshold: Ray, ltv: Ray, ltv_after_compensation: Ray
         ) -> Option<Ray> {
             if ltv <= threshold {
-                return Option::None(());
+                return Option::None;
             }
 
             // It's possible for `ltv_after_compensation` to be greater than one, so we handle this case 
@@ -459,7 +455,7 @@ mod Purger {
             if penalty == max_possible_penalty {
                 Option::Some(penalty)
             } else {
-                Option::None(())
+                Option::None
             }
         }
 
@@ -494,7 +490,7 @@ mod Purger {
                         value_after_compensation
                     )
                 },
-                Option::None(_) => (
+                Option::None => (
                     RayZeroable::zero(),
                     WadZeroable::zero(),
                     RayZeroable::zero(),
@@ -505,6 +501,10 @@ mod Purger {
             }
         }
     }
+
+    //
+    // Pure functions
+    //
 
     // Returns the maximum amount of debt that can be paid off in a given liquidation
     // Note: this function reverts if the trove's LTV is below its threshold multiplied by `THRESHOLD_SAFETY_MARGIN`
@@ -531,7 +531,7 @@ mod Purger {
     // Returns `Option::None` if the trove is not liquidatable, otherwise returns the liquidation penalty
     fn get_liquidation_penalty_internal(threshold: Ray, ltv: Ray) -> Option<Ray> {
         if ltv <= threshold {
-            return Option::None(());
+            return Option::None;
         }
 
         // Handling the case where `ltv > 1` to avoid underflow
@@ -555,7 +555,7 @@ mod Purger {
             Option::Some(penalty) => {
                 (penalty, get_max_close_amount_internal(threshold, ltv, value, debt, penalty))
             },
-            Option::None(_) => (RayZeroable::zero(), WadZeroable::zero()),
+            Option::None => (RayZeroable::zero(), WadZeroable::zero()),
         }
     }
 

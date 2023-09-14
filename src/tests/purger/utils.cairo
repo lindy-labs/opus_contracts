@@ -1,8 +1,8 @@
 mod PurgerUtils {
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        get_block_timestamp, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+        SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -487,7 +487,7 @@ mod PurgerUtils {
                 Option::Some(yang) => {
                     shrine.set_threshold(*yang, threshold);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -527,7 +527,7 @@ mod PurgerUtils {
                         current_ts
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -652,7 +652,7 @@ mod PurgerUtils {
                         after_asset_bal, expected_after_asset_bal, error_margin, message,
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };

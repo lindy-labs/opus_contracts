@@ -21,6 +21,7 @@ mod TestPurger {
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
+    use aura::tests::common::{SpanPrintImpl};
     use aura::tests::external::utils::PragmaUtils;
     use aura::tests::flashmint::utils::FlashmintUtils;
     use aura::tests::purger::flash_liquidator::{
@@ -351,14 +352,15 @@ mod TestPurger {
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
-                    let mut target_ltvs: Array<Ray> = Default::default();
-                    target_ltvs.append((*threshold.val + 1).into()); // just above threshold
-                    target_ltvs.append(*threshold + RAY_PERCENT.into()); // 1% above threshold
-                    // halfway between threshold and 100%
-                    target_ltvs.append(*threshold + ((RAY_ONE.into() - *threshold).val / 2).into());
-                    target_ltvs.append((RAY_ONE - RAY_PERCENT).into()); // 99%
-                    target_ltvs.append((RAY_ONE + RAY_PERCENT).into()); // 101%
-                    let mut target_ltvs: Span<Ray> = target_ltvs.span();
+                    let mut target_ltvs: Span<Ray> = array![
+                        (*threshold.val + 1).into(), //just above threshold
+                        *threshold + RAY_PERCENT.into(), // 1% above threshold
+                        // halfway between threshold and 100%
+                        *threshold + ((RAY_ONE.into() - *threshold).val / 2).into(),
+                        (RAY_ONE - RAY_PERCENT).into(), // 99%
+                        (RAY_ONE + RAY_PERCENT).into() // 101%
+                    ]
+                        .span();
 
                     // Assert that we hit the branch for safety margin check at least once per threshold
                     let mut safety_margin_achieved: bool = false;
@@ -426,13 +428,13 @@ mod TestPurger {
                                     assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -880,18 +882,18 @@ mod TestPurger {
                                             'wrong recipient trove value'
                                         );
                                     },
-                                    Option::None(_) => {
+                                    Option::None => {
                                         break;
                                     },
                                 };
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1074,6 +1076,18 @@ mod TestPurger {
 
                                                 let (tmp_threshold, _, _, _) = shrine
                                                     .get_trove_info(target_trove);
+
+                                                if tmp_threshold != *threshold {
+                                                    'in recovery mode'.print();
+                                                    // print the parameters of this run
+                                                    'target_trove_yang_asset_amts: '.print();
+                                                    (*target_trove_yang_asset_amts).print();
+                                                    'yang_asset_amts: '.print();
+                                                    (*yang_asset_amts).print();
+                                                    'threshold: '.print();
+                                                    (*threshold).print();
+                                                }
+
                                                 assert(
                                                     tmp_threshold == *threshold, 'in recovery mode'
                                                 );
@@ -1294,7 +1308,7 @@ mod TestPurger {
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
-                                                        Option::None(_) => {
+                                                        Option::None => {
                                                             break;
                                                         },
                                                     };
@@ -1302,19 +1316,19 @@ mod TestPurger {
                                                 absorber_yin_idx += 1;
                                             };
                                         },
-                                        Option::None(_) => {
+                                        Option::None => {
                                             break;
                                         },
                                     };
                                 };
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1547,19 +1561,19 @@ mod TestPurger {
                                                 'wrong recipient trove value'
                                             );
                                         },
-                                        Option::None(_) => {
+                                        Option::None => {
                                             break;
                                         },
                                     };
                                 };
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1655,13 +1669,13 @@ mod TestPurger {
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1751,13 +1765,13 @@ mod TestPurger {
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1870,7 +1884,7 @@ mod TestPurger {
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
                     PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
