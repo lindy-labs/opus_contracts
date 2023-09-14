@@ -232,32 +232,41 @@ mod ShrineUtils {
         yang2_start_price: Wad,
         yang3_start_price: Wad,
     ) -> (Span<ContractAddress>, Span<Span<Wad>>) {
-        let yang1_addr: ContractAddress = yang1_addr();
-        let yang1_feed: Span<Wad> = generate_yang_feed(yang1_start_price);
+        let yang_addrs = three_yang_addrs();
 
-        let yang2_addr: ContractAddress = yang2_addr();
-        let yang2_feed: Span<Wad> = generate_yang_feed(yang2_start_price);
-
-        let yang3_addr: ContractAddress = yang3_addr();
-        let yang3_feed: Span<Wad> = generate_yang_feed(yang3_start_price);
-
-        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr, yang2_addr, yang3_addr,];
-
-        let mut yang_feeds: Array<Span<Wad>> = array![yang1_feed, yang2_feed, yang3_feed];
+        let mut yang_feeds: Span<Span<Wad>> = array![
+            generate_yang_feed(yang1_start_price),
+            generate_yang_feed(yang2_start_price),
+            generate_yang_feed(yang3_start_price),
+        ]
+            .span();
 
         let mut idx: u32 = 0;
-        set_contract_address(admin());
         let feed_len: u32 = num_intervals.try_into().unwrap();
         let mut timestamp: u64 = get_block_timestamp();
+
+        set_contract_address(admin());
         loop {
             if idx == feed_len {
-                break ();
+                break;
             }
+
             set_block_timestamp(timestamp);
 
-            shrine.advance(yang1_addr, *yang1_feed[idx]);
-            shrine.advance(yang2_addr, *yang2_feed[idx]);
-            shrine.advance(yang3_addr, *yang3_feed[idx]);
+            let mut yang_addrs_copy = yang_addrs;
+            let mut yang_feeds_copy = yang_feeds;
+            loop {
+                match yang_addrs_copy.pop_front() {
+                    Option::Some(yang_addr) => {
+                        shrine
+                            .advance(*yang_addr, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
+                    },
+                    Option::None => {
+                        break;
+                    },
+                };
+            };
+
             shrine.set_multiplier(RAY_ONE.into());
 
             timestamp += Shrine::TIME_INTERVAL;
@@ -268,7 +277,7 @@ mod ShrineUtils {
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
 
-        (yang_addrs.span(), yang_feeds.span())
+        (yang_addrs, yang_feeds)
     }
 
     #[inline(always)]

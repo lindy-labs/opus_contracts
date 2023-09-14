@@ -189,6 +189,8 @@ mod TestShrine {
             };
         };
 
+        common::assert_no_events_left(shrine_addr);
+
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
         assert(threshold.is_zero(), 'wrong shrine threshold');
@@ -208,6 +210,11 @@ mod TestShrine {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
+
+        // Drop all events from `shrine_setup`
+        common::drop_events(shrine_addr, 14);
+        common::assert_no_events_left(shrine_addr);
+
         let (yang_addrs, yang_feeds) = ShrineUtils::advance_prices_and_set_multiplier(
             shrine,
             ShrineUtils::FEED_LEN,
@@ -226,64 +233,112 @@ mod TestShrine {
             ShrineUtils::YANG3_START_PRICE.into(),
         ];
 
-        let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
-
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);
+        let mut yang_addrs_copy = yang_addrs;
+        let mut exp_start_cumulative_prices_copy = exp_start_cumulative_prices.span();
         loop {
-            match yang_addrs.pop_front() {
+            match yang_addrs_copy.pop_front() {
                 Option::Some(yang_addr) => {
                     // `Shrine.add_yang` sets the initial price for `current_interval - 1`
                     let (_, start_cumulative_price) = shrine
                         .get_yang_price(*yang_addr, start_interval - 1);
                     assert(
-                        start_cumulative_price == *exp_start_cumulative_prices.pop_front().unwrap(),
+                        start_cumulative_price == *exp_start_cumulative_prices_copy
+                            .pop_front()
+                            .unwrap(),
                         'wrong start cumulative price'
                     );
-
-                    let (_, start_cumulative_multiplier) = shrine
-                        .get_multiplier(start_interval - 1);
-                    assert(
-                        start_cumulative_multiplier == Ray { val: RAY_SCALE },
-                        'wrong start cumulative mul'
-                    );
-
-                    let mut yang_feed: Span<Wad> = *yang_feeds.pop_front().unwrap();
-                    let yang_feed_len: usize = yang_feed.len();
-
-                    let mut idx: usize = 0;
-                    let mut expected_cumulative_price = start_cumulative_price;
-                    let mut expected_cumulative_multiplier = start_cumulative_multiplier;
-                    loop {
-                        if idx == yang_feed_len {
-                            break ();
-                        }
-
-                        let interval = start_interval + idx.into();
-                        let (price, cumulative_price) = shrine.get_yang_price(*yang_addr, interval);
-                        assert(price == *yang_feed[idx], 'wrong price in feed');
-
-                        expected_cumulative_price += price;
-                        assert(
-                            cumulative_price == expected_cumulative_price,
-                            'wrong cumulative price in feed'
-                        );
-
-                        expected_cumulative_multiplier += RAY_SCALE.into();
-                        let (multiplier, cumulative_multiplier) = shrine.get_multiplier(interval);
-                        assert(multiplier == Ray { val: RAY_SCALE }, 'wrong multiplier in feed');
-                        assert(
-                            cumulative_multiplier == expected_cumulative_multiplier,
-                            'wrong cumulative mul in feed'
-                        );
-
-                        idx += 1;
-                    };
                 },
                 Option::None => {
                     break ();
                 }
             };
         };
+
+        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
+        assert(start_cumulative_multiplier == Ray { val: RAY_ONE }, 'wrong start cumulative mul');
+        let mut expected_cumulative_multiplier = start_cumulative_multiplier;
+
+        let yangs_count = 3;
+        let yang_feed_len = (*yang_feeds.at(0)).len();
+        let mut idx = 0;
+        let mut expected_yang_cumulative_prices = exp_start_cumulative_prices;
+        loop {
+            if idx == yang_feed_len {
+                break ();
+            }
+
+            let interval = start_interval + idx.into();
+
+            let mut yang_addrs_copy = yang_addrs;
+            let mut yang_idx = 0;
+
+            // Create a copy of the current cumulative prices
+            let mut expected_yang_cumulative_prices_copy = expected_yang_cumulative_prices.span();
+            // Reset array to track the latest cumulative prices
+            expected_yang_cumulative_prices = Default::default();
+            loop {
+                match yang_addrs_copy.pop_front() {
+                    Option::Some(yang_addr) => {
+                        let (price, cumulative_price) = shrine.get_yang_price(*yang_addr, interval);
+                        let expected_price = *yang_feeds.at(yang_idx)[idx];
+                        assert(price == expected_price, 'wrong price in feed');
+
+                        let prev_cumulative_price = *expected_yang_cumulative_prices_copy
+                            .at(yang_idx);
+                        let expected_cumulative_price = prev_cumulative_price + price;
+
+                        expected_yang_cumulative_prices.append(expected_cumulative_price);
+                        assert(
+                            cumulative_price == expected_cumulative_price,
+                            'wrong cumulative price in feed'
+                        );
+
+                        let event: Shrine::Event = pop_log(shrine_addr).unwrap();
+                        assert(
+                            event == Shrine::Event::YangPriceUpdated(
+                                Shrine::YangPriceUpdated {
+                                    yang: *yang_addr,
+                                    price: expected_price,
+                                    cumulative_price: expected_cumulative_price,
+                                    interval
+                                }
+                            ),
+                            'wrong YangPriceUpdated event'
+                        );
+
+                        yang_idx += 1;
+                    },
+                    Option::None => {
+                        break;
+                    },
+                };
+            };
+
+            expected_cumulative_multiplier += RAY_ONE.into();
+            let (multiplier, cumulative_multiplier) = shrine.get_multiplier(interval);
+            assert(multiplier == Ray { val: RAY_ONE }, 'wrong multiplier in feed');
+            assert(
+                cumulative_multiplier == expected_cumulative_multiplier,
+                'wrong cumulative mul in feed'
+            );
+
+            let event: Shrine::Event = pop_log(shrine_addr).unwrap();
+            assert(
+                event == Shrine::Event::MultiplierUpdated(
+                    Shrine::MultiplierUpdated {
+                        multiplier: RAY_ONE.into(),
+                        cumulative_multiplier: expected_cumulative_multiplier,
+                        interval
+                    }
+                ),
+                'wrong MultiplierUpdated event'
+            );
+
+            idx += 1;
+        };
+
+        common::assert_no_events_left(shrine_addr);
     }
 
     //
