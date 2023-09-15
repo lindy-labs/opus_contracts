@@ -511,6 +511,21 @@ mod TestShrineRedistribution {
                                         - debt_to_redistribute,
                                     'wrong redistributed trove debt'
                                 );
+
+                                let expected_redistribution_id: u32 = 1;
+                                let mut expected_events: Span<Shrine::Event> = array![
+                                    Shrine::Event::TroveRedistributed(
+                                        Shrine::TroveRedistributed {
+                                            redistribution_id: expected_redistribution_id,
+                                            trove_id: redistributed_trove,
+                                            debt: debt_to_redistribute,
+                                        }
+                                    ),
+                                ]
+                                    .span();
+                                common::assert_events_emitted(
+                                    shrine.contract_address, expected_events
+                                );
                             // We are unable to test the trove value in a sensible way here because 
                             // the yang price has not been updated to reflect any rebasing of the 
                             // asset amount per yang wad. Instead, refer to the tests for purger
@@ -877,6 +892,19 @@ mod TestShrineRedistribution {
             10_u128.into(), // error margin
             'wrong recipient trove1 value'
         );
+
+        let expected_redistribution_id: u32 = 1;
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::TroveRedistributed(
+                Shrine::TroveRedistributed {
+                    redistribution_id: expected_redistribution_id,
+                    trove_id: redistributed_trove,
+                    debt: redistributed_trove_debt,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
