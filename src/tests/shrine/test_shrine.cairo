@@ -163,22 +163,16 @@ mod TestShrine {
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
 
-        let (yang_addrs, yang_feeds) = ShrineUtils::advance_prices_and_set_multiplier(
-            shrine,
-            ShrineUtils::FEED_LEN,
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into()
+        let yang_addrs = ShrineUtils::three_yang_addrs();
+        let yang_start_prices = ShrineUtils::three_yang_start_prices();
+        let yang_feeds = ShrineUtils::advance_prices_and_set_multiplier(
+            shrine, ShrineUtils::FEED_LEN, yang_addrs, yang_start_prices,
         );
-        let mut yang_addrs = yang_addrs;
-        let mut yang_feeds = yang_feeds;
 
         let shrine = ShrineUtils::shrine(shrine_addr);
 
         let mut exp_start_cumulative_prices: Array<Wad> = array![
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into(),
+            *yang_start_prices.at(0), *yang_start_prices.at(1), *yang_start_prices.at(2),
         ];
 
         let mut expected_events: Array<Shrine::Event> = Default::default();

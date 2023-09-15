@@ -157,6 +157,14 @@ mod ShrineUtils {
         yang_addrs.span()
     }
 
+    fn three_yang_start_prices() -> Span<Wad> {
+        array![
+            YANG1_START_PRICE.into(),
+            YANG2_START_PRICE.into(),
+            YANG3_START_PRICE.into(),
+        ].span()
+    }
+
     fn shrine_deploy() -> ContractAddress {
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
@@ -228,18 +236,26 @@ mod ShrineUtils {
     fn advance_prices_and_set_multiplier(
         shrine: IShrineDispatcher,
         num_intervals: u64,
-        yang1_start_price: Wad,
-        yang2_start_price: Wad,
-        yang3_start_price: Wad,
-    ) -> (Span<ContractAddress>, Span<Span<Wad>>) {
-        let yang_addrs = three_yang_addrs();
+        yangs: Span<ContractAddress>,
+        yang_prices: Span<Wad>,
+    ) -> Span<Span<Wad>> {
+        assert(yangs.len() == yang_prices.len(), 'Array lengths mismatch');
 
-        let mut yang_feeds: Span<Span<Wad>> = array![
-            generate_yang_feed(yang1_start_price),
-            generate_yang_feed(yang2_start_price),
-            generate_yang_feed(yang3_start_price),
-        ]
-            .span();
+        let mut yang_feeds: Array<Span<Wad>> = Default::default();
+        
+        let yangs_copy = yangs;
+        let yang_prices_copy = yang_prices;
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap());
+                },
+                Option::None => {
+                    break;
+                },
+            };
+        };
+        let yang_feeds = yang_feeds.span();
 
         let mut idx: u32 = 0;
         let feed_len: u32 = num_intervals.try_into().unwrap();
@@ -277,7 +293,7 @@ mod ShrineUtils {
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
 
-        (yang_addrs, yang_feeds)
+        yang_feeds
     }
 
     #[inline(always)]
@@ -289,9 +305,8 @@ mod ShrineUtils {
         advance_prices_and_set_multiplier(
             shrine,
             FEED_LEN,
-            YANG1_START_PRICE.into(),
-            YANG2_START_PRICE.into(),
-            YANG3_START_PRICE.into()
+            three_yang_addrs(),
+            three_yang_start_prices(),
         );
         shrine
     }
@@ -373,6 +388,23 @@ mod ShrineUtils {
 
             idx += 1;
         }
+    }
+
+    // Helper function to get the prices for an array of yangs
+    fn get_yang_prices(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>) -> Span<Wad> {
+        let mut yang_prices: Array<Wad> = Default::default();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    yang_prices.append(yang_price);
+                },
+                Option::None => {
+                    break;
+                },
+            };
+        };
+        yang_prices.span()
     }
 
     // Helper function to calculate the maximum forge amount given a tuple of three ordered arrays of
