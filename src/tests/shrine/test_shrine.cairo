@@ -50,19 +50,17 @@ mod TestShrine {
         };
         assert(shrine_accesscontrol.get_admin() == ShrineUtils::admin(), 'wrong admin');
 
-        // Drop `AdminChanged` and `RoleGranted` events from access control library
-        common::drop_events(shrine_addr, 2);
-        let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-        assert(
-            event == Shrine::Event::MultiplierUpdated(
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::MultiplierUpdated(
                 Shrine::MultiplierUpdated {
                     multiplier: Shrine::INITIAL_MULTIPLIER.into(),
                     cumulative_multiplier: Shrine::INITIAL_MULTIPLIER.into(),
                     interval: ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP) - 1,
                 }
-            ),
-            'wrong MultiplierUpdated event'
-        );
+            )
+        ]
+            .span();
+        common::assert_events_emitted(shrine_addr, expected_events);
     }
 
     // Checks the following functions
@@ -75,31 +73,20 @@ mod TestShrine {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
 
-        // Drop `AdminChanged` and `RoleGranted` events from access control library
-        common::drop_events(shrine_addr, 2);
-
-        let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-        assert(
-            event == Shrine::Event::MultiplierUpdated(
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::MultiplierUpdated(
                 Shrine::MultiplierUpdated {
                     multiplier: Shrine::INITIAL_MULTIPLIER.into(),
                     cumulative_multiplier: Shrine::INITIAL_MULTIPLIER.into(),
                     interval: ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP) - 1,
                 }
             ),
-            'wrong MultiplierUpdated event'
-        );
-
-        // Drop `RoleGranted` event from `make_root`
-        common::drop_events(shrine_addr, 1);
-
-        let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-        assert(
-            event == Shrine::Event::DebtCeilingUpdated(
+            Shrine::Event::DebtCeilingUpdated(
                 Shrine::DebtCeilingUpdated { ceiling: ShrineUtils::DEBT_CEILING.into() }
-            ),
-            'wrong DebtCeilingUpdated event'
-        );
+            )
+        ]
+            .span();
+        common::assert_events_emitted(shrine_addr, expected_events);
 
         // Check debt ceiling
         let shrine = ShrineUtils::shrine(shrine_addr);
@@ -148,39 +135,6 @@ mod TestShrine {
                         'wrong yang base rate'
                     );
 
-                    let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-                    assert(
-                        event == Shrine::Event::ThresholdUpdated(
-                            Shrine::ThresholdUpdated {
-                                yang: *yang_addr, threshold: expected_threshold
-                            }
-                        ),
-                        'wrong ThresholdUpdated event'
-                    );
-
-                    let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-                    assert(
-                        event == Shrine::Event::YangAdded(
-                            Shrine::YangAdded {
-                                yang: *yang_addr,
-                                yang_id: yang_id,
-                                start_price: expected_yang_price,
-                                initial_rate: expected_rate
-                            }
-                        ),
-                        'wrong YangAdded event'
-                    );
-
-                    let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-                    assert(
-                        event == Shrine::Event::YangTotalUpdated(
-                            Shrine::YangTotalUpdated {
-                                yang: *yang_addr, total: WadZeroable::zero()
-                            }
-                        ),
-                        'wrong YangTotalUpdated event'
-                    );
-
                     yang_id += 1;
                 },
                 Option::None => {
@@ -188,8 +142,6 @@ mod TestShrine {
                 }
             };
         };
-
-        common::assert_no_events_left(shrine_addr);
 
         // Check shrine threshold and value
         let (threshold, value) = shrine.get_shrine_threshold_and_value();
@@ -210,11 +162,6 @@ mod TestShrine {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::shrine_setup(shrine_addr);
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
-
-        // Drop all events from `shrine_setup`
-        common::drop_events(shrine_addr, 14);
-        common::assert_no_events_left(shrine_addr);
-
         let (yang_addrs, yang_feeds) = ShrineUtils::advance_prices_and_set_multiplier(
             shrine,
             ShrineUtils::FEED_LEN,
@@ -227,118 +174,68 @@ mod TestShrine {
 
         let shrine = ShrineUtils::shrine(shrine_addr);
 
-        let mut exp_start_cumulative_prices: Array<Wad> = array![
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into(),
-        ];
+        let mut exp_start_cumulative_prices: Array<Wad> = Default::default();
+        exp_start_cumulative_prices.append(ShrineUtils::YANG1_START_PRICE.into());
+        exp_start_cumulative_prices.append(ShrineUtils::YANG2_START_PRICE.into());
+        exp_start_cumulative_prices.append(ShrineUtils::YANG3_START_PRICE.into());
+        let mut exp_start_cumulative_prices = exp_start_cumulative_prices.span();
 
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);
-        let mut yang_addrs_copy = yang_addrs;
-        let mut exp_start_cumulative_prices_copy = exp_start_cumulative_prices.span();
         loop {
-            match yang_addrs_copy.pop_front() {
+            match yang_addrs.pop_front() {
                 Option::Some(yang_addr) => {
                     // `Shrine.add_yang` sets the initial price for `current_interval - 1`
                     let (_, start_cumulative_price) = shrine
                         .get_yang_price(*yang_addr, start_interval - 1);
                     assert(
-                        start_cumulative_price == *exp_start_cumulative_prices_copy
-                            .pop_front()
-                            .unwrap(),
+                        start_cumulative_price == *exp_start_cumulative_prices.pop_front().unwrap(),
                         'wrong start cumulative price'
                     );
-                },
-                Option::None => {
-                    break ();
-                }
-            };
-        };
 
-        let (_, start_cumulative_multiplier) = shrine.get_multiplier(start_interval - 1);
-        assert(start_cumulative_multiplier == Ray { val: RAY_ONE }, 'wrong start cumulative mul');
-        let mut expected_cumulative_multiplier = start_cumulative_multiplier;
+                    let (_, start_cumulative_multiplier) = shrine
+                        .get_multiplier(start_interval - 1);
+                    assert(
+                        start_cumulative_multiplier == Ray { val: RAY_SCALE },
+                        'wrong start cumulative mul'
+                    );
 
-        let yangs_count = 3;
-        let yang_feed_len = (*yang_feeds.at(0)).len();
-        let mut idx = 0;
-        let mut expected_yang_cumulative_prices = exp_start_cumulative_prices;
-        loop {
-            if idx == yang_feed_len {
-                break ();
-            }
+                    let mut yang_feed: Span<Wad> = *yang_feeds.pop_front().unwrap();
+                    let yang_feed_len: usize = yang_feed.len();
 
-            let interval = start_interval + idx.into();
+                    let mut idx: usize = 0;
+                    let mut expected_cumulative_price = start_cumulative_price;
+                    let mut expected_cumulative_multiplier = start_cumulative_multiplier;
+                    loop {
+                        if idx == yang_feed_len {
+                            break;
+                        }
 
-            let mut yang_addrs_copy = yang_addrs;
-            let mut yang_idx = 0;
-
-            // Create a copy of the current cumulative prices
-            let mut expected_yang_cumulative_prices_copy = expected_yang_cumulative_prices.span();
-            // Reset array to track the latest cumulative prices
-            expected_yang_cumulative_prices = Default::default();
-            loop {
-                match yang_addrs_copy.pop_front() {
-                    Option::Some(yang_addr) => {
+                        let interval = start_interval + idx.into();
                         let (price, cumulative_price) = shrine.get_yang_price(*yang_addr, interval);
-                        let expected_price = *yang_feeds.at(yang_idx)[idx];
-                        assert(price == expected_price, 'wrong price in feed');
+                        assert(price == *yang_feed[idx], 'wrong price in feed');
 
-                        let prev_cumulative_price = *expected_yang_cumulative_prices_copy
-                            .at(yang_idx);
-                        let expected_cumulative_price = prev_cumulative_price + price;
-
-                        expected_yang_cumulative_prices.append(expected_cumulative_price);
+                        expected_cumulative_price += price;
                         assert(
                             cumulative_price == expected_cumulative_price,
                             'wrong cumulative price in feed'
                         );
 
-                        let event: Shrine::Event = pop_log(shrine_addr).unwrap();
+                        expected_cumulative_multiplier += RAY_SCALE.into();
+                        let (multiplier, cumulative_multiplier) = shrine.get_multiplier(interval);
+                        assert(multiplier == Ray { val: RAY_SCALE }, 'wrong multiplier in feed');
                         assert(
-                            event == Shrine::Event::YangPriceUpdated(
-                                Shrine::YangPriceUpdated {
-                                    yang: *yang_addr,
-                                    price: expected_price,
-                                    cumulative_price: expected_cumulative_price,
-                                    interval
-                                }
-                            ),
-                            'wrong YangPriceUpdated event'
+                            cumulative_multiplier == expected_cumulative_multiplier,
+                            'wrong cumulative mul in feed'
                         );
 
-                        yang_idx += 1;
-                    },
-                    Option::None => {
-                        break;
-                    },
-                };
+                        idx += 1;
+                    };
+                },
+                Option::None => {
+                    break;
+                }
             };
-
-            expected_cumulative_multiplier += RAY_ONE.into();
-            let (multiplier, cumulative_multiplier) = shrine.get_multiplier(interval);
-            assert(multiplier == Ray { val: RAY_ONE }, 'wrong multiplier in feed');
-            assert(
-                cumulative_multiplier == expected_cumulative_multiplier,
-                'wrong cumulative mul in feed'
-            );
-
-            let event: Shrine::Event = pop_log(shrine_addr).unwrap();
-            assert(
-                event == Shrine::Event::MultiplierUpdated(
-                    Shrine::MultiplierUpdated {
-                        multiplier: RAY_ONE.into(),
-                        cumulative_multiplier: expected_cumulative_multiplier,
-                        interval
-                    }
-                ),
-                'wrong MultiplierUpdated event'
-            );
-
-            idx += 1;
         };
-
-        common::assert_no_events_left(shrine_addr);
     }
 
     //
@@ -370,7 +267,8 @@ mod TestShrine {
                 WadZeroable::zero()
             );
 
-        assert(shrine.get_yangs_count() == yangs_count + 1, 'incorrect yangs count');
+        let expected_yangs_count: u32 = yangs_count + 1;
+        assert(shrine.get_yangs_count() == expected_yangs_count, 'incorrect yangs count');
         assert(shrine.get_yang_total(new_yang_address).is_zero(), 'incorrect yang total');
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
@@ -382,6 +280,25 @@ mod TestShrine {
             shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate,
             'incorrect yang rate'
         );
+
+        let expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::ThresholdUpdated(
+                Shrine::ThresholdUpdated { yang: new_yang_address, threshold: new_yang_threshold }
+            ),
+            Shrine::Event::YangAdded(
+                Shrine::YangAdded {
+                    yang: new_yang_address,
+                    yang_id: expected_yangs_count,
+                    start_price: new_yang_start_price,
+                    initial_rate: new_yang_rate
+                }
+            ),
+            Shrine::Event::YangTotalUpdated(
+                Shrine::YangTotalUpdated { yang: new_yang_address, total: WadZeroable::zero() }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
@@ -577,8 +494,6 @@ mod TestShrine {
     #[available_gas(20000000000)]
     fn test_shrine_deposit_pass() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-        ShrineUtils::drop_events_for_shrine_setup_with_feed(shrine.contract_address);
-        common::assert_no_events_left(shrine.contract_address);
 
         let deposit_amt: Wad = ShrineUtils::TROVE1_YANG1_DEPOSIT.into();
         ShrineUtils::trove1_deposit(shrine, deposit_amt);
@@ -607,9 +522,8 @@ mod TestShrine {
         );
         assert(max_forge_amt == expected_max_forge, 'incorrect max forge amt');
 
-        let event: Shrine::Event = pop_log(shrine.contract_address).unwrap();
-        assert(
-            event == Shrine::Event::TroveUpdated(
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::TroveUpdated(
                 Shrine::TroveUpdated {
                     trove_id: trove_id,
                     trove: Trove {
@@ -619,25 +533,13 @@ mod TestShrine {
                     },
                 }
             ),
-            'wrong TroveUpdated event'
-        );
-
-        let event: Shrine::Event = pop_log(shrine.contract_address).unwrap();
-        assert(
-            event == Shrine::Event::YangTotalUpdated(
-                Shrine::YangTotalUpdated { yang, total: deposit_amt, }
-            ),
-            'wrong YangTotalUpdated event'
-        );
-
-        let event: Shrine::Event = pop_log(shrine.contract_address).unwrap();
-        assert(
-            event == Shrine::Event::DepositUpdated(
+            Shrine::Event::YangTotalUpdated(Shrine::YangTotalUpdated { yang, total: deposit_amt, }),
+            Shrine::Event::DepositUpdated(
                 Shrine::DepositUpdated { yang, trove_id, amount: deposit_amt, }
             ),
-            'wrong YangTotalUpdated event'
-        );
-        common::assert_no_events_left(shrine.contract_address);
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]

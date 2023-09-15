@@ -170,7 +170,7 @@ mod Shrine {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         YangAdded: YangAdded,
         YangTotalUpdated: YangTotalUpdated,
@@ -190,7 +190,7 @@ mod Shrine {
         Approval: Approval,
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAdded {
         #[key]
         yang: ContractAddress,
@@ -199,19 +199,19 @@ mod Shrine {
         initial_rate: Ray
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangTotalUpdated {
         #[key]
         yang: ContractAddress,
         total: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct DebtTotalUpdated {
         total: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct MultiplierUpdated {
         multiplier: Ray,
         cumulative_multiplier: Ray,
@@ -219,7 +219,7 @@ mod Shrine {
         interval: u64
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangRatesUpdated {
         #[key]
         rate_era: u64,
@@ -228,14 +228,14 @@ mod Shrine {
         new_rates: Span<Ray>
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ThresholdUpdated {
         #[key]
         yang: ContractAddress,
         threshold: Ray
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ForgeFeePaid {
         #[key]
         trove_id: u64,
@@ -243,14 +243,14 @@ mod Shrine {
         fee_pct: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveUpdated {
         #[key]
         trove_id: u64,
         trove: Trove
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveRedistributed {
         #[key]
         redistribution_id: u32,
@@ -259,7 +259,7 @@ mod Shrine {
         debt: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct DepositUpdated {
         #[key]
         yang: ContractAddress,
@@ -268,7 +268,7 @@ mod Shrine {
         amount: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangPriceUpdated {
         #[key]
         yang: ContractAddress,
@@ -278,23 +278,23 @@ mod Shrine {
         interval: u64
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YinPriceUpdated {
         old_price: Wad,
         new_price: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct DebtCeilingUpdated {
         ceiling: Wad
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Killed {}
 
     // ERC20 events
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Transfer {
         #[key]
         from: ContractAddress,
@@ -303,7 +303,7 @@ mod Shrine {
         value: u256
     }
 
-    #[derive(Drop, starknet::Event, PartialEq)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Approval {
         #[key]
         owner: ContractAddress,

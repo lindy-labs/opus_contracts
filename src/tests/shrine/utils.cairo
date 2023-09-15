@@ -611,24 +611,4 @@ mod ShrineUtils {
         trove1_forge(shrine, RECOVERY_TESTS_TROVE1_FORGE_AMT.into());
         shrine
     }
-
-    //
-    // Event helpers
-    //
-
-    fn drop_events_for_shrine_setup(shrine_addr: ContractAddress) {
-        // `AdminChanged` and `RoleGranted` from access control in constructor: 2
-        // `MultiplierUpdated` from constructor: 1
-        // `RoleGranted` from access control in `make_root` helper: 1
-        // `DebtCeilingUpdated` from `set_debt_ceiling`: 1
-        // `ThresholdUpdated`, `YangAdded` and `YangTotalUpdated` per yang: 3 * 3 = 9
-        common::drop_events(shrine_addr, 14);
-    }
-
-    fn drop_events_for_shrine_setup_with_feed(shrine_addr: ContractAddress) {
-        drop_events_for_shrine_setup(shrine_addr);
-        // `YangPriceUpdated` per yang per interval
-        // `MultiplierUpdated` per interval
-        common::drop_events(shrine_addr, FEED_LEN * 4);
-    }
 }

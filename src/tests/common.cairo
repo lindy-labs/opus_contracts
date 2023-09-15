@@ -1,4 +1,5 @@
 use array::ArrayTrait;
+use debug::PrintTrait;
 use starknet::{
     deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
     contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
@@ -308,18 +309,55 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 // From https://github.com/OpenZeppelin/cairo-contracts/blob/cairo-2/src/tests/utils.cairo
 //
 
-fn assert_no_events_left(address: ContractAddress) {
-    assert(pop_log_raw(address).is_none(), 'Events remaining on queue');
-}
+fn assert_events_emitted<
+    T,
+    impl TCopy: Copy<T>,
+    impl TDrop: Drop<T>,
+    impl TEvent: starknet::Event<T>,
+    impl TPartialEq: PartialEq<T>,
+>(
+    addr: ContractAddress, events: Span<T>
+) {
+    // Fetch all emitted events 
+    let mut emitted_events: Array<T> = Default::default();
 
-fn drop_events(address: ContractAddress, count: u64) {
-    let mut idx = 0;
     loop {
-        if idx == count {
-            break;
-        }
-        pop_log_raw(address);
+        match pop_log_raw(addr) {
+            Option::Some(raw_event) => {
+                let (mut keys, mut data) = raw_event;
+                let event: Option<T> = starknet::Event::deserialize(ref keys, ref data);
+                if event.is_some() {
+                    emitted_events.append(event.unwrap());
+                }
+            },
+            Option::None => {
+                break;
+            },
+        };
+    };
 
-        idx += 1;
+    // Loop over each event, and check if it was emitted
+    let mut events_copy = events;
+    loop {
+        match events_copy.pop_front() {
+            Option::Some(event) => {
+                let mut emitted_events_copy = emitted_events.span();
+                loop {
+                    match emitted_events_copy.pop_front() {
+                        Option::Some(emitted_event) => {
+                            if *event == *emitted_event {
+                                break;
+                            }
+                        },
+                        Option::None => {
+                            panic(array!['Event not emitted']);
+                        },
+                    };
+                };
+            },
+            Option::None => {
+                break;
+            },
+        };
     };
 }
