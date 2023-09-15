@@ -158,11 +158,7 @@ mod ShrineUtils {
     }
 
     fn three_yang_start_prices() -> Span<Wad> {
-        array![
-            YANG1_START_PRICE.into(),
-            YANG2_START_PRICE.into(),
-            YANG3_START_PRICE.into(),
-        ].span()
+        array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
     }
 
     fn shrine_deploy() -> ContractAddress {
@@ -242,13 +238,13 @@ mod ShrineUtils {
         assert(yangs.len() == yang_prices.len(), 'Array lengths mismatch');
 
         let mut yang_feeds: Array<Span<Wad>> = Default::default();
-        
-        let yangs_copy = yangs;
-        let yang_prices_copy = yang_prices;
+
+        let mut yangs_copy = yangs;
+        let mut yang_prices_copy = yang_prices;
         loop {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
-                    yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap());
+                    yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap()));
                 },
                 Option::None => {
                     break;
@@ -269,13 +265,12 @@ mod ShrineUtils {
 
             set_block_timestamp(timestamp);
 
-            let mut yang_addrs_copy = yang_addrs;
+            let mut yangs_copy = yangs;
             let mut yang_feeds_copy = yang_feeds;
             loop {
-                match yang_addrs_copy.pop_front() {
-                    Option::Some(yang_addr) => {
-                        shrine
-                            .advance(*yang_addr, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
+                match yangs_copy.pop_front() {
+                    Option::Some(yang) => {
+                        shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
                     },
                     Option::None => {
                         break;
@@ -303,10 +298,7 @@ mod ShrineUtils {
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
-            shrine,
-            FEED_LEN,
-            three_yang_addrs(),
-            three_yang_start_prices(),
+            shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices(),
         );
         shrine
     }
@@ -534,7 +526,7 @@ mod ShrineUtils {
             let mut j: usize = 0;
             loop {
                 if j == yangs_count {
-                    break ();
+                    break;
                 }
                 let yang_value: Wad = *yang_amts[j] * *yang_avg_prices.at(i)[j];
                 total_avg_yang_value += yang_value;
