@@ -836,7 +836,7 @@ mod TestShrine {
         let mut expected_events: Span<Shrine::Event> = array![
             Shrine::Event::ForgeFeePaid(
                 Shrine::ForgeFeePaid {
-                    trove_id: trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(),
+                    trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(),
                 }
             ),
             Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: forge_amt }),

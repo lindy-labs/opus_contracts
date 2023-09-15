@@ -274,23 +274,24 @@ mod TestShrineRedistribution {
         ];
         let mut trove2_yang_deposits = trove2_yang_deposits.span();
 
+        let redistributed_trove: u64 = common::TROVE_1;
         let yang_addrs: Span<ContractAddress> = ShrineUtils::two_yang_addrs_reversed();
         let (trove1_yang_values, expected_unit_debts, expected_errors, expected_remaining_yangs) =
             preview_trove_redistribution(
-            shrine, yang_addrs, common::TROVE_1
+            shrine, yang_addrs, redistributed_trove
         );
 
         // Simulate purge with 0 yin to update the trove's debt
         set_contract_address(ShrineUtils::admin());
         let trove1_owner = common::trove1_owner_addr();
-        let (_, _, trove1_value, trove1_debt) = shrine.get_trove_info(common::TROVE_1);
-        shrine.melt(trove1_owner, common::TROVE_1, WadZeroable::zero());
+        let (_, _, trove1_value, trove1_debt) = shrine.get_trove_info(redistributed_trove);
+        shrine.melt(trove1_owner, redistributed_trove, WadZeroable::zero());
 
         assert(shrine.get_redistributions_count() == 0, 'wrong start state');
-        shrine.redistribute(common::TROVE_1, trove1_debt, RAY_ONE.into());
+        shrine.redistribute(redistributed_trove, trove1_debt, RAY_ONE.into());
 
         let (attributed_yangs, attributed_debt) = shrine
-            .get_redistributions_attributed_to_trove(common::TROVE_1);
+            .get_redistributions_attributed_to_trove(redistributed_trove);
         assert(attributed_debt.is_zero(), 'should be zero');
         assert(attributed_yangs.len().is_zero(), 'should be empty');
 
@@ -307,7 +308,7 @@ mod TestShrineRedistribution {
             yang_addrs,
             expected_remaining_yangs,
             trove2_yang_deposits,
-            common::TROVE_1,
+            redistributed_trove,
             trove1_debt,
             trove1_value,
             trove1_yang_values,
@@ -332,6 +333,18 @@ mod TestShrineRedistribution {
             shrine.get_trove_redistribution_id(common::TROVE_2) == expected_redistribution_id,
             'wrong id'
         );
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::TroveRedistributed(
+                Shrine::TroveRedistributed {
+                    redistribution_id: expected_redistribution_id,
+                    trove_id: redistributed_trove,
+                    debt: trove1_debt,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
