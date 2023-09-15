@@ -1077,17 +1077,6 @@ mod TestPurger {
                                                 let (tmp_threshold, _, _, _) = shrine
                                                     .get_trove_info(target_trove);
 
-                                                if tmp_threshold != *threshold {
-                                                    'in recovery mode'.print();
-                                                    // print the parameters of this run
-                                                    'target_trove_yang_asset_amts: '.print();
-                                                    (*target_trove_yang_asset_amts).print();
-                                                    'yang_asset_amts: '.print();
-                                                    (*yang_asset_amts).print();
-                                                    'threshold: '.print();
-                                                    (*threshold).print();
-                                                }
-
                                                 assert(
                                                     tmp_threshold == *threshold, 'in recovery mode'
                                                 );

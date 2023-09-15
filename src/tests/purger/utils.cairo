@@ -173,8 +173,6 @@ mod PurgerUtils {
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
         let exceed_hundred_pct: Ray = (RAY_ONE + RAY_PERCENT).into();
 
-        let mut trove_ltvs: Array<Span<Ray>> = ArrayTrait::new();
-
         array![
             // First threshold of 78.75% (Ray)
             array![ // 86.23% (Ray) - Greater than LTV at which maximum penalty of 12.5% is last reached
@@ -243,7 +241,7 @@ mod PurgerUtils {
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         array![
             // base case for ordinary redistributions
-            AbsorberUtils::provider_asset_amts(),
+            recipient_trove_yang_asset_amts(),
             // recipient trove has dust amount of the first yang
             // 100 wei (Wad) ETH, 20 (10 ** 8) WBTC
             array![100_u128, 2000000000_u128].span(),
