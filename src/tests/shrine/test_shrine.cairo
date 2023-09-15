@@ -896,15 +896,16 @@ mod TestShrine {
         let forge_amt: Wad = 100000000000000000000_u128.into(); // 100 (wad)
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
 
+        let trove_id: u64 = common::TROVE_1;
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
 
         ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
 
         set_contract_address(ShrineUtils::admin());
 
-        let before_max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
+        let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         shrine.update_yin_spot_price(yin_price1);
-        let after_max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
+        let after_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
 
         let fee_pct: Wad = shrine.get_forge_fee_pct();
 
@@ -913,17 +914,31 @@ mod TestShrine {
             'incorrect max forge amt'
         );
 
-        shrine.forge(trove1_owner, common::TROVE_1, forge_amt, fee_pct);
+        shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
         let (_, _, _, debt) = shrine.get_trove_info(common::TROVE_1);
+        let fee = debt - forge_amt;
         assert(debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #1');
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::ForgeFeePaid(Shrine::ForgeFeePaid { trove_id, fee, fee_pct }),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
 
         shrine.update_yin_spot_price(yin_price2);
         let fee_pct: Wad = shrine.get_forge_fee_pct();
-        shrine.forge(trove1_owner, common::TROVE_1, forge_amt, fee_pct);
+        shrine.forge(trove1_owner, trove_id, forge_amt, fee_pct);
 
         let (_, _, _, new_debt) = shrine.get_trove_info(common::TROVE_1);
+        let fee = new_debt - debt - forge_amt;
         assert(new_debt - debt - forge_amt == fee_pct * forge_amt, 'wrong forge fee charged #2');
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::ForgeFeePaid(Shrine::ForgeFeePaid { trove_id, fee, fee_pct }),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
@@ -1601,10 +1616,26 @@ mod TestShrine {
         shrine.update_yin_spot_price(first_yin_price);
         assert(shrine.get_forge_fee_pct().is_zero(), 'wrong forge fee #1');
 
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::YinPriceUpdated(
+                Shrine::YinPriceUpdated { old_price: WAD_ONE.into(), new_price: first_yin_price, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
+
         shrine.update_yin_spot_price(second_yin_price);
         common::assert_equalish(
             shrine.get_forge_fee_pct(), WAD_PERCENT.into(), error_margin, 'wrong forge fee #2'
         );
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::YinPriceUpdated(
+                Shrine::YinPriceUpdated { old_price: first_yin_price, new_price: second_yin_price, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
 
         // forge fee should be capped to `FORGE_FEE_CAP_PCT`
         shrine.update_yin_spot_price(third_yin_price);
@@ -1612,11 +1643,27 @@ mod TestShrine {
             shrine.get_forge_fee_pct(), third_forge_fee, error_margin, 'wrong forge fee #3'
         );
 
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::YinPriceUpdated(
+                Shrine::YinPriceUpdated { old_price: second_yin_price, new_price: third_yin_price, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
+
         // forge fee should be `FORGE_FEE_CAP_PCT` for yin price <= `MIN_ZERO_FEE_YIN_PRICE`
         shrine.update_yin_spot_price(fourth_yin_price);
         assert(
             shrine.get_forge_fee_pct() == Shrine::FORGE_FEE_CAP_PCT.into(), 'wrong forge fee #4'
         );
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::YinPriceUpdated(
+                Shrine::YinPriceUpdated { old_price: third_yin_price, new_price: fourth_yin_price, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     //
