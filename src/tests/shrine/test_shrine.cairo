@@ -1032,21 +1032,22 @@ mod TestShrine {
         ShrineUtils::trove1_forge(shrine, forge_amt);
 
         let yin = ShrineUtils::yin(shrine.contract_address);
+        let trove_id: u64 = common::TROVE_1;
         let trove1_owner_addr = common::trove1_owner_addr();
 
         let before_total_debt: Wad = shrine.get_total_debt();
-        let (_, _, _, before_trove_debt) = shrine.get_trove_info(common::TROVE_1);
+        let (_, _, _, before_trove_debt) = shrine.get_trove_info(trove_id);
         let before_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
-        let before_max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
+        let before_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         let melt_amt: Wad = (ShrineUtils::TROVE1_YANG1_DEPOSIT / 3_u128).into();
 
         let outstanding_amt: Wad = forge_amt - melt_amt;
         set_contract_address(ShrineUtils::admin());
-        shrine.melt(trove1_owner_addr, common::TROVE_1, melt_amt);
+        shrine.melt(trove1_owner_addr, trove_id, melt_amt);
 
         assert(shrine.get_total_debt() == before_total_debt - melt_amt, 'incorrect total debt');
 
-        let (_, after_ltv, _, after_trove_debt) = shrine.get_trove_info(common::TROVE_1);
+        let (_, after_ltv, _, after_trove_debt) = shrine.get_trove_info(trove_id);
         assert(after_trove_debt == before_trove_debt - melt_amt, 'incorrect trove debt');
 
         let after_yin_bal: u256 = yin.balance_of(trove1_owner_addr);
@@ -1056,12 +1057,35 @@ mod TestShrine {
         let expected_ltv: Ray = wadray::rdiv_ww(outstanding_amt, (yang1_price * deposit_amt));
         assert(after_ltv == expected_ltv, 'incorrect LTV');
 
-        assert(shrine.is_healthy(common::TROVE_1), 'trove should be healthy');
+        assert(shrine.is_healthy(trove_id), 'trove should be healthy');
 
-        let after_max_forge_amt: Wad = shrine.get_max_forge(common::TROVE_1);
+        let after_max_forge_amt: Wad = shrine.get_max_forge(trove_id);
         assert(
             after_max_forge_amt == before_max_forge_amt + melt_amt, 'incorrect max forge amount'
         );
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: after_trove_debt }),
+            Shrine::Event::TroveUpdated(
+                Shrine::TroveUpdated {
+                    trove_id,
+                    trove: Trove {
+                        charge_from: ShrineUtils::current_interval(),
+                        debt: after_trove_debt,
+                        last_rate_era: 1
+                    },
+                }
+            ),
+            Shrine::Event::Transfer(
+                Shrine::Transfer {
+                    from: trove1_owner_addr,
+                    to: ContractAddressZeroable::zero(),
+                    value: melt_amt.into(),
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
@@ -1108,13 +1132,21 @@ mod TestShrine {
 
         let success: bool = yin.transfer(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
 
-        yin.transfer(yin_user, 0_u256);
+        yin.transfer(yin_user, 0);
         assert(success, 'yin transfer fail');
         assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
         assert(
             yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
             'wrong transferee balance'
         );
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::Transfer(
+                Shrine::Transfer { from: trove1_owner, to: yin_user, value: 0, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
@@ -1161,20 +1193,28 @@ mod TestShrine {
         let yin_user: ContractAddress = ShrineUtils::yin_user_addr();
 
         let trove1_owner: ContractAddress = common::trove1_owner_addr();
+        let transfer_amt: u256 = ShrineUtils::TROVE1_FORGE_AMT.into();
         set_contract_address(trove1_owner);
-        yin.approve(yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
+        yin.approve(yin_user, transfer_amt);
 
         set_contract_address(yin_user);
-        let success: bool = yin
-            .transfer_from(trove1_owner, yin_user, ShrineUtils::TROVE1_FORGE_AMT.into());
+        let success: bool = yin.transfer_from(trove1_owner, yin_user, transfer_amt);
 
         assert(success, 'yin transfer fail');
 
         assert(yin.balance_of(trove1_owner).is_zero(), 'wrong transferor balance');
-        assert(
-            yin.balance_of(yin_user) == ShrineUtils::TROVE1_FORGE_AMT.into(),
-            'wrong transferee balance'
-        );
+        assert(yin.balance_of(yin_user) == transfer_amt, 'wrong transferee balance');
+
+        let mut expected_events: Span<Shrine::Event> = array![
+            Shrine::Event::Approval(
+                Shrine::Approval { owner: trove1_owner, spender: yin_user, value: transfer_amt, }
+            ),
+            Shrine::Event::Transfer(
+                Shrine::Transfer { from: trove1_owner, to: yin_user, value: transfer_amt, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_events);
     }
 
     #[test]
