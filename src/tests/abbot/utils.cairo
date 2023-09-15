@@ -1,13 +1,10 @@
 mod AbbotUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         deploy_syscall, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::core::abbot::Abbot;
     use aura::core::roles::SentinelRoles;
@@ -41,23 +38,19 @@ mod AbbotUtils {
     //
 
     fn initial_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(ETH_DEPOSIT_AMT * 10);
-        asset_amts.append(WBTC_DEPOSIT_AMT * 10);
+        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT * 10, WBTC_DEPOSIT_AMT * 10,];
         asset_amts.span()
     }
 
     fn open_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(ETH_DEPOSIT_AMT);
-        asset_amts.append(WBTC_DEPOSIT_AMT);
+        let mut asset_amts: Array<u128> = array![ETH_DEPOSIT_AMT, WBTC_DEPOSIT_AMT];
         asset_amts.span()
     }
 
     fn subsequent_deposit_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(SUBSEQUENT_ETH_DEPOSIT_AMT);
-        asset_amts.append(SUBSEQUENT_WBTC_DEPOSIT_AMT);
+        let mut asset_amts: Array<u128> = array![
+            SUBSEQUENT_ETH_DEPOSIT_AMT, SUBSEQUENT_WBTC_DEPOSIT_AMT
+        ];
         asset_amts.span()
     }
 
@@ -75,9 +68,10 @@ mod AbbotUtils {
         let (sentinel, shrine, yangs, gates) = SentinelUtils::deploy_sentinel_with_gates();
         ShrineUtils::setup_debt_ceiling(shrine.contract_address);
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(shrine.contract_address));
-        calldata.append(contract_address_to_felt252(sentinel.contract_address));
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(shrine.contract_address),
+            contract_address_to_felt252(sentinel.contract_address),
+        ];
 
         let abbot_class_hash: ClassHash = class_hash_try_from_felt252(Abbot::TEST_CLASS_HASH)
             .unwrap();

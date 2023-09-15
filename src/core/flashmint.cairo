@@ -14,17 +14,14 @@
 //
 //
 
-#[contract]
+#[starknet::contract]
 mod FlashMint {
-    use option::OptionTrait;
-    use starknet::ContractAddress;
-    use traits::{Into, TryInto};
+    use starknet::{ContractAddress, get_caller_address};
 
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
+    use aura::interfaces::IFlashMint::IFlashMint;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::serde;
-    use aura::utils::u256_conversions::{U256TryIntoU128, U128IntoU256};
     use aura::utils::wadray::Wad;
 
     // The value of keccak256("ERC3156FlashBorrower.onFlashLoan") as per EIP3156
@@ -34,84 +31,98 @@ mod FlashMint {
 
     // Percentage value of Yin's total supply that can be flash minted (wad)
     const FLASH_MINT_AMOUNT_PCT: u128 = 50000000000000000;
-    const FLASH_FEE: u256 = 0_u256;
+    const FLASH_FEE: u256 = 0;
 
+    #[storage]
     struct Storage {
-        shrine: IShrineDispatcher, 
+        shrine: IShrineDispatcher,
     }
+
 
     #[event]
-    fn FlashMint(
-        initiator: ContractAddress, receiver: ContractAddress, token: ContractAddress, amount: u256
-    ) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        FlashMint: FlashMint,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct FlashMint {
+        initiator: ContractAddress,
+        receiver: ContractAddress,
+        token: ContractAddress,
+        amount: u256
+    }
 
     #[constructor]
-    fn constructor(shrine: ContractAddress) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
+    fn constructor(ref self: ContractState, shrine: ContractAddress) {
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
-    //
-    // View Functions
-    //
 
-    #[view]
-    fn max_flash_loan(token: ContractAddress) -> u256 {
-        let shrine: IShrineDispatcher = shrine::read();
+    #[external(v0)]
+    impl IFlashMintImpl of IFlashMint<ContractState> {
+        //
+        // View Functions
+        //
+        fn max_flash_loan(self: @ContractState, token: ContractAddress) -> u256 {
+            let shrine: IShrineDispatcher = self.shrine.read();
 
-        // Can only flash mint our own synthetic
-        if token == shrine.contract_address {
-            let supply: Wad = shrine.get_total_yin();
-            return (supply * Wad { val: FLASH_MINT_AMOUNT_PCT }).val.into();
+            // Can only flash mint our own synthetic
+            if token == shrine.contract_address {
+                let supply: Wad = shrine.get_total_yin();
+                return (supply * FLASH_MINT_AMOUNT_PCT.into()).val.into();
+            }
+
+            0_u256
         }
 
-        0_u256
-    }
+        fn flash_fee(self: @ContractState, token: ContractAddress, amount: u256) -> u256 {
+            // as per EIP3156, if a token is not supported, this function must revert
+            // and we only support flash minting of our own synthetic
+            assert(self.shrine.read().contract_address == token, 'FM: Unsupported token');
 
-    #[view]
-    fn flash_fee(token: ContractAddress, amount: u256) -> u256 {
-        // as per EIP3156, if a token is not supported, this function must revert
-        // and we only support flash minting of our own synthetic
-        assert(shrine::read().contract_address == token, 'FM: Unsupported token');
+            FLASH_FEE
+        }
 
-        FLASH_FEE
-    }
+        //
+        // External Functions
+        //
 
-    //
-    // External Functions
-    //
+        fn flash_loan(
+            ref self: ContractState,
+            receiver: ContractAddress,
+            token: ContractAddress,
+            amount: u256,
+            call_data: Span<felt252>
+        ) -> bool {
+            // prevents looping which would lead to excessive minting
+            // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
+            // yin to be minted, as per spec
+            ReentrancyGuard::start();
 
-    #[external]
-    fn flash_loan(
-        receiver: ContractAddress, token: ContractAddress, amount: u256, call_data: Span<felt252>
-    ) -> bool {
-        // prevents looping which would lead to excessive minting
-        // we only allow a FLASH_MINT_AMOUNT_PCT percentage of total
-        // yin to be minted, as per spec
-        ReentrancyGuard::start();
+            assert(amount <= self.max_flash_loan(token), 'FM: amount exceeds maximum');
 
-        assert(amount <= max_flash_loan(token), 'FM: amount exceeds maximum');
+            let shrine = self.shrine.read();
 
-        let shrine = shrine::read();
+            let amount_wad: Wad = amount.try_into().unwrap();
 
-        let amount_wad = Wad { val: amount.try_into().unwrap() };
+            shrine.inject(receiver, amount_wad);
 
-        shrine.inject(receiver, amount_wad);
+            let initiator: ContractAddress = get_caller_address();
 
-        let initiator: ContractAddress = starknet::get_caller_address();
+            let borrower_resp: u256 = IFlashBorrowerDispatcher { contract_address: receiver }
+                .on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
 
-        let borrower_resp: u256 = IFlashBorrowerDispatcher {
-            contract_address: receiver
-        }.on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
+            assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
 
-        assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
+            // This function in Shrine takes care of balance validation
+            shrine.eject(receiver, amount_wad);
 
-        // This function in Shrine takes care of balance validation
-        shrine.eject(receiver, amount_wad);
+            self.emit(FlashMint { initiator, receiver, token, amount });
 
-        FlashMint(initiator, receiver, token, amount);
+            ReentrancyGuard::end();
 
-        ReentrancyGuard::end();
-
-        true
+            true
+        }
     }
 }

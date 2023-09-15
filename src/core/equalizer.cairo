@@ -1,19 +1,17 @@
-#[contract]
+#[starknet::contract]
 mod Equalizer {
-    use array::{SpanTrait};
-    use option::OptionTrait;
     use starknet::ContractAddress;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::roles::EqualizerRoles;
 
     use aura::interfaces::IAllocator::{IAllocatorDispatcher, IAllocatorDispatcherTrait};
+    use aura::interfaces::IEqualizer::IEqualizer;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::AccessControl;
-    use aura::utils::serde::SpanSerde;
-    use aura::utils::wadray::{Ray, rmul_wr, Wad, WadZeroable};
+    use aura::utils::access_control::{AccessControl, IAccessControl};
+    use aura::utils::wadray;
+    use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
+    #[storage]
     struct Storage {
         // the Allocator to read the current allocation of recipients of any minted
         // surplus debt, and their respective percentages
@@ -27,104 +25,132 @@ mod Equalizer {
     //
 
     #[event]
-    fn AllocatorUpdated(old_address: ContractAddress, new_address: ContractAddress) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        AllocatorUpdated: AllocatorUpdated,
+        Equalize: Equalize,
+    }
 
-    #[event]
-    fn Equalize(recipients: Span<ContractAddress>, percentages: Span<Ray>, amount: Wad) {}
+    #[derive(Drop, starknet::Event)]
+    struct AllocatorUpdated {
+        old_address: ContractAddress,
+        new_address: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Equalize {
+        recipients: Span<ContractAddress>,
+        percentages: Span<Ray>,
+        amount: Wad
+    }
 
     //
     // Constructor
     //
 
     #[constructor]
-    fn constructor(admin: ContractAddress, shrine: ContractAddress, allocator: ContractAddress) {
+    fn constructor(
+        ref self: ContractState,
+        admin: ContractAddress,
+        shrine: ContractAddress,
+        allocator: ContractAddress
+    ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(EqualizerRoles::default_admin_role(), admin);
+        AccessControl::grant_role_helper(EqualizerRoles::default_admin_role(), admin);
 
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        allocator::write(IAllocatorDispatcher { contract_address: allocator });
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
     }
 
     //
-    // Getters
+    // External Equalizer functions
     //
 
-    #[view]
-    fn get_allocator() -> ContractAddress {
-        allocator::read().contract_address
-    }
+    #[external(v0)]
+    impl IEqualizerImpl of IEqualizer<ContractState> {
+        //
+        // Getters
+        //
 
-    // Returns the amount of surplus debt that can be minted
-    #[view]
-    fn get_surplus() -> Wad {
-        let (_, surplus) = get_debt_and_surplus(shrine::read());
-        surplus
-    }
-
-    //
-    // External
-    //
-
-    // Update the Allocator's address
-    #[external]
-    fn set_allocator(allocator: ContractAddress) {
-        AccessControl::assert_has_role(EqualizerRoles::SET_ALLOCATOR);
-
-        let old_address: ContractAddress = allocator::read().contract_address;
-        allocator::write(IAllocatorDispatcher { contract_address: allocator });
-
-        AllocatorUpdated(old_address, allocator);
-    }
-
-    // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
-    // according to their respective percentage share.
-    // Assumes the allocation from the Allocator has already been checked:
-    // - both arrays of recipient addresses and percentages are of equal length;
-    // - there is at least one recipient;
-    // - the percentages add up to one Ray.
-    // Returns the total amount of surplus debt minted.
-    #[external]
-    fn equalize() -> Wad {
-        let shrine: IShrineDispatcher = shrine::read();
-        let (total_debt, surplus) = get_debt_and_surplus(shrine);
-
-        if surplus.is_zero() {
-            return WadZeroable::zero();
+        fn get_allocator(self: @ContractState) -> ContractAddress {
+            self.allocator.read().contract_address
         }
 
-        let allocator: IAllocatorDispatcher = allocator::read();
-        let (recipients, percentages) = allocator.get_allocation();
+        // Returns the amount of surplus debt that can be minted
+        fn get_surplus(self: @ContractState) -> Wad {
+            let (_, surplus) = get_debt_and_surplus(self.shrine.read());
+            surplus
+        }
 
-        let mut minted_surplus: Wad = WadZeroable::zero();
+        //
+        // Setters
+        //
 
-        let mut recipients_copy = recipients;
-        let mut percentages_copy = percentages;
-        loop {
-            match recipients_copy.pop_front() {
-                Option::Some(recipient) => {
-                    let amount: Wad = rmul_wr(surplus, *(percentages_copy.pop_front().unwrap()));
+        // Update the Allocator's address
+        fn set_allocator(ref self: ContractState, allocator: ContractAddress) {
+            AccessControl::assert_has_role(EqualizerRoles::SET_ALLOCATOR);
 
-                    shrine.inject(*recipient, amount);
-                    minted_surplus += amount;
-                },
-                Option::None(_) => {
-                    break;
-                }
+            let old_address: ContractAddress = self.allocator.read().contract_address;
+            self.allocator.write(IAllocatorDispatcher { contract_address: allocator });
+
+            self.emit(AllocatorUpdated { old_address, new_address: allocator });
+        }
+
+        //
+        // Core functions - External
+        //
+
+        // Mint surplus debt to the recipients in the allocation retrieved from the Allocator
+        // according to their respective percentage share.
+        // Assumes the allocation from the Allocator has already been checked:
+        // - both arrays of recipient addresses and percentages are of equal length;
+        // - there is at least one recipient;
+        // - the percentages add up to one Ray.
+        // Returns the total amount of surplus debt minted.
+        fn equalize(ref self: ContractState) -> Wad {
+            let shrine: IShrineDispatcher = self.shrine.read();
+            let (total_debt, surplus) = get_debt_and_surplus(shrine);
+
+            if surplus.is_zero() {
+                return WadZeroable::zero();
+            }
+
+            let allocator: IAllocatorDispatcher = self.allocator.read();
+            let (recipients, percentages) = allocator.get_allocation();
+
+            let mut minted_surplus: Wad = WadZeroable::zero();
+
+            let mut recipients_copy = recipients;
+            let mut percentages_copy = percentages;
+            loop {
+                match recipients_copy.pop_front() {
+                    Option::Some(recipient) => {
+                        let amount: Wad = wadray::rmul_wr(
+                            surplus, *(percentages_copy.pop_front().unwrap())
+                        );
+
+                        shrine.inject(*recipient, amount);
+                        minted_surplus += amount;
+                    },
+                    Option::None => {
+                        break;
+                    }
+                };
             };
-        };
 
-        // Safety check to assert yin is less than or equal to total debt after minting surplus
-        // It may not be equal due to rounding errors
-        let updated_total_yin: Wad = shrine.get_total_yin();
-        assert(updated_total_yin <= total_debt, 'EQ: Yin exceeds debt');
+            // Safety check to assert yin is less than or equal to total debt after minting surplus
+            // It may not be equal due to rounding errors
+            let updated_total_yin: Wad = shrine.get_total_yin();
+            assert(updated_total_yin <= total_debt, 'EQ: Yin exceeds debt');
 
-        Equalize(recipients, percentages, minted_surplus);
+            self.emit(Equalize { recipients, percentages, amount: minted_surplus });
 
-        minted_surplus
+            minted_surplus
+        }
     }
 
     //
-    // Internal
+    // Internal functions for Equalizer that do not access Equalizer's storage
     //
 
     // Helper function to return a tuple of the Shrine's total debt and the surplus
@@ -140,43 +166,42 @@ mod Equalizer {
     // Public AccessControl functions
     //
 
-    #[view]
-    fn get_roles(account: ContractAddress) -> u128 {
-        AccessControl::get_roles(account)
-    }
+    #[external(v0)]
+    impl IAccessControlImpl of IAccessControl<ContractState> {
+        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
+            AccessControl::get_roles(account)
+        }
 
-    #[view]
-    fn has_role(role: u128, account: ContractAddress) -> bool {
-        AccessControl::has_role(role, account)
-    }
+        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
+            AccessControl::has_role(role, account)
+        }
 
-    #[view]
-    fn get_admin() -> ContractAddress {
-        AccessControl::get_admin()
-    }
+        fn get_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_admin()
+        }
 
-    #[external]
-    fn grant_role(role: u128, account: ContractAddress) {
-        AccessControl::grant_role(role, account);
-    }
+        fn get_pending_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_pending_admin()
+        }
 
-    #[external]
-    fn revoke_role(role: u128, account: ContractAddress) {
-        AccessControl::revoke_role(role, account);
-    }
+        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::grant_role(role, account);
+        }
 
-    #[external]
-    fn renounce_role(role: u128) {
-        AccessControl::renounce_role(role);
-    }
+        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::revoke_role(role, account);
+        }
 
-    #[external]
-    fn set_pending_admin(new_admin: ContractAddress) {
-        AccessControl::set_pending_admin(new_admin);
-    }
+        fn renounce_role(ref self: ContractState, role: u128) {
+            AccessControl::renounce_role(role);
+        }
 
-    #[external]
-    fn accept_admin() {
-        AccessControl::accept_admin();
+        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
+            AccessControl::set_pending_admin(new_admin);
+        }
+
+        fn accept_admin(ref self: ContractState) {
+            AccessControl::accept_admin();
+        }
     }
 }

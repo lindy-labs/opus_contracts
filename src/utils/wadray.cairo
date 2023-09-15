@@ -1,14 +1,8 @@
 use debug::PrintTrait;
-use integer::{BoundedInt, Felt252TryIntoU128, U128IntoFelt252};
+use integer::BoundedInt;
 use math::Oneable;
-use option::OptionTrait;
-use starknet::StorageBaseAddress;
-use traits::{Into, PartialEq, PartialOrd, TryInto};
-use zeroable::Zeroable;
 
 use aura::utils::math::pow;
-use aura::utils::storage_access;
-use aura::utils::u256_conversions::{cast_to_u256, U128IntoU256, U256TryIntoU128};
 
 const WAD_DECIMALS: u8 = 18;
 const WAD_SCALE: u128 = 1000000000000000000;
@@ -25,17 +19,22 @@ const MAX_CONVERTIBLE_WAD: u128 = 340282366920938463463374607431;
 // The difference between WAD_SCALE and RAY_SCALE. RAY_SCALE = WAD_SCALE * DIFF
 const DIFF: u128 = 1000000000;
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 struct Wad {
-    val: u128, 
+    val: u128,
 }
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 struct Ray {
     val: u128
 }
 
 // Core functions
+
+#[inline(always)]
+fn cast_to_u256(a: u128, b: u128) -> (u256, u256) {
+    (a.into(), b.into())
+}
 
 #[inline(always)]
 fn wmul(lhs: Wad, rhs: Wad) -> Wad {
@@ -303,29 +302,33 @@ impl U256TryIntoWad of TryInto<u256, Wad> {
     fn try_into(self: u256) -> Option<Wad> {
         match self.try_into() {
             Option::Some(val) => Option::Some(Wad { val }),
-            Option::None(_) => Option::None(()),
+            Option::None => Option::None(()),
         }
     }
 }
 
 // Comparisons
 impl WadPartialEq of PartialEq<Wad> {
-    fn eq(lhs: Wad, rhs: Wad) -> bool {
-        lhs.val == rhs.val
+    #[inline(always)]
+    fn eq(lhs: @Wad, rhs: @Wad) -> bool {
+        *lhs.val == *rhs.val
     }
 
-    fn ne(lhs: Wad, rhs: Wad) -> bool {
-        lhs.val != rhs.val
+    #[inline(always)]
+    fn ne(lhs: @Wad, rhs: @Wad) -> bool {
+        *lhs.val != *rhs.val
     }
 }
 
 impl RayPartialEq of PartialEq<Ray> {
-    fn eq(lhs: Ray, rhs: Ray) -> bool {
-        lhs.val == rhs.val
+    #[inline(always)]
+    fn eq(lhs: @Ray, rhs: @Ray) -> bool {
+        *lhs.val == *rhs.val
     }
 
-    fn ne(lhs: Ray, rhs: Ray) -> bool {
-        lhs.val != rhs.val
+    #[inline(always)]
+    fn ne(lhs: @Ray, rhs: @Ray) -> bool {
+        *lhs.val != *rhs.val
     }
 }
 

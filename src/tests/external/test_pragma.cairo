@@ -1,15 +1,8 @@
-#[cfg(test)]
 mod TestPragma {
-    use array::{ArrayTrait, SpanTrait};
     use integer::U256Zeroable;
-    use option::OptionTrait;
-    use starknet::{
-        ContractAddress, contract_address_const, contract_address_try_from_felt252,
-        get_block_timestamp
-    };
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
 
     use aura::core::roles::PragmaRoles;
     use aura::core::shrine::Shrine;
@@ -21,12 +14,11 @@ mod TestPragma {
     use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::Pragma::PricesResponse;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::math::pow;
-    use aura::utils::types::Pragma::PricesResponse;
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
+    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
     use aura::tests::common;
     use aura::tests::external::mock_pragma::{
@@ -39,7 +31,7 @@ mod TestPragma {
     // Constants
     //
 
-    const PEPE_USD_PAIR_ID: u256 = 5784117554504356676; // str_to_felt("PEPE/USD")     
+    const PEPE_USD_PAIR_ID: u256 = 'PEPE/USD';
 
     //
     // Address constants
@@ -72,7 +64,7 @@ mod TestPragma {
     fn test_set_price_validity_thresholds_pass() {
         let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
-        let new_freshness: u64 = 300; // 5 minutes * 60 seconds
+        let new_freshness: u64 = consteval_int!(5 * 60); // 5 minutes * 60 seconds
         let new_sources: u64 = 8;
 
         set_contract_address(PragmaUtils::admin());
@@ -149,7 +141,7 @@ mod TestPragma {
     fn test_set_oracle_address_pass() {
         let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
-        let new_address: ContractAddress = contract_address_const::<0x9999>();
+        let new_address: ContractAddress = common::non_zero_address();
 
         set_contract_address(PragmaUtils::admin());
         pragma.set_oracle(new_address);
@@ -171,7 +163,7 @@ mod TestPragma {
     fn test_set_oracle_address_unauthorized_fail() {
         let (_, pragma, _, _, _, _) = PragmaUtils::pragma_with_yangs();
 
-        let new_address: ContractAddress = contract_address_const::<0x9999>();
+        let new_address: ContractAddress = common::non_zero_address();
 
         set_contract_address(common::badguy());
         pragma.set_oracle(new_address);
@@ -375,12 +367,10 @@ mod TestPragma {
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
         let rebase_multiplier: u128 = 2;
 
-        IMintableDispatcher {
-            contract_address: eth_addr
-        }.mint(eth_gate.contract_address, gate_eth_bal.into());
-        IMintableDispatcher {
-            contract_address: wbtc_addr
-        }.mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
+        IMintableDispatcher { contract_address: eth_addr }
+            .mint(eth_gate.contract_address, gate_eth_bal.into());
+        IMintableDispatcher { contract_address: wbtc_addr }
+            .mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
 
         let next_ts = first_ts + Shrine::TIME_INTERVAL;
         set_block_timestamp(next_ts);

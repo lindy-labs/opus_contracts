@@ -1,23 +1,21 @@
 mod GateUtils {
-    use array::{ArrayTrait, SpanTrait};
+    use array::ArrayTrait;
+    use debug::PrintTrait;
     use integer::BoundedInt;
-    use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
 
     use aura::core::gate::Gate;
     use aura::interfaces::IERC20::{
         IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
     };
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
     use aura::tests::common;
     use aura::tests::erc20::ERC20;
@@ -38,15 +36,15 @@ mod GateUtils {
     //
 
     fn mock_sentinel() -> ContractAddress {
-        contract_address_const::<0x1234>()
+        contract_address_try_from_felt252('mock sentinel').unwrap()
     }
 
     fn eth_hoarder() -> ContractAddress {
-        contract_address_const::<0xeee>()
+        contract_address_try_from_felt252('eth hoarder').unwrap()
     }
 
     fn wbtc_hoarder() -> ContractAddress {
-        contract_address_const::<0xb1c>()
+        contract_address_try_from_felt252('wbtc hoarder').unwrap()
     }
 
 
@@ -68,10 +66,11 @@ mod GateUtils {
     ) -> ContractAddress {
         set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(shrine));
-        calldata.append(contract_address_to_felt252(token));
-        calldata.append(contract_address_to_felt252(sentinel));
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(shrine),
+            contract_address_to_felt252(token),
+            contract_address_to_felt252(sentinel),
+        ];
 
         let gate_class_hash: ClassHash = class_hash_try_from_felt252(Gate::TEST_CLASS_HASH)
             .unwrap();
@@ -95,9 +94,6 @@ mod GateUtils {
     }
 
     fn add_eth_as_yang(shrine: ContractAddress, eth: ContractAddress) {
-        // TODO: eventually do add_yang via a fn in ShrineUtils
-        //       but one that takes `eth` as input because we need a "real mock"
-        //       contract deployed for the tests to run
         set_contract_address(ShrineUtils::admin());
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
@@ -106,16 +102,13 @@ mod GateUtils {
                 ShrineUtils::YANG1_THRESHOLD.into(),
                 ShrineUtils::YANG1_START_PRICE.into(),
                 ShrineUtils::YANG1_BASE_RATE.into(),
-                0_u128.into() // initial amount
+                WadZeroable::zero() // initial amount
             );
         shrine.set_debt_ceiling(ShrineUtils::DEBT_CEILING.into());
         set_contract_address(ContractAddressZeroable::zero());
     }
 
     fn add_wbtc_as_yang(shrine: ContractAddress, wbtc: ContractAddress) {
-        // TODO: eventually do add_yang via a fn in ShrineUtils
-        //       but one that takes `wbtc` as input because we need a "real mock"
-        //       contract deployed for the tests to run
         set_contract_address(ShrineUtils::admin());
         let shrine = IShrineDispatcher { contract_address: shrine };
         shrine
@@ -124,7 +117,7 @@ mod GateUtils {
                 ShrineUtils::YANG2_THRESHOLD.into(),
                 ShrineUtils::YANG2_START_PRICE.into(),
                 ShrineUtils::YANG2_BASE_RATE.into(),
-                0_u128.into() // initial amount
+                WadZeroable::zero() // initial amount
             );
         shrine.set_debt_ceiling(ShrineUtils::DEBT_CEILING.into());
         set_contract_address(ContractAddressZeroable::zero());

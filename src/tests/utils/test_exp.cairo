@@ -1,7 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use traits::Into;
-
     use aura::utils::exp::exp;
     use aura::utils::wadray;
     use aura::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};
@@ -75,7 +73,7 @@ mod tests {
 
     #[test]
     #[available_gas(9999999)]
-    #[should_panic(expected: ('exp: x is out of bounds', ))]
+    #[should_panic(expected: ('exp: x is out of bounds',))]
     fn test_exp_fail() {
         let res = exp(Wad { val: 42600000000000000001 });
     }

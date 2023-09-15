@@ -1,18 +1,12 @@
 #[cfg(test)]
 mod TestShrineCompound {
-    use debug::PrintTrait;
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Into, TryInto};
     use starknet::{ContractAddress, get_block_timestamp};
-    use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::exp::exp;
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
 
@@ -420,11 +414,7 @@ mod TestShrineCompound {
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`'
         let intervals_to_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine,
-            intervals_to_skip,
-            yang1_price,
-            yang2_price,
-            yang3_price,
+            shrine, intervals_to_skip, yang1_price, yang2_price, yang3_price,
         );
         let last_updated_interval_before_start: u64 = ShrineUtils::current_interval();
 
@@ -610,7 +600,6 @@ mod TestShrineCompound {
     #[available_gas(20000000000)]
     fn test_charge_scenario_7() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
-
         ShrineUtils::advance_prices_and_set_multiplier(
             shrine,
             ShrineUtils::FEED_LEN,
@@ -624,10 +613,7 @@ mod TestShrineCompound {
         let yang2_addr: ContractAddress = ShrineUtils::yang2_addr();
         let yang3_addr: ContractAddress = ShrineUtils::yang3_addr();
 
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang1_addr);
-        yang_addrs.append(yang2_addr);
-        yang_addrs.append(yang3_addr);
+        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr, yang2_addr, yang3_addr];
 
         // Setup base rates for calling `Shrine.update_rates`.
         // The base rates are set in the following format:
@@ -648,66 +634,54 @@ mod TestShrineCompound {
         // (2) `yang_base_rates_history_to_compound` has an extra item for the initial base rates at the time
         //     the trove was last charged, in order to calculate the compound interest from this interval until
         //     the first rate update interval.
-        let mut yang_base_rates_history_to_update: Array<Span<Ray>> = Default::default();
-        let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = Default::default();
 
         // Add initial base rates for rates history to calculate compound interest
-        let mut first_rate_history_to_compound: Array<Ray> = Default::default();
-        first_rate_history_to_compound.append(ShrineUtils::YANG1_BASE_RATE.into());
-        first_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
-        first_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
-        yang_base_rates_history_to_compound.append(first_rate_history_to_compound.span());
-
-        let mut first_rate_history_to_update: Array<Ray> = Default::default();
-        let mut second_rate_history_to_compound: Array<Ray> = Default::default();
+        let mut first_rate_history_to_compound: Array<Ray> = array![
+            ShrineUtils::YANG1_BASE_RATE.into(),
+            ShrineUtils::YANG2_BASE_RATE.into(),
+            ShrineUtils::YANG3_BASE_RATE.into(),
+        ];
 
         // For first rate update, yang 1 is updated and yang 2 uses previous base rate
         let yang1_first_rate_update: Ray = 25000000000000000000000000_u128.into(); // 2.5% (Ray)
-        first_rate_history_to_update.append(yang1_first_rate_update);
-        second_rate_history_to_compound.append(yang1_first_rate_update);
-
-        first_rate_history_to_update.append((RAY_SCALE + 1).into());
-        second_rate_history_to_compound.append(ShrineUtils::YANG2_BASE_RATE.into());
-
-        first_rate_history_to_update.append((RAY_SCALE + 1).into());
-        second_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
-
-        yang_base_rates_history_to_update.append(first_rate_history_to_update.span());
-        yang_base_rates_history_to_compound.append(second_rate_history_to_compound.span());
+        let mut first_rate_history_to_update: Array<Ray> = array![
+            yang1_first_rate_update, (RAY_SCALE + 1).into(), (RAY_SCALE + 1).into(),
+        ];
+        let mut second_rate_history_to_compound: Array<Ray> = array![
+            yang1_first_rate_update,
+            ShrineUtils::YANG2_BASE_RATE.into(),
+            ShrineUtils::YANG3_BASE_RATE.into(),
+        ];
 
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
-        let mut second_rate_history_to_update: Array<Ray> = Default::default();
-        let mut third_rate_history_to_compound: Array<Ray> = Default::default();
-        
-        second_rate_history_to_update.append((RAY_SCALE + 1).into());
-        third_rate_history_to_compound.append(yang1_first_rate_update);
-
         let yang2_second_rate_update: Ray = 43500000000000000000000000_u128.into(); // 4.35% (Ray)
-        second_rate_history_to_update.append(yang2_second_rate_update);
-        third_rate_history_to_compound.append(yang2_second_rate_update);
-
-        second_rate_history_to_update.append((RAY_SCALE + 1).into());
-        third_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
-
-        yang_base_rates_history_to_update.append(second_rate_history_to_update.span());
-        yang_base_rates_history_to_compound.append(third_rate_history_to_compound.span());
+        let mut second_rate_history_to_update: Array<Ray> = array![
+            (RAY_SCALE + 1).into(), yang2_second_rate_update, (RAY_SCALE + 1).into(),
+        ];
+        let mut third_rate_history_to_compound: Array<Ray> = array![
+            yang1_first_rate_update, yang2_second_rate_update, ShrineUtils::YANG3_BASE_RATE.into(),
+        ];
 
         // For third rate update, yang 1 is updated and yang 2 uses previous base rate
-        let mut third_rate_history_to_update: Array<Ray> = Default::default();
-        let mut fourth_rate_history_to_compound: Array<Ray> = Default::default();
-
         let yang1_third_rate_update: Ray = 27500000000000000000000000_u128.into(); // 2.75% (Ray)
-        third_rate_history_to_update.append(yang1_third_rate_update);
-        fourth_rate_history_to_compound.append(yang1_third_rate_update);
+        let mut third_rate_history_to_update: Array<Ray> = array![
+            yang1_third_rate_update, (RAY_SCALE + 1).into(), (RAY_SCALE + 1).into(),
+        ];
+        let mut fourth_rate_history_to_compound: Array<Ray> = array![
+            yang1_third_rate_update, yang2_second_rate_update, ShrineUtils::YANG3_BASE_RATE.into(),
+        ];
 
-        third_rate_history_to_update.append((RAY_SCALE + 1).into());
-        fourth_rate_history_to_compound.append(yang2_second_rate_update);
-
-        third_rate_history_to_update.append((RAY_SCALE + 1).into());
-        fourth_rate_history_to_compound.append(ShrineUtils::YANG3_BASE_RATE.into());
-
-        yang_base_rates_history_to_update.append(third_rate_history_to_update.span());
-        yang_base_rates_history_to_compound.append(fourth_rate_history_to_compound.span());
+        let mut yang_base_rates_history_to_update: Array<Span<Ray>> = array![
+            first_rate_history_to_update.span(),
+            second_rate_history_to_update.span(),
+            third_rate_history_to_update.span(),
+        ];
+        let mut yang_base_rates_history_to_compound: Array<Span<Ray>> = array![
+            first_rate_history_to_compound.span(),
+            second_rate_history_to_compound.span(),
+            third_rate_history_to_compound.span(),
+            fourth_rate_history_to_compound.span(),
+        ];
 
         // The number of base rate updates
         let num_base_rate_updates: u64 = 3;
@@ -726,8 +700,7 @@ mod TestShrineCompound {
 
         // Generating the list of intervals at which the base rates will be updated (needed for `compound`)
         // Adding zero as the first interval since that's when the initial base rates were first added in `add_yang`
-        let mut rate_update_intervals: Array<u64> = Default::default();
-        rate_update_intervals.append(0);
+        let mut rate_update_intervals: Array<u64> = array![0];
         let mut i = 0;
         loop {
             if i == num_base_rate_updates {
@@ -750,11 +723,10 @@ mod TestShrineCompound {
         shrine.deposit(yang2_addr, common::TROVE_1, yang2_deposit_amt);
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, common::TROVE_1, forge_amt, 0_u128.into());
-        
-        let mut yangs_deposited: Array<Wad> = Default::default();
-        yangs_deposited.append(yang1_deposit_amt);
-        yangs_deposited.append(yang2_deposit_amt);
-        yangs_deposited.append(WadZeroable::zero());
+
+        let mut yangs_deposited: Array<Wad> = array![
+            yang1_deposit_amt, yang2_deposit_amt, WadZeroable::zero()
+        ];
 
         let mut yang_base_rates_history_to_update_copy: Span<Span<Ray>> =
             yang_base_rates_history_to_update
@@ -780,7 +752,6 @@ mod TestShrineCompound {
             // First, we advance an interval so the last price is not overwritten.
             // Next, Advance the prices by the number of intervals between each base rate update
             ShrineUtils::advance_interval();
-
             ShrineUtils::advance_prices_and_set_multiplier(
                 shrine, BASE_RATE_UPDATE_SPACING, yang1_price, yang2_price, yang3_price
             );
@@ -834,7 +805,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break ();
                         },
                     };

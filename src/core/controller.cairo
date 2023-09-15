@@ -1,14 +1,12 @@
-#[contract]
+#[starknet::contract]
 mod Controller {
-    use option::OptionTrait;
     use starknet::{ContractAddress, contract_address, get_block_timestamp};
-    use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::roles::ControllerRoles;
 
+    use aura::interfaces::IController::IController;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::AccessControl;
+    use aura::utils::access_control::{AccessControl, IAccessControl};
     use aura::utils::math;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, Ray, RAY_ONE};
@@ -17,12 +15,13 @@ mod Controller {
 
     // Time intervals between updates are scaled down by this factor 
     // to prevent the integral term from getting too large
-    const TIME_SCALE: u128 = 3600; // 60 mins * 60 seconds = 1 hour
+    const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
 
     // multiplier bounds (ray)
     const MIN_MULTIPLIER: u128 = 200000000000000000000000000; // 0.2
     const MAX_MULTIPLIER: u128 = 2000000000000000000000000000; // 2
 
+    #[storage]
     struct Storage {
         shrine: IShrineDispatcher,
         yin_previous_price: Wad,
@@ -37,14 +36,31 @@ mod Controller {
         beta_i: u8,
     }
 
-    #[event]
-    fn ParameterUpdated(name: felt252, value: u8) {}
 
     #[event]
-    fn GainUpdated(name: felt252, value: Ray) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        ParameterUpdated: ParameterUpdated,
+        GainUpdated: GainUpdated,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct ParameterUpdated {
+        #[key]
+        name: felt252,
+        value: u8
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct GainUpdated {
+        #[key]
+        name: felt252,
+        value: Ray
+    }
 
     #[constructor]
     fn constructor(
+        ref self: ContractState,
         admin: ContractAddress,
         shrine: ContractAddress,
         p_gain: Ray,
@@ -55,198 +71,200 @@ mod Controller {
         beta_i: u8,
     ) {
         AccessControl::initializer(admin);
-        AccessControl::grant_role_internal(ControllerRoles::TUNE_CONTROLLER, admin);
+        AccessControl::grant_role_helper(ControllerRoles::TUNE_CONTROLLER, admin);
 
         // Setting `i_term_last_updated` to the current timestamp to 
         // ensure that the integral term is correctly updated
-        i_term_last_updated::write(get_block_timestamp());
+        self.i_term_last_updated.write(get_block_timestamp());
 
         // Initializing the previous price to the current price
         // This ensures the integral term is correctly calculated
         let shrine = IShrineDispatcher { contract_address: shrine };
-        yin_previous_price::write(shrine.get_yin_spot_price());
-        shrine::write(shrine);
+        self.yin_previous_price.write(shrine.get_yin_spot_price());
+        self.shrine.write(shrine);
 
-        p_gain::write(p_gain.into());
-        i_gain::write(i_gain.into());
-        alpha_p::write(alpha_p);
-        beta_p::write(beta_p);
-        alpha_i::write(alpha_i);
-        beta_i::write(beta_i);
+        self.p_gain.write(p_gain.into());
+        self.i_gain.write(i_gain.into());
+        self.alpha_p.write(alpha_p);
+        self.beta_p.write(beta_p);
+        self.alpha_i.write(alpha_i);
+        self.beta_i.write(beta_i);
 
-        GainUpdated('p_gain', p_gain);
-        GainUpdated('i_gain', i_gain);
-        ParameterUpdated('alpha_p', alpha_p);
-        ParameterUpdated('beta_p', beta_p);
-        ParameterUpdated('alpha_i', alpha_i);
-        ParameterUpdated('beta_i', beta_i);
+        self.emit(GainUpdated { name: 'p_gain', value: p_gain });
+        self.emit(GainUpdated { name: 'i_gain', value: i_gain });
+        self.emit(ParameterUpdated { name: 'alpha_p', value: alpha_p });
+        self.emit(ParameterUpdated { name: 'beta_p', value: beta_p });
+        self.emit(ParameterUpdated { name: 'alpha_i', value: alpha_i });
+        self.emit(ParameterUpdated { name: 'beta_i', value: beta_i });
     }
 
-    //
-    // View functions 
-    // 
+    #[external(v0)]
+    impl IControllerImpl of IController<ContractState> {
+        fn get_current_multiplier(self: @ContractState) -> Ray {
+            let i_gain = self.i_gain.read();
 
-    #[view]
-    fn get_current_multiplier() -> Ray {
-        let i_gain = i_gain::read();
+            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
 
-        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal();
+            if i_gain.is_non_zero() {
+                let new_i_term: SignedRay = self.get_i_term_internal();
+                multiplier += i_gain * new_i_term;
+            }
 
-        if i_gain.is_non_zero() {
-            let new_i_term: SignedRay = get_i_term_internal();
-            multiplier += i_gain * new_i_term;
+            bound_multiplier(multiplier).try_into().unwrap()
         }
 
-        bound_multiplier(multiplier).try_into().unwrap()
-    }
 
-    #[view]
-    fn get_p_term() -> SignedRay {
-        get_p_term_internal()
-    }
+        fn get_p_term(self: @ContractState) -> SignedRay {
+            self.get_p_term_internal()
+        }
 
-    #[view]
-    fn get_i_term() -> SignedRay {
-        let i_gain = i_gain::read();
-        if i_gain.is_zero() {
-            SignedRayZeroable::zero()
-        } else {
-            i_gain * get_i_term_internal()
+
+        fn get_i_term(self: @ContractState) -> SignedRay {
+            let i_gain = self.i_gain.read();
+            if i_gain.is_zero() {
+                SignedRayZeroable::zero()
+            } else {
+                i_gain * self.get_i_term_internal()
+            }
+        }
+
+
+        fn get_parameters(self: @ContractState) -> ((SignedRay, SignedRay), (u8, u8, u8, u8)) {
+            (
+                (self.p_gain.read(), self.i_gain.read()),
+                (self.alpha_p.read(), self.beta_p.read(), self.alpha_i.read(), self.beta_i.read())
+            )
+        }
+
+
+        fn update_multiplier(ref self: ContractState) {
+            let shrine: IShrineDispatcher = self.shrine.read();
+
+            let i_gain = self.i_gain.read();
+            let mut multiplier: SignedRay = RAY_ONE.into() + self.get_p_term_internal();
+
+            // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
+            if i_gain.is_non_zero() {
+                let new_i_term: SignedRay = self.get_i_term_internal();
+                multiplier += i_gain * new_i_term;
+                self.i_term.write(new_i_term);
+                self.i_term_last_updated.write(get_block_timestamp());
+            }
+
+            // Updating the previous yin price for the next integral term update 
+            self.yin_previous_price.write(shrine.get_yin_spot_price().into());
+
+            let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
+            shrine.set_multiplier(multiplier_ray);
+        }
+
+
+        fn set_p_gain(ref self: ContractState, p_gain: Ray) {
+            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            self.p_gain.write(p_gain.into());
+            self.emit(GainUpdated { name: 'p_gain', value: p_gain });
+        }
+
+
+        fn set_i_gain(ref self: ContractState, i_gain: Ray) {
+            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+
+            // Since `i_term_last_updated` isn't updated in `update_multiplier` 
+            // while `i_gain` is zero, we must update it here whenever the 
+            // `i_gain` is set from zero to a non-zero value in order to ensure 
+            // that the accumulation of the integral term starts at zero. 
+            if self.i_gain.read().is_zero() {
+                self.i_term_last_updated.write(get_block_timestamp());
+            }
+
+            // Reset the integral term if the i_gain is set to zero
+            if i_gain.is_zero() {
+                self.i_term.write(SignedRayZeroable::zero());
+            }
+
+            self.i_gain.write(i_gain.into());
+            self.emit(GainUpdated { name: 'i_gain', value: i_gain });
+        }
+
+
+        fn set_alpha_p(ref self: ContractState, alpha_p: u8) {
+            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            assert(alpha_p % 2 == 1, 'CTR: alpha_p must be odd');
+            self.alpha_p.write(alpha_p);
+            self.emit(ParameterUpdated { name: 'alpha_p', value: alpha_p });
+        }
+
+
+        fn set_beta_p(ref self: ContractState, beta_p: u8) {
+            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            assert(beta_p % 2 == 0, 'CTR: beta_p must be even');
+            self.beta_p.write(beta_p);
+            self.emit(ParameterUpdated { name: 'beta_p', value: beta_p });
+        }
+
+
+        fn set_alpha_i(ref self: ContractState, alpha_i: u8) {
+            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            assert(alpha_i % 2 == 1, 'CTR: alpha_i must be odd');
+            self.alpha_i.write(alpha_i);
+            self.emit(ParameterUpdated { name: 'alpha_i', value: alpha_i });
+        }
+
+
+        fn set_beta_i(ref self: ContractState, beta_i: u8) {
+            AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
+            assert(beta_i % 2 == 0, 'CTR: beta_i must be even');
+            self.beta_i.write(beta_i);
+            self.emit(ParameterUpdated { name: 'beta_i', value: beta_i });
         }
     }
 
-    #[view]
-    fn get_parameters() -> ((SignedRay, SignedRay), (u8, u8, u8, u8)) {
-        (
-            (p_gain::read(), i_gain::read()),
-            (alpha_p::read(), beta_p::read(), alpha_i::read(), beta_i::read())
-        )
-    }
-
-    // 
-    // External 
-    // 
-    #[external]
-    fn update_multiplier() {
-        let shrine: IShrineDispatcher = shrine::read();
-
-        let i_gain = i_gain::read();
-        let mut multiplier: SignedRay = RAY_ONE.into() + get_p_term_internal();
-
-        // Only updating the integral term and adding it to the multiplier if the integral gain is non-zero
-        if i_gain.is_non_zero() {
-            let new_i_term: SignedRay = get_i_term_internal();
-            multiplier += i_gain * new_i_term;
-            i_term::write(new_i_term);
-            i_term_last_updated::write(get_block_timestamp());
+    #[generate_trait]
+    impl ControllerInternalFunctions of ControllerInternalFunctionsTrait {
+        #[inline(always)]
+        fn get_p_term_internal(self: @ContractState) -> SignedRay {
+            self.p_gain.read()
+                * nonlinear_transform(
+                    self.get_current_error(), self.alpha_p.read(), self.beta_p.read()
+                )
         }
 
-        // Updating the previous yin price for the next integral term update 
-        yin_previous_price::write(shrine.get_yin_spot_price().into());
+        #[inline(always)]
+        fn get_i_term_internal(self: @ContractState) -> SignedRay {
+            let current_timestamp: u64 = get_block_timestamp();
+            let old_i_term = self.i_term.read();
 
-        let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
-        shrine.set_multiplier(multiplier_ray);
-    }
+            let time_since_last_update: u128 = (current_timestamp - self.i_term_last_updated.read())
+                .into();
+            let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
+                / (TIME_SCALE * RAY_ONE).into();
 
-    #[external]
-    fn set_p_gain(p_gain: Ray) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        p_gain::write(p_gain.into());
-        GainUpdated('p_gain', p_gain);
-    }
-
-    #[external]
-    fn set_i_gain(i_gain: Ray) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-
-        // Since `i_term_last_updated` isn't updated in `update_multiplier` 
-        // while `i_gain` is zero, we must update it here whenever the 
-        // `i_gain` is set from zero to a non-zero value in order to ensure 
-        // that the accumulation of the integral term starts at zero. 
-        if i_gain::read().is_zero() {
-            i_term_last_updated::write(get_block_timestamp());
+            old_i_term
+                + nonlinear_transform(
+                    self.get_prev_error(), self.alpha_i.read(), self.beta_i.read()
+                )
+                    * time_since_last_update_scaled
         }
 
-        // Reset the integral term if the i_gain is set to zero
-        if i_gain.is_zero() {
-            i_term::write(SignedRayZeroable::zero());
+        #[inline(always)]
+        fn get_current_error(self: @ContractState) -> SignedRay {
+            RAY_ONE.into() - self.shrine.read().get_yin_spot_price().into()
         }
 
-        i_gain::write(i_gain.into());
-        GainUpdated('i_gain', i_gain);
+        // Returns the error at the time of the last update to the multiplier
+        #[inline(always)]
+        fn get_prev_error(self: @ContractState) -> SignedRay {
+            RAY_ONE.into() - self.yin_previous_price.read().into()
+        }
     }
 
-    #[external]
-    fn set_alpha_p(alpha_p: u8) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        assert(alpha_p % 2 == 1, 'CTR: alpha_p must be odd');
-        alpha_p::write(alpha_p);
-        ParameterUpdated('alpha_p', alpha_p);
-    }
-
-    #[external]
-    fn set_beta_p(beta_p: u8) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        assert(beta_p % 2 == 0, 'CTR: beta_p must be even');
-        beta_p::write(beta_p);
-        ParameterUpdated('beta_p', beta_p);
-    }
-
-    #[external]
-    fn set_alpha_i(alpha_i: u8) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        assert(alpha_i % 2 == 1, 'CTR: alpha_i must be odd');
-        alpha_i::write(alpha_i);
-        ParameterUpdated('alpha_i', alpha_i);
-    }
-
-    #[external]
-    fn set_beta_i(beta_i: u8) {
-        AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
-        assert(beta_i % 2 == 0, 'CTR: beta_i must be even');
-        beta_i::write(beta_i);
-        ParameterUpdated('beta_i', beta_i);
-    }
-
-    // 
-    // Internal functions 
-    //
-
-    #[inline(always)]
-    fn get_p_term_internal() -> SignedRay {
-        p_gain::read() * nonlinear_transform(get_current_error(), alpha_p::read(), beta_p::read())
-    }
-
-    #[inline(always)]
-    fn get_i_term_internal() -> SignedRay {
-        let current_timestamp: u64 = get_block_timestamp();
-        let old_i_term = i_term::read();
-
-        let time_since_last_update: u128 = (current_timestamp - i_term_last_updated::read()).into();
-        let time_since_last_update_scaled: SignedRay = (time_since_last_update * RAY_ONE).into()
-            / (TIME_SCALE * RAY_ONE).into();
-
-        old_i_term
-            + nonlinear_transform(get_prev_error(), alpha_i::read(), beta_i::read())
-                * time_since_last_update_scaled
-    }
+    // Pure functions 
 
     #[inline(always)]
     fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
         let error_ray: Ray = Ray { val: error.val };
         let denominator: SignedRay = math::sqrt(RAY_ONE.into() + math::pow(error_ray, beta)).into();
         math::pow(error, alpha) / denominator
-    }
-
-    #[inline(always)]
-    fn get_current_error() -> SignedRay {
-        RAY_ONE.into() - shrine::read().get_yin_spot_price().into()
-    }
-
-    // Returns the error at the time of the last update to the multiplier
-    #[inline(always)]
-    fn get_prev_error() -> SignedRay {
-        RAY_ONE.into() - yin_previous_price::read().into()
     }
 
     #[inline(always)]
@@ -260,53 +278,46 @@ mod Controller {
         }
     }
 
-
     //
     // Public AccessControl functions
     //
 
-    #[view]
-    fn get_roles(account: ContractAddress) -> u128 {
-        AccessControl::get_roles(account)
-    }
+    #[external(v0)]
+    impl IAccessControlImpl of IAccessControl<ContractState> {
+        fn get_roles(self: @ContractState, account: ContractAddress) -> u128 {
+            AccessControl::get_roles(account)
+        }
 
-    #[view]
-    fn has_role(role: u128, account: ContractAddress) -> bool {
-        AccessControl::has_role(role, account)
-    }
+        fn has_role(self: @ContractState, role: u128, account: ContractAddress) -> bool {
+            AccessControl::has_role(role, account)
+        }
 
-    #[view]
-    fn get_admin() -> ContractAddress {
-        AccessControl::get_admin()
-    }
+        fn get_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_admin()
+        }
 
-    #[view]
-    fn get_pending_admin() -> ContractAddress {
-        AccessControl::get_pending_admin()
-    }
+        fn get_pending_admin(self: @ContractState) -> ContractAddress {
+            AccessControl::get_pending_admin()
+        }
 
-    #[external]
-    fn grant_role(role: u128, account: ContractAddress) {
-        AccessControl::grant_role(role, account);
-    }
+        fn grant_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::grant_role(role, account);
+        }
 
-    #[external]
-    fn revoke_role(role: u128, account: ContractAddress) {
-        AccessControl::revoke_role(role, account);
-    }
+        fn revoke_role(ref self: ContractState, role: u128, account: ContractAddress) {
+            AccessControl::revoke_role(role, account);
+        }
 
-    #[external]
-    fn renounce_role(role: u128) {
-        AccessControl::renounce_role(role);
-    }
+        fn renounce_role(ref self: ContractState, role: u128) {
+            AccessControl::renounce_role(role);
+        }
 
-    #[external]
-    fn set_pending_admin(new_admin: ContractAddress) {
-        AccessControl::set_pending_admin(new_admin);
-    }
+        fn set_pending_admin(ref self: ContractState, new_admin: ContractAddress) {
+            AccessControl::set_pending_admin(new_admin);
+        }
 
-    #[external]
-    fn accept_admin() {
-        AccessControl::accept_admin();
+        fn accept_admin(ref self: ContractState) {
+            AccessControl::accept_admin();
+        }
     }
 }

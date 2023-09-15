@@ -22,7 +22,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected: ('RG: reentrant call', ))]
+    #[should_panic(expected: ('RG: reentrant call',))]
     #[available_gas(9999999)]
     fn test_reentrancy_guard_fail() {
         // Calling the guarded function from inside itself should fail.

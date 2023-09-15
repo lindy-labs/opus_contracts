@@ -2,9 +2,6 @@
 mod tests {
     use debug::PrintTrait;
     use math::Oneable;
-    use option::OptionTrait;
-    use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::utils::wadray_signed;
     use aura::utils::wadray_signed::{SignedRay, SignedRayOneable, SignedRayZeroable};

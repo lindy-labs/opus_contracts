@@ -1,36 +1,48 @@
-use aura::utils::types::Pragma::PricesResponse;
+use aura::types::Pragma::PricesResponse;
 
-#[abi]
-trait IMockPragma {
+#[starknet::interface]
+trait IMockPragma<TContractState> {
     // Note that `get_data_median()` is part of `IPragmaOracleDispatcher`
-    fn next_get_data_median(pair_id: u256, price_response: PricesResponse);
+    fn next_get_data_median(
+        ref self: TContractState, pair_id: u256, price_response: PricesResponse
+    );
 }
 
-#[contract]
+#[starknet::contract]
 mod MockPragma {
-    use aura::utils::types::Pragma::{DataType, PricesResponse};
+    use aura::interfaces::external::IPragmaOracle;
+    use aura::types::Pragma::{DataType, PricesResponse};
 
+    use super::IMockPragma;
+
+    #[storage]
     struct Storage {
         // Mapping from pair ID to price response data struct
         price_response: LegacyMap::<u256, PricesResponse>,
     }
 
-    #[external]
-    fn next_get_data_median(pair_id: u256, price_response: PricesResponse) {
-        price_response::write(pair_id, price_response);
+    #[external(v0)]
+    impl IMockPragmaImpl of IMockPragma<ContractState> {
+        fn next_get_data_median(
+            ref self: ContractState, pair_id: u256, price_response: PricesResponse
+        ) {
+            self.price_response.write(pair_id, price_response);
+        }
     }
 
-    #[external]
-    fn get_data_median(data_type: DataType) -> PricesResponse {
-        match data_type {
-            DataType::Spot(pair_id) => {
-                price_response::read(pair_id)
-            },
-            DataType::Future(pair_id) => {
-                price_response::read(pair_id)
-            },
-            DataType::Generic(pair_id) => {
-                price_response::read(pair_id)
+    #[external(v0)]
+    impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
+        fn get_data_median(self: @ContractState, data_type: DataType) -> PricesResponse {
+            match data_type {
+                DataType::Spot(pair_id) => {
+                    self.price_response.read(pair_id)
+                },
+                DataType::Future(pair_id) => {
+                    self.price_response.read(pair_id)
+                },
+                DataType::Generic(pair_id) => {
+                    self.price_response.read(pair_id)
+                }
             }
         }
     }

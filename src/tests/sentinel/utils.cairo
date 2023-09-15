@@ -1,16 +1,14 @@
 mod SentinelUtils {
-    use array::{ArrayTrait, SpanTrait};
+    use array::ArrayTrait;
     use debug::PrintTrait;
     use integer::BoundedU256;
-    use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, deploy_syscall, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::info::get_caller_address;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::core::roles::{SentinelRoles, ShrineRoles};
     use aura::core::sentinel::Sentinel;
@@ -31,17 +29,22 @@ mod SentinelUtils {
 
     #[inline(always)]
     fn admin() -> ContractAddress {
-        contract_address_const::<0x80085>()
+        contract_address_try_from_felt252('sentinel admin').unwrap()
     }
 
     #[inline(always)]
     fn mock_abbot() -> ContractAddress {
-        contract_address_const::<0xABB07>()
+        contract_address_try_from_felt252('mock abbot').unwrap()
     }
 
     #[inline(always)]
-    fn invalid_yang_addr() -> ContractAddress {
-        contract_address_const::<0xf00>()
+    fn dummy_yang_addr() -> ContractAddress {
+        contract_address_try_from_felt252('dummy yang').unwrap()
+    }
+
+    #[inline(always)]
+    fn dummy_yang_gate_addr() -> ContractAddress {
+        contract_address_try_from_felt252('dummy yang token').unwrap()
     }
 
     //
@@ -51,9 +54,9 @@ mod SentinelUtils {
     fn deploy_sentinel() -> (ISentinelDispatcher, ContractAddress) {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin()));
-        calldata.append(contract_address_to_felt252(shrine_addr));
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()), contract_address_to_felt252(shrine_addr)
+        ];
 
         let sentinel_class_hash: ClassHash = class_hash_try_from_felt252(Sentinel::TEST_CLASS_HASH)
             .unwrap();
@@ -63,9 +66,8 @@ mod SentinelUtils {
 
         // Grant `abbot` role to `mock_abbot`
         set_contract_address(admin());
-        IAccessControlDispatcher {
-            contract_address: sentinel_addr
-        }.grant_role(SentinelRoles::abbot(), mock_abbot());
+        IAccessControlDispatcher { contract_address: sentinel_addr }
+            .grant_role(SentinelRoles::abbot(), mock_abbot());
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
@@ -86,13 +88,8 @@ mod SentinelUtils {
         let (eth, eth_gate) = add_eth_yang(sentinel, shrine_addr);
         let (wbtc, wbtc_gate) = add_wbtc_yang(sentinel, shrine_addr);
 
-        let mut assets: Array<ContractAddress> = Default::default();
-        assets.append(eth);
-        assets.append(wbtc);
-
-        let mut gates: Array<IGateDispatcher> = Default::default();
-        gates.append(eth_gate);
-        gates.append(wbtc_gate);
+        let mut assets: Array<ContractAddress> = array![eth, wbtc];
+        let mut gates: Array<IGateDispatcher> = array![eth_gate, wbtc_gate];
 
         (sentinel, IShrineDispatcher { contract_address: shrine_addr }, assets.span(), gates.span())
     }

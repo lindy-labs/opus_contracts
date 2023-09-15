@@ -1,15 +1,11 @@
 mod PurgerUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        get_block_timestamp, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+        SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
@@ -22,7 +18,7 @@ mod PurgerUtils {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::AssetBalance;
+    use aura::types::AssetBalance;
     use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{
@@ -78,68 +74,66 @@ mod PurgerUtils {
     //
 
     fn target_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(TARGET_TROVE_ETH_DEPOSIT_AMT);
-        asset_amts.append(TARGET_TROVE_WBTC_DEPOSIT_AMT);
-        asset_amts.span()
+        array![TARGET_TROVE_ETH_DEPOSIT_AMT, TARGET_TROVE_WBTC_DEPOSIT_AMT].span()
     }
 
     #[inline(always)]
     fn recipient_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(30 * WAD_ONE); // 30 (Wad) - ETH
-        asset_amts.append(500000000); // 5 (10 ** 8) - BTC
-        asset_amts.span()
+        array![30 * WAD_ONE, // 30 (Wad) - ETH
+         500000000 // 5 (10 ** 8) - BTC
+        ].span()
     }
 
     fn whale_trove_yang_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(50 * WAD_ONE); // 50 (Wad) ETH
-        asset_amts.append(5000000000_u128); // 50 (10 ** 8) WBTC
-        asset_amts.span()
+        array![50 * WAD_ONE, // 50 (Wad) - ETH
+         5000000000 // 50 (10 ** 8) - BTC
+        ].span()
     }
 
     fn interesting_thresholds_for_liquidation() -> Span<Ray> {
-        let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append((70 * RAY_PERCENT).into());
-        thresholds.append((80 * RAY_PERCENT).into());
-        thresholds.append((90 * RAY_PERCENT).into());
-        thresholds.append((96 * RAY_PERCENT).into());
-        // theoretical upper bound beyond which a penalty is not guaranteed 
-        // for absorptions after deducting compensation, meaning providers
-        // to the absorber will incur a loss for each absorption.
-        thresholds.append((97 * RAY_PERCENT).into());
-        // Note that this threshold should not be used because it makes absorber 
-        // providers worse off, but it should not break the purger's logic.
-        thresholds.append((99 * RAY_PERCENT).into());
-        thresholds.span()
+        array![
+            (70 * RAY_PERCENT).into(),
+            (80 * RAY_PERCENT).into(),
+            (90 * RAY_PERCENT).into(),
+            (96 * RAY_PERCENT).into(),
+            // theoretical upper bound beyond which a penalty is not guaranteed 
+            // for absorptions after deducting compensation, meaning providers
+            // to the absorber will incur a loss for each absorption.
+            (97 * RAY_PERCENT).into(),
+            // Note that this threshold should not be used because it makes absorber 
+            // providers worse off, but it should not break the purger's logic.
+            (99 * RAY_PERCENT).into()
+        ]
+            .span()
     }
 
     // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
     fn interesting_thresholds_for_absorption_below_trove_debt() -> Span<Ray> {
-        let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append((65 * RAY_PERCENT).into());
-        thresholds.append((70 * RAY_PERCENT).into());
-        thresholds.append((75 * RAY_PERCENT).into());
-        thresholds.append(787400000000000000000000000_u128.into()); // 78.74%
-        thresholds.span()
+        array![
+            (65 * RAY_PERCENT).into(),
+            (70 * RAY_PERCENT).into(),
+            (75 * RAY_PERCENT).into(),
+            787400000000000000000000000_u128.into()
+        ]
+            .span()
     }
 
     // From around 78.74+% threshold onwards, absorptions liquidate all of the trove's debt
     fn interesting_thresholds_for_absorption_entire_trove_debt() -> Span<Ray> {
-        let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append(787500000000000000000000000_u128.into()); // 78.75%
-        thresholds.append((80 * RAY_PERCENT).into());
-        thresholds.append((90 * RAY_PERCENT).into());
-        thresholds.append((96 * RAY_PERCENT).into());
-        // theoretical upper bound beyond which a penalty is not guaranteed 
-        // for absorptions after deducting compensation, meaning providers
-        // to the absorber will incur a loss for each absorption.
-        thresholds.append((97 * RAY_PERCENT).into());
-        // Note that this threshold should not be used because it makes absorber 
-        // providers worse off, but it should not break the purger's logic.
-        thresholds.append((99 * RAY_PERCENT).into());
-        thresholds.span()
+        array![
+            787500000000000000000000000_u128.into(), // 78.75%
+            (80 * RAY_PERCENT).into(),
+            (90 * RAY_PERCENT).into(),
+            (96 * RAY_PERCENT).into(),
+            // theoretical upper bound beyond which a penalty is not guaranteed 
+            // for absorptions after deducting compensation, meaning providers
+            // to the absorber will incur a loss for each absorption.
+            (97 * RAY_PERCENT).into(),
+            // Note that this threshold should not be used because it makes absorber 
+            // providers worse off, but it should not break the purger's logic.
+            (99 * RAY_PERCENT).into()
+        ]
+            .span()
     }
 
     // These values are selected based on the thresholds.
@@ -148,37 +142,29 @@ mod PurgerUtils {
         // The max possible penalty LTV is last reached around this value for these thresholds
         let max_possible_penalty_ltv: Ray = 862200000000000000000000000_u128.into(); // 86.22%
 
-        let mut trove_ltvs: Array<Span<Ray>> = Default::default();
-
-        // First threshold of 65% (Ray)
-        let mut ltvs_for_first_threshold: Array<Ray> = Default::default();
-        // 71.18% (Ray) - LTV at which maximum penalty of 12.5% is first reached
-        ltvs_for_first_threshold.append(711800000000000000000000000_u128.into());
-        ltvs_for_first_threshold.append(max_possible_penalty_ltv);
-        trove_ltvs.append(ltvs_for_first_threshold.span());
-
-        // Second threshold of 70% (Ray)
-        let mut ltvs_for_second_threshold: Array<Ray> = Default::default();
-        // 76.65% (Ray) - LTV at which maximum penalty of 12.5% is first reached
-        ltvs_for_second_threshold.append(766500000000000000000000000_u128.into());
-        ltvs_for_second_threshold.append(max_possible_penalty_ltv);
-        trove_ltvs.append(ltvs_for_second_threshold.span());
-
-        // Third threshold of 75% (Ray)
-        let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
-        // 82.13% (Ray) - LTV at which maximum penalty of 12.5% is reached
-        ltvs_for_third_threshold.append(821300000000000000000000000_u128.into());
-        ltvs_for_third_threshold.append(max_possible_penalty_ltv);
-        trove_ltvs.append(ltvs_for_third_threshold.span());
-
-        // Fourth threshold of 78.74% (Ray)
-        let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
-        // 86.2203% (Ray) - LTV at which maximum penalty of 12.5% is reached
-        ltvs_for_fourth_threshold.append(862203000000000000000000000_u128.into());
-        ltvs_for_fourth_threshold.append(862222200000000000000000000_u128.into());
-        trove_ltvs.append(ltvs_for_fourth_threshold.span());
-
-        trove_ltvs.span()
+        array![
+            // First threshold of 65% (Ray)
+            array![ // 71.18% (Ray) - LTV at which maximum penalty of 12.5% is first reached
+                711800000000000000000000000_u128.into(), max_possible_penalty_ltv
+            ]
+                .span(),
+            // Second threshold of 70% (Ray)
+            array![ // 76.65% (Ray) - LTV at which maximum penalty of 12.5% is first reached
+                766500000000000000000000000_u128.into(), max_possible_penalty_ltv
+            ]
+                .span(),
+            // Third threshold of 75% (Ray)
+            array![ // 82.13% (Ray) - LTV at which maximum penalty of 12.5% is reached
+                821300000000000000000000000_u128.into(), max_possible_penalty_ltv,
+            ]
+                .span(),
+            // Fourth threshold of 78.74% (Ray)
+            array![ // 86.2203% (Ray) - LTV at which maximum penalty of 12.5% is reached
+                862203000000000000000000000_u128.into(), 862222200000000000000000000_u128.into()
+            ]
+                .span()
+        ]
+            .span()
     }
 
     // These values are selected based on the thresholds.
@@ -187,151 +173,119 @@ mod PurgerUtils {
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
         let exceed_hundred_pct: Ray = (RAY_ONE + RAY_PERCENT).into();
 
-        let mut trove_ltvs: Array<Span<Ray>> = Default::default();
-
-        // First threshold of 78.75% (Ray)
-        let mut ltvs_for_first_threshold: Array<Ray> = Default::default();
-        // 86.23% (Ray) - Greater than LTV at which maximum penalty of 12.5% is last reached
-        ltvs_for_first_threshold.append(862300000000000000000000000_u128.into());
-        ltvs_for_first_threshold.append(ninety_nine_pct);
-        ltvs_for_first_threshold.append(exceed_hundred_pct);
-        trove_ltvs.append(ltvs_for_first_threshold.span());
-
-        // Second threshold of 80% (Ray)
-        let mut ltvs_for_second_threshold: Array<Ray> = Default::default();
-        // 86.9% (Ray) - LTV at which maximum penalty is reached
-        ltvs_for_second_threshold.append(869000000000000000000000000_u128.into());
-        ltvs_for_second_threshold.append(ninety_nine_pct);
-        ltvs_for_second_threshold.append(exceed_hundred_pct);
-        trove_ltvs.append(ltvs_for_second_threshold.span());
-
-        // Third threshold of 90% (Ray)
-        let mut ltvs_for_third_threshold: Array<Ray> = Default::default();
-        // 92.1% (Ray) - LTV at which maximum penalty is reached
-        ltvs_for_third_threshold.append(921000000000000000000000000_u128.into());
-        ltvs_for_third_threshold.append(ninety_nine_pct);
-        ltvs_for_third_threshold.append(exceed_hundred_pct);
-        trove_ltvs.append(ltvs_for_third_threshold.span());
-
-        // Fourth threshold of 96% (Ray)
-        let mut ltvs_for_fourth_threshold: Array<Ray> = Default::default();
-        // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
-        ltvs_for_fourth_threshold.append((96 * RAY_PERCENT + 1).into());
-        ltvs_for_fourth_threshold.append(ninety_nine_pct);
-        ltvs_for_fourth_threshold.append(exceed_hundred_pct);
-        trove_ltvs.append(ltvs_for_fourth_threshold.span());
-
-        // Fifth threshold of 97% (Ray)
-        // This is the highest possible threshold because it may not be possible to charge a 
-        // penalty after deducting compensation at this LTV and beyond
-        let mut ltvs_for_fifth_threshold: Array<Ray> = Default::default();
-        ltvs_for_fifth_threshold.append((97 * RAY_PERCENT + 1).into());
-        ltvs_for_fifth_threshold.append(ninety_nine_pct);
-        ltvs_for_fifth_threshold.append(exceed_hundred_pct);
-        trove_ltvs.append(ltvs_for_fifth_threshold.span());
-
-        // Sixth threshold of 99% (Ray)
-        // Note that this threshold should not be used because it makes absorber 
-        // providers worse off, but it should not break the purger's logic.
-        let mut ltvs_for_sixth_threshold: Array<Ray> = Default::default();
-        ltvs_for_sixth_threshold.append((99 * RAY_PERCENT + 1).into());
-        ltvs_for_sixth_threshold.append(exceed_hundred_pct);
-        trove_ltvs.append(ltvs_for_sixth_threshold.span());
-
-        trove_ltvs.span()
+        array![
+            // First threshold of 78.75% (Ray)
+            array![ // 86.23% (Ray) - Greater than LTV at which maximum penalty of 12.5% is last reached
+                862300000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct
+            ]
+                .span(),
+            // Second threshold of 80% (Ray)
+            array![ // 86.9% (Ray) - LTV at which maximum penalty is reached
+                869000000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct
+            ]
+                .span(),
+            // Third threshold of 90% (Ray)
+            array![ // 92.1% (Ray) - LTV at which maximum penalty is reached
+                921000000000000000000000000_u128.into(), ninety_nine_pct, exceed_hundred_pct
+            ]
+                .span(),
+            // Fourth threshold of 96% (Ray)
+            array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
+                (96 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct
+            ]
+                .span(),
+            // Fifth threshold of 97% (Ray)
+            // This is the highest possible threshold because it may not be possible to charge a 
+            // penalty after deducting compensation at this LTV and beyond
+            array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
+                (97 * RAY_PERCENT + 1).into(), ninety_nine_pct, exceed_hundred_pct
+            ]
+                .span(),
+            // Sixth threshold of 99% (Ray)
+            // Note that this threshold should not be used because it makes absorber 
+            // providers worse off, but it should not break the purger's logic.
+            array![ // Max penalty is already exceeded, so we simply increase the LTV by the smallest unit
+                (99 * RAY_PERCENT + 1).into(), exceed_hundred_pct
+            ]
+                .span()
+        ]
+            .span()
     }
 
     // These values are selected based on the thresholds.
     // Refer to https://www.desmos.com/calculator/b8drqdb32a.
     // Note that thresholds >= 90% will be absorbable once LTV >= threshold
     fn interesting_thresholds_and_ltvs_below_absorption_ltv() -> (Span<Ray>, Span<Ray>) {
-        let mut thresholds: Array<Ray> = Default::default();
-        thresholds.append((65 * RAY_PERCENT).into());
-        thresholds.append((70 * RAY_PERCENT).into());
-        thresholds.append((75 * RAY_PERCENT).into());
-        thresholds.append(787400000000000000000000000_u128.into()); // 78.74% (Ray)
-        thresholds.append(787500000000000000000000000_u128.into()); // 78.75% (Ray)
-        thresholds.append((80 * RAY_PERCENT).into());
+        let mut thresholds: Array<Ray> = array![
+            (65 * RAY_PERCENT).into(),
+            (70 * RAY_PERCENT).into(),
+            (75 * RAY_PERCENT).into(),
+            787400000000000000000000000_u128.into(), // 78.74% (Ray)
+            787500000000000000000000000_u128.into(), // 78.75% (Ray)
+            (80 * RAY_PERCENT).into()
+        ];
 
         // The LTV at which the maximum penalty is reached minus 0.01%
-        let mut trove_ltvs: Array<Ray> = Default::default();
-        trove_ltvs.append(711700000000000000000000000_u128.into()); // 71.17% (Ray)
-        trove_ltvs.append(766400000000000000000000000_u128.into()); // 76.64% (Ray)
-        trove_ltvs.append(821200000000000000000000000_u128.into()); // 82.12% (Ray)
-        trove_ltvs.append(859200000000000000000000000_u128.into()); // 85.92% (Ray)
-        trove_ltvs.append(862200000000000000000000000_u128.into()); // 86.22% (Ray)
-        trove_ltvs.append(868900000000000000000000000_u128.into()); // 86.89% (Ray)
+        let mut trove_ltvs: Array<Ray> = array![
+            711700000000000000000000000_u128.into(), // 71.17% (Ray)
+            766400000000000000000000000_u128.into(), // 76.64% (Ray)
+            821200000000000000000000000_u128.into(), // 82.12% (Ray)
+            859200000000000000000000000_u128.into(), // 85.92% (Ray)
+            862200000000000000000000000_u128.into(), // 86.22% (Ray)
+            868900000000000000000000000_u128.into(), // 86.89% (Ray)
+        ];
 
         (thresholds.span(), trove_ltvs.span())
     }
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
-        let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
-        
-        // base case for ordinary redistributions
-        yang_asset_amts_cases.append(recipient_trove_yang_asset_amts());
-
-        // recipient trove has dust amount of the first yang
-        let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(100_u128); // 100 wei (Wad) ETH
-        dust_case.append(2000000000_u128); // 20 (10 ** 8) WBTC
-        yang_asset_amts_cases.append(dust_case.span());
-
-        // recipient trove has dust amount of a yang that is not the first yang
-        let mut dust_case: Array<u128> = Default::default();
-        dust_case.append(50 * WAD_ONE); // 50 (Wad) ETH
-        dust_case.append(100_u128); // 0.00001 (10 ** 8) WBTC
-        yang_asset_amts_cases.append(dust_case.span());
-
-        // exceptional redistribution because recipient trove does not have
-        // WBTC yang but redistributed trove has WBTC yang
-        let mut exceptional_case: Array<u128> = Default::default();
-        exceptional_case.append(50 * WAD_ONE); // 50 (Wad) ETH
-        exceptional_case.append(0_u128); // 0 WBTC
-        yang_asset_amts_cases.append(exceptional_case.span());
-
-        yang_asset_amts_cases.span()
+        array![
+            // base case for ordinary redistributions
+            recipient_trove_yang_asset_amts(),
+            // recipient trove has dust amount of the first yang
+            // 100 wei (Wad) ETH, 20 (10 ** 8) WBTC
+            array![100_u128, 2000000000_u128].span(),
+            // recipient trove has dust amount of a yang that is not the first yang
+            // 50 (Wad) ETH, 0.00001 (10 ** 8) WBTC
+            array![50 * WAD_ONE, 100_u128].span(),
+            // exceptional redistribution because recipient trove does not have
+            // WBTC yang but redistributed trove has WBTC yang
+            // 50 (Wad) ETH, 0 WBTC
+            array![50 * WAD_ONE, 0_u128].span()
+        ]
+            .span()
     }
 
     fn interesting_yang_amts_for_redistributed_trove() -> Span<Span<u128>> {
-        let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
-        yang_asset_amts_cases.append(target_trove_yang_asset_amts());
-
-        // Dust yang case
-        let mut dust_yang_case: Array<u128> = Default::default();
-        dust_yang_case.append((20 * WAD_ONE).into()); // 10 (Wad) ETH
-        dust_yang_case.append(100_u128.into()); // 5E-8 (WBTC decimals) WBTC
-        yang_asset_amts_cases.append(dust_yang_case.span());
-
-        yang_asset_amts_cases.span()
+        array![
+            target_trove_yang_asset_amts(), // Dust yang case
+             // 20 (Wad) ETH, 100E-8 (WBTC decimals) WBTC
+            array![20 * WAD_ONE, 100_u128].span()
+        ]
+            .span()
     }
 
     fn inoperational_absorber_yin_cases() -> Span<Wad> {
-        let mut absorber_yin_cases: Array<Wad> = Default::default();
-
-        // minimum amount that must be provided based on initial shares or
-        // `provide` would revert
-        absorber_yin_cases.append(Absorber::INITIAL_SHARES.into());
-        // largest possible amount of yin in Absorber based on initial shares
-        // for Absorber to be inoperational
-        absorber_yin_cases.append((Absorber::MINIMUM_SHARES - 1).into());
-
-        absorber_yin_cases.span()
+        array![ // minimum amount that must be provided based on initial shares
+            Absorber::INITIAL_SHARES
+                .into(), // largest possible amount of yin in Absorber based on initial shares
+            (Absorber::MINIMUM_SHARES - 1).into()
+        ]
+            .span()
     }
 
     // Generate interesting cases for absorber's yin balance based on the 
     // redistributed trove's debt to test absorption with partial redistribution
     fn generate_operational_absorber_yin_cases(trove_debt: Wad) -> Span<Wad> {
-        let mut absorber_yin_cases: Array<Wad> = Default::default();
-
-        // smallest possible amount of yin in Absorber based on initial shares
-        absorber_yin_cases.append(Absorber::MINIMUM_SHARES.into());
-        absorber_yin_cases.append((trove_debt.val / 3).into());
-        absorber_yin_cases.append((trove_debt.val - 1000).into());
-        // trove's debt minus the smallest unit of Wad
-        absorber_yin_cases.append((trove_debt.val - 1).into());
-
-        absorber_yin_cases.span()
+        array![
+            // smallest possible amount of yin in Absorber based on initial shares
+            Absorber::MINIMUM_SHARES.into(),
+            (trove_debt.val / 3).into(),
+            (trove_debt.val - 1000).into(),
+            // trove's debt minus the smallest unit of Wad
+            (trove_debt.val - 1).into()
+        ]
+            .span()
     }
 
     //
@@ -378,12 +332,13 @@ mod PurgerUtils {
 
         let admin: ContractAddress = admin();
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(shrine.contract_address));
-        calldata.append(contract_address_to_felt252(sentinel.contract_address));
-        calldata.append(contract_address_to_felt252(absorber.contract_address));
-        calldata.append(contract_address_to_felt252(oracle.contract_address));
+        let mut calldata = array![
+            contract_address_to_felt252(admin),
+            contract_address_to_felt252(shrine.contract_address),
+            contract_address_to_felt252(sentinel.contract_address),
+            contract_address_to_felt252(absorber.contract_address),
+            contract_address_to_felt252(oracle.contract_address)
+        ];
 
         let purger_class_hash: ClassHash = class_hash_try_from_felt252(Purger::TEST_CLASS_HASH)
             .unwrap();
@@ -445,11 +400,12 @@ mod PurgerUtils {
         flashmint: ContractAddress,
         purger: ContractAddress,
     ) -> IFlashLiquidatorDispatcher {
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(shrine));
-        calldata.append(contract_address_to_felt252(abbot));
-        calldata.append(contract_address_to_felt252(flashmint));
-        calldata.append(contract_address_to_felt252(purger));
+        let mut calldata = array![
+            contract_address_to_felt252(shrine),
+            contract_address_to_felt252(abbot),
+            contract_address_to_felt252(flashmint),
+            contract_address_to_felt252(purger)
+        ];
 
         let flash_liquidator_class_hash: ClassHash = class_hash_try_from_felt252(
             FlashLiquidator::TEST_CLASS_HASH
@@ -529,7 +485,7 @@ mod PurgerUtils {
                 Option::Some(yang) => {
                     shrine.set_threshold(*yang, threshold);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -569,7 +525,7 @@ mod PurgerUtils {
                         current_ts
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -652,7 +608,7 @@ mod PurgerUtils {
         }
     }
 
-    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
+    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64,) {
         let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
         assert(penalty.is_zero(), 'penalty should be 0');
         assert(max_absorption_amt.is_zero(), 'close amount should be 0');
@@ -691,10 +647,10 @@ mod PurgerUtils {
                         + *expected_freed_asset.amount;
 
                     common::assert_equalish(
-                        after_asset_bal, expected_after_asset_bal, error_margin, message, 
+                        after_asset_bal, expected_after_asset_bal, error_margin, message,
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };

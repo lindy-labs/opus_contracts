@@ -1,13 +1,10 @@
 mod PragmaUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
         contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::core::roles::ShrineRoles;
     use aura::external::pragma::Pragma;
@@ -18,12 +15,11 @@ mod PragmaUtils {
     use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::Pragma::PricesResponse;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::math::pow;
-    use aura::utils::types::Pragma::PricesResponse;
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WadZeroable, WAD_DECIMALS, WAD_SCALE};
+    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
     use aura::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
@@ -35,9 +31,9 @@ mod PragmaUtils {
     // Constants
     //
 
-    const FRESHNESS_THRESHOLD: u64 = 1800; // 30 minutes * 60 seconds
+    const FRESHNESS_THRESHOLD: u64 = consteval_int!(30 * 60); // 30 minutes * 60 seconds
     const SOURCES_THRESHOLD: u64 = 3;
-    const UPDATE_FREQUENCY: u64 = 600; // 10 minutes * 60 seconds
+    const UPDATE_FREQUENCY: u64 = consteval_int!(10 * 60); // 10 minutes * 60 seconds
 
     const DEFAULT_NUM_SOURCES: u256 = 5;
 
@@ -64,9 +60,7 @@ mod PragmaUtils {
 
     #[inline(always)]
     fn yang_pair_ids() -> Span<u256> {
-        let mut pair_ids: Array<u256> = Default::default();
-        pair_ids.append(ETH_USD_PAIR_ID);
-        pair_ids.append(WBTC_USD_PAIR_ID);
+        let mut pair_ids: Array<u256> = array![ETH_USD_PAIR_ID, WBTC_USD_PAIR_ID];
         pair_ids.span()
     }
 
@@ -75,7 +69,7 @@ mod PragmaUtils {
     //
 
     fn mock_pragma_deploy() -> IMockPragmaDispatcher {
-        let mut calldata = Default::default();
+        let mut calldata: Array<felt252> = Default::default();
         let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(
             MockPragma::TEST_CLASS_HASH
         )
@@ -102,7 +96,7 @@ mod PragmaUtils {
     }
 
     fn pragma_deploy() -> (
-        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, 
+        IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher,
     ) {
         let (sentinel, shrine_addr) = SentinelUtils::deploy_sentinel();
         pragma_deploy_with_shrine(sentinel, shrine_addr)
@@ -110,19 +104,20 @@ mod PragmaUtils {
 
     fn pragma_deploy_with_shrine(
         sentinel: ISentinelDispatcher, shrine_addr: ContractAddress
-    ) -> (IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher, ) {
+    ) -> (IShrineDispatcher, IPragmaDispatcher, ISentinelDispatcher, IMockPragmaDispatcher,) {
         let mock_pragma: IMockPragmaDispatcher = mock_pragma_deploy();
 
         let admin: ContractAddress = admin();
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(mock_pragma.contract_address));
-        calldata.append(contract_address_to_felt252(shrine_addr));
-        calldata.append(contract_address_to_felt252(sentinel.contract_address));
-        calldata.append(UPDATE_FREQUENCY.into());
-        calldata.append(FRESHNESS_THRESHOLD.into());
-        calldata.append(SOURCES_THRESHOLD.into());
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin),
+            contract_address_to_felt252(mock_pragma.contract_address),
+            contract_address_to_felt252(shrine_addr),
+            contract_address_to_felt252(sentinel.contract_address),
+            UPDATE_FREQUENCY.into(),
+            FRESHNESS_THRESHOLD.into(),
+            SOURCES_THRESHOLD.into(),
+        ];
 
         let pragma_class_hash: ClassHash = class_hash_try_from_felt252(Pragma::TEST_CLASS_HASH)
             .unwrap();
@@ -159,13 +154,8 @@ mod PragmaUtils {
             sentinel, shrine.contract_address
         );
 
-        let mut yangs: Array<ContractAddress> = Default::default();
-        yangs.append(eth_token_addr);
-        yangs.append(wbtc_token_addr);
-
-        let mut gates: Array<IGateDispatcher> = Default::default();
-        gates.append(eth_gate);
-        gates.append(wbtc_gate);
+        let mut yangs: Array<ContractAddress> = array![eth_token_addr, wbtc_token_addr];
+        let mut gates: Array<IGateDispatcher> = array![eth_gate, wbtc_gate];
 
         add_yangs_to_pragma(pragma, yangs.span());
 

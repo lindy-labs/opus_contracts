@@ -1,16 +1,8 @@
-// TODO: shut working; shut working only once
-//       various shut scenarios (?) - enough collateral, not enough collateral
-//       release; release when system is live; release when not trove owner
-//       reclaim; reclaim when system is live; reclaim not enough yin
-#[cft(test)]
+// TODO: reclaim not enough yin
 mod TestCaretaker {
-    use array::{ArrayTrait, SpanTrait};
     use debug::PrintTrait;
-    use option::OptionTrait;
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::roles::{CaretakerRoles, ShrineRoles};
 
@@ -18,10 +10,10 @@ mod TestCaretaker {
     use aura::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::AssetBalance;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::AssetBalance;
     use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_ONE, Ray, Wad};
+    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
     use aura::tests::abbot::utils::AbbotUtils;
     use aura::tests::caretaker::utils::CaretakerUtils;
@@ -71,7 +63,7 @@ mod TestCaretaker {
     #[should_panic(expected: ('Caller missing role', 'ENTRYPOINT_FAILED'))]
     fn test_shut_by_badguy_throws() {
         let (caretaker, _, _, _, _, _) = CaretakerUtils::caretaker_deploy();
-        set_contract_address(CaretakerUtils::badguy());
+        set_contract_address(common::badguy());
         caretaker.shut();
     }
 
@@ -105,8 +97,14 @@ mod TestCaretaker {
         let y0 = IERC20Dispatcher { contract_address: *yangs[0] };
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
-        let g0_before_balance: Wad = y0.balance_of(*gates[0].contract_address).try_into().unwrap();
-        let g1_before_balance: Wad = y1.balance_of(*gates[1].contract_address).try_into().unwrap();
+        let g0_before_balance: Wad = y0
+            .balance_of(*gates.at(0).contract_address)
+            .try_into()
+            .unwrap();
+        let g1_before_balance: Wad = y1
+            .balance_of(*gates.at(1).contract_address)
+            .try_into()
+            .unwrap();
         let y0_backing = wadray::wmul_wr(g0_before_balance, backing).into();
         let y1_backing = wadray::wmul_wr(g1_before_balance, backing).into();
 
@@ -122,8 +120,14 @@ mod TestCaretaker {
         let tolerance: Wad = 10_u128.into();
 
         // assert gates have their balance reduced
-        let g0_after_balance: Wad = y0.balance_of(*gates[0].contract_address).try_into().unwrap();
-        let g1_after_balance: Wad = y1.balance_of(*gates[1].contract_address).try_into().unwrap();
+        let g0_after_balance: Wad = y0
+            .balance_of(*gates.at(0).contract_address)
+            .try_into()
+            .unwrap();
+        let g1_after_balance: Wad = y1
+            .balance_of(*gates.at(1).contract_address)
+            .try_into()
+            .unwrap();
         common::assert_equalish(
             g0_after_balance, g0_after_balance, tolerance, 'gate 0 balance after shut'
         );
@@ -198,7 +202,7 @@ mod TestCaretaker {
         let expected_release_y0: Wad = trove1_yang0_deposit
             - wadray::rmul_rw(backing, trove1_yang0_deposit);
         common::assert_equalish(
-            (*released_assets[0].amount).into(), expected_release_y0, eth_tolerance, 'y0 release'
+            (*released_assets.at(0).amount).into(), expected_release_y0, eth_tolerance, 'y0 release'
         );
 
         // assert released amount for wbtc (need to deal w/ different decimals)
@@ -209,23 +213,23 @@ mod TestCaretaker {
         let expected_release_y1: Wad = wbtc_deposit
             - wadray::rmul_rw(backing, trove1_yang1_deposit);
         let actual_release_y1: Wad = wadray::fixed_point_to_wad(
-            *released_assets[1].amount, common::WBTC_DECIMALS
+            *released_assets.at(1).amount, common::WBTC_DECIMALS
         );
         common::assert_equalish(
             actual_release_y1, expected_release_y1, wbtc_tolerance, 'y1 release'
         );
 
         // assert all deposits were released and assets are back in user's account
-        assert(*released_assets[0].address == *yangs[0], 'yang 1 not released #1');
-        assert(*released_assets[1].address == *yangs[1], 'yang 2 not released #1');
+        assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #1');
+        assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #1');
         assert(
             user1_yang0_after_balance == user1_yang0_before_balance
-                + (*released_assets[0].amount).into(),
+                + (*released_assets.at(0).amount).into(),
             'user1 yang0 after balance'
         );
         assert(
             user1_yang1_after_balance == user1_yang1_before_balance
-                + (*released_assets[1].amount).into(),
+                + (*released_assets.at(1).amount).into(),
             'user1 yang1 after balance'
         );
 
@@ -236,9 +240,9 @@ mod TestCaretaker {
         // sanity check that for user with only one yang, release reports a 0 asset amount
         set_contract_address(user2);
         let released_assets: Span<AssetBalance> = caretaker.release(trove2_id);
-        assert(*released_assets[0].address == *yangs[0], 'yang 1 not released #2');
-        assert(*released_assets[1].address == *yangs[1], 'yang 2 not released #2');
-        assert((*released_assets[1].amount).is_zero(), 'incorrect release');
+        assert(*released_assets.at(0).address == *yangs[0], 'yang 1 not released #2');
+        assert(*released_assets.at(1).address == *yangs[1], 'yang 2 not released #2');
+        assert((*released_assets.at(1).amount).is_zero(), 'incorrect release');
     }
 
     #[test]
@@ -303,8 +307,8 @@ mod TestCaretaker {
 
         assert(ct_yang0_diff == user1_yang0_diff, 'user1 yang0 diff');
         assert(ct_yang1_diff == user1_yang1_diff, 'user1 yang1 diff');
-        assert(ct_yang0_diff == (*reclaimed_assets[0].amount).into(), 'user1 reclaimed yang0');
-        assert(ct_yang1_diff == (*reclaimed_assets[1].amount).into(), 'user1 reclaimed yang1');
+        assert(ct_yang0_diff == (*reclaimed_assets.at(0).amount).into(), 'user1 reclaimed yang0');
+        assert(ct_yang1_diff == (*reclaimed_assets.at(1).amount).into(), 'user1 reclaimed yang1');
 
         //
         // scammer reclaim
@@ -345,13 +349,13 @@ mod TestCaretaker {
         common::assert_equalish(ct_yang1_diff, scammer_yang1_diff, tolerance, 'scammer yang1 diff');
         common::assert_equalish(
             ct_yang0_diff,
-            (*reclaimed_assets[0].amount).into(),
+            (*reclaimed_assets.at(0).amount).into(),
             tolerance,
             'scammer reclaimed yang0'
         );
         common::assert_equalish(
             ct_yang1_diff,
-            (*reclaimed_assets[1].amount).into(),
+            (*reclaimed_assets.at(1).amount).into(),
             tolerance,
             'scammer reclaimed yang1'
         );
@@ -375,11 +379,11 @@ mod TestCaretaker {
         let y1 = IERC20Dispatcher { contract_address: *yangs[1] };
 
         let gate0_before_balance: Wad = y0
-            .balance_of(*gates[0].contract_address)
+            .balance_of(*gates.at(0).contract_address)
             .try_into()
             .unwrap();
         let gate1_before_balance: Wad = y1
-            .balance_of(*gates[1].contract_address)
+            .balance_of(*gates.at(1).contract_address)
             .try_into()
             .unwrap();
 
@@ -398,21 +402,21 @@ mod TestCaretaker {
 
         // assert nothing's left in the gates and everything is now owned by Caretaker
         let gate0_after_balance: Wad = y0
-            .balance_of(*gates[0].contract_address)
+            .balance_of(*gates.at(0).contract_address)
             .try_into()
             .unwrap();
         let gate1_after_balance: Wad = y1
-            .balance_of(*gates[1].contract_address)
+            .balance_of(*gates.at(1).contract_address)
             .try_into()
             .unwrap();
         let ct_yang0_balance: Wad = y0.balance_of(caretaker.contract_address).try_into().unwrap();
         let ct_yang1_balance: Wad = y1.balance_of(caretaker.contract_address).try_into().unwrap();
 
         common::assert_equalish(
-            gate0_after_balance, 0_u128.into(), tolerance, 'gate0 after balance'
+            gate0_after_balance, WadZeroable::zero(), tolerance, 'gate0 after balance'
         );
         common::assert_equalish(
-            gate1_after_balance, 0_u128.into(), tolerance, 'gate1 after balance'
+            gate1_after_balance, WadZeroable::zero(), tolerance, 'gate1 after balance'
         );
         common::assert_equalish(
             ct_yang0_balance, gate0_before_balance, tolerance, 'caretaker yang0 after balance'
@@ -426,8 +430,8 @@ mod TestCaretaker {
         let released_assets: Span<AssetBalance> = caretaker.release(trove1_id);
 
         // 0 released amounts also mean no `sentinel.exit` and `shrine.seize`
-        assert((*released_assets[0].amount).is_zero(), 'incorrect armageddon release 1');
-        assert((*released_assets[1].amount).is_zero(), 'incorrect armageddon release 2')
+        assert((*released_assets.at(0).amount).is_zero(), 'incorrect armageddon release 1');
+        assert((*released_assets.at(1).amount).is_zero(), 'incorrect armageddon release 2')
     }
 
     #[test]

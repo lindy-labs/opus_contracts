@@ -1,14 +1,12 @@
+use array::ArrayTrait;
 use debug::PrintTrait;
-use array::{ArrayTrait, SpanTrait};
-use option::OptionTrait;
 use starknet::{
-    contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
     contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     SyscallResultTrait
 };
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{set_block_timestamp, set_contract_address};
-use traits::{Default, Into, TryInto};
 
 use aura::core::shrine::Shrine;
 
@@ -19,9 +17,9 @@ use aura::interfaces::IERC20::{
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
-use aura::utils::types::{AssetBalance, Reward};
+use aura::types::{AssetBalance, Reward};
 use aura::utils::wadray;
-use aura::utils::wadray::{Ray, Wad, WAD_ONE, WadZeroable};
+use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
 use aura::tests::sentinel::utils::SentinelUtils;
 use aura::tests::shrine::utils::ShrineUtils;
@@ -74,41 +72,14 @@ impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
     }
 }
 
-impl SpanPartialEq<
-    T, impl TPartialEq: PartialEq<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>
-> of PartialEq<Span<T>> {
-    fn eq(mut lhs: Span<T>, mut rhs: Span<T>) -> bool {
-        if lhs.len() != rhs.len() {
-            return false;
-        }
-
-        loop {
-            match lhs.pop_front() {
-                Option::Some(lhs) => {
-                    if *lhs != *rhs.pop_front().unwrap() {
-                        break false;
-                    }
-                },
-                Option::None(_) => {
-                    break true;
-                }
-            };
-        }
-    }
-
-    fn ne(lhs: Span<T>, rhs: Span<T>) -> bool {
-        !(lhs == rhs)
-    }
-}
-
 impl RewardPartialEq of PartialEq<Reward> {
-    fn eq(mut lhs: Reward, mut rhs: Reward) -> bool {
-        lhs.asset == rhs.asset
-            & lhs.blesser.contract_address == rhs.blesser.contract_address
-            & lhs.is_active == rhs.is_active
+    fn eq(mut lhs: @Reward, mut rhs: @Reward) -> bool {
+        (lhs.asset == rhs.asset)
+            & (lhs.blesser.contract_address == rhs.blesser.contract_address)
+            & (lhs.is_active == rhs.is_active)
     }
 
-    fn ne(lhs: Reward, rhs: Reward) -> bool {
+    fn ne(lhs: @Reward, rhs: @Reward) -> bool {
         !(lhs == rhs)
     }
 }
@@ -131,13 +102,14 @@ fn deploy_token(
     initial_supply: u256,
     recipient: ContractAddress,
 ) -> ContractAddress {
-    let mut calldata = Default::default();
-    calldata.append(name);
-    calldata.append(symbol);
-    calldata.append(decimals);
-    calldata.append(initial_supply.low.into()); // u256.low
-    calldata.append(initial_supply.high.into()); // u256.high
-    calldata.append(contract_address_to_felt252(recipient));
+    let mut calldata: Array<felt252> = array![
+        name,
+        symbol,
+        decimals,
+        initial_supply.low.into(), // u256.low
+        initial_supply.high.into(), // u256.high
+        contract_address_to_felt252(recipient),
+    ];
 
     let token: ClassHash = class_hash_try_from_felt252(ERC20::TEST_CLASS_HASH).unwrap();
     let (token, _) = deploy_syscall(token, 0, calldata.span(), false).unwrap_syscall();
@@ -150,11 +122,10 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
-                IMintableDispatcher {
-                    contract_address: *yang
-                }.mint(user, (*asset_amts.pop_front().unwrap()).into());
+                IMintableDispatcher { contract_address: *yang }
+                    .mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
@@ -179,7 +150,7 @@ fn open_trove_helper(
                 let gate: IGateDispatcher = *gates.pop_front().unwrap();
                 SentinelUtils::approve_max(gate, *yang, user);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
@@ -194,7 +165,7 @@ fn open_trove_helper(
     trove_id
 }
 
-//
+
 // Helpers - Convenience getters
 
 // Helper function to return a nested array of token balances given a list of
@@ -220,14 +191,14 @@ fn get_token_balances(
                             let bal: u128 = token.balance_of(*address).try_into().unwrap();
                             yang_balances.append(bal);
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         }
                     };
                 };
                 balances.append(yang_balances.span());
             },
-            Option::None(_) => {
+            Option::None => {
                 break balances.span();
             }
         };
@@ -250,25 +221,6 @@ fn assert_equalish<
     }
 }
 
-fn assert_spans_equalish<
-    T, impl TPartialOrd: PartialOrd<T>, impl TSub: Sub<T>, impl CopyT: Copy<T>, impl DropT: Drop<T>
->(
-    mut a: Span<T>, mut b: Span<T>, error: T, message: felt252
-) {
-    assert(a.len() == b.len(), message);
-
-    loop {
-        match a.pop_front() {
-            Option::Some(a) => {
-                assert_equalish(*a, *b.pop_front().unwrap(), error, message);
-            },
-            Option::None(_) => {
-                break;
-            }
-        };
-    };
-}
-
 fn assert_asset_balances_equalish(
     mut a: Span<AssetBalance>, mut b: Span<AssetBalance>, error: u128, message: felt252
 ) {
@@ -281,13 +233,12 @@ fn assert_asset_balances_equalish(
                 assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
     };
 }
-
 
 //
 // Helpers - Array functions
@@ -296,16 +247,15 @@ fn assert_asset_balances_equalish(
 fn combine_assets_and_amts(
     mut assets: Span<ContractAddress>, mut amts: Span<u128>
 ) -> Span<AssetBalance> {
+    assert(assets.len() == amts.len(), 'combining diff array lengths');
     let mut asset_balances: Array<AssetBalance> = Default::default();
     loop {
         match assets.pop_front() {
-            Option::Some(assets) => {
+            Option::Some(asset) => {
                 asset_balances
-                    .append(
-                        AssetBalance { address: *assets, amount: *amts.pop_front().unwrap(),  }
-                    );
+                    .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
@@ -324,7 +274,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
                 let asset_amt: Wad = (*asset_amt).into();
                 split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
@@ -345,11 +295,42 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
                 // Convert to Wad for fixed point operations
                 combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
     };
 
     combined_asset_amts.span()
+}
+
+impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
+    fn print(self: Span<T>) {
+        let mut copy = self;
+
+        '['.print();
+        loop {
+            match copy.pop_front() {
+                Option::Some(item) => {
+                    (*item).print();
+                    if copy.len() > 0 {
+                        ', '.print();
+                    }
+                },
+                Option::None => {
+                    break;
+                }
+            };
+        };
+        ']'.print();
+    }
+}
+
+impl ArrayPrintImpl<
+    T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
+> of PrintTrait<Array<T>> {
+    fn print(self: Array<T>) {
+        let copy: Span<T> = self.span();
+        copy.print();
+    }
 }

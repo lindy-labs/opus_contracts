@@ -1,13 +1,11 @@
 mod FlashmintUtils {
     use array::ArrayTrait;
-    use option::OptionTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into};
 
     use aura::core::flashmint::FlashMint;
     use aura::core::roles::ShrineRoles;
@@ -15,8 +13,6 @@ mod FlashmintUtils {
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::misc;
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WAD_ONE};
 
@@ -24,20 +20,16 @@ mod FlashmintUtils {
     use aura::tests::shrine::utils::ShrineUtils;
 
     const YIN_TOTAL_SUPPLY: u128 = 20000000000000000000000; // 20000 * WAD_ONE
-    const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000_u256; // 500 * WAD_ONE
+    const DEFAULT_MINT_AMOUNT: u256 = 500000000000000000000; // 500 * WAD_ONE
 
     // Helper function to build a calldata Span for `FlashMint.flash_loan`
     #[inline(always)]
     fn build_calldata(should_return_correct: bool, usage: felt252) -> Span<felt252> {
-        let mut calldata = Default::default();
-        calldata.append(should_return_correct.into());
-        calldata.append(usage);
-        calldata.span()
+        array![should_return_correct.into(), usage].span()
     }
 
     fn flashmint_deploy(shrine: ContractAddress) -> IFlashMintDispatcher {
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(shrine));
+        let mut calldata = array![contract_address_to_felt252(shrine)];
 
         let flashmint_class_hash: ClassHash = class_hash_try_from_felt252(
             FlashMint::TEST_CLASS_HASH
@@ -63,7 +55,11 @@ mod FlashmintUtils {
 
         ShrineUtils::shrine_setup(shrine);
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine_dispatcher, 3, (1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()
+            shrine_dispatcher,
+            3,
+            (1000 * WAD_ONE).into(),
+            (10000 * WAD_ONE).into(),
+            (500 * WAD_ONE).into()
         );
 
         // Mint some yin in shrine 
@@ -73,8 +69,7 @@ mod FlashmintUtils {
     }
 
     fn flash_borrower_deploy(flashmint: ContractAddress) -> ContractAddress {
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(flashmint));
+        let mut calldata = array![contract_address_to_felt252(flashmint)];
 
         let flash_borrower_class_hash: ClassHash = class_hash_try_from_felt252(
             FlashBorrower::TEST_CLASS_HASH

@@ -1,10 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use option::OptionTrait;
-    use traits::Into;
-    use traits::TryInto;
-    use zeroable::Zeroable;
-
     use aura::utils::wadray;
     use aura::utils::wadray::{
         DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,
@@ -22,13 +17,8 @@ mod tests {
 
         // 123456789101112 + 121110987654321 = 244567776755433
         assert(
-            Wad {
-                val: 123456789101112
-                } + Wad {
-                val: 121110987654321
-                } == Wad {
-                val: 244567776755433
-            },
+            Wad { val: 123456789101112 }
+                + Wad { val: 121110987654321 } == Wad { val: 244567776755433 },
             'Incorrect addition #3'
         );
 
@@ -40,13 +30,8 @@ mod tests {
 
         // 123456789101112 + 121110987654321 = 244567776755433
         assert(
-            Ray {
-                val: 123456789101112
-                } + Ray {
-                val: 121110987654321
-                } == Ray {
-                val: 244567776755433
-            },
+            Ray { val: 123456789101112 }
+                + Ray { val: 121110987654321 } == Ray { val: 244567776755433 },
             'Incorrect addition #6'
         );
     }
@@ -72,13 +57,8 @@ mod tests {
 
         // 244567776755433 - 121110987654321 = 123456789101112
         assert(
-            Wad {
-                val: 244567776755433
-                } - Wad {
-                val: 121110987654321
-                } == Wad {
-                val: 123456789101112
-            },
+            Wad { val: 244567776755433 }
+                - Wad { val: 121110987654321 } == Wad { val: 123456789101112 },
             'Incorrect subtraction #3'
         );
 
@@ -90,13 +70,8 @@ mod tests {
 
         // 244567776755433 - 121110987654321 = 123456789101112
         assert(
-            Ray {
-                val: 244567776755433
-                } - Ray {
-                val: 121110987654321
-                } == Ray {
-                val: 123456789101112
-            },
+            Ray { val: 244567776755433 }
+                - Ray { val: 121110987654321 } == Ray { val: 123456789101112 },
             'Incorrect subtraction #6'
         );
     }
@@ -130,13 +105,8 @@ mod tests {
 
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670187008926
         assert(
-            Wad {
-                val: 121110987654321531059
-                } * Wad {
-                val: 1234567891011125475893
-                } == Wad {
-                val: 149519736606670187008926
-            },
+            Wad { val: 121110987654321531059 }
+                * Wad { val: 1234567891011125475893 } == Wad { val: 149519736606670187008926 },
             'Incorrect multiplication #4'
         );
 
@@ -156,13 +126,8 @@ mod tests {
 
         // 121110987654321531059 * 1234567891011125475893 = 149519736606670 (truncated)
         assert(
-            Ray {
-                val: 121110987654321531059
-                } * Ray {
-                val: 1234567891011125475893
-                } == Ray {
-                val: 149519736606670
-            },
+            Ray { val: 121110987654321531059 }
+                * Ray { val: 1234567891011125475893 } == Ray { val: 149519736606670 },
             'Incorrect multiplication #8'
         );
 
@@ -254,13 +219,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected: ('u256 is 0', ))]
+    #[should_panic(expected: ('u256 is 0',))]
     fn test_div_wad_fail() {
         let a: Wad = Wad { val: WAD_ONE } / Wad { val: 0 };
     }
 
     #[test]
-    #[should_panic(expected: ('u256 is 0', ))]
+    #[should_panic(expected: ('u256 is 0',))]
     fn test_div_ray_fail() {
         let a: Ray = Ray { val: RAY_ONE } / Ray { val: 0 };
     }
@@ -321,7 +286,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected: ('Option::unwrap failed.', ))]
+    #[should_panic(expected: ('Option::unwrap failed.',))]
     fn test_conversions_fail2() {
         let a: Ray = Wad { val: MAX_CONVERTIBLE_WAD + 1 }.try_into().unwrap();
     }
@@ -414,7 +379,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected: ('More than 18 decimals', ))]
+    #[should_panic(expected: ('More than 18 decimals',))]
     fn test_fixed_point_to_wad_fail() {
         let x: Wad = fixed_point_to_wad(1, WAD_DECIMALS + 1);
     }

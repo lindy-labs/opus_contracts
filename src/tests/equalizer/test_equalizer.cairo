@@ -1,11 +1,7 @@
-#[cfg(test)]
 mod TestEqualizer {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
+    use array::ArrayTrait;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::roles::EqualizerRoles;
     use aura::core::shrine::Shrine;
@@ -55,7 +51,11 @@ mod TestEqualizer {
 
         // Set the price to make the interest calculation easier
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine, 1, ShrineUtils::YANG1_START_PRICE.into(), ShrineUtils::YANG2_START_PRICE.into(), ShrineUtils::YANG3_START_PRICE.into()
+            shrine,
+            1,
+            ShrineUtils::YANG1_START_PRICE.into(),
+            ShrineUtils::YANG2_START_PRICE.into(),
+            ShrineUtils::YANG3_START_PRICE.into()
         );
 
         // Charge trove 1 and sanity check that some debt has accrued
@@ -67,8 +67,7 @@ mod TestEqualizer {
         let recipients = EqualizerUtils::initial_recipients();
         let mut percentages = EqualizerUtils::initial_percentages();
 
-        let mut tokens: Array<ContractAddress> = Default::default();
-        tokens.append(shrine.contract_address);
+        let mut tokens: Array<ContractAddress> = array![shrine.contract_address];
         let mut before_balances = common::get_token_balances(tokens.span(), recipients);
         let mut before_yin_balances = *before_balances.pop_front().unwrap();
 
@@ -95,7 +94,7 @@ mod TestEqualizer {
 
                     minted_surplus += expected_increment;
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

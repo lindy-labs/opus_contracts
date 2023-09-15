@@ -1,17 +1,13 @@
-#[contract]
+#[starknet::contract]
 mod Gate {
-    use integer::u128_try_from_felt252;
-    use option::OptionTrait;
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use traits::{Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use aura::interfaces::IGate::IGate;
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::math::pow;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WadZeroable, WAD_DECIMALS, WAD_ONE};
-    use aura::utils::u256_conversions;
 
     // As the Gate is similar to a ERC-4626 vault, it therefore faces a similar issue whereby
     // the first depositor can artificially inflate a share price by depositing the smallest
@@ -19,6 +15,7 @@ mod Gate {
     // in the Sentinel, which enforces a minimum deposit before a yang and its Gate can be 
     // added to the Shrine.
 
+    #[storage]
     struct Storage {
         // the Shrine associated with this Gate
         shrine: IShrineDispatcher,
@@ -34,179 +31,215 @@ mod Gate {
     //
 
     #[event]
-    fn Enter(user: ContractAddress, trove_id: u64, asset_amt: u128, yang_amt: Wad) {}
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        Enter: Enter,
+        Exit: Exit,
+    }
 
-    #[event]
-    fn Exit(user: ContractAddress, trove_id: u64, asset_amt: u128, yang_amt: Wad) {}
+    #[derive(Drop, starknet::Event)]
+    struct Enter {
+        #[key]
+        user: ContractAddress,
+        #[key]
+        trove_id: u64,
+        asset_amt: u128,
+        yang_amt: Wad
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Exit {
+        #[key]
+        user: ContractAddress,
+        #[key]
+        trove_id: u64,
+        asset_amt: u128,
+        yang_amt: Wad
+    }
 
     //
     // Constructor
     //
 
     #[constructor]
-    fn constructor(shrine: ContractAddress, asset: ContractAddress, sentinel: ContractAddress) {
-        shrine::write(IShrineDispatcher { contract_address: shrine });
-        asset::write(IERC20Dispatcher { contract_address: asset });
-        sentinel::write(sentinel);
+    fn constructor(
+        ref self: ContractState,
+        shrine: ContractAddress,
+        asset: ContractAddress,
+        sentinel: ContractAddress
+    ) {
+        self.shrine.write(IShrineDispatcher { contract_address: shrine });
+        self.asset.write(IERC20Dispatcher { contract_address: asset });
+        self.sentinel.write(sentinel);
     }
 
     //
-    // Getters
+    // External Gate functions
     //
 
-    #[view]
-    fn get_shrine() -> ContractAddress {
-        shrine::read().contract_address
-    }
+    #[external(v0)]
+    impl IGateImpl of IGate<ContractState> {
+        //
+        // Getters
+        //
 
-    #[view]
-    fn get_sentinel() -> ContractAddress {
-        sentinel::read()
-    }
-
-    #[view]
-    fn get_asset() -> ContractAddress {
-        asset::read().contract_address
-    }
-
-    #[view]
-    fn get_total_assets() -> u128 {
-        get_total_assets_internal(asset::read())
-    }
-
-    #[view]
-    fn get_total_yang() -> Wad {
-        get_total_yang_internal(asset::read().contract_address)
-    }
-
-    // Returns the amount of assets in Wad that corresponds to per Wad unit of yang.
-    // If the asset's decimals is less than `WAD_DECIMALS`, the amount is scaled up accordingly.
-    // Note that if there is no yang yet, this function will still return a positive value 
-    // based on the asset amount being at parity with yang (with scaling where necessary). This is
-    // so that the yang price can be properly calculated by the oracle even if no assets have been 
-    // deposited yet.
-    #[view]
-    fn get_asset_amt_per_yang() -> Wad {
-        let amt: u128 = convert_to_assets_internal(WAD_ONE.into());
-        let decimals: u8 = asset::read().decimals();
-
-        if decimals == WAD_DECIMALS {
-            return amt.into();
+        fn get_shrine(self: @ContractState) -> ContractAddress {
+            self.shrine.read().contract_address
         }
 
-        wadray::fixed_point_to_wad(amt, decimals)
-    }
-
-    // This can be used to simulate the effects of `enter` at the current on-chain conditions.
-    // `asset_amt` is denoted in the asset's decimals.
-    #[view]
-    fn convert_to_yang(asset_amt: u128) -> Wad {
-        convert_to_yang_internal(asset_amt)
-    }
-
-    // This can be used to simulate the effects of `exit` at the current on-chain conditions.
-    // The return value is denoted in the asset's decimals.
-    #[view]
-    fn convert_to_assets(yang_amt: Wad) -> u128 {
-        convert_to_assets_internal(yang_amt)
-    }
-
-    //
-    // External
-    //
-
-    // Transfers the stipulated amount of assets, in the asset's decimals, from the given 
-    // user to the Gate and returns the corresponding yang amount in Wad.
-    // `asset_amt` is denominated in the decimals of the asset.
-    #[external]
-    fn enter(user: ContractAddress, trove_id: u64, asset_amt: u128) -> Wad {
-        assert_sentinel();
-
-        let yang_amt: Wad = convert_to_yang_internal(asset_amt);
-        if yang_amt.is_zero() {
-            return 0_u128.into();
+        fn get_sentinel(self: @ContractState) -> ContractAddress {
+            self.sentinel.read()
         }
 
-        let success: bool = asset::read()
-            .transfer_from(user, get_contract_address(), asset_amt.into());
-        assert(success, 'GA: Asset transfer failed');
-        Enter(user, trove_id, asset_amt, yang_amt);
-
-        yang_amt
-    }
-
-    // Transfers such amount of assets, in the asset's decimals, corresponding to the 
-    // stipulated yang amount to the given user.
-    // The return value is denominated in the decimals of the asset.
-    #[external]
-    fn exit(user: ContractAddress, trove_id: u64, yang_amt: Wad) -> u128 {
-        assert_sentinel();
-
-        let asset_amt: u128 = convert_to_assets_internal(yang_amt);
-        if asset_amt.is_zero() {
-            return 0;
+        fn get_asset(self: @ContractState) -> ContractAddress {
+            self.asset.read().contract_address
         }
 
-        let success: bool = asset::read().transfer(user, asset_amt.into());
-        assert(success, 'GA: Asset transfer failed');
+        fn get_total_assets(self: @ContractState) -> u128 {
+            get_total_assets_helper(self.asset.read())
+        }
 
-        Exit(user, trove_id, asset_amt, yang_amt);
+        fn get_total_yang(self: @ContractState) -> Wad {
+            self.get_total_yang_helper(self.asset.read().contract_address)
+        }
 
-        asset_amt
+        // Returns the amount of assets in Wad that corresponds to per Wad unit of yang.
+        // If the asset's decimals is less than `WAD_DECIMALS`, the amount is scaled up accordingly.
+        // Note that if there is no yang yet, this function will still return a positive value 
+        // based on the asset amount being at parity with yang (with scaling where necessary). This is
+        // so that the yang price can be properly calculated by the oracle even if no assets have been 
+        // deposited yet.
+        fn get_asset_amt_per_yang(self: @ContractState) -> Wad {
+            let amt: u128 = self.convert_to_assets_helper(WAD_ONE.into());
+            let decimals: u8 = self.asset.read().decimals();
+
+            if decimals == WAD_DECIMALS {
+                return amt.into();
+            }
+
+            wadray::fixed_point_to_wad(amt, decimals)
+        }
+
+        // This can be used to simulate the effects of `enter` at the current on-chain conditions.
+        // `asset_amt` is denoted in the asset's decimals.
+        fn convert_to_yang(self: @ContractState, asset_amt: u128) -> Wad {
+            self.convert_to_yang_helper(asset_amt)
+        }
+
+        // This can be used to simulate the effects of `exit` at the current on-chain conditions.
+        // The return value is denoted in the asset's decimals.
+        fn convert_to_assets(self: @ContractState, yang_amt: Wad) -> u128 {
+            self.convert_to_assets_helper(yang_amt)
+        }
+
+        //
+        // Core Functions - External
+        //
+
+        // Transfers the stipulated amount of assets, in the asset's decimals, from the given 
+        // user to the Gate and returns the corresponding yang amount in Wad.
+        // `asset_amt` is denominated in the decimals of the asset.
+        fn enter(
+            ref self: ContractState, user: ContractAddress, trove_id: u64, asset_amt: u128
+        ) -> Wad {
+            self.assert_sentinel();
+
+            let yang_amt: Wad = self.convert_to_yang_helper(asset_amt);
+            if yang_amt.is_zero() {
+                return WadZeroable::zero();
+            }
+
+            let success: bool = self
+                .asset
+                .read()
+                .transfer_from(user, get_contract_address(), asset_amt.into());
+            assert(success, 'GA: Asset transfer failed');
+            self.emit(Enter { user, trove_id, asset_amt, yang_amt });
+
+            yang_amt
+        }
+
+        // Transfers such amount of assets, in the asset's decimals, corresponding to the 
+        // stipulated yang amount to the given user.
+        // The return value is denominated in the decimals of the asset.
+        fn exit(
+            ref self: ContractState, user: ContractAddress, trove_id: u64, yang_amt: Wad
+        ) -> u128 {
+            self.assert_sentinel();
+
+            let asset_amt: u128 = self.convert_to_assets_helper(yang_amt);
+            if asset_amt.is_zero() {
+                return 0;
+            }
+
+            let success: bool = self.asset.read().transfer(user, asset_amt.into());
+            assert(success, 'GA: Asset transfer failed');
+
+            self.emit(Exit { user, trove_id, asset_amt, yang_amt });
+
+            asset_amt
+        }
     }
 
     //
-    // Internal
+    // Internal Gate functions
+    //
+
+    #[generate_trait]
+    impl GateHelpers of GateHelpersTrait {
+        #[inline(always)]
+        fn assert_sentinel(self: @ContractState) {
+            assert(get_caller_address() == self.sentinel.read(), 'GA: Caller is not authorized');
+        }
+
+        #[inline(always)]
+        fn get_total_yang_helper(self: @ContractState, asset: ContractAddress) -> Wad {
+            self.shrine.read().get_yang_total(asset)
+        }
+
+        // Helper function to calculate the amount of assets corresponding to the given
+        // amount of yang.
+        // Return value is denominated in the decimals of the asset.
+        fn convert_to_assets_helper(self: @ContractState, yang_amt: Wad) -> u128 {
+            let asset: IERC20Dispatcher = self.asset.read();
+            let total_yang: Wad = self.get_total_yang_helper(asset.contract_address);
+
+            if total_yang.is_zero() {
+                let decimals: u8 = asset.decimals();
+                // Scale `yang_amt` down by the difference to match the decimal 
+                // precision of the asset. If asset is of `Wad` precision, then 
+                // the same value is returned
+                yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
+            } else {
+                ((yang_amt * get_total_assets_helper(asset).into()) / total_yang).val
+            }
+        }
+
+        // Helper function to calculate the amount of yang corresponding to the given
+        // amount of assets.
+        // `asset_amt` is denominated in the decimals of the asset.
+        fn convert_to_yang_helper(self: @ContractState, asset_amt: u128) -> Wad {
+            let asset: IERC20Dispatcher = self.asset.read();
+            let total_yang: Wad = self.get_total_yang_helper(asset.contract_address);
+
+            if total_yang.is_zero() {
+                let decimals: u8 = asset.decimals();
+                // Otherwise, scale `asset_amt` up by the difference to match `Wad` 
+                // precision of yang. If asset is of `Wad` precision, then the same 
+                // value is returned
+                wadray::fixed_point_to_wad(asset_amt, decimals)
+            } else {
+                (asset_amt.into() * total_yang) / get_total_assets_helper(asset).into()
+            }
+        }
+    }
+
+    //
+    // Internal functions for Gate that do not access Gate's storage
     //
 
     #[inline(always)]
-    fn assert_sentinel() {
-        assert(get_caller_address() == sentinel::read(), 'GA: Caller is not authorized');
-    }
-
-    #[inline(always)]
-    fn get_total_assets_internal(asset: IERC20Dispatcher) -> u128 {
+    fn get_total_assets_helper(asset: IERC20Dispatcher) -> u128 {
         asset.balance_of(get_contract_address()).try_into().unwrap()
-    }
-
-    #[inline(always)]
-    fn get_total_yang_internal(asset: ContractAddress) -> Wad {
-        shrine::read().get_yang_total(asset)
-    }
-
-    // Helper function to calculate the amount of assets corresponding to the given
-    // amount of yang.
-    // Return value is denominated in the decimals of the asset.
-    fn convert_to_assets_internal(yang_amt: Wad) -> u128 {
-        let asset: IERC20Dispatcher = asset::read();
-        let total_yang: Wad = get_total_yang_internal(asset.contract_address);
-
-        if total_yang.is_zero() {
-            let decimals: u8 = asset.decimals();
-            // Scale `yang_amt` down by the difference to match the decimal 
-            // precision of the asset. If asset is of `Wad` precision, then 
-            // the same value is returned
-            yang_amt.val / pow(10_u128, WAD_DECIMALS - decimals)
-        } else {
-            ((yang_amt * get_total_assets_internal(asset).into()) / total_yang).val
-        }
-    }
-
-    // Helper function to calculate the amount of yang corresponding to the given
-    // amount of assets.
-    // `asset_amt` is denominated in the decimals of the asset.
-    fn convert_to_yang_internal(asset_amt: u128) -> Wad {
-        let asset: IERC20Dispatcher = asset::read();
-        let total_yang: Wad = get_total_yang_internal(asset.contract_address);
-
-        if total_yang.is_zero() {
-            let decimals: u8 = asset.decimals();
-            // Otherwise, scale `asset_amt` up by the difference to match `Wad` 
-            // precision of yang. If asset is of `Wad` precision, then the same 
-            // value is returned
-            wadray::fixed_point_to_wad(asset_amt, decimals)
-        } else {
-            (asset_amt.into() * total_yang) / get_total_assets_internal(asset).into()
-        }
     }
 }

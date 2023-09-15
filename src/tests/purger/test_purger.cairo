@@ -1,11 +1,7 @@
 #[cfg(test)]
 mod TestPurger {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::purger::Purger;
@@ -17,7 +13,7 @@ mod TestPurger {
     use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::AssetBalance;
+    use aura::types::AssetBalance;
     use aura::utils::wadray;
     use aura::utils::wadray::{
         BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
@@ -25,6 +21,7 @@ mod TestPurger {
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
+    use aura::tests::common::{SpanPrintImpl};
     use aura::tests::external::utils::PragmaUtils;
     use aura::tests::flashmint::utils::FlashmintUtils;
     use aura::tests::purger::flash_liquidator::{
@@ -235,7 +232,7 @@ mod TestPurger {
         let searcher: ContractAddress = PurgerUtils::searcher();
 
         let before_searcher_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, searcher.into()
+            yangs, array![searcher].span()
         );
 
         set_contract_address(searcher);
@@ -271,7 +268,7 @@ mod TestPurger {
         // Check that searcher has received collateral
         PurgerUtils::assert_received_assets(
             before_searcher_asset_bals,
-            common::get_token_balances(yangs, searcher.into()),
+            common::get_token_balances(yangs, array![searcher].span()),
             expected_freed_assets,
             10_u128, // error margin
             'wrong searcher asset balance',
@@ -355,14 +352,15 @@ mod TestPurger {
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
-                    let mut target_ltvs: Array<Ray> = Default::default();
-                    target_ltvs.append((*threshold.val + 1).into()); // just above threshold
-                    target_ltvs.append(*threshold + RAY_PERCENT.into()); // 1% above threshold
-                    // halfway between threshold and 100%
-                    target_ltvs.append(*threshold + ((RAY_ONE.into() - *threshold).val / 2).into());
-                    target_ltvs.append((RAY_ONE - RAY_PERCENT).into()); // 99%
-                    target_ltvs.append((RAY_ONE + RAY_PERCENT).into()); // 101%
-                    let mut target_ltvs: Span<Ray> = target_ltvs.span();
+                    let mut target_ltvs: Span<Ray> = array![
+                        (*threshold.val + 1).into(), //just above threshold
+                        *threshold + RAY_PERCENT.into(), // 1% above threshold
+                        // halfway between threshold and 100%
+                        *threshold + ((RAY_ONE.into() - *threshold).val / 2).into(),
+                        (RAY_ONE - RAY_PERCENT).into(), // 99%
+                        (RAY_ONE + RAY_PERCENT).into() // 101%
+                    ]
+                        .span();
 
                     // Assert that we hit the branch for safety margin check at least once per threshold
                     let mut safety_margin_achieved: bool = false;
@@ -430,13 +428,13 @@ mod TestPurger {
                                     assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -575,10 +573,10 @@ mod TestPurger {
         let caller: ContractAddress = PurgerUtils::random_user();
 
         let before_caller_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, caller.into()
+            yangs, array![caller].span()
         );
         let before_absorber_asset_bals: Span<Span<u128>> = common::get_token_balances(
-            yangs, absorber.contract_address.into()
+            yangs, array![absorber.contract_address].span()
         );
 
         set_contract_address(caller);
@@ -613,7 +611,7 @@ mod TestPurger {
         );
         PurgerUtils::assert_received_assets(
             before_caller_asset_bals,
-            common::get_token_balances(yangs, caller.into()),
+            common::get_token_balances(yangs, array![caller].span()),
             expected_compensation,
             10_u128, // error margin
             'wrong caller asset balance',
@@ -639,7 +637,7 @@ mod TestPurger {
         );
         PurgerUtils::assert_received_assets(
             before_absorber_asset_bals,
-            common::get_token_balances(yangs, absorber.contract_address.into()),
+            common::get_token_balances(yangs, array![absorber.contract_address].span()),
             expected_freed_assets,
             10_u128, // error margin
             'wrong absorber asset balance',
@@ -755,11 +753,11 @@ mod TestPurger {
 
                                         let before_caller_asset_bals: Span<Span<u128>> =
                                             common::get_token_balances(
-                                            yangs, caller.into()
+                                            yangs, array![caller].span()
                                         );
                                         let before_absorber_asset_bals: Span<Span<u128>> =
                                             common::get_token_balances(
-                                            yangs, absorber.contract_address.into()
+                                            yangs, array![absorber.contract_address].span()
                                         );
 
                                         set_contract_address(caller);
@@ -801,7 +799,9 @@ mod TestPurger {
                                         );
                                         PurgerUtils::assert_received_assets(
                                             before_caller_asset_bals,
-                                            common::get_token_balances(yangs, caller.into()),
+                                            common::get_token_balances(
+                                                yangs, array![caller].span()
+                                            ),
                                             expected_compensation,
                                             10_u128, // error margin
                                             'wrong caller asset balance',
@@ -834,7 +834,7 @@ mod TestPurger {
                                         PurgerUtils::assert_received_assets(
                                             before_absorber_asset_bals,
                                             common::get_token_balances(
-                                                yangs, absorber.contract_address.into()
+                                                yangs, array![absorber.contract_address].span()
                                             ),
                                             expected_freed_assets,
                                             100_u128, // error margin
@@ -882,18 +882,18 @@ mod TestPurger {
                                             'wrong recipient trove value'
                                         );
                                     },
-                                    Option::None(_) => {
+                                    Option::None => {
                                         break;
                                     },
                                 };
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1039,11 +1039,11 @@ mod TestPurger {
 
                                                 let before_caller_asset_bals: Span<Span<u128>> =
                                                     common::get_token_balances(
-                                                    yangs, caller.into()
+                                                    yangs, array![caller].span()
                                                 );
                                                 let before_absorber_asset_bals: Span<Span<u128>> =
                                                     common::get_token_balances(
-                                                    yangs, absorber.contract_address.into()
+                                                    yangs, array![absorber.contract_address].span()
                                                 );
 
                                                 let absorber_start_yin: Wad =
@@ -1076,6 +1076,7 @@ mod TestPurger {
 
                                                 let (tmp_threshold, _, _, _) = shrine
                                                     .get_trove_info(target_trove);
+
                                                 assert(
                                                     tmp_threshold == *threshold, 'in recovery mode'
                                                 );
@@ -1171,7 +1172,7 @@ mod TestPurger {
                                                 PurgerUtils::assert_received_assets(
                                                     before_caller_asset_bals,
                                                     common::get_token_balances(
-                                                        yangs, caller.into()
+                                                        yangs, array![caller].span()
                                                     ),
                                                     expected_compensation,
                                                     10_u128, // error margin
@@ -1208,7 +1209,8 @@ mod TestPurger {
                                                 PurgerUtils::assert_received_assets(
                                                     before_absorber_asset_bals,
                                                     common::get_token_balances(
-                                                        yangs, absorber.contract_address.into()
+                                                        yangs,
+                                                        array![absorber.contract_address].span()
                                                     ),
                                                     expected_freed_assets,
                                                     100_u128, // error margin
@@ -1295,7 +1297,7 @@ mod TestPurger {
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
-                                                        Option::None(_) => {
+                                                        Option::None => {
                                                             break;
                                                         },
                                                     };
@@ -1303,19 +1305,19 @@ mod TestPurger {
                                                 absorber_yin_idx += 1;
                                             };
                                         },
-                                        Option::None(_) => {
+                                        Option::None => {
                                             break;
                                         },
                                     };
                                 };
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1438,7 +1440,7 @@ mod TestPurger {
                                                 PurgerUtils::random_user();
                                             let before_caller_asset_bals: Span<Span<u128>> =
                                                 common::get_token_balances(
-                                                yangs, caller.into()
+                                                yangs, array![caller].span()
                                             );
                                             let (_, _, expected_compensation_value) = purger
                                                 .preview_absorb(target_trove);
@@ -1468,7 +1470,9 @@ mod TestPurger {
                                             );
                                             PurgerUtils::assert_received_assets(
                                                 before_caller_asset_bals,
-                                                common::get_token_balances(yangs, caller.into()),
+                                                common::get_token_balances(
+                                                    yangs, array![caller].span()
+                                                ),
                                                 expected_compensation,
                                                 10_u128, // error margin
                                                 'wrong caller asset balance',
@@ -1546,19 +1550,19 @@ mod TestPurger {
                                                 'wrong recipient trove value'
                                             );
                                         },
-                                        Option::None(_) => {
+                                        Option::None => {
                                             break;
                                         },
                                     };
                                 };
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1654,13 +1658,13 @@ mod TestPurger {
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1750,13 +1754,13 @@ mod TestPurger {
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -1869,7 +1873,7 @@ mod TestPurger {
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
                     PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };

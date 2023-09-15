@@ -1,7 +1,5 @@
 mod TestFlashmint {
     use starknet::ContractAddress;
-    use traits::Into;
-    use zeroable::Zeroable;
 
     use aura::core::flashmint::FlashMint;
 
@@ -9,7 +7,6 @@ mod TestFlashmint {
     use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
     use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{Wad, WAD_ONE};
 
@@ -28,11 +25,8 @@ mod TestFlashmint {
 
         // Check that max loan is correct
         let max_loan: u256 = flashmint.max_flash_loan(shrine);
-        let expected_max_loan: u256 = (Wad {
-            val: FlashmintUtils::YIN_TOTAL_SUPPLY
-            } * Wad {
-            val: FlashMint::FLASH_MINT_AMOUNT_PCT
-        })
+        let expected_max_loan: u256 = (Wad { val: FlashmintUtils::YIN_TOTAL_SUPPLY }
+            * Wad { val: FlashMint::FLASH_MINT_AMOUNT_PCT })
             .into();
         assert(max_loan == expected_max_loan, 'Incorrect max flash loan');
     }

@@ -1,8 +1,4 @@
 use math::Oneable;
-use option::OptionTrait;
-use starknet::StorageBaseAddress;
-use traits::{Into, PartialEq, TryInto};
-use zeroable::Zeroable;
 
 
 use aura::utils::wadray;
@@ -11,7 +7,7 @@ use aura::utils::wadray::{Ray, RAY_ONE, Wad};
 const HALF_PRIME: felt252 =
     1809251394333065606848661391547535052811553607665798349986546028067936010240;
 
-#[derive(Copy, Drop, Serde, storage_access::StorageAccess)]
+#[derive(Copy, Drop, Serde, starknet::Store)]
 struct SignedRay {
     val: u128,
     sign: bool
@@ -111,22 +107,22 @@ impl SignedRayOneable of Oneable<SignedRay> {
 
     #[inline(always)]
     fn is_one(self: SignedRay) -> bool {
-        self.val == RAY_ONE & !self.sign
+        self.val == RAY_ONE && !self.sign
     }
 
     #[inline(always)]
     fn is_non_one(self: SignedRay) -> bool {
-        self.val != RAY_ONE | self.sign
+        self.val != RAY_ONE || self.sign
     }
 }
 
 impl SignedRayPartialEq of PartialEq<SignedRay> {
-    fn eq(lhs: SignedRay, rhs: SignedRay) -> bool {
-        lhs.val == rhs.val & lhs.sign == rhs.sign
+    fn eq(lhs: @SignedRay, rhs: @SignedRay) -> bool {
+        *lhs.val == *rhs.val && *lhs.sign == *rhs.sign
     }
 
-    fn ne(lhs: SignedRay, rhs: SignedRay) -> bool {
-        lhs.val != rhs.val | lhs.sign != rhs.sign
+    fn ne(lhs: @SignedRay, rhs: @SignedRay) -> bool {
+        *lhs.val != *rhs.val || *lhs.sign != *rhs.sign
     }
 }
 

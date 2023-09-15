@@ -1,16 +1,11 @@
 mod ControllerUtils {
     use debug::PrintTrait;
-    use array::ArrayTrait;
-    use option::OptionTrait;
     use starknet::{
-        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_const,
-        contract_address_to_felt252, contract_address_try_from_felt252, deploy_syscall,
-        get_block_timestamp, SyscallResultTrait
+        ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
+        contract_address_try_from_felt252, deploy_syscall, get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
-    use traits::{Default, Into};
-    use zeroable::Zeroable;
 
     use aura::core::controller::Controller;
     use aura::core::roles::ShrineRoles;
@@ -26,7 +21,7 @@ mod ControllerUtils {
     use aura::tests::shrine::utils::ShrineUtils;
 
     // Controller update interval 
-    const ONE_HOUR: u64 = 3600; // 1 hour
+    const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
 
     // Default controller parameters
     const P_GAIN: u128 = 100000000000000000000000000000; // 100 * RAY_ONE
@@ -43,27 +38,20 @@ mod ControllerUtils {
         contract_address_try_from_felt252('controller admin').unwrap()
     }
 
-    #[inline(always)]
-    fn bad_guy() -> ContractAddress {
-        contract_address_try_from_felt252('bad guy').unwrap()
-    }
-
-
     fn deploy_controller() -> (IControllerDispatcher, IShrineDispatcher) {
         let shrine_addr: ContractAddress = ShrineUtils::shrine_deploy();
         ShrineUtils::make_root(shrine_addr, ShrineUtils::admin());
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin()));
-        calldata.append(contract_address_to_felt252(shrine_addr));
-        calldata.append(P_GAIN.into());
-        //calldata.append(1); // for `sign=true
-        calldata.append(I_GAIN.into());
-        //calldata.append(1); // for `sign=true
-        calldata.append(ALPHA_P.into());
-        calldata.append(BETA_P.into());
-        calldata.append(ALPHA_I.into());
-        calldata.append(BETA_I.into());
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()),
+            contract_address_to_felt252(shrine_addr),
+            P_GAIN.into(),
+            I_GAIN.into(),
+            ALPHA_P.into(),
+            BETA_P.into(),
+            ALPHA_I.into(),
+            BETA_I.into()
+        ];
 
         let controller_class_hash: ClassHash = class_hash_try_from_felt252(
             Controller::TEST_CLASS_HASH
@@ -80,11 +68,8 @@ mod ControllerUtils {
         set_contract_address(ContractAddressZeroable::zero());
 
         (
-            IControllerDispatcher {
-                contract_address: controller_addr
-                }, IShrineDispatcher {
-                contract_address: shrine_addr
-            }
+            IControllerDispatcher { contract_address: controller_addr },
+            IShrineDispatcher { contract_address: shrine_addr }
         )
     }
 
@@ -104,5 +89,4 @@ mod ControllerUtils {
     fn fast_forward_by_x_minutes(x: u64) {
         set_block_timestamp(get_block_timestamp() + x * 60);
     }
-    
 }

@@ -1,17 +1,12 @@
 mod AbsorberUtils {
-    use array::{ArrayTrait, SpanTrait};
     use cmp::min;
     use integer::BoundedU256;
-    use option::OptionTrait;
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
-        SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
-    use traits::{Default, Into, TryInto};
-    use zeroable::Zeroable;
 
     use aura::core::absorber::Absorber;
     use aura::core::roles::AbsorberRoles;
@@ -26,8 +21,8 @@ mod AbsorberUtils {
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
     use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::{AssetBalance, DistributionInfo, Reward};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::types::{AssetBalance, DistributionInfo, Reward};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE, WAD_SCALE};
 
@@ -48,29 +43,30 @@ mod AbsorberUtils {
     const AURA_BLESS_AMT: u128 = 1000000000000000000000; // 1_000 (Wad)
     const VEAURA_BLESS_AMT: u128 = 990000000000000000000; // 990 (Wad)
 
-    const REMOVAL_LIMIT: u128 = 900000000000000000000000000; // 90% (Ray)
-
     #[inline(always)]
     fn provider_asset_amts() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(20 * WAD_ONE); // 10 (Wad) - ETH
-        asset_amts.append(100000000); // 1 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![
+            20 * WAD_ONE, // 10 (Wad) - ETH
+             100000000, // 1 (10 ** 8) - BTC
+        ];
         asset_amts.span()
     }
 
     #[inline(always)]
     fn first_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(1230000000000000000); // 1.23 (Wad) - ETH
-        asset_amts.append(23700000); // 0.237 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![
+            1230000000000000000, // 1.23 (Wad) - ETH
+             23700000, // 0.237 (10 ** 8) - BTC
+        ];
         asset_amts.span()
     }
 
     #[inline(always)]
     fn second_update_assets() -> Span<u128> {
-        let mut asset_amts: Array<u128> = Default::default();
-        asset_amts.append(572000000000000000); // 0.572 (Wad) - ETH
-        asset_amts.append(65400000); // 0.654 (10 ** 8) - BTC
+        let mut asset_amts: Array<u128> = array![
+            572000000000000000, // 0.572 (Wad) - ETH
+             65400000, // 0.654 (10 ** 8) - BTC
+        ];
         asset_amts.span()
     }
 
@@ -110,11 +106,11 @@ mod AbsorberUtils {
 
         let admin: ContractAddress = admin();
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(shrine.contract_address));
-        calldata.append(contract_address_to_felt252(sentinel.contract_address));
-        calldata.append(REMOVAL_LIMIT.into());
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin),
+            contract_address_to_felt252(shrine.contract_address),
+            contract_address_to_felt252(sentinel.contract_address),
+        ];
 
         let absorber_class_hash: ClassHash = class_hash_try_from_felt252(Absorber::TEST_CLASS_HASH)
             .unwrap();
@@ -140,17 +136,15 @@ mod AbsorberUtils {
 
     // Convenience fixture for reward token addresses constants
     fn reward_tokens_deploy() -> Span<ContractAddress> {
-        let mut reward_tokens: Array<ContractAddress> = Default::default();
-        reward_tokens.append(aura_token_deploy());
-        reward_tokens.append(veaura_token_deploy());
+        let mut reward_tokens: Array<ContractAddress> = array![
+            aura_token_deploy(), veaura_token_deploy(),
+        ];
         reward_tokens.span()
     }
 
     // Convenience fixture for reward amounts
     fn reward_amts_per_blessing() -> Span<u128> {
-        let mut bless_amts: Array<u128> = Default::default();
-        bless_amts.append(AURA_BLESS_AMT);
-        bless_amts.append(VEAURA_BLESS_AMT);
+        let mut bless_amts: Array<u128> = array![AURA_BLESS_AMT, VEAURA_BLESS_AMT,];
         bless_amts.span()
     }
 
@@ -162,11 +156,12 @@ mod AbsorberUtils {
         bless_amt: u128,
         mint_to_blesser: bool
     ) -> ContractAddress {
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin()));
-        calldata.append(contract_address_to_felt252(asset));
-        calldata.append(contract_address_to_felt252(absorber.contract_address));
-        calldata.append(bless_amt.into());
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()),
+            contract_address_to_felt252(asset),
+            contract_address_to_felt252(absorber.contract_address),
+            bless_amt.into(),
+        ];
 
         let mock_blesser_class_hash: ClassHash = class_hash_try_from_felt252(
             MockBlesser::TEST_CLASS_HASH
@@ -200,7 +195,7 @@ mod AbsorberUtils {
                     );
                     blessers.append(blesser);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -221,7 +216,7 @@ mod AbsorberUtils {
                 Option::Some(token) => {
                     absorber.set_reward(*token, *blessers.pop_front().unwrap(), true);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -302,11 +297,10 @@ mod AbsorberUtils {
     ) -> u64 {
         common::fund_user(provider, yangs, yang_asset_amts);
         // Additional amount for testing subsequent provision
-
         let trove: u64 = common::open_trove_helper(
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
-        
+
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
@@ -386,7 +380,7 @@ mod AbsorberUtils {
                     let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
                     yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -436,7 +430,10 @@ mod AbsorberUtils {
                     let absorbed_amt: u128 = *absorbed_amts.pop_front().unwrap();
                     let after_provider_bal: u128 = IERC20Dispatcher {
                         contract_address: *asset.address
-                    }.balance_of(provider).try_into().unwrap();
+                    }
+                        .balance_of(provider)
+                        .try_into()
+                        .unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
                     let expected_bal: u128 = before_bal + absorbed_amt;
@@ -450,7 +447,7 @@ mod AbsorberUtils {
                         absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -498,7 +495,10 @@ mod AbsorberUtils {
                     let blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
                     let after_provider_bal: u128 = IERC20Dispatcher {
                         contract_address: *asset.address
-                    }.balance_of(provider).try_into().unwrap();
+                    }
+                        .balance_of(provider)
+                        .try_into()
+                        .unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into()
                         + blessed_amt.val;
@@ -515,7 +515,7 @@ mod AbsorberUtils {
                         'wrong preview rewarded amount'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -553,7 +553,7 @@ mod AbsorberUtils {
                         'wrong provider cumulative'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -596,14 +596,15 @@ mod AbsorberUtils {
                     let expected_blessed_amt: Wad = wadray::rmul_wr(
                         reward_amt, blessings_multiplier
                     );
-                    let expected_amt_per_share: Wad = expected_blessed_amt / (total_shares - Absorber::INITIAL_SHARES.into());
+                    let expected_amt_per_share: Wad = expected_blessed_amt
+                        / (total_shares - Absorber::INITIAL_SHARES.into());
 
                     assert(
                         reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
                         'wrong reward cumulative'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };
@@ -643,7 +644,7 @@ mod AbsorberUtils {
                         'wrong start reward cumulative'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -686,7 +687,7 @@ mod AbsorberUtils {
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };

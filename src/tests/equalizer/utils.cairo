@@ -1,10 +1,8 @@
 mod EqualizerUtils {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Default, Into};
+    use array::ArrayTrait;
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
@@ -17,8 +15,6 @@ mod EqualizerUtils {
     use aura::interfaces::IEqualizer::{IEqualizerDispatcher, IEqualizerDispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::serde;
-    use aura::utils::wadray;
     use aura::utils::wadray::Ray;
 
     use aura::tests::shrine::utils::ShrineUtils;
@@ -28,50 +24,50 @@ mod EqualizerUtils {
     //
 
     fn initial_recipients() -> Span<ContractAddress> {
-        let mut recipients: Array<ContractAddress> = Default::default();
-        recipients.append(contract_address_const::<0x12341234>());
-        recipients.append(contract_address_const::<0x23412341>());
-        recipients.append(contract_address_const::<0x34123412>());
-
+        let mut recipients: Array<ContractAddress> = array![
+            contract_address_try_from_felt252('recipient 1').unwrap(),
+            contract_address_try_from_felt252('recipient 2').unwrap(),
+            contract_address_try_from_felt252('recipient 3').unwrap(),
+        ];
         recipients.span()
     }
 
     fn new_recipients() -> Span<ContractAddress> {
-        let mut recipients: Array<ContractAddress> = Default::default();
-        recipients.append(contract_address_const::<0x34563456>());
-        recipients.append(contract_address_const::<0x45634563>());
-        recipients.append(contract_address_const::<0x56345634>());
-        recipients.append(contract_address_const::<0x63456345>());
-
+        let mut recipients: Array<ContractAddress> = array![
+            contract_address_try_from_felt252('new recipient 1').unwrap(),
+            contract_address_try_from_felt252('new recipient 2').unwrap(),
+            contract_address_try_from_felt252('new recipient 3').unwrap(),
+            contract_address_try_from_felt252('new recipient 4').unwrap(),
+        ];
         recipients.span()
     }
 
     fn initial_percentages() -> Span<Ray> {
-        let mut percentages: Array<Ray> = Default::default();
-        percentages.append(150000000000000000000000000_u128.into()); // 15% (Ray)
-        percentages.append(500000000000000000000000000_u128.into()); // 50% (Ray)
-        percentages.append(350000000000000000000000000_u128.into()); // 35% (Ray)
-
+        let mut percentages: Array<Ray> = array![
+            150000000000000000000000000_u128.into(), // 15% (Ray)
+            500000000000000000000000000_u128.into(), // 50% (Ray)
+            350000000000000000000000000_u128.into(), // 35% (Ray)
+        ];
         percentages.span()
     }
 
     fn new_percentages() -> Span<Ray> {
-        let mut percentages: Array<Ray> = Default::default();
-        percentages.append(125000000000000000000000000_u128.into()); // 12.5% (Ray)
-        percentages.append(372500000000000000000000000_u128.into()); // 37.25% (Ray)
-        percentages.append(216350000000000000000000000_u128.into()); // 21.635% (Ray)
-        percentages.append(286150000000000000000000000_u128.into()); // 28.615% (Ray)
-
+        let mut percentages: Array<Ray> = array![
+            125000000000000000000000000_u128.into(), // 12.5% (Ray)
+            372500000000000000000000000_u128.into(), // 37.25% (Ray)
+            216350000000000000000000000_u128.into(), // 21.635% (Ray)
+            286150000000000000000000000_u128.into(), // 28.615% (Ray)
+        ];
         percentages.span()
     }
 
     // Percentages do not add to 1
     fn invalid_percentages() -> Span<Ray> {
-        let mut percentages: Array<Ray> = Default::default();
-        percentages.append(150000000000000000000000000_u128.into()); // 15% (Ray)
-        percentages.append(500000000000000000000000000_u128.into()); // 50% (Ray)
-        percentages.append(350000000000000000000000001_u128.into()); // (35 + 1E-27)% (Ray)
-
+        let mut percentages: Array<Ray> = array![
+            150000000000000000000000000_u128.into(), // 15% (Ray)
+            500000000000000000000000000_u128.into(), // 50% (Ray)
+            350000000000000000000000001_u128.into(), // (35 + 1E-27)% (Ray)
+        ];
         percentages.span()
     }
 
@@ -82,16 +78,16 @@ mod EqualizerUtils {
     fn allocator_deploy(
         mut recipients: Span<ContractAddress>, mut percentages: Span<Ray>
     ) -> IAllocatorDispatcher {
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(ShrineUtils::admin()));
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(ShrineUtils::admin()), recipients.len().into(),
+        ];
 
-        calldata.append(recipients.len().into());
         loop {
             match recipients.pop_front() {
                 Option::Some(recipient) => {
                     calldata.append(contract_address_to_felt252(*recipient));
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -104,7 +100,7 @@ mod EqualizerUtils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -125,16 +121,19 @@ mod EqualizerUtils {
         equalizer_deploy_with_shrine(shrine.contract_address)
     }
 
-    fn equalizer_deploy_with_shrine(shrine: ContractAddress) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
+    fn equalizer_deploy_with_shrine(
+        shrine: ContractAddress
+    ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let allocator: IAllocatorDispatcher = allocator_deploy(
             initial_recipients(), initial_percentages()
         );
         let admin = ShrineUtils::admin();
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin));
-        calldata.append(contract_address_to_felt252(shrine));
-        calldata.append(contract_address_to_felt252(allocator.contract_address));
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin),
+            contract_address_to_felt252(shrine),
+            contract_address_to_felt252(allocator.contract_address),
+        ];
 
         let equalizer_class_hash: ClassHash = class_hash_try_from_felt252(
             Equalizer::TEST_CLASS_HASH
@@ -151,6 +150,10 @@ mod EqualizerUtils {
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        (IShrineDispatcher { contract_address: shrine }, IEqualizerDispatcher { contract_address: equalizer_addr }, allocator)
+        (
+            IShrineDispatcher { contract_address: shrine },
+            IEqualizerDispatcher { contract_address: equalizer_addr },
+            allocator
+        )
     }
 }

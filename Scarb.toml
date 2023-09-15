@@ -6,11 +6,5 @@ version = "0.1.0"
 [[target.starknet-contract]]
 sierra = true
 
-[scripts]
-fmt = "cairo-format --recursive src/"
-check_fmt = "cairo-format --recursive --check --print-parsing-errors src/"
-
-test = "cairo-test --starknet ."
-
 [dependencies]
-starknet = ">=1.1.0"
+starknet = ">=2.2.0"

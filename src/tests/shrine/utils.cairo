@@ -1,13 +1,11 @@
 mod ShrineUtils {
-    use array::{ArrayTrait, SpanTrait};
     use integer::{
         U128sFromFelt252Result, u128s_from_felt252, u128_safe_divmod, u128_try_as_non_zero
     };
-    use option::OptionTrait;
-    use traits::{Default, Into, TryInto};
     use starknet::{
-        contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
+        deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+        contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
+        SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -19,10 +17,8 @@ mod ShrineUtils {
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::exp::exp;
-    use aura::utils::serde;
-    use aura::utils::u256_conversions;
     use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WAD_ONE, WadZeroable};
+    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
     use aura::tests::common;
 
@@ -75,11 +71,11 @@ mod ShrineUtils {
     //
 
     fn admin() -> ContractAddress {
-        contract_address_const::<0x1337>()
+        contract_address_try_from_felt252('shrine admin').unwrap()
     }
 
     fn yin_user_addr() -> ContractAddress {
-        contract_address_const::<0x0004>()
+        contract_address_try_from_felt252('yin user').unwrap()
     }
 
     fn yang1_addr() -> ContractAddress {
@@ -95,7 +91,7 @@ mod ShrineUtils {
     }
 
     fn invalid_yang_addr() -> ContractAddress {
-        contract_address_const::<0xabcd>()
+        contract_address_try_from_felt252('invalid yang').unwrap()
     }
 
     //
@@ -143,27 +139,23 @@ mod ShrineUtils {
     // and terminates at yang ID 0. This affects which yang receives any rounding of
     // debt that falls below the rounding threshold.
     fn two_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang2_addr());
-        yang_addrs.append(yang1_addr());
+        let mut yang_addrs: Array<ContractAddress> = array![yang2_addr(), yang1_addr(),];
         yang_addrs.span()
     }
 
     fn three_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang3_addr());
-        yang_addrs.append(yang2_addr());
-        yang_addrs.append(yang1_addr());
+        let mut yang_addrs: Array<ContractAddress> = array![
+            yang3_addr(), yang2_addr(), yang1_addr(),
+        ];
         yang_addrs.span()
     }
 
     fn shrine_deploy() -> ContractAddress {
         set_block_timestamp(DEPLOYMENT_TIMESTAMP);
 
-        let mut calldata = Default::default();
-        calldata.append(contract_address_to_felt252(admin()));
-        calldata.append(YIN_NAME);
-        calldata.append(YIN_SYMBOL);
+        let mut calldata: Array<felt252> = array![
+            contract_address_to_felt252(admin()), YIN_NAME, YIN_SYMBOL,
+        ];
 
         let shrine_class_hash: ClassHash = class_hash_try_from_felt252(Shrine::TEST_CLASS_HASH)
             .unwrap();
@@ -175,9 +167,8 @@ mod ShrineUtils {
 
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         set_contract_address(admin());
-        IAccessControlDispatcher {
-            contract_address: shrine_addr
-        }.grant_role(ShrineRoles::all_roles(), user);
+        IAccessControlDispatcher { contract_address: shrine_addr }
+            .grant_role(ShrineRoles::all_roles(), user);
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -197,7 +188,6 @@ mod ShrineUtils {
         set_contract_address(admin());
 
         // Add yangs
-        
         shrine
             .add_yang(
                 yang1_addr(),
@@ -244,15 +234,9 @@ mod ShrineUtils {
         let yang3_addr: ContractAddress = yang3_addr();
         let yang3_feed: Span<Wad> = generate_yang_feed(yang3_start_price);
 
-        let mut yang_addrs: Array<ContractAddress> = Default::default();
-        yang_addrs.append(yang1_addr);
-        yang_addrs.append(yang2_addr);
-        yang_addrs.append(yang3_addr);
+        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr, yang2_addr, yang3_addr,];
 
-        let mut yang_feeds: Array<Span<Wad>> = Default::default();
-        yang_feeds.append(yang1_feed);
-        yang_feeds.append(yang2_feed);
-        yang_feeds.append(yang3_feed);
+        let mut yang_feeds: Array<Span<Wad>> = array![yang1_feed, yang2_feed, yang3_feed];
 
         let mut idx: u32 = 0;
         set_contract_address(admin());
@@ -287,7 +271,11 @@ mod ShrineUtils {
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
-            shrine, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into()
+            shrine,
+            FEED_LEN,
+            YANG1_START_PRICE.into(),
+            YANG2_START_PRICE.into(),
+            YANG3_START_PRICE.into()
         );
         shrine
     }
@@ -311,7 +299,7 @@ mod ShrineUtils {
     #[inline(always)]
     fn trove1_forge(shrine: IShrineDispatcher, amt: Wad) {
         set_contract_address(admin());
-        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, 0_u128.into());
+        shrine.forge(common::trove1_owner_addr(), common::TROVE_1, amt, WadZeroable::zero());
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
     }
@@ -343,7 +331,7 @@ mod ShrineUtils {
         let mut price: Wad = price.into();
         let mut idx: u64 = 0;
 
-        let price_hash: felt252 = hash::pedersen(price.val.into(), price.val.into());
+        let price_hash: felt252 = pedersen::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
             U128sFromFelt252Result::Narrow(i) => {
                 i
@@ -404,7 +392,7 @@ mod ShrineUtils {
                     cumulative_value += value;
                     cumulative_threshold += wadray::wmul_wr(value, threshold);
                 },
-                Option::None(_) => {
+                Option::None => {
                     break (
                         wadray::wdiv_rw(cumulative_threshold, cumulative_value), cumulative_value
                     );
@@ -475,7 +463,7 @@ mod ShrineUtils {
                         'array length mismatch'
                     );
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -500,11 +488,11 @@ mod ShrineUtils {
                 if j == yangs_count {
                     break ();
                 }
-                let yang_value: Wad = *yang_amts[j] * *yang_avg_prices[i][j];
+                let yang_value: Wad = *yang_amts[j] * *yang_avg_prices.at(i)[j];
                 total_avg_yang_value += yang_value;
 
                 let weighted_rate: Ray = wadray::wmul_rw(
-                    *yang_base_rates_history[i][j], yang_value
+                    *yang_base_rates_history.at(i)[j], yang_value
                 );
                 weighted_rate_sum += weighted_rate;
 
@@ -541,7 +529,7 @@ mod ShrineUtils {
 
     // Compound function for a single yang, within a single era
     fn compound_for_single_yang(
-        base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad, 
+        base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad,
     ) -> Wad {
         let intervals: u128 = (end_interval - start_interval).into();
         let t: Wad = (intervals * Shrine::TIME_INTERVAL_DIV_YEAR).into();
@@ -580,12 +568,18 @@ mod ShrineUtils {
         // Deposit 1000 of yang1
         shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
         // Mint 1 million yin (50% LTV at yang1's start price)
-        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(),
+                common::WHALE_TROVE,
+                WHALE_TROVE_FORGE_AMT.into(),
+                0_u128.into()
+            );
         set_contract_address(ContractAddressZeroable::zero());
     }
 
     fn recovery_mode_test_setup() -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher{contract_address: shrine_deploy()};
+        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy() };
         shrine_setup(shrine.contract_address);
 
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove
