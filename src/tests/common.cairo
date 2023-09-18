@@ -306,7 +306,6 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 
 //
 // Helpers for events
-// From https://github.com/OpenZeppelin/cairo-contracts/blob/cairo-2/src/tests/utils.cairo
 //
 
 fn assert_events_emitted<
