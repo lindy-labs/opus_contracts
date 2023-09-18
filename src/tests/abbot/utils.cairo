@@ -7,8 +7,7 @@ mod AbbotUtils {
     use starknet::testing::set_contract_address;
 
     use aura::core::abbot::Abbot;
-    use aura::core::roles::SentinelRoles;
-    use aura::core::roles::ShrineRoles;
+    use aura::core::roles::{SentinelRoles, ShrineRoles};
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
     use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};

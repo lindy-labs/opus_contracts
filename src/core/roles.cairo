@@ -145,13 +145,28 @@ mod ShrineRoles {
     }
 
     #[inline(always)]
+    fn controller() -> u128 {
+        SET_MULTIPLIER
+    }
+
+    #[inline(always)]
     fn default_admin_role() -> u128 {
         ADD_YANG + SET_DEBT_CEILING + SET_THRESHOLD + KILL + UPDATE_RATES
     }
 
     #[inline(always)]
+    fn equalizer() -> u128 {
+        INJECT
+    }
+
+    #[inline(always)]
     fn flash_mint() -> u128 {
         INJECT + EJECT
+    }
+
+    #[inline(always)]
+    fn oracle() -> u128 {
+        ADVANCE
     }
 
     #[inline(always)]

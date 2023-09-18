@@ -51,7 +51,7 @@ mod TestFlashmint {
             true, FlashBorrower::VALID_USAGE
         );
 
-        // `borrower` contains a check that ensures that `flashmint` actually transferred 
+        // `borrower` contains a check that ensures that `flashmint` actually transferred
         // the full flash_loan amount
         flashmint.flash_loan(borrower, shrine, 1_u128.into(), calldata);
         assert(yin.balance_of(borrower).is_zero(), 'Wrong yin bal after flashmint 1');

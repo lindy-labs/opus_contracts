@@ -146,7 +146,7 @@ mod EqualizerUtils {
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine
         };
-        shrine_ac.grant_role(ShrineRoles::INJECT, equalizer_addr);
+        shrine_ac.grant_role(ShrineRoles::equalizer(), equalizer_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 
