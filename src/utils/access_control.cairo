@@ -143,7 +143,7 @@ mod AccessControl {
     }
 
     fn write_admin(admin: ContractAddress) {
-        StoreContractAddress::write(0, admin_storage_base_addr(), admin);
+        StoreContractAddress::write(0, admin_storage_base_addr(), admin).expect('AC: write_admin');
     }
 
     fn read_pending_admin() -> ContractAddress {
@@ -151,7 +151,8 @@ mod AccessControl {
     }
 
     fn write_pending_admin(admin: ContractAddress) {
-        StoreContractAddress::write(0, pending_admin_storage_base_addr(), admin);
+        StoreContractAddress::write(0, pending_admin_storage_base_addr(), admin)
+            .expect('AC: write_pending_admin');
     }
 
     fn read_roles(account: ContractAddress) -> u128 {
@@ -165,7 +166,7 @@ mod AccessControl {
         let base = starknet::storage_base_address_from_felt252(
             hash::LegacyHash::hash(ROLES_STORAGE_BASE_ADDR, account)
         );
-        StoreU128::write(0, base, roles);
+        StoreU128::write(0, base, roles).expect('AC: write_roles');
     }
 
     //
