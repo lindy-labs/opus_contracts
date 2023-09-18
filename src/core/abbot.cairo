@@ -47,12 +47,15 @@ mod Abbot {
 
     #[derive(Drop, starknet::Event)]
     struct TroveOpened {
+        #[key]
         user: ContractAddress,
+        #[key]
         trove_id: u64
     }
 
     #[derive(Drop, starknet::Event)]
     struct TroveClosed {
+        #[key]
         trove_id: u64
     }
 
