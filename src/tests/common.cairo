@@ -361,3 +361,38 @@ fn assert_events_emitted<
         };
     };
 }
+
+//
+// Debug helpers
+//
+
+impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
+    fn print(self: Span<T>) {
+        let mut copy = self;
+
+        '['.print();
+        loop {
+            match copy.pop_front() {
+                Option::Some(item) => {
+                    (*item).print();
+                    if copy.len() > 0 {
+                        ', '.print();
+                    }
+                },
+                Option::None => {
+                    break;
+                }
+            };
+        };
+        ']'.print();
+    }
+}
+
+impl ArrayPrintImpl<
+    T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
+> of PrintTrait<Array<T>> {
+    fn print(self: Array<T>) {
+        let copy: Span<T> = self.span();
+        copy.print();
+    }
+}
