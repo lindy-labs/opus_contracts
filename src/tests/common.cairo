@@ -325,6 +325,9 @@ fn assert_events_emitted<
             Option::Some(raw_event) => {
                 let (mut keys, mut data) = raw_event;
                 let event: Option<T> = starknet::Event::deserialize(ref keys, ref data);
+
+                // Only append the event if it is defined in the contract
+                // This excludes access control events that are manually emitted.
                 if event.is_some() {
                     emitted_events.append(event.unwrap());
                 }

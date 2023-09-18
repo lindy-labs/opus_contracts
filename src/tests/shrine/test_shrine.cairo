@@ -5,7 +5,7 @@ mod TestShrine {
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
-    use starknet::testing::{pop_log, set_block_timestamp, set_contract_address};
+    use starknet::testing::{set_block_timestamp, set_contract_address};
 
     use aura::core::shrine::Shrine;
     use aura::core::roles::ShrineRoles;
