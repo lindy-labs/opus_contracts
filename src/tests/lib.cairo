@@ -8,6 +8,7 @@ mod erc20;
 mod external;
 mod flashmint;
 mod gate;
+mod purger;
 mod sentinel;
 mod shrine;
 mod utils;
