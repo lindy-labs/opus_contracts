@@ -3,7 +3,7 @@ mod tests {
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252
     };
-    use starknet::testing::set_caller_address;
+    use starknet::testing::{pop_log_raw, set_caller_address};
 
     use aura::utils::access_control::AccessControl;
 
@@ -39,11 +39,43 @@ mod tests {
         AccessControl::grant_role(R2, u);
     }
 
+    fn drop_events(count: u8) {
+        let mut idx = 0;
+        loop {
+            if idx == count {
+                break;
+            }
+            pop_log_raw(ContractAddressZeroable::zero());
+
+            idx += 1;
+        };
+    }
+
     #[test]
     #[available_gas(10000000)]
     fn test_initializer() {
-        AccessControl::initializer(admin());
-        assert(AccessControl::get_admin() == admin(), 'initialize wrong admin');
+        let admin = admin();
+        AccessControl::initializer(admin);
+        assert(AccessControl::get_admin() == admin, 'initialize wrong admin');
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ADMIN_CHANGED_EVENT_KEY,
+            'should be AdminChanged'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap().is_zero(),
+            'should be zero addr'
+        );
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == admin,
+            'should be admin'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        assert(pop_log_raw(ContractAddressZeroable::zero()).is_none(), 'unexpected event');
     }
 
     #[test]
@@ -56,6 +88,38 @@ mod tests {
         assert(AccessControl::has_role(R1, u), 'role R1 not granted');
         assert(AccessControl::has_role(R2, u), 'role R2 not granted');
         assert(AccessControl::get_roles(u) == R1 + R2, 'not all roles granted');
+
+        drop_events(1);
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ROLE_GRANTED_EVENT_KEY,
+            'should be RoleGranted'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert((*data.pop_front().unwrap()).try_into().unwrap() == R1, 'should be R1');
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == u,
+            'should be user'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ROLE_GRANTED_EVENT_KEY,
+            'should be RoleGranted'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert((*data.pop_front().unwrap()).try_into().unwrap() == R2, 'should be R2');
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == u,
+            'should be user'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        assert(pop_log_raw(ContractAddressZeroable::zero()).is_none(), 'unexpected event');
     }
 
     #[test]
@@ -90,6 +154,24 @@ mod tests {
         assert(AccessControl::has_role(R1, u) == false, 'role R1 not revoked');
         assert(AccessControl::has_role(R2, u), 'role R2 not kept');
         assert(AccessControl::get_roles(u) == R2, 'incorrect roles');
+
+        drop_events(3);
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ROLE_REVOKED_EVENT_KEY,
+            'should be RoleRevoked'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert((*data.pop_front().unwrap()).try_into().unwrap() == R1, 'should be R1');
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == u,
+            'should be user'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        assert(pop_log_raw(ContractAddressZeroable::zero()).is_none(), 'unexpected event');
     }
 
     #[test]
@@ -112,7 +194,43 @@ mod tests {
         AccessControl::renounce_role(R1);
         assert(AccessControl::has_role(R1, u) == false, 'R1 role kept');
         // renouncing non-granted role should pass
-        AccessControl::renounce_role(64);
+        let non_existent_role: u128 = 64;
+        AccessControl::renounce_role(non_existent_role);
+
+        drop_events(3);
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ROLE_REVOKED_EVENT_KEY,
+            'should be RoleGranted'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert((*data.pop_front().unwrap()).try_into().unwrap() == R1, 'should be R1');
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == u,
+            'should be user'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ROLE_REVOKED_EVENT_KEY,
+            'should be RoleRevoked'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert(
+            (*data.pop_front().unwrap()).try_into().unwrap() == non_existent_role,
+            'should be non-existent role'
+        );
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == u,
+            'should be user'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        assert(pop_log_raw(ContractAddressZeroable::zero()).is_none(), 'unexpected event');
     }
 
     #[test]
@@ -123,6 +241,23 @@ mod tests {
         let pending_admin = user();
         AccessControl::set_pending_admin(pending_admin);
         assert(AccessControl::get_pending_admin() == pending_admin, 'pending admin not changed');
+
+        drop_events(1);
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::NEW_PENDING_ADMIN_EVENT_KEY,
+            'should be RoleGranted'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == pending_admin,
+            'should be user'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        assert(pop_log_raw(ContractAddressZeroable::zero()).is_none(), 'unexpected event');
     }
 
     #[test]
@@ -151,6 +286,27 @@ mod tests {
             AccessControl::get_pending_admin() == ContractAddressZeroable::zero(),
             'pending admin not reset'
         );
+
+        drop_events(2);
+
+        let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();
+        assert(
+            *keys.pop_front().unwrap() == AccessControl::ADMIN_CHANGED_EVENT_KEY,
+            'should be AdminChanged'
+        );
+        assert(keys.len().is_zero(), 'keys should be empty');
+
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == current_admin,
+            'should be current admin'
+        );
+        assert(
+            contract_address_try_from_felt252(*data.pop_front().unwrap()).unwrap() == pending_admin,
+            'should be new admin'
+        );
+        assert(data.len().is_zero(), 'data should be empty');
+
+        assert(pop_log_raw(ContractAddressZeroable::zero()).is_none(), 'unexpected event');
     }
 
     #[test]
