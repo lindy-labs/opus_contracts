@@ -98,25 +98,20 @@ mod TestShrine {
         let expected_era: u64 = 1;
 
         let mut yang_addrs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
-        let mut start_prices: Array<Wad> = array![
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into(),
-        ];
-        let mut thresholds: Array<Ray> = array![
+        let mut start_prices: Span<Wad> = ShrineUtils::three_yang_start_prices();
+        let mut thresholds: Span<Ray> = array![
             ShrineUtils::YANG1_THRESHOLD.into(),
             ShrineUtils::YANG2_THRESHOLD.into(),
             ShrineUtils::YANG3_THRESHOLD.into(),
-        ];
-        let mut base_rates: Array<Ray> = array![
+        ]
+            .span();
+        let mut base_rates: Span<Ray> = array![
             ShrineUtils::YANG1_BASE_RATE.into(),
             ShrineUtils::YANG2_BASE_RATE.into(),
             ShrineUtils::YANG3_BASE_RATE.into(),
-        ];
+        ]
+            .span();
 
-        let mut start_prices = start_prices.span();
-        let mut thresholds = thresholds.span();
-        let mut base_rates = base_rates.span();
         let mut yang_id = 1;
         loop {
             match yang_addrs.pop_front() {
