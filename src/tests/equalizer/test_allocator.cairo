@@ -55,8 +55,8 @@ mod TestAllocator {
     #[available_gas(20000000000)]
     #[should_panic(expected: ('AL: No recipients', 'CONSTRUCTOR_FAILED'))]
     fn test_allocator_deploy_no_recipients_fail() {
-        let recipients: Array<ContractAddress> = Default::default();
-        let percentages: Array<Ray> = Default::default();
+        let recipients: Array<ContractAddress> = ArrayTrait::new();
+        let percentages: Array<Ray> = ArrayTrait::new();
 
         let allocator = EqualizerUtils::allocator_deploy(recipients.span(), percentages.span());
     }
@@ -113,8 +113,8 @@ mod TestAllocator {
         );
 
         set_contract_address(ShrineUtils::admin());
-        let recipients: Array<ContractAddress> = Default::default();
-        let percentages: Array<Ray> = Default::default();
+        let recipients: Array<ContractAddress> = ArrayTrait::new();
+        let percentages: Array<Ray> = ArrayTrait::new();
         allocator.set_allocation(recipients.span(), percentages.span());
     }
 

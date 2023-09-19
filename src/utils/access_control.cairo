@@ -180,7 +180,7 @@ mod AccessControl {
     // all of the events emitted from this module take up to 2 data values
     // so we pass them separately into `emit`
     fn emit(event_key: felt252, event_data_1: felt252, event_data_2: Option<felt252>) {
-        let mut data: Array<felt252> = Default::default();
+        let mut data: Array<felt252> = ArrayTrait::new();
         data.append(event_data_1);
 
         match event_data_2 {
@@ -190,7 +190,7 @@ mod AccessControl {
             Option::None => {},
         };
 
-        let mut keys: Array<felt252> = Default::default();
+        let mut keys: Array<felt252> = ArrayTrait::new();
         keys.append(event_key);
         starknet::emit_event_syscall(keys.span(), data.span()).unwrap_syscall();
     }

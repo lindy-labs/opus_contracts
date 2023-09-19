@@ -1022,7 +1022,7 @@ mod Shrine {
                     trove_id, trove_yang_balances, WadZeroable::zero()
                 );
 
-            let mut added_yangs: Array<YangBalance> = Default::default();
+            let mut added_yangs: Array<YangBalance> = ArrayTrait::new();
             if updated_trove_yang_balances.is_some() {
                 let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
                 loop {
@@ -1188,7 +1188,7 @@ mod Shrine {
         // Note that zero values are added to the return array because downstream
         // computation assumes the full array of yangs.
         fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = Default::default();
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
 
             let mut current_yang_id: u32 = START_YANG_IDX;
             let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
@@ -1207,7 +1207,7 @@ mod Shrine {
         // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
         // Starts from yang ID 1.
         fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = Default::default();
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
 
             let mut current_yang_id: u32 = START_YANG_IDX;
             let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
@@ -1674,8 +1674,8 @@ mod Shrine {
             //    yang3 total yang amounts have decremented, but the yang prices have not been updated.
             //
             // Note that these two arrays should be equal in length at the end of the main loop.
-            let mut new_yang_totals: Array<YangBalance> = Default::default();
-            let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
+            let mut new_yang_totals: Array<YangBalance> = ArrayTrait::new();
+            let mut updated_trove_yang_balances: Array<YangBalance> = ArrayTrait::new();
 
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (_, trove_value) = self
@@ -2189,7 +2189,7 @@ mod Shrine {
                                 // in the previous loop can also be used to index into the array
                                 // for the correct yang ID with 1 offset.
                                 let mut updated_trove_yang_balances: Array<YangBalance> =
-                                    Default::default();
+                                    ArrayTrait::new();
                                 let mut yang_id: u32 = START_YANG_IDX;
                                 let tmp_loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
                                 loop {

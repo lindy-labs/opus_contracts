@@ -235,7 +235,7 @@ mod Absorber {
             let rewards_count: u8 = self.rewards_count.read();
 
             let mut reward_id: u8 = REWARDS_LOOP_START;
-            let mut rewards: Array<Reward> = Default::default();
+            let mut rewards: Array<Reward> = ArrayTrait::new();
 
             loop {
                 if reward_id == REWARDS_LOOP_START + rewards_count {
@@ -880,7 +880,7 @@ mod Absorber {
         fn get_absorbed_assets_for_provider_helper(
             self: @ContractState, provider: ContractAddress, provision: Provision,
         ) -> Span<AssetBalance> {
-            let mut absorbed_assets: Array<AssetBalance> = Default::default();
+            let mut absorbed_assets: Array<AssetBalance> = ArrayTrait::new();
 
             let current_absorption_id: u32 = self.absorptions_count.read();
             let provided_absorption_id: u32 = self.provider_last_absorption.read(provider);
@@ -1011,7 +1011,7 @@ mod Absorber {
             let total_recipient_shares: Wad = total_shares - INITIAL_SHARES.into();
 
             let epoch: u32 = self.current_epoch.read();
-            let mut blessed_assets: Array<AssetBalance> = Default::default();
+            let mut blessed_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut current_rewards_id: u8 = 0;
 
             let loop_end: u8 = self.rewards_count.read() + REWARDS_LOOP_START;
@@ -1069,7 +1069,7 @@ mod Absorber {
         fn get_provider_accumulated_rewards(
             self: @ContractState, provider: ContractAddress, provision: Provision
         ) -> Span<AssetBalance> {
-            let mut accumulated_reward_assets: Array<AssetBalance> = Default::default();
+            let mut accumulated_reward_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut current_rewards_id: u8 = REWARDS_LOOP_START;
 
             // Return empty arrays if the provider has no shares
@@ -1186,7 +1186,7 @@ mod Absorber {
             current_epoch: u32,
             mut accumulated_assets: Span<AssetBalance>
         ) -> Span<AssetBalance> {
-            let mut updated_assets: Array<AssetBalance> = Default::default();
+            let mut updated_assets: Array<AssetBalance> = ArrayTrait::new();
 
             loop {
                 match accumulated_assets.pop_front() {

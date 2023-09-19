@@ -539,7 +539,7 @@ mod TestController {
         controller.set_p_gain((1000000_u128 * wadray::RAY_ONE).into()); // 1,000,000 (ray)
 
         // Loading our ground truth into arrays for comparison
-        let mut gt_multipliers: Array<Ray> = Default::default();
+        let mut gt_multipliers: Array<Ray> = ArrayTrait::new();
 
         let mut prices: Array<Wad> = array![
             1010000000000000000_u128.into(),

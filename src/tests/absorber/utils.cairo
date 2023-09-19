@@ -185,7 +185,7 @@ mod AbsorberUtils {
     fn deploy_blesser_for_rewards(
         absorber: IAbsorberDispatcher, mut assets: Span<ContractAddress>, mut bless_amts: Span<u128>
     ) -> Span<ContractAddress> {
-        let mut blessers: Array<ContractAddress> = Default::default();
+        let mut blessers: Array<ContractAddress> = ArrayTrait::new();
 
         loop {
             match assets.pop_front() {

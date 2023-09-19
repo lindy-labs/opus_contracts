@@ -109,7 +109,7 @@ mod Caretaker {
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            let mut releasable_assets: Array<AssetBalance> = Default::default();
+            let mut releasable_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
 
             loop {
@@ -146,7 +146,7 @@ mod Caretaker {
 
             let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
 
-            let mut reclaimable_assets: Array<AssetBalance> = Default::default();
+            let mut reclaimable_assets: Array<AssetBalance> = ArrayTrait::new();
             let caretaker = get_contract_address();
             let mut yangs_copy = yangs;
             loop {
@@ -259,7 +259,7 @@ mod Caretaker {
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            let mut released_assets: Array<AssetBalance> = Default::default();
+            let mut released_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
 
             // Loop over yangs deposited in trove and transfer to trove owner

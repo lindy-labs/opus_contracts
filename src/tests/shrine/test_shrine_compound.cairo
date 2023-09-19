@@ -711,9 +711,9 @@ mod TestShrineCompound {
             i += 1;
         };
 
-        let mut avg_multipliers: Array<Ray> = Default::default();
+        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
 
-        let mut avg_yang_prices_by_era: Array<Span<Wad>> = Default::default();
+        let mut avg_yang_prices_by_era: Array<Span<Wad>> = ArrayTrait::new();
 
         // Deposit yangs into trove and forge debt
         set_contract_address(ShrineUtils::admin());
@@ -759,7 +759,7 @@ mod TestShrineCompound {
             let era_end_interval: u64 = era_start_interval + BASE_RATE_UPDATE_SPACING;
 
             // Calculate average price of yangs over the era for calculating the compounded interest
-            let mut avg_yang_prices_for_era: Array<Wad> = Default::default();
+            let mut avg_yang_prices_for_era: Array<Wad> = ArrayTrait::new();
             let yang1_avg_price: Wad = ShrineUtils::get_avg_yang_price(
                 shrine, yang1_addr, era_start_interval, era_end_interval
             );

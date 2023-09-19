@@ -373,7 +373,7 @@ mod Purger {
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-            let mut freed_assets: Array<AssetBalance> = Default::default();
+            let mut freed_assets: Array<AssetBalance> = ArrayTrait::new();
 
             let mut yangs_copy: Span<ContractAddress> = yangs;
 

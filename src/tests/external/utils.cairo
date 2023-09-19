@@ -69,7 +69,7 @@ mod PragmaUtils {
     //
 
     fn mock_pragma_deploy() -> IMockPragmaDispatcher {
-        let mut calldata: Array<felt252> = Default::default();
+        let mut calldata: Array<felt252> = ArrayTrait::new();
         let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(
             MockPragma::TEST_CLASS_HASH
         )

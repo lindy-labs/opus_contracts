@@ -75,8 +75,8 @@ mod Allocator {
         // Returns a tuple of ordered arrays of recipients' addresses and their respective
         // percentage share of newly minted surplus debt.
         fn get_allocation(self: @ContractState) -> (Span<ContractAddress>, Span<Ray>) {
-            let mut recipients: Array<ContractAddress> = Default::default();
-            let mut percentages: Array<Ray> = Default::default();
+            let mut recipients: Array<ContractAddress> = ArrayTrait::new();
+            let mut percentages: Array<Ray> = ArrayTrait::new();
 
             let mut idx: u32 = LOOP_START;
             let loop_end: u32 = self.recipients_count.read() + LOOP_START;

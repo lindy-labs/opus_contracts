@@ -66,7 +66,7 @@ fn non_zero_address() -> ContractAddress {
 
 impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
     fn into(self: ContractAddress) -> Span<ContractAddress> {
-        let mut tmp: Array<ContractAddress> = Default::default();
+        let mut tmp: Array<ContractAddress> = ArrayTrait::new();
         tmp.append(self);
         tmp.span()
     }
@@ -175,7 +175,7 @@ fn open_trove_helper(
 fn get_token_balances(
     mut tokens: Span<ContractAddress>, addresses: Span<ContractAddress>,
 ) -> Span<Span<u128>> {
-    let mut balances: Array<Span<u128>> = Default::default();
+    let mut balances: Array<Span<u128>> = ArrayTrait::new();
 
     loop {
         match tokens.pop_front() {
@@ -183,7 +183,7 @@ fn get_token_balances(
                 let token: IERC20Dispatcher = IERC20Dispatcher { contract_address: *token };
                 let decimals: u8 = token.decimals();
 
-                let mut yang_balances: Array<u128> = Default::default();
+                let mut yang_balances: Array<u128> = ArrayTrait::new();
                 let mut addresses_copy = addresses;
                 loop {
                     match addresses_copy.pop_front() {
@@ -248,7 +248,7 @@ fn combine_assets_and_amts(
     mut assets: Span<ContractAddress>, mut amts: Span<u128>
 ) -> Span<AssetBalance> {
     assert(assets.len() == amts.len(), 'combining diff array lengths');
-    let mut asset_balances: Array<AssetBalance> = Default::default();
+    let mut asset_balances: Array<AssetBalance> = ArrayTrait::new();
     loop {
         match assets.pop_front() {
             Option::Some(asset) => {
@@ -266,7 +266,7 @@ fn combine_assets_and_amts(
 
 // Helper function to multiply an array of values by a given percentage
 fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
-    let mut split_asset_amts: Array<u128> = Default::default();
+    let mut split_asset_amts: Array<u128> = ArrayTrait::new();
     loop {
         match asset_amts.pop_front() {
             Option::Some(asset_amt) => {
@@ -287,7 +287,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
 // Assumes the arrays are ordered identically.
 fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
     assert(lhs.len() == rhs.len(), 'combining diff array lengths');
-    let mut combined_asset_amts: Array<u128> = Default::default();
+    let mut combined_asset_amts: Array<u128> = ArrayTrait::new();
 
     loop {
         match lhs.pop_front() {

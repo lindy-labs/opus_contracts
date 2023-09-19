@@ -327,7 +327,7 @@ mod ShrineUtils {
     // Helper function to generate a price feed for a yang given a starting price
     // Currently increases the price at a fixed percentage per step
     fn generate_yang_feed(price: Wad) -> Span<Wad> {
-        let mut prices: Array<Wad> = Default::default();
+        let mut prices: Array<Wad> = ArrayTrait::new();
         let mut price: Wad = price.into();
         let mut idx: u64 = 0;
 
