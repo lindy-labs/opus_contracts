@@ -92,7 +92,7 @@ mod AbsorberUtils {
 
     //
     // Test setup helpers
-    // 
+    //
 
     fn absorber_deploy() -> (
         IShrineDispatcher,
@@ -119,7 +119,7 @@ mod AbsorberUtils {
 
         set_contract_address(admin);
         let absorber_ac = IAccessControlDispatcher { contract_address: absorber_addr };
-        absorber_ac.grant_role(AbsorberRoles::UPDATE, mock_purger());
+        absorber_ac.grant_role(AbsorberRoles::purger(), mock_purger());
         set_contract_address(ContractAddressZeroable::zero());
 
         let absorber = IAbsorberDispatcher { contract_address: absorber_addr };
@@ -313,7 +313,7 @@ mod AbsorberUtils {
 
     // Helper function to simulate an update by:
     // 1. Burning yin from the absorber
-    // 2. Transferring yang assets to the Absorber 
+    // 2. Transferring yang assets to the Absorber
     //
     // Arguments
     //
@@ -341,7 +341,7 @@ mod AbsorberUtils {
 
     // Helper function to simulate an update by:
     // 1. Burning yin from the absorber
-    // 2. Transferring yang assets to the Absorber 
+    // 2. Transferring yang assets to the Absorber
     //
     // Arguments
     //
@@ -396,24 +396,24 @@ mod AbsorberUtils {
     // Helper function to assert that:
     // 1. a provider has received the correct amount of absorbed assets; and
     // 2. the previewed amount returned by `preview_reap` is correct.
-    // 
+    //
     // Arguments
-    // 
+    //
     // - `absorber` - Deployed Absorber instance.
     //
     // - `provider` - Address of the provider.
     //
     // - `absorbed_amts` - Ordered list of the amount of assets absorbed.
-    // 
-    // - `before_balances` - Ordered list of the provider's absorbed asset token balances before 
+    //
+    // - `before_balances` - Ordered list of the provider's absorbed asset token balances before
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
-    // 
-    // - `preview_absorbed_assets` - Ordered list of `AssetBalance` struct representing the expected 
-    //    amount of absorbed assets the provider is entitled to withdraw based on `preview_reap`, 
+    //
+    // - `preview_absorbed_assets` - Ordered list of `AssetBalance` struct representing the expected
+    //    amount of absorbed assets the provider is entitled to withdraw based on `preview_reap`,
     //    in the token's decimal precision.
     //
     // - `error_margin` - Acceptable error margin
-    // 
+    //
     fn assert_provider_received_absorbed_assets(
         absorber: IAbsorberDispatcher,
         provider: ContractAddress,
@@ -457,24 +457,24 @@ mod AbsorberUtils {
     // Helper function to assert that:
     // 1. a provider has received the correct amount of reward tokens; and
     // 2. the previewed amount returned by `preview_reap` is correct.
-    // 
+    //
     // Arguments
-    // 
+    //
     // - `absorber` - Deployed Absorber instance.
     //
     // - `provider` - Address of the provider.
-    // 
+    //
     // - `reward_amts_per_blessing` - Ordered list of the reward token amount transferred to the absorber per blessing
-    // 
+    //
     // - `before_balances` - Ordered list of the provider's reward token balances before receiving the rewards
     //    in the format returned by `get_token_balances` [[token1_balance], [token2_balance], ...]
-    // 
-    // - `preview_rewarded_assets` - Ordered list of `AssetBalance` struct representing the expected amount of reward 
+    //
+    // - `preview_rewarded_assets` - Ordered list of `AssetBalance` struct representing the expected amount of reward
     //    tokens the provider is entitled to withdraw based on `preview_reap`, in the token's decimal precision.
     //
-    // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
+    // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total
     //    amount the provider should receive.
-    // 
+    //
     // - `error_margin` - Acceptable error margin
     //
     fn assert_provider_received_rewards(
@@ -522,15 +522,15 @@ mod AbsorberUtils {
         };
     }
 
-    // Helper function to assert that a provider's last cumulative asset amount per share wad value 
+    // Helper function to assert that a provider's last cumulative asset amount per share wad value
     // is updated for all reward tokens.
-    // 
+    //
     // Arguments
-    // 
+    //
     // - `absorber` - Deployed Absorber instance.
     //
     // - `provider` - Address of the provider.
-    // 
+    //
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
     fn assert_provider_reward_cumulatives_updated(
@@ -562,22 +562,22 @@ mod AbsorberUtils {
 
     // Helper function to assert that the cumulative reward token amount per share is updated
     // after a blessing
-    // 
+    //
     // Arguments
-    // 
+    //
     // - `absorber` - Deployed Absorber instance.
-    // 
+    //
     // - `total_shares` - Total amount of shares in the given epoch
     //
     // - `epoch` - The epoch to check for
-    // 
+    //
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
     // - `reward_amts_per_blessing` - Ordered list of the reward token amount transferred to the absorber per blessing
-    // 
-    // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total 
+    //
+    // - `blessings_multiplier` - The multiplier to apply to `reward_amts_per_blessing` when calculating the total
     //    amount the provider should receive.
-    // 
+    //
     fn assert_reward_cumulative_updated(
         absorber: IAbsorberDispatcher,
         total_shares: Wad,
@@ -613,13 +613,13 @@ mod AbsorberUtils {
 
     // Helper function to assert that the errors of reward tokens in the given epoch has been
     // propagated to the next epoch, and the cumulative asset amount per share wad is 0.
-    // 
+    //
     // Arguments
-    // 
+    //
     // - `absorber` - Deployed Absorber instance.
-    // 
+    //
     // - `before_epoch` - The epoch to check for
-    // 
+    //
     // - `asset_addresses` = Ordered list of the reward tokens contracts.
     //
     fn assert_reward_errors_propagated_to_next_epoch(

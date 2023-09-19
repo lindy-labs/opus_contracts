@@ -127,7 +127,7 @@ mod PragmaUtils {
         // Grant necessary roles
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::ADVANCE, pragma_addr);
+        shrine_ac.grant_role(ShrineRoles::oracle(), pragma_addr);
 
         let shrine = IShrineDispatcher { contract_address: shrine_addr };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };
