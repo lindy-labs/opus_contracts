@@ -8,3 +8,4 @@ sierra = true
 
 [dependencies]
 starknet = ">=2.2.0"
+alexandria_data_structures = { git = "https://github.com/keep-starknet-strange/alexandria.git", tag = "cairo-v2.1.0" }

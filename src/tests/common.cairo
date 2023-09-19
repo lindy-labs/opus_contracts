@@ -8,6 +8,8 @@ use starknet::{
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
 
+use alexandria_data_structures::array_ext::SpanTraitExt;
+
 use aura::core::shrine::Shrine;
 
 use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -344,18 +346,11 @@ fn assert_events_emitted<
         match events_copy.pop_front() {
             Option::Some(event) => {
                 let mut emitted_events_copy = emitted_events.span();
-                loop {
-                    match emitted_events_copy.pop_front() {
-                        Option::Some(emitted_event) => {
-                            if *event == *emitted_event {
-                                break;
-                            }
-                        },
-                        Option::None => {
-                            panic(array!['Event not emitted']);
-                        },
-                    };
-                };
+                if emitted_events_copy.contains(*event) {
+                    break;
+                } else {
+                    panic(array!['Event not emitted']);
+                }
             },
             Option::None => {
                 break;
