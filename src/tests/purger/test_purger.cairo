@@ -15,9 +15,7 @@ mod TestPurger {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::types::AssetBalance;
     use aura::utils::wadray;
-    use aura::utils::wadray::{
-        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
-    };
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;

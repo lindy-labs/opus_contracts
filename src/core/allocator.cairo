@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Allocator {
-    use array::ArrayTrait;
     use starknet::ContractAddress;
 
     use aura::core::roles::AllocatorRoles;

@@ -1,9 +1,7 @@
 mod TestAbsorber {
     use cmp::min;
     use integer::BoundedU256;
-    use starknet::{
-        ContractAddress, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
-    };
+    use starknet::{ContractAddress, contract_address_try_from_felt252, get_block_timestamp};
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
@@ -20,7 +18,7 @@ mod TestAbsorber {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        BoundedWad, Ray, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
+        BoundedWad, Ray, RAY_ONE, RAY_SCALE, Wad, WadZeroable, WAD_ONE, WAD_SCALE
     };
 
     use aura::tests::absorber::utils::AbsorberUtils;

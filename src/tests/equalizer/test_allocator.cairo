@@ -1,5 +1,4 @@
 mod TestAllocator {
-    use array::ArrayTrait;
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 

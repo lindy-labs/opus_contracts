@@ -21,9 +21,7 @@ mod PurgerUtils {
     use aura::types::AssetBalance;
     use aura::utils::math::pow;
     use aura::utils::wadray;
-    use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
-    };
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
