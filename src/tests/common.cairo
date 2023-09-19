@@ -8,8 +8,6 @@ use starknet::{
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
 
-use alexandria_data_structures::array_ext::SpanTraitExt;
-
 use aura::core::shrine::Shrine;
 
 use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -65,6 +63,29 @@ fn non_zero_address() -> ContractAddress {
 //
 // Trait implementations
 //
+
+// Taken from Alexandria
+// https://github.com/keep-starknet-strange/alexandria/blob/main/src/data_structures/src/array_ext.cairo
+trait SpanTraitExt<T> {
+    fn contains<impl TPartialEq: PartialEq<T>>(self: Span<T>, item: T) -> bool;
+}
+
+impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
+    fn contains<impl TPartialEq: PartialEq<T>>(mut self: Span<T>, item: T) -> bool {
+        loop {
+            match self.pop_front() {
+                Option::Some(v) => {
+                    if *v == item {
+                        break true;
+                    }
+                },
+                Option::None => {
+                    break false;
+                },
+            };
+        }
+    }
+}
 
 impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
     fn into(self: ContractAddress) -> Span<ContractAddress> {
