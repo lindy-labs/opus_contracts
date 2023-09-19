@@ -20,7 +20,7 @@ mod ControllerUtils {
 
     use aura::tests::shrine::utils::ShrineUtils;
 
-    // Controller update interval 
+    // Controller update interval
     const ONE_HOUR: u64 = consteval_int!(60 * 60); // 1 hour
 
     // Default controller parameters
@@ -62,8 +62,7 @@ mod ControllerUtils {
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::SET_MULTIPLIER, controller_addr);
-        shrine_ac.grant_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE, admin());
+        shrine_ac.grant_role(ShrineRoles::controller(), controller_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 

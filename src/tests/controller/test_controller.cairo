@@ -13,7 +13,7 @@ mod TestController {
     use aura::tests::controller::utils::ControllerUtils;
     use aura::tests::shrine::utils::ShrineUtils;
 
-    const YIN_PRICE1: u128 = 999942800000000000; // wad 
+    const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad
 
     const ERROR_MARGIN: u128 = 1000000000000000; // 10^-12 (ray)
@@ -55,7 +55,7 @@ mod TestController {
         assert(beta_i == 4, 'wrong beta_i');
     }
 
-    // Testing unauthorized calls of setters 
+    // Testing unauthorized calls of setters
 
     #[test]
     #[available_gas(20000000000)]
@@ -125,7 +125,7 @@ mod TestController {
         assert(controller.get_i_term() == SignedRayZeroable::zero(), 'Wrong i term #1');
 
         ControllerUtils::fast_forward_1_hour();
-        shrine.update_yin_spot_price(YIN_PRICE1.into());
+        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
 
         assert_equalish(
@@ -143,7 +143,7 @@ mod TestController {
         );
 
         ControllerUtils::fast_forward_1_hour();
-        shrine.update_yin_spot_price(YIN_PRICE2.into());
+        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE2.into());
         controller.update_multiplier();
 
         assert_equalish(
@@ -391,7 +391,7 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    shrine.update_yin_spot_price(price);
+                    ControllerUtils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
 
                     assert_equalish(
@@ -426,7 +426,7 @@ mod TestController {
 
     // In previous simulations, the time between updates was consistently 1 hour.
     // This test is to ensure that the controller is still working as expected
-    // when the time between updates is variable. 
+    // when the time between updates is variable.
     #[test]
     #[available_gas(20000000000)]
     fn test_against_ground_truth3() {
@@ -496,7 +496,7 @@ mod TestController {
                 if current_interval == *gt_update_intervals.at(0) {
                     gt_update_intervals.pop_front();
                     let price: Wad = prices.pop_front().unwrap();
-                    shrine.update_yin_spot_price(price);
+                    ControllerUtils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
                 }
             }
@@ -640,7 +640,7 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    shrine.update_yin_spot_price(price);
+                    ControllerUtils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
 
                     assert_equalish(
@@ -691,8 +691,8 @@ mod TestController {
         let current_multiplier: Ray = controller.get_current_multiplier();
         assert(current_multiplier > prev_multiplier, 'Multiplier should increase');
 
-        // Suddenly the multiplier is updated multiple times within the same block. 
-        // The multiplier should not change. 
+        // Suddenly the multiplier is updated multiple times within the same block.
+        // The multiplier should not change.
         controller.update_multiplier();
         controller.update_multiplier();
         controller.update_multiplier();

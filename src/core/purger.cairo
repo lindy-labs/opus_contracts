@@ -479,7 +479,7 @@ mod Purger {
 
                     // LTV and value after compensation are used to calculate the max purge amount
                     let max_absorption_amt: Wad = get_max_close_amount_internal(
-                        threshold, ltv_after_compensation, value_after_compensation, debt, penalty
+                        threshold, value_after_compensation, debt, penalty
                     );
                     (
                         penalty,
@@ -510,21 +510,16 @@ mod Purger {
     // Note: this function reverts if the trove's LTV is below its threshold multiplied by `THRESHOLD_SAFETY_MARGIN`
     // because `debt - wadray::rmul_wr(value, target_ltv)` would underflow
     #[inline(always)]
-    fn get_max_close_amount_internal(
-        threshold: Ray, ltv: Ray, value: Wad, debt: Wad, penalty: Ray
-    ) -> Wad {
+    fn get_max_close_amount_internal(threshold: Ray, value: Wad, debt: Wad, penalty: Ray) -> Wad {
         let penalty_multiplier = RAY_ONE.into() + penalty;
-        // If the LTV is greater than 1 / penalty_multiplier, then the max close amount
-        // based on the equation below will be greater than `debt`, so we cap it at `debt`. 
-        if ltv >= RAY_ONE.into() / penalty_multiplier {
-            return debt;
-        }
-
         let target_ltv = THRESHOLD_SAFETY_MARGIN.into() * threshold;
 
-        wadray::rdiv_wr(
-            debt - wadray::rmul_wr(value, target_ltv),
-            RAY_ONE.into() - penalty_multiplier * target_ltv
+        min(
+            wadray::rdiv_wr(
+                debt - wadray::rmul_wr(value, target_ltv),
+                RAY_ONE.into() - penalty_multiplier * target_ltv
+            ),
+            debt
         )
     }
 
@@ -553,7 +548,7 @@ mod Purger {
     fn preview_liquidate_internal(threshold: Ray, ltv: Ray, value: Wad, debt: Wad) -> (Ray, Wad) {
         match get_liquidation_penalty_internal(threshold, ltv) {
             Option::Some(penalty) => {
-                (penalty, get_max_close_amount_internal(threshold, ltv, value, debt, penalty))
+                (penalty, get_max_close_amount_internal(threshold, value, debt, penalty))
             },
             Option::None => (RayZeroable::zero(), WadZeroable::zero()),
         }
@@ -567,10 +562,7 @@ mod Purger {
     ) -> Ray {
         if trove_ltv.val <= RAY_ONE {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
-            // Capping the freed amount to the maximum possible (which is the trove's entire value)
-            let freed_amt: Wad = min(penalty_amt + purge_amt, trove_value);
-
-            wadray::rdiv_ww(freed_amt, trove_value)
+            wadray::rdiv_ww(purge_amt + penalty_amt, trove_value)
         } else {
             wadray::rdiv_ww(purge_amt, trove_debt)
         }
