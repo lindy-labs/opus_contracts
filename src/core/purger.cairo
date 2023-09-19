@@ -514,17 +514,16 @@ mod Purger {
         threshold: Ray, ltv: Ray, value: Wad, debt: Wad, penalty: Ray
     ) -> Wad {
         let penalty_multiplier = RAY_ONE.into() + penalty;
-        // If the LTV is greater than 1 / penalty_multiplier, then the max close amount
-        // based on the equation below will be greater than `debt`, so we cap it at `debt`. 
-        if ltv >= RAY_ONE.into() / penalty_multiplier {
-            return debt;
-        }
-
         let target_ltv = THRESHOLD_SAFETY_MARGIN.into() * threshold;
 
-        wadray::rdiv_wr(
-            debt - wadray::rmul_wr(value, target_ltv),
-            RAY_ONE.into() - penalty_multiplier * target_ltv
+        // If the LTV is greater than 1 / penalty_multiplier, then the max close amount
+        // based on the equation below will be greater than `debt`, so we cap it at `debt`. 
+        min(
+            wadray::rdiv_wr(
+                debt - wadray::rmul_wr(value, target_ltv),
+                RAY_ONE.into() - penalty_multiplier * target_ltv
+            ),
+            debt
         )
     }
 
