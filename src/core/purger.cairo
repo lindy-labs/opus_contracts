@@ -567,10 +567,7 @@ mod Purger {
     ) -> Ray {
         if trove_ltv.val <= RAY_ONE {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);
-            // Capping the freed amount to the maximum possible (which is the trove's entire value)
-            let freed_amt: Wad = min(penalty_amt + purge_amt, trove_value);
-
-            wadray::rdiv_ww(freed_amt, trove_value)
+            wadray::rdiv_ww(purge_amt + penalty_amt, trove_value)
         } else {
             wadray::rdiv_ww(purge_amt, trove_debt)
         }
