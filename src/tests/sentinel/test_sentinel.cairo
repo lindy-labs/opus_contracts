@@ -484,18 +484,18 @@ mod TestSentinel {
         set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP);
 
         let status = shrine.get_yang_suspension_status(eth);
-        assert(status == YangSuspensionStatus::None(()), 'status 1');
+        assert(status == YangSuspensionStatus::None, 'status 1');
 
         sentinel.suspend_yang(eth);
         let status = shrine.get_yang_suspension_status(eth);
-        assert(status == YangSuspensionStatus::Temporary(()), 'status 2');
+        assert(status == YangSuspensionStatus::Temporary, 'status 2');
 
         // move time forward by 1 day
         set_block_timestamp(ShrineUtils::DEPLOYMENT_TIMESTAMP + 86400);
 
         sentinel.unsuspend_yang(eth);
         let status = shrine.get_yang_suspension_status(eth);
-        assert(status == YangSuspensionStatus::None(()), 'status 3');
+        assert(status == YangSuspensionStatus::None, 'status 3');
     }
 
     #[test]

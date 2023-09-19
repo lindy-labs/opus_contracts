@@ -567,7 +567,7 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
             assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
             assert(
-                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
+                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent,
                 'SH: Permanent suspension'
             );
             let yang_id: u32 = self.get_valid_yang_id(yang);
@@ -1152,14 +1152,14 @@ mod Shrine {
         ) -> YangSuspensionStatus {
             let suspension_ts: u64 = self.yang_suspension.read(yang_id);
             if suspension_ts.is_zero() {
-                return YangSuspensionStatus::None(());
+                return YangSuspensionStatus::None;
             }
 
             if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
-                return YangSuspensionStatus::Temporary(());
+                return YangSuspensionStatus::Temporary;
             }
 
-            YangSuspensionStatus::Permanent(())
+            YangSuspensionStatus::Permanent
         }
 
         fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
@@ -1169,7 +1169,7 @@ mod Shrine {
                 YangSuspensionStatus::None => {
                     base_threshold
                 },
-                YangSuspensionStatus::Temporary(_) => {
+                YangSuspensionStatus::Temporary => {
                     // linearly decrease the threshold from base_threshold to 0
                     // based on the time passed since suspension started
                     let ts_diff: u64 = get_block_timestamp() - self.yang_suspension.read(yang_id);
@@ -1177,7 +1177,7 @@ mod Shrine {
                         * ((SUSPENSION_GRACE_PERIOD - ts_diff).into()
                             / SUSPENSION_GRACE_PERIOD.into())
                 },
-                YangSuspensionStatus::Permanent(_) => {
+                YangSuspensionStatus::Permanent => {
                     RayZeroable::zero()
                 },
             }
