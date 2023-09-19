@@ -185,6 +185,7 @@ mod Shrine {
         YangPriceUpdated: YangPriceUpdated,
         YinPriceUpdated: YinPriceUpdated,
         DebtCeilingUpdated: DebtCeilingUpdated,
+        YangSuspensionUpdated: YangSuspensionUpdated,
         Killed: Killed,
         Transfer: Transfer,
         Approval: Approval,
@@ -287,6 +288,13 @@ mod Shrine {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct DebtCeilingUpdated {
         ceiling: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct YangSuspensionUpdated {
+        #[key]
+        yang: ContractAddress,
+        suspension_ts: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -433,7 +441,7 @@ mod Shrine {
             self.get_yang_suspension_status_helper(yang_id)
         }
 
-        // Returns a tuple of 
+        // Returns a tuple of
         // 1. The "raw yang threshold"
         // 2. The "scaled yang threshold" for recovery mode
         // 1 and 2 will be the same if recovery mode is not in effect
@@ -443,7 +451,7 @@ mod Shrine {
             (threshold, self.scale_threshold_for_recovery_mode(threshold))
         }
 
-        // Returns a tuple of 
+        // Returns a tuple of
         // 1. The recovery mode threshold
         // 2. Shrine's LTV
         fn get_recovery_mode_threshold(self: @ContractState) -> (Ray, Ray) {
@@ -567,11 +575,12 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
             assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
             assert(
-                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
+                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent,
                 'SH: Permanent suspension'
             );
             let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_suspension.write(yang_id, ts);
+            self.emit(YangSuspensionUpdated { yang, suspension_ts: ts });
         }
 
         // Update the base rates of all yangs
@@ -1152,14 +1161,14 @@ mod Shrine {
         ) -> YangSuspensionStatus {
             let suspension_ts: u64 = self.yang_suspension.read(yang_id);
             if suspension_ts.is_zero() {
-                return YangSuspensionStatus::None(());
+                return YangSuspensionStatus::None;
             }
 
             if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
-                return YangSuspensionStatus::Temporary(());
+                return YangSuspensionStatus::Temporary;
             }
 
-            YangSuspensionStatus::Permanent(())
+            YangSuspensionStatus::Permanent
         }
 
         fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
@@ -1783,10 +1792,10 @@ mod Shrine {
                         let mut is_exception: bool = false;
 
                         // If there is at least `MIN_RECIPIENT_POOL_YANG` amount of yang in other troves,
-                        // handle it as an ordinary redistribution by rebasing the redistributed yang, and 
-                        // reallocating debt to other troves with the same yang. The minimum remainder amount 
-                        // is required to prevent overflow when calculating `unit_yang_per_recipient_yang` below, 
-                        // and to prevent `updated_trove_yang_balance` from being incorrectly zeroed when 
+                        // handle it as an ordinary redistribution by rebasing the redistributed yang, and
+                        // reallocating debt to other troves with the same yang. The minimum remainder amount
+                        // is required to prevent overflow when calculating `unit_yang_per_recipient_yang` below,
+                        // and to prevent `updated_trove_yang_balance` from being incorrectly zeroed when
                         // `unit_yang_per_recipient_yang` is a very large value.
                         //
                         // This is expected to be the common case.
@@ -1816,7 +1825,7 @@ mod Shrine {
                             //                                 (1 + unit_yang_per_recipient_yang)
                             //
                             // where `unit_yang_per_recipient_yang` is the amount of redistributed yang to be redistributed
-                            // to each Wad unit in `redistributed_yang_recipient_pool + redistributed_yang_initial_amt` - note 
+                            // to each Wad unit in `redistributed_yang_recipient_pool + redistributed_yang_initial_amt` - note
                             // that the initial yang amount needs to be included because it also benefits from the rebasing:
                             //
                             //                                                      yang_amt_to_redistribute
@@ -2103,8 +2112,8 @@ mod Shrine {
                                 .yang_redistributions
                                 .read((*original_yang_balance.yang_id, tmp_redistribution_id));
                             // If the trove has deposited a yang, check for ordinary redistribution first.
-                            // Note that we cannot skip to the next yang at the end of this `if` block because 
-                            // we still need to check for exceptional redistribution in case the recipient pool 
+                            // Note that we cannot skip to the next yang at the end of this `if` block because
+                            // we still need to check for exceptional redistribution in case the recipient pool
                             // amount was below `MIN_RECIPIENT_POOL_YANG`.
                             if (*original_yang_balance.amount).is_non_zero() {
                                 // Get the amount of debt per yang for the current redistribution
@@ -2235,7 +2244,7 @@ mod Shrine {
 
     //
     // Internal functions for Shrine that do not access storage
-    // 
+    //
 
     #[inline(always)]
     fn now() -> u64 {
