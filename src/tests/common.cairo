@@ -74,9 +74,9 @@ impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
 
 impl RewardPartialEq of PartialEq<Reward> {
     fn eq(mut lhs: @Reward, mut rhs: @Reward) -> bool {
-        (lhs.asset == rhs.asset)
-            & (lhs.blesser.contract_address == rhs.blesser.contract_address)
-            & (lhs.is_active == rhs.is_active)
+        lhs.asset == rhs.asset
+            && lhs.blesser.contract_address == rhs.blesser.contract_address
+            && lhs.is_active == rhs.is_active
     }
 
     fn ne(lhs: @Reward, rhs: @Reward) -> bool {

@@ -588,7 +588,7 @@ mod Shrine {
             let num_yangs: u32 = self.yangs_count.read();
 
             assert(
-                (yangs_len == new_rates.len()) & (yangs_len == num_yangs),
+                yangs_len == new_rates.len() && yangs_len == num_yangs,
                 'SH: yangs.len != new_rates.len'
             );
 
@@ -1521,8 +1521,8 @@ mod Shrine {
             let mut cumulative_diff: Wad = end_cumulative_yang_price - start_cumulative_yang_price;
 
             // Early termination if `start_interval` and `end_interval` are updated
-            if (start_interval == available_start_interval)
-                & (end_interval == available_end_interval) {
+            if start_interval == available_start_interval
+                && end_interval == available_end_interval {
                 return (cumulative_diff.val / (end_interval - start_interval).into()).into();
             }
 
@@ -1567,8 +1567,8 @@ mod Shrine {
             let mut cumulative_diff: Ray = end_cumulative_multiplier - start_cumulative_multiplier;
 
             // Early termination if `start_interval` and `end_interval` are updated
-            if (start_interval == available_start_interval)
-                & (end_interval == available_end_interval) {
+            if start_interval == available_start_interval
+                && end_interval == available_end_interval {
                 return (cumulative_diff.val / (end_interval - start_interval).into()).into();
             }
 
@@ -2244,7 +2244,7 @@ mod Shrine {
 
     // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
     fn assert_rate_is_valid(rate: Ray) {
-        assert((0 < rate.val) & (rate.val <= MAX_YANG_RATE), 'SH: Rate out of bounds');
+        assert(0 < rate.val && rate.val <= MAX_YANG_RATE, 'SH: Rate out of bounds');
     }
 
     // Helper function to round up the debt to be redistributed for a yang if the remaining debt
