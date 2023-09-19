@@ -63,7 +63,6 @@ mod ControllerUtils {
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
         shrine_ac.grant_role(ShrineRoles::SET_MULTIPLIER, controller_addr);
-        shrine_ac.grant_role(ShrineRoles::UPDATE_YIN_SPOT_PRICE, admin());
 
         set_contract_address(ContractAddressZeroable::zero());
 

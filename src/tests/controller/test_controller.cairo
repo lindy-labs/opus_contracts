@@ -125,7 +125,7 @@ mod TestController {
         assert(controller.get_i_term() == SignedRayZeroable::zero(), 'Wrong i term #1');
 
         ControllerUtils::fast_forward_1_hour();
-        shrine.update_yin_spot_price(YIN_PRICE1.into());
+        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
 
         assert_equalish(
@@ -143,7 +143,7 @@ mod TestController {
         );
 
         ControllerUtils::fast_forward_1_hour();
-        shrine.update_yin_spot_price(YIN_PRICE2.into());
+        ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE2.into());
         controller.update_multiplier();
 
         assert_equalish(
@@ -391,7 +391,7 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    shrine.update_yin_spot_price(price);
+                    ControllerUtils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
 
                     assert_equalish(
@@ -496,7 +496,7 @@ mod TestController {
                 if current_interval == *gt_update_intervals.at(0) {
                     gt_update_intervals.pop_front();
                     let price: Wad = prices.pop_front().unwrap();
-                    shrine.update_yin_spot_price(price);
+                    ControllerUtils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
                 }
             }
@@ -640,7 +640,7 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    shrine.update_yin_spot_price(price);
+                    ControllerUtils::set_yin_spot_price(shrine, price);
                     controller.update_multiplier();
 
                     assert_equalish(
