@@ -47,7 +47,9 @@ mod FlashMint {
 
     #[derive(Drop, starknet::Event)]
     struct FlashMint {
+        #[key]
         initiator: ContractAddress,
+        #[key]
         receiver: ContractAddress,
         token: ContractAddress,
         amount: u256
