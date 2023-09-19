@@ -692,7 +692,7 @@ mod TestPurger {
                                             initial_trove_debt
                                         );
 
-                                        // Skip interest accrual to facilitate parametrization of 
+                                        // Skip interest accrual to facilitate parametrization of
                                         // absorber's yin balance based on target trove's debt
                                         //common::advance_intervals(500);
 
@@ -742,7 +742,7 @@ mod TestPurger {
                                             .preview_absorb(target_trove);
                                         let close_amt: Wad = *absorber_start_yin;
 
-                                        // Sanity check 
+                                        // Sanity check
                                         assert(
                                             shrine
                                                 .get_yin(absorber.contract_address) < max_close_amt,
@@ -933,7 +933,7 @@ mod TestPurger {
                                             let mut absorber_yin_idx: usize = 0;
                                             // Index 0 is a dummy value for the absorber yin
                                             // being a fraction of the trove's debt.
-                                            // Index 1 is a dummy value for the lower bound 
+                                            // Index 1 is a dummy value for the lower bound
                                             // of the absorber's yin.
                                             // Index 2 is a dummy value for the trove's debt
                                             // minus the smallest unit of Wad (which would amount to
@@ -993,7 +993,7 @@ mod TestPurger {
                                                     'no interest accrued'
                                                 );
 
-                                                // Set threshold to 70% to test partial absorption when max close amount 
+                                                // Set threshold to 70% to test partial absorption when max close amount
                                                 // is less than trove's debt
                                                 PurgerUtils::set_thresholds(
                                                     shrine, yangs, *threshold
