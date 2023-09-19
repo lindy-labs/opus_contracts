@@ -1,16 +1,12 @@
 #[cfg(test)]
 mod TestShrineRedistribution {
-    use array::{ArrayTrait, SpanTrait};
-    use option::OptionTrait;
-    use traits::{Default, Into};
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
-    use zeroable::Zeroable;
 
     use aura::core::shrine::Shrine;
 
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::types::{ExceptionalYangRedistribution, YangRedistribution};
+    use aura::types::{ExceptionalYangRedistribution, YangRedistribution};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable};
 
@@ -93,7 +89,7 @@ mod TestShrineRedistribution {
                         .get_redistribution_for_yang(*yang, redistribution_id);
                     cumulative_error += yang_redistribution.error;
                 },
-                Option::None(_) => {
+                Option::None => {
                     break cumulative_error;
                 },
             };
@@ -156,7 +152,7 @@ mod TestShrineRedistribution {
                         break;
                     }
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -252,7 +248,7 @@ mod TestShrineRedistribution {
                         cumulative_redistributed_debt -= prev_error;
                     }
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 }
             };
@@ -511,13 +507,13 @@ mod TestShrineRedistribution {
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
                             },
-                            Option::None(_) => {
+                            Option::None => {
                                 break;
                             },
                         };
                     };
                 },
-                Option::None(_) => {
+                Option::None => {
                     break;
                 },
             };

@@ -1,13 +1,12 @@
-use array::{ArrayTrait, SpanTrait};
-use option::OptionTrait;
+use array::ArrayTrait;
+use debug::PrintTrait;
 use starknet::{
-    contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
+    deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
     contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp,
     SyscallResultTrait
 };
 use starknet::contract_address::ContractAddressZeroable;
 use starknet::testing::{set_block_timestamp, set_contract_address};
-use traits::{Default, Into, TryInto};
 
 use aura::core::shrine::Shrine;
 
@@ -16,12 +15,14 @@ use aura::interfaces::IERC20::{
     IERC20Dispatcher, IERC20DispatcherTrait, IMintableDispatcher, IMintableDispatcherTrait
 };
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
-use aura::utils::types::{AssetBalance, Reward};
+use aura::types::{AssetBalance, Reward};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
-//use aura::tests::sentinel::utils::SentinelUtils;
+use aura::tests::sentinel::utils::SentinelUtils;
+use aura::tests::shrine::utils::ShrineUtils;
 
 //
 // Constants
@@ -33,6 +34,7 @@ const WBTC_DECIMALS: u8 = 8;
 const TROVE_1: u64 = 1;
 const TROVE_2: u64 = 2;
 const TROVE_3: u64 = 3;
+const WHALE_TROVE: u64 = 0xb17b01;
 
 //
 // Constant addresses
@@ -123,7 +125,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
                 IMintableDispatcher { contract_address: *yang }
                     .mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
@@ -131,38 +133,38 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
 }
 
 // Helper function to approve Gates to transfer tokens from user, and to open a trove
-//fn open_trove_helper(
-//    abbot: IAbbotDispatcher,
-//    user: ContractAddress,
-//    yangs: Span<ContractAddress>,
-//    yang_asset_amts: Span<u128>,
-//    mut gates: Span<IGateDispatcher>,
-//    forge_amt: Wad
-//) -> u64 {
-//    set_contract_address(user);
-//    let mut yangs_copy = yangs;
-//    loop {
-//        match yangs_copy.pop_front() {
-//            Option::Some(yang) => {
-//                // Approve Gate to transfer from user
-//                let gate: IGateDispatcher = *gates.pop_front().unwrap();
-//                SentinelUtils::approve_max(gate, *yang, user);
-//            },
-//            Option::None(_) => {
-//                break;
-//            }
-//        };
-//    };
-//
-//    set_contract_address(user);
-//    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
-//    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
-//
-//    set_contract_address(ContractAddressZeroable::zero());
-//
-//    trove_id
-//}
-//
+fn open_trove_helper(
+    abbot: IAbbotDispatcher,
+    user: ContractAddress,
+    yangs: Span<ContractAddress>,
+    yang_asset_amts: Span<u128>,
+    mut gates: Span<IGateDispatcher>,
+    forge_amt: Wad
+) -> u64 {
+    set_contract_address(user);
+    let mut yangs_copy = yangs;
+    loop {
+        match yangs_copy.pop_front() {
+            Option::Some(yang) => {
+                // Approve Gate to transfer from user
+                let gate: IGateDispatcher = *gates.pop_front().unwrap();
+                SentinelUtils::approve_max(gate, *yang, user);
+            },
+            Option::None => {
+                break;
+            }
+        };
+    };
+
+    set_contract_address(user);
+    let yang_assets: Span<AssetBalance> = combine_assets_and_amts(yangs, yang_asset_amts);
+    let trove_id: u64 = abbot.open_trove(yang_assets, forge_amt, WadZeroable::zero());
+
+    set_contract_address(ContractAddressZeroable::zero());
+
+    trove_id
+}
+
 
 // Helpers - Convenience getters
 
@@ -189,14 +191,14 @@ fn get_token_balances(
                             let bal: u128 = token.balance_of(*address).try_into().unwrap();
                             yang_balances.append(bal);
                         },
-                        Option::None(_) => {
+                        Option::None => {
                             break;
                         }
                     };
                 };
                 balances.append(yang_balances.span());
             },
-            Option::None(_) => {
+            Option::None => {
                 break balances.span();
             }
         };
@@ -231,7 +233,7 @@ fn assert_asset_balances_equalish(
                 assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             }
         };
@@ -253,7 +255,7 @@ fn combine_assets_and_amts(
                 asset_balances
                     .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
@@ -272,7 +274,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
                 let asset_amt: Wad = (*asset_amt).into();
                 split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
@@ -293,11 +295,42 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
                 // Convert to Wad for fixed point operations
                 combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
             },
-            Option::None(_) => {
+            Option::None => {
                 break;
             },
         };
     };
 
     combined_asset_amts.span()
+}
+
+impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
+    fn print(self: Span<T>) {
+        let mut copy = self;
+
+        '['.print();
+        loop {
+            match copy.pop_front() {
+                Option::Some(item) => {
+                    (*item).print();
+                    if copy.len() > 0 {
+                        ', '.print();
+                    }
+                },
+                Option::None => {
+                    break;
+                }
+            };
+        };
+        ']'.print();
+    }
+}
+
+impl ArrayPrintImpl<
+    T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>, impl TDrop: Drop<T>
+> of PrintTrait<Array<T>> {
+    fn print(self: Array<T>) {
+        let copy: Span<T> = self.span();
+        copy.print();
+    }
 }
