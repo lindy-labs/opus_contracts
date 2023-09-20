@@ -850,9 +850,7 @@ mod TestShrineCompound {
                         );
                         avg_yang_prices_for_era.append(yang_avg_price);
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -886,9 +884,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None => {
-                            break;
-                        },
+                        Option::None => { break; },
                     };
                 };
 

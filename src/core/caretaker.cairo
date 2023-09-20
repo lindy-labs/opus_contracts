@@ -126,9 +126,7 @@ mod Caretaker {
                         releasable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt });
                     },
-                    Option::None => {
-                        break releasable_assets.span();
-                    },
+                    Option::None => { break releasable_assets.span(); },
                 };
             }
         }
@@ -163,9 +161,7 @@ mod Caretaker {
                         reclaimable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },
-                    Option::None => {
-                        break reclaimable_assets.span();
-                    },
+                    Option::None => { break reclaimable_assets.span(); },
                 };
             }
         }
@@ -218,9 +214,7 @@ mod Caretaker {
                         );
                         sentinel.exit(*yang, caretaker, DUMMY_TROVE_ID, backed_yang);
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -280,9 +274,7 @@ mod Caretaker {
                         };
                         released_assets.append(AssetBalance { address: *yang, amount: asset_amt });
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -342,9 +334,7 @@ mod Caretaker {
                             .transfer(caller, (*reclaimable_asset.amount).into());
                         assert(success, 'CA: Asset transfer failed');
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 

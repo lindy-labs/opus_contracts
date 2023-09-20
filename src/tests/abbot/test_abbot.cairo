@@ -67,9 +67,7 @@ mod TestAbbot {
                         'wrong trove yang balance #1'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -118,9 +116,7 @@ mod TestAbbot {
                         'wrong trove yang balance #2'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -179,9 +175,7 @@ mod TestAbbot {
                 Option::Some(yang) => {
                     assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -231,9 +225,7 @@ mod TestAbbot {
                         'wrong yang amount #2'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -264,9 +256,7 @@ mod TestAbbot {
                         'wrong yang amount #3'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

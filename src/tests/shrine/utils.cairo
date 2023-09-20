@@ -246,9 +246,7 @@ mod ShrineUtils {
                 Option::Some(yang) => {
                     yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap()));
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
         let yang_feeds = yang_feeds.span();
@@ -272,9 +270,7 @@ mod ShrineUtils {
                     Option::Some(yang) => {
                         shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -356,12 +352,8 @@ mod ShrineUtils {
 
         let price_hash: felt252 = pedersen::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
-            U128sFromFelt252Result::Narrow(i) => {
-                i
-            },
-            U128sFromFelt252Result::Wide((i, j)) => {
-                i
-            },
+            U128sFromFelt252Result::Narrow(i) => { i },
+            U128sFromFelt252Result::Wide((i, j)) => { i },
         };
 
         loop {
@@ -391,9 +383,7 @@ mod ShrineUtils {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                     yang_prices.append(yang_price);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
         yang_prices.span()
@@ -503,9 +493,7 @@ mod ShrineUtils {
                         'array length mismatch'
                     );
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 

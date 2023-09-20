@@ -89,9 +89,7 @@ mod TestShrineRedistribution {
                         .get_redistribution_for_yang(*yang, redistribution_id);
                     cumulative_error += yang_redistribution.error;
                 },
-                Option::None => {
-                    break cumulative_error;
-                },
+                Option::None => { break cumulative_error; },
             };
         }
     }
@@ -152,9 +150,7 @@ mod TestShrineRedistribution {
                         break;
                     }
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
         (
@@ -248,9 +244,7 @@ mod TestShrineRedistribution {
                         cumulative_redistributed_debt -= prev_error;
                     }
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -531,15 +525,11 @@ mod TestShrineRedistribution {
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

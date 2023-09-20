@@ -413,9 +413,7 @@ mod TestAbsorber {
                         );
                     }
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1180,15 +1178,11 @@ mod TestAbsorber {
                                     (*reward_asset.amount).is_zero(), 'expected rewards should be 0'
                                 );
                             },
-                            Option::None => {
-                                break;
-                            }
+                            Option::None => { break; }
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
     }

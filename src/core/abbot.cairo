@@ -132,9 +132,7 @@ mod Abbot {
                     Option::Some(yang_asset) => {
                         self.deposit_helper(new_trove_id, user, *yang_asset);
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
@@ -166,9 +164,7 @@ mod Abbot {
                         }
                         self.withdraw_helper(trove_id, user, *yang, yang_amount);
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

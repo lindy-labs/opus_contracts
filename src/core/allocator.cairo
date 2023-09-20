@@ -143,9 +143,7 @@ mod Allocator {
 
                         idx += 1;
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

@@ -398,9 +398,7 @@ mod Purger {
                         freed_assets
                             .append(AssetBalance { address: *yang, amount: freed_asset_amt });
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

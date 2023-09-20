@@ -195,9 +195,7 @@ mod AbsorberUtils {
                     );
                     blessers.append(blesser);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -216,9 +214,7 @@ mod AbsorberUtils {
                 Option::Some(token) => {
                     absorber.set_reward(*token, *blessers.pop_front().unwrap(), true);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -380,9 +376,7 @@ mod AbsorberUtils {
                     let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
                     yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -447,9 +441,7 @@ mod AbsorberUtils {
                         absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -515,9 +507,7 @@ mod AbsorberUtils {
                         'wrong preview rewarded amount'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -553,9 +543,7 @@ mod AbsorberUtils {
                         'wrong provider cumulative'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -604,9 +592,7 @@ mod AbsorberUtils {
                         'wrong reward cumulative'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -644,9 +630,7 @@ mod AbsorberUtils {
                         'wrong start reward cumulative'
                     );
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
     }
@@ -687,9 +671,7 @@ mod AbsorberUtils {
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
     }

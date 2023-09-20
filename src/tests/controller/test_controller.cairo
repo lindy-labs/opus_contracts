@@ -417,9 +417,7 @@ mod TestController {
 
                     ControllerUtils::fast_forward_1_hour();
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
     }
@@ -664,9 +662,7 @@ mod TestController {
 
                     ControllerUtils::fast_forward_1_hour();
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
     }

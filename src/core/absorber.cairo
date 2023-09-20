@@ -616,9 +616,7 @@ mod Absorber {
                                 current_absorption_id, total_recipient_shares, *asset_balance
                             );
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
@@ -944,9 +942,7 @@ mod Absorber {
                         absorbed_assets
                             .append(AssetBalance { address: *asset, amount: absorbed_amt });
                     },
-                    Option::None => {
-                        break absorbed_assets.span();
-                    }
+                    Option::None => { break absorbed_assets.span(); }
                 };
             }
         }
@@ -963,9 +959,7 @@ mod Absorber {
                                 .transfer(to, (*asset_balance.amount).into());
                         }
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
         }
@@ -1220,9 +1214,7 @@ mod Absorber {
                                 }
                             );
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 

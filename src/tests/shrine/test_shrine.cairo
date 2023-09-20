@@ -132,9 +132,7 @@ mod TestShrine {
 
                     yang_id += 1;
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -188,9 +186,7 @@ mod TestShrine {
                         'wrong start cumulative price'
                     );
                 },
-                Option::None => {
-                    break ();
-                }
+                Option::None => { break (); }
             };
         };
 
@@ -247,9 +243,7 @@ mod TestShrine {
 
                         yang_idx += 1;
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -1618,9 +1612,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None => {
-                    break ();
-                }
+                Option::None => { break (); }
             };
         };
         let mut yang_thresholds: Array<Ray> = array![
@@ -1692,9 +1684,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None => {
-                    break ();
-                }
+                Option::None => { break (); }
             };
         };
 

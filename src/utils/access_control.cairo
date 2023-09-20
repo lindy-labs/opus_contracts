@@ -185,9 +185,7 @@ mod AccessControl {
         data.append(event_data_1);
 
         match event_data_2 {
-            Option::Some(i) => {
-                data.append(i);
-            },
+            Option::Some(i) => { data.append(i); },
             Option::None => {},
         };
 

@@ -89,9 +89,7 @@ mod TestEqualizer {
 
                     minted_surplus += expected_increment;
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
