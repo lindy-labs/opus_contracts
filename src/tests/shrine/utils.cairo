@@ -744,7 +744,7 @@ mod ShrineUtils {
                 Option::Some(yang) => {
                     let mut redistribution_id: u32 = redistributions_count;
                     loop {
-                        if redistributions_count == 0 {
+                        if redistribution_id == 0 {
                             break;
                         }
                         let yang_redistribution: YangRedistribution = shrine
