@@ -15,6 +15,7 @@ mod ShrineUtils {
 
     use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use aura::types::YangRedistribution;
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::utils::exp::exp;
     use aura::utils::wadray;
@@ -606,7 +607,7 @@ mod ShrineUtils {
     // deposited amount, including any unpulled exceptional redistributions, and the initial 
     // yang amount.
     fn assert_total_yang_invariant(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64
+        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
     ) {
         let troves_loop_end: u64 = troves_count + 1;
 
@@ -658,29 +659,76 @@ mod ShrineUtils {
         };
     }
 
-    // Asserts that the total system debt is equal to the sum of all troves' debt, including
+    // Asserts that the total system debt is less than or equal to the sum of all troves' debt, including
     // all unpulled redistributions.
-    fn assert_total_debt_invariant(shrine: IShrineDispatcher, troves_count: u64) {
+    // Strict equality may not be possible once redistributions occur due to loss of precision when 
+    // redistributed debt are pulled into troves.
+    fn assert_total_debt_invariant(
+        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
+    ) {
         let troves_loop_end: u64 = troves_count + 1;
 
         let mut total: Wad = WadZeroable::zero();
         let mut trove_id: u64 = 1;
+
+        set_contract_address(admin());
         loop {
             if trove_id == troves_loop_end {
                 break;
             }
 
+            // Accrue interest on trove
+            shrine.melt(admin(), trove_id, WadZeroable::zero());
+
             let (_, _, _, trove_debt) = shrine.get_trove_info(trove_id);
             total += trove_debt;
+
+            trove_id += 1;
+        };
+        set_contract_address(ContractAddressZeroable::zero());
+
+        let redistributions_count: u32 = shrine.get_redistributions_count();
+
+        let mut yangs_copy = yangs;
+        let mut errors = WadZeroable::zero();
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    let mut redistribution_id: u32 = redistributions_count;
+                    loop {
+                        if redistributions_count == 0 {
+                            break;
+                        }
+                        let yang_redistribution: YangRedistribution = shrine
+                            .get_redistribution_for_yang(*yang, redistribution_id);
+
+                        // Find the last error for yang
+                        if yang_redistribution.error.is_non_zero() {
+                            errors += yang_redistribution.error;
+                            break;
+                        }
+
+                        if yang_redistribution.unit_debt.is_zero() {
+                            break;
+                        }
+
+                        redistribution_id -= 1;
+                    };
+                },
+                Option::None => {
+                    break;
+                },
+            };
         };
 
-        assert(shrine.get_total_debt() == total, 'debt invariant failed');
+        total += errors;
+        assert(total <= shrine.get_total_debt(), 'debt invariant failed');
     }
 
     fn assert_shrine_invariants(
-        shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>, troves_count: u64
+        shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
     ) {
         assert_total_yang_invariant(shrine, yangs, troves_count);
-        assert_total_debt_invariant(shrine, troves_count);
+        assert_total_debt_invariant(shrine, yangs, troves_count);
     }
 }

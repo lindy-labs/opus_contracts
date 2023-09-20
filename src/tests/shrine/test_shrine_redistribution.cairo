@@ -413,6 +413,8 @@ mod TestShrineRedistribution {
             shrine.get_trove_redistribution_id(common::TROVE_3) == expected_redistribution_id,
             'wrong id'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     // Parametrized test to check that partial redistribution of a trove results in the correct
@@ -502,10 +504,12 @@ mod TestShrineRedistribution {
                                         - debt_to_redistribute,
                                     'wrong redistributed trove debt'
                                 );
-                            // We are unable to test the trove value in a sensible way here because 
-                            // the yang price has not been updated to reflect any rebasing of the 
-                            // asset amount per yang wad. Instead, refer to the tests for purger
-                            // for assertions on the redistributed trove's value.
+                                // We are unable to test the trove value in a sensible way here because 
+                                // the yang price has not been updated to reflect any rebasing of the 
+                                // asset amount per yang wad. Instead, refer to the tests for purger
+                                // for assertions on the redistributed trove's value.
+
+                                ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
                             },
                             Option::None => {
                                 break;
@@ -600,6 +604,8 @@ mod TestShrineRedistribution {
                 .unit_debt == expected_unit_debt_for_yang2,
             'wrong unit debt'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     #[test]
@@ -868,6 +874,8 @@ mod TestShrineRedistribution {
             10_u128.into(), // error margin
             'wrong recipient trove1 value'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     #[test]
@@ -1196,6 +1204,8 @@ mod TestShrineRedistribution {
             100_u128.into(), // error margin
             'wrong recipient trove 1 value'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     #[test]
@@ -1396,6 +1406,8 @@ mod TestShrineRedistribution {
             10_u128.into(), // error margin due to loss of precision in favour of protocol
             'wrong total yang 3'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     // Redistribution with only 1 trove.
@@ -1439,6 +1451,8 @@ mod TestShrineRedistribution {
             shrine.get_trove_redistribution_id(common::TROVE_2) == expected_redistribution_id,
             'wrong id'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs.span(), 3);
     }
 
     // This test asserts that the sum of troves' debt after pulling redistributed debt does not
@@ -1450,22 +1464,12 @@ mod TestShrineRedistribution {
     fn test_multi_troves_system_debt_not_exceeded() {
         let shrine: IShrineDispatcher = redistribution_setup();
 
-        let yang_addrs: Span<ContractAddress> = ShrineUtils::three_yang_addrs();
-        let yang1_addr = *yang_addrs.at(2);
-        let yang2_addr = *yang_addrs.at(1);
-        let yang3_addr = *yang_addrs.at(0);
+        let yangs: Span<ContractAddress> = ShrineUtils::two_yang_addrs();
+        let yang1_addr = *yangs.at(2);
+        let yang2_addr = *yangs.at(1);
 
-        let trove1_owner = common::trove1_owner_addr();
         let redistributed_trove: u64 = common::TROVE_1;
-
-        set_contract_address(ShrineUtils::admin());
-        shrine.deposit(yang1_addr, redistributed_trove, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
-        shrine.deposit(yang2_addr, redistributed_trove, ShrineUtils::TROVE1_YANG2_DEPOSIT.into());
-        shrine.deposit(yang3_addr, redistributed_trove, ShrineUtils::TROVE1_YANG3_DEPOSIT.into());
         let redistributed_trove_debt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
-        shrine.forge(trove1_owner, redistributed_trove, redistributed_trove_debt, 0_u128.into());
-
-        let trove1_owner = common::trove1_owner_addr();
 
         // Create another 10 troves with different collateral amounts
         let mut idx: u64 = 0;
@@ -1492,31 +1496,7 @@ mod TestShrineRedistribution {
 
         shrine.redistribute(redistributed_trove, redistributed_trove_debt, RAY_ONE.into());
 
-        let mut idx: u64 = 1;
-        let total_troves_count: u64 = new_troves_count + 3;
-        let mut cumulative_troves_debt: Wad = WadZeroable::zero();
-        loop {
-            if idx == total_troves_count + 1 {
-                break;
-            }
-
-            let (_, _, _, trove_debt) = shrine.get_trove_info(idx);
-            cumulative_troves_debt += trove_debt;
-
-            idx += 1;
-        };
-
-        let expected_redistribution_id = 1;
-        let cumulative_error: Wad = get_redistributed_debt_error(
-            shrine, yang_addrs, expected_redistribution_id,
-        );
-
-        let cumulative_redistributed_debt: Wad = cumulative_troves_debt + cumulative_error;
-        let total_debt: Wad = shrine.get_total_debt();
-        common::assert_equalish(
-            cumulative_redistributed_debt, total_debt, 20_u128.into(), 'total debt mismatch'
-        );
-        assert(cumulative_redistributed_debt <= total_debt, 'sum(troves debt) > total debt');
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
     }
 
     #[test]
