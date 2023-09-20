@@ -648,9 +648,11 @@ mod ShrineUtils {
     // Invariant helpers
     //
 
-    // Asserts that for each yang, the total yang amount is equal to the sum of all troves'
-    // deposited amount, including any unpulled exceptional redistributions, and the initial 
-    // yang amount.
+    // Asserts that for each yang, the total yang amount is less than or equal to the sum of 
+    // all troves' deposited amount, including any unpulled exceptional redistributions, and 
+    // the initial yang amount.
+    // We do not check for strict equality because there may be loss of precision when 
+    // exceptionally redistributed yang are pulled into troves.
     fn assert_total_yang_invariant(
         shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
     ) {
@@ -661,8 +663,6 @@ mod ShrineUtils {
         loop {
             match yangs_copy.pop_front() {
                 Option::Some(yang) => {
-                    let total: Wad = shrine.get_yang_total(*yang);
-
                     let initial_amt: Wad = shrine.get_initial_yang_amt(*yang);
 
                     let mut trove_id: u64 = 1;
@@ -693,7 +693,10 @@ mod ShrineUtils {
                         trove_id += 1;
                     };
 
-                    assert(total == troves_cumulative_amt + initial_amt, 'yang invariant failed');
+                    assert(
+                        troves_cumulative_amt + initial_amt <= shrine.get_yang_total(*yang),
+                        'yang invariant failed'
+                    );
 
                     yang_id += 1;
                 },
@@ -706,7 +709,7 @@ mod ShrineUtils {
 
     // Asserts that the total system debt is less than or equal to the sum of all troves' debt, including
     // all unpulled redistributions.
-    // Strict equality may not be possible once redistributions occur due to loss of precision when 
+    // We do not check for strict equality because there may be loss of precision when 
     // redistributed debt are pulled into troves.
     fn assert_total_debt_invariant(
         shrine: IShrineDispatcher, yangs: Span<ContractAddress>, troves_count: u64
