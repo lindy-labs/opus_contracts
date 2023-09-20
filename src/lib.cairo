@@ -49,18 +49,65 @@ mod utils {
 
 #[cfg(test)]
 mod tests {
-    mod abbot;
-    mod absorber;
-    mod caretaker;
+    mod abbot {
+        mod test_abbot;
+        mod utils;
+    }
+    mod absorber {
+        mod mock_blesser;
+        mod test_absorber;
+        mod utils;
+    }
+    mod caretaker {
+        mod test_caretaker;
+        mod utils;
+    }
     mod common;
-    mod controller;
+    mod controller {
+        mod test_controller;
+        mod utils;
+    }
     mod erc20;
-    mod equalizer;
-    mod external;
-    mod flashmint;
-    mod gate;
-    mod purger;
-    mod sentinel;
-    mod shrine;
-    mod utils;
+    mod equalizer {
+        mod test_allocator;
+        mod test_equalizer;
+        mod utils;
+    }
+    mod external {
+        mod mock_pragma;
+        mod test_pragma;
+        mod utils;
+    }
+    mod flashmint {
+        mod flash_borrower;
+        mod test_flashmint;
+        mod utils;
+    }
+    mod gate {
+        mod test_gate;
+        mod utils;
+    }
+    mod purger {
+        mod flash_liquidator;
+        mod test_purger;
+        mod utils;
+    }
+    mod sentinel {
+        mod test_sentinel;
+        mod utils;
+    }
+    mod shrine {
+        mod test_shrine;
+        mod test_shrine_compound;
+        mod test_shrine_redistribution;
+        mod utils;
+    }
+    mod utils {
+        mod test_access_control;
+        mod test_exp;
+        mod test_math;
+        mod test_reentrancy_guard;
+        mod test_wadray_signed;
+        mod test_wadray;
+    }
 }
