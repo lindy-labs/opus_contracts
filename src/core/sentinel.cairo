@@ -288,7 +288,7 @@ mod Sentinel {
                 .shrine
                 .read()
                 .get_yang_suspension_status(yang);
-            assert(suspension_status == YangSuspensionStatus::None(()), 'SE: Yang suspended');
+            assert(suspension_status == YangSuspensionStatus::None, 'SE: Yang suspended');
             let current_total: u128 = gate.get_total_assets();
             let max_amt: u128 = self.yang_asset_max.read(yang);
             assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');

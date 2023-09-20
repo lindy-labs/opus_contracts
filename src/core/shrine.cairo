@@ -185,6 +185,7 @@ mod Shrine {
         YangPriceUpdated: YangPriceUpdated,
         YinPriceUpdated: YinPriceUpdated,
         DebtCeilingUpdated: DebtCeilingUpdated,
+        YangSuspensionUpdated: YangSuspensionUpdated,
         Killed: Killed,
         Transfer: Transfer,
         Approval: Approval,
@@ -287,6 +288,13 @@ mod Shrine {
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct DebtCeilingUpdated {
         ceiling: Wad
+    }
+
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
+    struct YangSuspensionUpdated {
+        #[key]
+        yang: ContractAddress,
+        suspension_ts: u64
     }
 
     #[derive(Copy, Drop, starknet::Event, PartialEq)]
@@ -567,11 +575,12 @@ mod Shrine {
             AccessControl::assert_has_role(ShrineRoles::UPDATE_YANG_SUSPENSION);
             assert(ts <= get_block_timestamp(), 'SH: Invalid timestamp');
             assert(
-                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent(()),
+                self.get_yang_suspension_status(yang) != YangSuspensionStatus::Permanent,
                 'SH: Permanent suspension'
             );
             let yang_id: u32 = self.get_valid_yang_id(yang);
             self.yang_suspension.write(yang_id, ts);
+            self.emit(YangSuspensionUpdated { yang, suspension_ts: ts });
         }
 
         // Update the base rates of all yangs
@@ -1154,14 +1163,14 @@ mod Shrine {
         ) -> YangSuspensionStatus {
             let suspension_ts: u64 = self.yang_suspension.read(yang_id);
             if suspension_ts.is_zero() {
-                return YangSuspensionStatus::None(());
+                return YangSuspensionStatus::None;
             }
 
             if get_block_timestamp() - suspension_ts < SUSPENSION_GRACE_PERIOD {
-                return YangSuspensionStatus::Temporary(());
+                return YangSuspensionStatus::Temporary;
             }
 
-            YangSuspensionStatus::Permanent(())
+            YangSuspensionStatus::Permanent
         }
 
         fn get_yang_threshold_helper(self: @ContractState, yang_id: u32) -> Ray {
