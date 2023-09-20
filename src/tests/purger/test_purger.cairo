@@ -447,6 +447,82 @@ mod TestPurger {
         assert(safe_ltv_count == num_thresholds - 1, 'at least one per threshold');
     }
 
+    // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
+    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the 
+    // `adjust_prices_for_trove_ltv` may not put the trove in the exact LTV as the threshold.
+    #[test]
+    #[available_gas(20000000000)]
+    fn test_preview_liquidate_parametrized() {
+        let yang_pair_ids = PragmaUtils::yang_pair_ids();
+
+        let mut thresholds: Span<Ray> = PurgerUtils::interesting_thresholds_for_liquidation();
+
+        let trove_debt: Wad = (WAD_ONE * 1000).into();
+        let mut expected_close_amts: Span<Wad> = array![
+            284822000000000000000_u128.into(), // 284.822 (70% threshold)
+            386997000000000000000_u128.into(), // 386.997 (80% threshold)
+            603509000000000000000_u128.into(), // 603.509 (90% threshold)
+            908381000000000000000_u128.into(), // 908.381 (96% threshold)
+            992098000000000000000_u128.into(), // 992.098 (97% threshold)
+            trove_debt, // (99% threshold)
+        ]
+            .span();
+
+        let mut expected_penalty: Span<Ray> = array![
+            (3 * RAY_PERCENT).into(), // 3% (70% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (80% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (90% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (96% threshold)
+            (3 * RAY_PERCENT).into(), // 3% (97% threshold)
+            10101000000000000000000000_u128.into(), // 1.0101% (99% threshold)
+        ]
+            .span();
+
+        loop {
+            match thresholds.pop_front() {
+                Option::Some(threshold) => {
+                    let (shrine, abbot, mock_pragma, absorber, purger, yangs, gates) =
+                        PurgerUtils::purger_deploy();
+
+                    // Set thresholds to provided value
+                    PurgerUtils::set_thresholds(shrine, yangs, *threshold);
+
+                    PurgerUtils::create_whale_trove(abbot, yangs, gates);
+
+                    let target_trove: u64 = PurgerUtils::funded_healthy_trove(
+                        abbot, yangs, gates, trove_debt
+                    );
+
+                    let (_, _, value, before_debt) = shrine.get_trove_info(target_trove);
+                    PurgerUtils::adjust_prices_for_trove_ltv(
+                        shrine, mock_pragma, yangs, yang_pair_ids, value, before_debt, *threshold
+                    );
+
+                    let (_, ltv, _, _) = shrine.get_trove_info(target_trove);
+                    PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
+
+                    let (penalty, max_close_amt) = purger.preview_liquidate(target_trove);
+
+                    let expected_penalty = *expected_penalty.pop_front().unwrap();
+                    common::assert_equalish(
+                        penalty, expected_penalty, (RAY_ONE / 10).into(), 'wrong penalty'
+                    );
+
+                    let expected_close_amt = *expected_close_amts.pop_front().unwrap();
+                    common::assert_equalish(
+                        max_close_amt,
+                        expected_close_amt,
+                        (WAD_ONE * 2).into(),
+                        'wrong max close amt'
+                    );
+                },
+                Option::None => {
+                    break;
+                },
+            };
+        };
+    }
+
     #[test]
     #[available_gas(20000000000)]
     #[should_panic(expected: ('PU: Not liquidatable', 'ENTRYPOINT_FAILED'))]
