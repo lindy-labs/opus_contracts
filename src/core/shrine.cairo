@@ -2211,7 +2211,7 @@ mod Shrine {
                                     if yang_id == *original_yang_balance.yang_id {
                                         updated_trove_yang_balances
                                             .append(
-                                                YangBalance { yang_id, amount: yang_increment }
+                                                YangBalance { yang_id, amount: *original_yang_balance.amount + yang_increment }
                                             );
                                     } else {
                                         updated_trove_yang_balances
