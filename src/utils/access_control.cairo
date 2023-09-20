@@ -203,7 +203,7 @@ mod AccessControl {
 
     // NewPendingAdmin(new_admin)
     fn emit_new_pending_admin(new_admin: ContractAddress) {
-        emit(NEW_PENDING_ADMIN_EVENT_KEY, new_admin.into(), Option::None(()));
+        emit(NEW_PENDING_ADMIN_EVENT_KEY, new_admin.into(), Option::None);
     }
 
     // RoleGranted(role, account)

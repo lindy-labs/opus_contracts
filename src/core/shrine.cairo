@@ -1151,7 +1151,7 @@ mod Shrine {
             // If redistribution unit-debt is non-zero or the error is non-zero, return the error
             // This catches both the case where the unit debt is non-zero and the error is zero, and the case
             // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
-            if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
+            if redistribution.unit_debt.is_non_zero() || redistribution.error.is_non_zero() {
                 return redistribution.error;
             }
 
@@ -2080,7 +2080,7 @@ mod Shrine {
 
             // Early termination if no redistributions since trove was last updated
             if current_redistribution_id == trove_last_redistribution_id {
-                return (Option::None(()), trove_debt);
+                return (Option::None, trove_debt);
             }
 
             let mut has_exceptional_redistributions: bool = false;
@@ -2239,7 +2239,7 @@ mod Shrine {
             if has_exceptional_redistributions {
                 (Option::Some(trove_yang_balances), trove_debt)
             } else {
-                (Option::None(()), trove_debt)
+                (Option::None, trove_debt)
             }
         }
     }
