@@ -829,11 +829,6 @@ mod TestShrine {
         assert(yin.total_supply() == forge_amt.val.into(), 'incorrect ERC-20 balance');
 
         let mut expected_events: Span<Shrine::Event> = array![
-            Shrine::Event::ForgeFeePaid(
-                Shrine::ForgeFeePaid {
-                    trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(),
-                }
-            ),
             Shrine::Event::DebtTotalUpdated(Shrine::DebtTotalUpdated { total: forge_amt }),
             Shrine::Event::TroveUpdated(
                 Shrine::TroveUpdated {
@@ -925,6 +920,28 @@ mod TestShrine {
                 ShrineUtils::TROVE1_FORGE_AMT.into(),
                 WadZeroable::zero(),
             );
+    }
+
+    #[test]
+    #[available_gas(20000000000)]
+    #[should_panic(expected: ('Event not emitted',))]
+    fn test_shrine_forge_no_forgefee_emitted_when_zero() {
+        let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
+        ShrineUtils::trove1_deposit(shrine, ShrineUtils::TROVE1_YANG1_DEPOSIT.into());
+
+        let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
+        let trove_id: u64 = common::TROVE_1;
+        ShrineUtils::trove1_forge(shrine, forge_amt);
+
+        let mut expected_event: Span<Shrine::Event> = array![
+            Shrine::Event::ForgeFeePaid(
+                Shrine::ForgeFeePaid {
+                    trove_id, fee: WadZeroable::zero(), fee_pct: WadZeroable::zero(),
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(shrine.contract_address, expected_event);
     }
 
     #[test]
@@ -1826,6 +1843,17 @@ mod TestShrine {
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::Temporary, 'status 1');
 
+        // check event emission
+        common::assert_events_emitted(
+            shrine_addr,
+            array![
+                Shrine::Event::YangSuspensionUpdated(
+                    Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
+                ),
+            ]
+                .span()
+        );
+
         // setting block time to a second before the suspension would be permanent
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD - 1);
 
@@ -1835,6 +1863,17 @@ mod TestShrine {
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::None, 'status 2');
+
+        // check event emission
+        common::assert_events_emitted(
+            shrine_addr,
+            array![
+                Shrine::Event::YangSuspensionUpdated(
+                    Shrine::YangSuspensionUpdated { yang, suspension_ts: 0 }
+                ),
+            ]
+                .span()
+        );
     }
 
     #[test]
@@ -1869,6 +1908,17 @@ mod TestShrine {
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
         assert(status == YangSuspensionStatus::Temporary, 'status 1');
+
+        // check event emission
+        common::assert_events_emitted(
+            shrine_addr,
+            array![
+                Shrine::Event::YangSuspensionUpdated(
+                    Shrine::YangSuspensionUpdated { yang, suspension_ts: start_ts }
+                ),
+            ]
+                .span()
+        );
 
         // check threshold (should be the same at the beginning)
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
@@ -1922,7 +1972,7 @@ mod TestShrine {
 
         // check suspension status
         let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Permanent(()), 'status 5');
+        assert(status == YangSuspensionStatus::Permanent, 'status 5');
 
         // check threshold
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
@@ -1946,7 +1996,7 @@ mod TestShrine {
         shrine.update_yang_suspension(yang, start_ts - Shrine::SUSPENSION_GRACE_PERIOD);
         // sanity check
         let status = shrine.get_yang_suspension_status(yang);
-        assert(status == YangSuspensionStatus::Permanent(()), 'delisted');
+        assert(status == YangSuspensionStatus::Permanent, 'delisted');
 
         // trying to reset yang suspension status, should fail
         shrine.update_yang_suspension(yang, 0);
@@ -1968,9 +2018,9 @@ mod TestShrine {
         shrine.update_yang_suspension(yang, ts + 1);
     }
 
-    // In this test, we have two troves. Both are initially healthy. And then suddenly the 
-    // LTV of the larger trove drops enough such that the global LTV is above the 
-    // recovery mode threshold, and high enough above the threshold such that 
+    // In this test, we have two troves. Both are initially healthy. And then suddenly the
+    // LTV of the larger trove drops enough such that the global LTV is above the
+    // recovery mode threshold, and high enough above the threshold such that
     // the second (smaller) trove is now underwater.
     #[test]
     #[available_gas(20000000000)]
@@ -2017,7 +2067,7 @@ mod TestShrine {
         // so that trove 1 is underwater
         //
         // z = x + y, where x is from the last equation and y is the additional collateral
-        // value that must be withdrawn to reach the desired threshold reduction. 
+        // value that must be withdrawn to reach the desired threshold reduction.
         //
         // trove1_ltv - 10^(-24) = (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / (whale_trove_forge_amt / (whale_trove_deposit_value - z))
         // trove1_ltv - 10^(-24) = (whale_trove_deposit_value - z) * (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / whale_trove_forge_amt
@@ -2049,14 +2099,14 @@ mod TestShrine {
                 remaining_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into()
             );
 
-        // Now trove1 should be underwater, while the whale trove should still be healthy. 
+        // Now trove1 should be underwater, while the whale trove should still be healthy.
         assert(!shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
         assert(shrine.is_healthy(common::WHALE_TROVE), 'should be healthy #3');
     }
 
-    // Invariant test: scaling the "raw" trove threshold for recovery mode is 
+    // Invariant test: scaling the "raw" trove threshold for recovery mode is
     // the same as scaling each yang threshold individually and only then
-    // calculating the trove threshold 
+    // calculating the trove threshold
     #[test]
     #[available_gas(20000000000)]
     fn test_recovery_mode_invariant() {
