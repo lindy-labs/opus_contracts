@@ -24,7 +24,7 @@ mod tests {
     }
 
     fn setup(caller: ContractAddress) {
-        AccessControl::initializer(admin());
+        AccessControl::initializer(admin(), Option::None);
         set_caller_address(caller);
     }
 
@@ -55,7 +55,7 @@ mod tests {
     #[available_gas(10000000)]
     fn test_initializer() {
         let admin = admin();
-        AccessControl::initializer(admin);
+        AccessControl::initializer(admin, Option::None);
         assert(AccessControl::get_admin() == admin, 'initialize wrong admin');
 
         let (mut keys, mut data) = pop_log_raw(ContractAddressZeroable::zero()).unwrap();

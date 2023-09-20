@@ -135,8 +135,7 @@ mod Pragma {
         freshness_threshold: u64,
         sources_threshold: u64
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(PragmaRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(PragmaRoles::default_admin_role()));
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });

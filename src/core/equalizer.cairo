@@ -55,8 +55,7 @@ mod Equalizer {
         shrine: ContractAddress,
         allocator: ContractAddress
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(EqualizerRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(EqualizerRoles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.allocator.write(IAllocatorDispatcher { contract_address: allocator });

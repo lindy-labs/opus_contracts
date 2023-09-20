@@ -19,8 +19,8 @@ mod Allocator {
         recipients_count: u32,
         // Starts from index 1
         // Keeps track of the address for each recipient by index
-        // Note that the index count of recipients stored in this mapping may exceed the 
-        // current `recipients_count`. This will happen if any previous allocations had 
+        // Note that the index count of recipients stored in this mapping may exceed the
+        // current `recipients_count`. This will happen if any previous allocations had
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
         recipients: LegacyMap::<u32, ContractAddress>,
@@ -56,8 +56,7 @@ mod Allocator {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(AllocatorRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(AllocatorRoles::default_admin_role()));
 
         self.set_allocation_helper(recipients, percentages);
     }
