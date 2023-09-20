@@ -138,19 +138,35 @@ mod ShrineUtils {
         common::advance_intervals(1);
     }
 
-    // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID
-    // and terminates at yang ID 0. This affects which yang receives any rounding of
-    // debt that falls below the rounding threshold.
     fn two_yang_addrs() -> Span<ContractAddress> {
-        let mut yang_addrs: Array<ContractAddress> = array![yang2_addr(), yang1_addr(),];
+        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr(), yang2_addr()];
         yang_addrs.span()
     }
 
     fn three_yang_addrs() -> Span<ContractAddress> {
         let mut yang_addrs: Array<ContractAddress> = array![
+            yang1_addr(), yang2_addr(), yang3_addr()
+        ];
+        yang_addrs.span()
+    }
+
+    // Note that iteration of yangs (e.g. in redistribution) start from the latest yang ID
+    // and terminates at yang ID 0. This affects which yang receives any rounding of
+    // debt that falls below the rounding threshold.
+    fn two_yang_addrs_reversed() -> Span<ContractAddress> {
+        let mut yang_addrs: Array<ContractAddress> = array![yang2_addr(), yang1_addr()];
+        yang_addrs.span()
+    }
+
+    fn three_yang_addrs_reversed() -> Span<ContractAddress> {
+        let mut yang_addrs: Array<ContractAddress> = array![
             yang3_addr(), yang2_addr(), yang1_addr(),
         ];
         yang_addrs.span()
+    }
+
+    fn three_yang_start_prices() -> Span<Wad> {
+        array![YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into(),].span()
     }
 
     fn shrine_deploy() -> ContractAddress {
@@ -224,36 +240,52 @@ mod ShrineUtils {
     fn advance_prices_and_set_multiplier(
         shrine: IShrineDispatcher,
         num_intervals: u64,
-        yang1_start_price: Wad,
-        yang2_start_price: Wad,
-        yang3_start_price: Wad,
-    ) -> (Span<ContractAddress>, Span<Span<Wad>>) {
-        let yang1_addr: ContractAddress = yang1_addr();
-        let yang1_feed: Span<Wad> = generate_yang_feed(yang1_start_price);
+        yangs: Span<ContractAddress>,
+        yang_prices: Span<Wad>,
+    ) -> Span<Span<Wad>> {
+        assert(yangs.len() == yang_prices.len(), 'Array lengths mismatch');
 
-        let yang2_addr: ContractAddress = yang2_addr();
-        let yang2_feed: Span<Wad> = generate_yang_feed(yang2_start_price);
+        let mut yang_feeds: Array<Span<Wad>> = Default::default();
 
-        let yang3_addr: ContractAddress = yang3_addr();
-        let yang3_feed: Span<Wad> = generate_yang_feed(yang3_start_price);
-
-        let mut yang_addrs: Array<ContractAddress> = array![yang1_addr, yang2_addr, yang3_addr,];
-
-        let mut yang_feeds: Array<Span<Wad>> = array![yang1_feed, yang2_feed, yang3_feed];
+        let mut yangs_copy = yangs;
+        let mut yang_prices_copy = yang_prices;
+        loop {
+            match yangs_copy.pop_front() {
+                Option::Some(yang) => {
+                    yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap()));
+                },
+                Option::None => {
+                    break;
+                },
+            };
+        };
+        let yang_feeds = yang_feeds.span();
 
         let mut idx: u32 = 0;
-        set_contract_address(admin());
         let feed_len: u32 = num_intervals.try_into().unwrap();
         let mut timestamp: u64 = get_block_timestamp();
+
+        set_contract_address(admin());
         loop {
             if idx == feed_len {
-                break ();
+                break;
             }
+
             set_block_timestamp(timestamp);
 
-            shrine.advance(yang1_addr, *yang1_feed[idx]);
-            shrine.advance(yang2_addr, *yang2_feed[idx]);
-            shrine.advance(yang3_addr, *yang3_feed[idx]);
+            let mut yangs_copy = yangs;
+            let mut yang_feeds_copy = yang_feeds;
+            loop {
+                match yangs_copy.pop_front() {
+                    Option::Some(yang) => {
+                        shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
+                    },
+                    Option::None => {
+                        break;
+                    },
+                };
+            };
+
             shrine.set_multiplier(RAY_ONE.into());
 
             timestamp += Shrine::TIME_INTERVAL;
@@ -264,7 +296,7 @@ mod ShrineUtils {
         // Reset contract address
         set_contract_address(ContractAddressZeroable::zero());
 
-        (yang_addrs.span(), yang_feeds.span())
+        yang_feeds
     }
 
     #[inline(always)]
@@ -274,11 +306,7 @@ mod ShrineUtils {
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
-            shrine,
-            FEED_LEN,
-            YANG1_START_PRICE.into(),
-            YANG2_START_PRICE.into(),
-            YANG3_START_PRICE.into()
+            shrine, FEED_LEN, three_yang_addrs(), three_yang_start_prices(),
         );
         shrine
     }
@@ -360,6 +388,23 @@ mod ShrineUtils {
 
             idx += 1;
         }
+    }
+
+    // Helper function to get the prices for an array of yangs
+    fn get_yang_prices(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>) -> Span<Wad> {
+        let mut yang_prices: Array<Wad> = Default::default();
+        loop {
+            match yangs.pop_front() {
+                Option::Some(yang) => {
+                    let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
+                    yang_prices.append(yang_price);
+                },
+                Option::None => {
+                    break;
+                },
+            };
+        };
+        yang_prices.span()
     }
 
     // Helper function to calculate the maximum forge amount given a tuple of three ordered arrays of
@@ -489,7 +534,7 @@ mod ShrineUtils {
             let mut j: usize = 0;
             loop {
                 if j == yangs_count {
-                    break ();
+                    break;
                 }
                 let yang_value: Wad = *yang_amts[j] * *yang_avg_prices.at(i)[j];
                 total_avg_yang_value += yang_value;

@@ -82,6 +82,7 @@ mod Pragma {
 
     #[derive(Drop, starknet::Event)]
     struct InvalidPriceUpdate {
+        #[key]
         yang: ContractAddress,
         price: Wad,
         pragma_last_updated_ts: u256,
@@ -321,7 +322,7 @@ mod Pragma {
                 idx += 1;
             };
 
-            // Record the timestamp for the last `update_prices` call 
+            // Record the timestamp for the last `update_prices` call
             self.last_update_prices_call_timestamp.write(block_timestamp);
             // Emit the event only if at least one price update is valid
             if has_valid_update {

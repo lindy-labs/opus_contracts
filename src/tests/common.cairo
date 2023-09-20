@@ -6,7 +6,7 @@ use starknet::{
     SyscallResultTrait
 };
 use starknet::contract_address::ContractAddressZeroable;
-use starknet::testing::{set_block_timestamp, set_contract_address};
+use starknet::testing::{pop_log_raw, set_block_timestamp, set_contract_address};
 
 use aura::core::shrine::Shrine;
 
@@ -63,6 +63,29 @@ fn non_zero_address() -> ContractAddress {
 //
 // Trait implementations
 //
+
+// Taken from Alexandria
+// https://github.com/keep-starknet-strange/alexandria/blob/main/src/data_structures/src/array_ext.cairo
+trait SpanTraitExt<T> {
+    fn contains<impl TPartialEq: PartialEq<T>>(self: Span<T>, item: T) -> bool;
+}
+
+impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
+    fn contains<impl TPartialEq: PartialEq<T>>(mut self: Span<T>, item: T) -> bool {
+        loop {
+            match self.pop_front() {
+                Option::Some(v) => {
+                    if *v == item {
+                        break true;
+                    }
+                },
+                Option::None => {
+                    break false;
+                },
+            };
+        }
+    }
+}
 
 impl AddressIntoSpan of Into<ContractAddress, Span<ContractAddress>> {
     fn into(self: ContractAddress) -> Span<ContractAddress> {
@@ -303,6 +326,63 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
 
     combined_asset_amts.span()
 }
+
+//
+// Helpers for events
+//
+
+fn assert_events_emitted<
+    T,
+    impl TCopy: Copy<T>,
+    impl TDrop: Drop<T>,
+    impl TEvent: starknet::Event<T>,
+    impl TPartialEq: PartialEq<T>,
+>(
+    addr: ContractAddress, events: Span<T>
+) {
+    // Fetch all emitted events 
+    let mut emitted_events: Array<T> = Default::default();
+
+    loop {
+        match pop_log_raw(addr) {
+            Option::Some(raw_event) => {
+                let (mut keys, mut data) = raw_event;
+                let event: Option<T> = starknet::Event::deserialize(ref keys, ref data);
+
+                // Only append the event if it is defined in the contract
+                // This excludes access control events that are manually emitted.
+                if event.is_some() {
+                    emitted_events.append(event.unwrap());
+                }
+            },
+            Option::None => {
+                break;
+            },
+        };
+    };
+
+    // Loop over each event, and check if it was emitted
+    let mut events_copy = events;
+    loop {
+        match events_copy.pop_front() {
+            Option::Some(event) => {
+                let mut emitted_events_copy = emitted_events.span();
+                if emitted_events_copy.contains(*event) {
+                    break;
+                } else {
+                    panic(array!['Event not emitted']);
+                }
+            },
+            Option::None => {
+                break;
+            },
+        };
+    };
+}
+
+//
+// Debug helpers
+//
 
 impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of PrintTrait<Span<T>> {
     fn print(self: Span<T>) {

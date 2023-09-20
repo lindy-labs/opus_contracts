@@ -1,8 +1,8 @@
-// Note on fixed point math in Absorber: 
+// Note on fixed point math in Absorber:
 //
 // Non-Wad/Ray fixed-point values (i.e., values whose number of decimals is something other than 18 or 27)
 // are used extensively throughout the contract. However, these values also rely on
-// wadray-fixed-point arithmetic functions in their calculations. Consequently, 
+// wadray-fixed-point arithmetic functions in their calculations. Consequently,
 // wadray's internal functions are used to perform these calculations.
 #[starknet::contract]
 mod Absorber {
@@ -23,7 +23,7 @@ mod Absorber {
 
     //
     // Constants
-    // 
+    //
 
     // If the amount of yin Wad per share drops below this threshold, the epoch is incremented
     // to reset the yin per share ratio to 1 : 1 parity for accounting. Otherwise, there will
@@ -39,7 +39,7 @@ mod Absorber {
     // is a very small number
     const MINIMUM_SHARES: u128 = 1000000; // 10 ** 6 (Wad);
 
-    // First epoch of the Absorber 
+    // First epoch of the Absorber
     const FIRST_EPOCH: u32 = 1;
 
     // Amount of time, in seconds, that needs to elapse after request is submitted before removal
@@ -141,7 +141,9 @@ mod Absorber {
 
     #[derive(Drop, starknet::Event)]
     struct RewardSet {
+        #[key]
         asset: ContractAddress,
+        #[key]
         blesser: ContractAddress,
         is_active: bool
     }
@@ -154,6 +156,7 @@ mod Absorber {
 
     #[derive(Drop, starknet::Event)]
     struct Provide {
+        #[key]
         provider: ContractAddress,
         epoch: u32,
         yin: Wad
@@ -161,6 +164,7 @@ mod Absorber {
 
     #[derive(Drop, starknet::Event)]
     struct RequestSubmitted {
+        #[key]
         provider: ContractAddress,
         timestamp: u64,
         timelock: u64
@@ -168,6 +172,7 @@ mod Absorber {
 
     #[derive(Drop, starknet::Event)]
     struct Remove {
+        #[key]
         provider: ContractAddress,
         epoch: u32,
         yin: Wad
@@ -175,6 +180,7 @@ mod Absorber {
 
     #[derive(Drop, starknet::Event)]
     struct Reap {
+        #[key]
         provider: ContractAddress,
         absorbed_assets: Span<AssetBalance>,
         reward_assets: Span<AssetBalance>
@@ -302,7 +308,7 @@ mod Absorber {
         // View
         //
 
-        // Returns true if the total shares in current epoch is at least `MINIMUM_SHARES`, so as 
+        // Returns true if the total shares in current epoch is at least `MINIMUM_SHARES`, so as
         // to prevent underflows when distributing absorbed assets and rewards.
         fn is_operational(self: @ContractState) -> bool {
             is_operational_helper(self.total_shares.read())
@@ -319,7 +325,7 @@ mod Absorber {
         }
 
 
-        // Function for calculating the absorbed assets and rewards owed to a provider 
+        // Function for calculating the absorbed assets and rewards owed to a provider
         // without modifying state.
         fn preview_reap(
             self: @ContractState, provider: ContractAddress
@@ -349,7 +355,7 @@ mod Absorber {
                     rewarded_assets
                 );
 
-            // NOTE: both absorbed assets and rewarded assets will be empty arrays 
+            // NOTE: both absorbed assets and rewarded assets will be empty arrays
             // if `provision.shares` is zero.
             (absorbed_assets, updated_rewarded_assets)
         }
@@ -359,8 +365,8 @@ mod Absorber {
         // Setters
         //
 
-        // Note: rewards ID start from index 1. This allows `set_reward` to be used for both 
-        // adding a new reward and updating an existing reward based on whether the initial 
+        // Note: rewards ID start from index 1. This allows `set_reward` to be used for both
+        // adding a new reward and updating an existing reward based on whether the initial
         // reward ID is zero (new reward) or non-zero (existing reward).
         fn set_reward(
             ref self: ContractState,
@@ -391,7 +397,7 @@ mod Absorber {
                 self.rewards.write(reward_id, reward);
             }
 
-            // Emit event 
+            // Emit event
             self.emit(RewardSet { asset, blesser, is_active });
         }
 
@@ -645,7 +651,7 @@ mod Absorber {
                 } else {
                     // Otherwise, set the epoch share conversion rate to 0 and total shares to 0.
                     // This is to prevent an attacker from becoming a majority shareholder
-                    // in a new epoch when the number of shares is very small, which would 
+                    // in a new epoch when the number of shares is very small, which would
                     // allow them to execute an attack similar to a first-deposit front-running attack.
                     // This would cause a negligible loss to the previous epoch's providers, but
                     // partially compensates the first provider in the new epoch for the deducted
@@ -685,8 +691,8 @@ mod Absorber {
     #[generate_trait]
     impl AbsorberHelpers of AbsorberHelpersTrait {
         //
-        // Internal 
-        // 
+        // Internal
+        //
 
         #[inline(always)]
         fn assert_live(self: @ContractState) {
@@ -716,7 +722,7 @@ mod Absorber {
 
             if INITIAL_SHARES > total_shares.val {
                 // By subtracting the initial shares from the first provider's shares, we ensure that
-                // there is a non-removable amount of shares. This subtraction also prevents a user 
+                // there is a non-removable amount of shares. This subtraction also prevents a user
                 // from providing an amount less than the minimum shares.
                 return ((yin_amt.val - INITIAL_SHARES).into(), yin_amt);
             }
@@ -810,9 +816,9 @@ mod Absorber {
             }
 
             let absorption: DistributionInfo = self.asset_absorption.read((asset, absorption_id));
-            // asset_amt_per_share is checked because it is possible for the error to be zero. 
-            // On the other hand, asset_amt_per_share may be zero in extreme edge cases with 
-            // a non-zero error that is spilled over to the next absorption. 
+            // asset_amt_per_share is checked because it is possible for the error to be zero.
+            // On the other hand, asset_amt_per_share may be zero in extreme edge cases with
+            // a non-zero error that is spilled over to the next absorption.
             if absorption.asset_amt_per_share.is_non_zero() || absorption.error.is_non_zero() {
                 return absorption.error;
             }
@@ -824,7 +830,7 @@ mod Absorber {
         // Internal - helpers for `reap`
         //
 
-        // Wrapper function over `get_absorbed_assets_for_provider_helper` and 
+        // Wrapper function over `get_absorbed_assets_for_provider_helper` and
         // `get_provider_accumulated_rewards` for re-use by `preview_reap` and
         // `reap_helper`
         fn get_absorbed_and_rewarded_assets_for_provider(
@@ -844,7 +850,7 @@ mod Absorber {
             // Trigger issuance of rewards
             self.bestow();
 
-            // NOTE: both absorbed assets and rewarded assets will be empty arrays 
+            // NOTE: both absorbed assets and rewarded assets will be empty arrays
             // if `provision.shares` is zero.
             let (absorbed_assets, rewarded_assets) = self
                 .get_absorbed_and_rewarded_assets_for_provider(provider, provision);
@@ -856,19 +862,19 @@ mod Absorber {
             self.transfer_assets(provider, absorbed_assets);
             self.transfer_assets(provider, rewarded_assets);
 
-            // NOTE: it is very important that this function is called, even for a new provider. 
+            // NOTE: it is very important that this function is called, even for a new provider.
             // If a new provider's cumulative rewards are not updated to the current epoch,
             // then they will be zero, and the next time `reap_helper` is called, the provider
             // will receive all of the cumulative rewards for the current epoch, when they
-            // should only receive the rewards for the current epoch since the last time 
+            // should only receive the rewards for the current epoch since the last time
             // `reap_helper` was called.
-            // 
+            //
             // NOTE: We cannot rely on the array of reward addresses returned by
-            // `get_absorbed_and_rewarded_assets_for_provider` because it returns an empty array when 
+            // `get_absorbed_and_rewarded_assets_for_provider` because it returns an empty array when
             // `provision.shares` is zero. This would result in a bug where the reward cumulatives
-            // for new providers are not updated to the latest epoch's values and start at 0. This 
-            // wrongly entitles a new provider to receive rewards from epoch 0 up to the 
-            // latest epoch's values, which would eventually result in an underflow when 
+            // for new providers are not updated to the latest epoch's values and start at 0. This
+            // wrongly entitles a new provider to receive rewards from epoch 0 up to the
+            // latest epoch's values, which would eventually result in an underflow when
             // transferring rewards during a `reap_helper` call.
             self.update_provider_cumulative_rewards(provider);
 
@@ -893,14 +899,14 @@ mod Absorber {
 
             let assets: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
 
-            // Loop over all assets and calculate the amount of 
+            // Loop over all assets and calculate the amount of
             // each asset that the provider is entitled to
             let mut assets_copy = assets;
             loop {
                 match assets_copy.pop_front() {
                     Option::Some(asset) => {
                         // Loop over all absorptions from `provided_absorption_id` for the current asset and add
-                        // the amount of the asset that the provider is entitled to for each absorption to `absorbed_amt`. 
+                        // the amount of the asset that the provider is entitled to for each absorption to `absorbed_amt`.
                         let mut absorbed_amt: u128 = 0;
                         let mut start_absorption_id = provided_absorption_id;
 
@@ -1103,7 +1109,7 @@ mod Absorber {
 
                     // Calculate the difference with the provider's cumulative value if it is the
                     // same epoch as the provider's Provision epoch.
-                    // This is because the provider's cumulative value may not have been fully updated for that epoch. 
+                    // This is because the provider's cumulative value may not have been fully updated for that epoch.
                     let rate: u128 = if epoch == provision.epoch {
                         epoch_reward_info.asset_amt_per_share
                             - self.provider_last_reward_cumulative.read((provider, reward.asset))
