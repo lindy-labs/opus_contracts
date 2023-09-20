@@ -346,7 +346,6 @@ mod TestShrineRedistribution {
             .span();
         common::assert_events_emitted(shrine.contract_address, expected_events);
 
-        // Arrange yangs according to when they were added
         ShrineUtils::assert_shrine_invariants(shrine, yangs, 3);
     }
 

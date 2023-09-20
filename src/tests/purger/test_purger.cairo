@@ -278,6 +278,8 @@ mod TestPurger {
             freed_assets, expected_freed_assets, 10_u128, // error margin
              'wrong freed asset amount'
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -332,6 +334,8 @@ mod TestPurger {
         assert(after_debt == before_debt - max_close_amt, 'wrong debt after liquidation');
 
         PurgerUtils::assert_ltv_at_safety_margin(threshold, after_ltv);
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     // This test parametrizes over thresholds (by setting all yangs thresholds to the given value)
@@ -427,6 +431,10 @@ mod TestPurger {
                                 } else {
                                     assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
+
+                                ShrineUtils::assert_shrine_invariants(
+                                    shrine, yangs, abbot.get_troves_count()
+                                );
                             },
                             Option::None => {
                                 break;
@@ -642,6 +650,8 @@ mod TestPurger {
             10_u128, // error margin
             'wrong absorber asset balance',
         );
+
+        ShrineUtils::assert_shrine_invariants(shrine, yangs, abbot.get_troves_count());
     }
 
     #[test]
@@ -880,6 +890,10 @@ mod TestPurger {
                                             expected_recipient_trove_value,
                                             (WAD_ONE / 100).into(), // error margin
                                             'wrong recipient trove value'
+                                        );
+
+                                        ShrineUtils::assert_shrine_invariants(
+                                            shrine, yangs, abbot.get_troves_count()
                                         );
                                     },
                                     Option::None => {
@@ -1302,6 +1316,11 @@ mod TestPurger {
                                                         },
                                                     };
                                                 };
+
+                                                ShrineUtils::assert_shrine_invariants(
+                                                    shrine, yangs, abbot.get_troves_count()
+                                                );
+
                                                 absorber_yin_idx += 1;
                                             };
                                         },
@@ -1549,6 +1568,10 @@ mod TestPurger {
                                                 (WAD_ONE / 100).into(), // error margin
                                                 'wrong recipient trove value'
                                             );
+
+                                            ShrineUtils::assert_shrine_invariants(
+                                                shrine, yangs, abbot.get_troves_count()
+                                            );
                                         },
                                         Option::None => {
                                             break;
@@ -1657,6 +1680,10 @@ mod TestPurger {
                                 );
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
+
+                                ShrineUtils::assert_shrine_invariants(
+                                    shrine, yangs, abbot.get_troves_count()
+                                );
                             },
                             Option::None => {
                                 break;
@@ -1753,6 +1780,10 @@ mod TestPurger {
                                 assert(after_ltv.is_zero(), 'wrong debt after liquidation');
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
+
+                                ShrineUtils::assert_shrine_invariants(
+                                    shrine, yangs, abbot.get_troves_count()
+                                );
                             },
                             Option::None => {
                                 break;
