@@ -257,9 +257,7 @@ mod TestPurger {
                         'wrong max close amt'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -661,8 +659,8 @@ mod TestPurger {
                     let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
 
                     common::assert_equalish(
-                        penalty, 
-                        expected_penalty, 
+                        penalty,
+                        expected_penalty,
                         (RAY_PERCENT / 10).into(), // 0.1%
                         'wrong penalty'
                     );
@@ -675,9 +673,7 @@ mod TestPurger {
                         'wrong max close amt'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1849,17 +1845,19 @@ mod TestPurger {
             // Sixth threshold of 99% (Ray)
             array![
                 RayZeroable::zero(), // 0%; (99 + 1 wei)% LTV
-                RayZeroable::zero(), // 0%; 101% LTV
+                 RayZeroable::zero(), // 0%; 101% LTV
             ]
                 .span()
-
-        ].span();
+        ]
+            .span();
 
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-                    let mut target_penalties: Span<Ray> = *expected_penalties_by_ltv_by_threshold.pop_front().unwrap();
+                    let mut target_penalties: Span<Ray> = *expected_penalties_by_ltv_by_threshold
+                        .pop_front()
+                        .unwrap();
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -1912,12 +1910,13 @@ mod TestPurger {
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
+                                let (penalty, max_close_amt, _) = purger
+                                    .preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
                                 let expected_penalty = *target_penalties.pop_front().unwrap();
                                 common::assert_equalish(
-                                    penalty, 
-                                    expected_penalty, 
+                                    penalty,
+                                    expected_penalty,
                                     (RAY_PERCENT / 10).into(), // 0.1%
                                     'wrong penalty'
                                 );
