@@ -1,6 +1,5 @@
 #[starknet::contract]
 mod Allocator {
-    use array::ArrayTrait;
     use starknet::ContractAddress;
 
     use aura::core::roles::AllocatorRoles;
@@ -19,8 +18,8 @@ mod Allocator {
         recipients_count: u32,
         // Starts from index 1
         // Keeps track of the address for each recipient by index
-        // Note that the index count of recipients stored in this mapping may exceed the 
-        // current `recipients_count`. This will happen if any previous allocations had 
+        // Note that the index count of recipients stored in this mapping may exceed the
+        // current `recipients_count`. This will happen if any previous allocations had
         // more recipients than the current allocation.
         // (idx) -> (Recipient Address)
         recipients: LegacyMap::<u32, ContractAddress>,
@@ -56,8 +55,7 @@ mod Allocator {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(AllocatorRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(AllocatorRoles::default_admin_role()));
 
         self.set_allocation_helper(recipients, percentages);
     }
@@ -75,8 +73,8 @@ mod Allocator {
         // Returns a tuple of ordered arrays of recipients' addresses and their respective
         // percentage share of newly minted surplus debt.
         fn get_allocation(self: @ContractState) -> (Span<ContractAddress>, Span<Ray>) {
-            let mut recipients: Array<ContractAddress> = Default::default();
-            let mut percentages: Array<Ray> = Default::default();
+            let mut recipients: Array<ContractAddress> = ArrayTrait::new();
+            let mut percentages: Array<Ray> = ArrayTrait::new();
 
             let mut idx: u32 = LOOP_START;
             let loop_end: u32 = self.recipients_count.read() + LOOP_START;
@@ -144,9 +142,7 @@ mod Allocator {
 
                         idx += 1;
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

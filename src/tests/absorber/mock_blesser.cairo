@@ -23,7 +23,7 @@ mod MockBlesser {
         absorber: ContractAddress,
         bless_amt: u128
     ) {
-        AccessControl::initializer(admin);
+        AccessControl::initializer(admin, Option::None);
         AccessControl::grant_role_helper(BlesserRoles::default_admin_role(), absorber);
 
         self.asset.write(IERC20Dispatcher { contract_address: asset });
