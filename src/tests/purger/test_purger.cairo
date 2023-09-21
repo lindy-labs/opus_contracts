@@ -1806,48 +1806,24 @@ mod TestPurger {
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
             PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
 
-        let mut expected_penalties_by_ltv_by_threshold: Span<Span<Ray>> = array![
+        // This array should match `target_ltvs_by_threshold`. However, since only the first 
+        // LTV in the inner span of `target_ltvs_by_threshold` has a non-zero penalty, and the 
+        // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
+        // the array to be concise.
+        let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();
+        let mut expected_penalties: Span<Ray> = array![
             // First threshold of 78.75% (Ray)
-            array![
-                124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
-                RayZeroable::zero(), // 0%; 99% LTV
-                RayZeroable::zero(), // 0%; 101% LTV
-            ]
-                .span(),
+            124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
             // Second threshold of 80% (Ray)
-            array![
-                116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
-                RayZeroable::zero(), // 0%; 99% LTV
-                RayZeroable::zero(), // 0%; 101% LTV
-            ]
-                .span(),
+            116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
             // Third threshold of 90% (Ray)
-            array![
-                53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
-                RayZeroable::zero(), // 0%; 99% LTV
-                RayZeroable::zero(), // 0%; 101% LTV
-            ]
-                .span(),
+            53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
             // Fourth threshold of 96% (Ray)
-            array![
-                10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
-                RayZeroable::zero(), // 0%; 99% LTV
-                RayZeroable::zero(), // 0%; 101% LTV
-            ]
-                .span(),
+            10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
             // Fifth threshold of 97% (Ray)
-            array![
-                RayZeroable::zero(), // 0%; (96 + 1 wei)% LTV
-                RayZeroable::zero(), // 0%; 99% LTV
-                RayZeroable::zero(), // 0%; 101% LTV
-            ]
-                .span(),
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
             // Sixth threshold of 99% (Ray)
-            array![
-                RayZeroable::zero(), // 0%; (99 + 1 wei)% LTV
-                 RayZeroable::zero(), // 0%; 101% LTV
-            ]
-                .span()
+            RayZeroable::zero(), // Dummy value since all target LTVs do not have a penalty
         ]
             .span();
 
@@ -1855,9 +1831,7 @@ mod TestPurger {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-                    let mut target_penalties: Span<Ray> = *expected_penalties_by_ltv_by_threshold
-                        .pop_front()
-                        .unwrap();
+                    let expected_penalty: Ray = *expected_penalties.pop_front().unwrap();
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -1913,13 +1887,16 @@ mod TestPurger {
                                 let (penalty, max_close_amt, _) = purger
                                     .preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
-                                let expected_penalty = *target_penalties.pop_front().unwrap();
-                                common::assert_equalish(
-                                    penalty,
-                                    expected_penalty,
-                                    (RAY_PERCENT / 10).into(), // 0.1%
-                                    'wrong penalty'
-                                );
+                                if *target_ltv >= ninety_nine_pct {
+                                    assert(penalty.is_zero(), 'wrong penalty');
+                                } else {
+                                    common::assert_equalish(
+                                        penalty,
+                                        expected_penalty,
+                                        (RAY_PERCENT / 10).into(), // 0.1%
+                                        'wrong penalty'
+                                    )
+                                }
 
                                 set_contract_address(PurgerUtils::random_user());
                                 purger.absorb(target_trove);
