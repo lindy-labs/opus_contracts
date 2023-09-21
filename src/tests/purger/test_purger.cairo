@@ -667,7 +667,10 @@ mod TestPurger {
                     let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
 
                     common::assert_equalish(
-                        penalty, expected_penalty, (RAY_ONE / 100).into(), 'wrong penalty'
+                        penalty, 
+                        expected_penalty, 
+                        (RAY_PERCENT / 10).into(), // 0.1%
+                        'wrong penalty'
                     );
 
                     let expected_max_close_amt = *expected_max_close_amts.pop_front().unwrap();
@@ -1837,7 +1840,7 @@ mod TestPurger {
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
             PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
 
-        let expected_penalties_by_ltv_by_threshold: Span<Span<Ray> = array![
+        let mut expected_penalties_by_ltv_by_threshold: Span<Span<Ray>> = array![
             // First threshold of 78.75% (Ray)
             array![
                 124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
@@ -1941,7 +1944,13 @@ mod TestPurger {
 
                                 let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
-                                common::assert_equalish(penalty, *target_penalties.pop_front().unwrap(), (RAY_ONE / 100).into(), 'wrong penalty');
+                                let expected_penalty = *target_penalties.pop_front().unwrap();
+                                common::assert_equalish(
+                                    penalty, 
+                                    expected_penalty, 
+                                    (RAY_PERCENT / 10).into(), // 0.1%
+                                    'wrong penalty'
+                                );
 
                                 set_contract_address(PurgerUtils::random_user());
                                 purger.absorb(target_trove);
