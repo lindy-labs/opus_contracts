@@ -328,10 +328,7 @@ mod Shrine {
     fn constructor(
         ref self: ContractState, admin: ContractAddress, name: felt252, symbol: felt252
     ) {
-        AccessControl::initializer(admin);
-
-        // Grant admin permission
-        AccessControl::grant_role_helper(ShrineRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(ShrineRoles::default_admin_role()));
 
         self.is_live.write(true);
 

@@ -77,8 +77,7 @@ mod Sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(SentinelRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(SentinelRoles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 

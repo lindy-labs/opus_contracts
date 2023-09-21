@@ -81,8 +81,7 @@ mod Caretaker {
         sentinel: ContractAddress,
         equalizer: ContractAddress
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(CaretakerRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(CaretakerRoles::default_admin_role()));
 
         self.abbot.write(IAbbotDispatcher { contract_address: abbot });
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
