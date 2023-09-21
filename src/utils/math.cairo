@@ -6,7 +6,7 @@ use aura::utils::wadray::Ray;
 
 fn sqrt(x: Ray) -> Ray {
     let scaled_val: u256 = x.val.into() * wadray::RAY_SCALE.into();
-    Ray { val: u256_sqrt(scaled_val) }
+    u256_sqrt(scaled_val).into()
 }
 
 fn pow<T, impl TMul: Mul<T>, impl TOneable: Oneable<T>, impl TDrop: Drop<T>, impl TCopy: Copy<T>>(
