@@ -237,7 +237,7 @@ mod ShrineUtils {
     ) -> Span<Span<Wad>> {
         assert(yangs.len() == yang_prices.len(), 'Array lengths mismatch');
 
-        let mut yang_feeds: Array<Span<Wad>> = Default::default();
+        let mut yang_feeds: Array<Span<Wad>> = ArrayTrait::new();
 
         let mut yangs_copy = yangs;
         let mut yang_prices_copy = yang_prices;
@@ -246,9 +246,7 @@ mod ShrineUtils {
                 Option::Some(yang) => {
                     yang_feeds.append(generate_yang_feed(*yang_prices_copy.pop_front().unwrap()));
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
         let yang_feeds = yang_feeds.span();
@@ -272,9 +270,7 @@ mod ShrineUtils {
                     Option::Some(yang) => {
                         shrine.advance(*yang, *(*yang_feeds_copy.pop_front().unwrap()).at(idx));
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -350,18 +346,14 @@ mod ShrineUtils {
     // Helper function to generate a price feed for a yang given a starting price
     // Currently increases the price at a fixed percentage per step
     fn generate_yang_feed(price: Wad) -> Span<Wad> {
-        let mut prices: Array<Wad> = Default::default();
+        let mut prices: Array<Wad> = ArrayTrait::new();
         let mut price: Wad = price.into();
         let mut idx: u64 = 0;
 
         let price_hash: felt252 = pedersen::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
-            U128sFromFelt252Result::Narrow(i) => {
-                i
-            },
-            U128sFromFelt252Result::Wide((i, j)) => {
-                i
-            },
+            U128sFromFelt252Result::Narrow(i) => { i },
+            U128sFromFelt252Result::Wide((i, j)) => { i },
         };
 
         loop {
@@ -384,16 +376,14 @@ mod ShrineUtils {
 
     // Helper function to get the prices for an array of yangs
     fn get_yang_prices(shrine: IShrineDispatcher, mut yangs: Span<ContractAddress>) -> Span<Wad> {
-        let mut yang_prices: Array<Wad> = Default::default();
+        let mut yang_prices: Array<Wad> = ArrayTrait::new();
         loop {
             match yangs.pop_front() {
                 Option::Some(yang) => {
                     let (yang_price, _, _) = shrine.get_current_yang_price(*yang);
                     yang_prices.append(yang_price);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
         yang_prices.span()
@@ -503,9 +493,7 @@ mod ShrineUtils {
                         'array length mismatch'
                     );
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 

@@ -89,9 +89,7 @@ mod TestShrineRedistribution {
                         .get_redistribution_for_yang(*yang, redistribution_id);
                     cumulative_error += yang_redistribution.error;
                 },
-                Option::None => {
-                    break cumulative_error;
-                },
+                Option::None => { break cumulative_error; },
             };
         }
     }
@@ -108,10 +106,10 @@ mod TestShrineRedistribution {
     ) -> (Span<Wad>, Span<Wad>, Span<Wad>, Span<Wad>) {
         let (_, _, trove_value, trove_debt) = shrine.get_trove_info(trove);
 
-        let mut trove_yang_values: Array<Wad> = Default::default();
-        let mut expected_unit_debts: Array<Wad> = Default::default();
-        let mut expected_errors: Array<Wad> = Default::default();
-        let mut expected_remaining_yangs: Array<Wad> = Default::default();
+        let mut trove_yang_values: Array<Wad> = ArrayTrait::new();
+        let mut expected_unit_debts: Array<Wad> = ArrayTrait::new();
+        let mut expected_errors: Array<Wad> = ArrayTrait::new();
+        let mut expected_remaining_yangs: Array<Wad> = ArrayTrait::new();
         let mut cumulative_redistributed_debt: Wad = WadZeroable::zero();
 
         loop {
@@ -152,9 +150,7 @@ mod TestShrineRedistribution {
                         break;
                     }
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
         (
@@ -248,9 +244,7 @@ mod TestShrineRedistribution {
                         cumulative_redistributed_debt -= prev_error;
                     }
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -301,7 +295,7 @@ mod TestShrineRedistribution {
             'wrong redistribution count'
         );
 
-        let empty_errors: Span<Wad> = Default::default().span();
+        let empty_errors: Span<Wad> = ArrayTrait::new().span();
         let (expected_trove2_debt_increment, cumulative_redistributed_debt) =
             assert_redistribution_is_correct(
             shrine,
@@ -531,15 +525,11 @@ mod TestShrineRedistribution {
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

@@ -1,13 +1,11 @@
 mod SentinelUtils {
-    use array::ArrayTrait;
     use debug::PrintTrait;
     use integer::BoundedU256;
     use starknet::{
         ClassHash, class_hash_try_from_felt252, ContractAddress, contract_address_to_felt252,
-        contract_address_try_from_felt252, deploy_syscall, SyscallResultTrait
+        contract_address_try_from_felt252, deploy_syscall, get_caller_address, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
-    use starknet::info::get_caller_address;
     use starknet::testing::set_contract_address;
 
     use aura::core::roles::{SentinelRoles, ShrineRoles};

@@ -1,5 +1,4 @@
 mod TestEqualizer {
-    use array::ArrayTrait;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
@@ -90,9 +89,7 @@ mod TestEqualizer {
 
                     minted_surplus += expected_increment;
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
