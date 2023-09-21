@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestPurger {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;

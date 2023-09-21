@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests {
     use starknet::contract_address::{
         ContractAddress, ContractAddressZeroable, contract_address_try_from_felt252

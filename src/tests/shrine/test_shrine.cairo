@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestShrine {
     use debug::PrintTrait;
     use integer::BoundedU256;
