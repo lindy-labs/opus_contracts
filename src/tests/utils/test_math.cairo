@@ -1,6 +1,8 @@
 mod tests {
     use debug::PrintTrait;
 
+    use integer::BoundedU128;
+
     use aura::utils::math::{pow, sqrt};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RAY_ONE};
@@ -70,6 +72,9 @@ mod tests {
             ERROR_MARGIN,
             'wrong sqrt #8'
         );
+
+        // testing the maximum possible value `sqrt` could accept doesn't cause it to fail
+        sqrt(BoundedU128::max().into());
     }
 
     #[test]
