@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestPurger {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
@@ -1838,11 +1837,56 @@ mod TestPurger {
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
             PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
 
+        let expected_penalties_by_ltv_by_threshold: Span<Span<Ray> = array![
+            // First threshold of 78.75% (Ray)
+            array![
+                124889600000000000000000000_u128.into(), // 12.48896% (Ray); 86.23% LTV
+                RayZeroable::zero(), // 0%; 99% LTV
+                RayZeroable::zero(), // 0%; 101% LTV
+            ]
+                .span(),
+            // Second threshold of 80% (Ray)
+            array![
+                116217800000000000000000000_u128.into(), // 11.62178% (Ray); 86.9% LTV
+                RayZeroable::zero(), // 0%; 99% LTV
+                RayZeroable::zero(), // 0%; 101% LTV
+            ]
+                .span(),
+            // Third threshold of 90% (Ray)
+            array![
+                53196900000000000000000000_u128.into(), // 5.31969% (Ray); 92.1% LTV
+                RayZeroable::zero(), // 0%; 99% LTV
+                RayZeroable::zero(), // 0%; 101% LTV
+            ]
+                .span(),
+            // Fourth threshold of 96% (Ray)
+            array![
+                10141202000000000000000000_u128.into(), // 1.0104102; (96 + 1 wei)% LTV
+                RayZeroable::zero(), // 0%; 99% LTV
+                RayZeroable::zero(), // 0%; 101% LTV
+            ]
+                .span(),
+            // Fifth threshold of 97% (Ray)
+            array![
+                RayZeroable::zero(), // 0%; (96 + 1 wei)% LTV
+                RayZeroable::zero(), // 0%; 99% LTV
+                RayZeroable::zero(), // 0%; 101% LTV
+            ]
+                .span(),
+            // Sixth threshold of 99% (Ray)
+            array![
+                RayZeroable::zero(), // 0%; (99 + 1 wei)% LTV
+                RayZeroable::zero(), // 0%; 101% LTV
+            ]
+                .span()
+
+        ].span();
+
         loop {
             match thresholds.pop_front() {
                 Option::Some(threshold) => {
                     let mut target_ltvs: Span<Ray> = *target_ltvs_by_threshold.pop_front().unwrap();
-
+                    let mut target_penalties: Span<Ray> = *expected_penalties_by_ltv_by_threshold.pop_front().unwrap();
                     // Inner loop iterating over LTVs at liquidation
                     loop {
                         match target_ltvs.pop_front() {
@@ -1895,8 +1939,9 @@ mod TestPurger {
                                     shrine, purger, target_trove, ltv
                                 );
 
-                                let (_, max_close_amt, _) = purger.preview_absorb(target_trove);
+                                let (penalty, max_close_amt, _) = purger.preview_absorb(target_trove);
                                 assert(max_close_amt == before_debt, 'close amount != debt');
+                                common::assert_equalish(penalty, *target_penalties.pop_front().unwrap(), (RAY_ONE / 100).into(), 'wrong penalty');
 
                                 set_contract_address(PurgerUtils::random_user());
                                 purger.absorb(target_trove);
