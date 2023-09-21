@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestShrineRedistribution {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
@@ -549,8 +548,8 @@ mod TestShrineRedistribution {
                                 common::assert_events_emitted(
                                     shrine.contract_address, expected_events
                                 );
-                            // We are unable to test the trove value in a sensible way here because 
-                            // the yang price has not been updated to reflect any rebasing of the 
+                            // We are unable to test the trove value in a sensible way here because
+                            // the yang price has not been updated to reflect any rebasing of the
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
                             },
@@ -688,8 +687,8 @@ mod TestShrineRedistribution {
             .get_trove_info(recipient_trove2);
 
         // Note that since there is only one yang in recipient troves, the check here is a lot simpler because
-        // all redistributions will follow the same proportion. See the next test with two recipient yangs for 
-        // a more detailed calculation when there is more than one recipient yang with different proportions 
+        // all redistributions will follow the same proportion. See the next test with two recipient yangs for
+        // a more detailed calculation when there is more than one recipient yang with different proportions
         let total_recipient_troves_value: Wad = before_recipient_trove1_value
             + before_recipient_trove2_value;
         let expected_recipient_trove1_pct: Ray = wadray::rdiv_ww(
@@ -948,7 +947,7 @@ mod TestShrineRedistribution {
         );
 
         // Note that we cannot fully check the updated value of the recipient trove here because
-        // we need the oracle to update the yang price for yang2 based on the new asset amount per 
+        // we need the oracle to update the yang price for yang2 based on the new asset amount per
         // yang2, but we can check the increase in value from yang1 and yang3.
         let (yang1_price, _, _) = shrine.get_current_yang_price(yang1_addr);
         let (yang3_price, _, _) = shrine.get_current_yang_price(yang3_addr);
@@ -1399,7 +1398,7 @@ mod TestShrineRedistribution {
         );
 
         // Note that we cannot fully check the updated value of the recipient trove here because
-        // we need the oracle to update the yang price for yang2 and yang3 based on the new asset 
+        // we need the oracle to update the yang price for yang2 and yang3 based on the new asset
         // amount yang, but we can check the increase in value from yang1.
         let expected_recipient_trove1_value: Wad = before_recipient_trove1_value
             + (recipient_trove1_yang1_amt * yang1_price);
@@ -1477,7 +1476,7 @@ mod TestShrineRedistribution {
             .unit_debt;
 
         // At this point, both troves 2 and 3 have some amount of each yang.
-        // Redistribute trove 3 next to check that the originally redistributed 
+        // Redistribute trove 3 next to check that the originally redistributed
         // yang 1 for trove 3 is properly redistributed to trove 2, even if trove 2
         // is not updated.
         let (_, _, _, redistributed_trove2_debt) = shrine.get_trove_info(redistributed_trove2);
@@ -1587,7 +1586,7 @@ mod TestShrineRedistribution {
             shrine.get_deposit(yang1_addr, redistributed_trove2).is_zero(),
             'should be 0 yang 1 left'
         );
-        // Recipient trove's yang 1 amount should be the amount received from the first 
+        // Recipient trove's yang 1 amount should be the amount received from the first
         // redistribution, since the second redistribution would have rebased
         let recipient_trove_yang1_amt: Wad = shrine.get_deposit(yang1_addr, recipient_trove);
         common::assert_equalish(
@@ -1638,9 +1637,9 @@ mod TestShrineRedistribution {
     }
 
     // Redistribution with only 1 trove.
-    // Since the trove's yangs are zeroed, the initial yang would essentially "receive" 
+    // Since the trove's yangs are zeroed, the initial yang would essentially "receive"
     // the trove's value via rebasing. The trove's debt would also be zeroed even though
-    // it was not distributed at all. However, the debt would still be backed, and the 
+    // it was not distributed at all. However, the debt would still be backed, and the
     // value can be accessed in the event of a shutdown.
     #[test]
     #[available_gas(20000000000)]
@@ -1682,7 +1681,7 @@ mod TestShrineRedistribution {
 
     // This test asserts that the sum of troves' debt after pulling redistributed debt does not
     // exceed the total debt.
-    // Note that yangs 1 and 2 are normally redistributed, and yang 3 is exceptionally 
+    // Note that yangs 1 and 2 are normally redistributed, and yang 3 is exceptionally
     // redistributed.
     #[test]
     #[available_gas(20000000000)]

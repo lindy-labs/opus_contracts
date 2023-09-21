@@ -214,8 +214,7 @@ mod Absorber {
         shrine: ContractAddress,
         sentinel: ContractAddress,
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(AbsorberRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(AbsorberRoles::default_admin_role()));
 
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
         self.sentinel.write(ISentinelDispatcher { contract_address: sentinel });

@@ -20,8 +20,11 @@ mod AccessControl {
         StoreContractAddress, StoreU128, StorageBaseAddress, storage_base_address_from_felt252,
     };
 
-    fn initializer(admin: ContractAddress) {
+    fn initializer(admin: ContractAddress, roles: Option<u128>) {
         set_admin_helper(admin);
+        if roles.is_some() {
+            grant_role_helper(roles.unwrap(), admin);
+        }
     }
 
     //

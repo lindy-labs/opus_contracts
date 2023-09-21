@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests {
     use debug::PrintTrait;
 
@@ -15,7 +14,7 @@ mod tests {
 
         assert(sqrt(0_u128.into()).val == 0_u128.into(), 'wrong sqrt #1');
 
-        // Ground truth tests 
+        // Ground truth tests
 
         // 1000
         assert_equalish(
@@ -25,7 +24,7 @@ mod tests {
             'wrong sqrt #2'
         );
 
-        // 6969 
+        // 6969
         assert_equalish(
             sqrt(6969000000000000000000000000000_u128.into()),
             83480536653761396384637711221_u128.into(),
@@ -33,7 +32,7 @@ mod tests {
             'wrong sqrt #3'
         );
 
-        // pi 
+        // pi
         assert_equalish(
             sqrt(3141592653589793238462643383_u128.into()),
             1772453850905516027298167483_u128.into(),
@@ -41,7 +40,7 @@ mod tests {
             'wrong sqrt #4'
         );
 
-        // e 
+        // e
         assert_equalish(
             sqrt(2718281828459045235360287471_u128.into()),
             1648721270700128146848650787_u128.into(),
@@ -76,13 +75,13 @@ mod tests {
     #[test]
     #[available_gas(20000000000)]
     fn test_pow() {
-        // u128 tests 
+        // u128 tests
         assert(pow(5_u128, 3) == 125_u128, 'wrong pow #1');
         assert(pow(5_u128, 0) == 1_u128, 'wrong pow #2');
         assert(pow(5_u128, 1) == 5_u128, 'wrong pow #3');
         assert(pow(5_u128, 2) == 25_u128, 'wrong pow #4');
 
-        // Ray tests 
+        // Ray tests
         let ERROR_MARGIN = Ray { val: 1000 };
 
         assert_equalish(

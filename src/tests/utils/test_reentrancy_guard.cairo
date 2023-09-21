@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests {
     use aura::utils::reentrancy_guard::ReentrancyGuard;
 
@@ -15,7 +14,7 @@ mod tests {
     #[test]
     #[available_gas(9999999)]
     fn test_reentrancy_guard_pass() {
-        // It should be possible to call the guarded function multiple times in succession. 
+        // It should be possible to call the guarded function multiple times in succession.
         guarded_func(false);
         guarded_func(false);
         guarded_func(false);
