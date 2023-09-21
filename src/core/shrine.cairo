@@ -597,7 +597,7 @@ mod Shrine {
             let num_yangs: u32 = self.yangs_count.read();
 
             assert(
-                (yangs_len == new_rates.len()) & (yangs_len == num_yangs),
+                yangs_len == new_rates.len() && yangs_len == num_yangs,
                 'SH: yangs.len != new_rates.len'
             );
 
@@ -1034,7 +1034,7 @@ mod Shrine {
             // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
             let yang_id_to_array_idx_offset: u32 = 1;
 
-            let mut added_yangs: Array<YangBalance> = Default::default();
+            let mut added_yangs: Array<YangBalance> = ArrayTrait::new();
             if updated_trove_yang_balances.is_some() {
                 let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
                 loop {
@@ -1150,7 +1150,7 @@ mod Shrine {
             // If redistribution unit-debt is non-zero or the error is non-zero, return the error
             // This catches both the case where the unit debt is non-zero and the error is zero, and the case
             // where the unit debt is zero (due to very large amounts of yang) and the error is non-zero.
-            if redistribution.unit_debt.is_non_zero() | redistribution.error.is_non_zero() {
+            if redistribution.unit_debt.is_non_zero() || redistribution.error.is_non_zero() {
                 return redistribution.error;
             }
 
@@ -1177,7 +1177,7 @@ mod Shrine {
 
             match self.get_yang_suspension_status_helper(yang_id) {
                 YangSuspensionStatus::None => { base_threshold },
-                YangSuspensionStatus::Temporary(_) => {
+                YangSuspensionStatus::Temporary => {
                     // linearly decrease the threshold from base_threshold to 0
                     // based on the time passed since suspension started
                     let ts_diff: u64 = get_block_timestamp() - self.yang_suspension.read(yang_id);
@@ -1185,7 +1185,7 @@ mod Shrine {
                         * ((SUSPENSION_GRACE_PERIOD - ts_diff).into()
                             / SUSPENSION_GRACE_PERIOD.into())
                 },
-                YangSuspensionStatus::Permanent(_) => { RayZeroable::zero() },
+                YangSuspensionStatus::Permanent => { RayZeroable::zero() },
             }
         }
 
@@ -1194,7 +1194,7 @@ mod Shrine {
         // Note that zero values are added to the return array because downstream
         // computation assumes the full array of yangs.
         fn get_trove_deposits(self: @ContractState, trove_id: u64) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = Default::default();
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
 
             let mut current_yang_id: u32 = START_YANG_IDX;
             let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
@@ -1213,7 +1213,7 @@ mod Shrine {
         // Returns an ordered array of the `YangBalance` struct for the total deposited yangs in the Shrine.
         // Starts from yang ID 1.
         fn get_shrine_deposits(self: @ContractState) -> Span<YangBalance> {
-            let mut yang_balances: Array<YangBalance> = Default::default();
+            let mut yang_balances: Array<YangBalance> = ArrayTrait::new();
 
             let mut current_yang_id: u32 = START_YANG_IDX;
             let loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
@@ -1523,8 +1523,8 @@ mod Shrine {
             let mut cumulative_diff: Wad = end_cumulative_yang_price - start_cumulative_yang_price;
 
             // Early termination if `start_interval` and `end_interval` are updated
-            if (start_interval == available_start_interval)
-                & (end_interval == available_end_interval) {
+            if start_interval == available_start_interval
+                && end_interval == available_end_interval {
                 return (cumulative_diff.val / (end_interval - start_interval).into()).into();
             }
 
@@ -1569,8 +1569,8 @@ mod Shrine {
             let mut cumulative_diff: Ray = end_cumulative_multiplier - start_cumulative_multiplier;
 
             // Early termination if `start_interval` and `end_interval` are updated
-            if (start_interval == available_start_interval)
-                & (end_interval == available_end_interval) {
+            if start_interval == available_start_interval
+                && end_interval == available_end_interval {
                 return (cumulative_diff.val / (end_interval - start_interval).into()).into();
             }
 
@@ -1676,8 +1676,8 @@ mod Shrine {
             //    yang3 total yang amounts have decremented, but the yang prices have not been updated.
             //
             // Note that these two arrays should be equal in length at the end of the main loop.
-            let mut new_yang_totals: Array<YangBalance> = Default::default();
-            let mut updated_trove_yang_balances: Array<YangBalance> = Default::default();
+            let mut new_yang_totals: Array<YangBalance> = ArrayTrait::new();
+            let mut updated_trove_yang_balances: Array<YangBalance> = ArrayTrait::new();
 
             let trove_yang_balances: Span<YangBalance> = self.get_trove_deposits(trove_id);
             let (_, trove_value) = self
@@ -2065,7 +2065,7 @@ mod Shrine {
 
             // Early termination if no redistributions since trove was last updated
             if current_redistribution_id == trove_last_redistribution_id {
-                return (Option::None(()), trove_debt);
+                return (Option::None, trove_debt);
             }
 
             let mut has_exceptional_redistributions: bool = false;
@@ -2183,7 +2183,7 @@ mod Shrine {
                                 // in the previous loop can also be used to index into the array
                                 // for the correct yang ID with 1 offset.
                                 let mut updated_trove_yang_balances: Array<YangBalance> =
-                                    Default::default();
+                                    ArrayTrait::new();
                                 let mut yang_id: u32 = START_YANG_IDX;
                                 let tmp_loop_end: u32 = self.yangs_count.read() + START_YANG_IDX;
                                 loop {
@@ -2224,7 +2224,7 @@ mod Shrine {
             if has_exceptional_redistributions {
                 (Option::Some(trove_yang_balances), trove_debt)
             } else {
-                (Option::None(()), trove_debt)
+                (Option::None, trove_debt)
             }
         }
     }
@@ -2240,7 +2240,7 @@ mod Shrine {
 
     // Asserts that `current_new_rate` is in the range (0, MAX_YANG_RATE]
     fn assert_rate_is_valid(rate: Ray) {
-        assert((0 < rate.val) & (rate.val <= MAX_YANG_RATE), 'SH: Rate out of bounds');
+        assert(0 < rate.val && rate.val <= MAX_YANG_RATE, 'SH: Rate out of bounds');
     }
 
     // Helper function to round up the debt to be redistributed for a yang if the remaining debt

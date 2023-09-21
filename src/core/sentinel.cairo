@@ -103,7 +103,7 @@ mod Sentinel {
         fn get_yang_addresses(self: @ContractState) -> Span<ContractAddress> {
             let mut idx: u64 = LOOP_START;
             let loop_end: u64 = self.yang_addresses_count.read() + LOOP_START;
-            let mut addresses: Array<ContractAddress> = Default::default();
+            let mut addresses: Array<ContractAddress> = ArrayTrait::new();
             loop {
                 if idx == loop_end {
                     break addresses.span();

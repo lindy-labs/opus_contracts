@@ -373,7 +373,7 @@ mod Purger {
 
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
-            let mut freed_assets: Array<AssetBalance> = Default::default();
+            let mut freed_assets: Array<AssetBalance> = ArrayTrait::new();
 
             let mut yangs_copy: Span<ContractAddress> = yangs;
 
@@ -398,9 +398,7 @@ mod Purger {
                         freed_assets
                             .append(AssetBalance { address: *yang, amount: freed_asset_amt });
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 

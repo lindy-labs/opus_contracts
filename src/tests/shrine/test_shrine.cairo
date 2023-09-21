@@ -132,9 +132,7 @@ mod TestShrine {
 
                     yang_id += 1;
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -170,7 +168,7 @@ mod TestShrine {
             *yang_start_prices.at(0), *yang_start_prices.at(1), *yang_start_prices.at(2),
         ];
 
-        let mut expected_events: Array<Shrine::Event> = Default::default();
+        let mut expected_events: Array<Shrine::Event> = ArrayTrait::new();
 
         let start_interval: u64 = ShrineUtils::get_interval(ShrineUtils::DEPLOYMENT_TIMESTAMP);
         let mut yang_addrs_copy = yang_addrs;
@@ -188,9 +186,7 @@ mod TestShrine {
                         'wrong start cumulative price'
                     );
                 },
-                Option::None => {
-                    break ();
-                }
+                Option::None => { break (); }
             };
         };
 
@@ -215,7 +211,7 @@ mod TestShrine {
             // Create a copy of the current cumulative prices
             let mut expected_yang_cumulative_prices_copy = expected_yang_cumulative_prices.span();
             // Reset array to track the latest cumulative prices
-            expected_yang_cumulative_prices = Default::default();
+            expected_yang_cumulative_prices = ArrayTrait::new();
             loop {
                 match yang_addrs_copy.pop_front() {
                     Option::Some(yang_addr) => {
@@ -247,9 +243,7 @@ mod TestShrine {
 
                         yang_idx += 1;
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -1618,9 +1612,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None => {
-                    break ();
-                }
+                Option::None => { break (); }
             };
         };
         let mut yang_thresholds: Array<Ray> = array![
@@ -1692,9 +1684,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None => {
-                    break ();
-                }
+                Option::None => { break (); }
             };
         };
 

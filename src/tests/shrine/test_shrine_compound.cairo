@@ -696,7 +696,7 @@ mod TestShrineCompound {
         let yang1_addr: ContractAddress = *yangs.at(0);
         let yang2_addr: ContractAddress = *yangs.at(1);
 
-        let mut expected_events: Array<Shrine::Event> = Default::default();
+        let mut expected_events: Array<Shrine::Event> = ArrayTrait::new();
 
         // Setup base rates for calling `Shrine.update_rates`.
         // The base rates are set in the following format:
@@ -794,9 +794,9 @@ mod TestShrineCompound {
             i += 1;
         };
 
-        let mut avg_multipliers: Array<Ray> = Default::default();
+        let mut avg_multipliers: Array<Ray> = ArrayTrait::new();
 
-        let mut avg_yang_prices_by_era: Array<Span<Wad>> = Default::default();
+        let mut avg_yang_prices_by_era: Array<Span<Wad>> = ArrayTrait::new();
 
         // Deposit yangs into trove and forge debt
         set_contract_address(ShrineUtils::admin());
@@ -840,7 +840,7 @@ mod TestShrineCompound {
             let era_end_interval: u64 = era_start_interval + BASE_RATE_UPDATE_SPACING;
 
             // Calculate average price of yangs over the era for calculating the compounded interest
-            let mut avg_yang_prices_for_era: Array<Wad> = Default::default();
+            let mut avg_yang_prices_for_era: Array<Wad> = ArrayTrait::new();
             let mut yangs_copy = yangs;
             loop {
                 match yangs_copy.pop_front() {
@@ -850,9 +850,7 @@ mod TestShrineCompound {
                         );
                         avg_yang_prices_for_era.append(yang_avg_price);
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -886,9 +884,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None => {
-                            break;
-                        },
+                        Option::None => { break; },
                     };
                 };
 

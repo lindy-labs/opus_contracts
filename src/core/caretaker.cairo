@@ -109,7 +109,7 @@ mod Caretaker {
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            let mut releasable_assets: Array<AssetBalance> = Default::default();
+            let mut releasable_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
 
             loop {
@@ -126,9 +126,7 @@ mod Caretaker {
                         releasable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt });
                     },
-                    Option::None => {
-                        break releasable_assets.span();
-                    },
+                    Option::None => { break releasable_assets.span(); },
                 };
             }
         }
@@ -146,7 +144,7 @@ mod Caretaker {
 
             let yangs: Span<ContractAddress> = self.sentinel.read().get_yang_addresses();
 
-            let mut reclaimable_assets: Array<AssetBalance> = Default::default();
+            let mut reclaimable_assets: Array<AssetBalance> = ArrayTrait::new();
             let caretaker = get_contract_address();
             let mut yangs_copy = yangs;
             loop {
@@ -163,9 +161,7 @@ mod Caretaker {
                         reclaimable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },
-                    Option::None => {
-                        break reclaimable_assets.span();
-                    },
+                    Option::None => { break reclaimable_assets.span(); },
                 };
             }
         }
@@ -218,9 +214,7 @@ mod Caretaker {
                         );
                         sentinel.exit(*yang, caretaker, DUMMY_TROVE_ID, backed_yang);
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -259,7 +253,7 @@ mod Caretaker {
             let sentinel: ISentinelDispatcher = self.sentinel.read();
             let yangs: Span<ContractAddress> = sentinel.get_yang_addresses();
 
-            let mut released_assets: Array<AssetBalance> = Default::default();
+            let mut released_assets: Array<AssetBalance> = ArrayTrait::new();
             let mut yangs_copy = yangs;
 
             // Loop over yangs deposited in trove and transfer to trove owner
@@ -280,9 +274,7 @@ mod Caretaker {
                         };
                         released_assets.append(AssetBalance { address: *yang, amount: asset_amt });
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -342,9 +334,7 @@ mod Caretaker {
                             .transfer(caller, (*reclaimable_asset.amount).into());
                         assert(success, 'CA: Asset transfer failed');
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
