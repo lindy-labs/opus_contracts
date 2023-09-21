@@ -48,8 +48,8 @@ mod TestSentinel {
 
         let given_yang_addresses = sentinel.get_yang_addresses();
         assert(
-            (*given_yang_addresses.at(0) == *assets.at(0))
-                & (*given_yang_addresses.at(1) == *assets.at(1)),
+            *given_yang_addresses.at(0) == *assets.at(0)
+                && *given_yang_addresses.at(1) == *assets.at(1),
             'Wrong yang addresses'
         );
 

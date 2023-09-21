@@ -15,9 +15,7 @@ mod TestPurger {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::types::AssetBalance;
     use aura::utils::wadray;
-    use aura::utils::wadray::{
-        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
-    };
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -428,15 +426,11 @@ mod TestPurger {
                                     assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -882,20 +876,14 @@ mod TestPurger {
                                             'wrong recipient trove value'
                                         );
                                     },
-                                    Option::None => {
-                                        break;
-                                    },
+                                    Option::None => { break; },
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1297,29 +1285,21 @@ mod TestPurger {
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
-                                                        Option::None => {
-                                                            break;
-                                                        },
+                                                        Option::None => { break; },
                                                     };
                                                 };
                                                 absorber_yin_idx += 1;
                                             };
                                         },
-                                        Option::None => {
-                                            break;
-                                        },
+                                        Option::None => { break; },
                                     };
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1550,21 +1530,15 @@ mod TestPurger {
                                                 'wrong recipient trove value'
                                             );
                                         },
-                                        Option::None => {
-                                            break;
-                                        },
+                                        Option::None => { break; },
                                     };
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1658,15 +1632,11 @@ mod TestPurger {
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1754,15 +1724,11 @@ mod TestPurger {
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1873,9 +1839,7 @@ mod TestPurger {
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
                     PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

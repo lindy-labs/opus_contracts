@@ -256,7 +256,7 @@ impl WadTryIntoRay of TryInto<Wad, Ray> {
         if (self.val <= MAX_CONVERTIBLE_WAD) {
             Option::Some(Ray { val: self.val * DIFF })
         } else {
-            Option::None(())
+            Option::None
         }
     }
 }
@@ -302,7 +302,7 @@ impl U256TryIntoWad of TryInto<u256, Wad> {
     fn try_into(self: u256) -> Option<Wad> {
         match self.try_into() {
             Option::Some(val) => Option::Some(Wad { val }),
-            Option::None => Option::None(()),
+            Option::None => Option::None,
         }
     }
 }

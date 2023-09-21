@@ -13,7 +13,7 @@ mod Controller {
     use aura::utils::wadray_signed;
     use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
 
-    // Time intervals between updates are scaled down by this factor 
+    // Time intervals between updates are scaled down by this factor
     // to prevent the integral term from getting too large
     const TIME_SCALE: u128 = consteval_int!(60 * 60); // 60 mins * 60 seconds = 1 hour
 
@@ -70,10 +70,9 @@ mod Controller {
         alpha_i: u8,
         beta_i: u8,
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(ControllerRoles::TUNE_CONTROLLER, admin);
+        AccessControl::initializer(admin, Option::Some(ControllerRoles::default_admin_role()));
 
-        // Setting `i_term_last_updated` to the current timestamp to 
+        // Setting `i_term_last_updated` to the current timestamp to
         // ensure that the integral term is correctly updated
         self.i_term_last_updated.write(get_block_timestamp());
 
@@ -151,7 +150,7 @@ mod Controller {
                 self.i_term_last_updated.write(get_block_timestamp());
             }
 
-            // Updating the previous yin price for the next integral term update 
+            // Updating the previous yin price for the next integral term update
             self.yin_previous_price.write(shrine.get_yin_spot_price().into());
 
             let multiplier_ray: Ray = bound_multiplier(multiplier).try_into().unwrap();
@@ -169,10 +168,10 @@ mod Controller {
         fn set_i_gain(ref self: ContractState, i_gain: Ray) {
             AccessControl::assert_has_role(ControllerRoles::TUNE_CONTROLLER);
 
-            // Since `i_term_last_updated` isn't updated in `update_multiplier` 
-            // while `i_gain` is zero, we must update it here whenever the 
-            // `i_gain` is set from zero to a non-zero value in order to ensure 
-            // that the accumulation of the integral term starts at zero. 
+            // Since `i_term_last_updated` isn't updated in `update_multiplier`
+            // while `i_gain` is zero, we must update it here whenever the
+            // `i_gain` is set from zero to a non-zero value in order to ensure
+            // that the accumulation of the integral term starts at zero.
             if self.i_gain.read().is_zero() {
                 self.i_term_last_updated.write(get_block_timestamp());
             }
@@ -258,7 +257,7 @@ mod Controller {
         }
     }
 
-    // Pure functions 
+    // Pure functions
 
     #[inline(always)]
     fn nonlinear_transform(error: SignedRay, alpha: u8, beta: u8) -> SignedRay {
