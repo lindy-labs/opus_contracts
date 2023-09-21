@@ -91,16 +91,10 @@ mod TestSentinel {
         assert(wbtc_price == ShrineUtils::YANG2_START_PRICE.into(), 'Wrong yang price #2');
 
         let (eth_threshold, _) = shrine.get_yang_threshold(eth);
-        assert(
-            eth_threshold == ShrineUtils::YANG1_THRESHOLD.into(),
-            'Wrong yang threshold #1'
-        );
+        assert(eth_threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'Wrong yang threshold #1');
 
         let (wbtc_threshold, _) = shrine.get_yang_threshold(wbtc);
-        assert(
-            wbtc_threshold == ShrineUtils::YANG2_THRESHOLD.into(),
-            'Wrong yang threshold #2'
-        );
+        assert(wbtc_threshold == ShrineUtils::YANG2_THRESHOLD.into(), 'Wrong yang threshold #2');
 
         let expected_era: u64 = 1;
         assert(
@@ -541,5 +535,4 @@ mod TestSentinel {
         set_contract_address(common::badguy());
         sentinel.unsuspend_yang(eth);
     }
-
 }

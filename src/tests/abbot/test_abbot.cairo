@@ -42,7 +42,7 @@ mod TestAbbot {
             'wrong user trove ids'
         );
 
-        let mut yangs_total: Array<Wad> = Default::default();
+        let mut yangs_total: Array<Wad> = ArrayTrait::new();
         // Check yangs
         let mut yangs_copy = yangs;
         let mut deposited_amts_copy = deposited_amts;
@@ -67,9 +67,7 @@ mod TestAbbot {
                         'wrong trove yang balance #1'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -118,9 +116,7 @@ mod TestAbbot {
                         'wrong trove yang balance #2'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -134,8 +130,8 @@ mod TestAbbot {
         let (_, _, abbot, _, _) = AbbotUtils::abbot_deploy();
         let trove_owner: ContractAddress = common::trove1_owner_addr();
 
-        let yangs: Array<ContractAddress> = Default::default();
-        let yang_amts: Array<u128> = Default::default();
+        let yangs: Array<ContractAddress> = ArrayTrait::new();
+        let yang_amts: Array<u128> = ArrayTrait::new();
         let forge_amt: Wad = 1_u128.into();
         let max_forge_fee_pct: Wad = WadZeroable::zero();
 
@@ -179,9 +175,7 @@ mod TestAbbot {
                 Option::Some(yang) => {
                     assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -231,9 +225,7 @@ mod TestAbbot {
                         'wrong yang amount #2'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -264,9 +256,7 @@ mod TestAbbot {
                         'wrong yang amount #3'
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -517,7 +507,7 @@ mod TestAbbot {
 
         let mut expected_owner1_trove_ids: Array<u64> = array![first_trove_id, third_trove_id];
         let mut expected_owner2_trove_ids: Array<u64> = array![second_trove_id, fourth_trove_id];
-        let empty_user_trove_ids: Span<u64> = Default::default().span();
+        let empty_user_trove_ids: Span<u64> = ArrayTrait::new().span();
 
         assert(
             abbot.get_user_trove_ids(trove_owner1) == expected_owner1_trove_ids.span(),

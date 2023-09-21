@@ -75,9 +75,7 @@ mod TestAbbot {
                         'wrong trove yang balance #1'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -126,9 +124,7 @@ mod TestAbbot {
                         'wrong trove yang balance #2'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -188,9 +184,7 @@ mod TestAbbot {
                 Option::Some(yang) => {
                     assert(shrine.get_deposit(*yang, trove_id).is_zero(), 'wrong yang amount');
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -239,9 +233,7 @@ mod TestAbbot {
                         'wrong yang amount #2'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -270,9 +262,7 @@ mod TestAbbot {
                         'wrong yang amount #3'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -342,9 +332,8 @@ mod TestAbbot {
 
         let eth_addr: ContractAddress = *yangs.at(0);
         let eth_gate_addr: ContractAddress = *gates.at(0).contract_address;
-        let eth_gate_bal = IERC20Dispatcher {
-            contract_address: eth_addr
-        }.balance_of(eth_gate_addr);
+        let eth_gate_bal = IERC20Dispatcher { contract_address: eth_addr }
+            .balance_of(eth_gate_addr);
 
         set_contract_address(SentinelUtils::admin());
         let new_eth_asset_max: u128 = eth_gate_bal.try_into().unwrap();

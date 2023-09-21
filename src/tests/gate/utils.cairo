@@ -1,5 +1,4 @@
 mod GateUtils {
-    use array::ArrayTrait;
     use debug::PrintTrait;
     use integer::BoundedInt;
     use starknet::{

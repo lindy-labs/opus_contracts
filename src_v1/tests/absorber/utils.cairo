@@ -200,9 +200,7 @@ mod AbsorberUtils {
                     );
                     blessers.append(blesser);
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -221,9 +219,7 @@ mod AbsorberUtils {
                 Option::Some(token) => {
                     absorber.set_reward(*token, *blessers.pop_front().unwrap(), true);
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -306,7 +302,7 @@ mod AbsorberUtils {
         let trove: u64 = common::open_trove_helper(
             abbot, provider, yangs, yang_asset_amts, gates, amt + WAD_SCALE.into()
         );
-        
+
         set_contract_address(provider);
         let yin = IERC20Dispatcher { contract_address: shrine.contract_address };
         yin.approve(absorber.contract_address, BoundedU256::max());
@@ -386,9 +382,7 @@ mod AbsorberUtils {
                     let yang_asset_minter = IMintableDispatcher { contract_address: *yang };
                     yang_asset_minter.mint(absorber.contract_address, yang_asset_amt);
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -436,7 +430,10 @@ mod AbsorberUtils {
                     let absorbed_amt: u128 = *absorbed_amts.pop_front().unwrap();
                     let after_provider_bal: u128 = IERC20Dispatcher {
                         contract_address: *asset.address
-                    }.balance_of(provider).try_into().unwrap();
+                    }
+                        .balance_of(provider)
+                        .try_into()
+                        .unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let before_bal: u128 = *before_bal_arr.pop_front().unwrap();
                     let expected_bal: u128 = before_bal + absorbed_amt;
@@ -450,9 +447,7 @@ mod AbsorberUtils {
                         absorbed_amt, *asset.amount, error_margin, 'wrong preview absorbed amount'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -498,7 +493,10 @@ mod AbsorberUtils {
                     let blessed_amt: Wad = wadray::rmul_wr(reward_amt, blessings_multiplier);
                     let after_provider_bal: u128 = IERC20Dispatcher {
                         contract_address: *asset.address
-                    }.balance_of(provider).try_into().unwrap();
+                    }
+                        .balance_of(provider)
+                        .try_into()
+                        .unwrap();
                     let mut before_bal_arr: Span<u128> = *before_balances.pop_front().unwrap();
                     let expected_bal: u128 = (*before_bal_arr.pop_front().unwrap()).into()
                         + blessed_amt.val;
@@ -515,9 +513,7 @@ mod AbsorberUtils {
                         'wrong preview rewarded amount'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -553,9 +549,7 @@ mod AbsorberUtils {
                         'wrong provider cumulative'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -596,16 +590,15 @@ mod AbsorberUtils {
                     let expected_blessed_amt: Wad = wadray::rmul_wr(
                         reward_amt, blessings_multiplier
                     );
-                    let expected_amt_per_share: Wad = expected_blessed_amt / (total_shares - Absorber::INITIAL_SHARES.into());
+                    let expected_amt_per_share: Wad = expected_blessed_amt
+                        / (total_shares - Absorber::INITIAL_SHARES.into());
 
                     assert(
                         reward_distribution_info.asset_amt_per_share == expected_amt_per_share.val,
                         'wrong reward cumulative'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -643,9 +636,7 @@ mod AbsorberUtils {
                         'wrong start reward cumulative'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
     }
@@ -686,9 +677,7 @@ mod AbsorberUtils {
                         + actual_distribution.error.into();
                     assert(asset_amt == distributed_amt, 'update amount mismatch');
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
     }

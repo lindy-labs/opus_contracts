@@ -17,12 +17,8 @@ impl SpanSerde<T, impl TSerde: Serde<T>, impl TDrop: Drop<T>> of Serde<Span<T>> 
         let length = *serialized.pop_front()?;
         let mut arr = Default::default();
         match deserialize_array_helper(ref serialized, arr, length) {
-            Option::Some(arr) => {
-                Option::Some(arr.span())
-            },
-            Option::None(_) => {
-                Option::None(())
-            }
+            Option::Some(arr) => { Option::Some(arr.span()) },
+            Option::None(_) => { Option::None(()) }
         }
     }
 }

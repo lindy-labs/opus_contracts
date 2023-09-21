@@ -350,9 +350,7 @@ mod Shrine {
                                 );
                         }
                     },
-                    Option::None(_) => {
-                        break;
-                    },
+                    Option::None(_) => { break; },
                 };
             };
         }
@@ -738,9 +736,7 @@ mod Shrine {
                         yang_rates::write((current_yang_id, new_era), *rate);
                     }
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -1134,9 +1130,7 @@ mod Shrine {
                     Option::Some(yang_balance) => {
                         deposits::write((*yang_balance.yang_id, trove_id), *yang_balance.amount);
                     },
-                    Option::None(_) => {
-                        break;
-                    },
+                    Option::None(_) => { break; },
                 };
             };
         }
@@ -1612,7 +1606,7 @@ mod Shrine {
                                     // Update the distribution of the redistributed yang for the
                                     // current recipient yang
                                     let exc_yang_redistribution = ExceptionalYangRedistribution {
-                                        unit_debt, unit_yang, 
+                                        unit_debt, unit_yang,
                                     };
 
                                     yang_to_yang_redistribution::write(
@@ -1624,9 +1618,7 @@ mod Shrine {
                                         exc_yang_redistribution
                                     );
                                 },
-                                Option::None(_) => {
-                                    break;
-                                },
+                                Option::None(_) => { break; },
                             };
                         };
 
@@ -1674,9 +1666,7 @@ mod Shrine {
                         break;
                     }
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -1696,9 +1686,7 @@ mod Shrine {
 
                     yang_total::write(*total_yang_balance.yang_id, *total_yang_balance.amount);
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1851,9 +1839,7 @@ mod Shrine {
 
                                         trove_debt += debt_increment.try_into().unwrap();
                                     },
-                                    Option::None(_) => {
-                                        break;
-                                    },
+                                    Option::None(_) => { break; },
                                 };
                             };
 
@@ -1898,9 +1884,7 @@ mod Shrine {
                             trove_yang_balances = updated_trove_yang_balances.span();
                         }
                     },
-                    Option::None(_) => {
-                        break;
-                    },
+                    Option::None(_) => { break; },
                 };
             };
 
@@ -2122,9 +2106,7 @@ mod Shrine {
                             wadray::wmul_rw(yang_threshold, yang_deposited_value);
                     }
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -2155,9 +2137,7 @@ mod Shrine {
         let base_threshold: Ray = thresholds::read(yang_id);
 
         match get_yang_suspension_status_internal(yang_id) {
-            YangSuspensionStatus::None(_) => {
-                base_threshold
-            },
+            YangSuspensionStatus::None(_) => { base_threshold },
             YangSuspensionStatus::Temporary(_) => {
                 // linearly decrease the threshold from base_threshold to 0
                 // based on the time passed since suspension started
@@ -2165,9 +2145,7 @@ mod Shrine {
                 base_threshold
                     * ((SUSPENSION_GRACE_PERIOD - ts_diff).into() / SUSPENSION_GRACE_PERIOD.into())
             },
-            YangSuspensionStatus::Permanent(_) => {
-                RayZeroable::zero()
-            },
+            YangSuspensionStatus::Permanent(_) => { RayZeroable::zero() },
         }
     }
 

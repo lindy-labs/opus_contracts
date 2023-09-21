@@ -91,9 +91,7 @@ mod EqualizerUtils {
                 Option::Some(recipient) => {
                     calldata.append(contract_address_to_felt252(*recipient));
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -104,9 +102,7 @@ mod EqualizerUtils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -125,7 +121,9 @@ mod EqualizerUtils {
         equalizer_deploy_with_shrine(shrine.contract_address)
     }
 
-    fn equalizer_deploy_with_shrine(shrine: ContractAddress) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
+    fn equalizer_deploy_with_shrine(
+        shrine: ContractAddress
+    ) -> (IShrineDispatcher, IEqualizerDispatcher, IAllocatorDispatcher) {
         let allocator: IAllocatorDispatcher = allocator_deploy(
             initial_recipients(), initial_percentages()
         );
@@ -151,6 +149,10 @@ mod EqualizerUtils {
 
         set_contract_address(ContractAddressZeroable::zero());
 
-        (IShrineDispatcher { contract_address: shrine }, IEqualizerDispatcher { contract_address: equalizer_addr }, allocator)
+        (
+            IShrineDispatcher { contract_address: shrine },
+            IEqualizerDispatcher { contract_address: equalizer_addr },
+            allocator
+        )
     }
 }

@@ -37,7 +37,7 @@ mod FlashMint {
     const FLASH_FEE: u256 = 0_u256;
 
     struct Storage {
-        shrine: IShrineDispatcher, 
+        shrine: IShrineDispatcher,
     }
 
     #[event]
@@ -99,9 +99,8 @@ mod FlashMint {
 
         let initiator: ContractAddress = starknet::get_caller_address();
 
-        let borrower_resp: u256 = IFlashBorrowerDispatcher {
-            contract_address: receiver
-        }.on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
+        let borrower_resp: u256 = IFlashBorrowerDispatcher { contract_address: receiver }
+            .on_flash_loan(initiator, token, amount, FLASH_FEE, call_data);
 
         assert(borrower_resp == ON_FLASH_MINT_SUCCESS, 'FM: on_flash_loan failed');
 

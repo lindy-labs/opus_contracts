@@ -267,7 +267,7 @@ mod PurgerUtils {
 
     fn interesting_yang_amts_for_recipient_trove() -> Span<Span<u128>> {
         let mut yang_asset_amts_cases: Array<Span<u128>> = Default::default();
-        
+
         // base case for ordinary redistributions
         yang_asset_amts_cases.append(recipient_trove_yang_asset_amts());
 
@@ -526,12 +526,8 @@ mod PurgerUtils {
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
-                Option::Some(yang) => {
-                    shrine.set_threshold(*yang, threshold);
-                },
-                Option::None(_) => {
-                    break;
-                },
+                Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
+                Option::None(_) => { break; },
             };
         };
         set_contract_address(ContractAddressZeroable::zero());
@@ -569,9 +565,7 @@ mod PurgerUtils {
                         current_ts
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
         set_contract_address(ContractAddressZeroable::zero());
@@ -652,7 +646,7 @@ mod PurgerUtils {
         }
     }
 
-    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64, ) {
+    fn assert_trove_is_not_absorbable(purger: IPurgerDispatcher, trove_id: u64,) {
         let (penalty, max_absorption_amt, _) = purger.preview_absorb(trove_id);
         assert(penalty.is_zero(), 'penalty should be 0');
         assert(max_absorption_amt.is_zero(), 'close amount should be 0');
@@ -691,12 +685,10 @@ mod PurgerUtils {
                         + *expected_freed_asset.amount;
 
                     common::assert_equalish(
-                        after_asset_bal, expected_after_asset_bal, error_margin, message, 
+                        after_asset_bal, expected_after_asset_bal, error_margin, message,
                     );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }

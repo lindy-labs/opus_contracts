@@ -95,9 +95,7 @@ mod TestShrineRedistribution {
                         .get_redistribution_for_yang(*yang, redistribution_id);
                     cumulative_error += yang_redistribution.error;
                 },
-                Option::None(_) => {
-                    break cumulative_error;
-                },
+                Option::None(_) => { break cumulative_error; },
             };
         }
     }
@@ -133,7 +131,7 @@ mod TestShrineRedistribution {
                     // Calculate redistributed unit debt and error after redistributing debt
                     // for each yang
                     let mut expected_yang_debt = wadray::rmul_rw(
-                        wadray::rdiv_ww(yang_value, trove_value), trove_debt, 
+                        wadray::rdiv_ww(yang_value, trove_value), trove_debt,
                     );
                     cumulative_redistributed_debt += expected_yang_debt;
                     let remainder = trove_debt - cumulative_redistributed_debt;
@@ -158,9 +156,7 @@ mod TestShrineRedistribution {
                         break;
                     }
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
         (
@@ -254,9 +250,7 @@ mod TestShrineRedistribution {
                         cumulative_redistributed_debt -= prev_error;
                     }
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -504,15 +498,11 @@ mod TestShrineRedistribution {
                             // asset amount per yang wad. Instead, refer to the tests for purger
                             // for assertions on the redistributed trove's value.
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -834,7 +824,7 @@ mod TestShrineRedistribution {
         // Check invariant that redistributed unit debt should be equal to all debt redistributed to troves
         // and the errors for all yangs
         let cumulative_error: Wad = get_redistributed_debt_error(
-            shrine, yang_addrs, expected_redistribution_id, 
+            shrine, yang_addrs, expected_redistribution_id,
         );
 
         let actual_redistributed_debt: Wad = (recipient_troves_yang2_amt * yang2_unit_debt)
@@ -1163,7 +1153,7 @@ mod TestShrineRedistribution {
         // Check invariant that redistributed unit debt should be equal to all debt redistributed to troves
         // and the errors for all yangs
         let cumulative_error: Wad = get_redistributed_debt_error(
-            shrine, yang_addrs, expected_redistribution_id, 
+            shrine, yang_addrs, expected_redistribution_id,
         );
 
         let actual_redistributed_debt: Wad = (recipient_troves_yang2_amt * yang2_unit_debt)
@@ -1306,7 +1296,7 @@ mod TestShrineRedistribution {
         );
 
         let cumulative_error: Wad = get_redistributed_debt_error(
-            shrine, yang_addrs, expected_redistribution_id, 
+            shrine, yang_addrs, expected_redistribution_id,
         );
 
         let actual_redistributed_debt: Wad = (recipient_trove_yang2_amt
@@ -1503,7 +1493,7 @@ mod TestShrineRedistribution {
 
         let expected_redistribution_id = 1;
         let cumulative_error: Wad = get_redistributed_debt_error(
-            shrine, yang_addrs, expected_redistribution_id, 
+            shrine, yang_addrs, expected_redistribution_id,
         );
 
         let cumulative_redistributed_debt: Wad = cumulative_troves_debt + cumulative_error;

@@ -80,11 +80,8 @@ mod ControllerUtils {
         set_contract_address(ContractAddressZeroable::zero());
 
         (
-            IControllerDispatcher {
-                contract_address: controller_addr
-                }, IShrineDispatcher {
-                contract_address: shrine_addr
-            }
+            IControllerDispatcher { contract_address: controller_addr },
+            IShrineDispatcher { contract_address: shrine_addr }
         )
     }
 
@@ -104,5 +101,4 @@ mod ControllerUtils {
     fn fast_forward_by_x_minutes(x: u64) {
         set_block_timestamp(get_block_timestamp() + x * 60);
     }
-    
 }

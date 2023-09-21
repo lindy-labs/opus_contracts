@@ -430,15 +430,11 @@ mod TestPurger {
                                     assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 
@@ -882,20 +878,14 @@ mod TestPurger {
                                             'wrong recipient trove value'
                                         );
                                     },
-                                    Option::None(_) => {
-                                        break;
-                                    },
+                                    Option::None(_) => { break; },
                                 };
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1295,29 +1285,21 @@ mod TestPurger {
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
-                                                        Option::None(_) => {
-                                                            break;
-                                                        },
+                                                        Option::None(_) => { break; },
                                                     };
                                                 };
                                                 absorber_yin_idx += 1;
                                             };
                                         },
-                                        Option::None(_) => {
-                                            break;
-                                        },
+                                        Option::None(_) => { break; },
                                     };
                                 };
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1546,21 +1528,15 @@ mod TestPurger {
                                                 'wrong recipient trove value'
                                             );
                                         },
-                                        Option::None(_) => {
-                                            break;
-                                        },
+                                        Option::None(_) => { break; },
                                     };
                                 };
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1654,15 +1630,11 @@ mod TestPurger {
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1750,15 +1722,11 @@ mod TestPurger {
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
                             },
-                            Option::None(_) => {
-                                break;
-                            },
+                            Option::None(_) => { break; },
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1869,9 +1837,7 @@ mod TestPurger {
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
                     PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }

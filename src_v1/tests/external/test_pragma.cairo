@@ -375,12 +375,10 @@ mod TestPragma {
         let gate_wbtc_bal: u128 = wbtc_gate.get_total_assets();
         let rebase_multiplier: u128 = 2;
 
-        IMintableDispatcher {
-            contract_address: eth_addr
-        }.mint(eth_gate.contract_address, gate_eth_bal.into());
-        IMintableDispatcher {
-            contract_address: wbtc_addr
-        }.mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
+        IMintableDispatcher { contract_address: eth_addr }
+            .mint(eth_gate.contract_address, gate_eth_bal.into());
+        IMintableDispatcher { contract_address: wbtc_addr }
+            .mint(wbtc_gate.contract_address, gate_wbtc_bal.into());
 
         let next_ts = first_ts + Shrine::TIME_INTERVAL;
         set_block_timestamp(next_ts);

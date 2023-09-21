@@ -61,7 +61,6 @@ mod TestAbsorber {
     // Tests - Setters
     //
 
-
     #[test]
     #[available_gas(20000000000)]
     fn test_set_reward_pass() {
@@ -83,9 +82,9 @@ mod TestAbsorber {
         assert(absorber.get_rewards_count() == 1, 'rewards count not updated');
 
         let mut aura_reward = Reward {
-            asset: aura_token, blesser: IBlesserDispatcher {
-                contract_address: aura_blesser
-            }, is_active: true
+            asset: aura_token,
+            blesser: IBlesserDispatcher { contract_address: aura_blesser },
+            is_active: true
         };
         let mut expected_rewards: Array<Reward> = Default::default();
         expected_rewards.append(aura_reward);
@@ -99,9 +98,9 @@ mod TestAbsorber {
         assert(absorber.get_rewards_count() == 2, 'rewards count not updated');
 
         let veaura_reward = Reward {
-            asset: veaura_token, blesser: IBlesserDispatcher {
-                contract_address: veaura_blesser
-            }, is_active: true
+            asset: veaura_token,
+            blesser: IBlesserDispatcher { contract_address: veaura_blesser },
+            is_active: true
         };
         expected_rewards.append(veaura_reward);
 
@@ -424,9 +423,7 @@ mod TestAbsorber {
                         );
                     }
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1190,15 +1187,11 @@ mod TestAbsorber {
                                     (*reward_asset.amount).is_zero(), 'expected rewards should be 0'
                                 );
                             },
-                            Option::None(_) => {
-                                break;
-                            }
+                            Option::None(_) => { break; }
                         };
                     };
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
     }

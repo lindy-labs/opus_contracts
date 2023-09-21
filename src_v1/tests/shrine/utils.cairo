@@ -7,7 +7,8 @@ mod ShrineUtils {
     use traits::{Default, Into, TryInto};
     use starknet::{
         contract_address_const, deploy_syscall, ClassHash, class_hash_try_from_felt252,
-        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252, get_block_timestamp, SyscallResultTrait
+        ContractAddress, contract_address_to_felt252, contract_address_try_from_felt252,
+        get_block_timestamp, SyscallResultTrait
     };
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
@@ -175,9 +176,8 @@ mod ShrineUtils {
 
     fn make_root(shrine_addr: ContractAddress, user: ContractAddress) {
         set_contract_address(admin());
-        IAccessControlDispatcher {
-            contract_address: shrine_addr
-        }.grant_role(ShrineRoles::all_roles(), user);
+        IAccessControlDispatcher { contract_address: shrine_addr }
+            .grant_role(ShrineRoles::all_roles(), user);
         set_contract_address(ContractAddressZeroable::zero());
     }
 
@@ -197,7 +197,7 @@ mod ShrineUtils {
         set_contract_address(admin());
 
         // Add yangs
-        
+
         shrine
             .add_yang(
                 yang1_addr(),
@@ -287,7 +287,11 @@ mod ShrineUtils {
 
         let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_addr };
         advance_prices_and_set_multiplier(
-            shrine, FEED_LEN, YANG1_START_PRICE.into(), YANG2_START_PRICE.into(), YANG3_START_PRICE.into()
+            shrine,
+            FEED_LEN,
+            YANG1_START_PRICE.into(),
+            YANG2_START_PRICE.into(),
+            YANG3_START_PRICE.into()
         );
         shrine
     }
@@ -345,12 +349,8 @@ mod ShrineUtils {
 
         let price_hash: felt252 = hash::pedersen(price.val.into(), price.val.into());
         let mut price_hash = match u128s_from_felt252(price_hash) {
-            U128sFromFelt252Result::Narrow(i) => {
-                i
-            },
-            U128sFromFelt252Result::Wide((i, j)) => {
-                i
-            },
+            U128sFromFelt252Result::Narrow(i) => { i },
+            U128sFromFelt252Result::Wide((i, j)) => { i },
         };
 
         loop {
@@ -475,9 +475,7 @@ mod ShrineUtils {
                         'array length mismatch'
                     );
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -541,7 +539,7 @@ mod ShrineUtils {
 
     // Compound function for a single yang, within a single era
     fn compound_for_single_yang(
-        base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad, 
+        base_rate: Ray, avg_multiplier: Ray, start_interval: u64, end_interval: u64, debt: Wad,
     ) -> Wad {
         let intervals: u128 = (end_interval - start_interval).into();
         let t: Wad = (intervals * Shrine::TIME_INTERVAL_DIV_YEAR).into();
@@ -580,12 +578,18 @@ mod ShrineUtils {
         // Deposit 1000 of yang1
         shrine.deposit(yang1_addr(), common::WHALE_TROVE, WHALE_TROVE_YANG1_DEPOSIT.into());
         // Mint 1 million yin (50% LTV at yang1's start price)
-        shrine.forge(common::trove1_owner_addr(), common::WHALE_TROVE, WHALE_TROVE_FORGE_AMT.into(), 0_u128.into());
+        shrine
+            .forge(
+                common::trove1_owner_addr(),
+                common::WHALE_TROVE,
+                WHALE_TROVE_FORGE_AMT.into(),
+                0_u128.into()
+            );
         set_contract_address(ContractAddressZeroable::zero());
     }
 
     fn recovery_mode_test_setup() -> IShrineDispatcher {
-        let shrine: IShrineDispatcher = IShrineDispatcher{contract_address: shrine_deploy()};
+        let shrine: IShrineDispatcher = IShrineDispatcher { contract_address: shrine_deploy() };
         shrine_setup(shrine.contract_address);
 
         // Setting the debt and collateral ceilings high enough to accomodate a very large trove

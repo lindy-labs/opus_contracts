@@ -112,12 +112,8 @@ mod Abbot {
         // deposit all requested Yangs into the system
         loop {
             match yang_assets.pop_front() {
-                Option::Some(yang_asset) => {
-                    deposit_internal(new_trove_id, user, *yang_asset);
-                },
-                Option::None(_) => {
-                    break;
-                }
+                Option::Some(yang_asset) => { deposit_internal(new_trove_id, user, *yang_asset); },
+                Option::None(_) => { break; }
             };
         };
 
@@ -150,9 +146,7 @@ mod Abbot {
                     }
                     withdraw_internal(trove_id, user, *yang, yang_amount);
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 

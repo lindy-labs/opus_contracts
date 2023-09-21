@@ -21,7 +21,8 @@ mod TestShrine {
     use aura::utils::u256_conversions;
     use aura::utils::wadray;
     use aura::utils::wadray::{
-        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable, WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
+        BoundedRay, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, RAY_SCALE, Wad, WadZeroable,
+        WAD_DECIMALS, WAD_PERCENT, WAD_ONE, WAD_SCALE
     };
 
     use aura::tests::shrine::utils::ShrineUtils;
@@ -81,10 +82,7 @@ mod TestShrine {
         let (rmt, sltv) = shrine.get_recovery_mode_threshold();
 
         let (raw_threshold, _) = shrine.get_yang_threshold(yang1_addr);
-        assert(
-            raw_threshold == ShrineUtils::YANG1_THRESHOLD.into(),
-            'wrong yang1 threshold'
-        );
+        assert(raw_threshold == ShrineUtils::YANG1_THRESHOLD.into(), 'wrong yang1 threshold');
         assert(
             shrine.get_yang_rate(yang1_addr, expected_era) == ShrineUtils::YANG1_BASE_RATE.into(),
             'wrong yang1 base rate'
@@ -94,10 +92,7 @@ mod TestShrine {
         let (yang2_price, _, _) = shrine.get_current_yang_price(yang2_addr);
         let (raw_threshold, _) = shrine.get_yang_threshold(yang2_addr);
         assert(yang2_price == ShrineUtils::YANG2_START_PRICE.into(), 'wrong yang2 start price');
-        assert(
-            raw_threshold == ShrineUtils::YANG2_THRESHOLD.into(),
-            'wrong yang2 threshold'
-        );
+        assert(raw_threshold == ShrineUtils::YANG2_THRESHOLD.into(), 'wrong yang2 threshold');
         assert(
             shrine.get_yang_rate(yang2_addr, expected_era) == ShrineUtils::YANG2_BASE_RATE.into(),
             'wrong yang2 base rate'
@@ -191,9 +186,7 @@ mod TestShrine {
                         idx += 1;
                     };
                 },
-                Option::None(_) => {
-                    break ();
-                }
+                Option::None(_) => { break (); }
             };
         };
     }
@@ -227,17 +220,12 @@ mod TestShrine {
             );
 
         assert(shrine.get_yangs_count() == yangs_count + 1, 'incorrect yangs count');
-        assert(
-            shrine.get_yang_total(new_yang_address).is_zero(), 'incorrect yang total'
-        );
+        assert(shrine.get_yang_total(new_yang_address).is_zero(), 'incorrect yang total');
 
         let (current_yang_price, _, _) = shrine.get_current_yang_price(new_yang_address);
         assert(current_yang_price == new_yang_start_price, 'incorrect yang price');
         let (raw_threshold, _) = shrine.get_yang_threshold(new_yang_address);
-        assert(
-            raw_threshold == new_yang_threshold,
-            'incorrect yang threshold'
-        );
+        assert(raw_threshold == new_yang_threshold, 'incorrect yang threshold');
 
         assert(
             shrine.get_yang_rate(new_yang_address, current_rate_era) == new_yang_rate,
@@ -1349,9 +1337,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None(_) => {
-                    break ();
-                }
+                Option::None(_) => { break (); }
             };
         };
         let mut yang_thresholds: Array<Ray> = Default::default();
@@ -1427,9 +1413,7 @@ mod TestShrine {
 
                     shrine.advance(yang, *yang_prices_copy.pop_front().unwrap());
                 },
-                Option::None(_) => {
-                    break ();
-                }
+                Option::None(_) => { break (); }
             };
         };
 
@@ -1629,7 +1613,12 @@ mod TestShrine {
         let (raw_threshold, _) = shrine.get_yang_threshold(yang);
         // expected threshold is YANG1_THRESHOLD * (1 / SUSPENSION_GRACE_PERIOD)
         // that is about 0.0000050735 Ray, err margin is 10^-12 Ray
-        common::assert_equalish(raw_threshold, 50735000000000000000_u128.into(), 1000000000000000_u128.into(), 'threshold 4');
+        common::assert_equalish(
+            raw_threshold,
+            50735000000000000000_u128.into(),
+            1000000000000000_u128.into(),
+            'threshold 4'
+        );
 
         // move time forward to end of temp suspension, start of permanent one
         set_block_timestamp(start_ts + Shrine::SUSPENSION_GRACE_PERIOD);
@@ -1705,15 +1694,21 @@ mod TestShrine {
         //  x = whale_trove_deposit_value - whale_trove_forge_amt/(rm_threshold * 1.01)
 
         let threshold_scalar: Ray = (RAY_ONE + RAY_PERCENT).into();
-        let whale_trove_deposit_value: Wad = ShrineUtils::WHALE_TROVE_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into();
+        let whale_trove_deposit_value: Wad = ShrineUtils::WHALE_TROVE_YANG1_DEPOSIT.into()
+            * ShrineUtils::YANG1_START_PRICE.into();
         let whale_trove_forge_amt: Wad = ShrineUtils::WHALE_TROVE_FORGE_AMT.into();
-        let initial_collateral_value_to_withdraw: Wad = whale_trove_deposit_value - 
-                                            wadray::rdiv_wr(whale_trove_forge_amt, rm_threshold * threshold_scalar);
-        
+        let initial_collateral_value_to_withdraw: Wad = whale_trove_deposit_value
+            - wadray::rdiv_wr(whale_trove_forge_amt, rm_threshold * threshold_scalar);
+
         set_contract_address(ShrineUtils::admin());
 
         let (_, prev_yang1_threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
-        shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, initial_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into());
+        shrine
+            .withdraw(
+                ShrineUtils::yang1_addr(),
+                common::WHALE_TROVE,
+                initial_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into()
+            );
 
         // At this point, recovery mode should be activated but trove 1 should still be healthy,
         // since the liquidation threshold decrease is gradual
@@ -1731,22 +1726,31 @@ mod TestShrine {
         // trove1_ltv - 10^(-24) = (whale_trove_deposit_value - z) * (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold) / whale_trove_forge_amt
         // (whale_trove_deposit_value - z) = (trove1_ltv - 10^(-24)) * whale_trove_forge_amt / (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold)
         // z = whale_trove_deposit_value - ((trove1_ltv - 10^(-24)) * whale_trove_forge_amt) / (trove1_threshold * THRESHOLD_DECREASE_FACTOR * rm_threshold)
-        
-        let trove1_ltv: Ray = wadray::rdiv_ww(ShrineUtils::RECOVERY_TESTS_TROVE1_FORGE_AMT.into(), ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into()); 
-        let trove1_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into(); 
+
+        let trove1_ltv: Ray = wadray::rdiv_ww(
+            ShrineUtils::RECOVERY_TESTS_TROVE1_FORGE_AMT.into(),
+            ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into()
+        );
+        let trove1_threshold: Ray = ShrineUtils::YANG1_THRESHOLD.into();
 
         let (_, shrine_value) = shrine.get_shrine_threshold_and_value();
         let shrine_ltv: Ray = wadray::rdiv_ww(shrine.get_total_debt(), shrine_value);
 
-        let total_collateral_value_to_withdraw = whale_trove_deposit_value - 
-            wadray::rdiv_wr(
-                wadray::rmul_rw((trove1_ltv - 1000_u128.into()), whale_trove_forge_amt), 
+        let total_collateral_value_to_withdraw = whale_trove_deposit_value
+            - wadray::rdiv_wr(
+                wadray::rmul_rw((trove1_ltv - 1000_u128.into()), whale_trove_forge_amt),
                 trove1_threshold * Shrine::THRESHOLD_DECREASE_FACTOR.into() * rm_threshold
             );
 
         // y = z - x
-        let remaining_collateral_value_to_withdraw = total_collateral_value_to_withdraw - initial_collateral_value_to_withdraw; 
-        shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, remaining_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into());
+        let remaining_collateral_value_to_withdraw = total_collateral_value_to_withdraw
+            - initial_collateral_value_to_withdraw;
+        shrine
+            .withdraw(
+                ShrineUtils::yang1_addr(),
+                common::WHALE_TROVE,
+                remaining_collateral_value_to_withdraw / ShrineUtils::YANG1_START_PRICE.into()
+            );
 
         // Now trove1 should be underwater, while the whale trove should still be healthy. 
         assert(!shrine.is_healthy(common::TROVE_1), 'should be unhealthy');
@@ -1770,7 +1774,7 @@ mod TestShrine {
         // We then withdraw collateral from the whale trove in order to bring up the global LTV
         // and activate recovery mode
         shrine.withdraw(ShrineUtils::yang1_addr(), common::WHALE_TROVE, (200 * WAD_ONE).into());
-        
+
         // Sanity check that recovery mode is active
         let (_, threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
         assert(threshold < ShrineUtils::YANG1_THRESHOLD.into(), 'recovery mode not active');
@@ -1783,11 +1787,15 @@ mod TestShrine {
         let (_, yang1_threshold) = shrine.get_yang_threshold(ShrineUtils::yang1_addr());
         let (_, yang2_threshold) = shrine.get_yang_threshold(ShrineUtils::yang2_addr());
 
-        let yang1_deposit_value = ShrineUtils::TROVE1_YANG1_DEPOSIT.into() * ShrineUtils::YANG1_START_PRICE.into();
+        let yang1_deposit_value = ShrineUtils::TROVE1_YANG1_DEPOSIT.into()
+            * ShrineUtils::YANG1_START_PRICE.into();
         let yang2_deposit_value = yang2_deposit * ShrineUtils::YANG2_START_PRICE.into();
 
-        let alternative_threshold: Ray = wadray::wdiv_rw(wadray::wmul_wr(yang1_deposit_value, yang1_threshold) + 
-            wadray::wmul_wr(yang2_deposit_value, yang2_threshold), yang1_deposit_value + yang2_deposit_value);
+        let alternative_threshold: Ray = wadray::wdiv_rw(
+            wadray::wmul_wr(yang1_deposit_value, yang1_threshold)
+                + wadray::wmul_wr(yang2_deposit_value, yang2_threshold),
+            yang1_deposit_value + yang2_deposit_value
+        );
 
         assert(trove_threshold == alternative_threshold, 'invariant did not hold');
     }

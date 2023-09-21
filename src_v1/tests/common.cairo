@@ -84,14 +84,10 @@ impl SpanPartialEq<
 
         loop {
             match lhs.pop_front() {
-                Option::Some(lhs) => {
-                    if *lhs != *rhs.pop_front().unwrap() {
-                        break false;
-                    }
-                },
-                Option::None(_) => {
-                    break true;
-                }
+                Option::Some(lhs) => { if *lhs != *rhs.pop_front().unwrap() {
+                    break false;
+                } },
+                Option::None(_) => { break true; }
             };
         }
     }
@@ -150,13 +146,10 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
     loop {
         match yangs.pop_front() {
             Option::Some(yang) => {
-                IMintableDispatcher {
-                    contract_address: *yang
-                }.mint(user, (*asset_amts.pop_front().unwrap()).into());
+                IMintableDispatcher { contract_address: *yang }
+                    .mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
-            Option::None(_) => {
-                break;
-            }
+            Option::None(_) => { break; }
         };
     };
 }
@@ -179,9 +172,7 @@ fn open_trove_helper(
                 let gate: IGateDispatcher = *gates.pop_front().unwrap();
                 SentinelUtils::approve_max(gate, *yang, user);
             },
-            Option::None(_) => {
-                break;
-            }
+            Option::None(_) => { break; }
         };
     };
 
@@ -220,16 +211,12 @@ fn get_token_balances(
                             let bal: u128 = token.balance_of(*address).try_into().unwrap();
                             yang_balances.append(bal);
                         },
-                        Option::None(_) => {
-                            break;
-                        }
+                        Option::None(_) => { break; }
                     };
                 };
                 balances.append(yang_balances.span());
             },
-            Option::None(_) => {
-                break balances.span();
-            }
+            Option::None(_) => { break balances.span(); }
         };
     }
 }
@@ -259,12 +246,8 @@ fn assert_spans_equalish<
 
     loop {
         match a.pop_front() {
-            Option::Some(a) => {
-                assert_equalish(*a, *b.pop_front().unwrap(), error, message);
-            },
-            Option::None(_) => {
-                break;
-            }
+            Option::Some(a) => { assert_equalish(*a, *b.pop_front().unwrap(), error, message); },
+            Option::None(_) => { break; }
         };
     };
 }
@@ -281,9 +264,7 @@ fn assert_asset_balances_equalish(
                 assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
-            Option::None(_) => {
-                break;
-            }
+            Option::None(_) => { break; }
         };
     };
 }
@@ -301,13 +282,9 @@ fn combine_assets_and_amts(
         match assets.pop_front() {
             Option::Some(assets) => {
                 asset_balances
-                    .append(
-                        AssetBalance { address: *assets, amount: *amts.pop_front().unwrap(),  }
-                    );
+                    .append(AssetBalance { address: *assets, amount: *amts.pop_front().unwrap(), });
             },
-            Option::None(_) => {
-                break;
-            },
+            Option::None(_) => { break; },
         };
     };
 
@@ -324,9 +301,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
                 let asset_amt: Wad = (*asset_amt).into();
                 split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
             },
-            Option::None(_) => {
-                break;
-            },
+            Option::None(_) => { break; },
         };
     };
 
@@ -345,9 +320,7 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
                 // Convert to Wad for fixed point operations
                 combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
             },
-            Option::None(_) => {
-                break;
-            },
+            Option::None(_) => { break; },
         };
     };
 

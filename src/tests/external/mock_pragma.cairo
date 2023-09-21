@@ -34,15 +34,9 @@ mod MockPragma {
     impl IPragmaOracleImpl of IPragmaOracle<ContractState> {
         fn get_data_median(self: @ContractState, data_type: DataType) -> PricesResponse {
             match data_type {
-                DataType::Spot(pair_id) => {
-                    self.price_response.read(pair_id)
-                },
-                DataType::Future(pair_id) => {
-                    self.price_response.read(pair_id)
-                },
-                DataType::Generic(pair_id) => {
-                    self.price_response.read(pair_id)
-                }
+                DataType::Spot(pair_id) => { self.price_response.read(pair_id) },
+                DataType::Future(pair_id) => { self.price_response.read(pair_id) },
+                DataType::Generic(pair_id) => { self.price_response.read(pair_id) }
             }
         }
     }

@@ -137,8 +137,13 @@ mod TestController {
             ERROR_MARGIN.into(),
             'Wrong p term #2'
         );
-        
-        assert_equalish(controller.get_i_term(), SignedRayZeroable::zero(), ERROR_MARGIN.into(), 'Wrong i term #2');
+
+        assert_equalish(
+            controller.get_i_term(),
+            SignedRayZeroable::zero(),
+            ERROR_MARGIN.into(),
+            'Wrong i term #2'
+        );
 
         ControllerUtils::fast_forward_1_hour();
         shrine.update_yin_spot_price(YIN_PRICE2.into());
@@ -227,110 +232,109 @@ mod TestController {
         prices.append(999765417689028000_u128.into());
         prices.append(1000069974303700000_u128.into());
 
+        gt_p_terms.append(SignedRay { val: 970590147927647000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 894070898474206000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 821673437507969000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 682223134755347000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 563650679126526000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 466883377897327000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 388027439175095000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 322421778769981000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 267128295084547000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 220807295545965000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 181797017511202000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 148839923137893000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 120979934404742000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 97352460220021900000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 77590330680972000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 61032188256437500000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 47127014107944500000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 35766291049440400000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 26457120564074500000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 19019740391049200000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 13092320818861100000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 8626275988050790000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 5349866590771690000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 2994352321987200000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 1465538181737340000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 580077744495169000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 149299065094387000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 11771833128707600000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 454868699248396000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 10137648168357900000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 556094500531630000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 10318737437779200000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 601597192010593000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 11443607803844600000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 444309924306484000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 12884852286933400000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 307254269093854000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 11694088217335100000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 434714972188474000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 11899277040162700000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 414014311714013000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 11702480865715000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 384014080725509000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 12195217294212000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 395708534480748000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 11651447644416500000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 417616564726968000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 12022963179828800000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 346412629605555000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 12908797294705800000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 342622403010459000000, sign: true });
 
-        gt_p_terms.append(SignedRay{val: 970590147927647000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 894070898474206000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 821673437507969000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 682223134755347000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 563650679126526000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 466883377897327000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 388027439175095000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 322421778769981000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 267128295084547000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 220807295545965000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 181797017511202000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 148839923137893000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 120979934404742000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 97352460220021900000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 77590330680972000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 61032188256437500000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 47127014107944500000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 35766291049440400000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 26457120564074500000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 19019740391049200000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 13092320818861100000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 8626275988050790000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 5349866590771690000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 2994352321987200000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 1465538181737340000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 580077744495169000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 149299065094387000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 11771833128707600000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 454868699248396000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 10137648168357900000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 556094500531630000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 10318737437779200000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 601597192010593000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 11443607803844600000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 444309924306484000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 12884852286933400000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 307254269093854000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 11694088217335100000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 434714972188474000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 11899277040162700000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 414014311714013000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 11702480865715000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 384014080725509000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 12195217294212000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 395708534480748000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 11651447644416500000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 417616564726968000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 12022963179828800000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 346412629605555000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 12908797294705800000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 342622403010459000000, sign: true});
-
-        gt_i_terms.append(SignedRay{val: 0, sign: false});
-        gt_i_terms.append(SignedRay{val: 990050483961299000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 1953370315705950000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 2889955680281540000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 3770244771413480000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 4596260901939910000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 5372013197354250000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 6101374292736350000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 6787069709320670000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 7431087143392610000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 8035494683284410000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 8601979946211740000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 9131928503019010000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 9626503856398830000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 10086524917164800000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 10513037568019600000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 10906753462460900000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 11267958508146100000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 11597433365183300000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 11895407749273100000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 12162339343970200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 12398027453761000000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 12603115431573400000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 12778011609926200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 12922145856373900000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13035733763855500000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13119132970012600000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13172183000149500000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13194931251653000000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13187240619906900000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13208883367510000000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13200660003177300000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13222430859433100000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13213989055419400000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13236523886693600000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13228893228445400000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13252336945406000000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13245589086793100000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13268287148763300000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13260711819200200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13283541868395200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13276088742621000000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13298792233296800000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13291523662104200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13314541428040600000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13307199809685200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13329870249804400000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13322395570385200000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13345304448818300000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13338281310237400000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 13361739540689300000000000, sign: false});
+        gt_i_terms.append(SignedRay { val: 0, sign: false });
+        gt_i_terms.append(SignedRay { val: 990050483961299000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 1953370315705950000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 2889955680281540000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 3770244771413480000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 4596260901939910000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 5372013197354250000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 6101374292736350000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 6787069709320670000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 7431087143392610000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 8035494683284410000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 8601979946211740000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 9131928503019010000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 9626503856398830000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 10086524917164800000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 10513037568019600000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 10906753462460900000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 11267958508146100000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 11597433365183300000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 11895407749273100000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 12162339343970200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 12398027453761000000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 12603115431573400000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 12778011609926200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 12922145856373900000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13035733763855500000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13119132970012600000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13172183000149500000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13194931251653000000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13187240619906900000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13208883367510000000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13200660003177300000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13222430859433100000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13213989055419400000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13236523886693600000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13228893228445400000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13252336945406000000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13245589086793100000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13268287148763300000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13260711819200200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13283541868395200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13276088742621000000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13298792233296800000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13291523662104200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13314541428040600000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13307199809685200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13329870249804400000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13322395570385200000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13345304448818300000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13338281310237400000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 13361739540689300000000000, sign: false });
 
         gt_multipliers.append(1970590147927650000000000000_u128.into());
         gt_multipliers.append(1895060948958170000000000000_u128.into());
@@ -387,10 +391,9 @@ mod TestController {
         loop {
             match prices.pop_front() {
                 Option::Some(price) => {
-                    
                     shrine.update_yin_spot_price(price);
                     controller.update_multiplier();
-            
+
                     assert_equalish(
                         controller.get_p_term(),
                         gt_p_terms.pop_front().unwrap(),
@@ -413,10 +416,8 @@ mod TestController {
                     );
 
                     ControllerUtils::fast_forward_1_hour();
-                }, 
-                Option::None(_) => {
-                    break;
-                }
+                },
+                Option::None(_) => { break; }
             };
         };
     }
@@ -448,27 +449,27 @@ mod TestController {
         prices.append(996000000000000000_u128.into());
         prices.append(995000000000000000_u128.into());
 
-        gt_p_terms.append(SignedRay{val: 1000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 1000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 1000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 8000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 8000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 27000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 64000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 64000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 125000000000000000000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 125000000000000000000000000, sign: false});
+        gt_p_terms.append(SignedRay { val: 1000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 1000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 1000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 8000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 8000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 27000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 64000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 64000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 125000000000000000000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 125000000000000000000000000, sign: false });
 
-        gt_i_terms.append(SignedRay{val: 0, sign: false});
-        gt_i_terms.append(SignedRay{val: 99999950000037500000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 199999900000075000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 299999850000113000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 499999450001313000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 699999050002513000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 999997700011625000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 1399994500050020000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 1799991300088420000000000, sign: false});
-        gt_i_terms.append(SignedRay{val: 2299985050205610000000000, sign: false});
+        gt_i_terms.append(SignedRay { val: 0, sign: false });
+        gt_i_terms.append(SignedRay { val: 99999950000037500000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 199999900000075000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 299999850000113000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 499999450001313000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 699999050002513000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 999997700011625000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 1399994500050020000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 1799991300088420000000000, sign: false });
+        gt_i_terms.append(SignedRay { val: 2299985050205610000000000, sign: false });
 
         gt_multipliers.append(1001000000000000000000000000_u128.into());
         gt_multipliers.append(1001099999950000000000000000_u128.into());
@@ -488,13 +489,13 @@ mod TestController {
         gt_update_intervals.append(9_u64.into());
 
         let mut current_interval: u64 = 1;
-        let end_interval: u64 = 10; 
+        let end_interval: u64 = 10;
 
         loop {
             if current_interval > end_interval {
                 break;
             }
-            
+
             if gt_update_intervals.len() > 0 {
                 if current_interval == *gt_update_intervals.at(0) {
                     gt_update_intervals.pop_front();
@@ -569,50 +570,49 @@ mod TestController {
         prices.append(999576275080028000_u128.into());
         prices.append(999875348924666000_u128.into());
 
+        gt_p_terms.append(SignedRay { val: 1000000000000000000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 746195479082780000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 539523383476549000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 495564327004449000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 422207524565069000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 350809670272340000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 279021745992780000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 211084503271797000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 150007593859640000000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 98033733163599700000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 57236566790630100000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 28386114337654400000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 10809080591591700000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 2448543705069680000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 101940531609356000000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 74475965338374500000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 1893220914100550000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 4942406121262390000000, sign: true });
+        gt_p_terms.append(SignedRay { val: 370158792771361000000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 76076761869019800000000, sign: false });
+        gt_p_terms.append(SignedRay { val: 1936814769447970000000, sign: false });
 
-        gt_p_terms.append(SignedRay{val: 1000000000000000000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 746195479082780000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 539523383476549000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 495564327004449000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 422207524565069000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 350809670272340000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 279021745992780000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 211084503271797000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 150007593859640000000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 98033733163599700000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 57236566790630100000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 28386114337654400000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 10809080591591700000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 2448543705069680000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 101940531609356000000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 74475965338374500000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 1893220914100550000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 4942406121262390000000, sign: true});
-        gt_p_terms.append(SignedRay{val: 370158792771361000000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 76076761869019800000000, sign: false});
-        gt_p_terms.append(SignedRay{val: 1936814769447970000000, sign: false});
-
-        gt_i_terms.append(SignedRay{val: 0, sign: false});
-        gt_i_terms.append(SignedRay{val: 999950003749688000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 1906934104693500000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 2720992763528470000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 3512314473517650000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 4262490363876780000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 4967745706202580000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 5621182239604350000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 6216585331384020000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 6747916081914270000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 7209007702967550000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 7594386633212950000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 7899433542145930000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8120536824601320000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8255319961245460000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8302034161409560000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8259960981062700000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8247590105801630000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8264623955204720000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8192823161553290000000000, sign: true});
-        gt_i_terms.append(SignedRay{val: 8150450673359900000000000, sign: true});
+        gt_i_terms.append(SignedRay { val: 0, sign: false });
+        gt_i_terms.append(SignedRay { val: 999950003749688000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 1906934104693500000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 2720992763528470000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 3512314473517650000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 4262490363876780000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 4967745706202580000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 5621182239604350000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 6216585331384020000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 6747916081914270000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 7209007702967550000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 7594386633212950000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 7899433542145930000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8120536824601320000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8255319961245460000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8302034161409560000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8259960981062700000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8247590105801630000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8264623955204720000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8192823161553290000000000, sign: true });
+        gt_i_terms.append(SignedRay { val: 8150450673359900000000000, sign: true });
 
         gt_multipliers.append(200000000000000000000000000_u128.into());
         gt_multipliers.append(252804570913471000000000000_u128.into());
@@ -641,8 +641,8 @@ mod TestController {
                 Option::Some(price) => {
                     shrine.update_yin_spot_price(price);
                     controller.update_multiplier();
-                    
-                    assert_equalish( 
+
+                    assert_equalish(
                         controller.get_p_term(),
                         gt_p_terms.pop_front().unwrap(),
                         ERROR_MARGIN.into(),
@@ -662,10 +662,8 @@ mod TestController {
                     );
 
                     ControllerUtils::fast_forward_1_hour();
-                }, 
-                Option::None(_) => {
-                    break;
-                }
+                },
+                Option::None(_) => { break; }
             };
         };
     }
@@ -675,11 +673,14 @@ mod TestController {
     fn test_frequent_updates() {
         let (controller, shrine) = ControllerUtils::deploy_controller();
         set_contract_address(ControllerUtils::admin());
-        controller.set_i_gain(100000000000000000000000_u128.into()); // Ensuring the integral gain is non-zero
+        controller
+            .set_i_gain(
+                100000000000000000000000_u128.into()
+            ); // Ensuring the integral gain is non-zero
 
         ControllerUtils::set_yin_spot_price(shrine, YIN_PRICE1.into());
         controller.update_multiplier();
-        
+
         // Standard flow, updating the multiplier every hour
         let prev_multiplier: Ray = controller.get_current_multiplier();
         ControllerUtils::fast_forward_1_hour();
@@ -693,6 +694,9 @@ mod TestController {
         controller.update_multiplier();
         controller.update_multiplier();
 
-        assert(current_multiplier == controller.get_current_multiplier(), 'Multiplier should not change');
+        assert(
+            current_multiplier == controller.get_current_multiplier(),
+            'Multiplier should not change'
+        );
     }
 }

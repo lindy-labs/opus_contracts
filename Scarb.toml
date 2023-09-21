@@ -5,6 +5,9 @@ version = "0.1.0"
 # Build each contract as a standalone JSON file
 [[target.starknet-contract]]
 sierra = true
+# strict libfuncs check - throw a compilation error
+# when the code uses a libfunc that is not allowed
+allowed-libfuncs-deny = true
 
 [dependencies]
 starknet = ">=2.2.0"

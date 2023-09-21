@@ -1,5 +1,4 @@
 mod EqualizerUtils {
-    use array::ArrayTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, contract_address_try_from_felt252, SyscallResultTrait
@@ -87,9 +86,7 @@ mod EqualizerUtils {
                 Option::Some(recipient) => {
                     calldata.append(contract_address_to_felt252(*recipient));
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -100,9 +97,7 @@ mod EqualizerUtils {
                     let val: felt252 = (*percentage.val).into();
                     calldata.append(val);
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 
@@ -146,7 +141,7 @@ mod EqualizerUtils {
         let shrine_ac: IAccessControlDispatcher = IAccessControlDispatcher {
             contract_address: shrine
         };
-        shrine_ac.grant_role(ShrineRoles::INJECT, equalizer_addr);
+        shrine_ac.grant_role(ShrineRoles::equalizer(), equalizer_addr);
 
         set_contract_address(ContractAddressZeroable::zero());
 

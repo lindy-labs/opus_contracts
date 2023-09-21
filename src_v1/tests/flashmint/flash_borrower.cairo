@@ -15,7 +15,7 @@ mod FlashBorrower {
     const ATTEMPT_TO_REENTER: felt252 = 2;
 
     struct Storage {
-        flashmint: IFlashMintDispatcher, 
+        flashmint: IFlashMintDispatcher,
     }
 
     #[constructor]
@@ -47,15 +47,13 @@ mod FlashBorrower {
 
         if action == VALID_USAGE {
             assert(
-                IERC20Dispatcher {
-                    contract_address: token
-                }.balance_of(get_contract_address()) == amount,
+                IERC20Dispatcher { contract_address: token }
+                    .balance_of(get_contract_address()) == amount,
                 'FB: incorrect loan amount'
             );
         } else if action == ATTEMPT_TO_STEAL {
-            IERC20Dispatcher {
-                contract_address: token
-            }.transfer(contract_address_const::<0xbeef>(), amount);
+            IERC20Dispatcher { contract_address: token }
+                .transfer(contract_address_const::<0xbeef>(), amount);
         } else if action == ATTEMPT_TO_REENTER {
             flashmint::read().flash_loan(initiator, token, amount, call_data_copy);
         }

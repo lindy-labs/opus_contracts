@@ -61,7 +61,7 @@ mod tests {
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Caller not admin', ))]
+    #[should_panic(expected: ('Caller not admin',))]
     fn test_grant_role_not_admin() {
         setup(badguy());
         AccessControl::grant_role(R2, badguy());
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Caller not admin', ))]
+    #[should_panic(expected: ('Caller not admin',))]
     fn test_revoke_role_not_admin() {
         setup(admin());
         set_caller_address(badguy());
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Caller not admin', ))]
+    #[should_panic(expected: ('Caller not admin',))]
     fn test_set_pending_admin_not_admin() {
         setup(admin());
         set_caller_address(badguy());
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Caller not pending admin', ))]
+    #[should_panic(expected: ('Caller not pending admin',))]
     fn test_accept_admin_not_pending_admin() {
         let current_admin = admin();
         setup(current_admin);
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     #[available_gas(10000000)]
-    #[should_panic(expected: ('Caller missing role', ))]
+    #[should_panic(expected: ('Caller missing role',))]
     fn test_assert_has_role_panics() {
         setup(admin());
         default_grant();

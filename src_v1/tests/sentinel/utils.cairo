@@ -63,9 +63,8 @@ mod SentinelUtils {
 
         // Grant `abbot` role to `mock_abbot`
         set_contract_address(admin());
-        IAccessControlDispatcher {
-            contract_address: sentinel_addr
-        }.grant_role(SentinelRoles::abbot(), mock_abbot());
+        IAccessControlDispatcher { contract_address: sentinel_addr }
+            .grant_role(SentinelRoles::abbot(), mock_abbot());
 
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());

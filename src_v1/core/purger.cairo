@@ -78,7 +78,7 @@ mod Purger {
     ) {}
 
     #[event]
-    fn Compensate(recipient: ContractAddress, compensation: Span<AssetBalance>, ) {}
+    fn Compensate(recipient: ContractAddress, compensation: Span<AssetBalance>,) {}
 
     //
     // Constructor
@@ -205,7 +205,7 @@ mod Purger {
         let (_, updated_trove_ltv, _, _) = shrine.get_trove_info(trove_id);
         assert(updated_trove_ltv <= trove_ltv, 'PU: LTV increased');
 
-        Purged(trove_id, purge_amt, percentage_freed, funder, recipient, freed_assets, );
+        Purged(trove_id, purge_amt, percentage_freed, funder, recipient, freed_assets,);
 
         freed_assets
     }
@@ -340,7 +340,7 @@ mod Purger {
     // recipient address.
     // Returns an array of `AssetBalance` struct.
     fn free(
-        shrine: IShrineDispatcher, trove_id: u64, percentage_freed: Ray, recipient: ContractAddress, 
+        shrine: IShrineDispatcher, trove_id: u64, percentage_freed: Ray, recipient: ContractAddress,
     ) -> Span<AssetBalance> {
         // reentrancy guard is used as a precaution
         ReentrancyGuard::start();
@@ -368,9 +368,7 @@ mod Purger {
 
                     freed_assets.append(AssetBalance { address: *yang, amount: freed_asset_amt });
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -528,7 +526,7 @@ mod Purger {
     // If LTV <= 100%, calculate based on the sum of amount paid down and liquidation penalty divided by total trove value.
     // If LTV > 100%, pro-rate based on amount paid down divided by total debt.
     fn get_percentage_freed(
-        trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad, 
+        trove_ltv: Ray, trove_value: Wad, trove_debt: Wad, penalty: Ray, purge_amt: Wad,
     ) -> Ray {
         if trove_ltv.val <= RAY_ONE {
             let penalty_amt: Wad = wadray::rmul_wr(purge_amt, penalty);

@@ -20,8 +20,11 @@ mod AccessControl {
         StoreContractAddress, StoreU128, StorageBaseAddress, storage_base_address_from_felt252,
     };
 
-    fn initializer(admin: ContractAddress) {
+    fn initializer(admin: ContractAddress, roles: Option<u128>) {
         set_admin_helper(admin);
+        if roles.is_some() {
+            grant_role_helper(roles.unwrap(), admin);
+        }
     }
 
     //
@@ -143,7 +146,7 @@ mod AccessControl {
     }
 
     fn write_admin(admin: ContractAddress) {
-        StoreContractAddress::write(0, admin_storage_base_addr(), admin);
+        StoreContractAddress::write(0, admin_storage_base_addr(), admin).expect('AC: write_admin');
     }
 
     fn read_pending_admin() -> ContractAddress {
@@ -151,7 +154,8 @@ mod AccessControl {
     }
 
     fn write_pending_admin(admin: ContractAddress) {
-        StoreContractAddress::write(0, pending_admin_storage_base_addr(), admin);
+        StoreContractAddress::write(0, pending_admin_storage_base_addr(), admin)
+            .expect('AC: write_pending_admin');
     }
 
     fn read_roles(account: ContractAddress) -> u128 {
@@ -165,7 +169,7 @@ mod AccessControl {
         let base = starknet::storage_base_address_from_felt252(
             hash::LegacyHash::hash(ROLES_STORAGE_BASE_ADDR, account)
         );
-        StoreU128::write(0, base, roles);
+        StoreU128::write(0, base, roles).expect('AC: write_roles');
     }
 
     //
@@ -180,17 +184,15 @@ mod AccessControl {
     // all of the events emitted from this module take up to 2 data values
     // so we pass them separately into `emit`
     fn emit(event_key: felt252, event_data_1: felt252, event_data_2: Option<felt252>) {
-        let mut data: Array<felt252> = Default::default();
+        let mut data: Array<felt252> = ArrayTrait::new();
         data.append(event_data_1);
 
         match event_data_2 {
-            Option::Some(i) => {
-                data.append(i);
-            },
+            Option::Some(i) => { data.append(i); },
             Option::None => {},
         };
 
-        let mut keys: Array<felt252> = Default::default();
+        let mut keys: Array<felt252> = ArrayTrait::new();
         keys.append(event_key);
         starknet::emit_event_syscall(keys.span(), data.span()).unwrap_syscall();
     }
@@ -202,7 +204,7 @@ mod AccessControl {
 
     // NewPendingAdmin(new_admin)
     fn emit_new_pending_admin(new_admin: ContractAddress) {
-        emit(NEW_PENDING_ADMIN_EVENT_KEY, new_admin.into(), Option::None(()));
+        emit(NEW_PENDING_ADMIN_EVENT_KEY, new_admin.into(), Option::None);
     }
 
     // RoleGranted(role, account)

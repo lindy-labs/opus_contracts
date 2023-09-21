@@ -20,4 +20,5 @@ jobs:
         with:
           scarb-version: "nightly"
       - run: scarb fmt --check
+      - run: scarb build
       - run: scarb test

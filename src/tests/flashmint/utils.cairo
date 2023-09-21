@@ -1,5 +1,4 @@
 mod FlashmintUtils {
-    use array::ArrayTrait;
     use starknet::{
         deploy_syscall, ClassHash, class_hash_try_from_felt252, ContractAddress,
         contract_address_to_felt252, SyscallResultTrait
@@ -57,9 +56,9 @@ mod FlashmintUtils {
         ShrineUtils::advance_prices_and_set_multiplier(
             shrine_dispatcher,
             3,
-            (1000 * WAD_ONE).into(),
-            (10000 * WAD_ONE).into(),
-            (500 * WAD_ONE).into()
+            ShrineUtils::three_yang_addrs(),
+            array![(1000 * WAD_ONE).into(), (10000 * WAD_ONE).into(), (500 * WAD_ONE).into()]
+                .span(),
         );
 
         // Mint some yin in shrine 

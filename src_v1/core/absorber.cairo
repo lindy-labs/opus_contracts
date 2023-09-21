@@ -157,10 +157,10 @@ mod Absorber {
     ) {}
 
     #[event]
-    fn Gain(assets: Span<AssetBalance>, total_shares: Wad, epoch: u32, absorption_id: u32, ) {}
+    fn Gain(assets: Span<AssetBalance>, total_shares: Wad, epoch: u32, absorption_id: u32,) {}
 
     #[event]
-    fn Bestow(assets: Span<AssetBalance>, total_shares: Wad, epoch: u32, ) {}
+    fn Bestow(assets: Span<AssetBalance>, total_shares: Wad, epoch: u32,) {}
 
     #[event]
     fn Killed() {}
@@ -559,9 +559,7 @@ mod Absorber {
                         current_absorption_id, total_recipient_shares, *asset_balance
                     );
                 },
-                Option::None(_) => {
-                    break;
-                }
+                Option::None(_) => { break; }
             };
         };
 
@@ -817,7 +815,7 @@ mod Absorber {
     // Internal function to calculate the absorbed assets that a provider is entitled to
     // Returns a tuple of an array of assets and an array of amounts of each asset
     fn get_absorbed_assets_for_provider_internal(
-        provider: ContractAddress, provision: Provision, 
+        provider: ContractAddress, provision: Provision,
     ) -> Span<AssetBalance> {
         let mut absorbed_assets: Array<AssetBalance> = Default::default();
 
@@ -873,9 +871,7 @@ mod Absorber {
 
                     absorbed_assets.append(AssetBalance { address: *asset, amount: absorbed_amt });
                 },
-                Option::None(_) => {
-                    break absorbed_assets.span();
-                }
+                Option::None(_) => { break absorbed_assets.span(); }
             };
         }
     }
@@ -887,14 +883,11 @@ mod Absorber {
             match asset_balances.pop_front() {
                 Option::Some(asset_balance) => {
                     if (*asset_balance.amount).is_non_zero() {
-                        IERC20Dispatcher {
-                            contract_address: *asset_balance.address
-                        }.transfer(to, (*asset_balance.amount).into());
+                        IERC20Dispatcher { contract_address: *asset_balance.address }
+                            .transfer(to, (*asset_balance.amount).into());
                     }
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
     }
@@ -1086,7 +1079,7 @@ mod Absorber {
                 (reward.asset, epoch)
             );
             let next_epoch_reward_info: DistributionInfo = DistributionInfo {
-                asset_amt_per_share: 0, error: epoch_reward_info.error, 
+                asset_amt_per_share: 0, error: epoch_reward_info.error,
             };
             cumulative_reward_amt_by_epoch::write(
                 (reward.asset, epoch + 1), next_epoch_reward_info
@@ -1133,9 +1126,7 @@ mod Absorber {
                             }
                         );
                 },
-                Option::None(_) => {
-                    break;
-                },
+                Option::None(_) => { break; },
             };
         };
 

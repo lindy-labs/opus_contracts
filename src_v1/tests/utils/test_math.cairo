@@ -2,12 +2,12 @@
 mod tests {
     use debug::PrintTrait;
     use traits::Into;
-    
+
     use aura::utils::math::{pow, sqrt};
     use aura::utils::wadray;
     use aura::utils::wadray::{Ray, RAY_ONE};
-    
-    use aura::tests::common::assert_equalish; 
+
+    use aura::tests::common::assert_equalish;
 
 
     #[test]

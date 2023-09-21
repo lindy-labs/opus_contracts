@@ -21,9 +21,7 @@ mod PurgerUtils {
     use aura::types::AssetBalance;
     use aura::utils::math::pow;
     use aura::utils::wadray;
-    use aura::utils::wadray::{
-        Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE
-    };
+    use aura::utils::wadray::{Ray, RAY_ONE, RAY_PERCENT, Wad, WAD_DECIMALS, WAD_ONE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -482,12 +480,8 @@ mod PurgerUtils {
         set_contract_address(ShrineUtils::admin());
         loop {
             match yangs.pop_front() {
-                Option::Some(yang) => {
-                    shrine.set_threshold(*yang, threshold);
-                },
-                Option::None => {
-                    break;
-                },
+                Option::Some(yang) => { shrine.set_threshold(*yang, threshold); },
+                Option::None => { break; },
             };
         };
         set_contract_address(ContractAddressZeroable::zero());
@@ -525,9 +519,7 @@ mod PurgerUtils {
                         current_ts
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
         set_contract_address(ContractAddressZeroable::zero());
@@ -650,9 +642,7 @@ mod PurgerUtils {
                         after_asset_bal, expected_after_asset_bal, error_margin, message,
                     );
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

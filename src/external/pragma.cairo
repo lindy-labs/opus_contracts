@@ -82,6 +82,7 @@ mod Pragma {
 
     #[derive(Drop, starknet::Event)]
     struct InvalidPriceUpdate {
+        #[key]
         yang: ContractAddress,
         price: Wad,
         pragma_last_updated_ts: u256,
@@ -134,8 +135,7 @@ mod Pragma {
         freshness_threshold: u64,
         sources_threshold: u64
     ) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(PragmaRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(PragmaRoles::default_admin_role()));
 
         // init storage
         self.oracle.write(IPragmaOracleDispatcher { contract_address: oracle });
@@ -321,7 +321,7 @@ mod Pragma {
                 idx += 1;
             };
 
-            // Record the timestamp for the last `update_prices` call 
+            // Record the timestamp for the last `update_prices` call
             self.last_update_prices_call_timestamp.write(block_timestamp);
             // Emit the event only if at least one price update is valid
             if has_valid_update {

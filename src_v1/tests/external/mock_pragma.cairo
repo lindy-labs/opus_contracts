@@ -23,15 +23,9 @@ mod MockPragma {
     #[external]
     fn get_data_median(data_type: DataType) -> PricesResponse {
         match data_type {
-            DataType::Spot(pair_id) => {
-                price_response::read(pair_id)
-            },
-            DataType::Future(pair_id) => {
-                price_response::read(pair_id)
-            },
-            DataType::Generic(pair_id) => {
-                price_response::read(pair_id)
-            }
+            DataType::Spot(pair_id) => { price_response::read(pair_id) },
+            DataType::Future(pair_id) => { price_response::read(pair_id) },
+            DataType::Generic(pair_id) => { price_response::read(pair_id) }
         }
     }
 }

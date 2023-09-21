@@ -77,8 +77,7 @@ mod Sentinel {
 
     #[constructor]
     fn constructor(ref self: ContractState, admin: ContractAddress, shrine: ContractAddress) {
-        AccessControl::initializer(admin);
-        AccessControl::grant_role_helper(SentinelRoles::default_admin_role(), admin);
+        AccessControl::initializer(admin, Option::Some(SentinelRoles::default_admin_role()));
         self.shrine.write(IShrineDispatcher { contract_address: shrine });
     }
 
@@ -103,7 +102,7 @@ mod Sentinel {
         fn get_yang_addresses(self: @ContractState) -> Span<ContractAddress> {
             let mut idx: u64 = LOOP_START;
             let loop_end: u64 = self.yang_addresses_count.read() + LOOP_START;
-            let mut addresses: Array<ContractAddress> = Default::default();
+            let mut addresses: Array<ContractAddress> = ArrayTrait::new();
             loop {
                 if idx == loop_end {
                     break addresses.span();
@@ -288,7 +287,7 @@ mod Sentinel {
                 .shrine
                 .read()
                 .get_yang_suspension_status(yang);
-            assert(suspension_status == YangSuspensionStatus::None(()), 'SE: Yang suspended');
+            assert(suspension_status == YangSuspensionStatus::None, 'SE: Yang suspended');
             let current_total: u128 = gate.get_total_assets();
             let max_amt: u128 = self.yang_asset_max.read(yang);
             assert(current_total + enter_amt <= max_amt, 'SE: Exceeds max amount allowed');

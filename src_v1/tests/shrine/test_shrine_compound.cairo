@@ -420,11 +420,7 @@ mod TestShrineCompound {
         // Advance timestamp by given intervals and set last updated price - `T+LAST_UPDATED_BEFORE_START`'
         let intervals_to_skip: u64 = 5;
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine,
-            intervals_to_skip,
-            yang1_price,
-            yang2_price,
-            yang3_price,
+            shrine, intervals_to_skip, yang1_price, yang2_price, yang3_price,
         );
         let last_updated_interval_before_start: u64 = ShrineUtils::current_interval();
 
@@ -678,7 +674,7 @@ mod TestShrineCompound {
         // For second rate update, yang 1 uses previous base rate and yang 2 is updated
         let mut second_rate_history_to_update: Array<Ray> = Default::default();
         let mut third_rate_history_to_compound: Array<Ray> = Default::default();
-        
+
         second_rate_history_to_update.append((RAY_SCALE + 1).into());
         third_rate_history_to_compound.append(yang1_first_rate_update);
 
@@ -750,7 +746,7 @@ mod TestShrineCompound {
         shrine.deposit(yang2_addr, common::TROVE_1, yang2_deposit_amt);
         let forge_amt: Wad = ShrineUtils::TROVE1_FORGE_AMT.into();
         shrine.forge(trove1_owner, common::TROVE_1, forge_amt, 0_u128.into());
-        
+
         let mut yangs_deposited: Array<Wad> = Default::default();
         yangs_deposited.append(yang1_deposit_amt);
         yangs_deposited.append(yang2_deposit_amt);
@@ -834,9 +830,7 @@ mod TestShrineCompound {
                             let expected_rate: Ray = *expected_base_rates.pop_front().unwrap();
                             assert(rate == expected_rate, 'wrong base rate');
                         },
-                        Option::None(_) => {
-                            break ();
-                        },
+                        Option::None(_) => { break (); },
                     };
                 };
             }

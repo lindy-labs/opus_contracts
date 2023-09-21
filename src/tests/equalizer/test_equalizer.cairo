@@ -1,5 +1,4 @@
 mod TestEqualizer {
-    use array::ArrayTrait;
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
@@ -51,11 +50,7 @@ mod TestEqualizer {
 
         // Set the price to make the interest calculation easier
         ShrineUtils::advance_prices_and_set_multiplier(
-            shrine,
-            1,
-            ShrineUtils::YANG1_START_PRICE.into(),
-            ShrineUtils::YANG2_START_PRICE.into(),
-            ShrineUtils::YANG3_START_PRICE.into()
+            shrine, 1, ShrineUtils::three_yang_addrs(), ShrineUtils::three_yang_start_prices(),
         );
 
         // Charge trove 1 and sanity check that some debt has accrued
@@ -94,9 +89,7 @@ mod TestEqualizer {
 
                     minted_surplus += expected_increment;
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
 

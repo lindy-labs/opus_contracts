@@ -47,12 +47,15 @@ mod Abbot {
 
     #[derive(Drop, starknet::Event)]
     struct TroveOpened {
+        #[key]
         user: ContractAddress,
+        #[key]
         trove_id: u64
     }
 
     #[derive(Drop, starknet::Event)]
     struct TroveClosed {
+        #[key]
         trove_id: u64
     }
 
@@ -81,7 +84,7 @@ mod Abbot {
         }
 
         fn get_user_trove_ids(self: @ContractState, user: ContractAddress) -> Span<u64> {
-            let mut trove_ids: Array<u64> = Default::default();
+            let mut trove_ids: Array<u64> = ArrayTrait::new();
             let user_troves_count: u64 = self.user_troves_count.read(user);
             let mut idx: u64 = 0;
 
@@ -129,9 +132,7 @@ mod Abbot {
                     Option::Some(yang_asset) => {
                         self.deposit_helper(new_trove_id, user, *yang_asset);
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
@@ -163,9 +164,7 @@ mod Abbot {
                         }
                         self.withdraw_helper(trove_id, user, *yang, yang_amount);
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
