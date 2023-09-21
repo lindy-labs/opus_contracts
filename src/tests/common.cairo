@@ -17,7 +17,7 @@ use aura::interfaces::IERC20::{
 use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
 use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 use aura::tests::erc20::ERC20;
-use aura::types::{AssetBalance, Reward};
+use aura::types::{AssetBalance, Reward, YangBalance};
 use aura::utils::wadray;
 use aura::utils::wadray::{Ray, Wad, WadZeroable};
 
@@ -74,14 +74,10 @@ impl SpanImpl<T, impl TCopy: Copy<T>, impl TDrop: Drop<T>> of SpanTraitExt<T> {
     fn contains<impl TPartialEq: PartialEq<T>>(mut self: Span<T>, item: T) -> bool {
         loop {
             match self.pop_front() {
-                Option::Some(v) => {
-                    if *v == item {
-                        break true;
-                    }
-                },
-                Option::None => {
-                    break false;
-                },
+                Option::Some(v) => { if *v == item {
+                    break true;
+                } },
+                Option::None => { break false; },
             };
         }
     }
@@ -148,9 +144,7 @@ fn fund_user(user: ContractAddress, mut yangs: Span<ContractAddress>, mut asset_
                 IMintableDispatcher { contract_address: *yang }
                     .mint(user, (*asset_amts.pop_front().unwrap()).into());
             },
-            Option::None => {
-                break;
-            }
+            Option::None => { break; }
         };
     };
 }
@@ -173,9 +167,7 @@ fn open_trove_helper(
                 let gate: IGateDispatcher = *gates.pop_front().unwrap();
                 SentinelUtils::approve_max(gate, *yang, user);
             },
-            Option::None => {
-                break;
-            }
+            Option::None => { break; }
         };
     };
 
@@ -214,16 +206,12 @@ fn get_token_balances(
                             let bal: u128 = token.balance_of(*address).try_into().unwrap();
                             yang_balances.append(bal);
                         },
-                        Option::None => {
-                            break;
-                        }
+                        Option::None => { break; }
                     };
                 };
                 balances.append(yang_balances.span());
             },
-            Option::None => {
-                break balances.span();
-            }
+            Option::None => { break balances.span(); }
         };
     }
 }
@@ -256,6 +244,23 @@ fn assert_asset_balances_equalish(
                 assert(*a.address == b.address, 'wrong asset address');
                 assert_equalish(*a.amount, b.amount, error, message);
             },
+            Option::None => { break; }
+        };
+    };
+}
+
+fn assert_yang_balances_equalish(
+    mut a: Span<YangBalance>, mut b: Span<YangBalance>, error: Wad, message: felt252
+) {
+    assert(a.len() == b.len(), message);
+
+    loop {
+        match a.pop_front() {
+            Option::Some(a) => {
+                let b: YangBalance = *b.pop_front().unwrap();
+                assert(*a.yang_id == b.yang_id, 'wrong yang ID');
+                assert_equalish(*a.amount, b.amount, error, message);
+            },
             Option::None => {
                 break;
             }
@@ -278,9 +283,7 @@ fn combine_assets_and_amts(
                 asset_balances
                     .append(AssetBalance { address: *asset, amount: *amts.pop_front().unwrap(), });
             },
-            Option::None => {
-                break;
-            },
+            Option::None => { break; },
         };
     };
 
@@ -297,9 +300,7 @@ fn scale_span_by_pct(mut asset_amts: Span<u128>, pct: Ray) -> Span<u128> {
                 let asset_amt: Wad = (*asset_amt).into();
                 split_asset_amts.append(wadray::rmul_wr(asset_amt, pct).val);
             },
-            Option::None => {
-                break;
-            },
+            Option::None => { break; },
         };
     };
 
@@ -318,9 +319,7 @@ fn combine_spans(mut lhs: Span<u128>, mut rhs: Span<u128>) -> Span<u128> {
                 // Convert to Wad for fixed point operations
                 combined_asset_amts.append(*asset_amt + *rhs.pop_front().unwrap());
             },
-            Option::None => {
-                break;
-            },
+            Option::None => { break; },
         };
     };
 
@@ -355,9 +354,7 @@ fn assert_events_emitted<
                     emitted_events.append(event.unwrap());
                 }
             },
-            Option::None => {
-                break;
-            },
+            Option::None => { break; },
         };
     };
 
@@ -373,9 +370,7 @@ fn assert_events_emitted<
                     panic(array!['Event not emitted']);
                 }
             },
-            Option::None => {
-                break;
-            },
+            Option::None => { break; },
         };
     };
 }
@@ -397,9 +392,7 @@ impl SpanPrintImpl<T, impl TPrintTrait: PrintTrait<T>, impl TCopy: Copy<T>> of P
                         ', '.print();
                     }
                 },
-                Option::None => {
-                    break;
-                }
+                Option::None => { break; }
             };
         };
         ']'.print();
