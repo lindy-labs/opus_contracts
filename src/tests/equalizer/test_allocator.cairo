@@ -2,6 +2,7 @@ mod TestAllocator {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
+    use aura::core::allocator::Allocator;
     use aura::core::roles::AllocatorRoles;
 
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
@@ -86,6 +87,14 @@ mod TestAllocator {
         assert(percentages == new_percentages, 'wrong percentages');
         assert(recipients.len() == 4, 'wrong array length');
         assert(recipients.len() == percentages.len(), 'array length mismatch');
+
+        let mut expected_events: Span<Allocator::Event> = array![
+            Allocator::Event::AllocationUpdated(
+                Allocator::AllocationUpdated { recipients, percentages }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(allocator.contract_address, expected_events);
     }
 
     #[test]

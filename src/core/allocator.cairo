@@ -33,12 +33,12 @@ mod Allocator {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AllocationUpdated: AllocationUpdated,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct AllocationUpdated {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>
