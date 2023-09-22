@@ -1139,29 +1139,27 @@ mod TestShrineRedistribution {
             TROVE3_YANG3_DEPOSIT.into(), recipient_troves_yang3_amt
         );
 
-        let expected_recipient_trove1_attr_debt: Wad = wadray::rmul_wr(
-            yang1_debt_redistributed_to_yang2, recipient_trove1_yang2_pct
-        )
-            + // Redistributed debt from yang 1 to yang 2 
-            wadray::rmul_wr(yang1_debt_redistributed_to_yang3, recipient_trove1_yang3_pct)
-            + // Redistributed debt from yang 1 to yang 3
-            wadray::rmul_wr(redistributed_yang2_debt, recipient_trove1_yang2_pct)
-            + // Redistributed debt from yang 2 to yang 2
-            wadray::rmul_wr(
-                redistributed_yang3_debt, recipient_trove1_yang3_pct
-            ); // Redistributed debt from yang 3 to yang 3
+        let expected_recipient_trove1_attr_debt: Wad = {
+            // Redistributed debt from yang 1 to yang 2 
+            wadray::rmul_wr(yang1_debt_redistributed_to_yang2, recipient_trove1_yang2_pct)
+                + // Redistributed debt from yang 1 to yang 3
+                wadray::rmul_wr(yang1_debt_redistributed_to_yang3, recipient_trove1_yang3_pct)
+                + // Redistributed debt from yang 2 to yang 2
+                wadray::rmul_wr(redistributed_yang2_debt, recipient_trove1_yang2_pct)
+                + // Redistributed debt from yang 3 to yang 3
+                wadray::rmul_wr(redistributed_yang3_debt, recipient_trove1_yang3_pct)
+        };
 
-        let expected_recipient_trove2_attr_debt: Wad = wadray::rmul_wr(
-            yang1_debt_redistributed_to_yang2, recipient_trove2_yang2_pct
-        )
-            + // Redistributed debt from yang 1 to yang 2 
-            wadray::rmul_wr(yang1_debt_redistributed_to_yang3, recipient_trove2_yang3_pct)
-            + // Redistributed debt from yang 1 to yang 3
-            wadray::rmul_wr(redistributed_yang2_debt, recipient_trove2_yang2_pct)
-            + // Redistributed debt from yang 2 to yang 2
-            wadray::rmul_wr(
-                redistributed_yang3_debt, recipient_trove2_yang3_pct
-            ); // Redistributed debt from yang 3 to yang 3
+        let expected_recipient_trove2_attr_debt: Wad = {
+            // Redistributed debt from yang 1 to yang 2 
+            wadray::rmul_wr(yang1_debt_redistributed_to_yang2, recipient_trove2_yang2_pct)
+                + // Redistributed debt from yang 1 to yang 3
+                wadray::rmul_wr(yang1_debt_redistributed_to_yang3, recipient_trove2_yang3_pct)
+                + // Redistributed debt from yang 2 to yang 2
+                wadray::rmul_wr(redistributed_yang2_debt, recipient_trove2_yang2_pct)
+                + // Redistributed debt from yang 3 to yang 3
+                wadray::rmul_wr(redistributed_yang3_debt, recipient_trove2_yang3_pct)
+        };
 
         let expected_recipient_trove1_yang1_amt: Wad = wadray::rmul_wr(
             ShrineUtils::TROVE1_YANG1_DEPOSIT.into(), expected_recipient_trove1_pct
