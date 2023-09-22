@@ -1,6 +1,6 @@
 mod tests {
-    use aura::utils::wadray;
-    use aura::utils::wadray::{
+    use opus::utils::wadray;
+    use opus::utils::wadray::{
         DIFF, fixed_point_to_wad, MAX_CONVERTIBLE_WAD, Ray, RAY_ONE, rdiv_wr, rmul_rw, rmul_wr, Wad,
         WAD_ONE, WAD_DECIMALS, WAD_SCALE, wdiv_rw, rdiv_ww, wmul_rw, wmul_wr
     };

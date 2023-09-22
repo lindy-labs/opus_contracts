@@ -2,30 +2,30 @@ mod TestPurger {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
 
-    use aura::core::absorber::Absorber;
-    use aura::core::purger::Purger;
-    use aura::core::roles::PurgerRoles;
+    use opus::core::absorber::Absorber;
+    use opus::core::purger::Purger;
+    use opus::core::roles::PurgerRoles;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IPurger::{IPurgerDispatcher, IPurgerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
-    use aura::tests::absorber::utils::AbsorberUtils;
-    use aura::tests::common;
-    use aura::tests::common::{SpanPrintImpl};
-    use aura::tests::external::utils::PragmaUtils;
-    use aura::tests::flashmint::utils::FlashmintUtils;
-    use aura::tests::purger::flash_liquidator::{
+    use opus::tests::absorber::utils::AbsorberUtils;
+    use opus::tests::common;
+    use opus::tests::common::{SpanPrintImpl};
+    use opus::tests::external::utils::PragmaUtils;
+    use opus::tests::flashmint::utils::FlashmintUtils;
+    use opus::tests::purger::flash_liquidator::{
         IFlashLiquidatorDispatcher, IFlashLiquidatorDispatcherTrait
     };
-    use aura::tests::purger::utils::PurgerUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::purger::utils::PurgerUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     use debug::PrintTrait;
 
@@ -191,7 +191,7 @@ mod TestPurger {
     //
 
     // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
-    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the 
+    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the
     // `adjust_prices_for_trove_ltv` may not put the trove in the exact LTV as the threshold.
     #[test]
     #[available_gas(20000000000)]
@@ -596,7 +596,7 @@ mod TestPurger {
     //
 
     // This test fixes the trove's debt to 1,000 in order to test the ground truth values of the
-    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the 
+    // penalty and close amount when LTV is at threshold. The error margin is relaxed because the
     // `adjust_prices_for_trove_ltv` may not put the trove in the exact LTV as the threshold.
     #[test]
     #[available_gas(20000000000000000)]
@@ -1806,8 +1806,8 @@ mod TestPurger {
         let mut target_ltvs_by_threshold: Span<Span<Ray>> =
             PurgerUtils::ltvs_for_interesting_thresholds_for_absorption_entire_trove_debt();
 
-        // This array should match `target_ltvs_by_threshold`. However, since only the first 
-        // LTV in the inner span of `target_ltvs_by_threshold` has a non-zero penalty, and the 
+        // This array should match `target_ltvs_by_threshold`. However, since only the first
+        // LTV in the inner span of `target_ltvs_by_threshold` has a non-zero penalty, and the
         // penalty will be zero from the seocnd LTV of 99% (Ray) onwards, we flatten
         // the array to be concise.
         let ninety_nine_pct: Ray = (RAY_ONE - RAY_PERCENT).into();

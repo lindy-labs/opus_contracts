@@ -3,19 +3,19 @@ mod Purger {
     use cmp::min;
     use starknet::{ContractAddress, get_caller_address};
 
-    use aura::core::roles::PurgerRoles;
+    use opus::core::roles::PurgerRoles;
 
-    use aura::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
-    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use aura::interfaces::IPurger::IPurger;
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::interfaces::IAbsorber::{IAbsorberDispatcher, IAbsorberDispatcherTrait};
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use opus::interfaces::IPurger::IPurger;
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
 
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::types::AssetBalance;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::types::AssetBalance;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable};
 
     // This is multiplied by a trove's threshold to determine the target LTV
     // the trove should have after a liquidation, which in turn determines the

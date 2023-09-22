@@ -6,26 +6,26 @@ mod PragmaUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use aura::core::roles::ShrineRoles;
-    use aura::external::pragma::Pragma;
+    use opus::core::roles::ShrineRoles;
+    use opus::external::pragma::Pragma;
 
-    use aura::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::Pragma::PricesResponse;
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::math::pow;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
+    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Pragma::PricesResponse;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
-    use aura::tests::external::mock_pragma::{
+    use opus::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
     };
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     //
     // Constants

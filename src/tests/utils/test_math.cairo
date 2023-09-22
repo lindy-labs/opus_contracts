@@ -3,11 +3,11 @@ mod tests {
 
     use integer::BoundedU128;
 
-    use aura::utils::math::{pow, sqrt};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RAY_ONE};
+    use opus::utils::math::{pow, sqrt};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RAY_ONE};
 
-    use aura::tests::common::assert_equalish;
+    use opus::tests::common::assert_equalish;
 
     #[test]
     #[available_gas(20000000000)]

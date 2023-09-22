@@ -1,4 +1,4 @@
-use aura::types::Pragma::PricesResponse;
+use opus::types::Pragma::PricesResponse;
 
 #[starknet::interface]
 trait IMockPragma<TContractState> {
@@ -10,8 +10,8 @@ trait IMockPragma<TContractState> {
 
 #[starknet::contract]
 mod MockPragma {
-    use aura::interfaces::external::IPragmaOracle;
-    use aura::types::Pragma::{DataType, PricesResponse};
+    use opus::interfaces::external::IPragmaOracle;
+    use opus::types::Pragma::{DataType, PricesResponse};
 
     use super::IMockPragma;
 

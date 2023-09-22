@@ -1,9 +1,9 @@
 mod tests {
-    use aura::utils::exp::exp;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};
+    use opus::utils::exp::exp;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{WAD_ONE, WAD_PERCENT, Wad};
 
-    use aura::tests::common::assert_equalish;
+    use opus::tests::common::assert_equalish;
 
     // Acceptable error for e^x where x <= 20. Corresponds to 0.000000000001 (10^-12) precision
     const ACCEPTABLE_ERROR: u128 = 1000000;

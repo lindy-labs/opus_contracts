@@ -10,17 +10,17 @@ mod ShrineUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::shrine::Shrine;
-    use aura::core::roles::ShrineRoles;
+    use opus::core::shrine::Shrine;
+    use opus::core::roles::ShrineRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::exp::exp;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::exp::exp;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_ONE};
 
-    use aura::tests::common;
+    use opus::tests::common;
 
     //
     // Constants

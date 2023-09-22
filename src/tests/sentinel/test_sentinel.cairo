@@ -4,22 +4,22 @@ mod TestSentinel {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::sentinel::Sentinel;
-    use aura::core::roles::SentinelRoles;
+    use opus::core::sentinel::Sentinel;
+    use opus::core::roles::SentinelRoles;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::types::YangSuspensionStatus;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WAD_ONE};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::types::YangSuspensionStatus;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WAD_ONE};
 
-    use aura::tests::gate::utils::GateUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::gate::utils::GateUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     #[test]
     #[available_gas(10000000000)]

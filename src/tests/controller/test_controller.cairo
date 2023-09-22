@@ -2,16 +2,16 @@ mod TestController {
     use debug::PrintTrait;
     use starknet::testing::set_contract_address;
 
-    use aura::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray_signed;
-    use aura::utils::wadray_signed::{SignedRay, SignedRayZeroable};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad};
+    use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::wadray_signed;
+    use opus::utils::wadray_signed::{SignedRay, SignedRayZeroable};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad};
 
-    use aura::tests::common::{assert_equalish, badguy};
-    use aura::tests::controller::utils::ControllerUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common::{assert_equalish, badguy};
+    use opus::tests::controller::utils::ControllerUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     const YIN_PRICE1: u128 = 999942800000000000; // wad
     const YIN_PRICE2: u128 = 999879000000000000; // wad

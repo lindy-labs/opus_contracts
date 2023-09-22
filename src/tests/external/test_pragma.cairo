@@ -4,28 +4,28 @@ mod TestPragma {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::roles::PragmaRoles;
-    use aura::core::shrine::Shrine;
-    use aura::external::pragma::Pragma;
+    use opus::core::roles::PragmaRoles;
+    use opus::core::shrine::Shrine;
+    use opus::external::pragma::Pragma;
 
-    use aura::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
-    use aura::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
-    use aura::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::Pragma::PricesResponse;
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::math::pow;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
+    use opus::interfaces::external::{IPragmaOracleDispatcher, IPragmaOracleDispatcherTrait};
+    use opus::interfaces::IERC20::{IMintableDispatcher, IMintableDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IOracle::{IOracleDispatcher, IOracleDispatcherTrait};
+    use opus::interfaces::IPragma::{IPragmaDispatcher, IPragmaDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Pragma::PricesResponse;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::math::pow;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{WAD_DECIMALS, WAD_SCALE};
 
-    use aura::tests::common;
-    use aura::tests::external::mock_pragma::{
+    use opus::tests::common;
+    use opus::tests::external::mock_pragma::{
         IMockPragmaDispatcher, IMockPragmaDispatcherTrait, MockPragma
     };
-    use aura::tests::external::utils::PragmaUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::external::utils::PragmaUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
 
     //
     // Constants
@@ -514,7 +514,7 @@ mod TestPragma {
         // return false
         assert(!pragma.probe_task(), 'should not be ready');
 
-        // moving the block time forward to the next time interval, 
+        // moving the block time forward to the next time interval,
         // probe_task should again return true
         set_block_timestamp(new_ts + Shrine::TIME_INTERVAL);
         assert(pragma.probe_task(), 'should be ready');
