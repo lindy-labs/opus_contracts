@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod tests {
     use aura::utils::wadray;
     use aura::utils::wadray::{

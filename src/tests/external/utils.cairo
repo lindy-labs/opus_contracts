@@ -69,7 +69,7 @@ mod PragmaUtils {
     //
 
     fn mock_pragma_deploy() -> IMockPragmaDispatcher {
-        let mut calldata: Array<felt252> = Default::default();
+        let mut calldata: Array<felt252> = ArrayTrait::new();
         let mock_pragma_class_hash: ClassHash = class_hash_try_from_felt252(
             MockPragma::TEST_CLASS_HASH
         )
@@ -127,7 +127,7 @@ mod PragmaUtils {
         // Grant necessary roles
         let shrine_ac = IAccessControlDispatcher { contract_address: shrine_addr };
         set_contract_address(ShrineUtils::admin());
-        shrine_ac.grant_role(ShrineRoles::ADVANCE, pragma_addr);
+        shrine_ac.grant_role(ShrineRoles::oracle(), pragma_addr);
 
         let shrine = IShrineDispatcher { contract_address: shrine_addr };
         let pragma = IPragmaDispatcher { contract_address: pragma_addr };

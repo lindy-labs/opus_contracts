@@ -1,7 +1,6 @@
 // NOTE: no need to test access control in Gate because only Sentinel, as
 //       declared in constructor args when deploying, can call the gate
 
-#[cfg(test)]
 mod TestGate {
     use debug::PrintTrait;
     use starknet::{ContractAddress, contract_address_try_from_felt252};

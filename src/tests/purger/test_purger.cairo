@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod TestPurger {
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
@@ -15,9 +14,7 @@ mod TestPurger {
     use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
     use aura::types::AssetBalance;
     use aura::utils::wadray;
-    use aura::utils::wadray::{
-        BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WadZeroable, WAD_ONE
-    };
+    use aura::utils::wadray::{BoundedWad, Ray, RayZeroable, RAY_ONE, RAY_PERCENT, Wad, WAD_ONE};
 
     use aura::tests::absorber::utils::AbsorberUtils;
     use aura::tests::common;
@@ -428,15 +425,11 @@ mod TestPurger {
                                     assert(after_debt.is_zero(), 'should be 0 debt');
                                 }
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
 
@@ -692,7 +685,7 @@ mod TestPurger {
                                             initial_trove_debt
                                         );
 
-                                        // Skip interest accrual to facilitate parametrization of 
+                                        // Skip interest accrual to facilitate parametrization of
                                         // absorber's yin balance based on target trove's debt
                                         //common::advance_intervals(500);
 
@@ -742,7 +735,7 @@ mod TestPurger {
                                             .preview_absorb(target_trove);
                                         let close_amt: Wad = *absorber_start_yin;
 
-                                        // Sanity check 
+                                        // Sanity check
                                         assert(
                                             shrine
                                                 .get_yin(absorber.contract_address) < max_close_amt,
@@ -882,20 +875,14 @@ mod TestPurger {
                                             'wrong recipient trove value'
                                         );
                                     },
-                                    Option::None => {
-                                        break;
-                                    },
+                                    Option::None => { break; },
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -933,7 +920,7 @@ mod TestPurger {
                                             let mut absorber_yin_idx: usize = 0;
                                             // Index 0 is a dummy value for the absorber yin
                                             // being a fraction of the trove's debt.
-                                            // Index 1 is a dummy value for the lower bound 
+                                            // Index 1 is a dummy value for the lower bound
                                             // of the absorber's yin.
                                             // Index 2 is a dummy value for the trove's debt
                                             // minus the smallest unit of Wad (which would amount to
@@ -993,7 +980,7 @@ mod TestPurger {
                                                     'no interest accrued'
                                                 );
 
-                                                // Set threshold to 70% to test partial absorption when max close amount 
+                                                // Set threshold to 70% to test partial absorption when max close amount
                                                 // is less than trove's debt
                                                 PurgerUtils::set_thresholds(
                                                     shrine, yangs, *threshold
@@ -1297,29 +1284,21 @@ mod TestPurger {
                                                                 'wrong remainder yang asset'
                                                             );
                                                         },
-                                                        Option::None => {
-                                                            break;
-                                                        },
+                                                        Option::None => { break; },
                                                     };
                                                 };
                                                 absorber_yin_idx += 1;
                                             };
                                         },
-                                        Option::None => {
-                                            break;
-                                        },
+                                        Option::None => { break; },
                                     };
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1550,21 +1529,15 @@ mod TestPurger {
                                                 'wrong recipient trove value'
                                             );
                                         },
-                                        Option::None => {
-                                            break;
-                                        },
+                                        Option::None => { break; },
                                     };
                                 };
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1658,15 +1631,11 @@ mod TestPurger {
 
                                 PurgerUtils::assert_ltv_at_safety_margin(*threshold, after_ltv);
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1754,15 +1723,11 @@ mod TestPurger {
                                 assert(after_value.is_zero(), 'wrong debt after liquidation');
                                 assert(after_debt.is_zero(), 'wrong debt after liquidation');
                             },
-                            Option::None => {
-                                break;
-                            },
+                            Option::None => { break; },
                         };
                     };
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }
@@ -1873,9 +1838,7 @@ mod TestPurger {
                     PurgerUtils::assert_trove_is_liquidatable(shrine, purger, target_trove, ltv);
                     PurgerUtils::assert_trove_is_not_absorbable(purger, target_trove);
                 },
-                Option::None => {
-                    break;
-                },
+                Option::None => { break; },
             };
         };
     }

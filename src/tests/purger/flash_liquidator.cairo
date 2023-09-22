@@ -72,9 +72,7 @@ mod FlashLiquidator {
                         let token = IERC20Dispatcher { contract_address: *yang };
                         token.approve(gate.contract_address, BoundedInt::max());
                     },
-                    Option::None => {
-                        break;
-                    }
+                    Option::None => { break; }
                 };
             };
 
@@ -132,9 +130,7 @@ mod FlashLiquidator {
                                 }
                             );
                     },
-                    Option::None => {
-                        break;
-                    },
+                    Option::None => { break; },
                 };
             };
 
@@ -150,4 +146,3 @@ mod FlashLiquidator {
         }
     }
 }
-
