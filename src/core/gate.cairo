@@ -31,13 +31,13 @@ mod Gate {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         Enter: Enter,
         Exit: Exit,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Enter {
         #[key]
         user: ContractAddress,
@@ -47,7 +47,7 @@ mod Gate {
         yang_amt: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Exit {
         #[key]
         user: ContractAddress,
