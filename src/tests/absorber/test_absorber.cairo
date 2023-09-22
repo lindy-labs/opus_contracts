@@ -70,6 +70,8 @@ mod TestAbsorber {
             absorber, veaura_token, AbsorberUtils::VEAURA_BLESS_AMT, true
         );
 
+        let mut expected_events: Array<Absorber::Event> = ArrayTrait::new();
+
         set_contract_address(AbsorberUtils::admin());
         absorber.set_reward(aura_token, aura_blesser, true);
 
@@ -83,6 +85,15 @@ mod TestAbsorber {
         let mut expected_rewards: Array<Reward> = array![aura_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
+
+        expected_events
+            .append(
+                Absorber::Event::RewardSet(
+                    Absorber::RewardSet {
+                        asset: aura_token, blesser: aura_blesser, is_active: true
+                    }
+                )
+            );
 
         // Add another reward
 
@@ -99,6 +110,15 @@ mod TestAbsorber {
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
 
+        expected_events
+            .append(
+                Absorber::Event::RewardSet(
+                    Absorber::RewardSet {
+                        asset: veaura_token, blesser: veaura_blesser, is_active: true
+                    }
+                )
+            );
+
         // Update existing reward
         let new_aura_blesser: ContractAddress = contract_address_try_from_felt252(
             'new aura blesser'
@@ -111,6 +131,17 @@ mod TestAbsorber {
         let mut expected_rewards: Array<Reward> = array![aura_reward, veaura_reward];
 
         assert(absorber.get_rewards() == expected_rewards.span(), 'rewards not equal');
+
+        // TODO: add this event once `Unknown ap change` error is resolved
+        // expected_events
+        //     .append(
+        //         Absorber::Event::RewardSet(
+        //             Absorber::RewardSet {
+        //                 asset: aura_token, blesser: new_aura_blesser, is_active: false
+        //             }
+        //         )
+        //     );
+        common::assert_events_emitted(absorber.contract_address, expected_events.span());
     }
 
     #[test]
