@@ -126,7 +126,7 @@ mod Absorber {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         RewardSet: RewardSet,
         EpochChanged: EpochChanged,
@@ -139,7 +139,7 @@ mod Absorber {
         Killed: Killed,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct RewardSet {
         #[key]
         asset: ContractAddress,
@@ -148,13 +148,13 @@ mod Absorber {
         is_active: bool
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct EpochChanged {
         old_epoch: u32,
         new_epoch: u32
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Provide {
         #[key]
         provider: ContractAddress,
@@ -162,7 +162,7 @@ mod Absorber {
         yin: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct RequestSubmitted {
         #[key]
         provider: ContractAddress,
@@ -170,7 +170,7 @@ mod Absorber {
         timelock: u64
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Remove {
         #[key]
         provider: ContractAddress,
@@ -178,7 +178,7 @@ mod Absorber {
         yin: Wad
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Reap {
         #[key]
         provider: ContractAddress,
@@ -186,7 +186,7 @@ mod Absorber {
         reward_assets: Span<AssetBalance>
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Gain {
         assets: Span<AssetBalance>,
         total_recipient_shares: Wad,
@@ -194,14 +194,14 @@ mod Absorber {
         absorption_id: u32
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Bestow {
         assets: Span<AssetBalance>,
         total_recipient_shares: Wad,
         epoch: u32
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Killed {}
 
     //
