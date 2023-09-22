@@ -1,6 +1,6 @@
 use starknet::ContractAddress;
 
-use aura::utils::wadray::Wad;
+use opus::utils::wadray::Wad;
 
 #[starknet::interface]
 trait IGate<TContractState> {

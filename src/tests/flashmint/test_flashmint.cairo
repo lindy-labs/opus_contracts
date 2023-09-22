@@ -1,18 +1,18 @@
 mod TestFlashmint {
     use starknet::ContractAddress;
 
-    use aura::core::flashmint::FlashMint;
+    use opus::core::flashmint::FlashMint;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
-    use aura::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WAD_ONE};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IFlashBorrower::{IFlashBorrowerDispatcher, IFlashBorrowerDispatcherTrait};
+    use opus::interfaces::IFlashMint::{IFlashMintDispatcher, IFlashMintDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, WAD_ONE};
 
-    use aura::tests::flashmint::flash_borrower::FlashBorrower;
-    use aura::tests::flashmint::utils::FlashmintUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::flashmint::flash_borrower::FlashBorrower;
+    use opus::tests::flashmint::utils::FlashmintUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     //
     // Tests

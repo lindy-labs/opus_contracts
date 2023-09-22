@@ -2,16 +2,16 @@ mod TestShrineCompound {
     use starknet::{ContractAddress, get_block_timestamp};
     use starknet::testing::{set_block_timestamp, set_contract_address};
 
-    use aura::core::shrine::Shrine;
+    use opus::core::shrine::Shrine;
 
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::Trove;
-    use aura::utils::exp::exp;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::Trove;
+    use opus::utils::exp::exp;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, RayZeroable, RAY_SCALE, Wad, WadZeroable};
 
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     //
     // Tests - Trove estimate and charge

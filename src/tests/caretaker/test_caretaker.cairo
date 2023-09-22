@@ -4,21 +4,21 @@ mod TestCaretaker {
     use starknet::{ContractAddress};
     use starknet::testing::set_contract_address;
 
-    use aura::core::roles::{CaretakerRoles, ShrineRoles};
+    use opus::core::roles::{CaretakerRoles, ShrineRoles};
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::ICaretaker::{ICaretakerDispatcher, ICaretakerDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Ray, Wad, WadZeroable, WAD_ONE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::caretaker::utils::CaretakerUtils;
-    use aura::tests::common;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::abbot::utils::AbbotUtils;
+    use opus::tests::caretaker::utils::CaretakerUtils;
+    use opus::tests::common;
+    use opus::tests::shrine::utils::ShrineUtils;
 
 
     #[test]

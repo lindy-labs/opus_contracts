@@ -1,9 +1,9 @@
 use starknet::ContractAddress;
 
-use aura::types::{
+use opus::types::{
     ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
 };
-use aura::utils::wadray::{Ray, Wad};
+use opus::utils::wadray::{Ray, Wad};
 
 #[starknet::interface]
 trait IShrine<TContractState> {

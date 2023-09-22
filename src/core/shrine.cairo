@@ -5,17 +5,17 @@ mod Shrine {
     use starknet::{get_block_timestamp, get_caller_address};
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
 
-    use aura::core::roles::ShrineRoles;
+    use opus::core::roles::ShrineRoles;
 
-    use aura::interfaces::IERC20::IERC20;
-    use aura::interfaces::IShrine::IShrine;
-    use aura::types::{
+    use opus::interfaces::IERC20::IERC20;
+    use opus::interfaces::IShrine::IShrine;
+    use opus::types::{
         ExceptionalYangRedistribution, Trove, YangBalance, YangRedistribution, YangSuspensionStatus
     };
-    use aura::utils::access_control::{AccessControl, IAccessControl};
-    use aura::utils::exp::{exp, neg_exp};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{
+    use opus::utils::access_control::{AccessControl, IAccessControl};
+    use opus::utils::exp::{exp, neg_exp};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{
         BoundedRay, Ray, RayZeroable, RAY_ONE, Wad, WadZeroable, WAD_DECIMALS, WAD_ONE, WAD_SCALE
     };
 

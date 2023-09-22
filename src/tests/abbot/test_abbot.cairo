@@ -2,21 +2,21 @@ mod TestAbbot {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::testing::set_contract_address;
 
-    use aura::core::abbot::Abbot;
-    use aura::core::sentinel::Sentinel;
+    use opus::core::abbot::Abbot;
+    use opus::core::sentinel::Sentinel;
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::wadray;
-    use aura::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::wadray;
+    use opus::utils::wadray::{Wad, WadZeroable, WAD_SCALE};
 
-    use aura::tests::abbot::utils::AbbotUtils;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::abbot::utils::AbbotUtils;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     use debug::PrintTrait;
 

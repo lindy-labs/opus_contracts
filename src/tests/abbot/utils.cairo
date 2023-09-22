@@ -6,20 +6,20 @@ mod AbbotUtils {
     use starknet::contract_address::ContractAddressZeroable;
     use starknet::testing::set_contract_address;
 
-    use aura::core::abbot::Abbot;
-    use aura::core::roles::{SentinelRoles, ShrineRoles};
+    use opus::core::abbot::Abbot;
+    use opus::core::roles::{SentinelRoles, ShrineRoles};
 
-    use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::Wad;
+    use opus::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::access_control::{IAccessControlDispatcher, IAccessControlDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::Wad;
 
-    use aura::tests::common;
-    use aura::tests::sentinel::utils::SentinelUtils;
-    use aura::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
+    use opus::tests::sentinel::utils::SentinelUtils;
+    use opus::tests::shrine::utils::ShrineUtils;
 
     //
     // Constants

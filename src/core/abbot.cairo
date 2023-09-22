@@ -2,12 +2,12 @@
 mod Abbot {
     use starknet::{ContractAddress, get_caller_address};
 
-    use aura::interfaces::IAbbot::IAbbot;
-    use aura::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::types::AssetBalance;
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
-    use aura::utils::wadray::{BoundedWad, Wad};
+    use opus::interfaces::IAbbot::IAbbot;
+    use opus::interfaces::ISentinel::{ISentinelDispatcher, ISentinelDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::types::AssetBalance;
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::wadray::{BoundedWad, Wad};
 
     #[storage]
     struct Storage {

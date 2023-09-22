@@ -1,5 +1,5 @@
 mod tests {
-    use aura::utils::reentrancy_guard::ReentrancyGuard;
+    use opus::utils::reentrancy_guard::ReentrancyGuard;
 
     fn guarded_func(recurse_once: bool) {
         ReentrancyGuard::start();

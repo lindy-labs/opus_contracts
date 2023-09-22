@@ -6,18 +6,18 @@ mod TestGate {
     use starknet::{ContractAddress, contract_address_try_from_felt252};
     use starknet::testing::set_contract_address;
 
-    use aura::core::gate::Gate;
+    use opus::core::gate::Gate;
 
-    use aura::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use aura::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
-    use aura::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
-    use aura::utils::wadray;
-    use aura::utils::wadray::{WAD_SCALE, Wad};
+    use opus::interfaces::IERC20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use opus::interfaces::IGate::{IGateDispatcher, IGateDispatcherTrait};
+    use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
+    use opus::utils::wadray;
+    use opus::utils::wadray::{WAD_SCALE, Wad};
 
-    use aura::tests::gate::utils::GateUtils;
-    use aura::tests::gate::utils::GateUtils::WBTC_SCALE;
-    use aura::tests::shrine::utils::ShrineUtils;
-    use aura::tests::common;
+    use opus::tests::gate::utils::GateUtils;
+    use opus::tests::gate::utils::GateUtils::WBTC_SCALE;
+    use opus::tests::shrine::utils::ShrineUtils;
+    use opus::tests::common;
 
     #[test]
     #[available_gas(10000000000)]
@@ -39,7 +39,7 @@ mod TestGate {
     #[test]
     #[available_gas(10000000000)]
     fn test_wbtc_gate_deploy() {
-        // WBTC has different decimals (8) than ETH / Aura (18)
+        // WBTC has different decimals (8) than ETH / opus (18)
         let (shrine, wbtc, gate) = GateUtils::wbtc_gate_deploy();
         let gate = IGateDispatcher { contract_address: gate };
 
