@@ -124,8 +124,12 @@ mod TestAbbot {
         assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
 
         let mut expected_events: Span<Abbot::Event> = array![
-            Abbot::Event::TroveOpened(Abbot::TroveOpened { user: trove_owner, trove_id: 1, }),
-            Abbot::Event::TroveOpened(Abbot::TroveOpened { user: trove_owner, trove_id: 2, }),
+            Abbot::Event::TroveOpened(
+                Abbot::TroveOpened { user: trove_owner, trove_id: trove_id, }
+            ),
+            Abbot::Event::TroveOpened(
+                Abbot::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+            ),
         ]
             .span();
         common::assert_events_emitted(abbot.contract_address, expected_events);
