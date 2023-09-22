@@ -355,6 +355,15 @@ fn assert_events_emitted<
     };
 }
 
+fn drop_all_events(addr: ContractAddress) {
+    loop {
+        match pop_log_raw(addr) {
+            Option::Some(event) => {},
+            Option::None => { break; }
+        };
+    };
+}
+
 //
 // Debug helpers
 //
