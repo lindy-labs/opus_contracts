@@ -154,9 +154,7 @@ mod Caretaker {
                             .balance_of(caretaker)
                             .try_into()
                             .unwrap();
-                        let asset_amt: Wad = wadray::rmul_rw(
-                            pct_to_reclaim, caretaker_balance.into()
-                        );
+                        let asset_amt: Wad = wadray::rmul_rw(capped_pct, caretaker_balance.into());
                         reclaimable_assets
                             .append(AssetBalance { address: *yang, amount: asset_amt.val });
                     },

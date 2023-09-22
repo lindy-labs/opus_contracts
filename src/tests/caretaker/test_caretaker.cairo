@@ -247,6 +247,39 @@ mod TestCaretaker {
 
     #[test]
     #[available_gas(100000000)]
+    fn test_preview_reclaim_more_than_total_yin() {
+        let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
+            CaretakerUtils::caretaker_deploy();
+
+        // user 1 with 10000 yin and 2 different yangs
+        let user1 = common::trove1_owner_addr();
+        let trove1_forge_amt: Wad = (10000 * WAD_ONE).into();
+        common::fund_user(user1, yangs, AbbotUtils::initial_asset_amts());
+        let trove1_id = common::open_trove_helper(
+            abbot, user1, yangs, AbbotUtils::open_trove_yang_asset_amts(), gates, trove1_forge_amt
+        );
+
+        set_contract_address(CaretakerUtils::admin());
+        caretaker.shut();
+
+        let reclaimable_assets: Span<AssetBalance> = caretaker
+            .preview_reclaim(trove1_forge_amt + WAD_ONE.into());
+        let caretaker_balances: Span<Span<u128>> = common::get_token_balances(
+            yangs, array![caretaker.contract_address].span()
+        );
+        // Transform caretaker balance to a single array
+        let caretaker_balances_flattened: Span<u128> = array![
+            *caretaker_balances.at(0)[0], *caretaker_balances.at(1)[0],
+        ]
+            .span();
+        let expected_reclaimable_assets: Span<AssetBalance> = common::combine_assets_and_amts(
+            yangs, caretaker_balances_flattened
+        );
+        assert(reclaimable_assets == expected_reclaimable_assets, 'wrong reclaimable assets');
+    }
+
+    #[test]
+    #[available_gas(100000000)]
     fn test_reclaim() {
         let (caretaker, shrine, abbot, _sentinel, yangs, gates) =
             CaretakerUtils::caretaker_deploy();
