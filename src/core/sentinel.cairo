@@ -42,21 +42,21 @@ mod Sentinel {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         YangAdded: YangAdded,
         YangAssetMaxUpdated: YangAssetMaxUpdated,
         GateKilled: GateKilled,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAdded {
         #[key]
         yang: ContractAddress,
         gate: ContractAddress
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct YangAssetMaxUpdated {
         #[key]
         yang: ContractAddress,
@@ -64,7 +64,7 @@ mod Sentinel {
         new_max: u128
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct GateKilled {
         #[key]
         yang: ContractAddress,
