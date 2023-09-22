@@ -1053,13 +1053,6 @@ mod TestAbsorber {
         );
 
         let mut expected_events: Span<Absorber::Event> = array![
-            Absorber::Event::RequestSubmitted(
-                Absorber::RequestSubmitted {
-                    provider: first_provider,
-                    timestamp: request_timestamp,
-                    timelock: Absorber::REQUEST_BASE_TIMELOCK,
-                }
-            ),
             Absorber::Event::Remove(
                 Absorber::Remove {
                     provider: first_provider,
@@ -1087,7 +1080,7 @@ mod TestAbsorber {
     // 3. Provider 1 should have zero shares due to loss of precision
     #[test]
     #[available_gas(20000000000)]
-    fn test_remove_after_threshold_absorption_with_minimum_shares() {
+    fn test_provider_shares_after_threshold_absorption_with_minimum_shares() {
         let (
             shrine,
             abbot,
@@ -1132,9 +1125,6 @@ mod TestAbsorber {
         let first_provider_before_yin_bal: Wad = shrine.get_yin(first_provider);
 
         set_contract_address(first_provider);
-        let (preview_absorbed_assets, preview_reward_assets) = absorber
-            .preview_reap(first_provider);
-
         // Trigger an update of the provider's Provision
         absorber.provide(WadZeroable::zero());
         let first_provider_info: Provision = absorber.get_provision(first_provider);
@@ -1145,6 +1135,21 @@ mod TestAbsorber {
             absorber.get_total_shares_for_current_epoch() == above_min_shares,
             'wrong total shares #2'
         );
+
+        let mut expected_events: Span<Absorber::Event> = array![
+            Absorber::Event::EpochChanged(
+                Absorber::EpochChanged {
+                    old_epoch: Absorber::FIRST_EPOCH, new_epoch: expected_epoch,
+                }
+            ),
+            Absorber::Event::Provide(
+                Absorber::Provide {
+                    provider: first_provider, epoch: expected_epoch, yin: WadZeroable::zero()
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(absorber.contract_address, expected_events);
     }
 
     // Sequence of events:
@@ -1651,6 +1656,7 @@ mod TestAbsorber {
         set_contract_address(provider);
         let mut idx = 0;
         let mut expected_timelock = Absorber::REQUEST_BASE_TIMELOCK;
+        let mut expected_events: Array<Absorber::Event> = ArrayTrait::new();
         loop {
             if idx == 6 {
                 break;
@@ -1671,9 +1677,20 @@ mod TestAbsorber {
             // This should not revert
             absorber.remove(1_u128.into());
 
+            expected_events
+                .append(
+                    Absorber::Event::RequestSubmitted(
+                        Absorber::RequestSubmitted {
+                            provider: provider, timestamp: current_ts, timelock: expected_timelock,
+                        }
+                    )
+                );
+
             expected_timelock *= Absorber::REQUEST_TIMELOCK_MULTIPLIER;
             idx += 1;
         };
+
+        common::assert_events_emitted(absorber.contract_address, expected_events.span());
     }
 
     #[test]
@@ -1910,6 +1927,23 @@ mod TestAbsorber {
             'cumulative should not increase'
         );
 
+        let total_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - Absorber::INITIAL_SHARES.into();
+        let mut expected_events: Span<Absorber::Event> = array![
+            Absorber::Event::Bestow(
+                Absorber::Bestow {
+                    assets: array![
+                        AssetBalance { address: aura_addr, amount: AbsorberUtils::AURA_BLESS_AMT }
+                    ]
+                        .span(),
+                    total_recipient_shares,
+                    epoch: expected_epoch,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(absorber.contract_address, expected_events);
+
         // Set AURA to inactive
         set_contract_address(AbsorberUtils::admin());
         absorber.set_reward(aura_addr, aura_blesser_addr, false);
@@ -1924,7 +1958,7 @@ mod TestAbsorber {
             final_aura_distribution
                 .asset_amt_per_share == after_aura_distribution
                 .asset_amt_per_share,
-            'cumulative should bit increase'
+            'cumulative should not increase'
         );
 
         let final_veaura_distribution: DistributionInfo = absorber
@@ -1953,7 +1987,7 @@ mod TestAbsorber {
             absorber, aura_addr, AbsorberUtils::AURA_BLESS_AMT, false
         );
         let veaura_blesser_addr: ContractAddress = AbsorberUtils::deploy_blesser_for_reward(
-            absorber, veaura_addr, AbsorberUtils::AURA_BLESS_AMT, true
+            absorber, veaura_addr, AbsorberUtils::VEAURA_BLESS_AMT, true
         );
 
         let mut blessers: Array<ContractAddress> = array![aura_blesser_addr, veaura_blesser_addr];
@@ -2000,5 +2034,24 @@ mod TestAbsorber {
                 .asset_amt_per_share,
             'cumulative should increase'
         );
+
+        let total_recipient_shares: Wad = absorber.get_total_shares_for_current_epoch()
+            - Absorber::INITIAL_SHARES.into();
+        let mut expected_events: Span<Absorber::Event> = array![
+            Absorber::Event::Bestow(
+                Absorber::Bestow {
+                    assets: array![
+                        AssetBalance {
+                            address: veaura_addr, amount: AbsorberUtils::VEAURA_BLESS_AMT
+                        }
+                    ]
+                        .span(),
+                    total_recipient_shares,
+                    epoch: expected_epoch,
+                }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(absorber.contract_address, expected_events);
     }
 }
