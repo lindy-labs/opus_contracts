@@ -22,6 +22,6 @@ jobs:
 
       - name: Run Caracal
         run: |
-          curl -LO https://github.com/crytic/caracal/releases/download/v0.2.1/caracal-v0.2.1-linux.tar.gz
-          tar -xvf caracal-v0.2.1-linux.tar.gz
+          curl -LO https://github.com/crytic/caracal/releases/download/v0.2.2/caracal-v0.2.2-linux.tar.gz
+          tar -xvf caracal-v0.2.2-linux.tar.gz
           ./caracal detect .
