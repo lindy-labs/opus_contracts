@@ -39,13 +39,13 @@ mod Abbot {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         TroveOpened: TroveOpened,
         TroveClosed: TroveClosed,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveOpened {
         #[key]
         user: ContractAddress,
@@ -53,7 +53,7 @@ mod Abbot {
         trove_id: u64
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct TroveClosed {
         #[key]
         trove_id: u64
