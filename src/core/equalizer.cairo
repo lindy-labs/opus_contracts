@@ -25,19 +25,19 @@ mod Equalizer {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         AllocatorUpdated: AllocatorUpdated,
         Equalize: Equalize,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct AllocatorUpdated {
         old_address: ContractAddress,
         new_address: ContractAddress
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Equalize {
         recipients: Span<ContractAddress>,
         percentages: Span<Ray>,
