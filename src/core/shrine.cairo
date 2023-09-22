@@ -414,9 +414,9 @@ mod Shrine {
             self.yang_prices.read((yang_id, interval))
         }
 
-        fn get_yang_rate(self: @ContractState, yang: ContractAddress, idx: u64) -> Ray {
+        fn get_yang_rate(self: @ContractState, yang: ContractAddress, rate_era: u64) -> Ray {
             let yang_id: u32 = self.get_valid_yang_id(yang);
-            self.yang_rates.read((yang_id, idx))
+            self.yang_rates.read((yang_id, rate_era))
         }
 
         fn get_current_rate_era(self: @ContractState) -> u64 {
