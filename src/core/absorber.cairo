@@ -1026,9 +1026,11 @@ mod Absorber {
                 }
 
                 let blessed_amt = reward.blesser.bless();
-                blessed_assets.append(AssetBalance { address: reward.asset, amount: blessed_amt });
 
                 if blessed_amt.is_non_zero() {
+                    blessed_assets
+                        .append(AssetBalance { address: reward.asset, amount: blessed_amt });
+
                     let epoch_reward_info: DistributionInfo = self
                         .cumulative_reward_amt_by_epoch
                         .read((reward.asset, epoch));
