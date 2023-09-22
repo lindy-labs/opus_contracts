@@ -9,5 +9,8 @@ sierra = true
 # when the code uses a libfunc that is not allowed
 allowed-libfuncs-deny = true
 
+[cairo]
+sierra-replace-ids = true
+
 [dependencies]
 starknet = ">=2.2.0"
