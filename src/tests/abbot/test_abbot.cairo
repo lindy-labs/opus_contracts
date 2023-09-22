@@ -2,6 +2,7 @@ mod TestAbbot {
     use starknet::contract_address::{ContractAddress, ContractAddressZeroable};
     use starknet::testing::set_contract_address;
 
+    use aura::core::abbot::Abbot;
     use aura::core::sentinel::Sentinel;
 
     use aura::interfaces::IAbbot::{IAbbotDispatcher, IAbbotDispatcherTrait};
@@ -121,6 +122,17 @@ mod TestAbbot {
         };
 
         assert(shrine.get_total_debt() == forge_amt + second_forge_amt, 'wrong total debt #2');
+
+        let mut expected_events: Span<Abbot::Event> = array![
+            Abbot::Event::TroveOpened(
+                Abbot::TroveOpened { user: trove_owner, trove_id: trove_id, }
+            ),
+            Abbot::Event::TroveOpened(
+                Abbot::TroveOpened { user: trove_owner, trove_id: second_trove_id, }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(abbot.contract_address, expected_events);
     }
 
     #[test]
@@ -181,6 +193,12 @@ mod TestAbbot {
 
         let (_, _, _, debt) = shrine.get_trove_info(trove_id);
         assert(debt.is_zero(), 'wrong trove debt');
+
+        let mut expected_events: Span<Abbot::Event> = array![
+            Abbot::Event::TroveClosed(Abbot::TroveClosed { trove_id, }),
+        ]
+            .span();
+        common::assert_events_emitted(abbot.contract_address, expected_events);
     }
 
     #[test]
