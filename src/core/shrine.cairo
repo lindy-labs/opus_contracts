@@ -1028,15 +1028,18 @@ mod Shrine {
                     trove_id, trove_yang_balances, WadZeroable::zero()
                 );
 
+            // Offset to be applied to the yang ID when indexing into the `trove_yang_balances` array
+            let yang_id_to_array_idx_offset: u32 = 1;
+
             let mut added_yangs: Array<YangBalance> = ArrayTrait::new();
             if updated_trove_yang_balances.is_some() {
                 let mut updated_trove_yang_balances = updated_trove_yang_balances.unwrap();
                 loop {
                     match updated_trove_yang_balances.pop_front() {
                         Option::Some(updated_yang_balance) => {
-                            let trove_yang_balance: Wad = self
-                                .deposits
-                                .read((*updated_yang_balance.yang_id, trove_id));
+                            let trove_yang_balance: Wad = *trove_yang_balances
+                                .at(*updated_yang_balance.yang_id - yang_id_to_array_idx_offset)
+                                .amount;
                             let increment: Wad = *updated_yang_balance.amount - trove_yang_balance;
                             if increment.is_non_zero() {
                                 added_yangs
@@ -2188,7 +2191,11 @@ mod Shrine {
                                     if yang_id == *original_yang_balance.yang_id {
                                         updated_trove_yang_balances
                                             .append(
-                                                YangBalance { yang_id, amount: yang_increment }
+                                                YangBalance {
+                                                    yang_id,
+                                                    amount: *original_yang_balance.amount
+                                                        + yang_increment
+                                                }
                                             );
                                     } else {
                                         updated_trove_yang_balances
