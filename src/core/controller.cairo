@@ -38,20 +38,20 @@ mod Controller {
 
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         ParameterUpdated: ParameterUpdated,
         GainUpdated: GainUpdated,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct ParameterUpdated {
         #[key]
         name: felt252,
         value: u8
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct GainUpdated {
         #[key]
         name: felt252,
