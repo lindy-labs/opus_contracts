@@ -2,6 +2,8 @@ mod TestController {
     use debug::PrintTrait;
     use starknet::testing::set_contract_address;
 
+    use opus::core::controller::Controller;
+
     use opus::interfaces::IController::{IControllerDispatcher, IControllerDispatcherTrait};
     use opus::interfaces::IShrine::{IShrineDispatcher, IShrineDispatcherTrait};
     use opus::utils::wadray_signed;
@@ -9,6 +11,7 @@ mod TestController {
     use opus::utils::wadray;
     use opus::utils::wadray::{Ray, Wad};
 
+    use opus::tests::common;
     use opus::tests::common::{assert_equalish, badguy};
     use opus::tests::controller::utils::ControllerUtils;
     use opus::tests::shrine::utils::ShrineUtils;
@@ -30,6 +33,29 @@ mod TestController {
         assert(alpha_i == ControllerUtils::ALPHA_I, 'wrong alpha_i');
         assert(beta_p == ControllerUtils::BETA_P, 'wrong beta_p');
         assert(beta_i == ControllerUtils::BETA_I, 'wrong beta_i');
+
+        let mut expected_events: Span<Controller::Event> = array![
+            Controller::Event::GainUpdated(
+                Controller::GainUpdated { name: 'p_gain', value: ControllerUtils::P_GAIN.into() }
+            ),
+            Controller::Event::GainUpdated(
+                Controller::GainUpdated { name: 'i_gain', value: ControllerUtils::I_GAIN.into() }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'alpha_p', value: ControllerUtils::ALPHA_P }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'alpha_i', value: ControllerUtils::ALPHA_I }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'beta_p', value: ControllerUtils::BETA_P }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'beta_i', value: ControllerUtils::BETA_I }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(controller.contract_address, expected_events);
     }
 
     #[test]
@@ -39,20 +65,50 @@ mod TestController {
 
         set_contract_address(ControllerUtils::admin());
 
-        controller.set_p_gain(1_u128.into());
-        controller.set_i_gain(2_u128.into());
-        controller.set_alpha_p(3);
-        controller.set_alpha_i(5);
-        controller.set_beta_p(8);
-        controller.set_beta_i(4);
+        let new_p_gain: Ray = 1_u128.into();
+        let new_i_gain: Ray = 2_u128.into();
+        let new_alpha_p: u8 = 3;
+        let new_alpha_i: u8 = 5;
+        let new_beta_p: u8 = 8;
+        let new_beta_i: u8 = 4;
+
+        controller.set_p_gain(new_p_gain);
+        controller.set_i_gain(new_i_gain);
+        controller.set_alpha_p(new_alpha_p);
+        controller.set_alpha_i(new_alpha_i);
+        controller.set_beta_p(new_beta_p);
+        controller.set_beta_i(new_beta_i);
 
         let ((p_gain, i_gain), (alpha_p, beta_p, alpha_i, beta_i)) = controller.get_parameters();
-        assert(p_gain == 1_u128.into(), 'wrong p gain');
-        assert(i_gain == 2_u128.into(), 'wrong i gain');
-        assert(alpha_p == 3, 'wrong alpha_p');
-        assert(alpha_i == 5, 'wrong alpha_i');
-        assert(beta_p == 8, 'wrong beta_p');
-        assert(beta_i == 4, 'wrong beta_i');
+        assert(p_gain == new_p_gain.into(), 'wrong p gain');
+        assert(i_gain == new_i_gain.into(), 'wrong i gain');
+        assert(alpha_p == new_alpha_p, 'wrong alpha_p');
+        assert(alpha_i == new_alpha_i, 'wrong alpha_i');
+        assert(beta_p == new_beta_p, 'wrong beta_p');
+        assert(beta_i == new_beta_i, 'wrong beta_i');
+
+        let mut expected_events: Span<Controller::Event> = array![
+            Controller::Event::GainUpdated(
+                Controller::GainUpdated { name: 'p_gain', value: new_p_gain.into() }
+            ),
+            Controller::Event::GainUpdated(
+                Controller::GainUpdated { name: 'i_gain', value: new_i_gain.into() }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'alpha_p', value: new_alpha_p }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'alpha_i', value: new_alpha_i }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'beta_p', value: new_beta_p }
+            ),
+            Controller::Event::ParameterUpdated(
+                Controller::ParameterUpdated { name: 'beta_i', value: new_beta_i }
+            ),
+        ]
+            .span();
+        common::assert_events_emitted(controller.contract_address, expected_events);
     }
 
     // Testing unauthorized calls of setters
