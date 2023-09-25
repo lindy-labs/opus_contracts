@@ -293,7 +293,7 @@ mod TestAbsorber {
                     );
                     let expected_recipient_shares = before_total_shares
                         - Absorber::INITIAL_SHARES.into();
-                    let mut expected_events: Span<Absorber::Event> = array![
+                    let mut expected_events: Array<Absorber::Event> = array![
                         Absorber::Event::Gain(
                             Absorber::Gain {
                                 assets: expected_absorbed_assets,
@@ -309,9 +309,7 @@ mod TestAbsorber {
                                 epoch: 1,
                             }
                         ),
-                    ]
-                        .span();
-                    common::assert_events_emitted(absorber.contract_address, expected_events);
+                    ];
 
                     let is_fully_absorbed = *percentage_to_drain == RAY_SCALE.into();
 
@@ -325,6 +323,21 @@ mod TestAbsorber {
                     } else {
                         first_provided_amt // total shares is equal to amount provided
                     };
+
+                    if is_fully_absorbed {
+                        expected_events
+                            .append(
+                                Absorber::Event::EpochChanged(
+                                    Absorber::EpochChanged {
+                                        old_epoch: Absorber::FIRST_EPOCH, new_epoch: expected_epoch,
+                                    }
+                                )
+                            );
+                    }
+
+                    common::assert_events_emitted(
+                        absorber.contract_address, expected_events.span()
+                    );
 
                     assert(
                         absorber.get_absorptions_count() == expected_absorption_id,
@@ -788,6 +801,8 @@ mod TestAbsorber {
         let (preview_absorbed_assets, preview_reward_assets) = absorber
             .preview_reap(second_provider);
 
+        common::drop_all_events(absorber.contract_address);
+
         absorber.reap();
 
         assert(
@@ -840,7 +855,7 @@ mod TestAbsorber {
                 Absorber::Bestow {
                     assets: expected_rewarded_assets,
                     total_recipient_shares: expected_recipient_shares,
-                    epoch: 1,
+                    epoch: expected_current_epoch,
                 }
             ),
         ]
