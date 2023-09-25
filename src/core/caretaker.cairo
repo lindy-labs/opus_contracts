@@ -41,17 +41,17 @@ mod Caretaker {
     //
 
     #[event]
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     enum Event {
         Shut: Shut,
         Release: Release,
         Reclaim: Reclaim,
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Shut {}
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Release {
         #[key]
         user: ContractAddress,
@@ -60,7 +60,7 @@ mod Caretaker {
         assets: Span<AssetBalance>
     }
 
-    #[derive(Drop, starknet::Event)]
+    #[derive(Copy, Drop, starknet::Event, PartialEq)]
     struct Reclaim {
         #[key]
         user: ContractAddress,
