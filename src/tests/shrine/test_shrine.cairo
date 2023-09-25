@@ -486,20 +486,15 @@ mod TestShrine {
         set_contract_address(ShrineUtils::admin());
         shrine
             .update_rates(
-                ShrineUtils::two_yang_addrs_reversed(),
-                array![
-                    Shrine::USE_PREV_BASE_RATE.into(),
-                    Shrine::USE_PREV_BASE_RATE.into(),
-                    Shrine::USE_PREV_BASE_RATE.into(),
-                ]
-                    .span()
+                ShrineUtils::three_yang_addrs(),
+                array![Shrine::USE_PREV_BASE_RATE.into(), Shrine::USE_PREV_BASE_RATE.into(),].span()
             );
     }
 
     #[test]
     #[available_gas(20000000000)]
-    #[should_panic(expected: ('SH: yangs.len != new_rates.len', 'ENTRYPOINT_FAILED'))]
-    fn test_update_rates_yangs_array_len_too_low() {
+    #[should_panic(expected: ('SH: Too few yangs', 'ENTRYPOINT_FAILED'))]
+    fn test_update_rates_too_few_yangs() {
         let shrine: IShrineDispatcher = ShrineUtils::shrine_setup_with_feed();
         set_contract_address(ShrineUtils::admin());
         shrine

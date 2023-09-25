@@ -593,10 +593,8 @@ mod Shrine {
             let yangs_len = yangs.len();
             let num_yangs: u32 = self.yangs_count.read();
 
-            assert(
-                yangs_len == new_rates.len() && yangs_len == num_yangs,
-                'SH: yangs.len != new_rates.len'
-            );
+            assert(yangs_len == num_yangs, 'SH: Too few yangs');
+            assert(yangs_len == new_rates.len(), 'SH: yangs.len != new_rates.len');
 
             let latest_rate_era: u64 = self.rates_latest_era.read();
             let latest_rate_era_interval: u64 = self.rates_intervals.read(latest_rate_era);
